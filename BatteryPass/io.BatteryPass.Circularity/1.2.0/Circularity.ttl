@@ -98,7 +98,7 @@
 :SafetyMeasuresEntity a samm:Entity ;
    samm:preferredName "safety measures"@en ;
    samm:description "The safety measures should be provided via the instruction manual as URL linking to PDF."@en ;
-   samm:properties ( :safetyInstructions :extinguishingAgent ) .
+   samm:properties ( :safetyInstructions :extinguishingAgents ) .
 
 :EndOfLifeInformationEntity a samm:Entity ;
    samm:preferredName "end of life information"@en ;
