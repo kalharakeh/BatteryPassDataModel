@@ -23,15 +23,17 @@
 
 :PerformanceAndDurability a samm:Aspect ;
    samm:description "Battery performance and durability data model"@en ;
-   samm:properties ( :batteryTechicalProperties :batteryCondition ) ;
+   samm:properties ( :batteryTechnicalProperties :batteryCondition ) ;
    samm:operations ( ) ;
    samm:events ( ) .
 
-:batteryTechicalProperties a samm:Property ;
+:batteryTechnicalProperties a samm:Property ;
+   samm:preferredName "battery technical properties"@en ;
    samm:description "This property covers all perfromance related properties"@en ;
    samm:characteristic :BatteryTechnicalProperties .
 
 :batteryCondition a samm:Property ;
+   samm:preferredName "battery condition"@en ;
    samm:description "'- Expected battery lifetime expressed in cycles, and reference test used.\n- Their expected life-time under the reference conditions for which they have been designed in terms of cycles, except for non-cycle applications, and calendar years."@en ;
    samm:characteristic :BatteryCondition .
 
@@ -44,89 +46,106 @@
 
 :BatteryTechnicalPropertiesEntity a samm:Entity ;
    samm:description "Covers all Capability related data attributes"@en ;
-   samm:properties ( :originalPowerCapability :ratedMaximumPower :powerCapabilityRatio :ratedEnergy :expectedNumberOfCycles :initialSelfDischarge :roundtripEfficiency :ratedCapacity :initialInternalResistance :expectedLifetime [ samm:property :cRate; samm:optional true ] :nominalVoltage :minimumVoltage :maximumVoltage :capacityThresholdForExhaustion :lifetimeReferenceTest :cRateLifeCycleTest :temperatureRangeIdleState :roundTripEfficiencyat50PerCentCycleLife :roundTripEfficiencyFade :powerFade ) .
+   samm:properties ( :originalPowerCapability :ratedMaximumPower :powerCapabilityRatio :ratedEnergy :expectedNumberOfCycles :initialSelfDischarge :roundtripEfficiency :ratedCapacity :initialInternalResistance :expectedLifetime [ samm:property :cRate; samm:optional true ] :nominalVoltage :minimumVoltage :maximumVoltage :capacityThresholdForExhaustion :lifetimeReferenceTest :cRateLifeCycleTest :temperatureRangeIdleState :roundTripEfficiencyAt50PercentCycleLife :roundTripEfficiencyFade :powerFade ) .
 
 :BatteryConditionEntity a samm:Entity ;
    samm:description "Covers all battery lifetime relevant properties"@en ;
    samm:properties ( :energyThroughput :capacityThroughput :numberOfFullCycles :stateOfCertifiedEnergy :capacityFade :remainingEnergy :remainingCapacity :negativeEvents :temperatureInformation :remainingPowerCapability :evolutionOfSelfDischarge :currentSelfDischargingRate :internalResistanceIncrease :remainingRoundTripEnergyEfficiency :stateOfCharge ) .
 
 :originalPowerCapability a samm:Property ;
+   samm:preferredName "original power capability"@en ;
    samm:description "Pre-use power capability: Definition of power capability as given in Battery Regulation. \nAnnex IV Part B, point 4 --> measurement at 80 % and 20 % SoC required. This requirement may not be implementable for remaining power capability and power fade(see below). It, thus, should be reviewed together with SoC definition.\n\nDIN DKE Spec 99100 chapter reference: 6.7.3.2\n\n"@en ;
    samm:characteristic :OriginalPowerCapabilityAtSoC .
 
 :ratedMaximumPower a samm:Property ;
+   samm:preferredName "rated maximum power"@en ;
    samm:description "This data point describes the value of maximum permitted power the battery is rated for and reflects the data relevant for power limits.\n\nDIN DKE Spec 99100 chapter reference: 6.7.3.2"@en ;
    samm:characteristic :RatedMaximumPower .
 
 :powerCapabilityRatio a samm:Property ;
-   samm:preferredName "PowerCapabilityRatio"@en ;
+   samm:preferredName "power capability ratio"@en ;
    samm:description "Provides information on nominal/recommended charge rate (C-rate); equal to regulation definition."@en ;
    samm:characteristic :PowerCapabilityRatio .
 
 :ratedEnergy a samm:Property ;
+   samm:preferredName "rated energy"@en ;
    samm:description "The certified usable battery energy is the usable battery energy according to the procedure in the UN GTR No 22 as determined during the certification of the vehicle.\n\nDIN DKE Spec 99100 chapter reference: 6.7.2.5"@en ;
    samm:characteristic :RatedEnergy .
 
 :expectedNumberOfCycles a samm:Property ;
-   samm:preferredName "ExpectedNumberOfCycles"@en ;
+   samm:preferredName "expected number of cycles"@en ;
    samm:description "Expected battery lifetime expressed in cycles.\nThe exception for non-cycle applications in Article 10 appears sensible, but is not included in the Annex XIII provision.\nThe data attribute is defined by measurement conditions of the cycle-life test such as the C-Rate (see below) and the depth of discharge in the cycle-life test\n\nDIN DKE Spec 99100 chapter reference: 6.7.6.3"@en ;
    samm:characteristic :ExpectedNumberOfCycles .
 
 :initialSelfDischarge a samm:Property ;
+   samm:preferredName "initial self discharge"@en ;
    samm:description "Initial self-discharge in % of capacity per unit of time in defined conditions (temperature range etc) as pre-use metric. \n\nDIN DKE Spec 99100 chapter reference: 6.7.4.6"@en ;
    samm:characteristic :InitialSelfDischarge .
 
 :roundtripEfficiency a samm:Property ;
+   samm:preferredName "round trip efficiency"@en ;
    samm:description "Energy round trip efficiency is the ratio of the net energy delivered by a battery during a discharge test to the total energy required to restore the initial state of charge by a standard charge (see BattReg Annex IV (6)).\n\nDIN DKE Spec 99100 chapter reference: 6.7.4.2"@en ;
    samm:characteristic :RoundtripEfficiency .
 
 :ratedCapacity a samm:Property ;
+   samm:preferredName "rated capacity"@en ;
    samm:description "Rated capacity is the total number of ampere-hours (Ah) that can be withdrawn from a fully charged battery under reference conditions (see BattReg Annex IV (1)).\n\nDIN DKE Spec 99100 chapter reference: 6.7.2.2"@en ;
    samm:characteristic :RatedCapacity .
 
 :initialInternalResistance a samm:Property ;
+   samm:preferredName "initial internal resistance"@en ;
    samm:description "The battery passport can include additional information about the initial internal resistance on battery module level, if available. It should be defined and calculated analogously as the requirements on battery pack level above.\n\nDIN DKE Spec 99100 chapter reference: 6.7.5.2"@en ;
    samm:characteristic :InitialInternalResistance .
 
 :expectedLifetime a samm:Property ;
+   samm:preferredName "expected lifetime"@en ;
    samm:description "The battery passport must include information about the expected battery lifetime in calendar years.\n\nThe update interval must be upon placement on the market and upon change of the battery status.\n\nDIN DKE Spec 99100 chapter reference: 6.7.6.2"@en ;
    samm:characteristic :ExpectedLifeTime .
 
 :cRate a samm:Property ;
+   samm:preferredName "C-rate"@en ;
    samm:description "As a non-mandatory data point the battery passport should include the ratio between nominal battery power in W and battery energy in Wh. It aims to provide an indication of the applicable discharge and charge rate in terms of rated capacity (C-rate) (see BattReg Annex IV Part B(2)).\n\nThe update interval should be upon placement on the market and upon change of the battery status.\n\nDIN DKE Spec 99100 chapter reference: 6.7.3.6"@en ;
    samm:characteristic :CRate .
 
 :nominalVoltage a samm:Property ;
+   samm:preferredName "nominal voltag"@en ;
    samm:description "Nominal voltage the battery is rated for.\n\nDIN DKE Spec 99100 chapter reference: 6.7.2.11"@en ;
    samm:characteristic :NominalVoltage .
 
 :minimumVoltage a samm:Property ;
+   samm:preferredName "minimum voltage"@en ;
    samm:description "Minimum voltage the battery is rated for.\n\nDIN DKE Spec 99100 chapter reference: 6.7.2.9"@en ;
    samm:characteristic :MinimumVoltage .
 
 :maximumVoltage a samm:Property ;
+   samm:preferredName "maximum voltage"@en ;
    samm:description "Maximum voltage the battery is rated for.\n\nDIN DKE Spec 99100 chapter reference: 6.7.2.10"@en ;
    samm:characteristic :MaximumVoltage .
 
 :capacityThresholdForExhaustion a samm:Property ;
+   samm:preferredName "capacity threshold for exhaustion"@en ;
    samm:description "The percentage of SOCE, above which the battery is still considered operational as EV battery in its current life, as provided by the economic operator.\n\nDIN DKE Spec 99100 chapter reference: 6.7.6.9"@en ;
    samm:characteristic :CapacityThresholdForExhaustion .
 
 :lifetimeReferenceTest a samm:Property ;
+   samm:preferredName "lifetime reference test"@en ;
    samm:description "The exception for non-cycle applications as mentioned in \"Expected lifetime: Number of charge-discharge cycles\" should apply to this data attribute as well.\n\nDIN DKE Spec 99100 chapter reference: 6.7.6.5"@en ;
    samm:characteristic samm-c:ResourcePath .
 
 :cRateLifeCycleTest a samm:Property ;
+   samm:preferredName "C-rate life cycle test"@en ;
    samm:description "The C-rate should be provided separately for both the charge and discharge of the battery, if applicable.\n\nThe exception for non-cycle applications as mentioned in \"Expected lifetime: Number of charge-discharge cycles\" should apply to this data attribute as well.\n\nDIN DKE Spec 99100 chapter reference: 6.7.6.6"@en ;
    samm:characteristic :CRateLifeCycleTest .
 
 :temperatureRangeIdleState a samm:Property ;
+   samm:preferredName "temperature range idle state"@en ;
    samm:description "Upper an lower boundary of the surrounding temperature range, which the battery can safely withstand. \n\nDIN DKE Spec 99100 chapter reference: 6.7.6.3-4"@en ;
    samm:characteristic :TemperatureRangeIdleState .
 
-:roundTripEfficiencyat50PerCentCycleLife a samm:Property ;
+:roundTripEfficiencyAt50PercentCycleLife a samm:Property ;
+   samm:preferredName "round trip efficiency at 50 percent cycle life"@en ;
    samm:description "Initial round trip energy efficiency shall be measured at reference conditions that include the specification of 50 % of cycle-life.\n\nTest methods and reference conditions should separately consider non-cycle applications and batteries with very long cycle-life.\n\nDIN DKE Spec 99100 chapter reference: 6.7.4.3\n"@en ;
-   samm:characteristic :RoundTripEfficiencyat50PerCentCycleLife .
+   samm:characteristic :RoundTripEfficiencyAt50PercentCycleLife .
 
 :roundTripEfficiencyFade a samm:Property ;
    samm:description "Energy round trip efficiency fade should be calculated using the initial round trip energy efficiency and remaining round trip energy efficiency following the formula below:\n\nRTEfade (x) = (1-RTE(x)) / RTEBOL  100\" %\" \nwhere\nx \tis the aging parameter (e.g. storage time, number of cycles, etc.);\nRTE(x) \tis the round trip energy efficiency at aging parameter x;\nRTEBOL \tis the round trip energy efficiency at begin of life.\n\nDIN DKE Spec 99100 chapter reference: 6.7.4.5"@en ;
@@ -154,42 +173,52 @@
    samm:characteristic :StateOfCertifiedEnergy .
 
 :capacityFade a samm:Property ;
+   samm:preferredName "capacity fade"@en ;
    samm:description "The capacity fade is the Decrease over time and upon usage in the amount of charge that a battery can deliver at the rated voltage, with respect to the original rated capacity (see BattReg Annex IV (2)) as declared by the manufacturer.\n\nDIN DKE Spec 99100 chapter reference: 6.7.2.4"@en ;
    samm:characteristic :CapacityFade .
 
 :remainingEnergy a samm:Property ;
+   samm:preferredName "remaining energy"@en ;
    samm:description "Definition from UNECE GTR 22, applicable only to EVs.\nThe energy supplied by the battery from the beginning of the test procedure used for certification until the applicable break-off criterion of the test procedure used for certification is reached.\n\nDIN DKE Spec 99100 chapter reference: 6.7.2.6"@en ;
    samm:characteristic :RemainingEnergy .
 
 :remainingCapacity a samm:Property ;
+   samm:preferredName "remaining capacity"@en ;
    samm:description "The in-use data attribute on capacity, corresponding with the definition of rated capacity.\n\nDIN DKE Spec 99100 chapter reference: 6.7.2.3"@en ;
    samm:characteristic :RemainingCapacity .
 
 :negativeEvents a samm:Property ;
+   samm:preferredName "negative events"@en ;
    samm:description "The battery passport must contain information and data resulting from its use such as accidents. \n\nDIN DKE Spec 99100 chapter reference: 6.7.8.4"@en ;
    samm:characteristic :NegativeEvents .
 
 :temperatureInformation a samm:Property ;
+   samm:preferredName "temperature information"@en ;
    samm:description "The battery passport must include periodically recorded information on the operating environmental conditions, including temperature.\n\nDIN DKE Spec 99100 chapter reference: 6.7.7.5 - 8"@en ;
    samm:characteristic :TemperatureInformation .
 
 :remainingPowerCapability a samm:Property ;
+   samm:preferredName "remaining power capability"@en ;
    samm:description "'- Original power capability (in Watts) and limits, with temperature range when relevant.\n- The amount of energy that a battery is capable to provide over a given period of time under reference conditions.\n- Power capability at 80% and 20% state of charge.\n\nDIN DKE Spec 99100 chapter reference: 6.7.3.3"@en ;
    samm:characteristic :RemainingPowerCapability .
 
 :evolutionOfSelfDischarge a samm:Property ;
+   samm:preferredName "evolution of self discharge"@en ;
    samm:description "Evolution of self-discharge rates is the change of self-discharge over time and usage, as percentage calculated from the initial and current self-discharge rate.\n\nDIN DKE Spec 99100 chapter reference: 6.7.4.8"@en ;
    samm:characteristic :EvolutionOfSelfDischarge .
 
 :currentSelfDischargingRate a samm:Property ;
+   samm:preferredName "current self discharge rate"@en ;
    samm:description "The current self-discharge rate is the change of the self-discharge rate in an idle state of the battery in reference conditions (temperature etc.) at aging parameter x, e.g. after a certain amount of storage time or, number of cycles.\n\nDIN DKE Spec 99100 chapter reference: 6.7.4.7"@en ;
    samm:characteristic :CurrentSelfDischargingRate .
 
 :internalResistanceIncrease a samm:Property ;
+   samm:preferredName "internal resistance increase"@en ;
    samm:description "The internal resistance increase over time and upon usage should be defined based on the ratio of current and initial values as follows:\nRincrease(x) = (R(x)  - RBOL) / RBOL  100 %\nwhere\nx \tis the aging parameter (e.g. storage time, number of cycles, etc.;);\nR(x)\tis the internal resistance at the aging parameter x; and\nRBOL\tis the internal resistance at begin of life.\n\nThe battery passport can include additional information about the internal resistance increase on battery cell and battery module level, if available. It should be defined and calculated analogously to the requirements on battery pack level above.\n\nDIN DKE Spec 99100 chapter reference: 6.7.5.3"@en ;
    samm:characteristic :CurrentInternalResistanceValue .
 
 :remainingRoundTripEnergyEfficiency a samm:Property ;
+   samm:preferredName "remaining round trip energy efficiency"@en ;
    samm:description "The battery passport shall include information, where possible, about the remaining round trip energy efficiency as information on the state of health of the battery \n\nThe update frequency of remaining round trip energy efficiency should be aligned with the update frequency of round trip energy efficiency fade and should be provided upon change of the battery status.\n\nDIN DKE Spec 99100 chapter reference: 6.7.4.4"@en ;
    samm:characteristic :RemainingRoundTripEnergyEfficiency .
 
@@ -265,7 +294,7 @@
 :TemperatureRangeIdleState a samm:Characteristic ;
    samm:dataType :TemperatureRangeType .
 
-:RoundTripEfficiencyat50PerCentCycleLife a samm-c:Measurement ;
+:RoundTripEfficiencyAt50PercentCycleLife a samm-c:Measurement ;
    samm:dataType xsd:float ;
    samm-c:unit unit:percent .
 
@@ -320,15 +349,19 @@
    samm:dataType :InternalResistanceIncreaseEntity .
 
 :RemainingRoundTripEnergyEfficiency a samm-c:SingleEntity ;
+   samm:preferredName "remaining round trip energy efficiency"@en ;
    samm:dataType :RemainingRoundTripEnergyEfficiencyEntity .
 
 :StateOfCharge a samm-c:SingleEntity ;
+   samm:preferredName "state of charge"@en ;
    samm:dataType :StateOfChargeEntity .
 
 :PowerCapabilityAtEntity a samm:Entity ;
+   samm:preferredName "power capability at"@en ;
    samm:properties ( :atSoC :powerCapabilityAt ) .
 
 :InternalResistanceEntity a samm:Entity ;
+   samm:preferredName "internal resistance"@en ;
    samm:description "The internal resistance is a quotient of change of voltage of a battery by the corresponding change in discharge current under specified conditions (IEV 482 03 36)."@en ;
    samm:properties ( :ohmicResistance :batteryComponent ) .
 
@@ -336,137 +369,176 @@
    samm:symbol "C" .
 
 :TemperatureRangeType a samm:Entity ;
+   samm:preferredName "temperature range"@en ;
    samm:properties ( :minimum :maximum ) .
 
 :EnergyThroughputEntity a samm:Entity ;
+   samm:preferredName "energy throughput"@en ;
    samm:properties ( :energyThroughputValue :lastUpdate ) .
 
 :CapacityThroughputEntity a samm:Entity ;
+   samm:preferredName "capacity throughput"@en ;
    samm:properties ( :capacityThroughputValue :lastUpdate ) .
 
 :NumberOfFullCyclesEntity a samm:Entity ;
+   samm:preferredName "number of full cycles"@en ;
    samm:properties ( :numberOfFullCyclesValue :lastUpdate ) .
 
 :StateOfCertifiedEnergyEntity a samm:Entity ;
+   samm:preferredName "state of certified energy"@en ;
    samm:properties ( :stateOfCertifiedEnergyValue :lastUpdate ) .
 
 :CapacityFadeEntity a samm:Entity ;
+   samm:preferredName "capacity fade"@en ;
    samm:properties ( :capacityFadeValue :lastUpdate ) .
 
 :RemainingEnergyEntity a samm:Entity ;
+   samm:preferredName "remaining energy"@en ;
    samm:properties ( :remainingEnergyValue :lastUpdate ) .
 
 :RemainingCapacityEntity a samm:Entity ;
+   samm:preferredName "reamining capacity"@en ;
    samm:properties ( :remainingCapacityValue :lastUpdate ) .
 
 :NegativeEventEntity a samm:Entity ;
+   samm:preferredName "negative event"@en ;
    samm:properties ( :negativeEvent :lastUpdate ) .
 
 :TemperatureConditionsEntity a samm:Entity ;
+   samm:preferredName "temperature conditions"@en ;
    samm:properties ( :timeExtremeHighTemp :timeExtremeLowTemp :timeExtremeHighTempCharging :timeExtremeLowTempCharging :lastUpdate ) .
 
 :RemainingPowerCapabilityEntity a samm:Entity ;
+   samm:preferredName "reamining power capability"@en ;
    samm:properties ( :remainingPowerCapabilityValue :lastUpdate ) .
 
 :EvolutionOfSelfDischargeEntity a samm:Entity ;
+   samm:preferredName "evolution of self discharge"@en ;
    samm:properties ( :evolutionOfSelfDischargeValue :lastUpdate ) .
 
 :CurrentSelfDischargingRateEntity a samm:Entity ;
+   samm:preferredName "current self discharging rate"@en ;
    samm:properties ( :currentSelfDischargingRateValue :lastUpdate ) .
 
 :InternalResistanceIncreaseEntity a samm:Entity ;
+   samm:preferredName "internal resistance increase"@en ;
    samm:properties ( :internalResistanceIncreaseValue :lastUpdate :batteryComponent ) .
 
 :RemainingRoundTripEnergyEfficiencyEntity a samm:Entity ;
    samm:properties ( :remainingRoundTripEnergyEfficiencyValue :lastUpdate ) .
 
 :StateOfChargeEntity a samm:Entity ;
+   samm:preferredName "state of charge"@en ;
    samm:properties ( :stateOfChargeValue :lastUpdate ) .
 
 :atSoC a samm:Property ;
+   samm:preferredName "at SoC"@en ;
    samm:characteristic :AtSoC .
 
 :powerCapabilityAt a samm:Property ;
+   samm:preferredName "power capability at"@en ;
    samm:characteristic :PowerCapabilityAtSoc .
 
 :ohmicResistance a samm:Property ;
+   samm:preferredName "resistance"@en ;
    samm:description "Initial (Pre-Use) internal resistance on battery pack level. \n\nDefinition of internal resistance should differ from regulation definition, as \"opposition\" is not an electrotechnical term and may be based on IEV 131-12-04: \"internal resistance means the absolute value of the quotient of the voltage drop between the terminals by the electric current increase in the battery circuit during a current pulse\""@en ;
    samm:characteristic :OhimcResistance .
 
 :batteryComponent a samm:Property ;
+   samm:preferredName "component"@en ;
    samm:characteristic :BatteryComponent .
 
 :minimum a samm:Property ;
+   samm:preferredName "minimum"@en ;
    samm:description "lower temperature range."@en ;
    samm:characteristic :MinimumTrait ;
    samm:exampleValue "-100.0"^^xsd:double .
 
 :maximum a samm:Property ;
+   samm:preferredName "maximum"@en ;
    samm:description "upper temperature range."@en ;
    samm:characteristic :MaximumTrait ;
    samm:exampleValue "200.0"^^xsd:double .
 
 :energyThroughputValue a samm:Property ;
+   samm:preferredName "energy throughput"@en ;
    samm:characteristic :EnergyThroughputValue .
 
 :lastUpdate a samm:Property ;
+   samm:preferredName "last update"@en ;
    samm:description "Timestamp for dynamic data attributes show the last update time."@en ;
    samm:characteristic samm-c:Timestamp .
 
 :capacityThroughputValue a samm:Property ;
+   samm:preferredName "capacity throughput"@en ;
    samm:characteristic :CapacityThroughputValue .
 
 :numberOfFullCyclesValue a samm:Property ;
    samm:characteristic :NumberOfFullCyclesValue .
 
 :stateOfCertifiedEnergyValue a samm:Property ;
+   samm:preferredName "state of certified energy"@en ;
    samm:characteristic :StateOfCertifiedEnergyValue .
 
 :capacityFadeValue a samm:Property ;
+   samm:preferredName "capacity fade"@en ;
    samm:characteristic :CapacityFadeValue .
 
 :remainingEnergyValue a samm:Property ;
+   samm:preferredName "reamining energy"@en ;
    samm:characteristic :UBERemainingValue .
 
 :remainingCapacityValue a samm:Property ;
+   samm:preferredName "remaining capacility"@en ;
    samm:characteristic :RemainingCapacityValue .
 
 :negativeEvent a samm:Property ;
-   samm:preferredName "Negative events, such as accidents. No further definition provided by regulation."@en ;
+   samm:preferredName "negative event"@en ;
+   samm:description "Negative event, such as an accident. No further definition provided by regulation."@en ;
    samm:characteristic samm-c:Text .
 
 :timeExtremeHighTemp a samm:Property ;
+   samm:preferredName "time extreme high temperature"@en ;
    samm:description "Cumulated time spent above the given upper boundary of temperature."@en ;
    samm:characteristic :TimeExtremeHighTemp .
 
 :timeExtremeLowTemp a samm:Property ;
+   samm:preferredName "time extreme low temperature"@en ;
    samm:description "Cumulated time spent below the given lower boundary of temperature."@en ;
    samm:characteristic :TimeExtremeLowTemp .
 
 :timeExtremeHighTempCharging a samm:Property ;
+   samm:preferredName "time extreme high temperature charging"@en ;
    samm:description "Cumulated time spent above the given upper boundary of temperature during Charging."@en ;
    samm:characteristic :TimeExtremeHighTempCharging .
 
 :timeExtremeLowTempCharging a samm:Property ;
+   samm:preferredName "time extreme low temperature charging"@en ;
    samm:description "Cumulated time spent below the given lower boundary of temperature during charging."@en ;
    samm:characteristic :TimeExtremeLowTempCharging .
 
 :remainingPowerCapabilityValue a samm:Property ;
+   samm:preferredName "remaining power capability value"@en ;
    samm:characteristic :RemainingPowerCapabilityValue .
 
 :evolutionOfSelfDischargeValue a samm:Property ;
+   samm:preferredName "evolution of self discharge value"@en ;
    samm:characteristic :EvolutionOfSelfDischargeEntityValue .
 
 :currentSelfDischargingRateValue a samm:Property ;
+   samm:preferredName "current self discharge rate value"@en ;
    samm:characteristic :CurrentSelfDischargingRateValue .
 
 :internalResistanceIncreaseValue a samm:Property ;
+   samm:preferredName "internal resistance increase value"@en ;
    samm:characteristic :InternalResistanceIncreaseValue .
 
 :remainingRoundTripEnergyEfficiencyValue a samm:Property ;
+   samm:preferredName "remaining round trip energy efficiency value"@en ;
    samm:characteristic :RemainingRoundTripEnergyEfficiencyValue .
 
 :stateOfChargeValue a samm:Property ;
+   samm:preferredName "state of charge value"@en ;
    samm:characteristic :StateOfChargeValue .
 
 :AtSoC a samm-c:Measurement ;
@@ -538,6 +610,7 @@
    samm-c:unit unit:minuteUnitOfTime .
 
 :RemainingPowerCapabilityValue a samm-c:SingleEntity ;
+   samm:preferredName "remaining power capability value"@en ;
    samm:preferredName "RemainingPowerCapabilityValue"@en ;
    samm:dataType :RemainingPowerCapabilityDynamicAt .
 
@@ -577,9 +650,11 @@
    samm-c:unit unit:degreeCelsius .
 
 :RemainingPowerCapabilityDynamicAt a samm:Entity ;
+   samm:preferredName "remaining power capability dynamic at"@en ;
    samm:extends :PowerCapabilityAtEntity ;
    samm:properties ( :rPCLastUpdated ) .
 
 :rPCLastUpdated a samm:Property ;
+   samm:preferredName "RPC last updated"@en ;
    samm:characteristic samm-c:Timestamp .
 
