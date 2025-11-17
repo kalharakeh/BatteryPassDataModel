@@ -173,42 +173,52 @@
    samm:characteristic :StateOfCertifiedEnergy .
 
 :capacityFade a samm:Property ;
+   samm:preferredName "capacity fade"@en ;
    samm:description "The capacity fade is the Decrease over time and upon usage in the amount of charge that a battery can deliver at the rated voltage, with respect to the original rated capacity (see BattReg Annex IV (2)) as declared by the manufacturer.\n\nDIN DKE Spec 99100 chapter reference: 6.7.2.4"@en ;
    samm:characteristic :CapacityFade .
 
 :remainingEnergy a samm:Property ;
+   samm:preferredName "remaining energy"@en ;
    samm:description "Definition from UNECE GTR 22, applicable only to EVs.\nThe energy supplied by the battery from the beginning of the test procedure used for certification until the applicable break-off criterion of the test procedure used for certification is reached.\n\nDIN DKE Spec 99100 chapter reference: 6.7.2.6"@en ;
    samm:characteristic :RemainingEnergy .
 
 :remainingCapacity a samm:Property ;
+   samm:preferredName "remaining capacity"@en ;
    samm:description "The in-use data attribute on capacity, corresponding with the definition of rated capacity.\n\nDIN DKE Spec 99100 chapter reference: 6.7.2.3"@en ;
    samm:characteristic :RemainingCapacity .
 
 :negativeEvents a samm:Property ;
+   samm:preferredName "negative events"@en ;
    samm:description "The battery passport must contain information and data resulting from its use such as accidents. \n\nDIN DKE Spec 99100 chapter reference: 6.7.8.4"@en ;
    samm:characteristic :NegativeEvents .
 
 :temperatureInformation a samm:Property ;
+   samm:preferredName "temperature information"@en ;
    samm:description "The battery passport must include periodically recorded information on the operating environmental conditions, including temperature.\n\nDIN DKE Spec 99100 chapter reference: 6.7.7.5 - 8"@en ;
    samm:characteristic :TemperatureInformation .
 
 :remainingPowerCapability a samm:Property ;
+   samm:preferredName "remaining power capability"@en ;
    samm:description "'- Original power capability (in Watts) and limits, with temperature range when relevant.\n- The amount of energy that a battery is capable to provide over a given period of time under reference conditions.\n- Power capability at 80% and 20% state of charge.\n\nDIN DKE Spec 99100 chapter reference: 6.7.3.3"@en ;
    samm:characteristic :RemainingPowerCapability .
 
 :evolutionOfSelfDischarge a samm:Property ;
+   samm:preferredName "evolution of self discharge"@en ;
    samm:description "Evolution of self-discharge rates is the change of self-discharge over time and usage, as percentage calculated from the initial and current self-discharge rate.\n\nDIN DKE Spec 99100 chapter reference: 6.7.4.8"@en ;
    samm:characteristic :EvolutionOfSelfDischarge .
 
 :currentSelfDischargingRate a samm:Property ;
+   samm:preferredName "current self discharge rate"@en ;
    samm:description "The current self-discharge rate is the change of the self-discharge rate in an idle state of the battery in reference conditions (temperature etc.) at aging parameter x, e.g. after a certain amount of storage time or, number of cycles.\n\nDIN DKE Spec 99100 chapter reference: 6.7.4.7"@en ;
    samm:characteristic :CurrentSelfDischargingRate .
 
 :internalResistanceIncrease a samm:Property ;
+   samm:preferredName "internal resistance increase"@en ;
    samm:description "The internal resistance increase over time and upon usage should be defined based on the ratio of current and initial values as follows:\nRincrease(x) = (R(x)  - RBOL) / RBOL  100 %\nwhere\nx \tis the aging parameter (e.g. storage time, number of cycles, etc.;);\nR(x)\tis the internal resistance at the aging parameter x; and\nRBOL\tis the internal resistance at begin of life.\n\nThe battery passport can include additional information about the internal resistance increase on battery cell and battery module level, if available. It should be defined and calculated analogously to the requirements on battery pack level above.\n\nDIN DKE Spec 99100 chapter reference: 6.7.5.3"@en ;
    samm:characteristic :CurrentInternalResistanceValue .
 
 :remainingRoundTripEnergyEfficiency a samm:Property ;
+   samm:preferredName "remaining round trip energy efficiency"@en ;
    samm:description "The battery passport shall include information, where possible, about the remaining round trip energy efficiency as information on the state of health of the battery \n\nThe update frequency of remaining round trip energy efficiency should be aligned with the update frequency of round trip energy efficiency fade and should be provided upon change of the battery status.\n\nDIN DKE Spec 99100 chapter reference: 6.7.4.4"@en ;
    samm:characteristic :RemainingRoundTripEnergyEfficiency .
 
@@ -484,7 +494,7 @@
 
 :negativeEvent a samm:Property ;
    samm:preferredName "negative event"@en ;
-   samm:preferredName "Negative events, such as accidents. No further definition provided by regulation."@en ;
+   samm:description "Negative event, such as an accident. No further definition provided by regulation."@en ;
    samm:characteristic samm-c:Text .
 
 :timeExtremeHighTemp a samm:Property ;
