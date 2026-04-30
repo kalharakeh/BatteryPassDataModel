@@ -1,6 +1,9 @@
 import bcrypt from "bcryptjs";
 import { passportCollection, userCollection } from "../db/collections";
+import { loadAppEnv } from "../env/load-app-env";
 import { samplePassport } from "./sample-passport";
+
+loadAppEnv();
 
 async function seed() {
   const passports = await passportCollection();
