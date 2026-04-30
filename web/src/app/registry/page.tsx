@@ -1,6 +1,8 @@
 import { RegistryTable } from "@/components/registry/registry-table";
 import { listPassports } from "@/lib/db/passports";
 
+export const dynamic = "force-dynamic";
+
 export default async function RegistryPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const params = await searchParams;
   const passports = await listPassports(params.q ?? "");

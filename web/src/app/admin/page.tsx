@@ -3,6 +3,8 @@ import { Card } from "@/components/ui/card";
 import { requireRole } from "@/lib/auth/session";
 import { listPassports } from "@/lib/db/passports";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminPage() {
   await requireRole("admin");
   const passports = await listPassports();
