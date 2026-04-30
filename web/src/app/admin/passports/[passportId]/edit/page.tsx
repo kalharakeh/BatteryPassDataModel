@@ -3,6 +3,8 @@ import { SectionEditor } from "@/components/admin/section-editor";
 import { requireRole } from "@/lib/auth/session";
 import { getPassport } from "@/lib/db/passports";
 
+export const dynamic = "force-dynamic";
+
 export default async function EditPassportPage({ params }: { params: Promise<{ passportId: string }> }) {
   await requireRole("admin");
   const { passportId } = await params;

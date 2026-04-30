@@ -4,6 +4,8 @@ import { SectionNav } from "@/components/passport/section-nav";
 import { getPassport } from "@/lib/db/passports";
 import { toPassportViewModel } from "@/lib/view-model/passport-view-model";
 
+export const dynamic = "force-dynamic";
+
 export default async function PassportPage({ params }: { params: Promise<{ passportId: string }> }) {
   const { passportId } = await params;
   const passport = await getPassport(decodeURIComponent(passportId));

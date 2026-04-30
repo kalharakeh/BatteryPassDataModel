@@ -1,5 +1,5 @@
 import type { Collection } from "mongodb";
-import { mongoClientPromise } from "./client";
+import { getMongoClientPromise } from "./client";
 import type { BatteryPassport } from "../../types/passport";
 
 export type DemoUser = {
@@ -10,7 +10,7 @@ export type DemoUser = {
 };
 
 export async function getDatabase() {
-  const client = await mongoClientPromise;
+  const client = await getMongoClientPromise();
   return client.db(process.env.MONGODB_DB ?? "battery_pass_demo");
 }
 
