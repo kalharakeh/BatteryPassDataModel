@@ -1,0 +1,32 @@
+
+> web@0.1.0 dev
+> next dev --webpack
+
+▲ Next.js 16.2.4 (webpack)
+- Local:         http://localhost:3001
+- Network:       http://10.241.0.11:3001
+- Environments: .env.local
+✓ Ready in 459ms
+
+○ Compiling / ...
+ GET / 200 in 3.6s (next.js: 3.3s, application-code: 305ms)
+ GET /registry 307 in 493ms (next.js: 387ms, application-code: 106ms)
+ GET /search 200 in 770ms (next.js: 273ms, application-code: 497ms)
+ GET /admin/clusters 307 in 584ms (next.js: 476ms, application-code: 108ms)
+ GET /registry 307 in 73ms (next.js: 9ms, application-code: 65ms)
+ GET /admin/clusters 307 in 44ms (next.js: 1965µs, application-code: 42ms)
+ HEAD /registry 307 in 42ms (next.js: 1940µs, application-code: 40ms)
+ HEAD /admin/clusters 307 in 56ms (next.js: 2ms, application-code: 54ms)
+ GET /api/passports 307 in 631ms (next.js: 615ms, application-code: 16ms)
+ GET /api/passports 307 in 12ms (next.js: 1702µs, application-code: 10ms)
+ GET /login 200 in 512ms (next.js: 408ms, application-code: 104ms)
+ HEAD /api/passports 307 in 23ms (next.js: 8ms, application-code: 15ms)
+ GET / 200 in 838ms (next.js: 14ms, application-code: 824ms)
+ GET /search?q=did%3Aweb%3Aacme.battery.pass%3Asample-customer-north-001 307 in 276ms (next.js: 9ms, application-code: 267ms)
+ GET /did%3Aweb%3Aacme.battery.pass%3Asample-customer-north-001/summary 200 in 2.1s (next.js: 1859ms, application-code: 234ms)
+ GET /did%3Aweb%3Aacme.battery.pass%3Asample-customer-north-001 200 in 1227ms (next.js: 1080ms, application-code: 146ms)
+ GET / 200 in 31ms (next.js: 6ms, application-code: 26ms)
+ GET /admin 200 in 515ms (next.js: 407ms, application-code: 107ms)
+ GET /admin/clusters 200 in 602ms (next.js: 425ms, application-code: 177ms)
+ GET /admin/clusters?tab=clusters 200 in 157ms (next.js: 2ms, application-code: 155ms)
+ GET /admin/clusters?tab=users 200 in 145ms (next.js: 2ms, application-code: 143ms)
