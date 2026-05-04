@@ -1,6 +1,6 @@
 import type { Collection } from "mongodb";
 import { getMongoClientPromise } from "./client";
-import type { BatteryPassport } from "../../types/passport";
+import type { BatteryPassport, Cluster, ClusterMembership } from "../../types/passport";
 
 export type DemoUser = {
   email: string;
@@ -20,4 +20,12 @@ export async function passportCollection(): Promise<Collection<BatteryPassport>>
 
 export async function userCollection(): Promise<Collection<DemoUser>> {
   return (await getDatabase()).collection<DemoUser>("users");
+}
+
+export async function clusterCollection(): Promise<Collection<Cluster>> {
+  return (await getDatabase()).collection<Cluster>("clusters");
+}
+
+export async function clusterMembershipCollection(): Promise<Collection<ClusterMembership>> {
+  return (await getDatabase()).collection<ClusterMembership>("clusterMemberships");
 }
