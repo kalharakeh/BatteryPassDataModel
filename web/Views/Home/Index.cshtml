@@ -1,0 +1,16 @@
+@{
+    ViewData["Title"] = "Battery Passport Home";
+}
+<section class="row g-4 align-items-center">
+    <div class="col-lg-7">
+        <h1 class="display-6 fw-semibold">Battery Passport Demonstrator</h1>
+        <p class="lead text-secondary">Find battery passports, open summary reports, and review registry records.</p>
+        <form method="get" action="/search" class="d-flex gap-2 mt-3">
+            <input name="q" class="form-control form-control-lg" placeholder="Search by passport ID, model, serial..." />
+            <button type="submit" class="btn btn-success btn-lg">Search</button>
+        </form>
+    </div>
+    <div class="col-lg-5 text-center">
+        <img src="~/images/sample-battery.png" class="img-fluid rounded shadow-sm" alt="Sample battery" />
+    </div>
+</section>

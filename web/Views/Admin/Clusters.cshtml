@@ -1,0 +1,19 @@
+@model IReadOnlyList<MongoDB.Bson.BsonDocument>
+@{
+    ViewData["Title"] = "Admin Clusters";
+}
+<h1 class="h3">Admin - Clusters</h1>
+<div class="table-responsive mt-3">
+    <table class="table table-hover">
+        <thead><tr><th>Cluster ID</th><th>Name</th></tr></thead>
+        <tbody>
+        @foreach (var cluster in Model)
+        {
+            <tr>
+                <td>@(cluster.GetValue("clusterId", "").ToString())</td>
+                <td>@(cluster.GetValue("name", "").ToString())</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

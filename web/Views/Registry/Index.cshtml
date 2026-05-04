@@ -1,0 +1,43 @@
+@model IReadOnlyList<BatteryPassWeb.Models.ViewModels.PassportSummaryViewModel>
+@{
+    ViewData["Title"] = "Registry";
+}
+<h1 class="h3">Registry</h1>
+<form class="row g-2 mt-2 mb-3" method="get" action="/registry">
+    <div class="col-md-8">
+        <input class="form-control" name="q" value="@Context.Request.Query["q"]" placeholder="Filter by ID, name, model, serial" />
+    </div>
+    <div class="col-md-4">
+        <button class="btn btn-success">Filter</button>
+    </div>
+</form>
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead>
+        <tr>
+            <th>Battery</th>
+            <th>Manufacturer</th>
+            <th>Status</th>
+            <th>Cluster</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var row in Model)
+        {
+            <tr>
+                <td>
+                    <div class="fw-semibold">@row.DisplayName</div>
+                    <div class="small text-secondary text-break">@row.PassportId</div>
+                </td>
+                <td>@row.ManufacturerName</td>
+                <td><span class="badge text-bg-success">@row.RegistryStatus</span></td>
+                <td>@(string.IsNullOrWhiteSpace(row.ClusterId) ? "Unassigned" : row.ClusterId)</td>
+                <td class="text-end">
+                    <a href="/@Uri.EscapeDataString(row.PassportId)/summary" class="btn btn-sm btn-outline-success">Summary</a>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

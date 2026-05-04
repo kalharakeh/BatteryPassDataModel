@@ -1,0 +1,40 @@
+@model IReadOnlyList<BatteryPassWeb.Models.ViewModels.PassportSummaryViewModel>
+@{
+    ViewData["Title"] = "Search";
+}
+<h1 class="h3">Search Results</h1>
+@if (!Model.Any())
+{
+    <p class="text-secondary">No results found for your query.</p>
+}
+else
+{
+    <div class="table-responsive mt-3">
+        <table class="table table-striped align-middle">
+            <thead>
+            <tr>
+                <th>Passport ID</th>
+                <th>Display Name</th>
+                <th>Model</th>
+                <th>Serial</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var row in Model)
+            {
+                <tr>
+                    <td class="small text-break">@row.PassportId</td>
+                    <td>@row.DisplayName</td>
+                    <td>@row.ModelNumber</td>
+                    <td>@row.SerialNumber</td>
+                    <td class="text-end">
+                        <a href="/@Uri.EscapeDataString(row.PassportId)/summary" class="btn btn-sm btn-outline-success">Summary</a>
+                        <a href="/@Uri.EscapeDataString(row.PassportId)" class="btn btn-sm btn-success">Detail</a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

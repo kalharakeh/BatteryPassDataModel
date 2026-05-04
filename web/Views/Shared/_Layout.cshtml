@@ -1,0 +1,53 @@
+@{
+    var title = ViewData["Title"] as string ?? "Battery Pass";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@title - Battery Pass</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <header class="border-bottom mb-3">
+        <nav class="navbar navbar-expand-sm navbar-light bg-white">
+            <div class="container">
+                <a class="navbar-brand fw-bold text-success" href="/">Battery Pass</a>
+                <div class="navbar-nav gap-2">
+                    <a class="nav-link" href="/search?q=">Search</a>
+                    <a class="nav-link" href="/registry">Registry</a>
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <a class="nav-link" href="/admin">Admin</a>
+                        @if (User.IsInRole("clusterAdmin") || User.IsInRole("admin"))
+                        {
+                            <a class="nav-link" href="/cluster-admin">Cluster Admin</a>
+                        }
+                    }
+                    else
+                    {
+                        <a class="nav-link" href="/login">Login</a>
+                    }
+                </div>
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <form method="post" action="/login/logout">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">Logout</button>
+                    </form>
+                }
+            </div>
+        </nav>
+    </header>
+
+    <main class="container pb-4">
+        @RenderBody()
+    </main>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,24 @@
+@model IReadOnlyList<BatteryPassWeb.Models.ViewModels.PassportSummaryViewModel>
+@{
+    ViewData["Title"] = "Admin Passports";
+}
+<h1 class="h3">Admin - Passports</h1>
+<div class="table-responsive mt-3">
+    <table class="table table-striped align-middle">
+        <thead><tr><th>Passport</th><th>Status</th><th>Cluster</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var row in Model)
+        {
+            <tr>
+                <td>
+                    <div class="fw-semibold">@row.DisplayName</div>
+                    <div class="small text-break text-secondary">@row.PassportId</div>
+                </td>
+                <td>@row.RegistryStatus</td>
+                <td>@(string.IsNullOrWhiteSpace(row.ClusterId) ? "Unassigned" : row.ClusterId)</td>
+                <td class="text-end"><a href="/@Uri.EscapeDataString(row.PassportId)" class="btn btn-sm btn-success">Open</a></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

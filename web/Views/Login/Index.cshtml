@@ -1,0 +1,30 @@
+@model BatteryPassWeb.Models.ViewModels.LoginViewModel
+@{
+    ViewData["Title"] = "Login";
+}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h1 class="h4 mb-3">Login</h1>
+                @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+                {
+                    <div class="alert alert-danger">@Model.ErrorMessage</div>
+                }
+                <form method="post" action="/login">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+                    <div class="mb-3">
+                        <label class="form-label" for="Email">Email</label>
+                        <input class="form-control" type="email" id="Email" name="Email" value="@Model.Email" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="Password">Password</label>
+                        <input class="form-control" type="password" id="Password" name="Password" required />
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Sign in</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

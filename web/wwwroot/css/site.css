@@ -1,0 +1,17 @@
+html { font-size: 14px; }
+@media (min-width: 768px) { html { font-size: 16px; } }
+
+body {
+  background: linear-gradient(180deg, #f6f9f8 0%, #ffffff 35%);
+}
+
+.navbar-brand {
+  letter-spacing: 0.02em;
+}
+
+.json-block {
+  max-height: 70vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 0.85rem;
+}

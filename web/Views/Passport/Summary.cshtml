@@ -1,0 +1,21 @@
+@model BatteryPassWeb.Models.ViewModels.PassportSummaryViewModel
+@{
+    ViewData["Title"] = "Passport Summary";
+}
+<div class="row g-4">
+    <div class="col-lg-7">
+        <h1 class="h3">@Model.DisplayName</h1>
+        <p class="text-break text-secondary">@Model.PassportId</p>
+        <dl class="row mt-3">
+            <dt class="col-sm-4">Model</dt><dd class="col-sm-8">@Model.ModelNumber</dd>
+            <dt class="col-sm-4">Serial</dt><dd class="col-sm-8">@Model.SerialNumber</dd>
+            <dt class="col-sm-4">Manufacturer</dt><dd class="col-sm-8">@Model.ManufacturerName</dd>
+            <dt class="col-sm-4">Status</dt><dd class="col-sm-8">@Model.RegistryStatus</dd>
+            <dt class="col-sm-4">Cluster</dt><dd class="col-sm-8">@(string.IsNullOrWhiteSpace(Model.ClusterId) ? "Unassigned" : Model.ClusterId)</dd>
+        </dl>
+        <a href="/@Uri.EscapeDataString(Model.PassportId)" class="btn btn-success">Open full detail report</a>
+    </div>
+    <div class="col-lg-5 text-center">
+        <img src="@Model.BatteryImageUrl" class="img-fluid rounded shadow-sm" alt="Battery image" />
+    </div>
+</div>
