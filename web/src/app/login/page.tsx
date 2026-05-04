@@ -1,7 +1,7 @@
 import { LoginForm } from "@/components/auth/login-form";
 import { Card } from "@/components/ui/card";
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; next?: string }> }) {
   const params = await searchParams;
   return (
     <main className="mx-auto flex min-h-[70vh] max-w-md items-center px-4 py-12">
@@ -11,7 +11,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           Sign in with demo credentials to view admin and privileged sections.
         </p>
         <div className="mt-6">
-          <LoginForm error={params.error} />
+          <LoginForm error={params.error} nextPath={params.next ?? ""} />
         </div>
       </Card>
     </main>

@@ -1,5 +1,8 @@
 import { notFound } from "next/navigation";
-import { Card } from "@/components/ui/card";
+import { PassportSummaryReport } from "@/components/passport/passport-summary-report";
+import { canOpenPassportDetail, isGeneralAdmin } from "@/lib/auth/cluster-access";
+import { getSession } from "@/lib/auth/session";
+import { getClusterMembershipsForUser, listClusters } from "@/lib/db/clusters";
 import { getPassport } from "@/lib/db/passports";
 import { toPassportViewModel } from "@/lib/view-model/passport-view-model";
 
@@ -9,22 +12,23 @@ export default async function PassportSummaryPage({ params }: { params: Promise<
   const { passportId } = await params;
   const passport = await getPassport(decodeURIComponent(passportId));
   if (!passport) notFound();
-  const viewModel = toPassportViewModel(passport);
+  const [clusters, session] = await Promise.all([listClusters(), getSession()]);
+  const memberships = session ? await getClusterMembershipsForUser(session.email).catch(() => []) : [];
+  const viewModel = toPassportViewModel(passport, { clusters });
+  const canOpenDetail = canOpenPassportDetail(session, passport, memberships);
+  const detailAccessNotice = canOpenDetail
+    ? undefined
+    : passport.clusterId
+      ? session
+        ? `Current user ${session.email} is not connected to ${viewModel.clusterLabel}. Sign in with a user connected to ${viewModel.clusterLabel} to open the detailed report.`
+        : `Sign in with a user connected to ${viewModel.clusterLabel} to open the detailed report.`
+      : isGeneralAdmin(session)
+        ? undefined
+        : "This battery is not assigned to a cluster. Sign in as the general admin to open the detailed report.";
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-10">
-      <h1 className="text-2xl font-semibold">Summary report</h1>
-      <p className="mt-2 break-all text-sm text-slate-600 dark:text-slate-300">{viewModel.passportId}</p>
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
-        {viewModel.sections.map((section) => (
-          <Card key={section}>
-            <h2 className="font-medium">{section}</h2>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-              Detailed schema-aligned values will appear in this section.
-            </p>
-          </Card>
-        ))}
-      </div>
+    <main className="mx-auto max-w-7xl px-4 py-10">
+      <PassportSummaryReport viewModel={viewModel} detailAccessNotice={detailAccessNotice} />
     </main>
   );
 }

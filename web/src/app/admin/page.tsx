@@ -30,9 +30,14 @@ export default async function AdminPage() {
           </p>
         </Card>
       </div>
-      <Link className="mt-6 inline-flex rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white" href="/admin/passports">
-        Manage passports
-      </Link>
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Link className="inline-flex rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white" href="/admin/passports">
+          Manage passports
+        </Link>
+        <Link className="inline-flex rounded-md border border-slate-300 px-4 py-2 text-sm font-medium hover:border-emerald-600 dark:border-slate-700" href="/admin/clusters">
+          Manage clusters
+        </Link>
+      </div>
     </main>
   );
 }
