@@ -1,16 +1,215 @@
-@model BatteryPassWeb.Models.ViewModels.PassportSummaryViewModel
+@model BatteryPassWeb.Models.ViewModels.EditPassportViewModel
 @{
-    ViewData["Title"] = "Edit Passport";
+    var isNew = Model.Mode.Equals("new", StringComparison.OrdinalIgnoreCase);
+    ViewData["Title"] = isNew ? "Create passport" : "Edit passport";
+    var passport = Model.Passport;
+    var formAction = isNew ? "/admin/passports/create" : "/admin/passports/save";
+    var submitLabel = isNew ? "Create passport" : "Save passport";
+
+    double SegmentValue(string label, IReadOnlyList<BatteryPassWeb.Models.ViewModels.ChartSegmentViewModel> segments)
+        => segments.FirstOrDefault(segment => segment.Label.Equals(label, StringComparison.OrdinalIgnoreCase))?.Value ?? 0;
+
+    BatteryPassWeb.Models.ViewModels.RecycledContentChartViewModel Recycled(string material)
+        => passport.RecycledContentCharts.FirstOrDefault(chart => chart.Material.Equals(material, StringComparison.OrdinalIgnoreCase))
+            ?? new BatteryPassWeb.Models.ViewModels.RecycledContentChartViewModel { Material = material };
 }
-<h1 class="h3">Edit Passport</h1>
-<p class="text-secondary text-break">@Model.PassportId</p>
-<div class="card mt-3">
-    <div class="card-body">
-        <p>This editor page is now routed in ASP.NET MVC. Full field-level editing migration is in progress.</p>
-        <dl class="row mb-0">
-            <dt class="col-sm-3">Name</dt><dd class="col-sm-9">@Model.DisplayName</dd>
-            <dt class="col-sm-3">Model</dt><dd class="col-sm-9">@Model.ModelNumber</dd>
-            <dt class="col-sm-3">Status</dt><dd class="col-sm-9">@Model.RegistryStatus</dd>
-        </dl>
-    </div>
-</div>
+<main class="bp-page bp-admin-page">
+    <h1 class="mb-1">@(isNew ? "Create passport" : "Edit passport")</h1>
+    <p class="bp-passport-id">@passport.PassportId</p>
+
+    @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+    {
+        <div class="alert alert-success mt-3 mb-0">@Model.StatusMessage</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger mt-3 mb-0">@Model.ErrorMessage</div>
+    }
+
+    <form method="post" action="@formAction" class="bp-edit-grid mt-4">
+        @Html.AntiForgeryToken()
+        <nav class="bp-edit-nav">
+            @foreach (var section in passport.Sections)
+            {
+                var sectionId = "admin-" + section.ToLowerInvariant().Replace(" ", "-");
+                <a href="#@sectionId">@(section)</a>
+            }
+        </nav>
+
+        <div class="bp-edit-form">
+            <section id="admin-general" class="bp-card">
+                <h2>General</h2>
+                <div class="bp-form-grid">
+                    @if (isNew)
+                    {
+                        <label>Passport ID<input type="text" name="passportId" value="@passport.PassportId" required /></label>
+                    }
+                    else
+                    {
+                        <label>Passport ID<input type="text" name="passportId" value="@passport.PassportId" readonly /></label>
+                    }
+                    <label>Name<input type="text" name="name" value="@passport.DisplayName" /></label>
+                    <label>Model Number<input type="text" name="modelNumber" value="@passport.ModelNumber" /></label>
+                    <label>Serial Number<input type="text" name="serialNumber" value="@passport.SerialNumber" /></label>
+                    <label>Category<input type="text" name="category" value="@passport.Category" /></label>
+                    <label>Status<input type="text" name="batteryStatus" value="@passport.BatteryStatus" /></label>
+                    <label>Weight kg<input type="number" step="any" name="batteryMass" value="@passport.Weight" /></label>
+                    <label>Manufactured date<input type="date" name="manufacturingDate" value="@passport.ManufacturedDate" /></label>
+                    <label>Facility ID<input type="text" name="facilityId" value="@passport.FacilityId" /></label>
+                    <label>Manufactured by<input type="text" name="manufacturerName" value="@passport.ManufacturerName" /></label>
+                    <label>Registry status
+                        <select name="status">
+                            @if (passport.RegistryStatus == "draft")
+                            {
+                                <option value="draft" selected>Draft</option>
+                            }
+                            else
+                            {
+                                <option value="draft">Draft</option>
+                            }
+                            @if (passport.RegistryStatus == "published")
+                            {
+                                <option value="published" selected>Published</option>
+                            }
+                            else
+                            {
+                                <option value="published">Published</option>
+                            }
+                            @if (passport.RegistryStatus == "archived")
+                            {
+                                <option value="archived" selected>Archived</option>
+                            }
+                            else
+                            {
+                                <option value="archived">Archived</option>
+                            }
+                        </select>
+                    </label>
+                    <label>Battery image URL<input type="text" name="batteryImageUrl" value="@passport.BatteryImageUrl" /></label>
+                </div>
+            </section>
+
+            <section id="admin-material-composition" class="bp-card">
+                <h2>Material composition</h2>
+                <div class="bp-form-grid">
+                    <label>Nickel kg<input type="number" step="any" name="materialNickel" value="@SegmentValue("Nickel", passport.MaterialCompositionSegments)" /></label>
+                    <label>Copper kg<input type="number" step="any" name="materialCopper" value="@SegmentValue("Copper", passport.MaterialCompositionSegments)" /></label>
+                    <label>Aluminium kg<input type="number" step="any" name="materialAluminium" value="@SegmentValue("Aluminium", passport.MaterialCompositionSegments)" /></label>
+                    <label>Graphite kg<input type="number" step="any" name="materialGraphite" value="@SegmentValue("Graphite", passport.MaterialCompositionSegments)" /></label>
+                    <label>Manganese kg<input type="number" step="any" name="materialManganese" value="@SegmentValue("Manganese", passport.MaterialCompositionSegments)" /></label>
+                    <label>Cobalt kg<input type="number" step="any" name="materialCobalt" value="@SegmentValue("Cobalt", passport.MaterialCompositionSegments)" /></label>
+                    <label>Lithium kg<input type="number" step="any" name="materialLithium" value="@SegmentValue("Lithium", passport.MaterialCompositionSegments)" /></label>
+                    <label>Electrolyte and separators kg<input type="number" step="any" name="materialElectrolyte" value="@SegmentValue("Electrolyte and separators", passport.MaterialCompositionSegments)" /></label>
+                </div>
+            </section>
+
+            <section id="admin-performance" class="bp-card">
+                <h2>Performance</h2>
+                <div class="bp-form-grid">
+                    <label>Rated energy kWh<input type="number" step="any" name="ratedEnergy" value="@passport.Performance.RatedEnergy" /></label>
+                    <label>Rated capacity Ah<input type="number" step="any" name="ratedCapacity" value="@passport.Performance.RatedCapacity" /></label>
+                    <label>Maximum power kW<input type="number" step="any" name="ratedMaximumPower" value="@passport.Performance.RatedMaximumPower" /></label>
+                    <label>Nominal voltage V<input type="number" step="any" name="nominalVoltage" value="@passport.Performance.NominalVoltage" /></label>
+                    <label>Expected lifetime years<input type="number" step="any" name="expectedLifetime" value="@passport.Performance.ExpectedLifetime" /></label>
+                    <label>Expected cycles<input type="number" step="any" name="expectedNumberOfCycles" value="@passport.Performance.ExpectedNumberOfCycles" /></label>
+                    <label>State of charge %<input type="number" step="any" name="stateOfCharge" value="@passport.Performance.StateOfCharge" /></label>
+                    <label>Remaining capacity %<input type="number" step="any" name="remainingCapacity" value="@passport.Performance.RemainingCapacity" /></label>
+                    <label>Remaining energy kWh<input type="number" step="any" name="remainingEnergy" value="@passport.Performance.RemainingEnergy" /></label>
+                    <label>Full cycles<input type="number" step="any" name="fullCycles" value="@passport.Performance.Cycles" /></label>
+                </div>
+            </section>
+
+            <section id="admin-compliance" class="bp-card">
+                <h2>Compliance</h2>
+                <div class="bp-form-grid">
+                    <label>@passport.Documents.ConformityAssessment.Label<input type="text" name="document_conformityAssessment" value="@passport.Documents.ConformityAssessment.Url" /></label>
+                    <label>@passport.Documents.EuDeclarationOfConformity.Label<input type="text" name="document_euDeclarationOfConformity" value="@passport.Documents.EuDeclarationOfConformity.Url" /></label>
+                </div>
+            </section>
+
+            <section id="admin-supply-chain" class="bp-card">
+                <h2>Supply chain</h2>
+                <div class="bp-form-grid">
+                    <label>Supply chain index<input type="number" step="any" name="supplyChainIndex" value="@passport.SupplyChainIndex" /></label>
+                    <label>@passport.Documents.SustainabilityReport.Label<input type="text" name="document_sustainabilityReport" value="@passport.Documents.SustainabilityReport.Url" /></label>
+                    <label>@passport.Documents.DueDiligenceReport.Label<input type="text" name="document_dueDiligenceReport" value="@passport.Documents.DueDiligenceReport.Url" /></label>
+                    <label>@passport.Documents.ThirdPartyAudit.Label<input type="text" name="document_thirdPartyAudit" value="@passport.Documents.ThirdPartyAudit.Url" /></label>
+                    <label>@passport.Documents.TaxonomyReport.Label<input type="text" name="document_taxonomyReport" value="@passport.Documents.TaxonomyReport.Url" /></label>
+                </div>
+            </section>
+
+            <section id="admin-circularity" class="bp-card">
+                <h2>Circularity</h2>
+                <div class="bp-form-grid">
+                    <label class="bp-span-2">Separate collection<textarea name="separateCollection">@passport.Circularity.SeparateCollection</textarea></label>
+                    <label class="bp-span-2">Waste prevention<textarea name="wastePrevention">@passport.Circularity.WastePrevention</textarea></label>
+                    <label>Recycled content share verification
+                        <select name="recycledContentShareVerification">
+                            @if (passport.Circularity.RecycledContentShareVerification == "verified")
+                            {
+                                <option value="verified" selected>Verified</option>
+                            }
+                            else
+                            {
+                                <option value="verified">Verified</option>
+                            }
+                            @if (passport.Circularity.RecycledContentShareVerification == "partial")
+                            {
+                                <option value="partial" selected>Partial</option>
+                            }
+                            else
+                            {
+                                <option value="partial">Partial</option>
+                            }
+                            @if (passport.Circularity.RecycledContentShareVerification == "unverified")
+                            {
+                                <option value="unverified" selected>Unverified</option>
+                            }
+                            else
+                            {
+                                <option value="unverified">Unverified</option>
+                            }
+                            @if (passport.Circularity.RecycledContentShareVerification == "invalid")
+                            {
+                                <option value="invalid" selected>Invalid</option>
+                            }
+                            else
+                            {
+                                <option value="invalid">Invalid</option>
+                            }
+                        </select>
+                    </label>
+                    <label>Nickel pre consumer %<input type="number" step="any" name="recycledNickelPre" value="@Recycled("Nickel").PreConsumerShare" /></label>
+                    <label>Nickel post consumer %<input type="number" step="any" name="recycledNickelPost" value="@Recycled("Nickel").PostConsumerShare" /></label>
+                    <label>Nickel primary material %<input type="number" step="any" name="recycledNickelPrimary" value="@Recycled("Nickel").PrimaryMaterialShare" /></label>
+                    <label>Cobalt pre consumer %<input type="number" step="any" name="recycledCobaltPre" value="@Recycled("Cobalt").PreConsumerShare" /></label>
+                    <label>Cobalt post consumer %<input type="number" step="any" name="recycledCobaltPost" value="@Recycled("Cobalt").PostConsumerShare" /></label>
+                    <label>Cobalt primary material %<input type="number" step="any" name="recycledCobaltPrimary" value="@Recycled("Cobalt").PrimaryMaterialShare" /></label>
+                    <label>Lithium pre consumer %<input type="number" step="any" name="recycledLithiumPre" value="@Recycled("Lithium").PreConsumerShare" /></label>
+                    <label>Lithium post consumer %<input type="number" step="any" name="recycledLithiumPost" value="@Recycled("Lithium").PostConsumerShare" /></label>
+                    <label>Lithium primary material %<input type="number" step="any" name="recycledLithiumPrimary" value="@Recycled("Lithium").PrimaryMaterialShare" /></label>
+                    <label>Lead pre consumer %<input type="number" step="any" name="recycledLeadPre" value="@Recycled("Lead").PreConsumerShare" /></label>
+                    <label>Lead post consumer %<input type="number" step="any" name="recycledLeadPost" value="@Recycled("Lead").PostConsumerShare" /></label>
+                    <label>Lead primary material %<input type="number" step="any" name="recycledLeadPrimary" value="@Recycled("Lead").PrimaryMaterialShare" /></label>
+                </div>
+            </section>
+
+            <section id="admin-carbon-footprint" class="bp-card">
+                <h2>Carbon Footprint</h2>
+                <div class="bp-form-grid">
+                    <label>Amount gCO2e/kWh<input type="number" step="any" name="carbonFootprint" value="@passport.CarbonFootprint" /></label>
+                    <label>Performance class<input type="text" name="performanceClass" value="@passport.PerformanceClass" /></label>
+                    <label>Raw material extraction gCO2e/kWh<input type="number" step="any" name="carbonRawMaterial" value="@SegmentValue("raw material extraction", passport.CarbonFootprintSegments)" /></label>
+                    <label>Main production gCO2e/kWh<input type="number" step="any" name="carbonMainProduction" value="@SegmentValue("main production", passport.CarbonFootprintSegments)" /></label>
+                    <label>Distribution gCO2e/kWh<input type="number" step="any" name="carbonDistribution" value="@SegmentValue("distribution", passport.CarbonFootprintSegments)" /></label>
+                    <label>Recycling gCO2e/kWh<input type="number" step="any" name="carbonRecycling" value="@SegmentValue("recycling", passport.CarbonFootprintSegments)" /></label>
+                    <label class="bp-span-2">@passport.Documents.Co2StudyReference.Label<input type="text" name="document_co2StudyReference" value="@passport.Documents.Co2StudyReference.Url" /></label>
+                </div>
+            </section>
+
+            <div class="d-flex justify-content-end">
+                <button type="submit" class="bp-primary-button">@submitLabel</button>
+            </div>
+        </div>
+    </form>
+</main>

@@ -1,9 +1,11 @@
 @{
     ViewData["Title"] = "Cluster Admin";
 }
-<h1 class="h3">Cluster Admin Dashboard</h1>
-<p class="text-secondary">Cluster-local admin controls are being migrated to Pivot-style MVC views.</p>
-<div class="d-flex gap-2 mt-3">
-    <a href="/cluster-admin/passports" class="btn btn-success">Cluster passports</a>
-    <a href="/admin/clusters" class="btn btn-outline-success">View clusters</a>
-</div>
+<main class="bp-page bp-admin-page">
+    <h1 class="mb-1">Cluster admin</h1>
+    <p class="text-secondary mb-0">Manage passports and users for clusters where you are a local admin.</p>
+    <div class="d-flex gap-2 mt-3 flex-wrap">
+        <a href="/cluster-admin/passports" class="bp-primary-button">Managed passports</a>
+        <a href="/cluster-admin/users" class="bp-secondary-button">Cluster users</a>
+    </div>
+</main>

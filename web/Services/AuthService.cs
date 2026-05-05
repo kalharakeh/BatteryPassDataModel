@@ -38,7 +38,22 @@ public sealed class AuthService
                     var passwordHash = BsonHelpers.GetString(user, "passwordHash");
                     if (!string.IsNullOrWhiteSpace(passwordHash) && BCrypt.Net.BCrypt.Verify(password, passwordHash))
                     {
-                        return BuildPrincipal(normalizedEmail, BsonHelpers.GetString(user, "name"), ExtractRoles(user));
+                        var roles = ExtractRoles(user).ToList();
+                        if (!roles.Contains("admin", StringComparer.OrdinalIgnoreCase))
+                        {
+                            var hasClusterAdminMembership = await _mongoContext.Database
+                                .GetCollection<BsonDocument>("clusterMemberships")
+                                .Find(Builders<BsonDocument>.Filter.And(
+                                    Builders<BsonDocument>.Filter.Eq("email", normalizedEmail.ToLowerInvariant()),
+                                    Builders<BsonDocument>.Filter.Eq("role", "clusterAdmin")))
+                                .AnyAsync(cancellationToken);
+                            if (hasClusterAdminMembership)
+                            {
+                                roles.Add("clusterAdmin");
+                            }
+                        }
+
+                        return BuildPrincipal(normalizedEmail, BsonHelpers.GetString(user, "name"), roles);
                     }
 
                     return null;

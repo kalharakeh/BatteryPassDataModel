@@ -1,43 +1,48 @@
 @model IReadOnlyList<BatteryPassWeb.Models.ViewModels.PassportSummaryViewModel>
 @{
-    ViewData["Title"] = "Registry";
+    ViewData["Title"] = "Scania Passport Registry";
+    var samplePassportId = ViewData["SamplePassportId"] as string ?? "did:web:acme.battery.pass:sample-customer-north-001";
 }
-<h1 class="h3">Registry</h1>
-<form class="row g-2 mt-2 mb-3" method="get" action="/registry">
-    <div class="col-md-8">
-        <input class="form-control" name="q" value="@Context.Request.Query["q"]" placeholder="Filter by ID, name, model, serial" />
+<main class="bp-page">
+    <h1 class="mb-1">Scania Passport Registry</h1>
+    <p class="text-secondary mb-0">Search and open registered battery passports.</p>
+
+    <form action="/registry" class="bp-search-form mt-4">
+        <input
+            name="q"
+            value="@Context.Request.Query["q"]"
+            placeholder="Search by passport ID, model, serial, or manufacturer" />
+        <button type="submit">Search</button>
+        <a href="/registry?q=@Uri.EscapeDataString(samplePassportId)" class="bp-secondary-button">Sample ID</a>
+    </form>
+
+    <div class="bp-card mt-4 p-0 overflow-auto">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th class="px-3 py-3">Passport ID</th>
+                    <th class="px-3 py-3">Name</th>
+                    <th class="px-3 py-3">Model</th>
+                    <th class="px-3 py-3">Manufacturer</th>
+                    <th class="px-3 py-3">Status</th>
+                    <th class="px-3 py-3">Cluster</th>
+                    <th class="px-3 py-3"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model)
+                {
+                    <tr>
+                        <td class="px-3 py-3 text-break">@row.PassportId</td>
+                        <td class="px-3 py-3">@row.DisplayName</td>
+                        <td class="px-3 py-3">@row.ModelNumber</td>
+                        <td class="px-3 py-3">@row.ManufacturerName</td>
+                        <td class="px-3 py-3">@row.RegistryStatus</td>
+                        <td class="px-3 py-3">@row.ClusterLabel</td>
+                        <td class="px-3 py-3 text-end"><a href="/@Uri.EscapeDataString(row.PassportId)/summary" class="bp-secondary-button">Summary</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
-    <div class="col-md-4">
-        <button class="btn btn-success">Filter</button>
-    </div>
-</form>
-<div class="table-responsive">
-    <table class="table table-hover align-middle">
-        <thead>
-        <tr>
-            <th>Battery</th>
-            <th>Manufacturer</th>
-            <th>Status</th>
-            <th>Cluster</th>
-            <th></th>
-        </tr>
-        </thead>
-        <tbody>
-        @foreach (var row in Model)
-        {
-            <tr>
-                <td>
-                    <div class="fw-semibold">@row.DisplayName</div>
-                    <div class="small text-secondary text-break">@row.PassportId</div>
-                </td>
-                <td>@row.ManufacturerName</td>
-                <td><span class="badge text-bg-success">@row.RegistryStatus</span></td>
-                <td>@(string.IsNullOrWhiteSpace(row.ClusterId) ? "Unassigned" : row.ClusterId)</td>
-                <td class="text-end">
-                    <a href="/@Uri.EscapeDataString(row.PassportId)/summary" class="btn btn-sm btn-outline-success">Summary</a>
-                </td>
-            </tr>
-        }
-        </tbody>
-    </table>
-</div>
+</main>

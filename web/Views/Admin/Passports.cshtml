@@ -1,24 +1,55 @@
 @model IReadOnlyList<BatteryPassWeb.Models.ViewModels.PassportSummaryViewModel>
 @{
-    ViewData["Title"] = "Admin Passports";
+    ViewData["Title"] = "Manage passports";
 }
-<h1 class="h3">Admin - Passports</h1>
-<div class="table-responsive mt-3">
-    <table class="table table-striped align-middle">
-        <thead><tr><th>Passport</th><th>Status</th><th>Cluster</th><th></th></tr></thead>
-        <tbody>
-        @foreach (var row in Model)
-        {
-            <tr>
-                <td>
-                    <div class="fw-semibold">@row.DisplayName</div>
-                    <div class="small text-break text-secondary">@row.PassportId</div>
-                </td>
-                <td>@row.RegistryStatus</td>
-                <td>@(string.IsNullOrWhiteSpace(row.ClusterId) ? "Unassigned" : row.ClusterId)</td>
-                <td class="text-end"><a href="/@Uri.EscapeDataString(row.PassportId)" class="btn btn-sm btn-success">Open</a></td>
-            </tr>
-        }
-        </tbody>
-    </table>
-</div>
+<main class="bp-page bp-admin-page">
+    <div class="d-flex justify-content-between flex-wrap gap-3 align-items-end">
+        <div>
+            <h1 class="mb-1">Manage passports</h1>
+            <p class="text-secondary mb-0">Open a passport to edit schema-aligned sections.</p>
+        </div>
+        <a href="/admin/passports/new" class="bp-primary-button">New passport</a>
+    </div>
+
+    <div class="bp-card mt-4 p-0 overflow-auto">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th class="px-4 py-3">Passport ID</th>
+                    <th class="px-4 py-3">Model</th>
+                    <th class="px-4 py-3">Serial</th>
+                    <th class="px-4 py-3">Status</th>
+                    <th class="px-4 py-3">Updated</th>
+                    <th class="px-4 py-3">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model)
+                {
+                    var updated = string.IsNullOrWhiteSpace(row.UpdatedDate)
+                        ? string.Empty
+                        : row.UpdatedDate.Length >= 10
+                            ? row.UpdatedDate.Substring(0, 10)
+                            : row.UpdatedDate;
+                    <tr>
+                        <td class="px-4 py-3 text-break">@row.PassportId</td>
+                        <td class="px-4 py-3">@row.ModelNumber</td>
+                        <td class="px-4 py-3">@row.SerialNumber</td>
+                        <td class="px-4 py-3">@row.RegistryStatus</td>
+                        <td class="px-4 py-3">@updated</td>
+                        <td class="px-4 py-3">
+                            <div class="d-flex gap-3">
+                                <a href="/admin/passports/@Uri.EscapeDataString(row.PassportId)/edit">Edit</a>
+                                <form method="post" action="/admin/passports/archive">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="passportId" value="@row.PassportId" />
+                                    <button type="submit" class="btn btn-link p-0 text-danger">Archive</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</main>

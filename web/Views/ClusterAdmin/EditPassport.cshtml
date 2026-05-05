@@ -1,0 +1,64 @@
+@model BatteryPassWeb.Models.ViewModels.EditPassportViewModel
+@{
+    ViewData["Title"] = "Edit local passport fields";
+    var passport = Model.Passport;
+}
+<main class="bp-page bp-admin-page">
+    <div class="d-flex justify-content-between flex-wrap gap-3 align-items-end">
+        <div>
+            <h1 class="mb-1">Edit local passport fields</h1>
+            <p class="bp-passport-id mb-0">@passport.PassportId</p>
+        </div>
+        <a href="/cluster-admin/passports" class="bp-secondary-button">Back to managed passports</a>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+    {
+        <div class="alert alert-success mt-2 mb-0">@Model.StatusMessage</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger mt-2 mb-0">@Model.ErrorMessage</div>
+    }
+
+    <section class="bp-card">
+        <form method="post" action="/cluster-admin/passports/save" class="bp-stack-form">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="passportId" value="@passport.PassportId" />
+
+            <label>
+                Cluster
+                <input type="text" value="@passport.ClusterLabel" readonly />
+            </label>
+            <label>
+                Facility ID
+                <input type="text" name="facilityId" value="@passport.FacilityId" />
+            </label>
+            <label>
+                Battery image URL
+                <input type="text" name="batteryImageUrl" value="@passport.BatteryImageUrl" />
+            </label>
+            <label>
+                State of charge %
+                <input type="number" step="any" min="0" max="100" name="stateOfCharge" value="@passport.Performance.StateOfCharge" />
+            </label>
+            <label>
+                Remaining capacity %
+                <input type="number" step="any" min="0" max="100" name="remainingCapacity" value="@passport.Performance.RemainingCapacity" />
+            </label>
+            <label>
+                Remaining energy kWh
+                <input type="number" step="any" min="0" name="remainingEnergy" value="@passport.Performance.RemainingEnergy" />
+            </label>
+            <label>
+                Full cycles
+                <input type="number" step="1" min="0" name="fullCycles" value="@passport.Performance.Cycles" />
+            </label>
+
+            <div class="d-flex justify-content-between flex-wrap gap-2 pt-2">
+                <a href="/@Uri.EscapeDataString(passport.PassportId)/summary" class="bp-secondary-button">Open summary report</a>
+                <button type="submit" class="bp-primary-button">Save local updates</button>
+            </div>
+        </form>
+    </section>
+</main>

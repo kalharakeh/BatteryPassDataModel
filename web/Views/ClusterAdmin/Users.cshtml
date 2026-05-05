@@ -1,5 +1,144 @@
+@model BatteryPassWeb.Models.ViewModels.AdminClusterViewModel
 @{
-    ViewData["Title"] = "Cluster Users";
+    ViewData["Title"] = "Cluster users";
+    var errorMessage = ViewData["ErrorMessage"] as string ?? string.Empty;
+    var clustersById = Model.Clusters.ToDictionary(cluster => cluster.ClusterId, cluster => cluster, StringComparer.OrdinalIgnoreCase);
 }
-<h1 class="h3">Cluster Users</h1>
-<div class="alert alert-info mt-3">Cluster user management UI migration is in progress in this rewrite branch.</div>
+<main class="bp-page bp-admin-page">
+    <div class="d-flex justify-content-between flex-wrap gap-3 align-items-end">
+        <div>
+            <h1 class="mb-1">Cluster users</h1>
+            <p class="text-secondary mb-0">Add, edit, or remove users in clusters where you are a local admin.</p>
+        </div>
+        <a href="/cluster-admin/passports" class="bp-secondary-button">Managed passports</a>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger mt-2 mb-0">@errorMessage</div>
+    }
+
+    <div class="bp-two-column mt-4">
+        <section class="bp-card">
+            <h2 class="h5 mb-3">Add or update user</h2>
+            <form method="post" action="/cluster-admin/users/save" class="bp-stack-form">
+                @Html.AntiForgeryToken()
+                <label>
+                    Email
+                    <input type="email" name="email" placeholder="user@example.test" required />
+                </label>
+                <label>
+                    Name
+                    <input type="text" name="name" placeholder="Display name" />
+                </label>
+                <label>
+                    Password
+                    <input type="password" name="password" placeholder="Required for new users; optional to reset existing users" />
+                </label>
+                <label>
+                    Cluster
+                    <select name="clusterId" required>
+                        @foreach (var cluster in Model.Clusters)
+                        {
+                            <option value="@cluster.ClusterId">@cluster.Name</option>
+                        }
+                    </select>
+                </label>
+                <label>
+                    Membership role
+                    <select name="role">
+                        <option value="member">Normal user</option>
+                        <option value="clusterAdmin">Local admin</option>
+                    </select>
+                </label>
+                <button type="submit" class="bp-primary-button">Save user</button>
+            </form>
+        </section>
+
+        <section class="bp-card p-0 overflow-auto">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="px-3 py-3">User</th>
+                        <th class="px-3 py-3">Managed cluster memberships</th>
+                        <th class="px-3 py-3">Edit membership</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Users.Count == 0)
+                    {
+                        <tr>
+                            <td class="px-3 py-4 text-secondary" colspan="3">No users are connected to your managed clusters yet.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var user in Model.Users.OrderBy(user => user.Email, StringComparer.OrdinalIgnoreCase))
+                        {
+                            var memberships = Model.Memberships
+                                .Where(membership => membership.Email.Equals(user.Email, StringComparison.OrdinalIgnoreCase))
+                                .OrderBy(membership => membership.ClusterId, StringComparer.OrdinalIgnoreCase)
+                                .ToList();
+
+                            <tr>
+                                <td class="px-3 py-3 align-top">
+                                    <p class="mb-1 fw-semibold">@user.Email</p>
+                                    @if (!string.IsNullOrWhiteSpace(user.Name))
+                                    {
+                                        <p class="mb-0 small text-secondary">@user.Name</p>
+                                    }
+                                    @if (user.Roles.Count > 0)
+                                    {
+                                        <p class="mb-0 small text-secondary">@string.Join(", ", user.Roles)</p>
+                                    }
+                                </td>
+                                <td class="px-3 py-3 align-top">
+                                    @if (memberships.Count == 0)
+                                    {
+                                        <span class="text-secondary">No cluster membership</span>
+                                    }
+                                    else
+                                    {
+                                        <div class="d-flex flex-wrap gap-2">
+                                            @foreach (var membership in memberships)
+                                            {
+                                                var clusterName = clustersById.TryGetValue(membership.ClusterId, out var cluster) ? cluster.Name : membership.ClusterId;
+                                                <form method="post" action="/cluster-admin/users/delete-membership" class="bp-tag">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="email" value="@membership.Email" />
+                                                    <input type="hidden" name="clusterId" value="@membership.ClusterId" />
+                                                    <span>@clusterName (@membership.ClusterId)</span>
+                                                    <span class="bp-role-tag">@(membership.Role == "clusterAdmin" ? "Local admin" : "Normal user")</span>
+                                                    <button type="submit" class="bp-tag-delete" aria-label="Delete membership">x</button>
+                                                </form>
+                                            }
+                                        </div>
+                                    }
+                                </td>
+                                <td class="px-3 py-3 align-top">
+                                    <form method="post" action="/cluster-admin/users/save" class="d-flex flex-wrap gap-2">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="email" value="@user.Email" />
+                                        <input class="form-control form-control-sm" name="name" value="@user.Name" placeholder="Display name" style="min-width: 180px;" />
+                                        <input class="form-control form-control-sm" type="password" name="password" placeholder="New password" style="min-width: 180px;" />
+                                        <select name="clusterId" class="form-select form-select-sm" style="min-width: 220px;">
+                                            @foreach (var cluster in Model.Clusters)
+                                            {
+                                                <option value="@cluster.ClusterId">@cluster.Name</option>
+                                            }
+                                        </select>
+                                        <select name="role" class="form-select form-select-sm" style="min-width: 170px;">
+                                            <option value="member">Normal user</option>
+                                            <option value="clusterAdmin">Local admin</option>
+                                        </select>
+                                        <button type="submit" class="bp-secondary-button">Save</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </section>
+    </div>
+</main>

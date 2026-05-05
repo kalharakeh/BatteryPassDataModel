@@ -1,9 +1,10 @@
 @{
     ViewData["Title"] = "Admin";
 }
-<h1 class="h3">Admin Dashboard</h1>
-<p class="text-secondary">Manage passports and clusters.</p>
-<div class="d-flex gap-2 mt-3">
-    <a href="/admin/passports" class="btn btn-success">Manage passports</a>
-    <a href="/admin/clusters" class="btn btn-outline-success">Manage clusters</a>
-</div>
+<main class="bp-page bp-admin-page">
+    <h1 class="h3">Administration</h1>
+    <p class="text-secondary">Open the unified administration workspace.</p>
+    <div class="d-flex gap-2 mt-3">
+        <a href="/admin/clusters?tab=passports" class="bp-primary-button bp-button-compact">Open administration</a>
+    </div>
+</main>

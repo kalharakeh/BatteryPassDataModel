@@ -1,19 +1,313 @@
-@model IReadOnlyList<MongoDB.Bson.BsonDocument>
+@model BatteryPassWeb.Models.ViewModels.AdminClusterViewModel
 @{
-    ViewData["Title"] = "Admin Clusters";
+    ViewData["Title"] = "Administration";
+    var selectedTab = Model.SelectedTab;
+    var clustersById = Model.Clusters.ToDictionary(cluster => cluster.ClusterId, cluster => cluster, StringComparer.OrdinalIgnoreCase);
+    string TabClass(string tab) => selectedTab == tab ? "bp-tab bp-tab-active" : "bp-tab";
+    var query = Model.PassportsQuery ?? string.Empty;
+    var querySuffix = string.IsNullOrWhiteSpace(query) ? string.Empty : $"&q={Uri.EscapeDataString(query)}";
 }
-<h1 class="h3">Admin - Clusters</h1>
-<div class="table-responsive mt-3">
-    <table class="table table-hover">
-        <thead><tr><th>Cluster ID</th><th>Name</th></tr></thead>
-        <tbody>
-        @foreach (var cluster in Model)
-        {
-            <tr>
-                <td>@(cluster.GetValue("clusterId", "").ToString())</td>
-                <td>@(cluster.GetValue("name", "").ToString())</td>
-            </tr>
-        }
-        </tbody>
-    </table>
-</div>
+<main class="bp-page bp-admin-page">
+    <div>
+        <h1 class="mb-1">Administration</h1>
+        <p class="text-secondary mb-0">Manage passports, battery cluster assignments, registered clusters, and user memberships from one page.</p>
+    </div>
+
+    <nav class="bp-tab-row mt-4" aria-label="Administration tabs">
+        <a class="@TabClass("passports")" href="/admin/clusters?tab=passports@querySuffix">Passports</a>
+        <a class="@TabClass("battery")" href="/admin/clusters?tab=battery">Battery cluster assignments</a>
+        <a class="@TabClass("clusters")" href="/admin/clusters?tab=clusters">Registered clusters</a>
+        <a class="@TabClass("users")" href="/admin/clusters?tab=users">Users</a>
+    </nav>
+
+    @if (selectedTab == "passports")
+    {
+        <section class="bp-card mt-4">
+            <div class="d-flex justify-content-between flex-wrap gap-3 align-items-end">
+                <form action="/admin/clusters" class="bp-search-form mb-0">
+                    <input type="hidden" name="tab" value="passports" />
+                    <input
+                        name="q"
+                        value="@Model.PassportsQuery"
+                        placeholder="Search by passport ID, model, serial, or manufacturer" />
+                    <button type="submit">Search</button>
+                </form>
+                <a href="/admin/passports/new" class="bp-primary-button">New passport</a>
+            </div>
+        </section>
+
+        <section class="bp-card p-0 overflow-auto">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="px-4 py-3">Passport ID</th>
+                        <th class="px-4 py-3">Model</th>
+                        <th class="px-4 py-3">Serial</th>
+                        <th class="px-4 py-3">Status</th>
+                        <th class="px-4 py-3">Updated</th>
+                        <th class="px-4 py-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Passports)
+                    {
+                        var updated = string.IsNullOrWhiteSpace(row.UpdatedDate)
+                            ? string.Empty
+                            : row.UpdatedDate.Length >= 10
+                                ? row.UpdatedDate.Substring(0, 10)
+                                : row.UpdatedDate;
+                        <tr>
+                            <td class="px-4 py-3 text-break">@row.PassportId</td>
+                            <td class="px-4 py-3">@row.ModelNumber</td>
+                            <td class="px-4 py-3">@row.SerialNumber</td>
+                            <td class="px-4 py-3">@row.RegistryStatus</td>
+                            <td class="px-4 py-3">@updated</td>
+                            <td class="px-4 py-3">
+                                <div class="d-flex gap-3">
+                                    <a href="/admin/passports/@Uri.EscapeDataString(row.PassportId)/edit">Edit</a>
+                                    <form method="post" action="/admin/passports/archive">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="passportId" value="@row.PassportId" />
+                                        <button type="submit" class="btn btn-link p-0 text-danger">Archive</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+    }
+
+    @if (selectedTab == "battery")
+    {
+        <section class="bp-card mt-4 p-0 overflow-auto">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="px-3 py-3">Battery</th>
+                        <th class="px-3 py-3">Current cluster</th>
+                        <th class="px-3 py-3">Assign</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var passport in Model.Passports)
+                    {
+                        <tr>
+                            <td class="px-3 py-3">
+                                <p class="mb-1 fw-semibold">@passport.ModelNumber</p>
+                                <p class="mb-0 small text-break text-secondary">@passport.PassportId</p>
+                            </td>
+                            <td class="px-3 py-3">
+                                <p class="mb-0">@passport.ClusterLabel</p>
+                                @if (!string.IsNullOrWhiteSpace(passport.ClusterId))
+                                {
+                                    <p class="mb-0 small text-secondary">@passport.ClusterId</p>
+                                }
+                            </td>
+                            <td class="px-3 py-3">
+                                <form method="post" action="/admin/clusters/assign-passport" class="d-flex flex-wrap gap-2">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="passportId" value="@passport.PassportId" />
+                                    <select name="clusterId" class="form-select form-select-sm" style="min-width: 260px;">
+                                        @foreach (var cluster in Model.Clusters)
+                                        {
+                                            if (passport.ClusterId == cluster.ClusterId)
+                                            {
+                                                <option value="@cluster.ClusterId" selected>@cluster.Name</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@cluster.ClusterId">@cluster.Name</option>
+                                            }
+                                        }
+                                    </select>
+                                    <button type="submit" class="bp-secondary-button">Save</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+    }
+
+    @if (selectedTab == "clusters")
+    {
+        <div class="bp-two-column mt-4">
+            <section class="bp-card">
+                <h2 class="h5 mb-3">Add cluster</h2>
+                <form method="post" action="/admin/clusters/create" class="bp-stack-form">
+                    @Html.AntiForgeryToken()
+                    <label>
+                        Cluster name
+                        <input type="text" name="name" placeholder="North Operations Cluster" required />
+                    </label>
+                    <label>
+                        Cluster ID
+                        <input type="text" name="clusterId" placeholder="cluster-north-operations (optional)" />
+                    </label>
+                    <button type="submit" class="bp-primary-button">Save cluster</button>
+                </form>
+            </section>
+            <section class="bp-card p-0 overflow-auto">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th class="px-3 py-3">Cluster ID</th>
+                            <th class="px-3 py-3">Name</th>
+                            <th class="px-3 py-3">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var cluster in Model.Clusters)
+                        {
+                            <tr>
+                                <td class="px-3 py-3"><code>@cluster.ClusterId</code></td>
+                                <td class="px-3 py-3">
+                                    <form method="post" action="/admin/clusters/update" class="d-flex flex-wrap gap-2">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
+                                        <input class="form-control form-control-sm" name="name" value="@cluster.Name" required />
+                                        <button type="submit" class="bp-secondary-button">Save</button>
+                                    </form>
+                                </td>
+                                <td class="px-3 py-3">
+                                    <form method="post" action="/admin/clusters/delete">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
+                                        <button type="submit" class="bp-danger-button">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </section>
+        </div>
+    }
+
+    @if (selectedTab == "users")
+    {
+        <div class="bp-two-column mt-4">
+            <section class="bp-card">
+                <h2 class="h5 mb-3">Add or update user</h2>
+                <form method="post" action="/admin/clusters/save-user" class="bp-stack-form">
+                    @Html.AntiForgeryToken()
+                    <label>
+                        Email
+                        <input type="email" name="email" placeholder="user@example.test" required />
+                    </label>
+                    <label>
+                        Name
+                        <input type="text" name="name" placeholder="Display name" />
+                    </label>
+                    <label>
+                        Password
+                        <input type="password" name="password" placeholder="Required for new users; optional to reset existing users" />
+                    </label>
+                    <label>
+                        System role
+                        <select name="systemRole">
+                            <option value="member">Standard user</option>
+                            <option value="admin">Global admin</option>
+                        </select>
+                    </label>
+                    <label>
+                        Cluster membership (optional)
+                        <select name="clusterId">
+                            <option value="">No cluster membership</option>
+                            @foreach (var cluster in Model.Clusters)
+                            {
+                                <option value="@cluster.ClusterId">@cluster.Name</option>
+                            }
+                        </select>
+                    </label>
+                    <label>
+                        Membership role
+                        <select name="role">
+                            <option value="member">Normal user</option>
+                            <option value="clusterAdmin">Local admin</option>
+                        </select>
+                    </label>
+                    <button type="submit" class="bp-primary-button">Save user</button>
+                </form>
+            </section>
+
+            <section class="bp-card p-0 overflow-auto">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th class="px-3 py-3">User</th>
+                            <th class="px-3 py-3">Clusters and roles</th>
+                            <th class="px-3 py-3">Add or modify membership</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in Model.Users.OrderBy(user => user.Email, StringComparer.OrdinalIgnoreCase))
+                        {
+                            var memberships = Model.Memberships
+                                .Where(membership => membership.Email.Equals(user.Email, StringComparison.OrdinalIgnoreCase))
+                                .OrderBy(membership => membership.ClusterId, StringComparer.OrdinalIgnoreCase)
+                                .ToList();
+
+                            <tr>
+                                <td class="px-3 py-3 align-top">
+                                    <p class="mb-1 fw-semibold">@user.Email</p>
+                                    @if (!string.IsNullOrWhiteSpace(user.Name))
+                                    {
+                                        <p class="mb-0 small text-secondary">@user.Name</p>
+                                    }
+                                    @if (user.Roles.Count > 0)
+                                    {
+                                        <p class="mb-0 small text-secondary">@string.Join(", ", user.Roles)</p>
+                                    }
+                                </td>
+                                <td class="px-3 py-3 align-top">
+                                    @if (memberships.Count == 0)
+                                    {
+                                        <span class="text-secondary">No cluster membership</span>
+                                    }
+                                    else
+                                    {
+                                        <div class="d-flex flex-wrap gap-2">
+                                            @foreach (var membership in memberships)
+                                            {
+                                                var clusterName = clustersById.TryGetValue(membership.ClusterId, out var cluster) ? cluster.Name : membership.ClusterId;
+                                                <form method="post" action="/admin/clusters/delete-user" class="bp-tag">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="email" value="@membership.Email" />
+                                                    <input type="hidden" name="clusterId" value="@membership.ClusterId" />
+                                                    <span>@clusterName (@membership.ClusterId)</span>
+                                                    <span class="bp-role-tag">@(membership.Role == "clusterAdmin" ? "Local admin" : "Normal user")</span>
+                                                    <button type="submit" class="bp-tag-delete" aria-label="Delete membership">x</button>
+                                                </form>
+                                            }
+                                        </div>
+                                    }
+                                </td>
+                                <td class="px-3 py-3 align-top">
+                                    <form method="post" action="/admin/clusters/assign-user" class="d-flex flex-wrap gap-2">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="email" value="@user.Email" />
+                                        <select name="clusterId" class="form-select form-select-sm" style="min-width: 240px;">
+                                            @foreach (var cluster in Model.Clusters)
+                                            {
+                                                <option value="@cluster.ClusterId">@cluster.Name</option>
+                                            }
+                                        </select>
+                                        <select name="role" class="form-select form-select-sm" style="min-width: 170px;">
+                                            <option value="member">Normal user</option>
+                                            <option value="clusterAdmin">Local admin</option>
+                                        </select>
+                                        <button type="submit" class="bp-secondary-button">Save</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </section>
+        </div>
+    }
+</main>

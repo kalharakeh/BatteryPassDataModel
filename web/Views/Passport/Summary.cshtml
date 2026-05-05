@@ -1,21 +1,106 @@
-@model BatteryPassWeb.Models.ViewModels.PassportSummaryViewModel
+@model BatteryPassWeb.Models.ViewModels.PassportSummaryPageViewModel
 @{
     ViewData["Title"] = "Passport Summary";
+    var passport = Model.Passport;
+
+    string BuildConicGradient(IEnumerable<BatteryPassWeb.Models.ViewModels.ChartSegmentViewModel> segments)
+    {
+        var start = 0d;
+        var slices = new List<string>();
+        foreach (var segment in segments.Where(segment => segment.Value > 0))
+        {
+            var color = string.IsNullOrWhiteSpace(segment.Color) ? "#4f6f7d" : segment.Color;
+            var end = start + segment.Percentage;
+            slices.Add($"{color} {start:F2}% {end:F2}%");
+            start = end;
+        }
+
+        if (slices.Count == 0)
+        {
+            slices.Add("#d1d5db 0% 100%");
+        }
+
+        return $"conic-gradient({string.Join(", ", slices)})";
+    }
 }
-<div class="row g-4">
-    <div class="col-lg-7">
-        <h1 class="h3">@Model.DisplayName</h1>
-        <p class="text-break text-secondary">@Model.PassportId</p>
-        <dl class="row mt-3">
-            <dt class="col-sm-4">Model</dt><dd class="col-sm-8">@Model.ModelNumber</dd>
-            <dt class="col-sm-4">Serial</dt><dd class="col-sm-8">@Model.SerialNumber</dd>
-            <dt class="col-sm-4">Manufacturer</dt><dd class="col-sm-8">@Model.ManufacturerName</dd>
-            <dt class="col-sm-4">Status</dt><dd class="col-sm-8">@Model.RegistryStatus</dd>
-            <dt class="col-sm-4">Cluster</dt><dd class="col-sm-8">@(string.IsNullOrWhiteSpace(Model.ClusterId) ? "Unassigned" : Model.ClusterId)</dd>
+<main class="bp-page">
+    <section class="bp-card">
+        <div class="bp-summary-grid">
+            <div>
+                <div class="bp-badge-row">
+                    <span class="bp-pill @(passport.IsValid ? "bp-pill-ok" : "bp-pill-warn")">@(passport.IsValid ? "Verified" : "Unverified")</span>
+                    <span class="bp-pill bp-pill-muted">@passport.BatteryStatus</span>
+                </div>
+                <p class="bp-passport-id">@passport.PassportId</p>
+                <h1>@passport.ModelNumber</h1>
+                <p class="text-secondary">Cluster: @passport.ClusterLabel</p>
+                @if (!string.IsNullOrWhiteSpace(Model.DetailAccessNotice))
+                {
+                    <p class="bp-warning mt-3">@Model.DetailAccessNotice</p>
+                }
+                <a class="bp-primary-button mt-3" href="/@Uri.EscapeDataString(passport.PassportId)">Detailed report</a>
+            </div>
+            <div>
+                <div class="bp-image-wrap">
+                    <img src="@passport.BatteryImageUrl" alt="@passport.BatteryImageAlt" class="bp-battery-image" />
+                </div>
+                <p class="bp-help-text mt-2">@passport.BatteryImageAlt</p>
+            </div>
+        </div>
+
+        <dl class="bp-field-grid">
+            <div><dt>Model Number</dt><dd>@passport.ModelNumber</dd></div>
+            <div><dt>Serial Number</dt><dd>@passport.SerialNumber</dd></div>
+            <div><dt>Category</dt><dd>@passport.Category</dd></div>
+            <div><dt>Status</dt><dd>@passport.BatteryStatus</dd></div>
+            <div><dt>Weight</dt><dd>@passport.WeightLabel</dd></div>
+            <div><dt>Manufactured date</dt><dd>@passport.ManufacturedDate</dd></div>
+            <div><dt>Manufactured by</dt><dd>@passport.ManufacturerName</dd></div>
+            <div><dt>Cluster</dt><dd>@passport.ClusterLabel</dd></div>
         </dl>
-        <a href="/@Uri.EscapeDataString(Model.PassportId)" class="btn btn-success">Open full detail report</a>
-    </div>
-    <div class="col-lg-5 text-center">
-        <img src="@Model.BatteryImageUrl" class="img-fluid rounded shadow-sm" alt="Battery image" />
-    </div>
-</div>
+    </section>
+
+    <section class="bp-card">
+        <span class="bp-summary-title">Summary report</span>
+        <div class="bp-summary-section">
+            <div>
+                <p class="bp-help-text fw-semibold">Original power</p>
+                <p class="bp-number">@(passport.Performance.RatedMaximumPower > 0 ? passport.Performance.RatedMaximumPower : 380) kW</p>
+            </div>
+            <div>
+                <h3 class="bp-subheading">Carbon footprint</h3>
+                <div class="bp-pie-row">
+                    <div class="bp-pie" style="background:@BuildConicGradient(passport.CarbonFootprintSegments);"></div>
+                    <ul class="bp-legend">
+                        @foreach (var segment in passport.CarbonFootprintSegments)
+                        {
+                            <li>
+                                <span class="bp-dot" style="background:@(string.IsNullOrWhiteSpace(segment.Color) ? "#4f6f7d" : segment.Color);"></span>
+                                <span>@segment.Label: @segment.Value.ToString("0.#") @(segment.Unit)</span>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+            <div>
+                <div class="d-flex align-items-center flex-wrap gap-2">
+                    <h3 class="bp-subheading m-0">Recycled content share</h3>
+                    <span class="bp-pill bp-pill-alert">@(passport.Circularity.RecycledContentShareVerification.Equals("verified", StringComparison.OrdinalIgnoreCase) ? "Verified" : "Unverified")</span>
+                </div>
+                <div class="bp-donut-grid">
+                    @foreach (var chart in passport.RecycledContentCharts)
+                    {
+                        var donutBackground = $"conic-gradient(#08a348 0 {chart.PreConsumerShare}%, #df6b3b {chart.PreConsumerShare}% {chart.PreConsumerShare + chart.PostConsumerShare}%, #d1d5db {chart.PreConsumerShare + chart.PostConsumerShare}% 100%)";
+                        <div class="bp-donut-card">
+                            <p class="fw-semibold mb-2">@chart.Material</p>
+                            <div class="bp-donut" style="background:@donutBackground;">
+                                <div class="bp-donut-hole"></div>
+                            </div>
+                            <p class="bp-help-text mt-2 mb-0">Pre @chart.PreConsumerShare.ToString("0.#")% / Post @chart.PostConsumerShare.ToString("0.#")%</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </section>
+</main>

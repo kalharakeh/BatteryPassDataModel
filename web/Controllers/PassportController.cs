@@ -8,31 +8,24 @@ namespace BatteryPassWeb.Controllers;
 public class PassportController : Controller
 {
     private readonly PassportRepository _passportRepository;
+    private readonly ClusterRepository _clusterRepository;
+    private readonly PassportViewModelFactory _viewModelFactory;
+    private readonly AccessControlService _accessControlService;
 
-    public PassportController(PassportRepository passportRepository)
+    public PassportController(
+        PassportRepository passportRepository,
+        ClusterRepository clusterRepository,
+        PassportViewModelFactory viewModelFactory,
+        AccessControlService accessControlService)
     {
         _passportRepository = passportRepository;
+        _clusterRepository = clusterRepository;
+        _viewModelFactory = viewModelFactory;
+        _accessControlService = accessControlService;
     }
 
     [HttpGet("{passportId}/summary")]
-    public async Task<IActionResult> Summary(string passportId, CancellationToken cancellationToken)
-    {
-        if (IsReservedSegment(passportId))
-        {
-            return NotFound();
-        }
-
-        var summary = await _passportRepository.GetSummaryAsync(passportId, cancellationToken);
-        if (summary == null)
-        {
-            return NotFound();
-        }
-
-        return View(summary);
-    }
-
-    [HttpGet("{passportId}")]
-    public async Task<IActionResult> Detail(string passportId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Summary(string passportId, [FromQuery] string? access, CancellationToken cancellationToken)
     {
         if (IsReservedSegment(passportId))
         {
@@ -44,17 +37,103 @@ public class PassportController : Controller
         {
             return NotFound();
         }
-
-        var summary = await _passportRepository.GetSummaryAsync(passportId, cancellationToken);
-        if (summary == null)
+        if (string.Equals(BsonHelpers.GetString(document, "registryInfo", "status"), "archived", StringComparison.OrdinalIgnoreCase))
         {
             return NotFound();
         }
 
+        var clusterDocuments = await _clusterRepository.ListClustersAsync(cancellationToken);
+        var clusterNamesById = clusterDocuments
+            .Select(cluster => new
+            {
+                ClusterId = BsonHelpers.GetString(cluster, "clusterId"),
+                Name = BsonHelpers.GetString(cluster, "name")
+            })
+            .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
+            .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
+        var passport = _viewModelFactory.Create(document, clusterNamesById);
+        var canOpenDetail = false;
+
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            canOpenDetail = await _accessControlService.CanOpenPassportDetailAsync(User, passport.ClusterId, cancellationToken);
+        }
+
+        var detailAccessNotice = string.Empty;
+        if (!canOpenDetail)
+        {
+            if (string.IsNullOrWhiteSpace(passport.ClusterId))
+            {
+                detailAccessNotice = "This battery is not assigned to a cluster. Sign in as the general admin to open the detailed report.";
+            }
+            else if (User.Identity?.IsAuthenticated == true)
+            {
+                var email = AccessControlService.CurrentEmail(User);
+                detailAccessNotice = $"Current user {email} is not connected to {passport.ClusterLabel}. Sign in with a user connected to {passport.ClusterLabel} to open the detailed report.";
+            }
+            else
+            {
+                detailAccessNotice = $"Sign in with a user connected to {passport.ClusterLabel} to open the detailed report.";
+            }
+        }
+
+        if (string.Equals(access, "wrong-cluster", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(detailAccessNotice))
+        {
+            detailAccessNotice = $"Sign in with a user connected to {passport.ClusterLabel} to open the detailed report.";
+        }
+
+        return View(new PassportSummaryPageViewModel
+        {
+            Passport = passport,
+            DetailAccessNotice = detailAccessNotice
+        });
+    }
+
+    [HttpGet("{passportId}")]
+    public async Task<IActionResult> Detail(string passportId, CancellationToken cancellationToken)
+    {
+        if (IsReservedSegment(passportId))
+        {
+            return NotFound();
+        }
+
+        var decodedPassportId = Uri.UnescapeDataString(passportId);
+        var nextPath = $"/{Uri.EscapeDataString(decodedPassportId)}";
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return Redirect($"/login?next={Uri.EscapeDataString(nextPath)}");
+        }
+
+        var document = await _passportRepository.GetByPassportIdAsync(decodedPassportId, cancellationToken);
+        if (document == null)
+        {
+            return NotFound();
+        }
+        if (string.Equals(BsonHelpers.GetString(document, "registryInfo", "status"), "archived", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound();
+        }
+
+        var clusterDocuments = await _clusterRepository.ListClustersAsync(cancellationToken);
+        var clusterNamesById = clusterDocuments
+            .Select(cluster => new
+            {
+                ClusterId = BsonHelpers.GetString(cluster, "clusterId"),
+                Name = BsonHelpers.GetString(cluster, "name")
+            })
+            .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
+            .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
+
+        var passport = _viewModelFactory.Create(document, clusterNamesById);
+        var canOpen = await _accessControlService.CanOpenPassportDetailAsync(User, passport.ClusterId, cancellationToken);
+        if (!canOpen)
+        {
+            return Redirect($"/{Uri.EscapeDataString(decodedPassportId)}/summary?access=wrong-cluster");
+        }
+
         var model = new PassportDetailViewModel
         {
-            Summary = summary,
-            CanonicalJson = document.ToJson(new MongoDB.Bson.IO.JsonWriterSettings { Indent = true })
+            Passport = passport
         };
 
         return View(model);

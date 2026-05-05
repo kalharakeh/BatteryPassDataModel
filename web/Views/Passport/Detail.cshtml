@@ -1,12 +1,240 @@
 @model BatteryPassWeb.Models.ViewModels.PassportDetailViewModel
 @{
     ViewData["Title"] = "Passport Detail";
+    var passport = Model.Passport;
+
+    string BuildConicGradient(IEnumerable<BatteryPassWeb.Models.ViewModels.ChartSegmentViewModel> segments)
+    {
+        var start = 0d;
+        var slices = new List<string>();
+        foreach (var segment in segments.Where(segment => segment.Value > 0))
+        {
+            var color = string.IsNullOrWhiteSpace(segment.Color) ? "#4f6f7d" : segment.Color;
+            var end = start + segment.Percentage;
+            slices.Add($"{color} {start:F2}% {end:F2}%");
+            start = end;
+        }
+
+        if (slices.Count == 0)
+        {
+            slices.Add("#d1d5db 0% 100%");
+        }
+
+        return $"conic-gradient({string.Join(", ", slices)})";
+    }
 }
-<div class="d-flex justify-content-between align-items-start mb-3">
-    <div>
-        <h1 class="h3">@Model.Summary.DisplayName</h1>
-        <p class="text-break text-secondary">@Model.Summary.PassportId</p>
-    </div>
-    <a href="/@Uri.EscapeDataString(Model.Summary.PassportId)/summary" class="btn btn-outline-success">Back to summary</a>
-</div>
-<pre class="bg-light border rounded p-3 json-block">@Model.CanonicalJson</pre>
+<main class="bp-page">
+    <section class="bp-card">
+        <div class="bp-summary-grid">
+            <div>
+                <div class="bp-badge-row">
+                    <span class="bp-pill @(passport.IsValid ? "bp-pill-ok" : "bp-pill-warn")">@(passport.IsValid ? "Verified" : "Unverified")</span>
+                    <span class="bp-pill bp-pill-muted">@passport.BatteryStatus</span>
+                </div>
+                <p class="bp-passport-id">@passport.PassportId</p>
+                <h1>@passport.ModelNumber</h1>
+                <p class="text-secondary">Cluster: @passport.ClusterLabel</p>
+                <a href="/@Uri.EscapeDataString(passport.PassportId)/summary" class="bp-primary-button bp-button-compact mt-3">Open summary report</a>
+            </div>
+            <div>
+                <div class="bp-image-wrap">
+                    <img src="@passport.BatteryImageUrl" alt="@passport.BatteryImageAlt" class="bp-battery-image" />
+                </div>
+                <p class="bp-help-text mt-2">@passport.BatteryImageAlt</p>
+            </div>
+        </div>
+
+        <dl class="bp-field-grid">
+            <div><dt>Model Number</dt><dd>@passport.ModelNumber</dd></div>
+            <div><dt>Serial Number</dt><dd>@passport.SerialNumber</dd></div>
+            <div><dt>Category</dt><dd>@passport.Category</dd></div>
+            <div><dt>Status</dt><dd>@passport.BatteryStatus</dd></div>
+            <div><dt>Weight</dt><dd>@passport.WeightLabel</dd></div>
+            <div><dt>Manufactured date</dt><dd>@passport.ManufacturedDate</dd></div>
+            <div><dt>Manufactured by</dt><dd>@passport.ManufacturerName</dd></div>
+            <div><dt>Cluster</dt><dd>@passport.ClusterLabel</dd></div>
+        </dl>
+    </section>
+
+    <section class="bp-card">
+        <ul class="nav nav-tabs bp-tabs" id="detail-tabs" role="tablist">
+            <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-general" type="button" role="tab">General</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-material" type="button" role="tab">Material composition</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-performance" type="button" role="tab">Performance</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-compliance" type="button" role="tab">Compliance</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-supply" type="button" role="tab">Supply chain</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-circularity" type="button" role="tab">Circularity</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-carbon" type="button" role="tab">Carbon Footprint</button></li>
+        </ul>
+
+        <div class="tab-content pt-4">
+            <div class="tab-pane fade show active" id="tab-general" role="tabpanel">
+                <h2 class="h5 mb-2">General</h2>
+                <p class="bp-help-text">Generic information about the battery</p>
+                <dl class="bp-field-grid">
+                    <div><dt>Name</dt><dd>@passport.DisplayName</dd></div>
+                    <div><dt>Manufactured date</dt><dd>@passport.ManufacturedDate</dd></div>
+                    <div><dt>Facility ID</dt><dd>@passport.FacilityId</dd></div>
+                    <div><dt>Manufactured by</dt><dd>@passport.ManufacturerName</dd></div>
+                    <div><dt>Category</dt><dd>@passport.Category</dd></div>
+                    <div><dt>Status</dt><dd>@passport.BatteryStatus</dd></div>
+                    <div><dt>Weight</dt><dd>@passport.WeightLabel</dd></div>
+                    <div><dt>Verified</dt><dd>@(passport.IsValid ? "Verified" : "Unverified")</dd></div>
+                </dl>
+            </div>
+
+            <div class="tab-pane fade" id="tab-material" role="tabpanel">
+                <h2 class="h5 mb-2">Material composition</h2>
+                <p class="bp-help-text">Material composition of the battery</p>
+                <div class="bp-two-column mt-4">
+                    <div>
+                        <h3 class="bp-subheading">Battery material composition</h3>
+                        <div class="bp-pie-row">
+                            <div class="bp-pie" style="background:@BuildConicGradient(passport.MaterialCompositionSegments);"></div>
+                            <ul class="bp-legend">
+                                @foreach (var segment in passport.MaterialCompositionSegments)
+                                {
+                                    <li>
+                                        <span class="bp-dot" style="background:@(string.IsNullOrWhiteSpace(segment.Color) ? "#4f6f7d" : segment.Color);"></span>
+                                        <span>@segment.Label: @segment.Value.ToString("0.#") kg</span>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Material</th>
+                                    <th>Mass</th>
+                                    <th>Component</th>
+                                    <th>Critical</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var material in passport.BatteryMaterials)
+                                {
+                                    <tr>
+                                        <td>@material.MaterialName</td>
+                                        <td>@material.MaterialMass.ToString("0.##") kg</td>
+                                        <td>@material.ComponentName</td>
+                                        <td>@(material.IsCriticalRawMaterial ? "Yes" : "No")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-performance" role="tabpanel">
+                <h2 class="h5 mb-2">Performance</h2>
+                <p class="bp-help-text">Battery performance information</p>
+                <div class="bp-metric-grid mt-3">
+                    <div class="bp-metric"><p>Rated energy</p><strong>@passport.Performance.RatedEnergy.ToString("0.##") kWh</strong></div>
+                    <div class="bp-metric"><p>Rated capacity</p><strong>@passport.Performance.RatedCapacity.ToString("0.##") Ah</strong></div>
+                    <div class="bp-metric"><p>Maximum power</p><strong>@passport.Performance.RatedMaximumPower.ToString("0.##") kW</strong></div>
+                    <div class="bp-metric"><p>Nominal voltage</p><strong>@passport.Performance.NominalVoltage.ToString("0.##") V</strong></div>
+                    <div class="bp-metric"><p>State of charge</p><strong>@passport.Performance.StateOfCharge.ToString("0.##") %</strong></div>
+                    <div class="bp-metric"><p>Remaining capacity</p><strong>@passport.Performance.RemainingCapacity.ToString("0.##") %</strong></div>
+                    <div class="bp-metric"><p>Remaining energy</p><strong>@passport.Performance.RemainingEnergy.ToString("0.##") kWh</strong></div>
+                    <div class="bp-metric"><p>Full cycles</p><strong>@passport.Performance.Cycles.ToString("0.##")</strong></div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-compliance" role="tabpanel">
+                <h2 class="h5 mb-2">Compliance</h2>
+                <p class="bp-help-text">Regulatory compliance of the battery</p>
+                <div class="bp-link-grid mt-3">
+                    @if (!string.IsNullOrWhiteSpace(passport.Documents.ConformityAssessment.Url))
+                    {
+                        <a href="@passport.Documents.ConformityAssessment.Url" target="_blank" rel="noreferrer">@passport.Documents.ConformityAssessment.Label</a>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(passport.Documents.EuDeclarationOfConformity.Url))
+                    {
+                        <a href="@passport.Documents.EuDeclarationOfConformity.Url" target="_blank" rel="noreferrer">@passport.Documents.EuDeclarationOfConformity.Label</a>
+                    }
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-supply" role="tabpanel">
+                <h2 class="h5 mb-2">Supply chain</h2>
+                <p class="bp-help-text">Supply chain information</p>
+                <div class="bp-two-column mt-4">
+                    <div class="bp-metric"><p>Supply chain index</p><strong>@passport.SupplyChainIndex.ToString("0.##")</strong></div>
+                    <div class="bp-link-grid">
+                        @if (!string.IsNullOrWhiteSpace(passport.Documents.SustainabilityReport.Url))
+                        {
+                            <a href="@passport.Documents.SustainabilityReport.Url" target="_blank" rel="noreferrer">@passport.Documents.SustainabilityReport.Label</a>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(passport.Documents.DueDiligenceReport.Url))
+                        {
+                            <a href="@passport.Documents.DueDiligenceReport.Url" target="_blank" rel="noreferrer">@passport.Documents.DueDiligenceReport.Label</a>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(passport.Documents.ThirdPartyAudit.Url))
+                        {
+                            <a href="@passport.Documents.ThirdPartyAudit.Url" target="_blank" rel="noreferrer">@passport.Documents.ThirdPartyAudit.Label</a>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(passport.Documents.TaxonomyReport.Url))
+                        {
+                            <a href="@passport.Documents.TaxonomyReport.Url" target="_blank" rel="noreferrer">@passport.Documents.TaxonomyReport.Label</a>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-circularity" role="tabpanel">
+                <h2 class="h5 mb-2">Circularity</h2>
+                <p class="bp-help-text">Circularity of the battery</p>
+                <dl class="bp-field-grid">
+                    <div><dt>Separate collection</dt><dd>@passport.Circularity.SeparateCollection</dd></div>
+                    <div><dt>Waste prevention</dt><dd>@passport.Circularity.WastePrevention</dd></div>
+                    <div><dt>Recycled content share</dt><dd>@passport.Circularity.RecycledContentShareVerification</dd></div>
+                </dl>
+                <div class="bp-donut-grid mt-3">
+                    @foreach (var chart in passport.RecycledContentCharts)
+                    {
+                        var donutBackground = $"conic-gradient(#08a348 0 {chart.PreConsumerShare}%, #df6b3b {chart.PreConsumerShare}% {chart.PreConsumerShare + chart.PostConsumerShare}%, #d1d5db {chart.PreConsumerShare + chart.PostConsumerShare}% 100%)";
+                        <div class="bp-donut-card">
+                            <p class="fw-semibold mb-2">@chart.Material</p>
+                            <div class="bp-donut" style="background:@donutBackground;">
+                                <div class="bp-donut-hole"></div>
+                            </div>
+                            <p class="bp-help-text mt-2 mb-0">Pre @chart.PreConsumerShare.ToString("0.#")% / Post @chart.PostConsumerShare.ToString("0.#")%</p>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-carbon" role="tabpanel">
+                <h2 class="h5 mb-2">Carbon Footprint</h2>
+                <p class="bp-help-text">CO2 footprint generated by the battery</p>
+                <div class="bp-two-column mt-4">
+                    <div class="bp-pie-row">
+                        <div class="bp-pie" style="background:@BuildConicGradient(passport.CarbonFootprintSegments);"></div>
+                        <ul class="bp-legend">
+                            @foreach (var segment in passport.CarbonFootprintSegments)
+                            {
+                                <li>
+                                    <span class="bp-dot" style="background:@(string.IsNullOrWhiteSpace(segment.Color) ? "#4f6f7d" : segment.Color);"></span>
+                                    <span>@segment.Label: @segment.Value.ToString("0.#") @(segment.Unit)</span>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                    <div>
+                        <dl class="bp-field-grid">
+                            <div><dt>Amount</dt><dd>Verified @passport.CarbonFootprintLabel</dd></div>
+                            <div><dt>Performance class</dt><dd>@passport.PerformanceClass</dd></div>
+                        </dl>
+                        @if (!string.IsNullOrWhiteSpace(passport.Documents.Co2StudyReference.Url))
+                        {
+                            <a href="@passport.Documents.Co2StudyReference.Url" target="_blank" rel="noreferrer" class="bp-secondary-button d-inline-block mt-2">@passport.Documents.Co2StudyReference.Label</a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>

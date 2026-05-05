@@ -24,4 +24,188 @@ public sealed class ClusterRepository
             .SortBy(cluster => cluster["name"])
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<BsonDocument>> ListClusterMembershipsAsync(CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null)
+        {
+            return [];
+        }
+
+        return await _mongoContext.Database.GetCollection<BsonDocument>("clusterMemberships")
+            .Find(Builders<BsonDocument>.Filter.Empty)
+            .SortBy(membership => membership["email"])
+            .ThenBy(membership => membership["clusterId"])
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<BsonDocument>> GetClusterMembershipsForUserAsync(string email, CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email))
+        {
+            return [];
+        }
+
+        return await _mongoContext.Database.GetCollection<BsonDocument>("clusterMemberships")
+            .Find(Builders<BsonDocument>.Filter.Eq("email", email.Trim().ToLowerInvariant()))
+            .SortBy(membership => membership["clusterId"])
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<BsonDocument>> ListUsersAsync(CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null)
+        {
+            return [];
+        }
+
+        return await _mongoContext.Database.GetCollection<BsonDocument>("users")
+            .Find(Builders<BsonDocument>.Filter.Empty)
+            .Project(Builders<BsonDocument>.Projection.Exclude("passwordHash"))
+            .SortBy(user => user["email"])
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<BsonDocument?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email))
+        {
+            return null;
+        }
+
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        return await _mongoContext.Database.GetCollection<BsonDocument>("users")
+            .Find(Builders<BsonDocument>.Filter.Eq("email", normalizedEmail))
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task UpsertUserAsync(
+        string email,
+        string name,
+        IReadOnlyList<string> roles,
+        string? passwordHash = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email))
+        {
+            return;
+        }
+
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        var now = DateTime.UtcNow.ToString("O");
+        var normalizedRoles = roles
+            .Where(role => !string.IsNullOrWhiteSpace(role))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (normalizedRoles.Count == 0)
+        {
+            normalizedRoles.Add("viewer");
+        }
+
+        var updates = new List<UpdateDefinition<BsonDocument>>
+        {
+            Builders<BsonDocument>.Update.Set("email", normalizedEmail),
+            Builders<BsonDocument>.Update.Set("name", string.IsNullOrWhiteSpace(name) ? normalizedEmail : name.Trim()),
+            Builders<BsonDocument>.Update.Set("roles", new BsonArray(normalizedRoles)),
+            Builders<BsonDocument>.Update.Set("updatedAt", now),
+            Builders<BsonDocument>.Update.SetOnInsert("createdAt", now)
+        };
+
+        if (!string.IsNullOrWhiteSpace(passwordHash))
+        {
+            updates.Add(Builders<BsonDocument>.Update.Set("passwordHash", passwordHash));
+        }
+
+        await _mongoContext.Database.GetCollection<BsonDocument>("users").UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("email", normalizedEmail),
+            Builders<BsonDocument>.Update.Combine(updates),
+            new UpdateOptions { IsUpsert = true },
+            cancellationToken);
+    }
+
+    public async Task UpsertClusterAsync(string clusterId, string name, CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(clusterId) || string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow.ToString("O");
+        await _mongoContext.Database.GetCollection<BsonDocument>("clusters").UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("clusterId", clusterId),
+            Builders<BsonDocument>.Update
+                .Set("clusterId", clusterId)
+                .Set("name", name)
+                .Set("updatedAt", now)
+                .SetOnInsert("createdAt", now),
+            new UpdateOptions { IsUpsert = true },
+            cancellationToken);
+    }
+
+    public async Task UpdateClusterNameAsync(string clusterId, string name, CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(clusterId) || string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow.ToString("O");
+        await _mongoContext.Database.GetCollection<BsonDocument>("clusters").UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("clusterId", clusterId),
+            Builders<BsonDocument>.Update
+                .Set("name", name)
+                .Set("updatedAt", now),
+            cancellationToken: cancellationToken);
+    }
+
+    public async Task DeleteClusterAsync(string clusterId, CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(clusterId))
+        {
+            return;
+        }
+
+        await _mongoContext.Database.GetCollection<BsonDocument>("clusters")
+            .DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("clusterId", clusterId), cancellationToken);
+        await _mongoContext.Database.GetCollection<BsonDocument>("clusterMemberships")
+            .DeleteManyAsync(Builders<BsonDocument>.Filter.Eq("clusterId", clusterId), cancellationToken);
+    }
+
+    public async Task UpsertClusterMembershipAsync(string email, string clusterId, string role, CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(clusterId))
+        {
+            return;
+        }
+
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        var normalizedRole = role.Equals("clusterAdmin", StringComparison.OrdinalIgnoreCase) ? "clusterAdmin" : "member";
+        var now = DateTime.UtcNow.ToString("O");
+        await _mongoContext.Database.GetCollection<BsonDocument>("clusterMemberships").UpdateOneAsync(
+            Builders<BsonDocument>.Filter.And(
+                Builders<BsonDocument>.Filter.Eq("email", normalizedEmail),
+                Builders<BsonDocument>.Filter.Eq("clusterId", clusterId)),
+            Builders<BsonDocument>.Update
+                .Set("email", normalizedEmail)
+                .Set("clusterId", clusterId)
+                .Set("role", normalizedRole)
+                .Set("updatedAt", now)
+                .SetOnInsert("createdAt", now),
+            new UpdateOptions { IsUpsert = true },
+            cancellationToken);
+    }
+
+    public async Task DeleteClusterMembershipAsync(string email, string clusterId, CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(clusterId))
+        {
+            return;
+        }
+
+        await _mongoContext.Database.GetCollection<BsonDocument>("clusterMemberships").DeleteOneAsync(
+            Builders<BsonDocument>.Filter.And(
+                Builders<BsonDocument>.Filter.Eq("email", email.Trim().ToLowerInvariant()),
+                Builders<BsonDocument>.Filter.Eq("clusterId", clusterId)),
+            cancellationToken);
+    }
 }

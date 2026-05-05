@@ -9,5 +9,7 @@ public sealed class PassportSummaryViewModel
     public string SerialNumber { get; init; } = string.Empty;
     public string RegistryStatus { get; init; } = string.Empty;
     public string ClusterId { get; init; } = string.Empty;
+    public string ClusterLabel { get; init; } = "No cluster assigned";
     public string BatteryImageUrl { get; init; } = string.Empty;
+    public string UpdatedDate { get; init; } = string.Empty;
 }

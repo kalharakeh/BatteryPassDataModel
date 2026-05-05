@@ -1,0 +1,68 @@
+@model IReadOnlyList<BatteryPassWeb.Models.ViewModels.PassportSummaryViewModel>
+@{
+    ViewData["Title"] = "Managed passports";
+    var query = ViewData["Query"] as string ?? string.Empty;
+}
+<main class="bp-page bp-admin-page">
+    <div class="d-flex justify-content-between flex-wrap gap-3 align-items-end">
+        <div>
+            <h1 class="mb-1">Managed passports</h1>
+            <p class="text-secondary mb-0">Edit local operational fields for passports in your administered clusters.</p>
+        </div>
+        <a href="/cluster-admin/users" class="bp-secondary-button">Manage users</a>
+    </div>
+
+    <section class="bp-card mt-2">
+        <form action="/cluster-admin/passports" class="bp-search-form mb-0">
+            <input
+                name="q"
+                value="@query"
+                placeholder="Search by passport ID, model, serial, or manufacturer" />
+            <button type="submit">Search</button>
+        </form>
+    </section>
+
+    <section class="bp-card p-0 overflow-auto">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th class="px-4 py-3">Passport ID</th>
+                    <th class="px-4 py-3">Model</th>
+                    <th class="px-4 py-3">Serial</th>
+                    <th class="px-4 py-3">Cluster</th>
+                    <th class="px-4 py-3">Updated</th>
+                    <th class="px-4 py-3">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Count == 0)
+                {
+                    <tr>
+                        <td class="px-4 py-4 text-secondary" colspan="6">No managed passports found for this account.</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var row in Model)
+                    {
+                        var updated = string.IsNullOrWhiteSpace(row.UpdatedDate)
+                            ? string.Empty
+                            : row.UpdatedDate.Length >= 10
+                                ? row.UpdatedDate.Substring(0, 10)
+                                : row.UpdatedDate;
+                        <tr>
+                            <td class="px-4 py-3 text-break">@row.PassportId</td>
+                            <td class="px-4 py-3">@row.ModelNumber</td>
+                            <td class="px-4 py-3">@row.SerialNumber</td>
+                            <td class="px-4 py-3">@row.ClusterLabel</td>
+                            <td class="px-4 py-3">@updated</td>
+                            <td class="px-4 py-3">
+                                <a href="/cluster-admin/passports/@Uri.EscapeDataString(row.PassportId)/edit">Edit local fields</a>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </section>
+</main>

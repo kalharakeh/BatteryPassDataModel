@@ -2,6 +2,6 @@ namespace BatteryPassWeb.Models.ViewModels;
 
 public sealed class PassportDetailViewModel
 {
-    public required PassportSummaryViewModel Summary { get; init; }
-    public required string CanonicalJson { get; init; }
+    public required PassportViewModel Passport { get; init; }
+    public string AccessNotice { get; init; } = string.Empty;
 }

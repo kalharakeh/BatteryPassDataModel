@@ -47,6 +47,8 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddSingleton<MongoContext>();
 builder.Services.AddSingleton<PassportRepository>();
 builder.Services.AddSingleton<ClusterRepository>();
+builder.Services.AddSingleton<PassportViewModelFactory>();
+builder.Services.AddSingleton<AccessControlService>();
 builder.Services.AddSingleton<AuthService>();
 
 var app = builder.Build();

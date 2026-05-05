@@ -1,16 +1,21 @@
 @{
-    ViewData["Title"] = "Battery Passport Home";
+    ViewData["Title"] = "Scania Battery Passport Viewer";
+    var samplePassportId = ViewData["SamplePassportId"] as string ?? "did:web:acme.battery.pass:sample-customer-north-001";
 }
-<section class="row g-4 align-items-center">
-    <div class="col-lg-7">
-        <h1 class="display-6 fw-semibold">Battery Passport Demonstrator</h1>
-        <p class="lead text-secondary">Find battery passports, open summary reports, and review registry records.</p>
-        <form method="get" action="/search" class="d-flex gap-2 mt-3">
-            <input name="q" class="form-control form-control-lg" placeholder="Search by passport ID, model, serial..." />
-            <button type="submit" class="btn btn-success btn-lg">Search</button>
+<main class="bp-landing">
+    <div class="bp-landing-content">
+        <div>
+            <h1>Scania Battery Passport Viewer</h1>
+            <p>Enter a battery passport DID to open the public demonstrator view.</p>
+        </div>
+        <form action="/search" class="bp-search-form">
+            <input name="q" placeholder="@samplePassportId" />
+            <button type="submit">Search</button>
         </form>
+        <div class="bp-landing-links">
+            <a href="/search?q=@Uri.EscapeDataString(samplePassportId)">Search sample battery</a>
+            <a href="/registry">Open registry</a>
+            <a href="/login">Admin login</a>
+        </div>
     </div>
-    <div class="col-lg-5 text-center">
-        <img src="~/images/sample-battery.png" class="img-fluid rounded shadow-sm" alt="Sample battery" />
-    </div>
-</section>
+</main>

@@ -1,3 +1,4 @@
+using BatteryPassWeb.Models.ViewModels;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -6,6 +7,7 @@ namespace BatteryPassWeb.Controllers;
 [Route("")]
 public class HomeController : Controller
 {
+    private const string SamplePassportId = "did:web:acme.battery.pass:sample-customer-north-001";
     private readonly PassportRepository _passportRepository;
 
     public HomeController(PassportRepository passportRepository)
@@ -16,6 +18,7 @@ public class HomeController : Controller
     [HttpGet("")]
     public IActionResult Index()
     {
+        ViewData["SamplePassportId"] = SamplePassportId;
         return View();
     }
 
@@ -25,15 +28,20 @@ public class HomeController : Controller
         var query = q?.Trim() ?? string.Empty;
         if (query.Length == 0)
         {
-            return View(model: Array.Empty<Models.ViewModels.PassportSummaryViewModel>());
+            return View(new SearchPageViewModel { Query = string.Empty });
         }
 
-        var matches = await _passportRepository.SearchAsync(query, includeArchived: true, cancellationToken);
-        if (matches.Count == 1 && string.Equals(matches[0].PassportId, query, StringComparison.OrdinalIgnoreCase))
+        var matches = await _passportRepository.SearchAsync(query, includeArchived: false, cancellationToken);
+        var exactMatch = matches.FirstOrDefault(match => string.Equals(match.PassportId, query, StringComparison.OrdinalIgnoreCase));
+        if (exactMatch != null)
         {
-            return Redirect($"/{Uri.EscapeDataString(matches[0].PassportId)}/summary");
+            return Redirect($"/{Uri.EscapeDataString(exactMatch.PassportId)}/summary");
         }
 
-        return View(model: matches);
+        return View(new SearchPageViewModel
+        {
+            Query = query,
+            NotFound = true
+        });
     }
 }
