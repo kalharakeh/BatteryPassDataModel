@@ -67,6 +67,18 @@ public sealed class PassportPublishPolicyService
         trust["lastSignedAt"] = BsonNull.Value;
     }
 
+    public void InvalidateValidationClaimForDraftSave(BsonDocument passport)
+    {
+        var validation = EnsureDocument(passport, "validation");
+        validation["isValid"] = false;
+        validation["signedAt"] = BsonNull.Value;
+        validation["hash"] = string.Empty;
+        validation["signature"] = string.Empty;
+        validation["proof"] = new BsonDocument();
+
+        EnsureDocument(passport, "trust");
+    }
+
     public bool HasCurrentValidSignature(BsonDocument passport)
     {
         if (!GetBoolean(passport, "validation", "isValid"))

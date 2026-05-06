@@ -123,6 +123,44 @@ public sealed class PassportPublishPolicyServiceTests
         Assert.Empty(passport["trust"]["latestProof"].AsBsonDocument);
     }
 
+    [Fact]
+    public void InvalidateValidationClaimForDraftSave_ShouldPreserveProofDiagnostics()
+    {
+        var passport = new BsonDocument
+        {
+            ["validation"] = new BsonDocument
+            {
+                ["isValid"] = true,
+                ["signedAt"] = "2026-05-06T00:00:00.000Z",
+                ["hash"] = "hash-before-save",
+                ["signature"] = "signature-before-save",
+                ["proof"] = new BsonDocument { ["proofValue"] = "signature-before-save" }
+            },
+            ["trust"] = new BsonDocument
+            {
+                ["state"] = TrustState.Signed,
+                ["isDirty"] = false,
+                ["latestHash"] = "hash-before-save",
+                ["latestProof"] = new BsonDocument { ["proofValue"] = "signature-before-save" },
+                ["latestRevisionId"] = "revision-001",
+                ["lastSignedAt"] = "2026-05-06T00:00:00.000Z"
+            }
+        };
+
+        new PassportPublishPolicyService().InvalidateValidationClaimForDraftSave(passport);
+
+        Assert.False(passport["validation"]["isValid"].ToBoolean());
+        Assert.True(passport["validation"]["signedAt"].IsBsonNull);
+        Assert.Equal(string.Empty, passport["validation"]["hash"].AsString);
+        Assert.Equal(string.Empty, passport["validation"]["signature"].AsString);
+        Assert.Empty(passport["validation"]["proof"].AsBsonDocument);
+        Assert.Equal(TrustState.Signed, passport["trust"]["state"].AsString);
+        Assert.Equal("hash-before-save", passport["trust"]["latestHash"].AsString);
+        Assert.Equal("signature-before-save", passport["trust"]["latestProof"]["proofValue"].AsString);
+        Assert.Equal("revision-001", passport["trust"]["latestRevisionId"].AsString);
+        Assert.Equal("2026-05-06T00:00:00.000Z", passport["trust"]["lastSignedAt"].AsString);
+    }
+
     private static TrustValidationSummary SummaryWith(TrustValidationSeverity severity)
     {
         return new TrustValidationSummary

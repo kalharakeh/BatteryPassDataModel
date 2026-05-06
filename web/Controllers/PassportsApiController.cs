@@ -15,15 +15,21 @@ public class PassportsApiController : ControllerBase
     private readonly PassportRepository _passportRepository;
     private readonly PassportValidationService _passportValidationService;
     private readonly PassportPublishPolicyService _passportPublishPolicyService;
+    private readonly PassportTrustService _passportTrustService;
+    private readonly AuditRevisionService _auditRevisionService;
 
     public PassportsApiController(
         PassportRepository passportRepository,
         PassportValidationService passportValidationService,
-        PassportPublishPolicyService passportPublishPolicyService)
+        PassportPublishPolicyService passportPublishPolicyService,
+        PassportTrustService passportTrustService,
+        AuditRevisionService auditRevisionService)
     {
         _passportRepository = passportRepository;
         _passportValidationService = passportValidationService;
         _passportPublishPolicyService = passportPublishPolicyService;
+        _passportTrustService = passportTrustService;
+        _auditRevisionService = auditRevisionService;
     }
 
     [HttpGet]
@@ -156,6 +162,182 @@ public class PassportsApiController : ControllerBase
         });
     }
 
+    [HttpPost("{passportId}/sign")]
+    public async Task<IActionResult> Sign(string passportId, CancellationToken cancellationToken)
+    {
+        if (!User.IsInRole("admin"))
+        {
+            return Forbid();
+        }
+
+        var passport = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
+        if (passport == null)
+        {
+            return NotFound(new { error = "Passport does not exist", passportId });
+        }
+
+        var summary = _passportValidationService.Validate(passport);
+        if (!_passportPublishPolicyService.CanSign(summary))
+        {
+            await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
+            return BadRequest(new
+            {
+                error = "Resolve blocking validation errors before signing.",
+                passportId,
+                blockingErrors = summary.BlockingErrorCount,
+                warnings = summary.WarningCount,
+                sections = summary.Sections
+            });
+        }
+
+        var actor = CurrentActor();
+        var signature = _passportTrustService.Sign(passport, actor);
+        var revision = await _auditRevisionService.CreateSignedRevisionAsync(
+            passportId,
+            signature.Snapshot,
+            signature.Hash,
+            signature.Proof,
+            actor,
+            signature.SignedAt,
+            cancellationToken);
+        var revisionId = BsonHelpers.GetString(revision, "revisionId");
+
+        await _passportRepository.UpdateTrustSignatureAsync(
+            passportId,
+            summary,
+            signature.Hash,
+            signature.Proof,
+            revisionId,
+            signature.SignedAt,
+            cancellationToken);
+        await _auditRevisionService.AppendAuditEventAsync(
+            passportId,
+            "passport.signed",
+            actor,
+            "admin",
+            "api",
+            "Passport signed through API.",
+            new BsonDocument
+            {
+                ["revisionId"] = revisionId,
+                ["hash"] = $"sha256:{signature.Hash}"
+            },
+            cancellationToken);
+
+        return Ok(new
+        {
+            passportId,
+            signed = true,
+            revisionId,
+            hash = signature.Hash,
+            signedAt = signature.SignedAt,
+            proof = BsonHelpers.ToDotNet(signature.Proof),
+            verification = _passportTrustService.Verify(passport, signature.Hash, signature.Proof)
+        });
+    }
+
+    [HttpPost("{passportId}/publish")]
+    public async Task<IActionResult> Publish(string passportId, CancellationToken cancellationToken)
+    {
+        if (!User.IsInRole("admin"))
+        {
+            return Forbid();
+        }
+
+        var passport = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
+        if (passport == null)
+        {
+            return NotFound(new { error = "Passport does not exist", passportId });
+        }
+
+        var summary = _passportValidationService.Validate(passport);
+        if (!_passportPublishPolicyService.CanSign(summary))
+        {
+            await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
+            return BadRequest(new
+            {
+                error = "Resolve blocking validation errors before publishing.",
+                passportId,
+                blockingErrors = summary.BlockingErrorCount,
+                warnings = summary.WarningCount,
+                sections = summary.Sections
+            });
+        }
+
+        var verification = _passportTrustService.Verify(passport);
+        if (!verification.IsValid)
+        {
+            await _auditRevisionService.AppendAuditEventAsync(
+                passportId,
+                "passport.publish.blocked",
+                CurrentActor(),
+                "admin",
+                "api",
+                "Passport publishing blocked by signature verification.",
+                new BsonDocument
+                {
+                    ["state"] = verification.State,
+                    ["message"] = verification.Message,
+                    ["currentHash"] = verification.CurrentHash,
+                    ["expectedHash"] = verification.ExpectedHash
+                },
+                cancellationToken);
+            return BadRequest(new { error = verification.Message, verification });
+        }
+
+        var revisionId = BsonHelpers.GetString(passport, "trust", "latestRevisionId");
+        if (string.IsNullOrWhiteSpace(revisionId))
+        {
+            return BadRequest(new { error = "Publish requires a signed revision.", passportId });
+        }
+
+        var publishedAt = DateTimeOffset.UtcNow.ToString("O");
+        await _passportRepository.PublishPassportAsync(passportId, revisionId, publishedAt, cancellationToken);
+        await _auditRevisionService.MarkRevisionPublishedAsync(revisionId, publishedAt, cancellationToken);
+        await _auditRevisionService.AppendAuditEventAsync(
+            passportId,
+            "passport.published",
+            CurrentActor(),
+            "admin",
+            "api",
+            "Passport published through API.",
+            new BsonDocument
+            {
+                ["revisionId"] = revisionId,
+                ["hash"] = verification.CurrentHash,
+                ["publishedAt"] = publishedAt
+            },
+            cancellationToken);
+
+        return Ok(new
+        {
+            passportId,
+            published = true,
+            revisionId,
+            publishedAt,
+            verification
+        });
+    }
+
+    [AllowAnonymous]
+    [HttpGet("{passportId}/verify")]
+    public async Task<IActionResult> Verify(string passportId, CancellationToken cancellationToken)
+    {
+        var passport = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
+        if (passport == null)
+        {
+            return NotFound(new { error = "Passport does not exist", passportId });
+        }
+
+        var verification = _passportTrustService.Verify(passport);
+        return Ok(new
+        {
+            passportId,
+            verification,
+            trust = BsonHelpers.ToDotNet(passport.GetValue("trust", new BsonDocument()))
+        });
+    }
+
     [HttpDelete("{passportId}")]
     public async Task<IActionResult> Archive(string passportId, CancellationToken cancellationToken)
     {
@@ -210,6 +392,12 @@ public class PassportsApiController : ControllerBase
     private static string NormalizeDraftRegistryStatus(string requestedStatus)
     {
         return requestedStatus.Equals("archived", StringComparison.OrdinalIgnoreCase) ? "archived" : "draft";
+    }
+
+    private string CurrentActor()
+    {
+        var actor = AccessControlService.CurrentEmail(User);
+        return string.IsNullOrWhiteSpace(actor) ? "api-admin" : actor;
     }
 
     private static BsonDocument EnsureDocument(BsonDocument parent, string key)

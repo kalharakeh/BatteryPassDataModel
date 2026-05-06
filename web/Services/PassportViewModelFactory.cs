@@ -1,3 +1,4 @@
+using BatteryPassWeb.Models.Trust;
 using BatteryPassWeb.Models.ViewModels;
 using MongoDB.Bson;
 
@@ -7,7 +8,10 @@ public sealed class PassportViewModelFactory
 {
     private const string DefaultImage = "/images/compact7.png";
 
-    public PassportViewModel Create(BsonDocument document, IReadOnlyDictionary<string, string>? clusterNamesById = null)
+    public PassportViewModel Create(
+        BsonDocument document,
+        IReadOnlyDictionary<string, string>? clusterNamesById = null,
+        PassportVerificationResult? verificationResult = null)
     {
         var passportId = BsonHelpers.GetString(document, "passportId");
         var app = GetDocument(BsonHelpers.GetValue(document, "app"));
@@ -138,6 +142,29 @@ public sealed class PassportViewModelFactory
             isValid ? "signed" : "unvalidated");
         var trustBlockingErrors = NumberAt(validationSummary, "blockingErrorCount");
         var trustWarnings = NumberAt(validationSummary, "warningCount");
+        var latestProof = GetDocument(trust.GetValue("latestProof", new BsonDocument()));
+        var latestHash = NormalizeHashForDisplay(FirstNonEmpty(
+            trust.GetValue("latestHash", string.Empty).ToString() ?? string.Empty,
+            latestProof.GetValue("hash", string.Empty).ToString() ?? string.Empty));
+        var latestRevisionId = trust.GetValue("latestRevisionId", string.Empty).ToString() ?? string.Empty;
+        var lastSignedAt = FirstNonEmpty(
+            trust.GetValue("lastSignedAt", string.Empty).ToString() ?? string.Empty,
+            latestProof.GetValue("created", string.Empty).ToString() ?? string.Empty);
+        var issuer = FirstNonEmpty(
+            latestProof.GetValue("issuer", string.Empty).ToString() ?? string.Empty,
+            verificationResult?.Issuer ?? string.Empty);
+        var verificationMethod = FirstNonEmpty(
+            latestProof.GetValue("verificationMethod", string.Empty).ToString() ?? string.Empty,
+            verificationResult?.VerificationMethod ?? string.Empty);
+        var proofValue = latestProof.GetValue("proofValue", string.Empty).ToString() ?? string.Empty;
+        var proofStatus = BuildProofStatus(trustState, BoolAt(trust, "isDirty"), proofValue, verificationResult);
+        var verificationMessage = FirstNonEmpty(
+            verificationResult?.Message ?? string.Empty,
+            BoolAt(trust, "isDirty")
+                ? "Passport core has changed since the latest signature."
+                : string.IsNullOrWhiteSpace(proofValue)
+                    ? "No signature proof has been recorded yet."
+                    : "Signature proof metadata is available.");
 
         return new PassportViewModel
         {
@@ -162,6 +189,13 @@ public sealed class PassportViewModelFactory
             TrustLastValidatedAt = trust.GetValue("lastValidatedAt", string.Empty).ToString() ?? string.Empty,
             TrustBlockingErrorCount = (int)trustBlockingErrors,
             TrustWarningCount = (int)trustWarnings,
+            TrustLatestHash = latestHash,
+            TrustLatestRevisionId = latestRevisionId,
+            TrustLastSignedAt = lastSignedAt,
+            TrustIssuer = issuer,
+            TrustVerificationMethod = verificationMethod,
+            TrustProofStatus = proofStatus,
+            TrustVerificationMessage = verificationMessage,
             BatteryImageUrl = batteryImageUrl,
             BatteryImageAlt = batteryImageAlt,
             CarbonFootprint = carbonFootprint,
@@ -289,6 +323,42 @@ public sealed class PassportViewModelFactory
         }
 
         return string.Empty;
+    }
+
+    private static string BuildProofStatus(
+        string trustState,
+        bool isDirty,
+        string proofValue,
+        PassportVerificationResult? verificationResult)
+    {
+        if (verificationResult != null)
+        {
+            return verificationResult.IsValid ? "Valid signature" : verificationResult.State;
+        }
+
+        if (isDirty)
+        {
+            return "Dirty";
+        }
+
+        if (string.IsNullOrWhiteSpace(proofValue))
+        {
+            return "No proof";
+        }
+
+        return string.Equals(trustState, TrustState.Signed, StringComparison.OrdinalIgnoreCase)
+            ? "Signed"
+            : "Proof retained";
+    }
+
+    private static string NormalizeHashForDisplay(string hash)
+    {
+        if (string.IsNullOrWhiteSpace(hash))
+        {
+            return string.Empty;
+        }
+
+        return hash.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) ? hash : $"sha256:{hash}";
     }
 
     private static bool BoolAt(BsonDocument document, params string[] path)

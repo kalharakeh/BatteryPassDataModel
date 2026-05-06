@@ -12,19 +12,22 @@ public class PassportController : Controller
     private readonly PassportViewModelFactory _viewModelFactory;
     private readonly AccessControlService _accessControlService;
     private readonly BatteryTelemetryRepository _batteryTelemetryRepository;
+    private readonly PassportTrustService _passportTrustService;
 
     public PassportController(
         PassportRepository passportRepository,
         ClusterRepository clusterRepository,
         PassportViewModelFactory viewModelFactory,
         AccessControlService accessControlService,
-        BatteryTelemetryRepository batteryTelemetryRepository)
+        BatteryTelemetryRepository batteryTelemetryRepository,
+        PassportTrustService passportTrustService)
     {
         _passportRepository = passportRepository;
         _clusterRepository = clusterRepository;
         _viewModelFactory = viewModelFactory;
         _accessControlService = accessControlService;
         _batteryTelemetryRepository = batteryTelemetryRepository;
+        _passportTrustService = passportTrustService;
     }
 
     [HttpGet("{passportId}/summary")]
@@ -54,7 +57,7 @@ public class PassportController : Controller
             })
             .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
             .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
-        var passport = _viewModelFactory.Create(document, clusterNamesById);
+        var passport = _viewModelFactory.Create(document, clusterNamesById, _passportTrustService.Verify(document));
         var canOpenDetail = false;
 
         if (User.Identity?.IsAuthenticated == true)
@@ -127,7 +130,7 @@ public class PassportController : Controller
             .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
             .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
 
-        var passport = _viewModelFactory.Create(document, clusterNamesById);
+        var passport = _viewModelFactory.Create(document, clusterNamesById, _passportTrustService.Verify(document));
         var canOpen = await _accessControlService.CanOpenPassportDetailAsync(User, passport.ClusterId, cancellationToken);
         if (!canOpen)
         {

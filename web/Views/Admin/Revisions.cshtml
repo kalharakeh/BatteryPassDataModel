@@ -1,0 +1,58 @@
+@using MongoDB.Bson
+@model BatteryPassWeb.Models.ViewModels.PassportRevisionHistoryViewModel
+@{
+    ViewData["Title"] = "Passport revision history";
+    var passport = Model.Passport;
+}
+
+<main class="bp-page bp-admin-page">
+    <div class="d-flex justify-content-between flex-wrap gap-3 align-items-end">
+        <div>
+            <h1 class="mb-1">Revision history</h1>
+            <p class="bp-passport-id mb-0">@passport.PassportId</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/conformance" class="bp-secondary-button">Conformance</a>
+            <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/audit" class="bp-secondary-button">Audit trail</a>
+        </div>
+    </div>
+
+    <section class="bp-card">
+        <span class="bp-summary-title">Signed snapshots</span>
+        <p class="text-secondary mt-2">Revisions store the canonical passport core, hash, and proof that existed at signing time.</p>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Revision</th>
+                        <th>Status</th>
+                        <th>Signed</th>
+                        <th>Published</th>
+                        <th>Actor</th>
+                        <th>Hash</th>
+                        <th>Proof</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var revision in Model.Revisions)
+                    {
+                        var proof = revision.GetValue("proof", new BsonDocument()) as BsonDocument ?? new BsonDocument();
+                        <tr>
+                            <td>@BatteryPassWeb.Services.BsonHelpers.GetString(revision, "revisionNumber")</td>
+                            <td>@BatteryPassWeb.Services.BsonHelpers.GetString(revision, "status")</td>
+                            <td>@BatteryPassWeb.Services.BsonHelpers.GetString(revision, "signedAt")</td>
+                            <td>@BatteryPassWeb.Services.BsonHelpers.GetString(revision, "publishedAt")</td>
+                            <td>@BatteryPassWeb.Services.BsonHelpers.GetString(revision, "actor")</td>
+                            <td><code>@BatteryPassWeb.Services.BsonHelpers.GetString(revision, "hash")</code></td>
+                            <td><code>@BatteryPassWeb.Services.BsonHelpers.GetString(proof, "cryptosuite")</code></td>
+                        </tr>
+                    }
+                    @if (Model.Revisions.Count == 0)
+                    {
+                        <tr><td colspan="7" class="bp-table-empty">No signed revisions recorded yet.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>

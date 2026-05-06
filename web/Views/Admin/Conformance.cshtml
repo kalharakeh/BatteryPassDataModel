@@ -47,6 +47,42 @@
     </section>
 
     <section class="bp-card">
+        <div class="d-flex justify-content-between flex-wrap gap-3 align-items-start">
+            <div>
+                <span class="bp-summary-title">Trust workflow</span>
+                <h2 class="h5 mt-1 mb-2">Sign, publish, and inspect evidence</h2>
+                <p class="text-secondary mb-0">Signing records an immutable revision. Publishing requires the latest signature to verify against the current canonical passport core.</p>
+            </div>
+            <div class="bp-action-row">
+                <form method="post" action="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/sign">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="bp-primary-button" disabled="@(!Model.CanSign)">Sign passport</button>
+                </form>
+                <form method="post" action="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/publish">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="bp-secondary-button" disabled="@(!Model.CanPublish)">Publish passport</button>
+                </form>
+                <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/audit" class="bp-secondary-button">Audit trail</a>
+                <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/revisions" class="bp-secondary-button">Revision history</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="bp-card">
+        <span class="bp-summary-title">Verification diagnostics</span>
+        <div class="bp-field-grid">
+            <div><dt>Status</dt><dd>@Model.VerificationResult.State</dd></div>
+            <div><dt>Issuer</dt><dd>@(string.IsNullOrWhiteSpace(Model.VerificationResult.Issuer) ? "-" : Model.VerificationResult.Issuer)</dd></div>
+            <div><dt>Verification method</dt><dd>@(string.IsNullOrWhiteSpace(Model.VerificationResult.VerificationMethod) ? "-" : Model.VerificationResult.VerificationMethod)</dd></div>
+            <div><dt>Signed date</dt><dd>@(string.IsNullOrWhiteSpace(Model.VerificationResult.SignedAt) ? "-" : Model.VerificationResult.SignedAt)</dd></div>
+            <div><dt>Expected hash</dt><dd><code>@(string.IsNullOrWhiteSpace(Model.VerificationResult.ExpectedHash) ? "-" : Model.VerificationResult.ExpectedHash)</code></dd></div>
+            <div><dt>Current hash</dt><dd><code>@(string.IsNullOrWhiteSpace(Model.VerificationResult.CurrentHash) ? "-" : Model.VerificationResult.CurrentHash)</code></dd></div>
+            <div><dt>Dirty state</dt><dd>@(passport.TrustIsDirty ? "Dirty" : "Clean")</dd></div>
+            <div><dt>Message</dt><dd>@Model.VerificationResult.Message</dd></div>
+        </div>
+    </section>
+
+    <section class="bp-card">
         <span class="bp-summary-title">Publish gate</span>
         <h2 class="h5 mt-1 mb-2">Validation and publish policy</h2>
         <div class="bp-metric-grid">

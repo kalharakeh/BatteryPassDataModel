@@ -59,6 +59,20 @@
     </section>
 
     <section class="bp-card">
+        <span class="bp-summary-title">Public verification</span>
+        <div class="bp-field-grid">
+            <div><dt>Proof status</dt><dd>@passport.TrustProofStatus</dd></div>
+            <div><dt>Dirty state</dt><dd>@(passport.TrustIsDirty ? "Dirty" : "Clean")</dd></div>
+            <div><dt>Issuer</dt><dd>@(string.IsNullOrWhiteSpace(passport.TrustIssuer) ? "-" : passport.TrustIssuer)</dd></div>
+            <div><dt>Verification method</dt><dd>@(string.IsNullOrWhiteSpace(passport.TrustVerificationMethod) ? "-" : passport.TrustVerificationMethod)</dd></div>
+            <div><dt>Signed date</dt><dd>@(string.IsNullOrWhiteSpace(passport.TrustLastSignedAt) ? "-" : passport.TrustLastSignedAt)</dd></div>
+            <div><dt>Revision</dt><dd>@(string.IsNullOrWhiteSpace(passport.TrustLatestRevisionId) ? "-" : passport.TrustLatestRevisionId)</dd></div>
+            <div><dt>Hash</dt><dd><code>@(string.IsNullOrWhiteSpace(passport.TrustLatestHash) ? "-" : passport.TrustLatestHash)</code></dd></div>
+            <div><dt>Diagnostic</dt><dd>@passport.TrustVerificationMessage</dd></div>
+        </div>
+    </section>
+
+    <section class="bp-card">
         <ul class="nav nav-tabs bp-tabs" id="detail-tabs" role="tablist">
             <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-general" type="button" role="tab">General</button></li>
             <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-material" type="button" role="tab">Material composition</button></li>

@@ -23,6 +23,13 @@ public sealed class PassportViewModel
     public string TrustLastValidatedAt { get; init; } = string.Empty;
     public int TrustBlockingErrorCount { get; init; }
     public int TrustWarningCount { get; init; }
+    public string TrustLatestHash { get; init; } = string.Empty;
+    public string TrustLatestRevisionId { get; init; } = string.Empty;
+    public string TrustLastSignedAt { get; init; } = string.Empty;
+    public string TrustIssuer { get; init; } = string.Empty;
+    public string TrustVerificationMethod { get; init; } = string.Empty;
+    public string TrustProofStatus { get; init; } = "No proof";
+    public string TrustVerificationMessage { get; init; } = string.Empty;
     public string BatteryImageUrl { get; init; } = "/images/compact7.png";
     public string BatteryImageAlt { get; init; } = "Industrial EV battery pack";
     public double CarbonFootprint { get; init; }
