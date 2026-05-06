@@ -48,17 +48,20 @@ public class AdminController : Controller
     private readonly ClusterRepository _clusterRepository;
     private readonly PassportViewModelFactory _viewModelFactory;
     private readonly ExternalApiRepository _externalApiRepository;
+    private readonly PassportValidationService _passportValidationService;
 
     public AdminController(
         PassportRepository passportRepository,
         ClusterRepository clusterRepository,
         PassportViewModelFactory viewModelFactory,
-        ExternalApiRepository externalApiRepository)
+        ExternalApiRepository externalApiRepository,
+        PassportValidationService passportValidationService)
     {
         _passportRepository = passportRepository;
         _clusterRepository = clusterRepository;
         _viewModelFactory = viewModelFactory;
         _externalApiRepository = externalApiRepository;
+        _passportValidationService = passportValidationService;
     }
 
     [HttpGet("")]
@@ -132,6 +135,8 @@ public class AdminController : Controller
         document.Remove("_id");
 
         await _passportRepository.ReplaceAsync(passportId, document, cancellationToken);
+        var validationSummary = _passportValidationService.Validate(document);
+        await _passportRepository.UpdateTrustValidationAsync(passportId, validationSummary, cancellationToken);
         return Redirect($"/admin/passports/{Uri.EscapeDataString(passportId)}/edit?status=created");
     }
 
@@ -183,6 +188,7 @@ public class AdminController : Controller
         ApplyPassportForm(document, form, now);
 
         await _passportRepository.ReplaceAsync(passportId, document, cancellationToken);
+        await _passportRepository.MarkCanonicalDirtyAsync(passportId, "adminPassportSave", cancellationToken);
         return Redirect($"/admin/passports/{Uri.EscapeDataString(passportId)}/edit?status=saved");
     }
 

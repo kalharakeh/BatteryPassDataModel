@@ -1,3 +1,4 @@
+using BatteryPassWeb.Models.Trust;
 using BatteryPassWeb.Models.ViewModels;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -181,9 +182,76 @@ public sealed class PassportRepository
         return result.MatchedCount > 0;
     }
 
+    public async Task UpdateTrustValidationAsync(string passportId, TrustValidationSummary summary, CancellationToken cancellationToken = default)
+    {
+        var collection = GetCollection();
+        if (collection == null || string.IsNullOrWhiteSpace(passportId))
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow.ToString("O");
+        await collection.UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("passportId", passportId),
+            Builders<BsonDocument>.Update
+                .Set("trust.state", summary.State)
+                .Set("trust.isDirty", false)
+                .Set("trust.lastValidatedAt", summary.ValidatedAt)
+                .Set("trust.validationSummary", ToBsonDocument(summary))
+                .Set("registryInfo.updatedAt", now),
+            cancellationToken: cancellationToken);
+    }
+
+    public async Task MarkCanonicalDirtyAsync(string passportId, string reason = "canonicalDataChanged", CancellationToken cancellationToken = default)
+    {
+        var collection = GetCollection();
+        if (collection == null || string.IsNullOrWhiteSpace(passportId))
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow.ToString("O");
+        await collection.UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("passportId", passportId),
+            Builders<BsonDocument>.Update
+                .Set("trust.state", TrustState.Dirty)
+                .Set("trust.isDirty", true)
+                .Set("trust.dirtyAt", now)
+                .Set("trust.dirtyReason", reason)
+                .Set("registryInfo.updatedAt", now),
+            cancellationToken: cancellationToken);
+    }
+
     private IMongoCollection<BsonDocument>? GetCollection()
     {
         return _mongoContext.Database?.GetCollection<BsonDocument>("passports");
+    }
+
+    private static BsonDocument ToBsonDocument(TrustValidationSummary summary)
+    {
+        return new BsonDocument
+        {
+            ["passportId"] = summary.PassportId,
+            ["state"] = summary.State,
+            ["validatedAt"] = summary.ValidatedAt,
+            ["blockingErrorCount"] = summary.BlockingErrorCount,
+            ["warningCount"] = summary.WarningCount,
+            ["passedCount"] = summary.PassedCount,
+            ["canSign"] = summary.CanSign,
+            ["sections"] = new BsonArray(summary.Sections.Select(section => new BsonDocument
+            {
+                ["sectionKey"] = section.SectionKey,
+                ["sectionLabel"] = section.SectionLabel,
+                ["hasBlockingErrors"] = section.HasBlockingErrors,
+                ["hasWarnings"] = section.HasWarnings,
+                ["issues"] = new BsonArray(section.Issues.Select(issue => new BsonDocument
+                {
+                    ["severity"] = issue.Severity.ToString(),
+                    ["path"] = issue.Path,
+                    ["message"] = issue.Message
+                }))
+            }))
+        };
     }
 
     private static PassportSummaryViewModel ToSummary(BsonDocument document)
