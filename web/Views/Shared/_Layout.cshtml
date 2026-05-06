@@ -40,43 +40,63 @@
 </head>
 <body>
     <div class="bp-shell">
-        <header class="bp-header">
-            <div class="bp-header-inner">
-                <a class="bp-brand" href="/">
-                    <img src="~/scanialogo.png" alt="Scania logo" class="bp-brand-logo" />
-                    <span class="bp-brand-text">Scania Battery Passport Viewer</span>
+        <header class="bp-header bp-scania-header">
+            <div class="bp-header-top-row">
+                <div class="bp-header-title-group">
+                    <a class="bp-header-wordmark" href="/" aria-label="Scania">
+                        <img src="~/images/scania_wordmark_blue_rgb.svg" alt="Scania" class="bp-header-wordmark-image bp-mark-white" />
+                    </a>
+                    <span class="bp-header-divider" aria-hidden="true"></span>
+                    <span class="bp-market-label">Battery Passport</span>
+                </div>
+                <a class="bp-header-symbol-link" href="/" aria-label="Scania Battery Passport home">
+                    <img src="~/images/scania_symbol_L_rgb.svg" alt="Scania symbol" class="bp-header-symbol-logo" />
                 </a>
-                <nav class="bp-nav">
-                    @if (showAdminLink)
-                    {
-                        <a href="/admin">Admin</a>
-                    }
-                    else if (showClusterAdminLink)
-                    {
-                        <a href="/cluster-admin">Cluster admin</a>
-                    }
+            </div>
+            <div class="bp-header-nav-row">
+                <nav class="bp-nav bp-header-actions" aria-label="Main navigation">
+                    <div class="bp-header-right-group">
+                        <div class="bp-header-primary-links">
+                        @if (isAuthenticated)
+                        {
+                            <a href="/registry">Open Registry</a>
+                        }
 
-                    @if (isAuthenticated)
-                    {
-                        <a href="/registry">Open registry</a>
-                        <a href="/help">Help</a>
-                    }
+                        @if (showAdminLink)
+                        {
+                            <a href="/admin">Admin</a>
+                        }
+                        else if (showClusterAdminLink)
+                        {
+                            <a href="/cluster-admin">Cluster admin</a>
+                        }
 
-                    @if (isAuthenticated)
-                    {
-                        <div class="bp-identity">
-                            <p>@identityLabel</p>
-                            <p>@(clusterNames.Count > 0 ? string.Join(", ", clusterNames) : "No cluster")</p>
+                        @if (isAuthenticated)
+                        {
+                            <a href="/help">Help</a>
+                        }
                         </div>
-                        <form method="post" action="/login/logout" class="d-inline">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="bp-link-button">Logout</button>
-                        </form>
-                    }
-                    else
-                    {
-                        <a href="/login">Login</a>
-                    }
+                        @if (isAuthenticated)
+                        {
+                            <div class="bp-identity">
+                                <p>@identityLabel</p>
+                                <p>@(clusterNames.Count > 0 ? string.Join(", ", clusterNames) : "No cluster")</p>
+                            </div>
+                        }
+                        <div class="bp-header-account-links">
+                        @if (isAuthenticated)
+                        {
+                            <form method="post" action="/login/logout" class="bp-header-logout-form">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="bp-link-button">Logout</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <a href="/login">Login</a>
+                        }
+                        </div>
+                    </div>
                 </nav>
             </div>
         </header>
@@ -86,7 +106,53 @@
         </main>
 
         <footer class="bp-footer">
-            Internal demonstrator. Sample values are for demonstration purposes only.
+            <div class="bp-footer-extended">
+                <div class="bp-footer-columns">
+                    <section class="bp-footer-column" aria-labelledby="bp-footer-passport">
+                        <h2 id="bp-footer-passport">BATTERY PASSPORT</h2>
+                        <ul>
+                            <li><a href="/">Search passport</a></li>
+                            @if (isAuthenticated)
+                            {
+                                <li><a href="/registry">Open registry</a></li>
+                            }
+                        </ul>
+                    </section>
+                    <section class="bp-footer-column" aria-labelledby="bp-footer-tools">
+                        <h2 id="bp-footer-tools">TOOLS</h2>
+                        <ul>
+                            @if (showAdminLink)
+                            {
+                                <li><a href="/admin">Admin workspace</a></li>
+                            }
+                            else if (showClusterAdminLink)
+                            {
+                                <li><a href="/cluster-admin">Cluster workspace</a></li>
+                            }
+                            @if (isAuthenticated)
+                            {
+                                <li><a href="/help">Developer help</a></li>
+                            }
+                            @if (!isAuthenticated)
+                            {
+                                <li><a href="/login">Account access</a></li>
+                            }
+                        </ul>
+                    </section>
+                </div>
+            </div>
+            <div class="bp-footer-legal">
+                <div class="bp-footer-legal-inner">
+                    <div class="bp-footer-link-row" aria-label="Footer links">
+                        <a href="https://www.scania.com/industrial-batteries/en/home.html" target="_blank" rel="noopener">Scania Industrial Batteries</a>
+                        <a href="https://www.scania.com/se/sv/home.html" target="_blank" rel="noopener">Scania</a>
+                    </div>
+                    <p class="bp-footer-copy">Copyright Scania Industrial Batteries 2026 All rights reserved. Scania Industrial Batteries AB, SE-151 87 Stockholm, Sweden. Tel: +46-8-55 38 10 00</p>
+                    <div class="bp-footer-wordmark" aria-label="Scania">
+                        <img src="~/images/scania_wordmark_blue_rgb.svg" alt="Scania" class="bp-footer-wordmark-image bp-mark-white" />
+                    </div>
+                </div>
+            </div>
         </footer>
     </div>
 
