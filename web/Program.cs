@@ -51,6 +51,7 @@ builder.Services.AddSingleton<MongoContext>();
 builder.Services.AddSingleton<PassportRepository>();
 builder.Services.AddSingleton<ClusterRepository>();
 builder.Services.AddSingleton<PassportViewModelFactory>();
+builder.Services.AddSingleton<SchemaRegistryService>();
 builder.Services.AddSingleton<AccessControlService>();
 builder.Services.AddSingleton<AuthService>();
 builder.Services.AddSingleton<ExternalApiSecurityService>();
