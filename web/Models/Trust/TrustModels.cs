@@ -1,3 +1,5 @@
+using MongoDB.Bson;
+
 namespace BatteryPassWeb.Models.Trust;
 
 public static class TrustState
@@ -51,4 +53,25 @@ public sealed class SchemaDescriptor
     public required string RelativePath { get; init; }
     public string AbsolutePath { get; init; } = string.Empty;
     public bool Exists => !string.IsNullOrWhiteSpace(AbsolutePath) && File.Exists(AbsolutePath);
+}
+
+public sealed class PassportSignatureResult
+{
+    public BsonDocument Snapshot { get; init; } = new();
+    public string CanonicalJson { get; init; } = string.Empty;
+    public string Hash { get; init; } = string.Empty;
+    public BsonDocument Proof { get; init; } = new();
+    public string SignedAt { get; init; } = string.Empty;
+}
+
+public sealed class PassportVerificationResult
+{
+    public bool IsValid { get; init; }
+    public string State { get; init; } = TrustState.Unvalidated;
+    public string Message { get; init; } = string.Empty;
+    public string CurrentHash { get; init; } = string.Empty;
+    public string ExpectedHash { get; init; } = string.Empty;
+    public string Issuer { get; init; } = string.Empty;
+    public string VerificationMethod { get; init; } = string.Empty;
+    public string SignedAt { get; init; } = string.Empty;
 }
