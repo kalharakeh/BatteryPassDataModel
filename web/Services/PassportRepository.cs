@@ -222,6 +222,66 @@ public sealed class PassportRepository
             cancellationToken: cancellationToken);
     }
 
+    public async Task UpdateTrustSignatureAsync(
+        string passportId,
+        TrustValidationSummary summary,
+        string hash,
+        BsonDocument proof,
+        string revisionId,
+        string signedAt,
+        CancellationToken cancellationToken = default)
+    {
+        var collection = GetCollection();
+        if (collection == null || string.IsNullOrWhiteSpace(passportId))
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow.ToString("O");
+        await collection.UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("passportId", passportId),
+            Builders<BsonDocument>.Update
+                .Set("validation.isValid", summary.BlockingErrorCount == 0)
+                .Set("validation.signedAt", signedAt)
+                .Set("validation.hash", hash)
+                .Set("validation.signature", BsonHelpers.GetString(proof, "proofValue"))
+                .Set("validation.proof", proof.DeepClone())
+                .Set("trust.state", TrustState.Signed)
+                .Set("trust.isDirty", false)
+                .Set("trust.lastValidatedAt", summary.ValidatedAt)
+                .Set("trust.validationSummary", ToBsonDocument(summary))
+                .Set("trust.latestHash", hash)
+                .Set("trust.latestProof", proof.DeepClone())
+                .Set("trust.latestRevisionId", revisionId)
+                .Set("trust.lastSignedAt", signedAt)
+                .Set("registryInfo.updatedAt", now),
+            cancellationToken: cancellationToken);
+    }
+
+    public async Task PublishPassportAsync(
+        string passportId,
+        string revisionId,
+        string publishedAt,
+        CancellationToken cancellationToken = default)
+    {
+        var collection = GetCollection();
+        if (collection == null || string.IsNullOrWhiteSpace(passportId))
+        {
+            return;
+        }
+
+        var timestamp = string.IsNullOrWhiteSpace(publishedAt) ? DateTime.UtcNow.ToString("O") : publishedAt;
+        await collection.UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("passportId", passportId),
+            Builders<BsonDocument>.Update
+                .Set("registryInfo.status", "published")
+                .Set("registryInfo.publishedAt", timestamp)
+                .Set("registryInfo.updatedAt", timestamp)
+                .Set("trust.publishedRevisionId", revisionId)
+                .Set("trust.publishedAt", timestamp),
+            cancellationToken: cancellationToken);
+    }
+
     private IMongoCollection<BsonDocument>? GetCollection()
     {
         return _mongoContext.Database?.GetCollection<BsonDocument>("passports");
