@@ -364,13 +364,11 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
                 event.preventDefault();
 
                 const link = event.currentTarget;
-                const targetWindow = window.open('', '_blank');
-                if (!targetWindow) {
-                    window.location.href = link.href;
-                    return;
+                const targetWindow = window.open('', '_blank') || window;
+                if (targetWindow !== window) {
+                    targetWindow.opener = null;
                 }
 
-                targetWindow.opener = null;
                 renderJsonWindow(targetWindow, 'Readable battery paths', 'Loading readable values...');
 
                 const authorization = `Basic ${utf8ToBase64(`${sampleReadToken}:`)}`;
