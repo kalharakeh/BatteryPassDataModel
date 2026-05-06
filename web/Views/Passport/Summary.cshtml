@@ -28,9 +28,7 @@
         <div class="bp-summary-grid">
             <div>
                 <div class="bp-badge-row">
-                    <span class="bp-pill @(passport.IsValid ? "bp-pill-ok" : "bp-pill-warn")">@(passport.IsValid ? "Verified" : "Unverified")</span>
                     <span class="bp-pill bp-pill-muted">@passport.BatteryStatus</span>
-                    <span class="bp-pill bp-pill-muted">@passport.TrustState</span>
                 </div>
                 <p class="bp-passport-id">@passport.PassportId</p>
                 <h1>@passport.ModelNumber</h1>
@@ -62,20 +60,6 @@
     </section>
 
     <section class="bp-card">
-        <span class="bp-summary-title">Public verification</span>
-        <div class="bp-field-grid">
-            <div><dt>Proof status</dt><dd>@passport.TrustProofStatus</dd></div>
-            <div><dt>Dirty state</dt><dd>@(passport.TrustIsDirty ? "Dirty" : "Clean")</dd></div>
-            <div><dt>Issuer</dt><dd>@(string.IsNullOrWhiteSpace(passport.TrustIssuer) ? "-" : passport.TrustIssuer)</dd></div>
-            <div><dt>Verification method</dt><dd>@(string.IsNullOrWhiteSpace(passport.TrustVerificationMethod) ? "-" : passport.TrustVerificationMethod)</dd></div>
-            <div><dt>Signed date</dt><dd>@(string.IsNullOrWhiteSpace(passport.TrustLastSignedAt) ? "-" : passport.TrustLastSignedAt)</dd></div>
-            <div><dt>Revision</dt><dd>@(string.IsNullOrWhiteSpace(passport.TrustLatestRevisionId) ? "-" : passport.TrustLatestRevisionId)</dd></div>
-            <div><dt>Hash</dt><dd><code>@(string.IsNullOrWhiteSpace(passport.TrustLatestHash) ? "-" : passport.TrustLatestHash)</code></dd></div>
-            <div><dt>Diagnostic</dt><dd>@passport.TrustVerificationMessage</dd></div>
-        </div>
-    </section>
-
-    <section class="bp-card">
         <span class="bp-summary-title">Summary report</span>
         <div class="bp-summary-section">
             <div>
@@ -98,10 +82,7 @@
                 </div>
             </div>
             <div>
-                <div class="d-flex align-items-center flex-wrap gap-2">
-                    <h3 class="bp-subheading m-0">Recycled content share</h3>
-                    <span class="bp-pill bp-pill-alert">@(passport.Circularity.RecycledContentShareVerification.Equals("verified", StringComparison.OrdinalIgnoreCase) ? "Verified" : "Unverified")</span>
-                </div>
+                <h3 class="bp-subheading">Recycled content share</h3>
                 <div class="bp-donut-grid">
                     @foreach (var chart in passport.RecycledContentCharts)
                     {

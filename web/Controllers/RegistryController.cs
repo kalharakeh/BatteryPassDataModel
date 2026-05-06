@@ -12,15 +12,18 @@ public class RegistryController : Controller
     private readonly PassportRepository _passportRepository;
     private readonly ClusterRepository _clusterRepository;
     private readonly AccessControlService _accessControlService;
+    private readonly PassportPublishPolicyService _passportPublishPolicyService;
 
     public RegistryController(
         PassportRepository passportRepository,
         ClusterRepository clusterRepository,
-        AccessControlService accessControlService)
+        AccessControlService accessControlService,
+        PassportPublishPolicyService passportPublishPolicyService)
     {
         _passportRepository = passportRepository;
         _clusterRepository = clusterRepository;
         _accessControlService = accessControlService;
+        _passportPublishPolicyService = passportPublishPolicyService;
     }
 
     [HttpGet("")]
@@ -28,15 +31,22 @@ public class RegistryController : Controller
     {
         var query = q?.Trim() ?? string.Empty;
         var isAdmin = AccessControlService.IsAdmin(User);
-        var passports = await _passportRepository.SearchAsync(query, includeArchived: isAdmin, cancellationToken);
+        var documents = await _passportRepository.SearchDocumentsAsync(query, includeArchived: isAdmin, cancellationToken);
         if (!isAdmin)
         {
             var clusterIds = await _accessControlService.GetClusterIdsForUserAsync(User, cancellationToken);
-            passports = passports
-                .Where(passport => !string.IsNullOrWhiteSpace(passport.ClusterId)
-                                   && clusterIds.Contains(passport.ClusterId, StringComparer.OrdinalIgnoreCase))
+            documents = documents
+                .Where(_passportPublishPolicyService.IsPubliclyVisible)
+                .Where(passport =>
+                {
+                    var clusterId = BsonHelpers.GetString(passport, "clusterId");
+                    return !string.IsNullOrWhiteSpace(clusterId)
+                        && clusterIds.Contains(clusterId, StringComparer.OrdinalIgnoreCase);
+                })
                 .ToList();
         }
+
+        var passports = documents.Select(_passportRepository.ToSummaryViewModel).ToList();
 
         var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
         var clusterNameById = clusters
@@ -73,11 +83,11 @@ public class RegistryController : Controller
         }
 
         ViewData["RegistryScopeLabel"] = isAdmin
-            ? "Search and open all registered battery passports."
-            : "Search and open battery passports linked to your account.";
+            ? "Search and open all registered battery passports, including drafts and archived records."
+            : "Search and open published, verified battery passports linked to your account.";
         ViewData["RegistryEmptyLabel"] = isAdmin
             ? "No batteries are currently available in the registry."
-            : "No batteries are currently linked to your account.";
+            : "No published, verified batteries are currently linked to your account.";
         return View(passports);
     }
 }

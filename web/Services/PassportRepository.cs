@@ -83,6 +83,11 @@ public sealed class PassportRepository
         return document == null ? null : ToSummary(document);
     }
 
+    public PassportSummaryViewModel ToSummaryViewModel(BsonDocument document)
+    {
+        return ToSummary(document);
+    }
+
     public async Task ReplaceAsync(string passportId, BsonDocument document, CancellationToken cancellationToken = default)
     {
         var collection = GetCollection();

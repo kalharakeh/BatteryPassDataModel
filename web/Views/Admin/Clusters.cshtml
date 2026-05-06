@@ -20,6 +20,7 @@
         <a class="@TabClass("users")" href="/admin/clusters?tab=users">Users</a>
         <a class="@TabClass("api-tokens")" href="/admin/clusters?tab=api-tokens">API tokens</a>
         <a class="@TabClass("battery-secrets")" href="/admin/clusters?tab=battery-secrets">Battery secrets</a>
+        <a class="bp-tab" href="/admin/help">Help</a>
     </nav>
 
     @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
@@ -50,7 +51,10 @@
                         placeholder="Search by passport ID, model, serial, or manufacturer" />
                     <button type="submit">Search</button>
                 </form>
-                <a href="/admin/passports/new" class="bp-primary-button">New passport</a>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="/admin/help" class="bp-secondary-button">Help</a>
+                    <a href="/admin/passports/new" class="bp-primary-button">New passport</a>
+                </div>
             </div>
         </section>
 

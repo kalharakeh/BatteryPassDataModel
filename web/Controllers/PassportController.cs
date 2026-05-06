@@ -13,6 +13,7 @@ public class PassportController : Controller
     private readonly AccessControlService _accessControlService;
     private readonly BatteryTelemetryRepository _batteryTelemetryRepository;
     private readonly PassportTrustService _passportTrustService;
+    private readonly PassportPublishPolicyService _passportPublishPolicyService;
 
     public PassportController(
         PassportRepository passportRepository,
@@ -20,7 +21,8 @@ public class PassportController : Controller
         PassportViewModelFactory viewModelFactory,
         AccessControlService accessControlService,
         BatteryTelemetryRepository batteryTelemetryRepository,
-        PassportTrustService passportTrustService)
+        PassportTrustService passportTrustService,
+        PassportPublishPolicyService passportPublishPolicyService)
     {
         _passportRepository = passportRepository;
         _clusterRepository = clusterRepository;
@@ -28,6 +30,7 @@ public class PassportController : Controller
         _accessControlService = accessControlService;
         _batteryTelemetryRepository = batteryTelemetryRepository;
         _passportTrustService = passportTrustService;
+        _passportPublishPolicyService = passportPublishPolicyService;
     }
 
     [HttpGet("{passportId}/summary")]
@@ -44,6 +47,10 @@ public class PassportController : Controller
             return NotFound();
         }
         if (string.Equals(BsonHelpers.GetString(document, "registryInfo", "status"), "archived", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound();
+        }
+        if (!AccessControlService.IsAdmin(User) && !_passportPublishPolicyService.IsPubliclyVisible(document))
         {
             return NotFound();
         }
@@ -116,6 +123,10 @@ public class PassportController : Controller
             return NotFound();
         }
         if (string.Equals(BsonHelpers.GetString(document, "registryInfo", "status"), "archived", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound();
+        }
+        if (!AccessControlService.IsAdmin(User) && !_passportPublishPolicyService.IsPubliclyVisible(document))
         {
             return NotFound();
         }

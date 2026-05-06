@@ -51,6 +51,7 @@ public class AdminController : Controller
     private readonly ExternalApiRepository _externalApiRepository;
     private readonly PassportValidationService _passportValidationService;
     private readonly PassportPublishPolicyService _passportPublishPolicyService;
+    private readonly DemoRequiredDataCompletionService _demoRequiredDataCompletionService;
     private readonly PassportTrustService _passportTrustService;
     private readonly AuditRevisionService _auditRevisionService;
 
@@ -61,6 +62,7 @@ public class AdminController : Controller
         ExternalApiRepository externalApiRepository,
         PassportValidationService passportValidationService,
         PassportPublishPolicyService passportPublishPolicyService,
+        DemoRequiredDataCompletionService demoRequiredDataCompletionService,
         PassportTrustService passportTrustService,
         AuditRevisionService auditRevisionService)
     {
@@ -70,6 +72,7 @@ public class AdminController : Controller
         _externalApiRepository = externalApiRepository;
         _passportValidationService = passportValidationService;
         _passportPublishPolicyService = passportPublishPolicyService;
+        _demoRequiredDataCompletionService = demoRequiredDataCompletionService;
         _passportTrustService = passportTrustService;
         _auditRevisionService = auditRevisionService;
     }
@@ -78,6 +81,12 @@ public class AdminController : Controller
     public IActionResult Index()
     {
         return Redirect("/admin/clusters?tab=passports");
+    }
+
+    [HttpGet("help")]
+    public IActionResult Help()
+    {
+        return View();
     }
 
     [HttpGet("passports")]
@@ -246,6 +255,7 @@ public class AdminController : Controller
             StatusMessage = status switch
             {
                 "validated" => "Passport validation completed.",
+                "completed-data" => "Required demo data completed and validation recalculated. Sign once the page shows Can sign = Yes.",
                 "signed" => "Passport signed and immutable revision recorded.",
                 "published" => "Passport published from the latest verified revision.",
                 _ => string.Empty
@@ -267,6 +277,41 @@ public class AdminController : Controller
         var summary = _passportValidationService.Validate(document);
         await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
         return Redirect($"/admin/passports/{Uri.EscapeDataString(passportId)}/conformance?status=validated");
+    }
+
+    [HttpPost("passports/{passportId}/complete-required-data")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CompleteRequiredData(string passportId, CancellationToken cancellationToken)
+    {
+        var document = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
+        if (document == null)
+        {
+            return NotFound();
+        }
+
+        var actor = CurrentActor();
+        var completed = _demoRequiredDataCompletionService.CompleteRequiredData(document);
+        _passportPublishPolicyService.InvalidateValidationClaimForDraftSave(completed);
+        var summary = _passportValidationService.Validate(completed);
+
+        await _passportRepository.ReplaceAsync(passportId, completed, cancellationToken);
+        await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
+        await _passportRepository.MarkCanonicalDirtyAsync(passportId, "requiredDemoDataCompleted", cancellationToken);
+        await _auditRevisionService.AppendAuditEventAsync(
+            passportId,
+            "passport.requiredData.completed",
+            actor,
+            "admin",
+            "admin-ui",
+            "Required schema demo data completed.",
+            new BsonDocument
+            {
+                ["blockingErrors"] = summary.BlockingErrorCount,
+                ["warnings"] = summary.WarningCount
+            },
+            cancellationToken);
+
+        return Redirect(BuildConformanceRedirect(passportId, status: "completed-data"));
     }
 
     [HttpPost("passports/{passportId}/sign")]

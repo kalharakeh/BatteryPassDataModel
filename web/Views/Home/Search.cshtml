@@ -4,12 +4,12 @@
 }
 <main class="bp-search-page">
     <h1>Search battery passport</h1>
-    <p>Enter a full battery passport ID to open its summary report.</p>
+    <p>Enter a full published and verified battery passport ID to open its summary report.</p>
 
     @if (Model.NotFound)
     {
         <p class="bp-warning">
-            No battery passport ID was found for <span class="fw-semibold">@Model.Query</span>. Check the ID and try again.
+            No published, verified battery passport ID was found for <span class="fw-semibold">@Model.Query</span>. Check the ID or ask an admin whether the passport is still a draft.
         </p>
     }
 

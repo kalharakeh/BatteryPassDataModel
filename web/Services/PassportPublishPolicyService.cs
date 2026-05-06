@@ -40,6 +40,12 @@ public sealed class PassportPublishPolicyService
             PublishBlockReason: string.Empty);
     }
 
+    public bool IsPubliclyVisible(BsonDocument passport)
+    {
+        return string.Equals(BsonHelpers.GetString(passport, "registryInfo", "status"), "published", StringComparison.OrdinalIgnoreCase)
+            && HasCurrentValidSignature(passport);
+    }
+
     public string NormalizeRegistryStatus(string requestedStatus, BsonDocument passport, TrustValidationSummary summary)
     {
         return requestedStatus.Trim().ToLowerInvariant() switch

@@ -49,8 +49,29 @@ public sealed class ValidationPolicyLayoutTests
 
         Assert.Contains("Publish gate", markup);
         Assert.Contains("Save draft is always allowed", markup);
-        Assert.Contains("Warnings do not block signing", markup);
+        Assert.Contains("Official schema violations block signing", markup);
         Assert.Contains("Publish requires a current valid signature proof", markup);
+    }
+
+    [Fact]
+    public void PublicRoutes_ShouldExposeOnlyPublishedCleanSignedPassportsToPublicUsers()
+    {
+        var home = File.ReadAllText(RepoFile("web", "Controllers", "HomeController.cs"));
+        var registry = File.ReadAllText(RepoFile("web", "Controllers", "RegistryController.cs"));
+        var passport = File.ReadAllText(RepoFile("web", "Controllers", "PassportController.cs"));
+
+        Assert.Contains("PassportPublishPolicyService", home);
+        Assert.Contains("SearchDocumentsAsync", home);
+        Assert.Contains("IsPubliclyVisible", home);
+
+        Assert.Contains("PassportPublishPolicyService", registry);
+        Assert.Contains("SearchDocumentsAsync", registry);
+        Assert.Contains("IsPubliclyVisible", registry);
+
+        Assert.Contains("PassportPublishPolicyService", passport);
+        Assert.Contains("IsPubliclyVisible", passport);
+        Assert.Contains("AccessControlService.IsAdmin(User)", passport);
+        Assert.Contains("return NotFound();", passport);
     }
 
     private static string RepoFile(params string[] parts)

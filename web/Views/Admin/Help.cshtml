@@ -1,0 +1,256 @@
+@{
+    ViewData["Title"] = "Admin workflow help";
+}
+
+<main class="bp-page bp-admin-page bp-admin-help-page">
+    <section class="bp-card bp-admin-help-hero">
+        <div>
+            <span class="bp-summary-title">Admin workflow help</span>
+            <h1>Create, validate, sign, publish, and recover clean trust state</h1>
+            <p class="mb-0">
+                This guide shows the exact lifecycle for a Battery Pass admin: create the battery ID, fill required data,
+                validate against the schemas and business rules, sign the canonical core, publish the passport, and
+                revalidate after edits.
+            </p>
+        </div>
+        <div class="bp-admin-help-actions">
+            <a href="/admin/passports/new" class="bp-primary-button">Create battery ID</a>
+            <a href="/admin/clusters?tab=passports" class="bp-secondary-button">Open passports</a>
+        </div>
+    </section>
+
+    <section class="bp-admin-help-grid">
+        <article class="bp-card bp-admin-help-callout">
+            <span class="bp-summary-title">The target state</span>
+            <h2>How the battery needs to be</h2>
+            <p>
+                A battery passport is considered ready when it has been validated, signed, and published with the
+                current passport core still clean.
+            </p>
+            <ul>
+                <li><strong>Validated:</strong> the latest validation has zero blocking validation errors.</li>
+                <li><strong>Signed:</strong> the current canonical passport core has a signature proof.</li>
+                <li><strong>Clean:</strong> the current data still matches the latest signed hash.</li>
+                <li><strong>Published:</strong> the registry status is public and publish uses a current valid signature proof.</li>
+            </ul>
+        </article>
+
+        <article class="bp-card bp-admin-help-callout is-warning">
+            <span class="bp-summary-title">Dirty state rule</span>
+            <h2>What makes trust dirty?</h2>
+            <p>
+                Editing saved passport core data after signing makes the passport dirty because the signed hash no longer
+                represents the current content.
+            </p>
+            <p class="mb-0">
+                HTTP telemetry does not make the passport dirty because live operational requests are outside the signed
+                canonical passport core.
+            </p>
+        </article>
+
+        <article class="bp-card bp-admin-help-callout">
+            <span class="bp-summary-title">Public discovery</span>
+            <h2>What users can find</h2>
+            <p>
+                Public search, registry discovery, and direct public passport URLs expose only passports that are
+                published, signed, clean, and verifiable.
+            </p>
+            <p class="mb-0">
+                Draft, dirty, unsigned, or unpublished passports stay visible to admins so they can be completed,
+                validated, signed, and published from the admin workflow.
+            </p>
+        </article>
+    </section>
+
+    <section class="bp-card">
+        <div class="bp-admin-help-section-heading">
+            <span class="bp-summary-title">Main workflow</span>
+            <h2>Step by step</h2>
+            <p>Follow these steps in order when creating a new passport or when repairing an edited passport.</p>
+        </div>
+
+        <ol class="bp-admin-help-steps">
+            <li>
+                <div class="bp-admin-help-step-number">1</div>
+                <div>
+                    <h3>Create battery ID</h3>
+                    <p>
+                        Go to <strong>Administration -> New passport</strong>. The app proposes a Battery Pass DID such as
+                        <code>did:web:acme.battery.pass:&lt;unique-id&gt;</code>. Keep that format unless you have a
+                        project-specific DID naming rule.
+                    </p>
+                    <p>
+                        Fill the visible identity fields first: passport ID, name, model number, serial number,
+                        manufacturer, manufacturing date, battery mass, category, and registry status.
+                    </p>
+                    <p class="mb-0">
+                        Save the draft. Save draft is always allowed for admins, even if required data is still missing.
+                    </p>
+                </div>
+            </li>
+            <li>
+                <div class="bp-admin-help-step-number">2</div>
+                <div>
+                    <h3>Fill battery information</h3>
+                    <p>
+                        Work through the admin form sections and complete the battery facts before trying to sign. The
+                        conformance page will show the exact field paths that still need attention.
+                    </p>
+                    <div class="bp-admin-help-required-grid">
+                        <div>
+                            <h4>Required data</h4>
+                            <ul>
+                                <li>General product identity and manufacturer details.</li>
+                                <li>Battery category, mass, status, manufacturing date, and facility/location details.</li>
+                                <li>Material composition and recycled-content values.</li>
+                                <li>Performance and durability values such as capacity, energy, voltage, and lifetime metrics.</li>
+                                <li>Carbon footprint values, lifecycle stages, and study reference data.</li>
+                                <li>Labels, certificates, declarations, circularity, and due-diligence report references where the schema requires them.</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4>Optional data</h4>
+                            <ul>
+                                <li>Battery image choice and descriptive display text.</li>
+                                <li>Cluster assignment, unless your access-control scenario requires it.</li>
+                                <li>Supporting documents that are not required by the schema for signing.</li>
+                                <li>Live telemetry and operational HTTP request data.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <p class="mb-0">
+                        If a generated schema field is not exposed by the friendly form, use the conformance page
+                        completion checklist to identify the missing field. For demonstrator setup, the
+                        <strong>Complete required demo data</strong> action appears only while required data is still
+                        incomplete. When the data is already complete, that action is hidden.
+                    </p>
+                </div>
+            </li>
+            <li>
+                <div class="bp-admin-help-step-number">3</div>
+                <div>
+                    <h3>Validate passport</h3>
+                    <p>
+                        Open the passport conformance page and click <strong>Validate passport</strong>. Validation checks
+                        the official Battery Pass schemas and the practical business rules that the schemas do not fully
+                        express.
+                    </p>
+                    <p>
+                        If blocking errors remain, the page lists the section, data point path, and correction guidance.
+                        Fix those fields and validate again.
+                    </p>
+                    <p class="mb-0">
+                        The <strong>Sign passport</strong> action appears only after validation reports zero blocking
+                        validation errors.
+                    </p>
+                </div>
+            </li>
+            <li>
+                <div class="bp-admin-help-step-number">4</div>
+                <div>
+                    <h3>Sign passport</h3>
+                    <p>
+                        When the conformance page says <strong>Can sign: Yes</strong>, click <strong>Sign passport</strong>.
+                        The app canonicalizes the passport core, creates a hash, stores proof metadata, and records an
+                        immutable signed revision.
+                    </p>
+                    <p class="mb-0">
+                        After signing, the trust state should become clean because the current passport data matches the
+                        latest signed revision.
+                    </p>
+                </div>
+            </li>
+            <li>
+                <div class="bp-admin-help-step-number">5</div>
+                <div>
+                    <h3>Publish passport</h3>
+                    <p>
+                        Publishing requires a current valid signature proof. The <strong>Publish passport</strong> action
+                        appears only after the current passport core has been signed and verifies cleanly.
+                    </p>
+                    <p class="mb-0">
+                        Once published, the public passport summary is available and trust/conformance evidence lives in
+                        the detailed report under the <strong>Trust &amp; conformance</strong> tab.
+                    </p>
+                </div>
+            </li>
+            <li>
+                <div class="bp-admin-help-step-number">6</div>
+                <div>
+                    <h3>Edit after publishing</h3>
+                    <p>
+                        Admins can still edit a published or signed passport. After saving a core-data edit, the passport
+                        becomes dirty because the old signature was made over the previous canonical content.
+                    </p>
+                    <p class="mb-0">
+                        Do not treat the old signature as current after an edit. Use the dirty-to-clean workflow below.
+                    </p>
+                </div>
+            </li>
+            <li>
+                <div class="bp-admin-help-step-number">7</div>
+                <div>
+                    <h3>Move from dirty back to clean</h3>
+                    <p>
+                        Open conformance, validate the updated data, fix every blocking error, sign again, and publish the
+                        latest signed revision.
+                    </p>
+                    <p class="mb-0">
+                        The passport is clean again only when the current core data verifies against the newest signature
+                        proof and the publish gate is no longer blocked.
+                    </p>
+                </div>
+            </li>
+        </ol>
+    </section>
+
+    <section class="bp-card">
+        <div class="bp-admin-help-section-heading">
+            <span class="bp-summary-title">Status dictionary</span>
+            <h2>What each state means</h2>
+            <p>Use these terms when deciding whether a battery is ready for a customer or regulator to inspect.</p>
+        </div>
+
+        <div class="bp-admin-help-state-grid">
+            <article>
+                <h3>Draft</h3>
+                <p>Editable admin data. Draft can be incomplete and unsigned, but it should not be treated as trusted.</p>
+            </article>
+            <article>
+                <h3>Validated</h3>
+                <p>The latest validation completed with zero blockers. Validation alone is not a signature.</p>
+            </article>
+            <article>
+                <h3>Signed</h3>
+                <p>The canonical passport core has a hash and proof metadata stored in a signed revision.</p>
+            </article>
+            <article>
+                <h3>Clean</h3>
+                <p>The current passport core still matches the latest signed hash.</p>
+            </article>
+            <article>
+                <h3>Dirty</h3>
+                <p>The passport core changed after signing. Validate and sign again before relying on it.</p>
+            </article>
+            <article>
+                <h3>Published</h3>
+                <p>The passport is public and should have a current valid signature proof before being shown as trusted.</p>
+            </article>
+        </div>
+    </section>
+
+    <section class="bp-card bp-admin-help-checklist">
+        <div>
+            <span class="bp-summary-title">Quick checklist</span>
+            <h2>Before you say this battery is ready</h2>
+        </div>
+        <ul>
+            <li>The admin form has all visible required identity, manufacturer, material, performance, carbon, circularity, label, and due-diligence data filled.</li>
+            <li>The conformance page shows zero blocking validation errors.</li>
+            <li>The passport has been signed after the latest data change.</li>
+            <li>The trust state is Clean, not Dirty.</li>
+            <li>The publish gate says publishing is allowed.</li>
+            <li>The detailed report shows proof information in the Trust &amp; conformance tab.</li>
+        </ul>
+    </section>
+</main>

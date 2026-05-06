@@ -69,23 +69,27 @@ public sealed class SigningWorkflowLayoutTests
     }
 
     [Fact]
-    public void PublicPassportPages_ShouldRenderVerificationPanel()
+    public void PassportSummaryShouldHideTrustDataAndDetailShouldRenderTrustTab()
     {
         var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
         var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
 
-        Assert.Contains("Public verification", summary);
-        Assert.Contains("passport.TrustLatestHash", summary);
-        Assert.Contains("passport.TrustIssuer", summary);
-        Assert.Contains("passport.TrustVerificationMethod", summary);
-        Assert.Contains("passport.TrustLatestRevisionId", summary);
-        Assert.Contains("passport.TrustProofStatus", summary);
+        Assert.DoesNotContain("Public verification", summary);
+        Assert.DoesNotContain("passport.Trust", summary);
+        Assert.DoesNotContain("passport.IsValid", summary);
+        Assert.DoesNotContain("Conformance", summary);
+        Assert.DoesNotContain("Verified", summary);
+        Assert.DoesNotContain("Unverified", summary);
+        Assert.Contains("Trust & conformance", detail);
+        Assert.Contains("data-bs-target=\"#tab-trust\"", detail);
+        Assert.Contains("id=\"tab-trust\"", detail);
         Assert.Contains("Public verification", detail);
         Assert.Contains("passport.TrustLatestHash", detail);
         Assert.Contains("passport.TrustIssuer", detail);
         Assert.Contains("passport.TrustVerificationMethod", detail);
         Assert.Contains("passport.TrustLatestRevisionId", detail);
         Assert.Contains("passport.TrustProofStatus", detail);
+        Assert.Contains("passport.TrustState", detail);
     }
 
     [Fact]

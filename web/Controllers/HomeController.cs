@@ -9,10 +9,12 @@ public class HomeController : Controller
 {
     private const string SamplePassportId = "did:web:acme.battery.pass:sample-customer-north-001";
     private readonly PassportRepository _passportRepository;
+    private readonly PassportPublishPolicyService _passportPublishPolicyService;
 
-    public HomeController(PassportRepository passportRepository)
+    public HomeController(PassportRepository passportRepository, PassportPublishPolicyService passportPublishPolicyService)
     {
         _passportRepository = passportRepository;
+        _passportPublishPolicyService = passportPublishPolicyService;
     }
 
     [HttpGet("")]
@@ -31,7 +33,11 @@ public class HomeController : Controller
             return View(new SearchPageViewModel { Query = string.Empty });
         }
 
-        var matches = await _passportRepository.SearchAsync(query, includeArchived: false, cancellationToken);
+        var documents = await _passportRepository.SearchDocumentsAsync(query, includeArchived: false, cancellationToken);
+        var matches = documents
+            .Where(_passportPublishPolicyService.IsPubliclyVisible)
+            .Select(_passportRepository.ToSummaryViewModel)
+            .ToList();
         var exactMatch = matches.FirstOrDefault(match => string.Equals(match.PassportId, query, StringComparison.OrdinalIgnoreCase));
         if (exactMatch != null)
         {

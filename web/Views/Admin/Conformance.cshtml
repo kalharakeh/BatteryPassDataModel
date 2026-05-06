@@ -1,128 +1,429 @@
+@using BatteryPassWeb.Models.Trust
 @model BatteryPassWeb.Models.ViewModels.ConformanceViewModel
 @{
     ViewData["Title"] = "Passport conformance";
     var passport = Model.Passport;
     var summary = Model.ValidationSummary;
+    var blockingIssues = summary.Sections
+        .SelectMany(section => section.Issues.Select(issue => new { Section = section, Issue = issue }))
+        .Where(row => row.Issue.Severity == TrustValidationSeverity.BlockingError)
+        .ToList();
+    var blockingSections = summary.Sections
+        .Select(section => new
+        {
+            Section = section,
+            Issues = section.Issues
+                .Where(issue => issue.Severity == TrustValidationSeverity.BlockingError)
+                .ToList()
+        })
+        .Where(row => row.Issues.Count > 0)
+        .ToList();
+    var warningIssues = summary.Sections
+        .SelectMany(section => section.Issues.Select(issue => new { Section = section, Issue = issue }))
+        .Where(row => row.Issue.Severity == TrustValidationSeverity.Warning)
+        .ToList();
+    var isPublished = string.Equals(passport.RegistryStatus, "published", StringComparison.OrdinalIgnoreCase);
+    var showCompleteRequiredData = !Model.CanSign;
+    var showSignPassport = Model.CanSign && !Model.CanPublish;
+    var showPublishPassport = Model.CanPublish && !isPublished;
+    var showWorkflowComplete = Model.CanPublish && isPublished;
+    var nextActionTitle = showCompleteRequiredData
+        ? "Complete required data"
+        : showSignPassport
+            ? "Sign current passport"
+            : showPublishPassport
+                ? "Publish trusted passport"
+                : showWorkflowComplete
+                    ? "Published and trusted"
+                    : "Validate passport";
+    var nextActionText = showCompleteRequiredData
+        ? "Fix the listed blockers manually or use demo completion, then validate again."
+        : showSignPassport
+            ? "The data is complete. Sign the current canonical core to create a verifiable revision."
+            : showPublishPassport
+                ? "A current valid signature proof exists. Publish this revision to make it publicly discoverable."
+                : showWorkflowComplete
+                    ? "This passport is publicly released with a current valid signature proof."
+                    : "Run validation to refresh the readiness state.";
 }
 
 <main class="bp-page bp-admin-page">
-    <div class="d-flex justify-content-between flex-wrap gap-3 align-items-end">
-        <div>
-            <h1 class="mb-1">Conformance</h1>
-            <p class="bp-passport-id mb-0">@passport.PassportId</p>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
-            <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/edit" class="bp-secondary-button">Edit passport</a>
-            <a href="/@Uri.EscapeDataString(passport.PassportId)/summary" class="bp-secondary-button">Public summary</a>
-        </div>
-    </div>
-
-    @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
-    {
-        <div class="alert alert-success mt-3 mb-0">@Model.StatusMessage</div>
-    }
-    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
-    {
-        <div class="alert alert-danger mt-3 mb-0">@Model.ErrorMessage</div>
-    }
-
-    <section class="bp-card mt-4">
-        <div class="d-flex justify-content-between flex-wrap gap-3 align-items-start">
+    <section class="bp-card bp-conformance-shell">
+        <div class="bp-conformance-hero">
             <div>
-                <span class="bp-summary-title">Latest validation</span>
-                <h2 class="h4 mb-1">@summary.State</h2>
-                <p class="text-secondary mb-0">@(string.IsNullOrWhiteSpace(summary.ValidatedAt) ? "Not persisted yet" : summary.ValidatedAt)</p>
+                <span class="bp-summary-title">Conformance control</span>
+                <h1>Passport readiness</h1>
+                <p class="bp-passport-id">@passport.PassportId</p>
+                <p class="bp-help-text mb-0">Full official schema data is required before signing. HTTP telemetry and operational request data stay outside the signed core.</p>
             </div>
-            <form method="post" action="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/validate">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="bp-primary-button">Validate passport</button>
-            </form>
-        </div>
-        <div class="bp-metric-grid mt-3">
-            <div class="bp-metric"><p>Blocking errors</p><strong>@summary.BlockingErrorCount</strong></div>
-            <div class="bp-metric"><p>Warnings</p><strong>@summary.WarningCount</strong></div>
-            <div class="bp-metric"><p>Passed checks</p><strong>@summary.PassedCount</strong></div>
-            <div class="bp-metric"><p>Can sign</p><strong>@(summary.CanSign ? "Yes" : "No")</strong></div>
-        </div>
-    </section>
-
-    <section class="bp-card">
-        <div class="d-flex justify-content-between flex-wrap gap-3 align-items-start">
-            <div>
-                <span class="bp-summary-title">Trust workflow</span>
-                <h2 class="h5 mt-1 mb-2">Sign, publish, and inspect evidence</h2>
-                <p class="text-secondary mb-0">Signing records an immutable revision. Publishing requires the latest signature to verify against the current canonical passport core.</p>
-            </div>
-            <div class="bp-action-row">
-                <form method="post" action="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/sign">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="bp-primary-button" disabled="@(!Model.CanSign)">Sign passport</button>
-                </form>
-                <form method="post" action="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/publish">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="bp-secondary-button" disabled="@(!Model.CanPublish)">Publish passport</button>
-                </form>
+            <div class="bp-conformance-actions">
+                <a href="/admin/help" class="bp-secondary-button">Admin help</a>
+                <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/edit" class="bp-secondary-button">Edit passport</a>
+                <a href="/@Uri.EscapeDataString(passport.PassportId)/summary" class="bp-secondary-button">Preview summary</a>
                 <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/audit" class="bp-secondary-button">Audit trail</a>
                 <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/revisions" class="bp-secondary-button">Revision history</a>
             </div>
         </div>
-    </section>
 
-    <section class="bp-card">
-        <span class="bp-summary-title">Verification diagnostics</span>
-        <div class="bp-field-grid">
-            <div><dt>Status</dt><dd>@Model.VerificationResult.State</dd></div>
-            <div><dt>Issuer</dt><dd>@(string.IsNullOrWhiteSpace(Model.VerificationResult.Issuer) ? "-" : Model.VerificationResult.Issuer)</dd></div>
-            <div><dt>Verification method</dt><dd>@(string.IsNullOrWhiteSpace(Model.VerificationResult.VerificationMethod) ? "-" : Model.VerificationResult.VerificationMethod)</dd></div>
-            <div><dt>Signed date</dt><dd>@(string.IsNullOrWhiteSpace(Model.VerificationResult.SignedAt) ? "-" : Model.VerificationResult.SignedAt)</dd></div>
-            <div><dt>Expected hash</dt><dd><code>@(string.IsNullOrWhiteSpace(Model.VerificationResult.ExpectedHash) ? "-" : Model.VerificationResult.ExpectedHash)</code></dd></div>
-            <div><dt>Current hash</dt><dd><code>@(string.IsNullOrWhiteSpace(Model.VerificationResult.CurrentHash) ? "-" : Model.VerificationResult.CurrentHash)</code></dd></div>
-            <div><dt>Dirty state</dt><dd>@(passport.TrustIsDirty ? "Dirty" : "Clean")</dd></div>
-            <div><dt>Message</dt><dd>@Model.VerificationResult.Message</dd></div>
-        </div>
-    </section>
-
-    <section class="bp-card">
-        <span class="bp-summary-title">Publish gate</span>
-        <h2 class="h5 mt-1 mb-2">Validation and publish policy</h2>
-        <div class="bp-metric-grid">
-            <div class="bp-metric"><p>Save draft</p><strong>Always allowed</strong></div>
-            <div class="bp-metric"><p>Warnings</p><strong>Do not block signing</strong></div>
-            <div class="bp-metric"><p>Can sign</p><strong>@(Model.CanSign ? "Yes" : "No")</strong></div>
-            <div class="bp-metric"><p>Can publish</p><strong>@(Model.CanPublish ? "Yes" : "No")</strong></div>
-        </div>
-        <p class="text-secondary mt-3 mb-0">Save draft is always allowed for admins. Warnings do not block signing. Publish requires a current valid signature proof.</p>
-        @if (!Model.CanPublish && !string.IsNullOrWhiteSpace(Model.PublishBlockReason))
+        @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
         {
-            <p class="alert alert-warning mt-3 mb-0">@Model.PublishBlockReason</p>
+            <div class="alert alert-success mt-3 mb-0">@Model.StatusMessage</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+        {
+            <div class="alert alert-danger mt-3 mb-0">@Model.ErrorMessage</div>
+        }
+
+        <div class="bp-readiness-strip">
+            <div class="bp-readiness-card @(summary.BlockingErrorCount == 0 ? "is-ready" : "is-blocked")">
+                <p>Blocking errors</p>
+                <strong>@summary.BlockingErrorCount</strong>
+                <span>@(summary.BlockingErrorCount == 0 ? "Schema and business blockers are clear." : "Fix these before signing.")</span>
+            </div>
+            <div class="bp-readiness-card">
+                <p>Warnings</p>
+                <strong>@summary.WarningCount</strong>
+                <span>Operational warnings are shown, but official schema violations block signing.</span>
+            </div>
+            <div class="bp-readiness-card @(Model.CanSign ? "is-ready" : "is-blocked")">
+                <p>Can sign</p>
+                <strong>@(Model.CanSign ? "Yes" : "No")</strong>
+                <span>@(Model.CanSign ? "Ready for cryptographic proof." : "Complete required fields first.")</span>
+            </div>
+            <div class="bp-readiness-card @(Model.CanPublish ? "is-ready" : "is-muted")">
+                <p>Latest validation</p>
+                <strong>@summary.State</strong>
+                <span>@(string.IsNullOrWhiteSpace(summary.ValidatedAt) ? "Not validated yet." : summary.ValidatedAt)</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="bp-conformance-main-grid">
+        <div class="bp-card bp-conformance-panel bp-focus-panel">
+            <div class="bp-panel-heading">
+                <span class="bp-summary-title">What is stopping signing?</span>
+                <span class="bp-count-pill">@summary.BlockingErrorCount</span>
+            </div>
+            <h2>Full-data requirements</h2>
+            @if (blockingIssues.Count == 0)
+            {
+                <p class="bp-empty-state">No blocking errors. This passport can be signed.</p>
+            }
+            else
+            {
+                <ol class="bp-issue-list">
+                    @foreach (var row in blockingIssues.Take(8))
+                    {
+                        <li>
+                            <strong>@row.Section.SectionLabel</strong>
+                            <code>@row.Issue.Path</code>
+                            <span>@row.Issue.Message</span>
+                        </li>
+                    }
+                </ol>
+                @if (blockingIssues.Count > 8)
+                {
+                    <p class="bp-help-text mb-0">Showing the first 8 blockers. Full section details are below.</p>
+                }
+            }
+        </div>
+
+        <div class="bp-card bp-conformance-panel">
+            <div class="bp-panel-heading">
+                <span class="bp-summary-title">Publish gate</span>
+                <span class="bp-count-pill @(Model.CanPublish ? "is-ready" : "is-muted")">@(Model.CanPublish ? "Ready" : "Locked")</span>
+            </div>
+            <h2>Validation and publish policy</h2>
+            <dl class="bp-policy-list">
+                <div><dt>Save draft</dt><dd>Save draft is always allowed for admins.</dd></div>
+                <div><dt>Schema</dt><dd>Official schema violations block signing.</dd></div>
+                <div><dt>Signing</dt><dd>Signing requires zero blocking errors.</dd></div>
+                <div><dt>Publishing</dt><dd>Publish requires a current valid signature proof.</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="bp-card bp-conformance-panel bp-workflow-panel">
+        <div class="bp-workflow-row">
+            <div>
+                <span class="bp-summary-title">Trust workflow</span>
+                <h2>Validate, complete, sign, publish</h2>
+                <p class="text-secondary mb-0">Only the next available action is shown. Public discovery starts only after the passport is published, signed, clean, and verifiable.</p>
+            </div>
+            <div class="bp-next-step-card">
+                <span>Next action</span>
+                <strong>@nextActionTitle</strong>
+                <p>@nextActionText</p>
+            </div>
+        </div>
+        <div class="bp-action-row bp-action-row-primary">
+            <div class="bp-action-control">
+                <form method="post" action="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/validate">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="bp-secondary-button">Validate passport</button>
+                </form>
+            </div>
+            @if (showCompleteRequiredData)
+            {
+                <div class="bp-action-control">
+                    <form method="post" action="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/complete-required-data">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="bp-secondary-button bp-button-accent">Complete required demo data</button>
+                    </form>
+                </div>
+            }
+            @if (showSignPassport)
+            {
+                <div class="bp-action-control">
+                    <form method="post" action="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/sign">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="bp-primary-button">Sign passport</button>
+                    </form>
+                </div>
+            }
+            @if (showPublishPassport)
+            {
+                <div class="bp-action-control">
+                    <form method="post" action="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/publish">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="bp-primary-button">Publish passport</button>
+                    </form>
+                </div>
+            }
+        </div>
+    </section>
+
+    <section class="bp-card bp-conformance-panel bp-completion-checklist">
+        <div class="bp-panel-heading">
+            <span class="bp-summary-title">Completion checklist</span>
+            <span class="bp-count-pill">@summary.BlockingErrorCount</span>
+        </div>
+        <h2>Required data by section</h2>
+        <p class="bp-help-text mb-0">Use this list to see exactly what data must be filled or corrected before the battery is considered complete and can be signed.</p>
+
+        @if (blockingSections.Count == 0)
+        {
+            <p class="bp-empty-state">Every required section is complete. The passport can move to signing.</p>
+        }
+        else
+        {
+            <div class="bp-completion-sections">
+                @foreach (var row in blockingSections)
+                {
+                    <article class="bp-completion-section">
+                        <div class="bp-completion-section-header">
+                            <div>
+                                <span>Section</span>
+                                <strong>@row.Section.SectionLabel</strong>
+                            </div>
+                            <span class="bp-count-pill">@row.Issues.Count</span>
+                        </div>
+                        <div class="bp-completion-items">
+                            @foreach (var issue in row.Issues)
+                            {
+                                <div class="bp-completion-item">
+                                    <div class="bp-completion-kind">@CompletionCategory(issue)</div>
+                                    <dl>
+                                        <div>
+                                            <dt>Data point</dt>
+                                            <dd><code>@FriendlyDataPoint(issue.Path)</code></dd>
+                                        </div>
+                                        <div>
+                                            <dt>What to do</dt>
+                                            <dd>@CompletionGuidance(issue)</dd>
+                                        </div>
+                                        <div>
+                                            <dt>Validation message</dt>
+                                            <dd>@issue.Message</dd>
+                                        </div>
+                                    </dl>
+                                </div>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
         }
     </section>
 
-    @foreach (var sectionResult in summary.Sections)
-    {
-        <section class="bp-card">
-            <h2 class="h5 mb-2">@sectionResult.SectionLabel</h2>
-            <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>Severity</th>
-                            <th>Path</th>
-                            <th>Message</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var issue in sectionResult.Issues)
-                        {
-                            <tr>
-                                <td>@issue.Severity</td>
-                                <td><code>@issue.Path</code></td>
-                                <td>@issue.Message</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+    <section class="bp-evidence-grid">
+        <div class="bp-card bp-conformance-panel">
+            <div class="bp-panel-heading">
+                <span class="bp-summary-title">Non-blocking warnings</span>
+                <span class="bp-count-pill is-warning">@summary.WarningCount</span>
             </div>
-        </section>
-    }
+            @if (warningIssues.Count == 0)
+            {
+                <p class="bp-empty-state">No warnings were reported.</p>
+            }
+            else
+            {
+                <ol class="bp-issue-list is-warning">
+                    @foreach (var row in warningIssues.Take(6))
+                    {
+                        <li>
+                            <strong>@row.Section.SectionLabel</strong>
+                            <code>@row.Issue.Path</code>
+                            <span>@row.Issue.Message</span>
+                        </li>
+                    }
+                </ol>
+            }
+        </div>
+
+        <div class="bp-card bp-conformance-panel">
+            <div class="bp-panel-heading">
+                <span class="bp-summary-title">Verification diagnostics</span>
+                <span class="bp-count-pill @(Model.VerificationResult.IsValid ? "is-ready" : "is-muted")">@Model.VerificationResult.State</span>
+            </div>
+            <dl class="bp-diagnostics-list">
+                <div><dt>Issuer</dt><dd>@(string.IsNullOrWhiteSpace(Model.VerificationResult.Issuer) ? "-" : Model.VerificationResult.Issuer)</dd></div>
+                <div><dt>Signed date</dt><dd>@(string.IsNullOrWhiteSpace(Model.VerificationResult.SignedAt) ? "-" : Model.VerificationResult.SignedAt)</dd></div>
+                <div><dt>Dirty state</dt><dd>@(passport.TrustIsDirty ? "Dirty" : "Clean")</dd></div>
+                <div><dt>Message</dt><dd>@Model.VerificationResult.Message</dd></div>
+                <div><dt>Expected hash</dt><dd><code>@(string.IsNullOrWhiteSpace(Model.VerificationResult.ExpectedHash) ? "-" : Model.VerificationResult.ExpectedHash)</code></dd></div>
+                <div><dt>Current hash</dt><dd><code>@(string.IsNullOrWhiteSpace(Model.VerificationResult.CurrentHash) ? "-" : Model.VerificationResult.CurrentHash)</code></dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="bp-card bp-conformance-panel bp-validation-drawer">
+        <div class="bp-panel-heading">
+            <span class="bp-summary-title">Detailed validation</span>
+            <span class="bp-count-pill is-muted">@summary.Sections.Count sections</span>
+        </div>
+        <div class="bp-validation-sections">
+            @foreach (var sectionResult in summary.Sections)
+            {
+                var sectionBlocking = sectionResult.Issues.Count(issue => issue.Severity == TrustValidationSeverity.BlockingError);
+                var sectionWarnings = sectionResult.Issues.Count(issue => issue.Severity == TrustValidationSeverity.Warning);
+                var actionableIssues = sectionResult.Issues
+                    .Where(issue => issue.Severity != TrustValidationSeverity.Passed)
+                    .ToList();
+                <details class="bp-validation-section" open="@(sectionBlocking > 0)">
+                    <summary>
+                        <strong>@sectionResult.SectionLabel</strong>
+                        <span>@sectionBlocking blockers</span>
+                        <span>@sectionWarnings warnings</span>
+                    </summary>
+                    @if (actionableIssues.Count == 0)
+                    {
+                        <p class="bp-empty-state">All checks passed for this section.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Severity</th>
+                                        <th>Path</th>
+                                        <th>Message</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var issue in actionableIssues)
+                                    {
+                                        <tr>
+                                            <td>@issue.Severity</td>
+                                            <td><code>@issue.Path</code></td>
+                                            <td>@issue.Message</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </details>
+            }
+        </div>
+    </section>
 </main>
+
+@functions {
+    private static string CompletionCategory(TrustValidationIssue issue)
+    {
+        var message = issue.Message.ToLowerInvariant();
+        if (message.Contains("required by the schema", StringComparison.Ordinal) || message.Contains(" is required.", StringComparison.Ordinal))
+        {
+            return "Missing required data";
+        }
+
+        if (message.Contains("pattern", StringComparison.Ordinal))
+        {
+            return "Invalid format";
+        }
+
+        if (message.Contains("allowed schema values", StringComparison.Ordinal) || message.Contains("schema constant", StringComparison.Ordinal))
+        {
+            return "Invalid value";
+        }
+
+        if (message.Contains("cannot be negative", StringComparison.Ordinal))
+        {
+            return "Business-rule data";
+        }
+
+        if (message.Contains("payload must be an object", StringComparison.Ordinal))
+        {
+            return "Missing section payload";
+        }
+
+        return "Blocking check";
+    }
+
+    private static string CompletionGuidance(TrustValidationIssue issue)
+    {
+        var message = issue.Message.ToLowerInvariant();
+        if (message.Contains("payload must be an object", StringComparison.Ordinal))
+        {
+            return "Create this section payload and provide its official required fields.";
+        }
+
+        if (message.Contains("required by the schema", StringComparison.Ordinal) || message.Contains(" is required.", StringComparison.Ordinal))
+        {
+            return "Fill this required Battery Pass data point in the section shown above.";
+        }
+
+        if (message.Contains("pattern", StringComparison.Ordinal))
+        {
+            return "Replace the current value with the official Battery Pass format for this data point.";
+        }
+
+        if (message.Contains("allowed schema values", StringComparison.Ordinal) || message.Contains("schema constant", StringComparison.Ordinal))
+        {
+            return "Choose one of the official Battery Pass allowed values for this field.";
+        }
+
+        if (message.Contains("cannot be negative", StringComparison.Ordinal))
+        {
+            return "Enter a non-negative measurement value.";
+        }
+
+        return "Review and correct this data point until the blocking validation message clears.";
+    }
+
+    private static string FriendlyDataPoint(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return "Section payload";
+        }
+
+        var cleaned = path;
+        const string payloadMarker = ".payload.";
+        var payloadIndex = cleaned.IndexOf(payloadMarker, StringComparison.OrdinalIgnoreCase);
+        if (payloadIndex >= 0)
+        {
+            cleaned = cleaned[(payloadIndex + payloadMarker.Length)..];
+        }
+        else if (cleaned.StartsWith("aspects.", StringComparison.OrdinalIgnoreCase))
+        {
+            cleaned = cleaned["aspects.".Length..];
+        }
+
+        return cleaned
+            .Replace(".", " / ", StringComparison.Ordinal)
+            .Replace("[", " [", StringComparison.Ordinal);
+    }
+}
