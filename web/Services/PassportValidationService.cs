@@ -6,10 +6,14 @@ namespace BatteryPassWeb.Services;
 public sealed class PassportValidationService
 {
     private readonly SchemaRegistryService _schemaRegistryService;
+    private readonly JsonSchemaValidationService _jsonSchemaValidationService;
 
-    public PassportValidationService(SchemaRegistryService schemaRegistryService)
+    public PassportValidationService(
+        SchemaRegistryService schemaRegistryService,
+        JsonSchemaValidationService jsonSchemaValidationService)
     {
         _schemaRegistryService = schemaRegistryService;
+        _jsonSchemaValidationService = jsonSchemaValidationService;
     }
 
     public TrustValidationSummary Validate(BsonDocument passport)
@@ -58,7 +62,7 @@ public sealed class PassportValidationService
         };
     }
 
-    private static TrustValidationSectionResult ValidateAspect(BsonDocument passport, SchemaDescriptor schema)
+    private TrustValidationSectionResult ValidateAspect(BsonDocument passport, SchemaDescriptor schema)
     {
         var issues = new List<TrustValidationIssue>();
         var aspect = BsonHelpers.GetValue(passport, "aspects", schema.AspectKey);
@@ -66,22 +70,23 @@ public sealed class PassportValidationService
         {
             issues.Add(new TrustValidationIssue(TrustValidationSeverity.Warning, $"aspects.{schema.AspectKey}", $"{schema.Label} aspect is not present."));
         }
-        else if (aspectDocument.GetValue("payload", BsonNull.Value) is not BsonDocument)
+        else if (aspectDocument.GetValue("payload", BsonNull.Value) is not BsonDocument payload)
         {
             issues.Add(new TrustValidationIssue(TrustValidationSeverity.BlockingError, $"aspects.{schema.AspectKey}.payload", $"{schema.Label} payload must be an object."));
         }
         else
         {
             issues.Add(new TrustValidationIssue(TrustValidationSeverity.Passed, $"aspects.{schema.AspectKey}.payload", $"{schema.Label} payload is present."));
+            issues.AddRange(_jsonSchemaValidationService.ValidatePayload(payload, schema));
         }
 
-        if (!schema.Exists)
-        {
-            issues.Add(new TrustValidationIssue(TrustValidationSeverity.Warning, schema.RelativePath, $"{schema.Label} schema file was not found."));
-        }
-        else
+        if (schema.Exists)
         {
             issues.Add(new TrustValidationIssue(TrustValidationSeverity.Passed, schema.RelativePath, $"{schema.Label} schema file was found."));
+        }
+        else if (issues.All(issue => issue.Path != schema.RelativePath))
+        {
+            issues.Add(new TrustValidationIssue(TrustValidationSeverity.Warning, schema.RelativePath, $"{schema.Label} schema file was not found."));
         }
 
         return new TrustValidationSectionResult

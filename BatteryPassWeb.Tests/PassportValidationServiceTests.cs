@@ -9,7 +9,7 @@ public sealed class PassportValidationServiceTests
     [Fact]
     public void Validate_ShouldReturnBlockingErrorsForMissingIdentityFields()
     {
-        var service = new PassportValidationService(new SchemaRegistryService());
+        var service = CreateService();
         var document = new BsonDocument
         {
             ["registryInfo"] = new BsonDocument(),
@@ -28,8 +28,8 @@ public sealed class PassportValidationServiceTests
     [Fact]
     public void Validate_ShouldAllowWarningsWithoutBlockingSigning()
     {
-        var service = new PassportValidationService(new SchemaRegistryService());
-        var document = BuildValidMinimalPassport();
+        var service = CreateService();
+        var document = BuildIdentityOnlyDraftPassport();
 
         var summary = service.Validate(document);
 
@@ -42,7 +42,7 @@ public sealed class PassportValidationServiceTests
     [Fact]
     public void Validate_ShouldRejectNegativeBatteryMass()
     {
-        var service = new PassportValidationService(new SchemaRegistryService());
+        var service = CreateService();
         var document = BuildValidMinimalPassport();
         document["aspects"]["generalProductInformation"]["payload"]["batteryMass"] = -1;
 
@@ -50,6 +50,50 @@ public sealed class PassportValidationServiceTests
 
         Assert.Equal(TrustState.Invalid, summary.State);
         Assert.Contains(summary.Sections.SelectMany(section => section.Issues), issue => issue.Path == "aspects.generalProductInformation.payload.batteryMass");
+    }
+
+    [Fact]
+    public void Validate_ShouldReturnSchemaBlockingErrorsForIncompleteOfficialAspectPayload()
+    {
+        var service = CreateService();
+        var document = BuildValidMinimalPassport();
+
+        var summary = service.Validate(document);
+
+        Assert.Equal(TrustState.Invalid, summary.State);
+        Assert.Contains(
+            summary.Sections.SelectMany(section => section.Issues),
+            issue => issue.Severity == TrustValidationSeverity.BlockingError
+                && issue.Path == "aspects.generalProductInformation.payload.productIdentifier");
+        Assert.False(summary.CanSign);
+    }
+
+    private static PassportValidationService CreateService()
+    {
+        return new PassportValidationService(new SchemaRegistryService(), new JsonSchemaValidationService());
+    }
+
+    private static BsonDocument BuildIdentityOnlyDraftPassport()
+    {
+        return new BsonDocument
+        {
+            ["passportId"] = "did:web:acme.battery.pass:test-001",
+            ["registryInfo"] = new BsonDocument
+            {
+                ["registryId"] = "registry-001",
+                ["status"] = "draft"
+            },
+            ["app"] = new BsonDocument
+            {
+                ["display"] = new BsonDocument
+                {
+                    ["modelNumber"] = "MODEL-1",
+                    ["serialNumber"] = "SERIAL-1",
+                    ["manufacturerName"] = "ACME Batteries"
+                }
+            },
+            ["aspects"] = new BsonDocument()
+        };
     }
 
     private static BsonDocument BuildValidMinimalPassport()
