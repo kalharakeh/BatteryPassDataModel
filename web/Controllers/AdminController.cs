@@ -192,6 +192,43 @@ public class AdminController : Controller
         return Redirect($"/admin/passports/{Uri.EscapeDataString(passportId)}/edit?status=saved");
     }
 
+    [HttpGet("passports/{passportId}/conformance")]
+    public async Task<IActionResult> Conformance(string passportId, [FromQuery] string? status, [FromQuery] string? error, CancellationToken cancellationToken)
+    {
+        var document = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
+        if (document == null)
+        {
+            return NotFound();
+        }
+
+        var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
+        var clusterNamesById = BuildClusterDictionary(clusters);
+        var summary = _passportValidationService.Validate(document);
+
+        return View(new ConformanceViewModel
+        {
+            Passport = _viewModelFactory.Create(document, clusterNamesById),
+            ValidationSummary = summary,
+            StatusMessage = status == "validated" ? "Passport validation completed." : string.Empty,
+            ErrorMessage = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error)
+        });
+    }
+
+    [HttpPost("passports/{passportId}/validate")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ValidatePassport(string passportId, CancellationToken cancellationToken)
+    {
+        var document = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
+        if (document == null)
+        {
+            return NotFound();
+        }
+
+        var summary = _passportValidationService.Validate(document);
+        await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
+        return Redirect($"/admin/passports/{Uri.EscapeDataString(passportId)}/conformance?status=validated");
+    }
+
     [HttpGet("clusters")]
     public async Task<IActionResult> Clusters([FromQuery] string? tab, [FromQuery] string? q, CancellationToken cancellationToken)
     {

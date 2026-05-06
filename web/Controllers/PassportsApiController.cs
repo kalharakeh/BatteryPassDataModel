@@ -13,10 +13,14 @@ namespace BatteryPassWeb.Controllers;
 public class PassportsApiController : ControllerBase
 {
     private readonly PassportRepository _passportRepository;
+    private readonly PassportValidationService _passportValidationService;
 
-    public PassportsApiController(PassportRepository passportRepository)
+    public PassportsApiController(
+        PassportRepository passportRepository,
+        PassportValidationService passportValidationService)
     {
         _passportRepository = passportRepository;
+        _passportValidationService = passportValidationService;
     }
 
     [HttpGet]
@@ -103,6 +107,34 @@ public class PassportsApiController : ControllerBase
 
         await _passportRepository.ReplaceAsync(passportId, document, cancellationToken);
         return Ok(new { passport = BsonHelpers.ToDotNet(document) });
+    }
+
+    [HttpPost("{passportId}/validate")]
+    public async Task<IActionResult> Validate(string passportId, CancellationToken cancellationToken)
+    {
+        if (!User.IsInRole("admin"))
+        {
+            return Forbid();
+        }
+
+        var passport = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
+        if (passport == null)
+        {
+            return NotFound(new { error = "Passport does not exist", passportId });
+        }
+
+        var summary = _passportValidationService.Validate(passport);
+        await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
+        return Ok(new
+        {
+            passportId,
+            state = summary.State,
+            blockingErrors = summary.BlockingErrorCount,
+            warnings = summary.WarningCount,
+            passed = summary.PassedCount,
+            canSign = summary.CanSign,
+            sections = summary.Sections
+        });
     }
 
     [HttpDelete("{passportId}")]
