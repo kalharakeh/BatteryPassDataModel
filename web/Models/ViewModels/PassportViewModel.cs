@@ -18,6 +18,11 @@ public sealed class PassportViewModel
     public string WeightLabel { get; init; } = string.Empty;
     public bool IsValid { get; init; }
     public string VerificationState { get; init; } = "unverified";
+    public string TrustState { get; init; } = "unvalidated";
+    public bool TrustIsDirty { get; init; }
+    public string TrustLastValidatedAt { get; init; } = string.Empty;
+    public int TrustBlockingErrorCount { get; init; }
+    public int TrustWarningCount { get; init; }
     public string BatteryImageUrl { get; init; } = "/images/compact7.png";
     public string BatteryImageAlt { get; init; } = "Industrial EV battery pack";
     public double CarbonFootprint { get; init; }

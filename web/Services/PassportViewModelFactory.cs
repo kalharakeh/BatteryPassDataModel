@@ -131,6 +131,13 @@ public sealed class PassportViewModelFactory
 
         var carbonFootprint = NumberAt(carbonPayload, "batteryCarbonFootprint");
         var isValid = BoolAt(document, "validation", "isValid");
+        var trust = GetDocument(document.GetValue("trust", new BsonDocument()));
+        var validationSummary = GetDocument(trust.GetValue("validationSummary", new BsonDocument()));
+        var trustState = FirstNonEmpty(
+            trust.GetValue("state", string.Empty).ToString() ?? string.Empty,
+            isValid ? "signed" : "unvalidated");
+        var trustBlockingErrors = NumberAt(validationSummary, "blockingErrorCount");
+        var trustWarnings = NumberAt(validationSummary, "warningCount");
 
         return new PassportViewModel
         {
@@ -150,6 +157,11 @@ public sealed class PassportViewModelFactory
             WeightLabel = $"{weight:F2}kg",
             IsValid = isValid,
             VerificationState = isValid ? "verified" : "unverified",
+            TrustState = trustState,
+            TrustIsDirty = BoolAt(trust, "isDirty"),
+            TrustLastValidatedAt = trust.GetValue("lastValidatedAt", string.Empty).ToString() ?? string.Empty,
+            TrustBlockingErrorCount = (int)trustBlockingErrors,
+            TrustWarningCount = (int)trustWarnings,
             BatteryImageUrl = batteryImageUrl,
             BatteryImageAlt = batteryImageAlt,
             CarbonFootprint = carbonFootprint,

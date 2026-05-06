@@ -21,6 +21,22 @@
     <h1 class="mb-1">@(isNew ? "Create passport" : "Edit passport")</h1>
     <p class="bp-passport-id">@passport.PassportId</p>
 
+    <div class="bp-card mt-3">
+        <div class="d-flex justify-content-between flex-wrap gap-3 align-items-center">
+            <div>
+                <span class="bp-summary-title">Trust state</span>
+                <p class="mb-0">
+                    <strong>@passport.TrustState</strong>
+                    @if (passport.TrustIsDirty)
+                    {
+                        <span class="bp-pill bp-pill-warn ms-2">Dirty</span>
+                    }
+                </p>
+            </div>
+            <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/conformance" class="bp-secondary-button">Open conformance</a>
+        </div>
+    </div>
+
     @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
     {
         <div class="alert alert-success mt-3 mb-0">@Model.StatusMessage</div>

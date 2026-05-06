@@ -83,6 +83,7 @@
                             <td class="px-4 py-3">
                                 <div class="d-flex gap-3">
                                     <a href="/admin/passports/@Uri.EscapeDataString(row.PassportId)/edit">Edit</a>
+                                    <a href="/admin/passports/@Uri.EscapeDataString(row.PassportId)/conformance">Conformance</a>
                                     <form method="post" action="/admin/passports/archive">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="passportId" value="@row.PassportId" />

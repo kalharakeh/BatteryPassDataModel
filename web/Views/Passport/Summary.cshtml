@@ -30,6 +30,7 @@
                 <div class="bp-badge-row">
                     <span class="bp-pill @(passport.IsValid ? "bp-pill-ok" : "bp-pill-warn")">@(passport.IsValid ? "Verified" : "Unverified")</span>
                     <span class="bp-pill bp-pill-muted">@passport.BatteryStatus</span>
+                    <span class="bp-pill bp-pill-muted">@passport.TrustState</span>
                 </div>
                 <p class="bp-passport-id">@passport.PassportId</p>
                 <h1>@passport.ModelNumber</h1>
