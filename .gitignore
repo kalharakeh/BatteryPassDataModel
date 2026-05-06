@@ -1,2 +1,19 @@
 .superpowers/
 .worktrees/
+
+# .NET build outputs
+[Bb]in/
+[Oo]bj/
+
+# Local IDE/language-server caches
+*.lscache
+
+# Local environment files and generated publish output
+.env
+.env.*
+!.env.example
+!.env.*.example
+artifacts/
+
+# Local logs
+*.log

@@ -127,7 +127,7 @@ Expected: `package-lock.json` updates and no installation errors.
 - [ ] **Step 3: Replace `web/.env.example`**
 
 ```text
-MONGODB_URI=mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/?retryWrites=true&w=majority
+MONGODB_URI=replace-with-your-mongodb-atlas-connection-string
 MONGODB_DB=battery_pass_demo
 APP_URL=http://localhost:3000
 SESSION_SECRET=replace-with-at-least-32-random-characters
