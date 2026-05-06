@@ -24,6 +24,7 @@ public sealed class PassportViewModel
     public string CarbonFootprintLabel { get; init; } = string.Empty;
     public string PerformanceClass { get; init; } = string.Empty;
     public PassportPerformanceViewModel Performance { get; init; } = new();
+    public PassportOperationsViewModel Operations { get; init; } = new();
     public PassportCircularityViewModel Circularity { get; init; } = new();
     public PassportDocumentsViewModel Documents { get; init; } = new();
     public IReadOnlyList<ChartSegmentViewModel> MaterialCompositionSegments { get; init; } = [];
@@ -56,6 +57,25 @@ public sealed class PassportPerformanceViewModel
     public double RemainingCapacity { get; init; }
     public double RemainingEnergy { get; init; }
     public double Cycles { get; init; }
+}
+
+public sealed class PassportOperationsViewModel
+{
+    public bool IsActive { get; init; } = true;
+    public string LocationSiteName { get; init; } = string.Empty;
+    public string LocationAddress { get; init; } = string.Empty;
+    public string LocationCity { get; init; } = string.Empty;
+    public string LocationCountry { get; init; } = string.Empty;
+    public double? LocationLatitude { get; init; }
+    public double? LocationLongitude { get; init; }
+    public string ContactName { get; init; } = string.Empty;
+    public string ContactEmail { get; init; } = string.Empty;
+    public string ContactPhone { get; init; } = string.Empty;
+    public double? CurrentConsumptionKwh { get; init; }
+    public double? CurrentChargeLevelPct { get; init; }
+    public double? CurrentVoltageV { get; init; }
+    public double? CurrentCurrentA { get; init; }
+    public string LatestMeasuredAt { get; init; } = string.Empty;
 }
 
 public sealed class PassportCircularityViewModel

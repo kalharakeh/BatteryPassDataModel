@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "Passport Detail";
     var passport = Model.Passport;
+    var telemetryJson = System.Text.Json.JsonSerializer.Serialize(Model.TelemetryHistory);
 
     string BuildConicGradient(IEnumerable<BatteryPassWeb.Models.ViewModels.ChartSegmentViewModel> segments)
     {
@@ -141,6 +142,45 @@
                     <div class="bp-metric"><p>Remaining energy</p><strong>@passport.Performance.RemainingEnergy.ToString("0.##") kWh</strong></div>
                     <div class="bp-metric"><p>Full cycles</p><strong>@passport.Performance.Cycles.ToString("0.##")</strong></div>
                 </div>
+                <h3 class="bp-subheading mt-4">Operational status</h3>
+                <div class="bp-metric-grid mt-2">
+                    <div class="bp-metric"><p>Active status</p><strong>@(passport.Operations.IsActive ? "Active" : "Not active")</strong></div>
+                    <div class="bp-metric"><p>Current consumption</p><strong>@(passport.Operations.CurrentConsumptionKwh?.ToString("0.##") ?? "-") kWh</strong></div>
+                    <div class="bp-metric"><p>Current charge level</p><strong>@(passport.Operations.CurrentChargeLevelPct?.ToString("0.##") ?? "-") %</strong></div>
+                    <div class="bp-metric"><p>Current voltage</p><strong>@(passport.Operations.CurrentVoltageV?.ToString("0.##") ?? "-") V</strong></div>
+                    <div class="bp-metric"><p>Current current</p><strong>@(passport.Operations.CurrentCurrentA?.ToString("0.##") ?? "-") A</strong></div>
+                    <div class="bp-metric"><p>Last telemetry timestamp</p><strong>@(string.IsNullOrWhiteSpace(passport.Operations.LatestMeasuredAt) ? "-" : passport.Operations.LatestMeasuredAt)</strong></div>
+                    <div class="bp-metric"><p>Location of use</p><strong>@passport.Operations.LocationSiteName</strong></div>
+                    <div class="bp-metric"><p>Contact person</p><strong>@passport.Operations.ContactName</strong></div>
+                </div>
+                <div class="bp-field-grid mt-2">
+                    <div><dt>Address</dt><dd>@passport.Operations.LocationAddress</dd></div>
+                    <div><dt>City</dt><dd>@passport.Operations.LocationCity</dd></div>
+                    <div><dt>Country</dt><dd>@passport.Operations.LocationCountry</dd></div>
+                    <div><dt>Contact email</dt><dd>@passport.Operations.ContactEmail</dd></div>
+                    <div><dt>Contact phone</dt><dd>@passport.Operations.ContactPhone</dd></div>
+                </div>
+                <h3 class="bp-subheading mt-4">Telemetry history (last week)</h3>
+                <div class="bp-two-column mt-3">
+                    <div class="bp-card">
+                        <p class="bp-help-text mb-2">Current consumption (kWh)</p>
+                        <canvas id="chart-consumption"></canvas>
+                    </div>
+                    <div class="bp-card">
+                        <p class="bp-help-text mb-2">Current charge level (%)</p>
+                        <canvas id="chart-charge"></canvas>
+                    </div>
+                </div>
+                <div class="bp-two-column mt-3">
+                    <div class="bp-card">
+                        <p class="bp-help-text mb-2">Current voltage (V)</p>
+                        <canvas id="chart-voltage"></canvas>
+                    </div>
+                    <div class="bp-card">
+                        <p class="bp-help-text mb-2">Current current (A)</p>
+                        <canvas id="chart-current"></canvas>
+                    </div>
+                </div>
             </div>
 
             <div class="tab-pane fade" id="tab-compliance" role="tabpanel">
@@ -238,3 +278,42 @@
         </div>
     </section>
 </main>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script>
+        (() => {
+            const rows = @Html.Raw(telemetryJson);
+            if (!Array.isArray(rows) || rows.length === 0 || !window.Chart) {
+                return;
+            }
+
+            const labels = rows.map(row => row.MeasuredAt ? row.MeasuredAt.substring(5, 16).replace('T', ' ') : '');
+            const values = (field) => rows.map(row => row[field]);
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: false } }
+            };
+
+            const renderLine = (canvasId, label, data, color) => {
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return;
+                canvas.style.minHeight = "220px";
+                new Chart(canvas, {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [{ label, data, borderColor: color, backgroundColor: color + "33", tension: 0.25 }]
+                    },
+                    options: commonOptions
+                });
+            };
+
+            renderLine('chart-consumption', 'kWh', values('CurrentConsumptionKwh'), '#0f766e');
+            renderLine('chart-charge', '%', values('CurrentChargeLevelPct'), '#1d4ed8');
+            renderLine('chart-voltage', 'V', values('CurrentVoltageV'), '#b45309');
+            renderLine('chart-current', 'A', values('CurrentCurrentA'), '#7c3aed');
+        })();
+    </script>
+}

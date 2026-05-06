@@ -15,6 +15,7 @@ public sealed class PassportViewModelFactory
         var appDocuments = GetDocument(app.GetValue("documents", new BsonDocument()));
         var appCharts = GetDocument(app.GetValue("charts", new BsonDocument()));
         var appNotes = GetDocument(app.GetValue("notes", new BsonDocument()));
+        var appOperations = GetDocument(app.GetValue("operations", new BsonDocument()));
         var circularityNotes = GetDocument(appNotes.GetValue("circularity", new BsonDocument()));
 
         var aspects = GetDocument(BsonHelpers.GetValue(document, "aspects"));
@@ -77,6 +78,9 @@ public sealed class PassportViewModelFactory
         var materialRows = ReadMaterialRows(materialPayload);
         var technical = GetDocument(performancePayload.GetValue("batteryTechicalProperties", new BsonDocument()));
         var batteryCondition = GetDocument(performancePayload.GetValue("batteryCondition", new BsonDocument()));
+        var locationOfUse = GetDocument(appOperations.GetValue("locationOfUse", new BsonDocument()));
+        var contactPerson = GetDocument(appOperations.GetValue("contactPerson", new BsonDocument()));
+        var latestTelemetry = GetDocument(appOperations.GetValue("latestTelemetry", new BsonDocument()));
         var recycledContentShareVerification = FirstNonEmpty(
             circularityNotes.GetValue("recycledContentShareVerification", string.Empty).ToString(),
             BsonHelpers.GetString(circularityPayload, "verification", "state"),
@@ -159,6 +163,24 @@ public sealed class PassportViewModelFactory
                 RemainingCapacity = NumberAt(GetDocument(batteryCondition.GetValue("remainingCapacity", new BsonDocument())), "remainingCapacityValue"),
                 RemainingEnergy = NumberAt(GetDocument(batteryCondition.GetValue("remainingEnergy", new BsonDocument())), "remainingEnergyValue"),
                 Cycles = NumberAt(GetDocument(batteryCondition.GetValue("numberOfFullCycles", new BsonDocument())), "numberOfFullCyclesValue")
+            },
+            Operations = new PassportOperationsViewModel
+            {
+                IsActive = appOperations.GetValue("isActive", true).ToBoolean(),
+                LocationSiteName = BsonHelpers.GetString(locationOfUse, "siteName"),
+                LocationAddress = BsonHelpers.GetString(locationOfUse, "address"),
+                LocationCity = BsonHelpers.GetString(locationOfUse, "city"),
+                LocationCountry = BsonHelpers.GetString(locationOfUse, "country"),
+                LocationLatitude = NullableNumberAt(locationOfUse, "latitude"),
+                LocationLongitude = NullableNumberAt(locationOfUse, "longitude"),
+                ContactName = BsonHelpers.GetString(contactPerson, "name"),
+                ContactEmail = BsonHelpers.GetString(contactPerson, "email"),
+                ContactPhone = BsonHelpers.GetString(contactPerson, "phone"),
+                CurrentConsumptionKwh = NullableNumberAt(latestTelemetry, "currentConsumptionKwh"),
+                CurrentChargeLevelPct = NullableNumberAt(latestTelemetry, "currentChargeLevelPct"),
+                CurrentVoltageV = NullableNumberAt(latestTelemetry, "currentVoltageV"),
+                CurrentCurrentA = NullableNumberAt(latestTelemetry, "currentCurrentA"),
+                LatestMeasuredAt = BsonHelpers.GetString(latestTelemetry, "measuredAt")
             },
             Circularity = new PassportCircularityViewModel
             {
@@ -288,6 +310,22 @@ public sealed class PassportViewModelFactory
         }
 
         return double.TryParse(value.ToString(), out var parsed) ? parsed : 0;
+    }
+
+    private static double? NullableNumberAt(BsonDocument document, params string[] path)
+    {
+        var value = BsonHelpers.GetValue(document, path);
+        if (value == null || value.IsBsonNull)
+        {
+            return null;
+        }
+
+        if (value.IsNumeric)
+        {
+            return value.ToDouble();
+        }
+
+        return double.TryParse(value.ToString(), out var parsed) ? parsed : null;
     }
 
     private static string DateOnly(string value)

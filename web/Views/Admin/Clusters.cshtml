@@ -18,7 +18,25 @@
         <a class="@TabClass("battery")" href="/admin/clusters?tab=battery">Battery cluster assignments</a>
         <a class="@TabClass("clusters")" href="/admin/clusters?tab=clusters">Registered clusters</a>
         <a class="@TabClass("users")" href="/admin/clusters?tab=users">Users</a>
+        <a class="@TabClass("api-tokens")" href="/admin/clusters?tab=api-tokens">API tokens</a>
+        <a class="@TabClass("battery-secrets")" href="/admin/clusters?tab=battery-secrets">Battery secrets</a>
     </nav>
+
+    @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+    {
+        <div class="alert alert-success mt-3 mb-0">@Model.StatusMessage</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger mt-3 mb-0">@Model.ErrorMessage</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.GeneratedCredential))
+    {
+        <div class="alert alert-warning mt-3 mb-0">
+            <strong>Generated credential (store now):</strong>
+            <code>@Model.GeneratedCredential</code>
+        </div>
+    }
 
     @if (selectedTab == "passports")
     {
@@ -307,6 +325,202 @@
                         }
                     </tbody>
                 </table>
+            </section>
+        </div>
+    }
+
+    @if (selectedTab == "api-tokens")
+    {
+        <div class="bp-credential-stack mt-4">
+            <section class="bp-card bp-credential-panel">
+                <div class="bp-credential-panel-header">
+                    <h2 class="h5 mb-0">Create API token</h2>
+                    <form method="post" action="/admin/api/tokens/generate-per-cluster">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="bp-secondary-button">Generate tokens for every cluster</button>
+                    </form>
+                </div>
+                <form method="post" action="/admin/api/tokens/create" class="bp-credential-form-grid bp-token-form-grid">
+                    @Html.AntiForgeryToken()
+                    <label>
+                        Token name
+                        <input type="text" name="name" placeholder="Cluster North RW token" required />
+                    </label>
+                    <label>
+                        Access mode
+                        <select name="accessMode">
+                            <option value="read">Read</option>
+                            <option value="readWrite">Read + write</option>
+                        </select>
+                    </label>
+                    <label class="bp-token-clusters-field">
+                        Linked clusters (optional)
+                        <select name="clusterIds" multiple size="7" class="bp-token-clusters">
+                            @foreach (var cluster in Model.Clusters)
+                            {
+                                <option value="@cluster.ClusterId">@cluster.Name (@cluster.ClusterId)</option>
+                            }
+                        </select>
+                    </label>
+                    <div class="bp-checkbox-row">
+                        <label class="bp-checkbox-option">
+                            <input type="checkbox" name="allowUnassigned" />
+                            <span>Allow access to unassigned batteries</span>
+                        </label>
+                        <label class="bp-checkbox-option">
+                            <input type="checkbox" name="globalAccess" />
+                            <span>Global access to all clusters and unassigned batteries</span>
+                        </label>
+                    </div>
+                    <div class="bp-credential-actions">
+                        <button type="submit" class="bp-primary-button">Create token</button>
+                    </div>
+                </form>
+            </section>
+            <section class="bp-card bp-table-card">
+                <div class="bp-table-scroll">
+                    <table class="table table-hover align-middle bp-credential-table">
+                        <thead>
+                            <tr>
+                                <th>Token</th>
+                                <th>Access</th>
+                                <th>Scope</th>
+                                <th>Status</th>
+                                <th>Last used</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.ApiTokens.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="6" class="bp-table-empty">No API tokens have been created.</td>
+                                </tr>
+                            }
+                            @foreach (var token in Model.ApiTokens)
+                            {
+                                var accessLabel = token.AccessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase) ? "Read + write" : "Read";
+                                var statusClass = token.IsActive ? "bp-status-pill is-active" : "bp-status-pill is-inactive";
+                                <tr>
+                                    <td>
+                                        <p class="bp-credential-name">@token.Name</p>
+                                        <p class="mb-0 small text-secondary"><code class="bp-code-wrap">@token.TokenId</code>@(token.IsSample ? " (sample)" : string.Empty)</p>
+                                    </td>
+                                    <td><span class="bp-access-pill">@accessLabel</span></td>
+                                    <td>
+                                        @if (token.GlobalAccess)
+                                        {
+                                            <p class="mb-0">Global scope</p>
+                                        }
+                                        else
+                                        {
+                                            <p class="mb-0">@token.ClusterIdsLabel</p>
+                                        }
+                                        @if (token.AllowUnassigned && !token.GlobalAccess)
+                                        {
+                                            <p class="mb-0 small text-secondary">Also includes unassigned batteries</p>
+                                        }
+                                    </td>
+                                    <td><span class="@statusClass">@(token.IsActive ? "Active" : "Inactive")</span></td>
+                                    <td>@(string.IsNullOrWhiteSpace(token.LastUsedAt) ? "-" : token.LastUsedAt)</td>
+                                    <td>
+                                        <div class="bp-action-row">
+                                            <form method="post" action="/admin/api/tokens/regenerate">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="tokenId" value="@token.TokenId" />
+                                                <button type="submit" class="bp-secondary-button">Regenerate</button>
+                                            </form>
+                                            <form method="post" action="/admin/api/tokens/set-active">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="tokenId" value="@token.TokenId" />
+                                                <input type="hidden" name="isActive" value="@(token.IsActive ? "false" : "true")" />
+                                                <button type="submit" class="bp-danger-button">@(token.IsActive ? "Deactivate" : "Activate")</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    }
+
+    @if (selectedTab == "battery-secrets")
+    {
+        <div class="bp-credential-stack mt-4">
+            <section class="bp-card bp-credential-panel">
+                <div class="bp-credential-panel-header">
+                    <h2 class="h5 mb-0">Create or replace battery secret</h2>
+                </div>
+                <form method="post" action="/admin/api/secrets/upsert" class="bp-credential-form-grid bp-secret-form-grid">
+                    @Html.AntiForgeryToken()
+                    <label class="bp-secret-passport-field">
+                        Battery passport
+                        <select name="passportId" required>
+                            @foreach (var passport in Model.Passports.OrderBy(passport => passport.DisplayName, StringComparer.OrdinalIgnoreCase))
+                            {
+                                <option value="@passport.PassportId">@passport.DisplayName (@passport.PassportId)</option>
+                            }
+                        </select>
+                    </label>
+                    <label class="bp-checkbox-option">
+                        <input type="checkbox" name="isActive" checked />
+                        <span>Secret active</span>
+                    </label>
+                    <div class="bp-credential-actions">
+                        <button type="submit" class="bp-primary-button">Create or update secret</button>
+                    </div>
+                </form>
+            </section>
+            <section class="bp-card bp-table-card">
+                <div class="bp-table-scroll">
+                    <table class="table table-hover align-middle bp-credential-table">
+                        <thead>
+                            <tr>
+                                <th>Passport</th>
+                                <th>Cluster</th>
+                                <th>Active</th>
+                                <th>Updated</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.BatterySecrets.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="5" class="bp-table-empty">No battery secrets have been created.</td>
+                                </tr>
+                            }
+                            @foreach (var secret in Model.BatterySecrets)
+                            {
+                                var statusClass = secret.IsActive ? "bp-status-pill is-active" : "bp-status-pill is-inactive";
+                                <tr>
+                                    <td><code class="bp-code-wrap">@secret.PassportId</code></td>
+                                    <td>@secret.ClusterLabel</td>
+                                    <td><span class="@statusClass">@(secret.IsActive ? "Active" : "Inactive")</span></td>
+                                    <td>@secret.UpdatedAt</td>
+                                    <td>
+                                        <div class="bp-action-row">
+                                            <form method="post" action="/admin/api/secrets/regenerate">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="passportId" value="@secret.PassportId" />
+                                                <button type="submit" class="bp-secondary-button">Regenerate</button>
+                                            </form>
+                                            <form method="post" action="/admin/api/secrets/set-active">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="passportId" value="@secret.PassportId" />
+                                                <input type="hidden" name="isActive" value="@(secret.IsActive ? "false" : "true")" />
+                                                <button type="submit" class="bp-danger-button">@(secret.IsActive ? "Deactivate" : "Activate")</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
             </section>
         </div>
     }

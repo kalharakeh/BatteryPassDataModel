@@ -15,17 +15,20 @@ public class ClusterAdminController : Controller
     private readonly ClusterRepository _clusterRepository;
     private readonly PassportViewModelFactory _viewModelFactory;
     private readonly AccessControlService _accessControlService;
+    private readonly ExternalApiRepository _externalApiRepository;
 
     public ClusterAdminController(
         PassportRepository passportRepository,
         ClusterRepository clusterRepository,
         PassportViewModelFactory viewModelFactory,
-        AccessControlService accessControlService)
+        AccessControlService accessControlService,
+        ExternalApiRepository externalApiRepository)
     {
         _passportRepository = passportRepository;
         _clusterRepository = clusterRepository;
         _viewModelFactory = viewModelFactory;
         _accessControlService = accessControlService;
+        _externalApiRepository = externalApiRepository;
     }
 
     [HttpGet("")]
@@ -200,6 +203,190 @@ public class ClusterAdminController : Controller
 
         ViewData["ErrorMessage"] = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error);
         return View(model);
+    }
+
+    [HttpGet("secrets")]
+    public async Task<IActionResult> Secrets(CancellationToken cancellationToken)
+    {
+        var managedClusterIds = await ManagedClusterIdsAsync(cancellationToken);
+        var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
+        var clusterNamesById = clusters
+            .Select(cluster => new
+            {
+                ClusterId = BsonHelpers.GetString(cluster, "clusterId"),
+                Name = BsonHelpers.GetString(cluster, "name")
+            })
+            .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
+            .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
+
+        var allPassports = await _passportRepository.SearchAsync(string.Empty, includeArchived: false, cancellationToken);
+        var visiblePassports = AccessControlService.IsAdmin(User)
+            ? allPassports
+            : allPassports
+                .Where(passport => !string.IsNullOrWhiteSpace(passport.ClusterId)
+                                   && managedClusterIds.Contains(passport.ClusterId, StringComparer.OrdinalIgnoreCase))
+                .ToList();
+
+        var visibleClusterIds = AccessControlService.IsAdmin(User)
+            ? clusters.Select(cluster => BsonHelpers.GetString(cluster, "clusterId")).Where(clusterId => !string.IsNullOrWhiteSpace(clusterId)).ToHashSet(StringComparer.OrdinalIgnoreCase)
+            : managedClusterIds;
+
+        var secrets = await _externalApiRepository.ListBatterySecretsAsync(visibleClusterIds, cancellationToken);
+        var model = new AdminClusterViewModel
+        {
+            SelectedTab = "battery-secrets",
+            Passports = visiblePassports
+                .Select(passport => new PassportSummaryViewModel
+                {
+                    PassportId = passport.PassportId,
+                    DisplayName = passport.DisplayName,
+                    ModelNumber = passport.ModelNumber,
+                    ManufacturerName = passport.ManufacturerName,
+                    SerialNumber = passport.SerialNumber,
+                    RegistryStatus = passport.RegistryStatus,
+                    ClusterId = passport.ClusterId,
+                    ClusterLabel = string.IsNullOrWhiteSpace(passport.ClusterId)
+                        ? "No cluster assigned"
+                        : clusterNamesById.TryGetValue(passport.ClusterId, out var clusterName)
+                            ? clusterName
+                            : passport.ClusterId,
+                    BatteryImageUrl = passport.BatteryImageUrl,
+                    UpdatedDate = passport.UpdatedDate
+                })
+                .OrderBy(passport => passport.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .ToList(),
+            BatterySecrets = secrets.Select(secret =>
+            {
+                var clusterId = BsonHelpers.GetString(secret, "clusterId");
+                return new BatterySecretViewModel
+                {
+                    PassportId = BsonHelpers.GetString(secret, "passportId"),
+                    ClusterId = clusterId,
+                    ClusterLabel = string.IsNullOrWhiteSpace(clusterId)
+                        ? "No cluster assigned"
+                        : clusterNamesById.TryGetValue(clusterId, out var clusterName)
+                            ? clusterName
+                            : clusterId,
+                    IsActive = secret.GetValue("isActive", false).ToBoolean(),
+                    CreatedAt = BsonHelpers.GetString(secret, "createdAt"),
+                    UpdatedAt = BsonHelpers.GetString(secret, "updatedAt")
+                };
+            }).ToList(),
+            StatusMessage = TempData["StatusMessage"]?.ToString() ?? string.Empty,
+            ErrorMessage = TempData["ErrorMessage"]?.ToString() ?? string.Empty,
+            GeneratedCredential = TempData["GeneratedCredential"]?.ToString() ?? string.Empty
+        };
+
+        return View(model);
+    }
+
+    [HttpPost("secrets/upsert")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpsertSecret(CancellationToken cancellationToken)
+    {
+        var passportId = Text(Request.Form, "passportId");
+        if (string.IsNullOrWhiteSpace(passportId))
+        {
+            TempData["ErrorMessage"] = "Passport ID is required.";
+            return Redirect("/cluster-admin/secrets");
+        }
+
+        var passport = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
+        if (passport == null)
+        {
+            TempData["ErrorMessage"] = $"Passport {passportId} not found.";
+            return Redirect("/cluster-admin/secrets");
+        }
+
+        var clusterId = BsonHelpers.GetString(passport, "clusterId");
+        if (!await _accessControlService.CanAdministerClusterAsync(User, clusterId, cancellationToken))
+        {
+            return NotFound();
+        }
+
+        var actor = AccessControlService.CurrentEmail(User);
+        var secretValue = await _externalApiRepository.UpsertBatterySecretAsync(
+            passportId,
+            clusterId,
+            string.IsNullOrWhiteSpace(actor) ? "cluster-admin" : actor,
+            active: true,
+            cancellationToken: cancellationToken);
+        TempData["StatusMessage"] = $"Battery secret created/updated for {passportId}.";
+        TempData["GeneratedCredential"] = secretValue;
+        return Redirect("/cluster-admin/secrets");
+    }
+
+    [HttpPost("secrets/regenerate")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RegenerateSecret(CancellationToken cancellationToken)
+    {
+        var passportId = Text(Request.Form, "passportId");
+        if (string.IsNullOrWhiteSpace(passportId))
+        {
+            TempData["ErrorMessage"] = "Passport ID is required.";
+            return Redirect("/cluster-admin/secrets");
+        }
+
+        var passport = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
+        if (passport == null)
+        {
+            TempData["ErrorMessage"] = $"Passport {passportId} not found.";
+            return Redirect("/cluster-admin/secrets");
+        }
+
+        var clusterId = BsonHelpers.GetString(passport, "clusterId");
+        if (!await _accessControlService.CanAdministerClusterAsync(User, clusterId, cancellationToken))
+        {
+            return NotFound();
+        }
+
+        var actor = AccessControlService.CurrentEmail(User);
+        var secretValue = await _externalApiRepository.UpsertBatterySecretAsync(
+            passportId,
+            clusterId,
+            string.IsNullOrWhiteSpace(actor) ? "cluster-admin" : actor,
+            active: true,
+            cancellationToken: cancellationToken);
+        TempData["StatusMessage"] = $"Battery secret for {passportId} regenerated.";
+        TempData["GeneratedCredential"] = secretValue;
+        return Redirect("/cluster-admin/secrets");
+    }
+
+    [HttpPost("secrets/set-active")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetSecretActive(CancellationToken cancellationToken)
+    {
+        var passportId = Text(Request.Form, "passportId");
+        var isActive = Request.Form["isActive"].FirstOrDefault()?.Equals("true", StringComparison.OrdinalIgnoreCase) == true;
+        if (string.IsNullOrWhiteSpace(passportId))
+        {
+            TempData["ErrorMessage"] = "Passport ID is required.";
+            return Redirect("/cluster-admin/secrets");
+        }
+
+        var passport = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
+        if (passport == null)
+        {
+            TempData["ErrorMessage"] = $"Passport {passportId} not found.";
+            return Redirect("/cluster-admin/secrets");
+        }
+
+        var clusterId = BsonHelpers.GetString(passport, "clusterId");
+        if (!await _accessControlService.CanAdministerClusterAsync(User, clusterId, cancellationToken))
+        {
+            return NotFound();
+        }
+
+        var actor = AccessControlService.CurrentEmail(User);
+        var success = await _externalApiRepository.SetBatterySecretActiveAsync(
+            passportId,
+            isActive,
+            string.IsNullOrWhiteSpace(actor) ? "cluster-admin" : actor,
+            cancellationToken);
+        TempData[success ? "StatusMessage" : "ErrorMessage"] = success
+            ? $"Battery secret for {passportId} updated."
+            : $"Battery secret for {passportId} not found.";
+        return Redirect("/cluster-admin/secrets");
     }
 
     [HttpPost("users/save")]

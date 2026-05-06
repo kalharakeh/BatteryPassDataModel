@@ -24,6 +24,9 @@ builder.Services.Configure<BatteryPassOptions>(options =>
     options.DemoAdminPassword = Environment.GetEnvironmentVariable("DEMO_ADMIN_PASSWORD")
         ?? builder.Configuration["BatteryPass:DemoAdminPassword"]
         ?? "Password123!";
+    options.ExternalApiEncryptionKey = Environment.GetEnvironmentVariable("EXTERNAL_API_ENCRYPTION_KEY")
+        ?? builder.Configuration["BatteryPass:ExternalApiEncryptionKey"]
+        ?? string.Empty;
 });
 
 builder.Services
@@ -50,6 +53,10 @@ builder.Services.AddSingleton<ClusterRepository>();
 builder.Services.AddSingleton<PassportViewModelFactory>();
 builder.Services.AddSingleton<AccessControlService>();
 builder.Services.AddSingleton<AuthService>();
+builder.Services.AddSingleton<ExternalApiSecurityService>();
+builder.Services.AddSingleton<ExternalApiRepository>();
+builder.Services.AddSingleton<BatteryTelemetryRepository>();
+builder.Services.AddSingleton<ExternalApiInitializer>();
 
 var app = builder.Build();
 
@@ -66,5 +73,11 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+using (var scope = app.Services.CreateScope())
+{
+    var initializer = scope.ServiceProvider.GetRequiredService<ExternalApiInitializer>();
+    await initializer.InitializeAsync();
+}
 
 app.Run();

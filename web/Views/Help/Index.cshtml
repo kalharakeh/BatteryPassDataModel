@@ -1,0 +1,645 @@
+@model BatteryPassWeb.Models.ViewModels.ExternalApiHelpViewModel
+@{
+    ViewData["Title"] = "External API Help";
+}
+<main class="bp-page bp-admin-page bp-help-page">
+    <section class="bp-card">
+        <h1 class="mb-2">External Battery Passport API</h1>
+        <p class="text-secondary mb-3">Read and write battery passport data through the app using token-protected HTTP requests.</p>
+        <div class="bp-help-kv-grid">
+            <div>
+                <p class="mb-1 text-secondary small">Base path</p>
+                <code>@Model.BasePath</code>
+            </div>
+            <div>
+                <p class="mb-1 text-secondary small">Sample passport ID for these tokens</p>
+                <code>@Model.SamplePassportId</code>
+            </div>
+            <div>
+                <p class="mb-1 text-secondary small">Sample read token</p>
+                <code>@Model.SampleReadToken</code>
+            </div>
+            <div>
+                <p class="mb-1 text-secondary small">Sample read-write token</p>
+                <code>@Model.SampleReadWriteToken</code>
+            </div>
+        </div>
+    </section>
+
+    <div class="bp-help-stack">
+        <section class="bp-card">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <h2 class="h5 mb-0">Documentation</h2>
+                <input id="doc-search" class="form-control" style="max-width: 340px;" placeholder="Search endpoint, field, alias, section" />
+            </div>
+
+            <div class="bp-help-doc-list" id="doc-list">
+                <article class="bp-help-doc-item">
+                    <h3 class="h6 mb-2">Authentication</h3>
+                    <p class="mb-1">Required header: <code>Authorization: Basic &lt;base64(token:)&gt;</code> or <code>Authorization: Basic &lt;token&gt;</code>.</p>
+                    <p class="mb-1">Optional header when battery secret is active: <code>X-Battery-Secret: &lt;secret&gt;</code>.</p>
+                    <p class="mb-1">HTTP codes: <code>200</code>, <code>201</code>, <code>400</code>, <code>401</code>, <code>403</code>, <code>404</code>, <code>500</code>, <code>503</code>.</p>
+                    <ul class="mb-0">
+                        <li><code>200 OK</code>: Request succeeded (read/patch operations completed).</li>
+                        <li><code>201 Created</code>: New telemetry point(s) were accepted and stored.</li>
+                        <li><code>400 Bad Request</code>: Invalid input (for example missing <code>path</code>, unsupported section, or invalid body format).</li>
+                        <li><code>401 Unauthorized</code>: Missing or invalid API token.</li>
+                        <li><code>403 Forbidden</code>: Token scope/access is not allowed for this battery/operation, or battery secret is required/invalid.</li>
+                        <li><code>404 Not Found</code>: Battery passport or requested section/path does not exist.</li>
+                        <li><code>500 Internal Server Error</code>: Unexpected server-side failure.</li>
+                        <li><code>503 Service Unavailable</code>: Backend dependency (database) is unavailable.</li>
+                    </ul>
+                </article>
+
+                <article class="bp-help-doc-item">
+                    <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{passportId}</h3>
+                    <p class="mb-0">Read the full battery passport, including app metadata, aspects, registry data, schema versions, and validation details.</p>
+                </article>
+
+                <article class="bp-help-doc-item">
+                    <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{passportId}/section/{sectionName}</h3>
+                    <p class="mb-1">Read one section only.</p>
+                    <p class="mb-1">Supported section names: <code>general</code>, <code>materialComposition</code>, <code>performance</code>, <code>circularity</code>, <code>supplyChain</code>, <code>carbonFootprint</code>, <code>compliance</code>, <code>operations</code>, <code>display</code>, <code>full</code>.</p>
+                    <pre class="bp-help-pre mb-0"><code>GET @Model.BasePath/batteries/@Model.SamplePassportId/section/performance
+GET @Model.BasePath/batteries/@Model.SamplePassportId/section/circularity</code></pre>
+                </article>
+
+                <article class="bp-help-doc-item">
+                    <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{passportId}/values?path=...</h3>
+                    <p class="mb-1">Read one or more specific values by alias or exact document path.</p>
+                    <p class="mb-1">Aliases: <code>ratedEnergy</code>, <code>ratedCapacity</code>, <code>ratedMaximumPower</code>, <code>nominalVoltage</code>, <code>nickelMass</code>, <code>currentConsumptionKwh</code>, <code>currentChargeLevelPct</code>, <code>currentVoltageV</code>, <code>currentCurrentA</code>, <code>locationOfUse</code>, <code>contactPerson</code>, <code>isActive</code>.</p>
+                    <p class="mb-1">Need the full set of readable values (not only aliases)? Open <a href="@($"{Model.BasePath}/batteries/{Model.SamplePassportId}/paths?section=full")" target="_blank" rel="noopener noreferrer"><code>@Model.BasePath/batteries/@Model.SamplePassportId/paths?section=full</code></a> in a new tab.</p>
+                    <pre class="bp-help-pre mb-2"><code>GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=ratedEnergy&amp;path=ratedCapacity
+GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=nickelMass
+GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=aspects.circularity.payload</code></pre>
+                    <pre class="bp-help-pre mb-0"><code>{
+  "message": "Values read successfully",
+  "data": {
+    "values": [
+      { "requestPath": "ratedEnergy", "value": 102 },
+      { "requestPath": "ratedCapacity", "value": 218 },
+      { "requestPath": "nickelMass", "value": 138.7 }
+    ]
+  }
+}</code></pre>
+                </article>
+
+                <article class="bp-help-doc-item">
+                    <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{passportId}/paths?section=full</h3>
+                    <p class="mb-1">Discover all readable paths for a battery, or for one section, then reuse those paths with <code>/values</code>.</p>
+                    <p class="mb-1">Query options: <code>section</code> and <code>includeContainers=true</code>.</p>
+                    <pre class="bp-help-pre mb-2"><code>GET @Model.BasePath/batteries/@Model.SamplePassportId/paths
+GET @Model.BasePath/batteries/@Model.SamplePassportId/paths?section=performance
+GET @Model.BasePath/batteries/@Model.SamplePassportId/paths?section=materialComposition&amp;includeContainers=true</code></pre>
+                    <p class="mb-1">Reuse returned paths by passing them as repeated <code>path</code> query parameters to <code>/values</code>:</p>
+                    <pre class="bp-help-pre mb-0"><code># Example: read values returned from /paths?section=performance
+GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=aspects.performanceAndDurability.payload.batteryTechicalProperties.ratedEnergy&amp;path=aspects.performanceAndDurability.payload.batteryTechicalProperties.nominalVoltage
+
+# Example: read an indexed array value discovered by /paths
+GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=aspects.materialComposition.payload.batteryMaterials.0.batteryMaterialMass</code></pre>
+                </article>
+
+                <article class="bp-help-doc-item">
+                    <h3 class="h6 mb-2"><span class="bp-help-method">POST</span> @Model.BasePath/batteries/{passportId}/telemetry</h3>
+                    <p class="mb-1">Write telemetry point(s). Supports single object, array, or <code>{ "points": [...] }</code>.</p>
+                    <p class="mb-1">Writable telemetry fields: <code>currentConsumptionKwh</code>, <code>currentChargeLevelPct</code>, <code>currentVoltageV</code>, <code>currentCurrentA</code>, optional <code>measuredAt</code>.</p>
+                    <pre class="bp-help-pre mb-0"><code>{
+  "points": [
+    {
+      "currentConsumptionKwh": 154.6,
+      "currentChargeLevelPct": 82.1,
+      "currentVoltageV": 401.7,
+      "currentCurrentA": 49.2,
+      "measuredAt": "2026-05-05T10:15:00Z"
+    }
+  ]
+}</code></pre>
+                </article>
+
+                <article class="bp-help-doc-item">
+                    <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{passportId}/telemetry/history?hours=24</h3>
+                    <p class="mb-0">Read telemetry history. <code>hours</code> must be in <code>1..168</code>.</p>
+                </article>
+
+                <article class="bp-help-doc-item">
+                    <h3 class="h6 mb-2"><span class="bp-help-method">PATCH</span> @Model.BasePath/batteries/{passportId}/operations</h3>
+                    <p class="mb-1">Patch writable operations metadata.</p>
+                    <p class="mb-1">Writable fields: <code>locationOfUse</code>, <code>contactPerson</code>, <code>isActive</code>.</p>
+                    <pre class="bp-help-pre mb-0"><code>{
+  "isActive": true,
+  "locationOfUse": {
+    "siteName": "Factory 4",
+    "address": "Main street 7",
+    "city": "Berlin",
+    "country": "DE",
+    "latitude": 52.52,
+    "longitude": 13.41
+  },
+  "contactPerson": {
+    "name": "Anna Becker",
+    "email": "anna@example.test",
+    "phone": "+49 30 1234"
+  }
+}</code></pre>
+                </article>
+            </div>
+        </section>
+
+        <section class="bp-card bp-help-tester-card">
+            <h2 class="h5 mb-3">Request Workbench</h2>
+
+            <div class="bp-form-grid">
+                <label>Template
+                    <select id="tester-template">
+                        <option value="readFull">Read full battery</option>
+                        <option value="readSectionPerformance">Read section: Performance</option>
+                        <option value="readSectionCircularity">Read section: Circularity</option>
+                        <option value="readValuesAliases">Read values: ratedEnergy, ratedCapacity, nickelMass</option>
+                        <option value="readPathsAll">List readable paths (full)</option>
+                        <option value="readHistory24h">Read telemetry history 24h</option>
+                        <option value="writeTelemetryPoint">Write telemetry point</option>
+                        <option value="patchOperations">Patch operations metadata</option>
+                    </select>
+                </label>
+                <label>HTTP method
+                    <select id="tester-method">
+                        <option>GET</option>
+                        <option>POST</option>
+                        <option>PATCH</option>
+                    </select>
+                </label>
+                <label>Auth format
+                    <select id="tester-auth-format">
+                        <option value="base64">Basic &lt;base64(token:)&gt;</option>
+                        <option value="raw">Basic &lt;token&gt;</option>
+                    </select>
+                </label>
+                <label class="bp-span-all">Path
+                    <input id="tester-path" value="@Model.BasePath/batteries/@Model.SamplePassportId" />
+                </label>
+                <label>Token preset
+                    <select id="tester-token-preset">
+                        <option value="sample-read">Sample read token</option>
+                        <option value="sample-read-write">Sample read-write token</option>
+                        <option value="custom">Custom token</option>
+                    </select>
+                </label>
+                <label class="bp-span-2">Token value
+                    <input id="tester-token" value="@Model.SampleReadToken" />
+                </label>
+                <label class="bp-span-all">Battery secret
+                    <input id="tester-battery-secret" placeholder="Only required if secret is active for this battery" />
+                </label>
+                <label class="bp-span-all">Body JSON
+                    <textarea id="tester-body" rows="9"></textarea>
+                </label>
+                <label class="bp-span-all">Constructed HTTP request
+                    <textarea id="tester-raw-request" class="bp-help-request-editor" rows="12"></textarea>
+                </label>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 mt-3">
+                <button id="tester-load-template" type="button" class="bp-secondary-button">Load template</button>
+                <button id="tester-send" type="button" class="bp-primary-button">Send request</button>
+                <button id="tester-reset" type="button" class="bp-secondary-button">Reset</button>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 mt-3">
+                <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="readFull">Read battery</button>
+                <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="readHistory24h">History 24h</button>
+                <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="readValuesAliases">Read specific values</button>
+                <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="writeTelemetryPoint">Post telemetry</button>
+            </div>
+
+            <div class="mt-3">
+                <p class="mb-1"><strong>Status:</strong> <span id="tester-status">-</span></p>
+                <pre id="tester-response" class="bp-help-pre"><code>{}</code></pre>
+            </div>
+
+            <div class="mt-3">
+                <p class="mb-1"><strong>cURL preview</strong></p>
+                <pre id="tester-curl" class="bp-help-pre"><code></code></pre>
+            </div>
+        </section>
+    </div>
+</main>
+
+@section Scripts {
+    <script>
+        (() => {
+            const basePath = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.BasePath));
+            const samplePassportId = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SamplePassportId));
+            const sampleReadToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleReadToken));
+            const sampleReadWriteToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleReadWriteToken));
+
+            const docSearch = document.getElementById('doc-search');
+            const docItems = Array.from(document.querySelectorAll('.bp-help-doc-item'));
+            docSearch?.addEventListener('input', () => {
+                const query = (docSearch.value || '').toLowerCase().trim();
+                docItems.forEach(item => {
+                    const text = (item.innerText || '').toLowerCase();
+                    item.style.display = text.includes(query) ? '' : 'none';
+                });
+            });
+
+            const templateSelect = document.getElementById('tester-template');
+            const methodEl = document.getElementById('tester-method');
+            const pathEl = document.getElementById('tester-path');
+            const authFormatEl = document.getElementById('tester-auth-format');
+            const tokenPresetEl = document.getElementById('tester-token-preset');
+            const tokenEl = document.getElementById('tester-token');
+            const batterySecretEl = document.getElementById('tester-battery-secret');
+            const bodyEl = document.getElementById('tester-body');
+            const rawRequestEl = document.getElementById('tester-raw-request');
+            const statusEl = document.getElementById('tester-status');
+            const responseEl = document.getElementById('tester-response');
+            const curlEl = document.getElementById('tester-curl');
+            let isReflectingRaw = false;
+
+            const templates = {
+                readFull: {
+                    method: 'GET',
+                    path: `${basePath}/batteries/${samplePassportId}`,
+                    body: '',
+                    tokenPreset: 'sample-read'
+                },
+                readSectionPerformance: {
+                    method: 'GET',
+                    path: `${basePath}/batteries/${samplePassportId}/section/performance`,
+                    body: '',
+                    tokenPreset: 'sample-read'
+                },
+                readSectionCircularity: {
+                    method: 'GET',
+                    path: `${basePath}/batteries/${samplePassportId}/section/circularity`,
+                    body: '',
+                    tokenPreset: 'sample-read'
+                },
+                readValuesAliases: {
+                    method: 'GET',
+                    path: `${basePath}/batteries/${samplePassportId}/values?path=ratedEnergy&path=ratedCapacity&path=nickelMass`,
+                    body: '',
+                    tokenPreset: 'sample-read'
+                },
+                readPathsAll: {
+                    method: 'GET',
+                    path: `${basePath}/batteries/${samplePassportId}/paths?section=full`,
+                    body: '',
+                    tokenPreset: 'sample-read'
+                },
+                readHistory24h: {
+                    method: 'GET',
+                    path: `${basePath}/batteries/${samplePassportId}/telemetry/history?hours=24`,
+                    body: '',
+                    tokenPreset: 'sample-read'
+                },
+                writeTelemetryPoint: {
+                    method: 'POST',
+                    path: `${basePath}/batteries/${samplePassportId}/telemetry`,
+                    body: JSON.stringify({
+                        points: [
+                            {
+                                currentConsumptionKwh: 163.4,
+                                currentChargeLevelPct: 79.8,
+                                currentVoltageV: 398.4,
+                                currentCurrentA: 52.3
+                            }
+                        ]
+                    }, null, 2),
+                    tokenPreset: 'sample-read-write'
+                },
+                patchOperations: {
+                    method: 'PATCH',
+                    path: `${basePath}/batteries/${samplePassportId}/operations`,
+                    body: JSON.stringify({
+                        isActive: true,
+                        locationOfUse: {
+                            siteName: 'Sample Site',
+                            city: 'Berlin',
+                            country: 'DE'
+                        },
+                        contactPerson: {
+                            name: 'Sample Contact',
+                            email: 'sample@example.test'
+                        }
+                    }, null, 2),
+                    tokenPreset: 'sample-read-write'
+                }
+            };
+
+            const tokenByPreset = {
+                'sample-read': sampleReadToken,
+                'sample-read-write': sampleReadWriteToken
+            };
+
+            const utf8ToBase64 = (value) => {
+                const bytes = new TextEncoder().encode(value);
+                let binary = '';
+                bytes.forEach(byte => {
+                    binary += String.fromCharCode(byte);
+                });
+                return btoa(binary);
+            };
+
+            const decodeBase64Token = (value) => {
+                try {
+                    const decoded = atob(value);
+                    const separator = decoded.indexOf(':');
+                    return separator > 0 ? decoded.slice(0, separator) : '';
+                } catch {
+                    return '';
+                }
+            };
+
+            const resolveAuthHeader = () => {
+                const tokenValue = (tokenEl.value || '').trim();
+                if (!tokenValue) {
+                    return '';
+                }
+
+                return authFormatEl.value === 'raw'
+                    ? `Basic ${tokenValue}`
+                    : `Basic ${utf8ToBase64(`${tokenValue}:`)}`;
+            };
+
+            const resolveAbsoluteUrl = (rawPath) => {
+                const value = (rawPath || '').trim();
+                if (!value) {
+                    return '';
+                }
+
+                if (/^https?:\/\//i.test(value)) {
+                    return value;
+                }
+
+                return `${window.location.origin}${value.startsWith('/') ? value : `/${value}`}`;
+            };
+
+            const setTokenFromPreset = () => {
+                const presetValue = tokenPresetEl.value;
+                if (presetValue === 'custom') {
+                    return;
+                }
+
+                tokenEl.value = tokenByPreset[presetValue] || '';
+            };
+
+            const buildRawRequest = () => {
+                const method = methodEl.value || 'GET';
+                const absoluteUrl = resolveAbsoluteUrl(pathEl.value);
+                const url = new URL(absoluteUrl || window.location.href);
+                const target = `${url.pathname}${url.search}`;
+                const bodyText = method === 'GET' ? '' : (bodyEl.value || '').trim();
+                const lines = [
+                    `${method} ${target} HTTP/1.1`,
+                    `Host: ${url.host}`
+                ];
+
+                const authHeader = resolveAuthHeader();
+                if (authHeader) {
+                    lines.push(`Authorization: ${authHeader}`);
+                }
+                lines.push('Accept: application/json');
+
+                const batterySecret = (batterySecretEl.value || '').trim();
+                if (batterySecret) {
+                    lines.push(`X-Battery-Secret: ${batterySecret}`);
+                }
+                if (bodyText) {
+                    lines.push('Content-Type: application/json');
+                }
+
+                lines.push('');
+                if (bodyText) {
+                    lines.push(bodyText);
+                }
+
+                return lines.join('\n');
+            };
+
+            const parseRawRequest = (rawValue) => {
+                const normalized = (rawValue || '').replace(/\r\n/g, '\n');
+                const separator = normalized.indexOf('\n\n');
+                const head = separator >= 0 ? normalized.slice(0, separator) : normalized;
+                const body = separator >= 0 ? normalized.slice(separator + 2) : '';
+                const lines = head.split('\n').map(line => line.trim()).filter(Boolean);
+                if (lines.length === 0) {
+                    return null;
+                }
+
+                const requestLine = lines.shift();
+                const requestParts = requestLine.split(/\s+/);
+                if (requestParts.length < 2) {
+                    return null;
+                }
+
+                const method = requestParts[0].toUpperCase();
+                const target = requestParts[1];
+                const headers = {};
+                lines.forEach(line => {
+                    const separatorIndex = line.indexOf(':');
+                    if (separatorIndex <= 0) {
+                        return;
+                    }
+
+                    const name = line.slice(0, separatorIndex).trim();
+                    const value = line.slice(separatorIndex + 1).trim();
+                    if (name) {
+                        headers[name] = value;
+                    }
+                });
+
+                return {
+                    requestSource: 'raw',
+                    method,
+                    target,
+                    absoluteUrl: resolveAbsoluteUrl(target),
+                    headers,
+                    body
+                };
+            };
+
+            const headerValue = (headers, name) => {
+                const match = Object.keys(headers).find(key => key.toLowerCase() === name.toLowerCase());
+                return match ? headers[match] : '';
+            };
+
+            const fetchHeadersFromRaw = (headers) => {
+                const fetchHeaders = {};
+                Object.entries(headers).forEach(([name, value]) => {
+                    const lower = name.toLowerCase();
+                    if (lower === 'host' || lower === 'content-length' || lower === 'connection') {
+                        return;
+                    }
+
+                    fetchHeaders[name] = value;
+                });
+                return fetchHeaders;
+            };
+
+            const reflectRawRequest = () => {
+                const parsed = parseRawRequest(rawRequestEl.value);
+                if (!parsed) {
+                    return;
+                }
+
+                isReflectingRaw = true;
+                if (Array.from(methodEl.options).some(option => option.value === parsed.method)) {
+                    methodEl.value = parsed.method;
+                }
+                pathEl.value = parsed.target;
+                bodyEl.value = parsed.body || '';
+
+                const secret = headerValue(parsed.headers, 'X-Battery-Secret');
+                if (secret) {
+                    batterySecretEl.value = secret;
+                }
+
+                const authorization = headerValue(parsed.headers, 'Authorization');
+                if (authorization.toLowerCase().startsWith('basic ')) {
+                    const payload = authorization.slice(6).trim();
+                    const decodedToken = decodeBase64Token(payload);
+                    tokenPresetEl.value = 'custom';
+                    if (decodedToken) {
+                        authFormatEl.value = 'base64';
+                        tokenEl.value = decodedToken;
+                    } else {
+                        authFormatEl.value = 'raw';
+                        tokenEl.value = payload;
+                    }
+                }
+                isReflectingRaw = false;
+            };
+
+            const updateCurlPreview = () => {
+                const parsed = parseRawRequest(rawRequestEl.value);
+                if (!parsed || !parsed.absoluteUrl) {
+                    curlEl.innerText = '';
+                    return;
+                }
+
+                const lines = [`curl -X ${parsed.method} "${parsed.absoluteUrl}"`];
+                Object.entries(fetchHeadersFromRaw(parsed.headers)).forEach(([name, value]) => {
+                    lines.push(`  -H "${name}: ${value}"`);
+                });
+                if (!['GET', 'HEAD'].includes(parsed.method) && parsed.body.trim()) {
+                    lines.push(`  --data-raw '${parsed.body.replace(/'/g, "\\'")}'`);
+                }
+
+                curlEl.innerText = lines.join(' \\\n');
+            };
+
+            const syncRawRequestFromControls = () => {
+                if (isReflectingRaw) {
+                    return;
+                }
+
+                rawRequestEl.value = buildRawRequest();
+                updateCurlPreview();
+            };
+
+            const applyTemplate = (templateKey) => {
+                const template = templates[templateKey];
+                if (!template) {
+                    return;
+                }
+
+                methodEl.value = template.method;
+                pathEl.value = template.path;
+                bodyEl.value = template.body;
+                tokenPresetEl.value = template.tokenPreset;
+                setTokenFromPreset();
+                syncRawRequestFromControls();
+            };
+
+            const setStatus = (text) => {
+                statusEl.innerText = text;
+            };
+
+            const setResponse = (value) => {
+                responseEl.innerText = value;
+            };
+
+            templateSelect?.addEventListener('change', () => {
+                applyTemplate(templateSelect.value);
+            });
+
+            document.getElementById('tester-load-template')?.addEventListener('click', () => {
+                applyTemplate(templateSelect.value);
+            });
+
+            document.getElementById('tester-reset')?.addEventListener('click', () => {
+                templateSelect.value = 'readFull';
+                authFormatEl.value = 'base64';
+                batterySecretEl.value = '';
+                applyTemplate('readFull');
+                setStatus('-');
+                setResponse('{}');
+            });
+
+            tokenPresetEl?.addEventListener('change', () => {
+                setTokenFromPreset();
+                syncRawRequestFromControls();
+            });
+
+            document.querySelectorAll('.template-shortcut').forEach(button => {
+                button.addEventListener('click', () => {
+                    const key = button.getAttribute('data-template');
+                    if (!key) {
+                        return;
+                    }
+
+                    templateSelect.value = key;
+                    applyTemplate(key);
+                });
+            });
+
+            [methodEl, pathEl, authFormatEl, tokenEl, batterySecretEl, bodyEl].forEach(element => {
+                element?.addEventListener('input', syncRawRequestFromControls);
+                element?.addEventListener('change', syncRawRequestFromControls);
+            });
+
+            rawRequestEl?.addEventListener('input', () => {
+                reflectRawRequest();
+                updateCurlPreview();
+            });
+
+            document.getElementById('tester-send')?.addEventListener('click', async () => {
+                const parsed = parseRawRequest(rawRequestEl.value);
+                if (!parsed || !parsed.absoluteUrl) {
+                    setStatus('Validation failed');
+                    setResponse('Constructed HTTP request is invalid.');
+                    return;
+                }
+
+                const requestBody = !['GET', 'HEAD'].includes(parsed.method) && parsed.body.trim()
+                    ? parsed.body
+                    : undefined;
+
+                setStatus('Sending...');
+                try {
+                    const httpResponse = await fetch(parsed.absoluteUrl, {
+                        method: parsed.method,
+                        headers: fetchHeadersFromRaw(parsed.headers),
+                        body: requestBody
+                    });
+
+                    const text = await httpResponse.text();
+                    setStatus(`${httpResponse.status} ${httpResponse.statusText}`);
+                    try {
+                        setResponse(JSON.stringify(JSON.parse(text), null, 2));
+                    } catch {
+                        setResponse(text);
+                    }
+                } catch (error) {
+                    setStatus('Request failed');
+                    setResponse(String(error));
+                } finally {
+                    updateCurlPreview();
+                }
+            });
+
+            applyTemplate(templateSelect.value);
+        })();
+    </script>
+}

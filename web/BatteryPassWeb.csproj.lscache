@@ -62,7 +62,9 @@ Controllers/
  AdminController.cs
  AuthApiController.cs
  ClusterAdminController.cs
+ ExternalApiController.cs
  FilesApiController.cs
+ HelpController.cs
  HomeController.cs
  LoginController.cs
  PassportController.cs
@@ -73,6 +75,7 @@ Models/
  ViewModels/
   AdminClusterViewModel.cs
   EditPassportViewModel.cs
+  ExternalApiHelpViewModel.cs
   LoginViewModel.cs
   PassportDetailViewModel.cs
   PassportSummaryPageViewModel.cs
@@ -88,8 +91,12 @@ Program.cs
 Services/
  AccessControlService.cs
  AuthService.cs
+ BatteryTelemetryRepository.cs
  BsonHelpers.cs
  ClusterRepository.cs
+ ExternalApiInitializer.cs
+ ExternalApiRepository.cs
+ ExternalApiSecurityService.cs
  MongoContext.cs
  PassportRepository.cs
  PassportViewModelFactory.cs
@@ -439,6 +446,9 @@ Services/
 <DOTNET>/sdk/10.0.203/Sdks/Microsoft.NET.Sdk/analyzers/
  Microsoft.CodeAnalysis.CSharp.NetAnalyzers.dll
  Microsoft.CodeAnalysis.NetAnalyzers.dll
+<NUGET>/microsoft.net.illink.tasks/10.0.7/analyzers/dotnet/cs/
+ ILLink.CodeFixProvider.dll
+ ILLink.RoslynAnalyzer.dll
 
 [analyzerConfigFiles]
 <DOTNET>/sdk/10.0.203/Sdks/Microsoft.NET.Sdk/analyzers/build/config/analysislevel_10_default.globalconfig
@@ -455,11 +465,13 @@ Views/ClusterAdmin/
  EditPassport.cshtml
  Index.cshtml
  Passports.cshtml
+ Secrets.cshtml
  Users.cshtml
-Views/Home/
- Index.cshtml
- Search.cshtml
 Views/
+ Help/Index.cshtml
+ Home/
+  Index.cshtml
+  Search.cshtml
  Login/Index.cshtml
  Passport/
   Detail.cshtml
@@ -482,11 +494,13 @@ Views/ClusterAdmin/
  EditPassport.cshtml
  Index.cshtml
  Passports.cshtml
+ Secrets.cshtml
  Users.cshtml
-Views/Home/
- Index.cshtml
- Search.cshtml
 Views/
+ Help/Index.cshtml
+ Home/
+  Index.cshtml
+  Search.cshtml
  Login/Index.cshtml
  Passport/
   Detail.cshtml

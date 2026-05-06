@@ -148,6 +148,39 @@ public sealed class PassportRepository
             cancellationToken: cancellationToken);
     }
 
+    public async Task<bool> UpdateFieldsAsync(string passportId, IReadOnlyDictionary<string, BsonValue> setValues, CancellationToken cancellationToken = default)
+    {
+        var collection = GetCollection();
+        if (collection == null || string.IsNullOrWhiteSpace(passportId) || setValues.Count == 0)
+        {
+            return false;
+        }
+
+        var updates = new List<UpdateDefinition<BsonDocument>>();
+        foreach (var pair in setValues)
+        {
+            if (string.IsNullOrWhiteSpace(pair.Key))
+            {
+                continue;
+            }
+
+            updates.Add(Builders<BsonDocument>.Update.Set(pair.Key, pair.Value));
+        }
+
+        updates.Add(Builders<BsonDocument>.Update.Set("registryInfo.updatedAt", DateTime.UtcNow.ToString("O")));
+        if (updates.Count == 0)
+        {
+            return false;
+        }
+
+        var result = await collection.UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("passportId", passportId),
+            Builders<BsonDocument>.Update.Combine(updates),
+            cancellationToken: cancellationToken);
+
+        return result.MatchedCount > 0;
+    }
+
     private IMongoCollection<BsonDocument>? GetCollection()
     {
         return _mongoContext.Database?.GetCollection<BsonDocument>("passports");

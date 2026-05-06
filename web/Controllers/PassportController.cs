@@ -11,17 +11,20 @@ public class PassportController : Controller
     private readonly ClusterRepository _clusterRepository;
     private readonly PassportViewModelFactory _viewModelFactory;
     private readonly AccessControlService _accessControlService;
+    private readonly BatteryTelemetryRepository _batteryTelemetryRepository;
 
     public PassportController(
         PassportRepository passportRepository,
         ClusterRepository clusterRepository,
         PassportViewModelFactory viewModelFactory,
-        AccessControlService accessControlService)
+        AccessControlService accessControlService,
+        BatteryTelemetryRepository batteryTelemetryRepository)
     {
         _passportRepository = passportRepository;
         _clusterRepository = clusterRepository;
         _viewModelFactory = viewModelFactory;
         _accessControlService = accessControlService;
+        _batteryTelemetryRepository = batteryTelemetryRepository;
     }
 
     [HttpGet("{passportId}/summary")]
@@ -136,7 +139,34 @@ public class PassportController : Controller
             Passport = passport
         };
 
+        var toUtc = DateTime.UtcNow;
+        var fromUtc = toUtc.AddDays(-7);
+        var telemetryHistory = await _batteryTelemetryRepository.ReadHistoryAsync(decodedPassportId, fromUtc, toUtc, cancellationToken);
+        model = new PassportDetailViewModel
+        {
+            Passport = passport,
+            TelemetryHistory = telemetryHistory.Select(row => new TelemetryHistoryPointViewModel
+            {
+                MeasuredAt = BsonHelpers.GetString(row, "measuredAt"),
+                CurrentConsumptionKwh = ReadNullableNumber(row, "currentConsumptionKwh"),
+                CurrentChargeLevelPct = ReadNullableNumber(row, "currentChargeLevelPct"),
+                CurrentVoltageV = ReadNullableNumber(row, "currentVoltageV"),
+                CurrentCurrentA = ReadNullableNumber(row, "currentCurrentA")
+            }).ToList()
+        };
+
         return View(model);
+    }
+
+    private static double? ReadNullableNumber(BsonDocument document, string key)
+    {
+        var value = document.GetValue(key, BsonNull.Value);
+        if (value.IsBsonNull)
+        {
+            return null;
+        }
+
+        return value.IsNumeric ? value.ToDouble() : null;
     }
 
     private static bool IsReservedSegment(string value)
@@ -144,6 +174,7 @@ public class PassportController : Controller
         return value.Equals("login", StringComparison.OrdinalIgnoreCase)
             || value.Equals("registry", StringComparison.OrdinalIgnoreCase)
             || value.Equals("search", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("help", StringComparison.OrdinalIgnoreCase)
             || value.Equals("admin", StringComparison.OrdinalIgnoreCase)
             || value.Equals("cluster-admin", StringComparison.OrdinalIgnoreCase)
             || value.Equals("api", StringComparison.OrdinalIgnoreCase);

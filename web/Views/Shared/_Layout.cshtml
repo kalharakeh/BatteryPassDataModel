@@ -58,6 +58,11 @@
 
                     @if (isAuthenticated)
                     {
+                        <a href="/help">Help</a>
+                    }
+
+                    @if (isAuthenticated)
+                    {
                         <div class="bp-identity">
                             <p>@identityLabel</p>
                             <p>@(clusterNames.Count > 0 ? string.Join(", ", clusterNames) : "No cluster")</p>

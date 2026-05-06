@@ -110,7 +110,7 @@ a:hover {
 .bp-main {
   flex: 1;
   width: 100%;
-  max-width: 1120px;
+  max-width: 1240px;
   margin: 0 auto;
   padding: 24px 16px 40px;
 }
@@ -623,6 +623,195 @@ a:hover {
   grid-column: span 1;
 }
 
+.bp-credential-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.bp-credential-panel {
+  border-radius: 8px;
+  padding: 24px;
+}
+
+.bp-credential-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.bp-credential-form-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.bp-credential-form-grid label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  color: #334155;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.bp-credential-form-grid input:not([type="checkbox"]),
+.bp-credential-form-grid select,
+.bp-credential-form-grid textarea {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--bp-text);
+  font-size: 0.94rem;
+  padding: 10px 12px;
+}
+
+.bp-token-clusters {
+  min-height: 146px;
+}
+
+.bp-checkbox-row {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.bp-checkbox-option {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  border: 1px solid var(--bp-border);
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 12px;
+  line-height: 1.35;
+}
+
+.bp-checkbox-option input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+
+.bp-checkbox-option span {
+  min-width: 0;
+}
+
+.bp-credential-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.bp-credential-actions .bp-primary-button,
+.bp-credential-actions .bp-secondary-button {
+  min-height: 44px;
+}
+
+.bp-table-card {
+  overflow: hidden;
+  border-radius: 8px;
+  padding: 0;
+}
+
+.bp-table-scroll {
+  overflow-x: auto;
+}
+
+.bp-credential-table {
+  min-width: 880px;
+  margin-bottom: 0;
+}
+
+.bp-credential-table thead th {
+  border-bottom: 1px solid var(--bp-border);
+  background: #f8fafc;
+  color: var(--bp-muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.bp-credential-table th,
+.bp-credential-table td {
+  padding: 16px 18px !important;
+  vertical-align: middle;
+}
+
+.bp-credential-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.bp-credential-name {
+  margin: 0 0 4px;
+  font-weight: 700;
+}
+
+.bp-code-wrap {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.bp-access-pill,
+.bp-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.bp-access-pill {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+.bp-status-pill.is-active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.bp-status-pill.is-inactive {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+}
+
+.bp-action-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.bp-action-row form {
+  margin: 0;
+}
+
+.bp-action-row .bp-secondary-button,
+.bp-action-row .bp-danger-button {
+  min-height: 40px;
+}
+
+.bp-table-empty {
+  color: var(--bp-muted);
+  padding: 24px !important;
+}
+
 @media (min-width: 768px) {
   .bp-header-inner {
     flex-wrap: nowrap;
@@ -671,6 +860,25 @@ a:hover {
   .bp-span-2 {
     grid-column: span 2;
   }
+
+  .bp-token-form-grid {
+    grid-template-columns: minmax(240px, 1fr) minmax(180px, 0.7fr);
+  }
+
+  .bp-token-clusters-field,
+  .bp-token-form-grid .bp-checkbox-row,
+  .bp-token-form-grid .bp-credential-actions {
+    grid-column: span 2;
+  }
+
+  .bp-secret-form-grid {
+    grid-template-columns: minmax(320px, 1fr) auto;
+    align-items: end;
+  }
+
+  .bp-secret-form-grid .bp-credential-actions {
+    justify-content: flex-start;
+  }
 }
 
 @media (min-width: 1024px) {
@@ -693,6 +901,24 @@ a:hover {
 
   .bp-form-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .bp-token-form-grid {
+    grid-template-columns: minmax(260px, 1.1fr) minmax(180px, 0.65fr) minmax(280px, 1fr);
+    align-items: start;
+  }
+
+  .bp-token-clusters-field {
+    grid-column: auto;
+    grid-row: span 2;
+  }
+
+  .bp-token-form-grid .bp-checkbox-row {
+    grid-column: auto;
+  }
+
+  .bp-token-form-grid .bp-credential-actions {
+    grid-column: 1 / 3;
   }
 }
 
@@ -719,4 +945,72 @@ a:hover {
   min-height: 34px;
   padding-top: 4px;
   padding-bottom: 4px;
+}
+
+.bp-help-page .bp-help-kv-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.bp-help-stack {
+  display: grid;
+  gap: 20px;
+}
+
+.bp-help-tester-card {
+  position: static;
+}
+
+.bp-help-doc-list {
+  display: grid;
+  gap: 12px;
+}
+
+.bp-help-doc-item {
+  border: 1px solid var(--bp-border);
+  border-radius: 10px;
+  padding: 14px;
+  background: #fff;
+}
+
+.bp-help-method {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  border-radius: 999px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  margin-right: 6px;
+}
+
+.bp-help-pre {
+  margin: 0;
+  border-radius: 8px;
+  border: 1px solid #dbe2ec;
+  background: #f8fafc;
+  padding: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.bp-help-request-editor {
+  min-height: 260px;
+  font-family: Consolas, "Courier New", monospace;
+  line-height: 1.45;
+}
+
+.bp-span-all {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 768px) {
+  .bp-help-page .bp-help-kv-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
