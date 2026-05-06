@@ -1,6 +1,6 @@
 # Battery Pass Demonstrator - End User Testing Guide
 
-This guide is for a tester who will use the app and report feedback.
+
 
 ## 1. What this app is and how it is built
 
@@ -32,6 +32,8 @@ This guide is for a tester who will use the app and report feedback.
   - `/{passportId}/summary` summary report
 - Authenticated detail:
   - `/{passportId}` detailed report (requires cluster access)
+- Authenticated registry:
+  - `/registry` battery registry list/search (scope depends on role)
 - Login/logout:
   - `/login`
   - `/login/logout` (POST)
@@ -71,11 +73,13 @@ This guide is for a tester who will use the app and report feedback.
   - Full cycles
 - Can manage users and memberships within managed clusters.
 - Can manage battery secrets for batteries in managed clusters.
+- Cannot modify global admin users from cluster user management.
 - Cannot perform global admin operations (full passport editing, global cluster management, global token management).
 
 ## 3.3 Cluster user (normal user / member)
 
-- Can log in and view battery detail only for batteries in clusters they are assigned to.
+- Can access `/registry` and see only batteries linked to their cluster memberships.
+- Can open detailed report only for batteries in clusters they are assigned to.
 - Cannot access `/admin` or `/cluster-admin`.
 - Can use summary pages; detail page access is checked against cluster membership.
 
@@ -90,6 +94,9 @@ This guide is for a tester who will use the app and report feedback.
   - It is "unassigned"
   - Regular cluster users cannot open detailed report
   - Global admin still can
+- `/registry` visibility:
+  - General admin can search all batteries (including archived entries).
+  - Non-admin users see only batteries from their assigned clusters.
 
 ### 4.2 Where clusters are managed
 
@@ -397,8 +404,8 @@ These are not the token-based external integration API; they use app login/cooki
 
 1. Log in as global admin and verify all admin tabs.
 2. Create a new cluster, assign one battery, assign one local admin and one normal user.
-3. Log in as local admin and verify cluster-scoped limits.
-4. Log in as normal user and verify detail access only for own cluster battery.
+3. Log in as local admin and verify cluster-scoped limits, including that global admin users cannot be modified.
+4. Log in as normal user and verify `/registry` shows only own cluster batteries and detail access works only for own cluster battery.
 5. Create API token + battery secret, then call external API with and without secret.
 6. Verify read token cannot write.
 7. Verify out-of-scope token gets `403`.
