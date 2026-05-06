@@ -125,7 +125,6 @@ public class PassportsApiController : ControllerBase
         registryInfo["status"] = NormalizeDraftRegistryStatus(BsonHelpers.GetString(document, "registryInfo", "status"));
 
         await _passportRepository.ReplaceAsync(passportId, document, cancellationToken);
-        await _passportRepository.MarkCanonicalDirtyAsync(passportId, "adminPassportApiUpdate", cancellationToken);
         return Ok(new { passport = BsonHelpers.ToDotNet(document) });
     }
 

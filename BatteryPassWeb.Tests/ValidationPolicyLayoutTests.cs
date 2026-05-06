@@ -30,6 +30,7 @@ public sealed class ValidationPolicyLayoutTests
         Assert.Contains("RejectDirectPublishRequest", source);
         Assert.Contains("SanitizeTrustClaimsForDraftSave", source);
         Assert.Contains("Direct publish is blocked", source);
+        Assert.DoesNotContain("MarkCanonicalDirtyAsync", source);
     }
 
     [Fact]
