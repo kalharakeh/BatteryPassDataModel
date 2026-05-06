@@ -1,7 +1,14 @@
+import { createHash } from "node:crypto";
 import type { BatteryPassport, Cluster, ClusterMembership } from "@/types/passport";
 import { samplePassport } from "./sample-passport";
 
 const now = "2026-05-04T00:00:00.000Z";
+const sampleBatteryManufacturerName = "Scania Industrial Batteries";
+const sampleBatteryImageOptions = [
+  { url: "/images/compact7.png", category: "Compact 7M" },
+  { url: "/images/compact13.png", category: "Compact 13M" },
+  { url: "/images/core.png", category: "Core" },
+];
 
 export const sampleClusterPassword = "Password123!";
 
@@ -41,7 +48,6 @@ type AdditionalClusterSeedInput = {
   modelNumber: string;
   serialNumber: string;
   facilityId: string;
-  manufacturerName: string;
   batteryCategory: string;
   batteryStatus: string;
   batteryMass: number;
@@ -81,6 +87,12 @@ function rounded(value: number) {
   return Math.round(value * 10) / 10;
 }
 
+export function getSampleBatteryImageOption(passportId: string) {
+  const normalized = passportId.trim().toLowerCase();
+  const hash = createHash("sha256").update(normalized).digest();
+  return sampleBatteryImageOptions[hash[0] % sampleBatteryImageOptions.length];
+}
+
 function carbonStagePayload(input: CarbonStages) {
   return [
     { lifecycleStage: "RawMaterialExtraction", carbonFootprint: input.rawMaterials },
@@ -101,6 +113,7 @@ function carbonStageCharts(input: CarbonStages) {
 
 function buildPassport(input: AdditionalClusterSeedInput): BatteryPassport {
   const passport = cloneSamplePassport();
+  const imageOption = getSampleBatteryImageOption(input.passportId);
   const general = passport.aspects.generalProductInformation?.payload ?? {};
   const materialComposition = passport.aspects.materialComposition?.payload ?? {};
   const carbon = passport.aspects.carbonFootprintForBatteries?.payload ?? {};
@@ -123,25 +136,25 @@ function buildPassport(input: AdditionalClusterSeedInput): BatteryPassport {
     modelNumber: input.modelNumber,
     serialNumber: input.serialNumber,
     facilityId: input.facilityId,
-    manufacturerName: input.manufacturerName,
+    manufacturerName: sampleBatteryManufacturerName,
   };
   passport.app.media = {
     ...passport.app.media,
-    batteryImageUrl: "/sample-battery.png",
+    batteryImageUrl: imageOption.url,
     batteryImageAlt: `Industrial battery pack for passport ${input.modelNumber}`,
   };
 
   general.productIdentifier = input.modelNumber;
   general.batteryPassportIdentifier = `urn:acme:${input.serialNumber.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
-  general.batteryCategory = input.batteryCategory;
+  general.batteryCategory = imageOption.category;
   general.batteryStatus = input.batteryStatus;
   general.batteryMass = input.batteryMass;
   general.manufacturingDate = input.manufacturingDate;
   general.puttingIntoService = input.puttingIntoService;
   general.manufacturerInformation = {
     ...((general.manufacturerInformation ?? {}) as Record<string, unknown>),
-    contactName: input.manufacturerName,
-    identifier: slug(input.manufacturerName),
+    contactName: sampleBatteryManufacturerName,
+    identifier: slug(sampleBatteryManufacturerName),
     postalAddress: { addressCountry: "Germany", postalCode: "10115", streetAddress: input.facilityId },
   };
   general.manufacturingPlace = { addressCountry: "Germany", postalCode: "10115", streetAddress: input.facilityId };
@@ -239,7 +252,6 @@ const seedInputs: AdditionalClusterSeedInput[] = [
     modelNumber: "M-201-NORTH",
     serialNumber: "NORTH-201-0001",
     facilityId: "North Operations Facility",
-    manufacturerName: "NorthVolt Demo Manufacturing",
     batteryCategory: "ev",
     batteryStatus: "Original",
     batteryMass: 512,
@@ -276,7 +288,6 @@ const seedInputs: AdditionalClusterSeedInput[] = [
     modelNumber: "M-302-SOUTH",
     serialNumber: "SOUTH-302-0001",
     facilityId: "South Assembly Line 2",
-    manufacturerName: "South Cell Systems",
     batteryCategory: "industrial",
     batteryStatus: "Repurposed",
     batteryMass: 462,
@@ -313,7 +324,6 @@ const seedInputs: AdditionalClusterSeedInput[] = [
     modelNumber: "M-404-FLEET",
     serialNumber: "FLEET-404-0001",
     facilityId: "Fleet Depot Charging Hall",
-    manufacturerName: "Fleet Battery Operations",
     batteryCategory: "commercial",
     batteryStatus: "Original",
     batteryMass: 536,
@@ -350,7 +360,6 @@ const seedInputs: AdditionalClusterSeedInput[] = [
     modelNumber: "M-508-STORAGE",
     serialNumber: "STORAGE-508-0001",
     facilityId: "Storage Site A",
-    manufacturerName: "Stationary Battery Systems",
     batteryCategory: "stationary",
     batteryStatus: "Remanufactured",
     batteryMass: 690,

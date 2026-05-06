@@ -269,7 +269,7 @@ public sealed class ExternalApiInitializer
                     ["name"] = "Sample Battery",
                     ["modelNumber"] = "SAMPLE-001",
                     ["serialNumber"] = "SN-SAMPLE-001",
-                    ["manufacturerName"] = "Sample Manufacturer"
+                    ["manufacturerName"] = "Scania Industrial Batteries"
                 },
                 ["media"] = new BsonDocument
                 {

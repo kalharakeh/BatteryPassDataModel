@@ -3,6 +3,13 @@ import { describe, it } from "node:test";
 import { additionalSampleClusterSeeds, allSampleClusters, defaultSampleCluster } from "../src/lib/seed/sample-clusters";
 import { samplePassport } from "../src/lib/seed/sample-passport";
 
+const expectedImageByPassportId = new Map([
+  ["did:web:acme.battery.pass:sample-customer-north-001", { url: "/images/compact7.png", category: "Compact 7M" }],
+  ["did:web:acme.battery.pass:sample-customer-south-001", { url: "/images/compact13.png", category: "Compact 13M" }],
+  ["did:web:acme.battery.pass:sample-end-user-fleet-001", { url: "/images/core.png", category: "Core" }],
+  ["did:web:acme.battery.pass:sample-end-user-storage-001", { url: "/images/compact13.png", category: "Compact 13M" }],
+]);
+
 function aspectPayload(passport: (typeof additionalSampleClusterSeeds)[number]["passport"], aspect: "generalProductInformation" | "carbonFootprintForBatteries" | "performanceAndDurability") {
   return passport.aspects[aspect]?.payload ?? {};
 }
@@ -59,8 +66,31 @@ describe("sample cluster seed data", () => {
     }
   });
 
+  it("keeps every seeded battery manufacturer as Scania Industrial Batteries", () => {
+    const passports = [samplePassport, ...additionalSampleClusterSeeds.map((seed) => seed.passport)];
+
+    for (const passport of passports) {
+      const general = passport.aspects.generalProductInformation?.payload ?? {};
+      const manufacturerInformation = (general.manufacturerInformation ?? {}) as Record<string, unknown>;
+
+      assert.equal(passport.app.display.manufacturerName, "Scania Industrial Batteries");
+      assert.equal(manufacturerInformation.contactName, "Scania Industrial Batteries");
+      assert.equal(manufacturerInformation.identifier, "scania-industrial-batteries");
+    }
+  });
+
+  it("keeps generated battery categories aligned with the assigned image assets", () => {
+    for (const seed of additionalSampleClusterSeeds) {
+      const expected = expectedImageByPassportId.get(seed.passport.passportId);
+      assert.ok(expected);
+
+      assert.equal(seed.passport.app.media.batteryImageUrl, expected.url);
+      assert.equal(aspectPayload(seed.passport, "generalProductInformation").batteryCategory, expected.category);
+    }
+  });
+
   it("uses visibly different sample battery data for each generated battery", () => {
-    assert.equal(generatedValueSet((passport) => aspectPayload(passport, "generalProductInformation").batteryCategory).size, 4);
+    assert.equal(generatedValueSet((passport) => passport.app.media.batteryImageUrl).size, 3);
     assert.equal(generatedValueSet((passport) => aspectPayload(passport, "generalProductInformation").batteryMass).size, 4);
     assert.equal(generatedValueSet((passport) => aspectPayload(passport, "generalProductInformation").manufacturingDate).size, 4);
     assert.equal(generatedValueSet((passport) => aspectPayload(passport, "carbonFootprintForBatteries").batteryCarbonFootprint).size, 4);

@@ -6,7 +6,7 @@ import { getStoredFileBySeedKey, uploadBufferToGridFs } from "../db/files";
 import { loadAppEnv } from "../env/load-app-env";
 import { createDemoPdfBuffer } from "../files/demo-pdf";
 import { ensureClusterIndexes, ensurePassportIndexes } from "./indexes";
-import { additionalSampleClusterSeeds, allSampleClusters, legacySampleClusterIds } from "./sample-clusters";
+import { additionalSampleClusterSeeds, allSampleClusters, getSampleBatteryImageOption, legacySampleClusterIds } from "./sample-clusters";
 import { oldLocalSamplePassportId, sampleDocumentLabels, samplePassport } from "./sample-passport";
 import type { BatteryPassport } from "../../types/passport";
 
@@ -88,6 +88,13 @@ async function ensureSeedPdf(passport: BatteryPassport, key: PassportDocumentKey
 
 async function buildSeedPassport(sourcePassport: BatteryPassport) {
   const passport = clonePassport(sourcePassport);
+  const imageOption = getSampleBatteryImageOption(passport.passportId);
+  passport.app.media.batteryImageUrl = imageOption.url;
+  const general = passport.aspects.generalProductInformation?.payload;
+  if (general) {
+    general.batteryCategory = imageOption.category;
+  }
+
   const documents = Object.fromEntries(
     await Promise.all((Object.keys(sampleDocumentLabels) as PassportDocumentKey[]).map(async (key) => [key, await ensureSeedPdf(passport, key)])),
   ) as Record<PassportDocumentKey, PassportDocumentLink>;
