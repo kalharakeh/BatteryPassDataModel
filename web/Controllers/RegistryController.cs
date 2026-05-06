@@ -9,7 +9,6 @@ namespace BatteryPassWeb.Controllers;
 [Route("registry")]
 public class RegistryController : Controller
 {
-    private const string SamplePassportId = "did:web:acme.battery.pass:sample-customer-north-001";
     private readonly PassportRepository _passportRepository;
     private readonly ClusterRepository _clusterRepository;
     private readonly AccessControlService _accessControlService;
@@ -27,16 +26,12 @@ public class RegistryController : Controller
     [HttpGet("")]
     public async Task<IActionResult> Index([FromQuery] string? q, CancellationToken cancellationToken)
     {
-        if (!User.IsInRole("admin") && !User.IsInRole("clusterAdmin"))
-        {
-            return NotFound();
-        }
-
         var query = q?.Trim() ?? string.Empty;
-        var passports = await _passportRepository.SearchAsync(query, includeArchived: User.IsInRole("admin"), cancellationToken);
-        if (!User.IsInRole("admin"))
+        var isAdmin = AccessControlService.IsAdmin(User);
+        var passports = await _passportRepository.SearchAsync(query, includeArchived: isAdmin, cancellationToken);
+        if (!isAdmin)
         {
-            var clusterIds = await _accessControlService.GetAdministeredClusterIdsForUserAsync(User, cancellationToken);
+            var clusterIds = await _accessControlService.GetClusterIdsForUserAsync(User, cancellationToken);
             passports = passports
                 .Where(passport => !string.IsNullOrWhiteSpace(passport.ClusterId)
                                    && clusterIds.Contains(passport.ClusterId, StringComparer.OrdinalIgnoreCase))
@@ -77,7 +72,12 @@ public class RegistryController : Controller
             return Redirect($"/{Uri.EscapeDataString(exactMatch.PassportId)}/summary");
         }
 
-        ViewData["SamplePassportId"] = SamplePassportId;
+        ViewData["RegistryScopeLabel"] = isAdmin
+            ? "Search and open all registered battery passports."
+            : "Search and open battery passports linked to your account.";
+        ViewData["RegistryEmptyLabel"] = isAdmin
+            ? "No batteries are currently available in the registry."
+            : "No batteries are currently linked to your account.";
         return View(passports);
     }
 }

@@ -482,21 +482,21 @@ public class ClusterAdminController : Controller
         var aspects = EnsureDocument(document, "aspects");
 
         var facilityId = Text(form, "facilityId", display.GetValue("facilityId", string.Empty).ToString());
-        var batteryImageUrl = Text(form, "batteryImageUrl", media.GetValue("batteryImageUrl", string.Empty).ToString());
+        var batteryImageUrl = BatteryImageCatalog.NormalizeKnownImageUrl(
+            Text(form, "batteryImageUrl", media.GetValue("batteryImageUrl", BatteryImageCatalog.DefaultImageUrl).ToString()),
+            BsonHelpers.GetString(document, "passportId"));
         var stateOfCharge = ClampNumber(Number(form, "stateOfCharge", NumberAtDocument(EnsureDocument(EnsureDocument(EnsureDocument(aspects, "performanceAndDurability"), "payload"), "batteryCondition"), "stateOfCharge", "stateOfChargeValue")), 0, 100);
         var remainingCapacity = ClampNumber(Number(form, "remainingCapacity", NumberAtDocument(EnsureDocument(EnsureDocument(EnsureDocument(aspects, "performanceAndDurability"), "payload"), "batteryCondition"), "remainingCapacity", "remainingCapacityValue")), 0, 100);
         var remainingEnergy = Math.Max(0, Number(form, "remainingEnergy", NumberAtDocument(EnsureDocument(EnsureDocument(EnsureDocument(aspects, "performanceAndDurability"), "payload"), "batteryCondition"), "remainingEnergy", "remainingEnergyValue")));
         var fullCycles = Math.Max(0, Math.Truncate(Number(form, "fullCycles", NumberAtDocument(EnsureDocument(EnsureDocument(EnsureDocument(aspects, "performanceAndDurability"), "payload"), "batteryCondition"), "numberOfFullCycles", "numberOfFullCyclesValue"))));
 
         display["facilityId"] = facilityId;
-        if (!string.IsNullOrWhiteSpace(batteryImageUrl))
-        {
-            media["batteryImageUrl"] = batteryImageUrl;
-        }
+        media["batteryImageUrl"] = batteryImageUrl;
         media["batteryImageAlt"] = $"Industrial battery pack for passport {display.GetValue("modelNumber", string.Empty)}";
 
         var generalAspect = EnsureDocument(aspects, "generalProductInformation");
         var generalPayload = EnsureDocument(generalAspect, "payload");
+        generalPayload["batteryCategory"] = BatteryImageCatalog.CategoryForImageUrl(batteryImageUrl);
         var manufacturingPlace = EnsureDocument(generalPayload, "manufacturingPlace");
         manufacturingPlace["streetAddress"] = facilityId;
         var manufacturerInformation = EnsureDocument(generalPayload, "manufacturerInformation");

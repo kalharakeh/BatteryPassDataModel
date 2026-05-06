@@ -18,7 +18,7 @@ public sealed class PassportViewModel
     public string WeightLabel { get; init; } = string.Empty;
     public bool IsValid { get; init; }
     public string VerificationState { get; init; } = "unverified";
-    public string BatteryImageUrl { get; init; } = "/sample-battery.png";
+    public string BatteryImageUrl { get; init; } = "/images/compact7.png";
     public string BatteryImageAlt { get; init; } = "Industrial EV battery pack";
     public double CarbonFootprint { get; init; }
     public string CarbonFootprintLabel { get; init; } = string.Empty;

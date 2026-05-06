@@ -232,6 +232,39 @@ a:hover {
   padding: 0 12px;
 }
 
+.bp-modal[hidden] {
+  display: none;
+}
+
+.bp-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.bp-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.46);
+}
+
+.bp-modal-panel {
+  position: relative;
+  width: min(100%, 480px);
+  background: #fff;
+  border: 1px solid #d7dee8;
+  border-radius: 12px;
+  box-shadow: 0 22px 44px rgba(15, 23, 42, 0.24);
+  padding: 20px;
+}
+
+.bp-modal-open {
+  overflow: hidden;
+}
+
 .bp-landing-links {
   display: flex;
   flex-wrap: wrap;
@@ -564,13 +597,29 @@ a:hover {
   align-content: start;
 }
 
-.bp-edit-nav a {
+.bp-edit-nav a,
+.bp-edit-nav .bp-edit-nav-button {
   border: 1px solid var(--bp-border);
   border-radius: 8px;
   background: #fff;
   padding: 8px 10px;
   font-size: 0.88rem;
   color: #334155;
+  text-align: left;
+}
+
+.bp-edit-nav .bp-edit-nav-button {
+  width: 100%;
+  cursor: pointer;
+  font: inherit;
+}
+
+.bp-edit-nav .bp-edit-nav-button.is-active,
+.bp-edit-nav a.is-active {
+  border-color: #0f766e;
+  background: #ccfbf1;
+  color: #134e4a;
+  font-weight: 600;
 }
 
 .bp-edit-form {

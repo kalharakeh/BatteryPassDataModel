@@ -195,6 +195,7 @@ public sealed class PassportRepository
         var serialNumber = BsonHelpers.GetString(document, "app", "display", "serialNumber");
         var status = BsonHelpers.GetString(document, "registryInfo", "status");
         var imageUrl = BsonHelpers.GetString(document, "app", "media", "batteryImageUrl");
+        var normalizedImageUrl = BatteryImageCatalog.NormalizeKnownImageUrl(imageUrl, passportId);
         var clusterId = BsonHelpers.GetString(document, "clusterId");
 
         return new PassportSummaryViewModel
@@ -207,7 +208,7 @@ public sealed class PassportRepository
             RegistryStatus = status,
             ClusterId = clusterId,
             ClusterLabel = string.IsNullOrWhiteSpace(clusterId) ? "No cluster assigned" : clusterId,
-            BatteryImageUrl = string.IsNullOrWhiteSpace(imageUrl) ? "/sample-battery.png" : imageUrl,
+            BatteryImageUrl = normalizedImageUrl,
             UpdatedDate = BsonHelpers.GetString(document, "registryInfo", "updatedAt")
         };
     }

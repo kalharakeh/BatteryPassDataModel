@@ -47,6 +47,7 @@ public sealed class ExternalApiInitializer
             await _externalApiRepository.EnsureIndexesAsync(cancellationToken);
             await _batteryTelemetryRepository.EnsureIndexesAsync(cancellationToken);
             await EnsureSamplePassportAsync(cancellationToken);
+            await EnsureBatteryImagesAndCategoriesAsync(cancellationToken);
             await EnsureSampleTokensAsync(cancellationToken);
             await EnsureClusterTokensAsync(cancellationToken);
             _initialized = true;
@@ -143,6 +144,59 @@ public sealed class ExternalApiInitializer
         }
     }
 
+    private async Task EnsureBatteryImagesAndCategoriesAsync(CancellationToken cancellationToken)
+    {
+        var passports = await _passportRepository.SearchDocumentsAsync(string.Empty, includeArchived: true, cancellationToken);
+        if (passports.Count == 0)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow.ToString("O");
+        foreach (var passport in passports)
+        {
+            var passportId = BsonHelpers.GetString(passport, "passportId");
+            if (string.IsNullOrWhiteSpace(passportId))
+            {
+                continue;
+            }
+
+            var app = EnsureDocument(passport, "app");
+            var media = EnsureDocument(app, "media");
+            var aspects = EnsureDocument(passport, "aspects");
+            var generalProductInformation = EnsureDocument(aspects, "generalProductInformation");
+            var generalPayload = EnsureDocument(generalProductInformation, "payload");
+
+            var currentImageUrl = BatteryImageCatalog.NormalizeAssetUrl(media.GetValue("batteryImageUrl", string.Empty).ToString());
+            var selectedImageUrl = BatteryImageCatalog.NormalizeKnownImageUrl(currentImageUrl, passportId);
+            var selectedCategory = BatteryImageCatalog.CategoryForImageUrl(selectedImageUrl);
+            var currentCategory = generalPayload.GetValue("batteryCategory", string.Empty).ToString();
+
+            var hasChanges = false;
+            if (!string.Equals(currentImageUrl, selectedImageUrl, StringComparison.OrdinalIgnoreCase))
+            {
+                media["batteryImageUrl"] = selectedImageUrl;
+                hasChanges = true;
+            }
+
+            if (!string.Equals(currentCategory, selectedCategory, StringComparison.OrdinalIgnoreCase))
+            {
+                generalPayload["batteryCategory"] = selectedCategory;
+                hasChanges = true;
+            }
+
+            if (!hasChanges)
+            {
+                continue;
+            }
+
+            var registryInfo = EnsureDocument(passport, "registryInfo");
+            registryInfo["updatedAt"] = now;
+            passport.Remove("_id");
+            await _passportRepository.ReplaceAsync(passportId, passport, cancellationToken);
+        }
+    }
+
     private async Task EnsureClusterTokensAsync(CancellationToken cancellationToken)
     {
         var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
@@ -219,10 +273,19 @@ public sealed class ExternalApiInitializer
                 },
                 ["media"] = new BsonDocument
                 {
-                    ["batteryImageUrl"] = "/sample-battery.png"
+                    ["batteryImageUrl"] = BatteryImageCatalog.DefaultImageUrl
                 }
             },
-            ["aspects"] = new BsonDocument()
+            ["aspects"] = new BsonDocument
+            {
+                ["generalProductInformation"] = new BsonDocument
+                {
+                    ["payload"] = new BsonDocument
+                    {
+                        ["batteryCategory"] = BatteryImageCatalog.CategoryForImageUrl(BatteryImageCatalog.DefaultImageUrl)
+                    }
+                }
+            }
         };
     }
 

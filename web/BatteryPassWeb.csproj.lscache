@@ -91,6 +91,7 @@ Program.cs
 Services/
  AccessControlService.cs
  AuthService.cs
+ BatteryImageCatalog.cs
  BatteryTelemetryRepository.cs
  BsonHelpers.cs
  ClusterRepository.cs
@@ -446,9 +447,6 @@ Services/
 <DOTNET>/sdk/10.0.203/Sdks/Microsoft.NET.Sdk/analyzers/
  Microsoft.CodeAnalysis.CSharp.NetAnalyzers.dll
  Microsoft.CodeAnalysis.NetAnalyzers.dll
-<NUGET>/microsoft.net.illink.tasks/10.0.7/analyzers/dotnet/cs/
- ILLink.CodeFixProvider.dll
- ILLink.RoslynAnalyzer.dll
 
 [analyzerConfigFiles]
 <DOTNET>/sdk/10.0.203/Sdks/Microsoft.NET.Sdk/analyzers/build/config/analysislevel_10_default.globalconfig

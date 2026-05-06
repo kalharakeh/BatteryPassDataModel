@@ -5,6 +5,10 @@
     var passport = Model.Passport;
     var formAction = isNew ? "/admin/passports/create" : "/admin/passports/save";
     var submitLabel = isNew ? "Create passport" : "Save passport";
+    var cancelHref = "/admin/passports";
+    var batteryImageOptions = BatteryPassWeb.Services.BatteryImageCatalog.Options;
+    var selectedBatteryImageUrl = BatteryPassWeb.Services.BatteryImageCatalog.NormalizeKnownImageUrl(passport.BatteryImageUrl, passport.PassportId);
+    var selectedBatteryCategory = BatteryPassWeb.Services.BatteryImageCatalog.CategoryForImageUrl(selectedBatteryImageUrl);
 
     double SegmentValue(string label, IReadOnlyList<BatteryPassWeb.Models.ViewModels.ChartSegmentViewModel> segments)
         => segments.FirstOrDefault(segment => segment.Label.Equals(label, StringComparison.OrdinalIgnoreCase))?.Value ?? 0;
@@ -26,18 +30,18 @@
         <div class="alert alert-danger mt-3 mb-0">@Model.ErrorMessage</div>
     }
 
-    <form method="post" action="@formAction" class="bp-edit-grid mt-4">
+    <form method="post" action="@formAction" class="bp-edit-grid mt-4" data-edit-passport-form>
         @Html.AntiForgeryToken()
-        <nav class="bp-edit-nav">
+        <nav class="bp-edit-nav" aria-label="Passport categories">
             @foreach (var section in passport.Sections)
             {
                 var sectionId = "admin-" + section.ToLowerInvariant().Replace(" ", "-");
-                <a href="#@sectionId">@(section)</a>
+                <button type="button" class="bp-edit-nav-button" data-section-target="@sectionId" aria-pressed="false">@(section)</button>
             }
         </nav>
 
         <div class="bp-edit-form">
-            <section id="admin-general" class="bp-card">
+            <section id="admin-general" class="bp-card bp-edit-section">
                 <h2>General</h2>
                 <div class="bp-form-grid">
                     @if (isNew)
@@ -51,7 +55,7 @@
                     <label>Name<input type="text" name="name" value="@passport.DisplayName" /></label>
                     <label>Model Number<input type="text" name="modelNumber" value="@passport.ModelNumber" /></label>
                     <label>Serial Number<input type="text" name="serialNumber" value="@passport.SerialNumber" /></label>
-                    <label>Category<input type="text" name="category" value="@passport.Category" /></label>
+                    <label>Category<input type="text" name="category" value="@selectedBatteryCategory" readonly data-image-category /></label>
                     <label>Status<input type="text" name="batteryStatus" value="@passport.BatteryStatus" /></label>
                     <label>Weight kg<input type="number" step="any" name="batteryMass" value="@passport.Weight" /></label>
                     <label>Manufactured date<input type="date" name="manufacturingDate" value="@passport.ManufacturedDate" /></label>
@@ -85,11 +89,25 @@
                             }
                         </select>
                     </label>
-                    <label>Battery image URL<input type="text" name="batteryImageUrl" value="@passport.BatteryImageUrl" /></label>
+                    <label>Battery image
+                        <select name="batteryImageUrl" data-battery-image-select>
+                            @foreach (var imageOption in batteryImageOptions)
+                            {
+                                if (imageOption.Url.Equals(selectedBatteryImageUrl, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <option value="@imageOption.Url" data-image-category="@imageOption.Category" selected>@imageOption.Label (@imageOption.Category)</option>
+                                }
+                                else
+                                {
+                                    <option value="@imageOption.Url" data-image-category="@imageOption.Category">@imageOption.Label (@imageOption.Category)</option>
+                                }
+                            }
+                        </select>
+                    </label>
                 </div>
             </section>
 
-            <section id="admin-material-composition" class="bp-card">
+            <section id="admin-material-composition" class="bp-card bp-edit-section">
                 <h2>Material composition</h2>
                 <div class="bp-form-grid">
                     <label>Nickel kg<input type="number" step="any" name="materialNickel" value="@SegmentValue("Nickel", passport.MaterialCompositionSegments)" /></label>
@@ -103,7 +121,7 @@
                 </div>
             </section>
 
-            <section id="admin-performance" class="bp-card">
+            <section id="admin-performance" class="bp-card bp-edit-section">
                 <h2>Performance</h2>
                 <div class="bp-form-grid">
                     <label>Rated energy kWh<input type="number" step="any" name="ratedEnergy" value="@passport.Performance.RatedEnergy" /></label>
@@ -119,7 +137,7 @@
                 </div>
             </section>
 
-            <section id="admin-compliance" class="bp-card">
+            <section id="admin-compliance" class="bp-card bp-edit-section">
                 <h2>Compliance</h2>
                 <div class="bp-form-grid">
                     <label>@passport.Documents.ConformityAssessment.Label<input type="text" name="document_conformityAssessment" value="@passport.Documents.ConformityAssessment.Url" /></label>
@@ -127,7 +145,7 @@
                 </div>
             </section>
 
-            <section id="admin-supply-chain" class="bp-card">
+            <section id="admin-supply-chain" class="bp-card bp-edit-section">
                 <h2>Supply chain</h2>
                 <div class="bp-form-grid">
                     <label>Supply chain index<input type="number" step="any" name="supplyChainIndex" value="@passport.SupplyChainIndex" /></label>
@@ -138,7 +156,7 @@
                 </div>
             </section>
 
-            <section id="admin-circularity" class="bp-card">
+            <section id="admin-circularity" class="bp-card bp-edit-section">
                 <h2>Circularity</h2>
                 <div class="bp-form-grid">
                     <label class="bp-span-2">Separate collection<textarea name="separateCollection">@passport.Circularity.SeparateCollection</textarea></label>
@@ -194,7 +212,7 @@
                 </div>
             </section>
 
-            <section id="admin-carbon-footprint" class="bp-card">
+            <section id="admin-carbon-footprint" class="bp-card bp-edit-section">
                 <h2>Carbon Footprint</h2>
                 <div class="bp-form-grid">
                     <label>Amount gCO2e/kWh<input type="number" step="any" name="carbonFootprint" value="@passport.CarbonFootprint" /></label>
@@ -207,9 +225,186 @@
                 </div>
             </section>
 
-            <div class="d-flex justify-content-end">
+            <div class="d-flex justify-content-end flex-wrap gap-2">
+                <button type="button" class="bp-secondary-button" data-cancel-edits data-cancel-href="@cancelHref">Cancel edits</button>
                 <button type="submit" class="bp-primary-button">@submitLabel</button>
             </div>
         </div>
     </form>
+
+    <div class="bp-modal" data-cancel-modal hidden>
+        <div class="bp-modal-backdrop" data-cancel-dismiss></div>
+        <div class="bp-modal-panel" role="dialog" aria-modal="true" aria-labelledby="cancel-edits-title" aria-describedby="cancel-edits-description">
+            <h2 id="cancel-edits-title" class="h5 mb-2">Discard unsaved edits?</h2>
+            <p id="cancel-edits-description" class="mb-3">You have unsaved changes. Leaving this page will discard them.</p>
+            <div class="d-flex justify-content-end flex-wrap gap-2">
+                <button type="button" class="bp-secondary-button" data-cancel-stay>Keep editing</button>
+                <button type="button" class="bp-danger-button" data-cancel-discard>Discard changes</button>
+            </div>
+        </div>
+    </div>
 </main>
+
+@section Scripts {
+    <script>
+        (function () {
+            const form = document.querySelector('[data-edit-passport-form]');
+            if (!form) {
+                return;
+            }
+
+            const navButtons = Array.from(form.querySelectorAll('.bp-edit-nav-button[data-section-target]'));
+            const sections = Array.from(form.querySelectorAll('.bp-edit-section[id]'));
+            if (navButtons.length === 0 || sections.length === 0) {
+                return;
+            }
+            const cancelButton = form.querySelector('[data-cancel-edits]');
+            const cancelModal = document.querySelector('[data-cancel-modal]');
+            const stayEditingButton = cancelModal?.querySelector('[data-cancel-stay]');
+            const discardChangesButton = cancelModal?.querySelector('[data-cancel-discard]');
+            const dismissTarget = cancelModal?.querySelector('[data-cancel-dismiss]');
+            const cancelHref = cancelButton?.dataset.cancelHref ?? '';
+            const batteryImageSelect = form.querySelector('[data-battery-image-select]');
+            const categoryInput = form.querySelector('[data-image-category]');
+
+            const sectionById = new Map(sections.map((section) => [section.id, section]));
+            const defaultSectionId = navButtons
+                .map((button) => button.dataset.sectionTarget)
+                .find((sectionId) => sectionId && sectionById.has(sectionId)) || sections[0].id;
+            const pristineFormState = serializeFormState(form);
+
+            function serializeFormState(targetForm) {
+                const formData = new FormData(targetForm);
+                const entries = [];
+                for (const [key, value] of formData.entries()) {
+                    if (key === '__RequestVerificationToken') {
+                        continue;
+                    }
+                    entries.push([key, String(value)]);
+                }
+
+                entries.sort((left, right) => {
+                    if (left[0] === right[0]) {
+                        return left[1].localeCompare(right[1]);
+                    }
+                    return left[0].localeCompare(right[0]);
+                });
+
+                return JSON.stringify(entries);
+            }
+
+            function hasUnsavedChanges() {
+                return serializeFormState(form) !== pristineFormState;
+            }
+
+            function openCancelModal() {
+                if (!cancelModal) {
+                    return;
+                }
+
+                cancelModal.hidden = false;
+                document.body.classList.add('bp-modal-open');
+                stayEditingButton?.focus();
+            }
+
+            function closeCancelModal() {
+                if (!cancelModal) {
+                    return;
+                }
+
+                cancelModal.hidden = true;
+                document.body.classList.remove('bp-modal-open');
+                cancelButton?.focus();
+            }
+
+            function syncCategoryFromImage() {
+                if (!batteryImageSelect || !categoryInput) {
+                    return;
+                }
+
+                const selectedOption = batteryImageSelect.options[batteryImageSelect.selectedIndex];
+                const category = selectedOption?.dataset.imageCategory ?? '';
+                categoryInput.value = category;
+            }
+
+            function setActiveSection(sectionId, updateHash) {
+                if (!sectionById.has(sectionId)) {
+                    return;
+                }
+
+                sections.forEach((section) => {
+                    const isActive = section.id === sectionId;
+                    section.hidden = !isActive;
+                });
+
+                navButtons.forEach((button) => {
+                    const isActive = button.dataset.sectionTarget === sectionId;
+                    button.classList.toggle('is-active', isActive);
+                    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+                    if (isActive) {
+                        button.setAttribute('aria-current', 'true');
+                    } else {
+                        button.removeAttribute('aria-current');
+                    }
+                });
+
+                if (updateHash) {
+                    history.replaceState(null, '', '#' + sectionId);
+                }
+            }
+
+            navButtons.forEach((button) => {
+                button.addEventListener('click', () => {
+                    const targetSection = button.dataset.sectionTarget;
+                    if (!targetSection) {
+                        return;
+                    }
+
+                    setActiveSection(targetSection, true);
+                });
+            });
+
+            window.addEventListener('hashchange', () => {
+                const hashSectionId = window.location.hash.replace('#', '');
+                if (sectionById.has(hashSectionId)) {
+                    setActiveSection(hashSectionId, false);
+                }
+            });
+
+            const hashSectionId = window.location.hash.replace('#', '');
+            setActiveSection(sectionById.has(hashSectionId) ? hashSectionId : defaultSectionId, true);
+            syncCategoryFromImage();
+            batteryImageSelect?.addEventListener('change', syncCategoryFromImage);
+
+            cancelButton?.addEventListener('click', () => {
+                if (!cancelHref) {
+                    return;
+                }
+
+                if (!hasUnsavedChanges()) {
+                    window.location.assign(cancelHref);
+                    return;
+                }
+
+                openCancelModal();
+            });
+
+            stayEditingButton?.addEventListener('click', closeCancelModal);
+            dismissTarget?.addEventListener('click', closeCancelModal);
+            discardChangesButton?.addEventListener('click', () => {
+                if (!cancelHref) {
+                    return;
+                }
+
+                window.location.assign(cancelHref);
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && cancelModal && !cancelModal.hidden) {
+                    event.preventDefault();
+                    closeCancelModal();
+                }
+            });
+        })();
+    </script>
+}

@@ -2,6 +2,9 @@
 @{
     ViewData["Title"] = "Edit local passport fields";
     var passport = Model.Passport;
+    var batteryImageOptions = BatteryPassWeb.Services.BatteryImageCatalog.Options;
+    var selectedBatteryImageUrl = BatteryPassWeb.Services.BatteryImageCatalog.NormalizeKnownImageUrl(passport.BatteryImageUrl, passport.PassportId);
+    var selectedBatteryCategory = BatteryPassWeb.Services.BatteryImageCatalog.CategoryForImageUrl(selectedBatteryImageUrl);
 }
 <main class="bp-page bp-admin-page">
     <div class="d-flex justify-content-between flex-wrap gap-3 align-items-end">
@@ -22,7 +25,7 @@
     }
 
     <section class="bp-card">
-        <form method="post" action="/cluster-admin/passports/save" class="bp-stack-form">
+        <form method="post" action="/cluster-admin/passports/save" class="bp-stack-form" data-local-passport-form>
             @Html.AntiForgeryToken()
             <input type="hidden" name="passportId" value="@passport.PassportId" />
 
@@ -35,8 +38,24 @@
                 <input type="text" name="facilityId" value="@passport.FacilityId" />
             </label>
             <label>
-                Battery image URL
-                <input type="text" name="batteryImageUrl" value="@passport.BatteryImageUrl" />
+                Battery image
+                <select name="batteryImageUrl" data-battery-image-select>
+                    @foreach (var imageOption in batteryImageOptions)
+                    {
+                        if (imageOption.Url.Equals(selectedBatteryImageUrl, StringComparison.OrdinalIgnoreCase))
+                        {
+                            <option value="@imageOption.Url" data-image-category="@imageOption.Category" selected>@imageOption.Label (@imageOption.Category)</option>
+                        }
+                        else
+                        {
+                            <option value="@imageOption.Url" data-image-category="@imageOption.Category">@imageOption.Label (@imageOption.Category)</option>
+                        }
+                    }
+                </select>
+            </label>
+            <label>
+                Category
+                <input type="text" name="category" value="@selectedBatteryCategory" readonly data-image-category />
             </label>
             <label>
                 State of charge %
@@ -62,3 +81,28 @@
         </form>
     </section>
 </main>
+
+@section Scripts {
+    <script>
+        (function () {
+            const form = document.querySelector('[data-local-passport-form]');
+            if (!form) {
+                return;
+            }
+
+            const batteryImageSelect = form.querySelector('[data-battery-image-select]');
+            const categoryInput = form.querySelector('[data-image-category]');
+            if (!batteryImageSelect || !categoryInput) {
+                return;
+            }
+
+            function syncCategoryFromImage() {
+                const selectedOption = batteryImageSelect.options[batteryImageSelect.selectedIndex];
+                categoryInput.value = selectedOption?.dataset.imageCategory ?? '';
+            }
+
+            syncCategoryFromImage();
+            batteryImageSelect.addEventListener('change', syncCategoryFromImage);
+        })();
+    </script>
+}

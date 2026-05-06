@@ -714,8 +714,13 @@ public class AdminController : Controller
         display["facilityId"] = Text(form, "facilityId", display.GetValue("facilityId", string.Empty).ToString());
         display["manufacturerName"] = Text(form, "manufacturerName", display.GetValue("manufacturerName", string.Empty).ToString());
 
-        var batteryImageUrl = Text(form, "batteryImageUrl", media.GetValue("batteryImageUrl", "/sample-battery.png").ToString());
-        media["batteryImageUrl"] = string.IsNullOrWhiteSpace(batteryImageUrl) ? "/sample-battery.png" : batteryImageUrl;
+        var fallbackImageUrl = BatteryImageCatalog.NormalizeKnownImageUrl(
+            media.GetValue("batteryImageUrl", BatteryImageCatalog.DefaultImageUrl).ToString(),
+            BsonHelpers.GetString(document, "passportId"));
+        var batteryImageUrl = BatteryImageCatalog.NormalizeKnownImageUrl(
+            Text(form, "batteryImageUrl", fallbackImageUrl),
+            BsonHelpers.GetString(document, "passportId"));
+        media["batteryImageUrl"] = batteryImageUrl;
         media["batteryImageAlt"] = $"Industrial battery pack for passport {display.GetValue("modelNumber", string.Empty)}";
 
         foreach (var key in DocumentKeys)
@@ -733,7 +738,7 @@ public class AdminController : Controller
         var generalPayload = EnsureDocument(generalAspect, "payload");
         generalPayload["productIdentifier"] = display.GetValue("modelNumber", string.Empty).ToString();
         generalPayload["batteryPassportIdentifier"] = $"urn:acme:{display.GetValue("serialNumber", string.Empty).ToString().ToLowerInvariant().Replace("-", string.Empty)}";
-        generalPayload["batteryCategory"] = Text(form, "category", generalPayload.GetValue("batteryCategory", "ev").ToString()).ToLowerInvariant();
+        generalPayload["batteryCategory"] = BatteryImageCatalog.CategoryForImageUrl(batteryImageUrl);
         generalPayload["batteryStatus"] = Text(form, "batteryStatus", generalPayload.GetValue("batteryStatus", "Original").ToString());
         generalPayload["batteryMass"] = Number(form, "batteryMass", generalPayload.GetValue("batteryMass", 0).ToDouble());
         generalPayload["manufacturingDate"] = $"{Text(form, "manufacturingDate", DateOnly(generalPayload.GetValue("manufacturingDate", string.Empty).ToString()))}T00:00:00.000Z";

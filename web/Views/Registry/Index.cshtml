@@ -1,11 +1,12 @@
 @model IReadOnlyList<BatteryPassWeb.Models.ViewModels.PassportSummaryViewModel>
 @{
     ViewData["Title"] = "Scania Passport Registry";
-    var samplePassportId = ViewData["SamplePassportId"] as string ?? "did:web:acme.battery.pass:sample-customer-north-001";
+    var registryScopeLabel = ViewData["RegistryScopeLabel"] as string ?? "Search and open battery passports linked to your account.";
+    var registryEmptyLabel = ViewData["RegistryEmptyLabel"] as string ?? "No batteries are currently linked to your account.";
 }
 <main class="bp-page">
     <h1 class="mb-1">Scania Passport Registry</h1>
-    <p class="text-secondary mb-0">Search and open registered battery passports.</p>
+    <p class="text-secondary mb-0">@registryScopeLabel</p>
 
     <form action="/registry" class="bp-search-form mt-4">
         <input
@@ -13,36 +14,44 @@
             value="@Context.Request.Query["q"]"
             placeholder="Search by passport ID, model, serial, or manufacturer" />
         <button type="submit">Search</button>
-        <a href="/registry?q=@Uri.EscapeDataString(samplePassportId)" class="bp-secondary-button">Sample ID</a>
     </form>
 
-    <div class="bp-card mt-4 p-0 overflow-auto">
-        <table class="table table-hover align-middle mb-0">
-            <thead>
-                <tr>
-                    <th class="px-3 py-3">Passport ID</th>
-                    <th class="px-3 py-3">Name</th>
-                    <th class="px-3 py-3">Model</th>
-                    <th class="px-3 py-3">Manufacturer</th>
-                    <th class="px-3 py-3">Status</th>
-                    <th class="px-3 py-3">Cluster</th>
-                    <th class="px-3 py-3"></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var row in Model)
-                {
+    @if (Model.Count == 0)
+    {
+        <div class="bp-card mt-4">
+            @registryEmptyLabel
+        </div>
+    }
+    else
+    {
+        <div class="bp-card mt-4 p-0 overflow-auto">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
                     <tr>
-                        <td class="px-3 py-3 text-break">@row.PassportId</td>
-                        <td class="px-3 py-3">@row.DisplayName</td>
-                        <td class="px-3 py-3">@row.ModelNumber</td>
-                        <td class="px-3 py-3">@row.ManufacturerName</td>
-                        <td class="px-3 py-3">@row.RegistryStatus</td>
-                        <td class="px-3 py-3">@row.ClusterLabel</td>
-                        <td class="px-3 py-3 text-end"><a href="/@Uri.EscapeDataString(row.PassportId)/summary" class="bp-secondary-button">Summary</a></td>
+                        <th class="px-3 py-3">Passport ID</th>
+                        <th class="px-3 py-3">Name</th>
+                        <th class="px-3 py-3">Model</th>
+                        <th class="px-3 py-3">Manufacturer</th>
+                        <th class="px-3 py-3">Status</th>
+                        <th class="px-3 py-3">Cluster</th>
+                        <th class="px-3 py-3"></th>
                     </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model)
+                    {
+                        <tr>
+                            <td class="px-3 py-3 text-break">@row.PassportId</td>
+                            <td class="px-3 py-3">@row.DisplayName</td>
+                            <td class="px-3 py-3">@row.ModelNumber</td>
+                            <td class="px-3 py-3">@row.ManufacturerName</td>
+                            <td class="px-3 py-3">@row.RegistryStatus</td>
+                            <td class="px-3 py-3">@row.ClusterLabel</td>
+                            <td class="px-3 py-3 text-end"><a href="/@Uri.EscapeDataString(row.PassportId)/summary" class="bp-secondary-button">Summary</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
 </main>

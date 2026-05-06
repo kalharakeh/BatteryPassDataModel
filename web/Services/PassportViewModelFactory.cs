@@ -5,10 +5,11 @@ namespace BatteryPassWeb.Services;
 
 public sealed class PassportViewModelFactory
 {
-    private const string DefaultImage = "/sample-battery.png";
+    private const string DefaultImage = "/images/compact7.png";
 
     public PassportViewModel Create(BsonDocument document, IReadOnlyDictionary<string, string>? clusterNamesById = null)
     {
+        var passportId = BsonHelpers.GetString(document, "passportId");
         var app = GetDocument(BsonHelpers.GetValue(document, "app"));
         var appDisplay = GetDocument(app.GetValue("display", new BsonDocument()));
         var appMedia = GetDocument(app.GetValue("media", new BsonDocument()));
@@ -52,7 +53,10 @@ public sealed class PassportViewModelFactory
         var weight = NumberAt(generalPayload, "batteryMass");
         var batteryImageUrl = NormalizeAssetUrl(FirstNonEmpty(
             appMedia.GetValue("batteryImageUrl", string.Empty).ToString(),
-            DefaultImage));
+            DefaultImage), passportId);
+        var batteryCategory = FirstNonEmpty(
+            BsonHelpers.GetString(generalPayload, "batteryCategory"),
+            BatteryImageCatalog.CategoryForImageUrl(batteryImageUrl));
         var batteryImageAlt = FirstNonEmpty(
             appMedia.GetValue("batteryImageAlt", string.Empty).ToString(),
             $"Industrial EV battery pack for passport {modelNumber}");
@@ -130,7 +134,7 @@ public sealed class PassportViewModelFactory
 
         return new PassportViewModel
         {
-            PassportId = BsonHelpers.GetString(document, "passportId"),
+            PassportId = passportId,
             DisplayName = displayName,
             ModelNumber = modelNumber,
             SerialNumber = serialNumber,
@@ -139,7 +143,7 @@ public sealed class PassportViewModelFactory
             RegistryStatus = BsonHelpers.GetString(document, "registryInfo", "status"),
             ClusterId = clusterId,
             ClusterLabel = clusterLabel,
-            Category = BsonHelpers.GetString(generalPayload, "batteryCategory").ToUpperInvariant(),
+            Category = batteryCategory,
             BatteryStatus = BsonHelpers.GetString(generalPayload, "batteryStatus"),
             ManufacturedDate = DateOnly(BsonHelpers.GetString(generalPayload, "manufacturingDate")),
             Weight = weight,
@@ -241,19 +245,14 @@ public sealed class PassportViewModelFactory
         return url;
     }
 
-    private static string NormalizeAssetUrl(string url)
+    private static string NormalizeAssetUrl(string url, string passportId)
     {
         if (string.IsNullOrWhiteSpace(url))
         {
             return DefaultImage;
         }
 
-        if (Uri.TryCreate(url, UriKind.Absolute, out var absoluteUri) && absoluteUri.AbsolutePath.StartsWith("/", StringComparison.Ordinal))
-        {
-            return absoluteUri.AbsolutePath;
-        }
-
-        return url;
+        return BatteryImageCatalog.NormalizeKnownImageUrl(url, passportId);
     }
 
     private static BsonDocument GetPayload(BsonDocument aspects, string aspectKey)
