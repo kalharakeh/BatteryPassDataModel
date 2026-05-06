@@ -46,7 +46,7 @@
                         <li><code>401 Unauthorized</code>: Missing or invalid API token.</li>
                         <li><code>403 Forbidden</code>: Token scope/access is not allowed for this battery/operation, or battery secret is required/invalid.</li>
                         <li><code>404 Not Found</code>: Battery passport or requested section/path does not exist.</li>
-                        <li><code>500 Internal Server Error</code>: Unexpected server-side failure.</li>
+                        <li><code>500 Server Error</code>: Unexpected server-side failure.</li>
                         <li><code>503 Service Unavailable</code>: Backend dependency (database) is unavailable.</li>
                     </ul>
                 </article>
@@ -68,7 +68,7 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/section/circularity</code>
                     <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{passportId}/values?path=...</h3>
                     <p class="mb-1">Read one or more specific values by alias or exact document path.</p>
                     <p class="mb-1">Aliases: <code>ratedEnergy</code>, <code>ratedCapacity</code>, <code>ratedMaximumPower</code>, <code>nominalVoltage</code>, <code>nickelMass</code>, <code>currentConsumptionKwh</code>, <code>currentChargeLevelPct</code>, <code>currentVoltageV</code>, <code>currentCurrentA</code>, <code>locationOfUse</code>, <code>contactPerson</code>, <code>isActive</code>.</p>
-                    <p class="mb-1">Need the full set of readable values (not only aliases)? Open <a href="@($"{Model.BasePath}/batteries/{Model.SamplePassportId}/paths?section=full")" target="_blank" rel="noopener noreferrer"><code>@Model.BasePath/batteries/@Model.SamplePassportId/paths?section=full</code></a> in a new tab.</p>
+                    <p class="mb-1">Need the full set of readable values (not only aliases)? Open <a id="supported-values-link" href="@($"{Model.BasePath}/batteries/{Model.SamplePassportId}/paths?section=full")&amp;includeContainers=true" target="_blank" rel="noopener noreferrer"><code>@Model.BasePath/batteries/@Model.SamplePassportId/paths?section=full&amp;includeContainers=true</code></a> in a new tab.</p>
                     <pre class="bp-help-pre mb-2"><code>GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=ratedEnergy&amp;path=ratedCapacity
 GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=nickelMass
 GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=aspects.circularity.payload</code></pre>
@@ -91,12 +91,15 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=aspects.circul
                     <pre class="bp-help-pre mb-2"><code>GET @Model.BasePath/batteries/@Model.SamplePassportId/paths
 GET @Model.BasePath/batteries/@Model.SamplePassportId/paths?section=performance
 GET @Model.BasePath/batteries/@Model.SamplePassportId/paths?section=materialComposition&amp;includeContainers=true</code></pre>
-                    <p class="mb-1">Reuse returned paths by passing them as repeated <code>path</code> query parameters to <code>/values</code>:</p>
+                    <p class="mb-1">Copy any item from the returned <code>paths</code> array and pass it as a repeated <code>path</code> query parameter to <code>/values</code>:</p>
                     <pre class="bp-help-pre mb-0"><code># Example: read values returned from /paths?section=performance
-GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=aspects.performanceAndDurability.payload.batteryTechicalProperties.ratedEnergy&amp;path=aspects.performanceAndDurability.payload.batteryTechicalProperties.nominalVoltage
+GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=aspects.performanceAndDurability.payload.batteryTechicalProperties.ratedEnergy&amp;path=aspects.performanceAndDurability.payload.batteryTechicalProperties.ratedCapacity
 
 # Example: read an indexed array value discovered by /paths
-GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=aspects.materialComposition.payload.batteryMaterials.0.batteryMaterialMass</code></pre>
+GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=aspects.materialComposition.payload.batteryMaterials.0.batteryMaterialMass
+
+# Example: read operations objects discovered by /paths?section=operations
+GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations.locationOfUse&amp;path=app.operations.contactPerson</code></pre>
                 </article>
 
                 <article class="bp-help-doc-item">
@@ -256,6 +259,22 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=aspects.materi
             const curlEl = document.getElementById('tester-curl');
             let isReflectingRaw = false;
 
+            const renderJsonWindow = (targetWindow, title, bodyText) => {
+                const targetDocument = targetWindow.document;
+                targetDocument.open();
+                targetDocument.write('<!doctype html><html><head><title></title></head><body></body></html>');
+                targetDocument.close();
+                targetDocument.title = title;
+
+                const style = targetDocument.createElement('style');
+                style.textContent = 'body{font-family:ui-monospace,SFMono-Regular,Consolas,Liberation Mono,monospace;margin:0;padding:24px;background:#f8fafc;color:#0f172a;}pre{white-space:pre-wrap;word-break:break-word;margin:0;}';
+                targetDocument.head.appendChild(style);
+
+                const pre = targetDocument.createElement('pre');
+                pre.textContent = bodyText;
+                targetDocument.body.appendChild(pre);
+            };
+
             const templates = {
                 readFull: {
                     method: 'GET',
@@ -340,6 +359,47 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=aspects.materi
                 });
                 return btoa(binary);
             };
+
+            const openSupportedValues = async (event) => {
+                event.preventDefault();
+
+                const link = event.currentTarget;
+                const targetWindow = window.open('', '_blank');
+                if (!targetWindow) {
+                    window.location.href = link.href;
+                    return;
+                }
+
+                targetWindow.opener = null;
+                renderJsonWindow(targetWindow, 'Readable battery paths', 'Loading readable values...');
+
+                const authorization = `Basic ${utf8ToBase64(`${sampleReadToken}:`)}`;
+                try {
+                    const httpResponse = await fetch(link.href, {
+                        headers: {
+                            Authorization: authorization,
+                            Accept: 'application/json'
+                        }
+                    });
+
+                    const responseText = await httpResponse.text();
+                    let formattedResponse = responseText;
+                    try {
+                        formattedResponse = JSON.stringify(JSON.parse(responseText), null, 2);
+                    } catch {
+                        // Keep non-JSON error responses readable.
+                    }
+
+                    renderJsonWindow(
+                        targetWindow,
+                        `Readable battery paths - ${httpResponse.status}`,
+                        `${httpResponse.status} ${httpResponse.statusText}\n\n${formattedResponse}`);
+                } catch (error) {
+                    renderJsonWindow(targetWindow, 'Readable battery paths - request failed', String(error));
+                }
+            };
+
+            document.getElementById('supported-values-link')?.addEventListener('click', openSupportedValues);
 
             const decodeBase64Token = (value) => {
                 try {

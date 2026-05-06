@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BatteryPassWeb.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1f669e236839584cc16c778d6c783e60063cf822")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e8a69d77e1163d668c3958c0b6131f194c9f72b2")]
 [assembly: System.Reflection.AssemblyProductAttribute("BatteryPassWeb.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BatteryPassWeb.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
