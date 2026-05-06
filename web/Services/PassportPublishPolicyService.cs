@@ -58,6 +58,13 @@ public sealed class PassportPublishPolicyService
         validation["hash"] = string.Empty;
         validation["signature"] = string.Empty;
         validation["proof"] = new BsonDocument();
+
+        var trust = EnsureDocument(passport, "trust");
+        trust["state"] = TrustState.Unvalidated;
+        trust["isDirty"] = false;
+        trust["latestHash"] = string.Empty;
+        trust["latestProof"] = new BsonDocument();
+        trust["lastSignedAt"] = BsonNull.Value;
     }
 
     public bool HasCurrentValidSignature(BsonDocument passport)

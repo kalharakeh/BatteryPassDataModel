@@ -46,6 +46,22 @@
         </div>
     </section>
 
+    <section class="bp-card">
+        <span class="bp-summary-title">Publish gate</span>
+        <h2 class="h5 mt-1 mb-2">Validation and publish policy</h2>
+        <div class="bp-metric-grid">
+            <div class="bp-metric"><p>Save draft</p><strong>Always allowed</strong></div>
+            <div class="bp-metric"><p>Warnings</p><strong>Do not block signing</strong></div>
+            <div class="bp-metric"><p>Can sign</p><strong>@(Model.CanSign ? "Yes" : "No")</strong></div>
+            <div class="bp-metric"><p>Can publish</p><strong>@(Model.CanPublish ? "Yes" : "No")</strong></div>
+        </div>
+        <p class="text-secondary mt-3 mb-0">Save draft is always allowed for admins. Warnings do not block signing. Publish requires a current valid signature proof.</p>
+        @if (!Model.CanPublish && !string.IsNullOrWhiteSpace(Model.PublishBlockReason))
+        {
+            <p class="alert alert-warning mt-3 mb-0">@Model.PublishBlockReason</p>
+        }
+    </section>
+
     @foreach (var sectionResult in summary.Sections)
     {
         <section class="bp-card">

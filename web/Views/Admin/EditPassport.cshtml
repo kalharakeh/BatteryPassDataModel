@@ -79,21 +79,13 @@
                     <label>Manufactured by<input type="text" name="manufacturerName" value="@passport.ManufacturerName" /></label>
                     <label>Registry status
                         <select name="status">
-                            @if (passport.RegistryStatus == "draft")
+                            @if (passport.RegistryStatus != "archived")
                             {
                                 <option value="draft" selected>Draft</option>
                             }
                             else
                             {
                                 <option value="draft">Draft</option>
-                            }
-                            @if (passport.RegistryStatus == "published")
-                            {
-                                <option value="published" selected>Published</option>
-                            }
-                            else
-                            {
-                                <option value="published">Published</option>
                             }
                             @if (passport.RegistryStatus == "archived")
                             {
@@ -104,6 +96,7 @@
                                 <option value="archived">Archived</option>
                             }
                         </select>
+                        <small class="text-secondary d-block mt-1">Publishing is handled from the trust workflow after validation and signing.</small>
                     </label>
                     <label>Battery image
                         <select name="batteryImageUrl" data-battery-image-select>

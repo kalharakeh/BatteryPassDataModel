@@ -14,13 +14,16 @@ public class PassportsApiController : ControllerBase
 {
     private readonly PassportRepository _passportRepository;
     private readonly PassportValidationService _passportValidationService;
+    private readonly PassportPublishPolicyService _passportPublishPolicyService;
 
     public PassportsApiController(
         PassportRepository passportRepository,
-        PassportValidationService passportValidationService)
+        PassportValidationService passportValidationService,
+        PassportPublishPolicyService passportPublishPolicyService)
     {
         _passportRepository = passportRepository;
         _passportValidationService = passportValidationService;
+        _passportPublishPolicyService = passportPublishPolicyService;
     }
 
     [HttpGet]
@@ -55,6 +58,12 @@ public class PassportsApiController : ControllerBase
             return BadRequest(new { error = "Request body must contain a passport object." });
         }
 
+        var directPublishBlock = RejectDirectPublishRequest(document);
+        if (directPublishBlock != null)
+        {
+            return directPublishBlock;
+        }
+
         var passportId = BsonHelpers.GetString(document, "passportId");
         if (string.IsNullOrWhiteSpace(passportId))
         {
@@ -68,10 +77,12 @@ public class PassportsApiController : ControllerBase
         }
 
         document.Remove("_id");
+        _passportPublishPolicyService.SanitizeTrustClaimsForDraftSave(document);
         var now = DateTime.UtcNow.ToString("O");
-        EnsureDocument(document, "registryInfo")["createdAt"] = now;
-        EnsureDocument(document, "registryInfo")["updatedAt"] = now;
-        EnsureDocument(document, "registryInfo")["status"] = FirstNonEmpty(BsonHelpers.GetString(document, "registryInfo", "status"), "draft");
+        var registryInfo = EnsureDocument(document, "registryInfo");
+        registryInfo["createdAt"] = now;
+        registryInfo["updatedAt"] = now;
+        registryInfo["status"] = NormalizeDraftRegistryStatus(BsonHelpers.GetString(document, "registryInfo", "status"));
 
         await _passportRepository.ReplaceAsync(passportId, document, cancellationToken);
         return Created($"/api/passports/{Uri.EscapeDataString(passportId)}", new { passport = BsonHelpers.ToDotNet(document) });
@@ -96,16 +107,25 @@ public class PassportsApiController : ControllerBase
             return BadRequest(new { error = "Request body must contain a passport object." });
         }
 
+        var directPublishBlock = RejectDirectPublishRequest(document);
+        if (directPublishBlock != null)
+        {
+            return directPublishBlock;
+        }
+
         document.Remove("_id");
         document["passportId"] = passportId;
+        _passportPublishPolicyService.SanitizeTrustClaimsForDraftSave(document);
         var registryInfo = EnsureDocument(document, "registryInfo");
         if (!registryInfo.Contains("createdAt"))
         {
             registryInfo["createdAt"] = DateTime.UtcNow.ToString("O");
         }
         registryInfo["updatedAt"] = DateTime.UtcNow.ToString("O");
+        registryInfo["status"] = NormalizeDraftRegistryStatus(BsonHelpers.GetString(document, "registryInfo", "status"));
 
         await _passportRepository.ReplaceAsync(passportId, document, cancellationToken);
+        await _passportRepository.MarkCanonicalDirtyAsync(passportId, "adminPassportApiUpdate", cancellationToken);
         return Ok(new { passport = BsonHelpers.ToDotNet(document) });
     }
 
@@ -172,6 +192,25 @@ public class PassportsApiController : ControllerBase
         {
             return false;
         }
+    }
+
+    private IActionResult? RejectDirectPublishRequest(BsonDocument document)
+    {
+        var requestedStatus = BsonHelpers.GetString(document, "registryInfo", "status");
+        if (!requestedStatus.Equals("published", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return BadRequest(new
+        {
+            error = "Direct publish is blocked. Validate, sign, and publish through the trust workflow."
+        });
+    }
+
+    private static string NormalizeDraftRegistryStatus(string requestedStatus)
+    {
+        return requestedStatus.Equals("archived", StringComparison.OrdinalIgnoreCase) ? "archived" : "draft";
     }
 
     private static BsonDocument EnsureDocument(BsonDocument parent, string key)

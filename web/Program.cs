@@ -54,6 +54,7 @@ builder.Services.AddSingleton<PassportViewModelFactory>();
 builder.Services.AddSingleton<SchemaRegistryService>();
 builder.Services.AddSingleton<JsonSchemaValidationService>();
 builder.Services.AddSingleton<PassportValidationService>();
+builder.Services.AddSingleton<PassportPublishPolicyService>();
 builder.Services.AddSingleton<AccessControlService>();
 builder.Services.AddSingleton<AuthService>();
 builder.Services.AddSingleton<ExternalApiSecurityService>();

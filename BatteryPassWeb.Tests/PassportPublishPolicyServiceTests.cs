@@ -100,6 +100,13 @@ public sealed class PassportPublishPolicyServiceTests
                 ["hash"] = "fake-hash",
                 ["signature"] = "fake-signature",
                 ["proof"] = new BsonDocument { ["proofValue"] = "fake-proof" }
+            },
+            ["trust"] = new BsonDocument
+            {
+                ["state"] = TrustState.Signed,
+                ["isDirty"] = false,
+                ["latestHash"] = "fake-hash",
+                ["latestProof"] = new BsonDocument { ["proofValue"] = "fake-proof" }
             }
         };
 
@@ -110,6 +117,10 @@ public sealed class PassportPublishPolicyServiceTests
         Assert.Equal(string.Empty, passport["validation"]["hash"].AsString);
         Assert.Equal(string.Empty, passport["validation"]["signature"].AsString);
         Assert.Empty(passport["validation"]["proof"].AsBsonDocument);
+        Assert.Equal(TrustState.Unvalidated, passport["trust"]["state"].AsString);
+        Assert.False(passport["trust"]["isDirty"].ToBoolean());
+        Assert.Equal(string.Empty, passport["trust"]["latestHash"].AsString);
+        Assert.Empty(passport["trust"]["latestProof"].AsBsonDocument);
     }
 
     private static TrustValidationSummary SummaryWith(TrustValidationSeverity severity)

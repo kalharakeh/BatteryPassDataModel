@@ -49,19 +49,22 @@ public class AdminController : Controller
     private readonly PassportViewModelFactory _viewModelFactory;
     private readonly ExternalApiRepository _externalApiRepository;
     private readonly PassportValidationService _passportValidationService;
+    private readonly PassportPublishPolicyService _passportPublishPolicyService;
 
     public AdminController(
         PassportRepository passportRepository,
         ClusterRepository clusterRepository,
         PassportViewModelFactory viewModelFactory,
         ExternalApiRepository externalApiRepository,
-        PassportValidationService passportValidationService)
+        PassportValidationService passportValidationService,
+        PassportPublishPolicyService passportPublishPolicyService)
     {
         _passportRepository = passportRepository;
         _clusterRepository = clusterRepository;
         _viewModelFactory = viewModelFactory;
         _externalApiRepository = externalApiRepository;
         _passportValidationService = passportValidationService;
+        _passportPublishPolicyService = passportPublishPolicyService;
     }
 
     [HttpGet("")]
@@ -130,14 +133,23 @@ public class AdminController : Controller
 
         var document = await BuildDraftPassportDocumentAsync(passportId, cancellationToken);
         var now = DateTime.UtcNow.ToString("O");
+        var requestedStatus = Text(form, "status", "draft");
         ApplyPassportForm(document, form, now);
+        _passportPublishPolicyService.SanitizeTrustClaimsForDraftSave(document);
         document["passportId"] = passportId;
         document.Remove("_id");
 
-        await _passportRepository.ReplaceAsync(passportId, document, cancellationToken);
         var validationSummary = _passportValidationService.Validate(document);
+        var normalizedStatus = _passportPublishPolicyService.NormalizeRegistryStatus(requestedStatus, document, validationSummary);
+        EnsureDocument(document, "registryInfo")["status"] = normalizedStatus;
+
+        await _passportRepository.ReplaceAsync(passportId, document, cancellationToken);
         await _passportRepository.UpdateTrustValidationAsync(passportId, validationSummary, cancellationToken);
-        return Redirect($"/admin/passports/{Uri.EscapeDataString(passportId)}/edit?status=created");
+        var blockedPublishMessage = BuildBlockedPublishMessage(requestedStatus, normalizedStatus);
+        var redirectUrl = $"/admin/passports/{Uri.EscapeDataString(passportId)}/edit?status=created";
+        return string.IsNullOrWhiteSpace(blockedPublishMessage)
+            ? Redirect(redirectUrl)
+            : Redirect($"{redirectUrl}&error={Uri.EscapeDataString(blockedPublishMessage)}");
     }
 
     [HttpGet("passports/{passportId}/edit")]
@@ -185,11 +197,20 @@ public class AdminController : Controller
         }
 
         var now = DateTime.UtcNow.ToString("O");
+        var requestedStatus = Text(form, "status", BsonHelpers.GetString(document, "registryInfo", "status"));
         ApplyPassportForm(document, form, now);
+        _passportPublishPolicyService.SanitizeTrustClaimsForDraftSave(document);
+        var validationSummary = _passportValidationService.Validate(document);
+        var normalizedStatus = _passportPublishPolicyService.NormalizeRegistryStatus(requestedStatus, document, validationSummary);
+        EnsureDocument(document, "registryInfo")["status"] = normalizedStatus;
 
         await _passportRepository.ReplaceAsync(passportId, document, cancellationToken);
         await _passportRepository.MarkCanonicalDirtyAsync(passportId, "adminPassportSave", cancellationToken);
-        return Redirect($"/admin/passports/{Uri.EscapeDataString(passportId)}/edit?status=saved");
+        var blockedPublishMessage = BuildBlockedPublishMessage(requestedStatus, normalizedStatus);
+        var redirectUrl = $"/admin/passports/{Uri.EscapeDataString(passportId)}/edit?status=saved";
+        return string.IsNullOrWhiteSpace(blockedPublishMessage)
+            ? Redirect(redirectUrl)
+            : Redirect($"{redirectUrl}&error={Uri.EscapeDataString(blockedPublishMessage)}");
     }
 
     [HttpGet("passports/{passportId}/conformance")]
@@ -204,11 +225,15 @@ public class AdminController : Controller
         var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
         var clusterNamesById = BuildClusterDictionary(clusters);
         var summary = _passportValidationService.Validate(document);
+        var publishDecision = _passportPublishPolicyService.Evaluate(document, summary);
 
         return View(new ConformanceViewModel
         {
             Passport = _viewModelFactory.Create(document, clusterNamesById),
             ValidationSummary = summary,
+            CanSign = publishDecision.CanSign,
+            CanPublish = publishDecision.CanPublish,
+            PublishBlockReason = publishDecision.PublishBlockReason,
             StatusMessage = status == "validated" ? "Passport validation completed." : string.Empty,
             ErrorMessage = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error)
         });
@@ -678,6 +703,14 @@ public class AdminController : Controller
         };
     }
 
+    private static string BuildBlockedPublishMessage(string requestedStatus, string normalizedStatus)
+    {
+        return requestedStatus.Equals("published", StringComparison.OrdinalIgnoreCase)
+            && !normalizedStatus.Equals("published", StringComparison.OrdinalIgnoreCase)
+                ? "Draft saved. Publishing is blocked until validation passes and a current signature proof exists."
+                : string.Empty;
+    }
+
     private static Dictionary<string, string> BuildClusterDictionary(IEnumerable<BsonDocument> clusters)
     {
         return clusters
@@ -777,7 +810,7 @@ public class AdminController : Controller
         }
 
         var aspects = EnsureDocument(document, "aspects");
-        var generalAspect = EnsureAspectPayload(aspects, "generalProductInformation", now, "verified");
+        var generalAspect = EnsureAspectPayload(aspects, "generalProductInformation", now, "draft");
         var generalPayload = EnsureDocument(generalAspect, "payload");
         generalPayload["productIdentifier"] = display.GetValue("modelNumber", string.Empty).ToString();
         generalPayload["batteryPassportIdentifier"] = $"urn:acme:{display.GetValue("serialNumber", string.Empty).ToString().ToLowerInvariant().Replace("-", string.Empty)}";
@@ -786,7 +819,7 @@ public class AdminController : Controller
         generalPayload["batteryMass"] = Number(form, "batteryMass", generalPayload.GetValue("batteryMass", 0).ToDouble());
         generalPayload["manufacturingDate"] = $"{Text(form, "manufacturingDate", DateOnly(generalPayload.GetValue("manufacturingDate", string.Empty).ToString()))}T00:00:00.000Z";
 
-        var materialAspect = EnsureAspectPayload(aspects, "materialComposition", now, "verified");
+        var materialAspect = EnsureAspectPayload(aspects, "materialComposition", now, "draft");
         var materialPayload = EnsureDocument(materialAspect, "payload");
         var existingMaterials = materialPayload.GetValue("batteryMaterials", new BsonArray()) is BsonArray materials
             ? materials
@@ -827,7 +860,7 @@ public class AdminController : Controller
         materialPayload["batteryMaterials"] = materialRows;
         appCharts["materialComposition"] = materialChart;
 
-        var performanceAspect = EnsureAspectPayload(aspects, "performanceAndDurability", now, "verified");
+        var performanceAspect = EnsureAspectPayload(aspects, "performanceAndDurability", now, "draft");
         var performancePayload = EnsureDocument(performanceAspect, "payload");
         var technical = EnsureDocument(performancePayload, "batteryTechicalProperties");
         technical["ratedEnergy"] = Number(form, "ratedEnergy", technical.GetValue("ratedEnergy", 0).ToDouble());
@@ -858,7 +891,7 @@ public class AdminController : Controller
             ["lastUpdate"] = now
         };
 
-        var carbonAspect = EnsureAspectPayload(aspects, "carbonFootprintForBatteries", now, "verified");
+        var carbonAspect = EnsureAspectPayload(aspects, "carbonFootprintForBatteries", now, "draft");
         var carbonPayload = EnsureDocument(carbonAspect, "payload");
         carbonPayload["batteryCarbonFootprint"] = Number(form, "carbonFootprint", carbonPayload.GetValue("batteryCarbonFootprint", 0).ToDouble());
         carbonPayload["carbonFootprintPerformanceClass"] = Text(form, "performanceClass", carbonPayload.GetValue("carbonFootprintPerformanceClass", "B").ToString());
@@ -884,7 +917,7 @@ public class AdminController : Controller
         appCharts["carbonFootprint"] = carbonChart;
         carbonPayload["carbonFootprintStudy"] = EnsureDocument(appDocuments, "co2StudyReference").GetValue("url", string.Empty).ToString();
 
-        var supplyAspect = EnsureAspectPayload(aspects, "supplyChainDueDiligence", now, "verified");
+        var supplyAspect = EnsureAspectPayload(aspects, "supplyChainDueDiligence", now, "draft");
         var supplyPayload = EnsureDocument(supplyAspect, "payload");
         supplyPayload["supplyChainIndicies"] = Number(form, "supplyChainIndex", supplyPayload.GetValue("supplyChainIndicies", 0).ToDouble());
         supplyPayload["supplyChainDueDiligenceReport"] = EnsureDocument(appDocuments, "dueDiligenceReport").GetValue("url", string.Empty).ToString();
@@ -892,7 +925,7 @@ public class AdminController : Controller
         supplyPayload["sustainabilityReport"] = EnsureDocument(appDocuments, "sustainabilityReport").GetValue("url", string.Empty).ToString();
         supplyPayload["taxonomyReport"] = EnsureDocument(appDocuments, "taxonomyReport").GetValue("url", string.Empty).ToString();
 
-        var labelAspect = EnsureAspectPayload(aspects, "labeling", now, "verified");
+        var labelAspect = EnsureAspectPayload(aspects, "labeling", now, "draft");
         var labelPayload = EnsureDocument(labelAspect, "payload");
         labelPayload["resultOfTestReport"] = EnsureDocument(appDocuments, "conformityAssessment").GetValue("url", string.Empty).ToString();
         labelPayload["declarationOfConformity"] = EnsureDocument(appDocuments, "euDeclarationOfConformity").GetValue("url", string.Empty).ToString();
@@ -950,8 +983,8 @@ public class AdminController : Controller
         }
 
         var validation = EnsureDocument(document, "validation");
-        validation["isValid"] = true;
-        validation["signedAt"] = now;
+        validation["isValid"] = false;
+        validation["signedAt"] = BsonNull.Value;
     }
 
     private static BsonDocument EnsureAspectPayload(BsonDocument aspects, string key, string now, string state)
@@ -959,7 +992,7 @@ public class AdminController : Controller
         var aspect = EnsureDocument(aspects, key);
         var verification = EnsureDocument(aspect, "verification");
         verification["state"] = state;
-        verification["signedAt"] = now;
+        verification["signedAt"] = BsonNull.Value;
         if (!verification.Contains("issuer"))
         {
             verification["issuer"] = "did:web:acme.battery.pass:issuer";
