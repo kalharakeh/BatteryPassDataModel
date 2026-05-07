@@ -1434,6 +1434,7 @@ a:hover {
   gap: 10px;
 }
 
+.bp-page-return-row,
 .bp-conformance-return-row {
   display: flex;
   align-items: center;
@@ -1441,6 +1442,7 @@ a:hover {
   margin-bottom: -8px;
 }
 
+.bp-page-return-link,
 .bp-conformance-return-link {
   display: inline-flex;
   align-items: center;
@@ -1456,6 +1458,7 @@ a:hover {
   box-shadow: 0 10px 24px rgba(15, 42, 73, 0.06);
 }
 
+.bp-page-return-link::before,
 .bp-conformance-return-link::before {
   content: "";
   width: 0.48rem;
@@ -1465,6 +1468,8 @@ a:hover {
   transform: rotate(45deg);
 }
 
+.bp-page-return-link:hover,
+.bp-page-return-link:focus-visible,
 .bp-conformance-return-link:hover,
 .bp-conformance-return-link:focus-visible {
   border-color: #b6c9dd;

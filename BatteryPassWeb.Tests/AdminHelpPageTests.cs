@@ -28,6 +28,25 @@ public sealed class AdminHelpPageTests
     }
 
     [Fact]
+    public void AdminHelpView_ShouldRenderPageLevelBackToMainAdminLink()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("Back to main admin page", markup);
+        Assert.Contains("href=\"/admin\"", markup);
+        Assert.Contains("bp-page-return-row", markup);
+        Assert.Contains("bp-page-return-link", markup);
+        Assert.True(
+            markup.IndexOf("bp-page-return-row", StringComparison.Ordinal) <
+            markup.IndexOf("bp-admin-help-hero", StringComparison.Ordinal),
+            "The help return link should sit above the help hero instead of inside the content card.");
+
+        Assert.Contains(".bp-page-return-row", css);
+        Assert.Contains(".bp-page-return-link", css);
+    }
+
+    [Fact]
     public void AdminHelpView_ShouldDescribeRequiredOptionalDataAndTrustStates()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
