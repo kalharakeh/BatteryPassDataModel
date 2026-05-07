@@ -2483,6 +2483,41 @@ a:hover {
   scroll-margin-top: 96px;
 }
 
+.bp-alert {
+  border-radius: 18px;
+  font-weight: 800;
+  padding: 0.85rem 1rem;
+}
+
+.bp-alert-success {
+  border: 1px solid #b7e2c7;
+  background: #effaf2;
+  color: #176235;
+}
+
+.bp-alert-danger {
+  border: 1px solid #f1b5a8;
+  background: #fff3ed;
+  color: #9c2f14;
+}
+
+.bp-admin-help-demo-reset {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid #d9e4f2;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #f7fbff 0%, #ffffff 58%, #fff8ed 100%);
+  box-shadow: 0 14px 36px rgba(15, 42, 73, 0.07);
+  padding: 1rem 1.1rem;
+}
+
+.bp-admin-help-demo-reset p {
+  color: #5f7087;
+  margin: 0.35rem 0 0;
+}
+
 .bp-admin-help-hero {
   position: relative;
   overflow: hidden;
@@ -3079,6 +3114,13 @@ a:hover {
 
   .bp-admin-help-parameter-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .bp-admin-help-demo-reset {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 

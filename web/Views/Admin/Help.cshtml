@@ -1,11 +1,34 @@
 @{
     ViewData["Title"] = "Admin workflow help";
+    var statusMessage = ViewData["StatusMessage"] as string ?? string.Empty;
+    var errorMessage = ViewData["ErrorMessage"] as string ?? string.Empty;
 }
 
 <main class="bp-page bp-admin-page bp-admin-help-page">
     <div class="bp-page-return-row">
         <a href="/admin" class="bp-page-return-link">Back to main admin page</a>
     </div>
+
+    @if (!string.IsNullOrWhiteSpace(statusMessage))
+    {
+        <div class="bp-alert bp-alert-success">@statusMessage</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="bp-alert bp-alert-danger">@errorMessage</div>
+    }
+
+    <section class="bp-admin-help-demo-reset" aria-label="Phase 6A demo reset">
+        <div>
+            <span class="bp-summary-title">Phase 6A demo reset</span>
+            <strong>Restore the known demo passports before a guided test run.</strong>
+            <p>Only the allow-listed Phase 6A demo IDs are reset. User-created passports are not touched.</p>
+        </div>
+        <form method="post" action="/admin/demo-scenarios/reset">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="bp-secondary-button bp-button-accent">Reset demo scenarios</button>
+        </form>
+    </section>
 
     <section class="bp-card bp-admin-help-hero">
         <div class="bp-admin-help-hero-copy">

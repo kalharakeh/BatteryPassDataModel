@@ -8,7 +8,9 @@ public sealed class AdminHelpPageTests
         var source = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
 
         Assert.Contains("[HttpGet(\"help\")]", source);
-        Assert.Contains("IActionResult Help()", source);
+        Assert.Contains("IActionResult Help([FromQuery] string? status, [FromQuery] string? error)", source);
+        Assert.Contains("ViewData[\"StatusMessage\"]", source);
+        Assert.Contains("ViewData[\"ErrorMessage\"]", source);
         Assert.Contains("return View();", source);
     }
 

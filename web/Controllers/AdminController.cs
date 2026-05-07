@@ -36,6 +36,7 @@ public class AdminController : Controller
     private readonly PassportReadinessService _passportReadinessService;
     private readonly DataCompletionPolicyService _dataCompletionPolicyService;
     private readonly DemoRequiredDataCompletionService _demoRequiredDataCompletionService;
+    private readonly DemoScenarioResetService _demoScenarioResetService;
     private readonly PassportTrustService _passportTrustService;
     private readonly AuditRevisionService _auditRevisionService;
 
@@ -49,6 +50,7 @@ public class AdminController : Controller
         PassportReadinessService passportReadinessService,
         DataCompletionPolicyService dataCompletionPolicyService,
         DemoRequiredDataCompletionService demoRequiredDataCompletionService,
+        DemoScenarioResetService demoScenarioResetService,
         PassportTrustService passportTrustService,
         AuditRevisionService auditRevisionService)
     {
@@ -61,6 +63,7 @@ public class AdminController : Controller
         _passportReadinessService = passportReadinessService;
         _dataCompletionPolicyService = dataCompletionPolicyService;
         _demoRequiredDataCompletionService = demoRequiredDataCompletionService;
+        _demoScenarioResetService = demoScenarioResetService;
         _passportTrustService = passportTrustService;
         _auditRevisionService = auditRevisionService;
     }
@@ -72,8 +75,10 @@ public class AdminController : Controller
     }
 
     [HttpGet("help")]
-    public IActionResult Help()
+    public IActionResult Help([FromQuery] string? status, [FromQuery] string? error)
     {
+        ViewData["StatusMessage"] = string.IsNullOrWhiteSpace(status) ? string.Empty : Uri.UnescapeDataString(status);
+        ViewData["ErrorMessage"] = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error);
         return View();
     }
 
@@ -528,6 +533,25 @@ public class AdminController : Controller
             Passport = _viewModelFactory.Create(document, clusterNamesById, _passportTrustService.Verify(document)),
             Revisions = revisions
         });
+    }
+
+    [HttpPost("demo-scenarios/reset")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ResetDemoScenarios(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _demoScenarioResetService.ResetAllAsync(CurrentActor(), cancellationToken);
+            return Redirect($"/admin/help?status={Uri.EscapeDataString($"Demo scenarios reset: {result.ResetCount} passports restored.")}");
+        }
+        catch (Exception exception) when (IsTrustPersistenceFailure(exception))
+        {
+            return Redirect($"/admin/help?error={Uri.EscapeDataString($"{TrustWorkflowServiceErrorMessage} {exception.Message}")}");
+        }
+        catch (InvalidOperationException exception)
+        {
+            return Redirect($"/admin/help?error={Uri.EscapeDataString(exception.Message)}");
+        }
     }
 
     [HttpGet("clusters")]
