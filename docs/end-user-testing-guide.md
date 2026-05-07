@@ -463,3 +463,34 @@ Use this checklist after the guided readiness polish to confirm the conformance 
    - Expected next action: Sign passport after validation succeeds.
    - Expected state: Dirty: re-sign required.
 6. Confirm warnings and proof/hash diagnostics are available under advanced diagnostics, not as the first thing an admin must parse.
+
+### Phase 6A end-to-end demo hardening checklist
+
+Use this checklist after Phase 6A changes to prove the demo can be restored and verified from a known state.
+
+1. Login as `admin@example.test`.
+2. Open `/admin/help`.
+3. Press **Reset demo scenarios**.
+4. Confirm the success message says the demo scenarios were reset.
+5. Open `/admin/passports/did%3Aweb%3Aacme.battery.pass%3Ademo-published-trusted-001/conformance`.
+6. Expected state: Published, signed, clean, public, QR-ready.
+7. Logout or use a public browser session.
+8. Search for `did:web:acme.battery.pass:demo-published-trusted-001` from `/`.
+9. Expected result: the public summary opens.
+10. Download or click the QR code from the summary page.
+11. Expected result: the QR resolves back to the public summary URL.
+12. Login again as `admin@example.test`.
+13. Open `/admin/passports/did%3Aweb%3Aacme.battery.pass%3Ademo-draft-incomplete-001/conformance`.
+14. Expected state: Missing required data, blocked from signing.
+15. Open `/admin/passports/did%3Aweb%3Aacme.battery.pass%3Ademo-ready-to-sign-001/conformance`.
+16. Expected result: the next available action is **Sign passport**.
+17. Open `/admin/passports/did%3Aweb%3Aacme.battery.pass%3Ademo-signed-unpublished-001/conformance`.
+18. Expected result: the next available action is **Publish passport** and public search does not expose it yet.
+19. Open `/admin/passports/did%3Aweb%3Aacme.battery.pass%3Ademo-dirty-after-edit-001/conformance`.
+20. Expected state: Signed core changed after proof; validate and sign again before relying on it.
+21. Open `/admin/passports/did%3Aweb%3Aacme.battery.pass%3Ademo-invalid-signature-001/conformance`.
+22. Expected result: invalid signature diagnostics are visible to the admin without exposing private key material.
+23. Use the external API workbench or curl to send a telemetry update to the published trusted scenario.
+24. Expected result: External HTTP telemetry update does not dirty the passport.
+25. Try restricted document access on `did:web:acme.battery.pass:demo-restricted-document-001`.
+26. Expected result: Restricted document download returns 403 for unauthorized users and remains accessible only to authorized admin/cluster users when a linked file exists.
