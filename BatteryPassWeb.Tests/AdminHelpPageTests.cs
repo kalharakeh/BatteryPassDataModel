@@ -53,54 +53,32 @@ public sealed class AdminHelpPageTests
     }
 
     [Fact]
-    public void AdminHelpView_ShouldListRequiredParametersByAdminSection()
+    public void AdminHelpView_ShouldPointToDataRequirementsInsteadOfDuplicatingParameterList()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
+
+        Assert.Contains("Open data requirements", markup);
+        Assert.Contains("/admin/clusters?tab=data-requirements", markup);
+        Assert.DoesNotContain("Parameter-by-parameter fill list", markup);
+        Assert.DoesNotContain("bp-admin-help-parameter-grid", markup);
+        Assert.DoesNotContain("bp-admin-help-parameter-list", markup);
+    }
+
+    [Fact]
+    public void AdminHelpView_ShouldPrioritizeFirstTimeAndDirtyRecoveryChecklists()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        Assert.Contains("Parameter-by-parameter fill list", markup);
-        Assert.Contains("bp-admin-help-parameter-grid", markup);
-        Assert.Contains("bp-admin-help-parameter-list", markup);
+        Assert.Contains("First-time passport checklist", markup);
+        Assert.Contains("Dirty recovery checklist", markup);
+        Assert.Contains("What public users can see", markup);
+        Assert.Contains("What admins can see", markup);
+        Assert.Contains("Open data requirements", markup);
+        Assert.DoesNotContain("Parameter-by-parameter fill list", markup);
 
-        Assert.Contains("General", markup);
-        Assert.Contains("Passport ID", markup);
-        Assert.Contains("Model Number", markup);
-        Assert.Contains("Serial Number", markup);
-        Assert.Contains("Battery mass", markup);
-        Assert.Contains("Manufactured date", markup);
-        Assert.Contains("Manufactured by", markup);
-
-        Assert.Contains("Material composition", markup);
-        Assert.Contains("Nickel kg", markup);
-        Assert.Contains("Copper kg", markup);
-        Assert.Contains("Lithium kg", markup);
-        Assert.Contains("Electrolyte and separators kg", markup);
-
-        Assert.Contains("Performance", markup);
-        Assert.Contains("Rated energy kWh", markup);
-        Assert.Contains("Rated capacity Ah", markup);
-        Assert.Contains("Nominal voltage V", markup);
-        Assert.Contains("Expected cycles", markup);
-
-        Assert.Contains("Compliance", markup);
-        Assert.Contains("Conformity assessment report", markup);
-        Assert.Contains("EU declaration of conformity", markup);
-
-        Assert.Contains("Supply chain", markup);
-        Assert.Contains("Supply chain index", markup);
-        Assert.Contains("Due diligence report", markup);
-        Assert.Contains("Third-party audit", markup);
-
-        Assert.Contains("Circularity", markup);
-        Assert.Contains("Separate collection", markup);
-        Assert.Contains("Nickel pre/post/primary %", markup);
-
-        Assert.Contains("Carbon Footprint", markup);
-        Assert.Contains("Amount gCO2e/kWh", markup);
-        Assert.Contains("CO2 study reference", markup);
-
-        Assert.Contains(".bp-admin-help-parameter-grid", css);
-        Assert.Contains(".bp-admin-help-parameter-list", css);
+        Assert.Contains(".bp-admin-help-check-card", css);
+        Assert.Contains(".bp-admin-help-split-checklists", css);
     }
 
     [Fact]

@@ -32,6 +32,18 @@ public sealed class ErrorHandlingRolloutTests
         Assert.Contains("restricted document download returns 403 and writes an audit event", guide);
     }
 
+    [Fact]
+    public void TestingGuide_ShouldIncludeGuidedReadinessPhase5AChecklist()
+    {
+        var guide = File.ReadAllText(RepoFile("docs", "end-user-testing-guide.md"));
+
+        Assert.Contains("Phase 5A guided readiness checklist", guide);
+        Assert.Contains("Expected next action: Complete required data", guide);
+        Assert.Contains("Expected next action: Sign passport", guide);
+        Assert.Contains("Expected next action: Publish passport", guide);
+        Assert.Contains("Expected state: Published and trusted", guide);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

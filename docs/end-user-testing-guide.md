@@ -442,3 +442,24 @@ Use this checklist after Section 5 changes to verify the demonstrator is ready f
 3. Validation failure: remove a required field, validate, and confirm draft edits remain saved while signing stays unavailable.
 4. Restricted file access: upload a private document, try to download it without the right login/cluster access, and confirm the restricted document download returns 403 and writes an audit event.
 5. QR scan fallback: test camera denial, unsupported native barcode detection, and SVG upload. Manual DID search should remain available.
+
+### 11.4 Phase 5A guided readiness checklist
+
+Use this checklist after the guided readiness polish to confirm the conformance page tells admins exactly what to do next.
+
+1. Open an incomplete draft passport in `/admin/passports/{passportId}/conformance`.
+   - Expected next action: Complete required data.
+   - Expected state: Incomplete data.
+2. Complete required data or manually fill the blocking fields, then validate.
+   - Expected next action: Sign passport.
+   - Expected state: Ready to sign.
+3. Sign the passport.
+   - Expected next action: Publish passport.
+   - Expected state: Ready to publish.
+4. Publish the passport.
+   - Expected state: Published and trusted.
+   - Expected public behavior: the summary is searchable and still does not show internal conformance diagnostics.
+5. Edit a signed core field such as battery mass and save.
+   - Expected next action: Sign passport after validation succeeds.
+   - Expected state: Dirty: re-sign required.
+6. Confirm warnings and proof/hash diagnostics are available under advanced diagnostics, not as the first thing an admin must parse.

@@ -2842,6 +2842,36 @@ a:hover {
   color: var(--bp-help-ink);
 }
 
+.bp-admin-help-split-checklists {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.bp-admin-help-check-card {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem;
+  border-radius: 20px;
+  background: #f8fbff;
+  border: 1px solid rgba(15, 42, 73, 0.09);
+}
+
+.bp-admin-help-check-card h4 {
+  margin: 0;
+  color: #071d33;
+}
+
+.bp-admin-help-check-card ol {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.bp-admin-help-check-card li + li {
+  margin-top: 0.35rem;
+}
+
 .bp-admin-help-parameter-guide {
   margin: 18px 0;
   padding: 16px;
@@ -2994,7 +3024,8 @@ a:hover {
   }
 
   .bp-admin-help-grid,
-  .bp-admin-help-required-grid {
+  .bp-admin-help-required-grid,
+  .bp-admin-help-split-checklists {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
