@@ -147,10 +147,12 @@ public class PassportController : Controller
         {
             return Redirect($"/{Uri.EscapeDataString(decodedPassportId)}/summary?access=wrong-cluster");
         }
+        var canViewTrustConformance = await _accessControlService.CanViewTrustConformanceAsync(User, passport.ClusterId, cancellationToken);
 
         var model = new PassportDetailViewModel
         {
-            Passport = passport
+            Passport = passport,
+            CanViewTrustConformance = canViewTrustConformance
         };
 
         var toUtc = DateTime.UtcNow;
@@ -159,6 +161,7 @@ public class PassportController : Controller
         model = new PassportDetailViewModel
         {
             Passport = passport,
+            CanViewTrustConformance = canViewTrustConformance,
             TelemetryHistory = telemetryHistory.Select(row => new TelemetryHistoryPointViewModel
             {
                 MeasuredAt = BsonHelpers.GetString(row, "measuredAt"),

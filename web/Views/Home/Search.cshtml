@@ -4,12 +4,26 @@
 }
 <main class="bp-search-page">
     <h1>Search battery passport</h1>
-    <p>Enter a full published and verified battery passport ID to open its summary report.</p>
+    @if (Model.IsAdminSearch)
+    {
+        <p>Enter a full battery passport ID to open its summary report. General admins can also find draft and unpublished passports.</p>
+    }
+    else
+    {
+        <p>Enter a full published and verified battery passport ID to open its summary report.</p>
+    }
 
     @if (Model.NotFound)
     {
         <p class="bp-warning">
-            No published, verified battery passport ID was found for <span class="fw-semibold">@Model.Query</span>. Check the ID or ask an admin whether the passport is still a draft.
+            @if (Model.IsAdminSearch)
+            {
+                <span>No battery passport ID was found for <span class="fw-semibold">@Model.Query</span>.</span>
+            }
+            else
+            {
+                <span>No published, verified battery passport ID was found for <span class="fw-semibold">@Model.Query</span>. Check the ID or ask an admin whether the passport is still a draft.</span>
+            }
         </p>
     }
 

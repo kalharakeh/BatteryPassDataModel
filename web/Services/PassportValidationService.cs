@@ -16,7 +16,7 @@ public sealed class PassportValidationService
         _jsonSchemaValidationService = jsonSchemaValidationService;
     }
 
-    public TrustValidationSummary Validate(BsonDocument passport)
+    public TrustValidationSummary Validate(BsonDocument passport, DataCompletionPolicySnapshot? dataCompletionPolicy = null)
     {
         var sections = new List<TrustValidationSectionResult>
         {
@@ -29,6 +29,11 @@ public sealed class PassportValidationService
         }
 
         sections.Add(ValidateBusinessRules(passport));
+        if (dataCompletionPolicy != null)
+        {
+            sections.Add(DataCompletionPolicyService.ValidateRequiredFields(passport, dataCompletionPolicy));
+        }
+
         var state = sections.Any(section => section.HasBlockingErrors) ? TrustState.Invalid : TrustState.Valid;
 
         return new TrustValidationSummary

@@ -89,4 +89,20 @@ public sealed class AccessControlService
         var clusterIds = await GetClusterIdsForUserAsync(user, cancellationToken);
         return clusterIds.Contains(clusterId, StringComparer.OrdinalIgnoreCase);
     }
+
+    public async Task<bool> CanViewTrustConformanceAsync(ClaimsPrincipal user, string clusterId, CancellationToken cancellationToken = default)
+    {
+        if (IsAdmin(user))
+        {
+            return true;
+        }
+
+        if (string.IsNullOrWhiteSpace(clusterId) || !IsClusterAdmin(user))
+        {
+            return false;
+        }
+
+        var managedClusterIds = await GetAdministeredClusterIdsForUserAsync(user, cancellationToken);
+        return managedClusterIds.Contains(clusterId, StringComparer.OrdinalIgnoreCase);
+    }
 }

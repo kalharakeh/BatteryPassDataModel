@@ -55,6 +55,7 @@ builder.Services.AddSingleton<SchemaRegistryService>();
 builder.Services.AddSingleton<JsonSchemaValidationService>();
 builder.Services.AddSingleton<PassportValidationService>();
 builder.Services.AddSingleton<PassportPublishPolicyService>();
+builder.Services.AddSingleton<DataCompletionPolicyService>();
 builder.Services.AddSingleton<DemoRequiredDataCompletionService>();
 builder.Services.AddSingleton<CanonicalPassportSnapshotService>();
 builder.Services.AddSingleton<DemoSigningKeyService>();

@@ -28,14 +28,19 @@ public class HomeController : Controller
     public async Task<IActionResult> Search([FromQuery] string? q, CancellationToken cancellationToken)
     {
         var query = q?.Trim() ?? string.Empty;
+        var isAdmin = AccessControlService.IsAdmin(User);
         if (query.Length == 0)
         {
-            return View(new SearchPageViewModel { Query = string.Empty });
+            return View(new SearchPageViewModel
+            {
+                Query = string.Empty,
+                IsAdminSearch = isAdmin
+            });
         }
 
         var documents = await _passportRepository.SearchDocumentsAsync(query, includeArchived: false, cancellationToken);
         var matches = documents
-            .Where(_passportPublishPolicyService.IsPubliclyVisible)
+            .Where(document => isAdmin || _passportPublishPolicyService.IsPubliclyVisible(document))
             .Select(_passportRepository.ToSummaryViewModel)
             .ToList();
         var exactMatch = matches.FirstOrDefault(match => string.Equals(match.PassportId, query, StringComparison.OrdinalIgnoreCase));
@@ -47,7 +52,8 @@ public class HomeController : Controller
         return View(new SearchPageViewModel
         {
             Query = query,
-            NotFound = true
+            NotFound = true,
+            IsAdminSearch = isAdmin
         });
     }
 }

@@ -15,6 +15,7 @@ public class PassportsApiController : ControllerBase
     private readonly PassportRepository _passportRepository;
     private readonly PassportValidationService _passportValidationService;
     private readonly PassportPublishPolicyService _passportPublishPolicyService;
+    private readonly DataCompletionPolicyService _dataCompletionPolicyService;
     private readonly PassportTrustService _passportTrustService;
     private readonly AuditRevisionService _auditRevisionService;
 
@@ -22,12 +23,14 @@ public class PassportsApiController : ControllerBase
         PassportRepository passportRepository,
         PassportValidationService passportValidationService,
         PassportPublishPolicyService passportPublishPolicyService,
+        DataCompletionPolicyService dataCompletionPolicyService,
         PassportTrustService passportTrustService,
         AuditRevisionService auditRevisionService)
     {
         _passportRepository = passportRepository;
         _passportValidationService = passportValidationService;
         _passportPublishPolicyService = passportPublishPolicyService;
+        _dataCompletionPolicyService = dataCompletionPolicyService;
         _passportTrustService = passportTrustService;
         _auditRevisionService = auditRevisionService;
     }
@@ -148,7 +151,8 @@ public class PassportsApiController : ControllerBase
             return NotFound(new { error = "Passport does not exist", passportId });
         }
 
-        var summary = _passportValidationService.Validate(passport);
+        var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
+        var summary = _passportValidationService.Validate(passport, dataRequirements);
         await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
         return Ok(new
         {
@@ -176,7 +180,8 @@ public class PassportsApiController : ControllerBase
             return NotFound(new { error = "Passport does not exist", passportId });
         }
 
-        var summary = _passportValidationService.Validate(passport);
+        var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
+        var summary = _passportValidationService.Validate(passport, dataRequirements);
         if (!_passportPublishPolicyService.CanSign(summary))
         {
             await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
@@ -250,7 +255,8 @@ public class PassportsApiController : ControllerBase
             return NotFound(new { error = "Passport does not exist", passportId });
         }
 
-        var summary = _passportValidationService.Validate(passport);
+        var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
+        var summary = _passportValidationService.Validate(passport, dataRequirements);
         if (!_passportPublishPolicyService.CanSign(summary))
         {
             await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
@@ -292,7 +298,14 @@ public class PassportsApiController : ControllerBase
         }
 
         var publishedAt = DateTimeOffset.UtcNow.ToString("O");
-        await _passportRepository.PublishPassportAsync(passportId, revisionId, publishedAt, cancellationToken);
+        var publishedProof = BsonHelpers.GetValue(passport, "trust", "latestProof") as BsonDocument ?? new BsonDocument();
+        await _passportRepository.PublishPassportAsync(
+            passportId,
+            revisionId,
+            publishedAt,
+            verification.CurrentHash,
+            publishedProof,
+            cancellationToken);
         await _auditRevisionService.MarkRevisionPublishedAsync(revisionId, publishedAt, cancellationToken);
         await _auditRevisionService.AppendAuditEventAsync(
             passportId,

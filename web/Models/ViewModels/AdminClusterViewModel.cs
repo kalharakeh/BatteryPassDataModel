@@ -1,3 +1,5 @@
+using BatteryPassWeb.Models.Trust;
+
 namespace BatteryPassWeb.Models.ViewModels;
 
 public sealed class AdminClusterViewModel
@@ -10,6 +12,7 @@ public sealed class AdminClusterViewModel
     public IReadOnlyList<ClusterMembershipViewModel> Memberships { get; init; } = [];
     public IReadOnlyList<ApiTokenViewModel> ApiTokens { get; init; } = [];
     public IReadOnlyList<BatterySecretViewModel> BatterySecrets { get; init; } = [];
+    public DataCompletionPolicySnapshot DataRequirements { get; init; } = new();
     public string SamplePassportId { get; init; } = string.Empty;
     public string SampleReadToken { get; init; } = string.Empty;
     public string SampleReadWriteToken { get; init; } = string.Empty;

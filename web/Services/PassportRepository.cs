@@ -199,6 +199,15 @@ public sealed class PassportRepository
         await collection.UpdateOneAsync(
             Builders<BsonDocument>.Filter.Eq("passportId", passportId),
             Builders<BsonDocument>.Update
+                .Set("validation.isValid", summary.BlockingErrorCount == 0)
+                .Set("validation.status", ValidationStatus(summary))
+                .Set("validation.validatedAt", summary.ValidatedAt)
+                .Set("validation.state", summary.State)
+                .Set("validation.validationSummary", ToBsonDocument(summary))
+                .Set("validation.blockingErrorCount", summary.BlockingErrorCount)
+                .Set("validation.warningCount", summary.WarningCount)
+                .Set("validation.passedCount", summary.PassedCount)
+                .Set("validation.canSign", summary.CanSign)
                 .Set("trust.state", summary.State)
                 .Set("trust.isDirty", false)
                 .Set("trust.lastValidatedAt", summary.ValidatedAt)
@@ -243,14 +252,25 @@ public sealed class PassportRepository
         }
 
         var now = DateTime.UtcNow.ToString("O");
+        var proofValue = ProofValue(proof);
         await collection.UpdateOneAsync(
             Builders<BsonDocument>.Filter.Eq("passportId", passportId),
             Builders<BsonDocument>.Update
                 .Set("validation.isValid", summary.BlockingErrorCount == 0)
+                .Set("validation.status", TrustState.Signed)
+                .Set("validation.validatedAt", summary.ValidatedAt)
+                .Set("validation.state", TrustState.Signed)
+                .Set("validation.validationSummary", ToBsonDocument(summary))
+                .Set("validation.blockingErrorCount", summary.BlockingErrorCount)
+                .Set("validation.warningCount", summary.WarningCount)
+                .Set("validation.passedCount", summary.PassedCount)
+                .Set("validation.canSign", summary.CanSign)
                 .Set("validation.signedAt", signedAt)
                 .Set("validation.hash", hash)
-                .Set("validation.signature", BsonHelpers.GetString(proof, "proofValue"))
+                .Set("validation.signature", proofValue)
                 .Set("validation.proof", proof.DeepClone())
+                .Set("validation.signedRevisionId", revisionId)
+                .Set("validation.signatureProofCode", proofValue)
                 .Set("trust.state", TrustState.Signed)
                 .Set("trust.isDirty", false)
                 .Set("trust.lastValidatedAt", summary.ValidatedAt)
@@ -267,6 +287,8 @@ public sealed class PassportRepository
         string passportId,
         string revisionId,
         string publishedAt,
+        string hash,
+        BsonDocument proof,
         CancellationToken cancellationToken = default)
     {
         var collection = GetCollection();
@@ -276,12 +298,20 @@ public sealed class PassportRepository
         }
 
         var timestamp = string.IsNullOrWhiteSpace(publishedAt) ? DateTime.UtcNow.ToString("O") : publishedAt;
+        var proofValue = ProofValue(proof);
         await collection.UpdateOneAsync(
             Builders<BsonDocument>.Filter.Eq("passportId", passportId),
             Builders<BsonDocument>.Update
                 .Set("registryInfo.status", "published")
                 .Set("registryInfo.publishedAt", timestamp)
                 .Set("registryInfo.updatedAt", timestamp)
+                .Set("validation.status", "published")
+                .Set("validation.publishedAt", timestamp)
+                .Set("validation.publishedRevisionId", revisionId)
+                .Set("validation.publishedHash", hash)
+                .Set("validation.publishedProof", proof.DeepClone())
+                .Set("validation.publishedSignatureProofCode", proofValue)
+                .Set("validation.publishStatus", "published")
                 .Set("trust.publishedRevisionId", revisionId)
                 .Set("trust.publishedAt", timestamp),
             cancellationToken: cancellationToken);
@@ -317,6 +347,16 @@ public sealed class PassportRepository
                 }))
             }))
         };
+    }
+
+    private static string ValidationStatus(TrustValidationSummary summary)
+    {
+        return summary.BlockingErrorCount == 0 ? "validated" : "validation_failed";
+    }
+
+    private static string ProofValue(BsonDocument proof)
+    {
+        return BsonHelpers.GetString(proof, "proofValue");
     }
 
     private static PassportSummaryViewModel ToSummary(BsonDocument document)

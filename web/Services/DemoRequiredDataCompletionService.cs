@@ -89,6 +89,7 @@ public sealed class DemoRequiredDataCompletionService
         SetIfEmpty(display, "serialNumber", "DEMO-SERIAL-42");
         SetIfEmpty(display, "manufacturerName", "Demo Batteries GmbH");
         SetIfEmpty(display, "name", "Battery passport demonstration pack");
+        SetIfEmpty(display, "facilityId", "DEMO-FACILITY-01");
 
         var media = EnsureDocument(app, "media");
         SetIfEmpty(media, "batteryImageUrl", "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=1200&q=80");
@@ -109,6 +110,9 @@ public sealed class DemoRequiredDataCompletionService
                 break;
             case "circularity":
                 ApplyCircularity(payload);
+                break;
+            case "carbonFootprintForBatteries":
+                ApplyCarbonFootprint(payload);
                 break;
         }
     }
@@ -193,13 +197,42 @@ public sealed class DemoRequiredDataCompletionService
     {
         if (payload.GetValue("batteryMaterials", new BsonArray()) is not BsonArray materials)
         {
-            return;
+            materials = new BsonArray();
+            payload["batteryMaterials"] = materials;
+        }
+
+        var requiredMaterials = new[]
+        {
+            "Nickel",
+            "Copper",
+            "Aluminium",
+            "Graphite",
+            "Manganese",
+            "Cobalt",
+            "Lithium",
+            "Electrolyte and separators"
+        };
+
+        foreach (var materialName in requiredMaterials)
+        {
+            if (!materials.OfType<BsonDocument>().Any(material => BsonHelpers.GetString(material, "batteryMaterialName").Equals(materialName, StringComparison.OrdinalIgnoreCase)))
+            {
+                materials.Add(new BsonDocument
+                {
+                    ["batteryMaterialName"] = materialName,
+                    ["batteryMaterialMass"] = materialName.Equals("Electrolyte and separators", StringComparison.OrdinalIgnoreCase) ? 42.0 : 18.0,
+                    ["batteryMaterialLocation"] = DemoMaterialLocation()
+                });
+            }
         }
 
         var index = 1;
         foreach (var material in materials.OfType<BsonDocument>())
         {
-            SetIfEmpty(material, "batteryMaterialLocation", "cell");
+            if (material.GetValue("batteryMaterialLocation", BsonNull.Value) is not BsonDocument)
+            {
+                material["batteryMaterialLocation"] = DemoMaterialLocation();
+            }
             material["batteryMaterialIdentifier"] = "7439-93-2";
             if (!material.Contains("isCriticalRawMaterial"))
             {
@@ -210,6 +243,15 @@ public sealed class DemoRequiredDataCompletionService
         }
     }
 
+    private static BsonDocument DemoMaterialLocation()
+    {
+        return new BsonDocument
+        {
+            ["componentName"] = "Cell",
+            ["componentId"] = "DEMO-CELL-01"
+        };
+    }
+
     private static void ApplyCircularity(BsonDocument payload)
     {
         payload["renewableContent"] = 38.0;
@@ -217,6 +259,66 @@ public sealed class DemoRequiredDataCompletionService
         SetIfEmpty(endOfLifeInformation, "informationOnCollection", "https://example.test/battery-collection");
         SetIfEmpty(endOfLifeInformation, "separateCollection", "https://example.test/separate-collection");
         SetIfEmpty(endOfLifeInformation, "wastePrevention", "https://example.test/waste-prevention");
+
+        var recycledContent = payload.GetValue("recycledContent", new BsonArray()) as BsonArray ?? new BsonArray();
+        payload["recycledContent"] = recycledContent;
+        foreach (var material in new[] { "Nickel", "Cobalt", "Lithium", "Lead" })
+        {
+            var existing = recycledContent
+                .OfType<BsonDocument>()
+                .FirstOrDefault(row => BsonHelpers.GetString(row, "recycledMaterial").Equals(material, StringComparison.OrdinalIgnoreCase));
+            if (existing == null)
+            {
+                recycledContent.Add(new BsonDocument
+                {
+                    ["recycledMaterial"] = material,
+                    ["preConsumerShare"] = 18.0,
+                    ["postConsumerShare"] = 12.0
+                });
+            }
+            else
+            {
+                existing["preConsumerShare"] = existing.GetValue("preConsumerShare", 18.0);
+                existing["postConsumerShare"] = existing.GetValue("postConsumerShare", 12.0);
+            }
+        }
+    }
+
+    private static void ApplyCarbonFootprint(BsonDocument payload)
+    {
+        payload["batteryCarbonFootprint"] = 68.0;
+        payload["absoluteCarbonFootprint"] = 4930.0;
+        payload["carbonFootprintPerformanceClass"] = "B";
+        payload["carbonFootprintStudy"] = "https://example.test/carbon-footprint-study";
+
+        var rows = payload.GetValue("carbonFootprintPerLifecycleStage", new BsonArray()) as BsonArray ?? new BsonArray();
+        payload["carbonFootprintPerLifecycleStage"] = rows;
+        var stages = new[]
+        {
+            ("RawMaterialExtraction", 21.0),
+            ("MainProduction", 31.0),
+            ("Distribution", 9.0),
+            ("Recycling", 7.0)
+        };
+
+        foreach (var (stage, value) in stages)
+        {
+            var existing = rows
+                .OfType<BsonDocument>()
+                .FirstOrDefault(row => BsonHelpers.GetString(row, "lifecycleStage").Equals(stage, StringComparison.OrdinalIgnoreCase));
+            if (existing == null)
+            {
+                rows.Add(new BsonDocument
+                {
+                    ["lifecycleStage"] = stage,
+                    ["carbonFootprint"] = value
+                });
+            }
+            else
+            {
+                existing["carbonFootprint"] = value;
+            }
+        }
     }
 
     private static void EnsureMetric(BsonDocument parent, string key, string valueKey, double value, string now)

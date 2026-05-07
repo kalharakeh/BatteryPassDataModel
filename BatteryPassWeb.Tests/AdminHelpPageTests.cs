@@ -45,6 +45,106 @@ public sealed class AdminHelpPageTests
         Assert.Contains("Public discovery", markup);
         Assert.Contains("published, signed, clean, and verifiable", markup);
         Assert.Contains("Draft, dirty, unsigned, or unpublished passports stay visible to admins", markup);
+        Assert.Contains("Data requirements tab", markup);
+        Assert.Contains("required/optional switches", markup);
+        Assert.Contains("dataCompletionPolicies", markup);
+        Assert.Contains("Trust &amp; conformance tab is visible only", markup);
+        Assert.Contains("general admins or local cluster admins", markup);
+    }
+
+    [Fact]
+    public void AdminHelpView_ShouldListRequiredParametersByAdminSection()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("Parameter-by-parameter fill list", markup);
+        Assert.Contains("bp-admin-help-parameter-grid", markup);
+        Assert.Contains("bp-admin-help-parameter-list", markup);
+
+        Assert.Contains("General", markup);
+        Assert.Contains("Passport ID", markup);
+        Assert.Contains("Model Number", markup);
+        Assert.Contains("Serial Number", markup);
+        Assert.Contains("Battery mass", markup);
+        Assert.Contains("Manufactured date", markup);
+        Assert.Contains("Manufactured by", markup);
+
+        Assert.Contains("Material composition", markup);
+        Assert.Contains("Nickel kg", markup);
+        Assert.Contains("Copper kg", markup);
+        Assert.Contains("Lithium kg", markup);
+        Assert.Contains("Electrolyte and separators kg", markup);
+
+        Assert.Contains("Performance", markup);
+        Assert.Contains("Rated energy kWh", markup);
+        Assert.Contains("Rated capacity Ah", markup);
+        Assert.Contains("Nominal voltage V", markup);
+        Assert.Contains("Expected cycles", markup);
+
+        Assert.Contains("Compliance", markup);
+        Assert.Contains("Conformity assessment report", markup);
+        Assert.Contains("EU declaration of conformity", markup);
+
+        Assert.Contains("Supply chain", markup);
+        Assert.Contains("Supply chain index", markup);
+        Assert.Contains("Due diligence report", markup);
+        Assert.Contains("Third-party audit", markup);
+
+        Assert.Contains("Circularity", markup);
+        Assert.Contains("Separate collection", markup);
+        Assert.Contains("Nickel pre/post/primary %", markup);
+
+        Assert.Contains("Carbon Footprint", markup);
+        Assert.Contains("Amount gCO2e/kWh", markup);
+        Assert.Contains("CO2 study reference", markup);
+
+        Assert.Contains(".bp-admin-help-parameter-grid", css);
+        Assert.Contains(".bp-admin-help-parameter-list", css);
+    }
+
+    [Fact]
+    public void AdminHelpView_ShouldStayVisuallyStructuredAndScannable()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("bp-admin-help-overview", markup);
+        Assert.Contains("bp-admin-help-quicknav", markup);
+        Assert.Contains("bp-admin-help-lifecycle", markup);
+        Assert.Contains("href=\"#workflow-steps\"", markup);
+        Assert.Contains("id=\"target-state\"", markup);
+        Assert.Contains("id=\"workflow-steps\"", markup);
+        Assert.Contains("id=\"status-dictionary\"", markup);
+        Assert.Contains("id=\"ready-checklist\"", markup);
+
+        Assert.Contains(".bp-admin-help-overview", css);
+        Assert.Contains(".bp-admin-help-quicknav", css);
+        Assert.Contains(".bp-admin-help-lifecycle", css);
+        Assert.Contains("position: sticky", css);
+    }
+
+    [Fact]
+    public void AdminHelpView_ShouldRenderPolishedVisualHelpShell()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("bp-admin-help-hero-panel", markup);
+        Assert.Contains("bp-admin-help-trust-chip", markup);
+        Assert.Contains("bp-admin-help-task-strip", markup);
+        Assert.Contains("bp-admin-help-task-card", markup);
+        Assert.Contains("bp-admin-help-step-card", markup);
+        Assert.Contains("bp-admin-help-step-copy", markup);
+        Assert.Contains("Trust gate", markup);
+        Assert.Contains("Need to act now?", markup);
+
+        Assert.Contains(".bp-admin-help-hero-panel", css);
+        Assert.Contains(".bp-admin-help-trust-chip", css);
+        Assert.Contains(".bp-admin-help-task-strip", css);
+        Assert.Contains(".bp-admin-help-task-card", css);
+        Assert.Contains(".bp-admin-help-step-card", css);
+        Assert.Contains(".bp-admin-help-step-copy", css);
     }
 
     [Fact]
@@ -70,6 +170,7 @@ public sealed class AdminHelpPageTests
         Assert.Contains(".bp-admin-help-steps", css);
         Assert.Contains(".bp-admin-help-state-grid", css);
         Assert.Contains(".bp-admin-help-callout", css);
+        Assert.Contains(".bp-admin-help-policy-link", css);
     }
 
     private static string RepoFile(params string[] parts)

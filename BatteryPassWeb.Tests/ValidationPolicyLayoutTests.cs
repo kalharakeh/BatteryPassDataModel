@@ -74,6 +74,21 @@ public sealed class ValidationPolicyLayoutTests
         Assert.Contains("return NotFound();", passport);
     }
 
+    [Fact]
+    public void HomeSearch_ShouldLetGeneralAdminsFindDraftAndUnpublishedPassports()
+    {
+        var home = File.ReadAllText(RepoFile("web", "Controllers", "HomeController.cs"));
+        var searchView = File.ReadAllText(RepoFile("web", "Views", "Home", "Search.cshtml"));
+        var searchModel = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "SearchPageViewModel.cs"));
+
+        Assert.Contains("var isAdmin = AccessControlService.IsAdmin(User)", home);
+        Assert.Contains("SearchDocumentsAsync(query, includeArchived: false", home);
+        Assert.Contains("isAdmin || _passportPublishPolicyService.IsPubliclyVisible", home);
+        Assert.Contains("IsAdminSearch", searchModel);
+        Assert.Contains("Model.IsAdminSearch", searchView);
+        Assert.Contains("No battery passport ID was found", searchView);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

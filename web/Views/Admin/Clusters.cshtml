@@ -20,6 +20,7 @@
         <a class="@TabClass("users")" href="/admin/clusters?tab=users">Users</a>
         <a class="@TabClass("api-tokens")" href="/admin/clusters?tab=api-tokens">API tokens</a>
         <a class="@TabClass("battery-secrets")" href="/admin/clusters?tab=battery-secrets">Battery secrets</a>
+        <a class="@TabClass("data-requirements")" href="/admin/clusters?tab=data-requirements">Data requirements</a>
         <a class="bp-tab" href="/admin/help">Help</a>
     </nav>
 
@@ -528,5 +529,76 @@
                 </div>
             </section>
         </div>
+    }
+
+    @if (selectedTab == "data-requirements")
+    {
+        var dataRequirements = Model.DataRequirements;
+        var totalFields = dataRequirements.Sections.Sum(section => section.Fields.Count);
+        var totalRequired = dataRequirements.Sections.Sum(section => section.RequiredCount);
+        <section class="bp-card bp-data-requirements-shell mt-4">
+            <div class="bp-data-requirements-hero">
+                <div>
+                    <span class="bp-summary-title">Completion policy</span>
+                    <h2>Data requirements</h2>
+                    <p class="mb-0">
+                        Choose which admin form parameters count as required data before a battery can be considered
+                        complete. These settings are saved in MongoDB and used by validation, signing, publishing gates,
+                        and the conformance checklist.
+                    </p>
+                </div>
+                <div class="bp-requirement-stats">
+                    <div><span>Parameters</span><strong>@totalFields</strong></div>
+                    <div><span>Required</span><strong>@totalRequired</strong></div>
+                    <div><span>Optional</span><strong>@(totalFields - totalRequired)</strong></div>
+                </div>
+            </div>
+            <div class="bp-data-policy-meta">
+                <span>Policy: <code>@dataRequirements.PolicyKey</code></span>
+                <span>Updated: @(string.IsNullOrWhiteSpace(dataRequirements.UpdatedAt) ? "default policy" : dataRequirements.UpdatedAt)</span>
+                <span>By: @(string.IsNullOrWhiteSpace(dataRequirements.UpdatedBy) ? "system default" : dataRequirements.UpdatedBy)</span>
+            </div>
+            <form method="post" action="/admin/data-requirements/save" class="bp-data-requirements-form">
+                @Html.AntiForgeryToken()
+                <div class="bp-data-requirements-grid">
+                    @foreach (var requirementSection in dataRequirements.Sections.OrderBy(section => section.SortOrder))
+                    {
+                        <article class="bp-requirement-section-card">
+                            <div class="bp-requirement-section-header">
+                                <div>
+                                    <span>Section</span>
+                                    <h3>@requirementSection.Label</h3>
+                                </div>
+                                <div class="bp-requirement-section-count">
+                                    <strong>@requirementSection.RequiredCount</strong>
+                                    <span>required</span>
+                                </div>
+                            </div>
+                            <div class="bp-requirement-list">
+                                @foreach (var requirementField in requirementSection.Fields.OrderBy(field => field.SortOrder))
+                                {
+                                    <label class="bp-requirement-switch">
+                                        <input type="checkbox" name="requiredFieldKeys" value="@requirementField.FieldKey" checked="@requirementField.IsRequired" />
+                                        <span class="bp-requirement-toggle" aria-hidden="true"></span>
+                                        <span class="bp-requirement-copy">
+                                            <strong>@requirementField.Label</strong>
+                                            <small>@requirementField.Guidance</small>
+                                            <code>@requirementField.DataPath</code>
+                                        </span>
+                                    </label>
+                                }
+                            </div>
+                        </article>
+                    }
+                </div>
+                <div class="bp-data-requirements-savebar">
+                    <div>
+                        <strong>Save policy to MongoDB</strong>
+                        <span>Changes affect the next validation/sign/publish check for every battery passport.</span>
+                    </div>
+                    <button type="submit" class="bp-primary-button">Save data requirements</button>
+                </div>
+            </form>
+        </section>
     }
 </main>

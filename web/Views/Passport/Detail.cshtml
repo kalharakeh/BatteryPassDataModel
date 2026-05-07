@@ -65,7 +65,10 @@
             <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-supply" type="button" role="tab">Supply chain</button></li>
             <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-circularity" type="button" role="tab">Circularity</button></li>
             <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-carbon" type="button" role="tab">Carbon Footprint</button></li>
-            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-trust" type="button" role="tab">Trust & conformance</button></li>
+            @if (Model.CanViewTrustConformance)
+            {
+                <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-trust" type="button" role="tab">Trust & conformance</button></li>
+            }
         </ul>
 
         <div class="tab-content pt-4">
@@ -275,26 +278,29 @@
                 </div>
             </div>
 
-            <div class="tab-pane fade" id="tab-trust" role="tabpanel">
-                <h2 class="h5 mb-2">Trust & conformance</h2>
-                <p class="bp-help-text">Public verification and conformance evidence for the signed passport core.</p>
-                <div class="bp-trust-panel">
-                    <div>
-                        <span class="bp-summary-title">Public verification</span>
-                        <dl class="bp-field-grid">
-                            <div><dt>Conformance state</dt><dd>@passport.TrustState</dd></div>
-                            <div><dt>Proof status</dt><dd>@passport.TrustProofStatus</dd></div>
-                            <div><dt>Dirty state</dt><dd>@(passport.TrustIsDirty ? "Dirty" : "Clean")</dd></div>
-                            <div><dt>Issuer</dt><dd>@(string.IsNullOrWhiteSpace(passport.TrustIssuer) ? "-" : passport.TrustIssuer)</dd></div>
-                            <div><dt>Verification method</dt><dd>@(string.IsNullOrWhiteSpace(passport.TrustVerificationMethod) ? "-" : passport.TrustVerificationMethod)</dd></div>
-                            <div><dt>Signed date</dt><dd>@(string.IsNullOrWhiteSpace(passport.TrustLastSignedAt) ? "-" : passport.TrustLastSignedAt)</dd></div>
-                            <div><dt>Revision</dt><dd>@(string.IsNullOrWhiteSpace(passport.TrustLatestRevisionId) ? "-" : passport.TrustLatestRevisionId)</dd></div>
-                            <div><dt>Hash</dt><dd><code>@(string.IsNullOrWhiteSpace(passport.TrustLatestHash) ? "-" : passport.TrustLatestHash)</code></dd></div>
-                            <div><dt>Diagnostic</dt><dd>@passport.TrustVerificationMessage</dd></div>
-                        </dl>
+            @if (Model.CanViewTrustConformance)
+            {
+                <div class="tab-pane fade" id="tab-trust" role="tabpanel">
+                    <h2 class="h5 mb-2">Trust & conformance</h2>
+                    <p class="bp-help-text">Privileged verification and conformance evidence for the signed passport core.</p>
+                    <div class="bp-trust-panel">
+                        <div>
+                            <span class="bp-summary-title">Verification evidence</span>
+                            <dl class="bp-field-grid">
+                                <div><dt>Conformance state</dt><dd>@passport.TrustState</dd></div>
+                                <div><dt>Proof status</dt><dd>@passport.TrustProofStatus</dd></div>
+                                <div><dt>Dirty state</dt><dd>@(passport.TrustIsDirty ? "Dirty" : "Clean")</dd></div>
+                                <div><dt>Issuer</dt><dd>@(string.IsNullOrWhiteSpace(passport.TrustIssuer) ? "-" : passport.TrustIssuer)</dd></div>
+                                <div><dt>Verification method</dt><dd>@(string.IsNullOrWhiteSpace(passport.TrustVerificationMethod) ? "-" : passport.TrustVerificationMethod)</dd></div>
+                                <div><dt>Signed date</dt><dd>@(string.IsNullOrWhiteSpace(passport.TrustLastSignedAt) ? "-" : passport.TrustLastSignedAt)</dd></div>
+                                <div><dt>Revision</dt><dd>@(string.IsNullOrWhiteSpace(passport.TrustLatestRevisionId) ? "-" : passport.TrustLatestRevisionId)</dd></div>
+                                <div><dt>Hash</dt><dd><code>@(string.IsNullOrWhiteSpace(passport.TrustLatestHash) ? "-" : passport.TrustLatestHash)</code></dd></div>
+                                <div><dt>Diagnostic</dt><dd>@passport.TrustVerificationMessage</dd></div>
+                            </dl>
+                        </div>
                     </div>
                 </div>
-            </div>
+            }
         </div>
     </section>
 </main>
