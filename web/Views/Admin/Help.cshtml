@@ -146,6 +146,19 @@
                     <li>Publish passport again when the latest proof is current.</li>
                 </ol>
             </article>
+            <article class="bp-admin-help-check-card">
+                <span class="bp-summary-title">Document evidence</span>
+                <h4>How supporting files become trusted</h4>
+                <ol>
+                    <li>Open the passport edit page and upload or replace the required supporting document.</li>
+                    <li>The app stores the document hash and marks the passport dirty because the signed evidence changed.</li>
+                    <li>Open Trust &amp; conformance and review Evidence readiness.</li>
+                    <li>Validate the passport. Missing required evidence must be fixed before signing.</li>
+                    <li>Sign again so the current document hash is captured in a new immutable revision.</li>
+                    <li>Publish after the signature is clean and current.</li>
+                </ol>
+                <p>External links can describe evidence, but uploaded files with document hash values are what the app can verify against a signed revision.</p>
+            </article>
         </div>
         <div class="bp-admin-help-split-checklists">
             <article class="bp-admin-help-check-card">

@@ -55,6 +55,24 @@ public sealed class Phase6ADocumentationTests
         Assert.Contains("Restricted document download returns 403 for unauthorized users", guide);
     }
 
+    [Fact]
+    public void Documentation_ShouldExplainPhase6BEvidenceWorkflow()
+    {
+        var guide = File.ReadAllText(RepoFile("docs", "end-user-testing-guide.md"));
+        var help = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
+
+        Assert.Contains("Phase 6B", guide);
+        Assert.Contains("Evidence readiness", guide);
+        Assert.Contains("Upload or replace", guide);
+        Assert.Contains("Changed since signing", guide);
+        Assert.Contains("sign the passport again", guide, StringComparison.OrdinalIgnoreCase);
+
+        Assert.Contains("Document evidence", help);
+        Assert.Contains("Evidence readiness", help);
+        Assert.Contains("document hash", help, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("sign again", help, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

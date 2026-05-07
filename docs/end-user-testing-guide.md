@@ -494,3 +494,20 @@ Use this checklist after Phase 6A changes to prove the demo can be restored and 
 24. Expected result: External HTTP telemetry update does not dirty the passport.
 25. Try restricted document access on `did:web:acme.battery.pass:demo-restricted-document-001`.
 26. Expected result: Restricted document download returns 403 for unauthorized users and remains accessible only to authorized admin/cluster users when a linked file exists.
+
+### Phase 6B Evidence Readiness Check
+
+Use an admin account and a passport from the demo catalog.
+
+1. Open `/admin/clusters?tab=passports`.
+2. Open the passport edit page.
+3. Upload or replace one required supporting document.
+4. Open the passport conformance page.
+5. Confirm the Evidence readiness panel shows the file as uploaded unsigned or Changed since signing.
+6. Validate the passport.
+7. Sign the passport again.
+8. Confirm the Evidence readiness panel shows the document as verified in the latest signed revision.
+9. Publish when the readiness page shows the publish action.
+10. Try a restricted document download from a public browser session and confirm it is denied.
+
+Expected result: document hashes are visible to admins, changed evidence requires a new signature, and restricted files remain access-controlled.
