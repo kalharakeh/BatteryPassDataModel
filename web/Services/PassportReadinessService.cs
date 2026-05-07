@@ -20,26 +20,6 @@ public sealed class PassportReadinessService
         var blockers = summary.BlockingErrorCount;
         var warnings = summary.WarningCount;
 
-        if (verificationResult.State.Equals(TrustState.SignatureInvalid, StringComparison.OrdinalIgnoreCase)
-            && !isDirty)
-        {
-            return Decision(
-                PassportReadinessState.InvalidSignature,
-                "Invalid signature",
-                PassportReadinessSeverity.Blocked,
-                PassportReadinessAction.ReviewDiagnostics,
-                "Review diagnostics",
-                "The proof could not verify against the current passport core.",
-                "Signature verification failed. Review proof and hash diagnostics before relying on this passport.",
-                publishDecision,
-                blockers,
-                warnings,
-                isDirty,
-                hasCurrentProof,
-                isPublished,
-                canCompleteDemoData: false);
-        }
-
         if (blockers > 0)
         {
             return Decision(
@@ -69,6 +49,45 @@ public sealed class PassportReadinessService
                 "Sign passport",
                 "The passport changed after the latest signature.",
                 "Validate is clean, but the current core must be signed again before publishing is trusted.",
+                publishDecision,
+                blockers,
+                warnings,
+                isDirty,
+                hasCurrentProof,
+                isPublished,
+                canCompleteDemoData: false);
+        }
+
+        if (verificationResult.State.Equals(TrustState.SignatureInvalid, StringComparison.OrdinalIgnoreCase)
+            && publishDecision.CanSign)
+        {
+            return Decision(
+                PassportReadinessState.InvalidSignature,
+                "Invalid signature",
+                PassportReadinessSeverity.Blocked,
+                PassportReadinessAction.Sign,
+                "Sign passport",
+                "Validation is clean, but the current proof is missing, stale, or invalid.",
+                "Signature verification failed. Sign the current passport core again before publishing or relying on this proof.",
+                publishDecision,
+                blockers,
+                warnings,
+                isDirty,
+                hasCurrentProof,
+                isPublished,
+                canCompleteDemoData: false);
+        }
+
+        if (verificationResult.State.Equals(TrustState.SignatureInvalid, StringComparison.OrdinalIgnoreCase))
+        {
+            return Decision(
+                PassportReadinessState.InvalidSignature,
+                "Invalid signature",
+                PassportReadinessSeverity.Blocked,
+                PassportReadinessAction.ReviewDiagnostics,
+                "Review diagnostics",
+                "The proof could not verify against the current passport core.",
+                "Signature verification failed. Review proof and hash diagnostics before relying on this passport.",
                 publishDecision,
                 blockers,
                 warnings,

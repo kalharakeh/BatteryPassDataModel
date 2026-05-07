@@ -94,6 +94,21 @@ public sealed class PassportReadinessServiceTests
     public void Evaluate_ShouldSendInvalidSignatureToDiagnostics()
     {
         var passport = Passport(status: "draft", trustState: TrustState.SignatureInvalid, isDirty: false, hasProof: true);
+        var summary = Summary(TrustValidationSeverity.BlockingError);
+        var decision = PublishDecision(canSign: false, canPublish: false);
+        var verification = Verification(TrustState.SignatureInvalid, isValid: false);
+
+        var readiness = new PassportReadinessService().Evaluate(passport, summary, decision, verification);
+
+        Assert.Equal(PassportReadinessState.Incomplete, readiness.StateKey);
+        Assert.Equal(PassportReadinessAction.CompleteData, readiness.NextActionKey);
+        Assert.Equal(PassportReadinessSeverity.Blocked, readiness.Severity);
+    }
+
+    [Fact]
+    public void Evaluate_ShouldAllowSigningWhenValidationIsCleanButExistingSignatureIsInvalid()
+    {
+        var passport = Passport(status: "draft", trustState: TrustState.SignatureInvalid, isDirty: false, hasProof: true);
         var summary = Summary(TrustValidationSeverity.Warning);
         var decision = PublishDecision(canSign: true, canPublish: false);
         var verification = Verification(TrustState.SignatureInvalid, isValid: false);
@@ -101,8 +116,10 @@ public sealed class PassportReadinessServiceTests
         var readiness = new PassportReadinessService().Evaluate(passport, summary, decision, verification);
 
         Assert.Equal(PassportReadinessState.InvalidSignature, readiness.StateKey);
-        Assert.Equal(PassportReadinessAction.ReviewDiagnostics, readiness.NextActionKey);
-        Assert.Equal(PassportReadinessSeverity.Blocked, readiness.Severity);
+        Assert.Equal(PassportReadinessAction.Sign, readiness.NextActionKey);
+        Assert.Equal("Sign passport", readiness.NextActionLabel);
+        Assert.True(readiness.CanSign);
+        Assert.False(readiness.CanPublish);
     }
 
     private static BsonDocument Passport(string status, string trustState, bool isDirty, bool hasProof)
