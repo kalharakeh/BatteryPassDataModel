@@ -93,11 +93,14 @@ public class AdminController : Controller
         var document = await BuildDraftPassportDocumentAsync(draftPassportId, cancellationToken);
         var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
         var clusterNamesById = BuildClusterDictionary(clusters);
+        var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
 
         var model = new EditPassportViewModel
         {
             Passport = _viewModelFactory.Create(document, clusterNamesById),
             Mode = "new",
+            DataRequirements = dataRequirements,
+            FieldRequirementByKey = BuildFieldRequirementDictionary(dataRequirements),
             StatusMessage = status == "created" ? "Passport created." : string.Empty,
             ErrorMessage = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error)
         };
@@ -168,10 +171,13 @@ public class AdminController : Controller
 
         var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
         var clusterNamesById = BuildClusterDictionary(clusters);
+        var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
         var model = new EditPassportViewModel
         {
             Passport = _viewModelFactory.Create(document, clusterNamesById),
             Mode = "edit",
+            DataRequirements = dataRequirements,
+            FieldRequirementByKey = BuildFieldRequirementDictionary(dataRequirements),
             StatusMessage = status switch
             {
                 "saved" => "Passport changes saved.",
@@ -1049,6 +1055,13 @@ public class AdminController : Controller
             "carbonFootprintForBatteries" => "admin-carbon-footprint",
             _ => "admin-general"
         };
+    }
+
+    private static IReadOnlyDictionary<string, DataRequirementField> BuildFieldRequirementDictionary(DataCompletionPolicySnapshot dataRequirements)
+    {
+        return dataRequirements.Sections
+            .SelectMany(section => section.Fields)
+            .ToDictionary(field => field.FieldKey, field => field, StringComparer.OrdinalIgnoreCase);
     }
 
     private string CurrentActor()

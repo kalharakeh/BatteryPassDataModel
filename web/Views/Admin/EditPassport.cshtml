@@ -1,3 +1,4 @@
+@using BatteryPassWeb.Models.Trust
 @model BatteryPassWeb.Models.ViewModels.EditPassportViewModel
 @{
     var isNew = Model.Mode.Equals("new", StringComparison.OrdinalIgnoreCase);
@@ -19,6 +20,86 @@
 
     bool IsPublicDocument(BatteryPassWeb.Models.ViewModels.PassportDocumentLinkViewModel document)
         => document.Visibility.Equals("public", StringComparison.OrdinalIgnoreCase);
+
+    DataRequirementField? Requirement(string fieldKey)
+        => Model.FieldRequirementByKey.TryGetValue(fieldKey, out var requirement) ? requirement : null;
+
+    string RequirementLabel(string fieldKey)
+        => Requirement(fieldKey)?.IsRequired == true ? "Required" : "Optional";
+
+    string RequirementHelp(string fieldKey, string fallback)
+        => string.IsNullOrWhiteSpace(Requirement(fieldKey)?.Guidance) ? fallback : Requirement(fieldKey)!.Guidance;
+
+    string DirtySignedDataHelp(string fieldKey, string fallback)
+        => $"{RequirementHelp(fieldKey, fallback)} Changing this after signing makes the passport dirty until it is validated and signed again.";
+
+    string LiveOperationalHelp(string fieldKey, string fallback)
+        => $"{RequirementHelp(fieldKey, fallback)} External HTTP updates to this live operational data do not dirty the passport signature.";
+
+    var materialFields = new[]
+    {
+        new { Label = "Nickel kg", Name = "materialNickel", Key = "material.nickelMass", Value = SegmentValue("Nickel", passport.MaterialCompositionSegments), Help = "Nickel mass in kg." },
+        new { Label = "Copper kg", Name = "materialCopper", Key = "material.copperMass", Value = SegmentValue("Copper", passport.MaterialCompositionSegments), Help = "Copper mass in kg." },
+        new { Label = "Aluminium kg", Name = "materialAluminium", Key = "material.aluminiumMass", Value = SegmentValue("Aluminium", passport.MaterialCompositionSegments), Help = "Aluminium mass in kg." },
+        new { Label = "Graphite kg", Name = "materialGraphite", Key = "material.graphiteMass", Value = SegmentValue("Graphite", passport.MaterialCompositionSegments), Help = "Graphite mass in kg." },
+        new { Label = "Manganese kg", Name = "materialManganese", Key = "material.manganeseMass", Value = SegmentValue("Manganese", passport.MaterialCompositionSegments), Help = "Manganese mass in kg." },
+        new { Label = "Cobalt kg", Name = "materialCobalt", Key = "material.cobaltMass", Value = SegmentValue("Cobalt", passport.MaterialCompositionSegments), Help = "Cobalt mass in kg." },
+        new { Label = "Lithium kg", Name = "materialLithium", Key = "material.lithiumMass", Value = SegmentValue("Lithium", passport.MaterialCompositionSegments), Help = "Lithium mass in kg." },
+        new { Label = "Electrolyte and separators kg", Name = "materialElectrolyte", Key = "material.electrolyteMass", Value = SegmentValue("Electrolyte and separators", passport.MaterialCompositionSegments), Help = "Electrolyte and separator mass in kg." }
+    };
+
+    var performanceFields = new[]
+    {
+        new { Label = "Rated energy kWh", Name = "ratedEnergy", Key = "performance.ratedEnergy", Value = passport.Performance.RatedEnergy, Help = "Rated energy in kWh.", IsLive = false },
+        new { Label = "Rated capacity Ah", Name = "ratedCapacity", Key = "performance.ratedCapacity", Value = passport.Performance.RatedCapacity, Help = "Rated capacity in Ah.", IsLive = false },
+        new { Label = "Maximum power kW", Name = "ratedMaximumPower", Key = "performance.ratedMaximumPower", Value = passport.Performance.RatedMaximumPower, Help = "Maximum rated power.", IsLive = false },
+        new { Label = "Nominal voltage V", Name = "nominalVoltage", Key = "performance.nominalVoltage", Value = passport.Performance.NominalVoltage, Help = "Nominal voltage.", IsLive = false },
+        new { Label = "Expected lifetime years", Name = "expectedLifetime", Key = "performance.expectedLifetime", Value = passport.Performance.ExpectedLifetime, Help = "Expected lifetime in years.", IsLive = false },
+        new { Label = "Expected cycles", Name = "expectedNumberOfCycles", Key = "performance.expectedNumberOfCycles", Value = passport.Performance.ExpectedNumberOfCycles, Help = "Expected cycle count.", IsLive = false },
+        new { Label = "State of charge %", Name = "stateOfCharge", Key = "performance.stateOfCharge", Value = passport.Performance.StateOfCharge, Help = "Current state of charge.", IsLive = true },
+        new { Label = "Remaining capacity %", Name = "remainingCapacity", Key = "performance.remainingCapacity", Value = passport.Performance.RemainingCapacity, Help = "Remaining certified capacity.", IsLive = true },
+        new { Label = "Remaining energy kWh", Name = "remainingEnergy", Key = "performance.remainingEnergy", Value = passport.Performance.RemainingEnergy, Help = "Remaining energy.", IsLive = true },
+        new { Label = "Full cycles", Name = "fullCycles", Key = "performance.fullCycles", Value = passport.Performance.Cycles, Help = "Number of full cycles.", IsLive = true }
+    };
+
+    var complianceDocuments = new[]
+    {
+        new { Document = passport.Documents.ConformityAssessment, FieldName = "document_conformityAssessment", VisibilityName = "document_conformityAssessment_visibility", Key = "compliance.conformityAssessment", Help = "URL or reference for the conformity assessment report." },
+        new { Document = passport.Documents.EuDeclarationOfConformity, FieldName = "document_euDeclarationOfConformity", VisibilityName = "document_euDeclarationOfConformity_visibility", Key = "compliance.euDeclarationOfConformity", Help = "URL or reference for the EU declaration." }
+    };
+
+    var supplyChainDocuments = new[]
+    {
+        new { Document = passport.Documents.SustainabilityReport, FieldName = "document_sustainabilityReport", VisibilityName = "document_sustainabilityReport_visibility", Key = "supplyChain.sustainabilityReport", Help = "Sustainability report reference." },
+        new { Document = passport.Documents.DueDiligenceReport, FieldName = "document_dueDiligenceReport", VisibilityName = "document_dueDiligenceReport_visibility", Key = "supplyChain.dueDiligenceReport", Help = "Due-diligence report reference." },
+        new { Document = passport.Documents.ThirdPartyAudit, FieldName = "document_thirdPartyAudit", VisibilityName = "document_thirdPartyAudit_visibility", Key = "supplyChain.thirdPartyAudit", Help = "Third-party assurance/audit reference." },
+        new { Document = passport.Documents.TaxonomyReport, FieldName = "document_taxonomyReport", VisibilityName = "document_taxonomyReport_visibility", Key = "supplyChain.taxonomyReport", Help = "Taxonomy report reference." }
+    };
+
+    var recycledFields = new[]
+    {
+        new { Label = "Nickel pre consumer %", Name = "recycledNickelPre", Key = "circularity.recycledNickelPre", Value = Recycled("Nickel").PreConsumerShare, Help = "Nickel pre-consumer recycled content share.", IsDirty = true },
+        new { Label = "Nickel post consumer %", Name = "recycledNickelPost", Key = "circularity.recycledNickelPost", Value = Recycled("Nickel").PostConsumerShare, Help = "Nickel post-consumer recycled content share.", IsDirty = true },
+        new { Label = "Nickel primary material %", Name = "recycledNickelPrimary", Key = "circularity.recycledNickelPrimary", Value = Recycled("Nickel").PrimaryMaterialShare, Help = "Nickel primary material share.", IsDirty = false },
+        new { Label = "Cobalt pre consumer %", Name = "recycledCobaltPre", Key = "circularity.recycledCobaltPre", Value = Recycled("Cobalt").PreConsumerShare, Help = "Cobalt pre-consumer recycled content share.", IsDirty = true },
+        new { Label = "Cobalt post consumer %", Name = "recycledCobaltPost", Key = "circularity.recycledCobaltPost", Value = Recycled("Cobalt").PostConsumerShare, Help = "Cobalt post-consumer recycled content share.", IsDirty = true },
+        new { Label = "Cobalt primary material %", Name = "recycledCobaltPrimary", Key = "circularity.recycledCobaltPrimary", Value = Recycled("Cobalt").PrimaryMaterialShare, Help = "Cobalt primary material share.", IsDirty = false },
+        new { Label = "Lithium pre consumer %", Name = "recycledLithiumPre", Key = "circularity.recycledLithiumPre", Value = Recycled("Lithium").PreConsumerShare, Help = "Lithium pre-consumer recycled content share.", IsDirty = true },
+        new { Label = "Lithium post consumer %", Name = "recycledLithiumPost", Key = "circularity.recycledLithiumPost", Value = Recycled("Lithium").PostConsumerShare, Help = "Lithium post-consumer recycled content share.", IsDirty = true },
+        new { Label = "Lithium primary material %", Name = "recycledLithiumPrimary", Key = "circularity.recycledLithiumPrimary", Value = Recycled("Lithium").PrimaryMaterialShare, Help = "Lithium primary material share.", IsDirty = false },
+        new { Label = "Lead pre consumer %", Name = "recycledLeadPre", Key = "circularity.recycledLeadPre", Value = Recycled("Lead").PreConsumerShare, Help = "Lead pre-consumer recycled content share.", IsDirty = true },
+        new { Label = "Lead post consumer %", Name = "recycledLeadPost", Key = "circularity.recycledLeadPost", Value = Recycled("Lead").PostConsumerShare, Help = "Lead post-consumer recycled content share.", IsDirty = true },
+        new { Label = "Lead primary material %", Name = "recycledLeadPrimary", Key = "circularity.recycledLeadPrimary", Value = Recycled("Lead").PrimaryMaterialShare, Help = "Lead primary material share.", IsDirty = false }
+    };
+
+    var carbonFields = new[]
+    {
+        new { Label = "Amount gCO2e/kWh", Name = "carbonFootprint", Key = "carbon.amount", Value = passport.CarbonFootprint, Help = "Battery carbon footprint amount." },
+        new { Label = "Raw material extraction gCO2e/kWh", Name = "carbonRawMaterial", Key = "carbon.rawMaterial", Value = SegmentValue("raw material extraction", passport.CarbonFootprintSegments), Help = "Raw material extraction lifecycle carbon value." },
+        new { Label = "Main production gCO2e/kWh", Name = "carbonMainProduction", Key = "carbon.mainProduction", Value = SegmentValue("main production", passport.CarbonFootprintSegments), Help = "Main production lifecycle carbon value." },
+        new { Label = "Distribution gCO2e/kWh", Name = "carbonDistribution", Key = "carbon.distribution", Value = SegmentValue("distribution", passport.CarbonFootprintSegments), Help = "Distribution lifecycle carbon value." },
+        new { Label = "Recycling gCO2e/kWh", Name = "carbonRecycling", Key = "carbon.recycling", Value = SegmentValue("recycling", passport.CarbonFootprintSegments), Help = "Recycling lifecycle carbon value." }
+    };
 }
 <main class="bp-page bp-admin-page">
     <h1 class="mb-1">@(isNew ? "Create passport" : "Edit passport")</h1>
@@ -28,13 +109,7 @@
         <div class="d-flex justify-content-between flex-wrap gap-3 align-items-center">
             <div>
                 <span class="bp-summary-title">Trust state</span>
-                <p class="mb-0">
-                    <strong>@passport.TrustState</strong>
-                    @if (passport.TrustIsDirty)
-                    {
-                        <span class="bp-pill bp-pill-warn ms-2">Dirty</span>
-                    }
-                </p>
+                <p class="mb-0"><strong>@passport.TrustState</strong>@if (passport.TrustIsDirty) { <span class="bp-pill bp-pill-warn ms-2">Dirty</span> }</p>
             </div>
             <div class="d-flex flex-wrap gap-2">
                 <a href="/admin/help" class="bp-secondary-button">Admin help</a>
@@ -43,14 +118,8 @@
         </div>
     </div>
 
-    @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
-    {
-        <div class="alert alert-success mt-3 mb-0">@Model.StatusMessage</div>
-    }
-    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
-    {
-        <div class="alert alert-danger mt-3 mb-0">@Model.ErrorMessage</div>
-    }
+    @if (!string.IsNullOrWhiteSpace(Model.StatusMessage)) { <div class="alert alert-success mt-3 mb-0">@Model.StatusMessage</div> }
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage)) { <div class="alert alert-danger mt-3 mb-0">@Model.ErrorMessage</div> }
 
     <form method="post" action="@formAction" class="bp-edit-grid mt-4" data-edit-passport-form>
         @Html.AntiForgeryToken()
@@ -66,219 +135,94 @@
             <section id="admin-general" class="bp-card bp-edit-section">
                 <h2>General</h2>
                 <div class="bp-form-grid">
-                    @if (isNew)
-                    {
-                        <label>Passport ID<input type="text" name="passportId" value="@passport.PassportId" required /></label>
-                    }
-                    else
-                    {
-                        <label>Passport ID<input type="text" name="passportId" value="@passport.PassportId" readonly /></label>
-                    }
-                    <label>Name<input type="text" name="name" value="@passport.DisplayName" /></label>
-                    <label>Model Number<input type="text" name="modelNumber" value="@passport.ModelNumber" /></label>
-                    <label>Serial Number<input type="text" name="serialNumber" value="@passport.SerialNumber" /></label>
-                    <label>Category<input type="text" name="category" value="@selectedBatteryCategory" readonly data-image-category /></label>
-                    <label>Status<input type="text" name="batteryStatus" value="@passport.BatteryStatus" /></label>
-                    <label>Weight kg<input type="number" step="any" name="batteryMass" value="@passport.Weight" /></label>
-                    <label>Manufactured date<input type="date" name="manufacturingDate" value="@passport.ManufacturedDate" /></label>
-                    <label>Facility ID<input type="text" name="facilityId" value="@passport.FacilityId" /></label>
-                    <label>Manufactured by<input type="text" name="manufacturerName" value="@passport.ManufacturerName" /></label>
-                    <label>Registry status
-                        <select name="status">
-                            @if (passport.RegistryStatus != "archived")
-                            {
-                                <option value="draft" selected>Draft</option>
-                            }
-                            else
-                            {
-                                <option value="draft">Draft</option>
-                            }
-                            @if (passport.RegistryStatus == "archived")
-                            {
-                                <option value="archived" selected>Archived</option>
-                            }
-                            else
-                            {
-                                <option value="archived">Archived</option>
-                            }
-                        </select>
-                        <small class="text-secondary d-block mt-1">Publishing is handled from the trust workflow after validation and signing.</small>
-                    </label>
-                    <label>Battery image
-                        <select name="batteryImageUrl" data-battery-image-select>
-                            @foreach (var imageOption in batteryImageOptions)
-                            {
-                                if (imageOption.Url.Equals(selectedBatteryImageUrl, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    <option value="@imageOption.Url" data-image-category="@imageOption.Category" selected>@imageOption.Label (@imageOption.Category)</option>
-                                }
-                                else
-                                {
-                                    <option value="@imageOption.Url" data-image-category="@imageOption.Category">@imageOption.Label (@imageOption.Category)</option>
-                                }
-                            }
-                        </select>
-                    </label>
+                    <label class="bp-field-shell"><span>Passport ID <em class="bp-field-marker">@RequirementLabel("general.passportId")</em></span>@if (isNew) { <input type="text" name="passportId" value="@passport.PassportId" required /> } else { <input type="text" name="passportId" value="@passport.PassportId" readonly /> }<small class="bp-field-help">@DirtySignedDataHelp("general.passportId", "Unique DID-style battery identifier.")</small></label>
+                    <label class="bp-field-shell"><span>Name <em class="bp-field-marker">@RequirementLabel("general.name")</em></span><input type="text" name="name" value="@passport.DisplayName" /><small class="bp-field-help">@DirtySignedDataHelp("general.name", "Human-readable battery name.")</small></label>
+                    <label class="bp-field-shell"><span>Model Number <em class="bp-field-marker">@RequirementLabel("general.modelNumber")</em></span><input type="text" name="modelNumber" value="@passport.ModelNumber" /><small class="bp-field-help">@DirtySignedDataHelp("general.modelNumber", "Model identifier shown on public reports.")</small></label>
+                    <label class="bp-field-shell"><span>Serial Number <em class="bp-field-marker">@RequirementLabel("general.serialNumber")</em></span><input type="text" name="serialNumber" value="@passport.SerialNumber" /><small class="bp-field-help">@DirtySignedDataHelp("general.serialNumber", "Manufacturer serial number.")</small></label>
+                    <label class="bp-field-shell"><span>Category <em class="bp-field-marker">@RequirementLabel("general.category")</em></span><input type="text" name="category" value="@selectedBatteryCategory" readonly data-image-category /><small class="bp-field-help">@DirtySignedDataHelp("general.category", "Battery category is set by the selected image/catalog type.")</small></label>
+                    <label class="bp-field-shell"><span>Status <em class="bp-field-marker">@RequirementLabel("general.batteryStatus")</em></span><input type="text" name="batteryStatus" value="@passport.BatteryStatus" /><small class="bp-field-help">@DirtySignedDataHelp("general.batteryStatus", "Lifecycle/original status for the battery.")</small></label>
+                    <label class="bp-field-shell"><span>Weight kg <em class="bp-field-marker">@RequirementLabel("general.batteryMass")</em></span><input type="number" step="any" name="batteryMass" value="@passport.Weight" /><small class="bp-field-help">@DirtySignedDataHelp("general.batteryMass", "Battery mass in kg.")</small></label>
+                    <label class="bp-field-shell"><span>Manufactured date <em class="bp-field-marker">@RequirementLabel("general.manufacturingDate")</em></span><input type="date" name="manufacturingDate" value="@passport.ManufacturedDate" /><small class="bp-field-help">@DirtySignedDataHelp("general.manufacturingDate", "Manufacturing date.")</small></label>
+                    <label class="bp-field-shell"><span>Facility ID <em class="bp-field-marker">@RequirementLabel("general.facilityId")</em></span><input type="text" name="facilityId" value="@passport.FacilityId" /><small class="bp-field-help">@DirtySignedDataHelp("general.facilityId", "Production or facility identifier.")</small></label>
+                    <label class="bp-field-shell"><span>Manufactured by <em class="bp-field-marker">@RequirementLabel("general.manufacturerName")</em></span><input type="text" name="manufacturerName" value="@passport.ManufacturerName" /><small class="bp-field-help">@DirtySignedDataHelp("general.manufacturerName", "Manufacturer legal/display name.")</small></label>
+                    <label class="bp-field-shell"><span>Registry status <em class="bp-field-marker">@RequirementLabel("general.registryStatus")</em></span><select name="status">@if (passport.RegistryStatus != "archived") { <option value="draft" selected>Draft</option> } else { <option value="draft">Draft</option> } @if (passport.RegistryStatus == "archived") { <option value="archived" selected>Archived</option> } else { <option value="archived">Archived</option> }</select><small class="bp-field-help">@DirtySignedDataHelp("general.registryStatus", "Publishing is handled from the trust workflow after validation and signing.")</small></label>
+                    <label class="bp-field-shell"><span>Battery image <em class="bp-field-marker">@RequirementLabel("general.batteryImageUrl")</em></span><select name="batteryImageUrl" data-battery-image-select>@foreach (var imageOption in batteryImageOptions) { if (imageOption.Url.Equals(selectedBatteryImageUrl, StringComparison.OrdinalIgnoreCase)) { <option value="@imageOption.Url" data-image-category="@imageOption.Category" selected>@imageOption.Label (@imageOption.Category)</option> } else { <option value="@imageOption.Url" data-image-category="@imageOption.Category">@imageOption.Label (@imageOption.Category)</option> } }</select><small class="bp-field-help">@RequirementHelp("general.batteryImageUrl", "Display image for the report.")</small></label>
                 </div>
             </section>
-
             <section id="admin-material-composition" class="bp-card bp-edit-section">
                 <h2>Material composition</h2>
                 <div class="bp-form-grid">
-                    <label>Nickel kg<input type="number" step="any" name="materialNickel" value="@SegmentValue("Nickel", passport.MaterialCompositionSegments)" /></label>
-                    <label>Copper kg<input type="number" step="any" name="materialCopper" value="@SegmentValue("Copper", passport.MaterialCompositionSegments)" /></label>
-                    <label>Aluminium kg<input type="number" step="any" name="materialAluminium" value="@SegmentValue("Aluminium", passport.MaterialCompositionSegments)" /></label>
-                    <label>Graphite kg<input type="number" step="any" name="materialGraphite" value="@SegmentValue("Graphite", passport.MaterialCompositionSegments)" /></label>
-                    <label>Manganese kg<input type="number" step="any" name="materialManganese" value="@SegmentValue("Manganese", passport.MaterialCompositionSegments)" /></label>
-                    <label>Cobalt kg<input type="number" step="any" name="materialCobalt" value="@SegmentValue("Cobalt", passport.MaterialCompositionSegments)" /></label>
-                    <label>Lithium kg<input type="number" step="any" name="materialLithium" value="@SegmentValue("Lithium", passport.MaterialCompositionSegments)" /></label>
-                    <label>Electrolyte and separators kg<input type="number" step="any" name="materialElectrolyte" value="@SegmentValue("Electrolyte and separators", passport.MaterialCompositionSegments)" /></label>
+                    @foreach (var field in materialFields)
+                    {
+                        <label class="bp-field-shell"><span>@field.Label <em class="bp-field-marker">@RequirementLabel(field.Key)</em></span><input type="number" step="any" name="@field.Name" value="@field.Value" /><small class="bp-field-help">@DirtySignedDataHelp(field.Key, field.Help)</small></label>
+                    }
                 </div>
             </section>
 
             <section id="admin-performance" class="bp-card bp-edit-section">
                 <h2>Performance</h2>
                 <div class="bp-form-grid">
-                    <label>Rated energy kWh<input type="number" step="any" name="ratedEnergy" value="@passport.Performance.RatedEnergy" /></label>
-                    <label>Rated capacity Ah<input type="number" step="any" name="ratedCapacity" value="@passport.Performance.RatedCapacity" /></label>
-                    <label>Maximum power kW<input type="number" step="any" name="ratedMaximumPower" value="@passport.Performance.RatedMaximumPower" /></label>
-                    <label>Nominal voltage V<input type="number" step="any" name="nominalVoltage" value="@passport.Performance.NominalVoltage" /></label>
-                    <label>Expected lifetime years<input type="number" step="any" name="expectedLifetime" value="@passport.Performance.ExpectedLifetime" /></label>
-                    <label>Expected cycles<input type="number" step="any" name="expectedNumberOfCycles" value="@passport.Performance.ExpectedNumberOfCycles" /></label>
-                    <label>State of charge %<input type="number" step="any" name="stateOfCharge" value="@passport.Performance.StateOfCharge" /></label>
-                    <label>Remaining capacity %<input type="number" step="any" name="remainingCapacity" value="@passport.Performance.RemainingCapacity" /></label>
-                    <label>Remaining energy kWh<input type="number" step="any" name="remainingEnergy" value="@passport.Performance.RemainingEnergy" /></label>
-                    <label>Full cycles<input type="number" step="any" name="fullCycles" value="@passport.Performance.Cycles" /></label>
+                    @foreach (var field in performanceFields)
+                    {
+                        <label class="bp-field-shell"><span>@field.Label <em class="bp-field-marker">@RequirementLabel(field.Key)</em></span><input type="number" step="any" name="@field.Name" value="@field.Value" /><small class="bp-field-help">@(field.IsLive ? LiveOperationalHelp(field.Key, field.Help) : DirtySignedDataHelp(field.Key, field.Help))</small></label>
+                    }
                 </div>
             </section>
 
             <section id="admin-compliance" class="bp-card bp-edit-section">
                 <h2>Compliance</h2>
                 <div class="bp-form-grid">
-                    <label>@passport.Documents.ConformityAssessment.Label<input type="text" name="document_conformityAssessment" value="@passport.Documents.ConformityAssessment.Url" /></label>
-                    <label>@passport.Documents.ConformityAssessment.Label visibility
-                        <select name="document_conformityAssessment_visibility">
-                            <option value="private" selected="@(!IsPublicDocument(passport.Documents.ConformityAssessment))">Private / privileged</option>
-                            <option value="public" selected="@(IsPublicDocument(passport.Documents.ConformityAssessment))">Public document</option>
-                        </select>
-                    </label>
-                    <label>@passport.Documents.EuDeclarationOfConformity.Label<input type="text" name="document_euDeclarationOfConformity" value="@passport.Documents.EuDeclarationOfConformity.Url" /></label>
-                    <label>@passport.Documents.EuDeclarationOfConformity.Label visibility
-                        <select name="document_euDeclarationOfConformity_visibility">
-                            <option value="private" selected="@(!IsPublicDocument(passport.Documents.EuDeclarationOfConformity))">Private / privileged</option>
-                            <option value="public" selected="@(IsPublicDocument(passport.Documents.EuDeclarationOfConformity))">Public document</option>
-                        </select>
-                    </label>
+                    @foreach (var document in complianceDocuments)
+                    {
+                        <label class="bp-field-shell"><span>@document.Document.Label <em class="bp-field-marker">@RequirementLabel(document.Key)</em></span><input type="text" name="@document.FieldName" value="@document.Document.Url" /><small class="bp-field-help">@DirtySignedDataHelp(document.Key, document.Help)</small></label>
+                        <label class="bp-field-shell"><span>@document.Document.Label visibility <em class="bp-field-marker">@RequirementLabel(document.Key)</em></span><select name="@document.VisibilityName"><option value="private" selected="@(!IsPublicDocument(document.Document))">Private / privileged</option><option value="public" selected="@(IsPublicDocument(document.Document))">Public document</option></select><small class="bp-field-help">@DirtySignedDataHelp(document.Key, "Controls who can download this document.")</small></label>
+                    }
                 </div>
             </section>
 
             <section id="admin-supply-chain" class="bp-card bp-edit-section">
                 <h2>Supply chain</h2>
                 <div class="bp-form-grid">
-                    <label>Supply chain index<input type="number" step="any" name="supplyChainIndex" value="@passport.SupplyChainIndex" /></label>
-                    <label>@passport.Documents.SustainabilityReport.Label<input type="text" name="document_sustainabilityReport" value="@passport.Documents.SustainabilityReport.Url" /></label>
-                    <label>@passport.Documents.SustainabilityReport.Label visibility
-                        <select name="document_sustainabilityReport_visibility">
-                            <option value="private" selected="@(!IsPublicDocument(passport.Documents.SustainabilityReport))">Private / privileged</option>
-                            <option value="public" selected="@(IsPublicDocument(passport.Documents.SustainabilityReport))">Public document</option>
-                        </select>
-                    </label>
-                    <label>@passport.Documents.DueDiligenceReport.Label<input type="text" name="document_dueDiligenceReport" value="@passport.Documents.DueDiligenceReport.Url" /></label>
-                    <label>@passport.Documents.DueDiligenceReport.Label visibility
-                        <select name="document_dueDiligenceReport_visibility">
-                            <option value="private" selected="@(!IsPublicDocument(passport.Documents.DueDiligenceReport))">Private / privileged</option>
-                            <option value="public" selected="@(IsPublicDocument(passport.Documents.DueDiligenceReport))">Public document</option>
-                        </select>
-                    </label>
-                    <label>@passport.Documents.ThirdPartyAudit.Label<input type="text" name="document_thirdPartyAudit" value="@passport.Documents.ThirdPartyAudit.Url" /></label>
-                    <label>@passport.Documents.ThirdPartyAudit.Label visibility
-                        <select name="document_thirdPartyAudit_visibility">
-                            <option value="private" selected="@(!IsPublicDocument(passport.Documents.ThirdPartyAudit))">Private / privileged</option>
-                            <option value="public" selected="@(IsPublicDocument(passport.Documents.ThirdPartyAudit))">Public document</option>
-                        </select>
-                    </label>
-                    <label>@passport.Documents.TaxonomyReport.Label<input type="text" name="document_taxonomyReport" value="@passport.Documents.TaxonomyReport.Url" /></label>
-                    <label>@passport.Documents.TaxonomyReport.Label visibility
-                        <select name="document_taxonomyReport_visibility">
-                            <option value="private" selected="@(!IsPublicDocument(passport.Documents.TaxonomyReport))">Private / privileged</option>
-                            <option value="public" selected="@(IsPublicDocument(passport.Documents.TaxonomyReport))">Public document</option>
-                        </select>
-                    </label>
+                    <label class="bp-field-shell"><span>Supply chain index <em class="bp-field-marker">@RequirementLabel("supplyChain.supplyChainIndex")</em></span><input type="number" step="any" name="supplyChainIndex" value="@passport.SupplyChainIndex" /><small class="bp-field-help">@DirtySignedDataHelp("supplyChain.supplyChainIndex", "Supply chain due-diligence index.")</small></label>
+                    @foreach (var document in supplyChainDocuments)
+                    {
+                        <label class="bp-field-shell"><span>@document.Document.Label <em class="bp-field-marker">@RequirementLabel(document.Key)</em></span><input type="text" name="@document.FieldName" value="@document.Document.Url" /><small class="bp-field-help">@DirtySignedDataHelp(document.Key, document.Help)</small></label>
+                        <label class="bp-field-shell"><span>@document.Document.Label visibility <em class="bp-field-marker">@RequirementLabel(document.Key)</em></span><select name="@document.VisibilityName"><option value="private" selected="@(!IsPublicDocument(document.Document))">Private / privileged</option><option value="public" selected="@(IsPublicDocument(document.Document))">Public document</option></select><small class="bp-field-help">@DirtySignedDataHelp(document.Key, "Controls who can download this document.")</small></label>
+                    }
                 </div>
             </section>
 
             <section id="admin-circularity" class="bp-card bp-edit-section">
                 <h2>Circularity</h2>
                 <div class="bp-form-grid">
-                    <label class="bp-span-2">Separate collection<textarea name="separateCollection">@passport.Circularity.SeparateCollection</textarea></label>
-                    <label class="bp-span-2">Waste prevention<textarea name="wastePrevention">@passport.Circularity.WastePrevention</textarea></label>
-                    <label>Recycled content share verification
+                    <label class="bp-field-shell bp-span-2"><span>Separate collection <em class="bp-field-marker">@RequirementLabel("circularity.separateCollection")</em></span><textarea name="separateCollection">@passport.Circularity.SeparateCollection</textarea><small class="bp-field-help">@DirtySignedDataHelp("circularity.separateCollection", "Collection instructions or URL.")</small></label>
+                    <label class="bp-field-shell bp-span-2"><span>Waste prevention <em class="bp-field-marker">@RequirementLabel("circularity.wastePrevention")</em></span><textarea name="wastePrevention">@passport.Circularity.WastePrevention</textarea><small class="bp-field-help">@DirtySignedDataHelp("circularity.wastePrevention", "Waste prevention instructions or URL.")</small></label>
+                    <label class="bp-field-shell"><span>Recycled content share verification <em class="bp-field-marker">@RequirementLabel("circularity.recycledContentShareVerification")</em></span>
                         <select name="recycledContentShareVerification">
-                            @if (passport.Circularity.RecycledContentShareVerification == "verified")
-                            {
-                                <option value="verified" selected>Verified</option>
-                            }
-                            else
-                            {
-                                <option value="verified">Verified</option>
-                            }
-                            @if (passport.Circularity.RecycledContentShareVerification == "partial")
-                            {
-                                <option value="partial" selected>Partial</option>
-                            }
-                            else
-                            {
-                                <option value="partial">Partial</option>
-                            }
-                            @if (passport.Circularity.RecycledContentShareVerification == "unverified")
-                            {
-                                <option value="unverified" selected>Unverified</option>
-                            }
-                            else
-                            {
-                                <option value="unverified">Unverified</option>
-                            }
-                            @if (passport.Circularity.RecycledContentShareVerification == "invalid")
-                            {
-                                <option value="invalid" selected>Invalid</option>
-                            }
-                            else
-                            {
-                                <option value="invalid">Invalid</option>
-                            }
+                            @if (passport.Circularity.RecycledContentShareVerification == "verified") { <option value="verified" selected>Verified</option> } else { <option value="verified">Verified</option> }
+                            @if (passport.Circularity.RecycledContentShareVerification == "partial") { <option value="partial" selected>Partial</option> } else { <option value="partial">Partial</option> }
+                            @if (passport.Circularity.RecycledContentShareVerification == "unverified") { <option value="unverified" selected>Unverified</option> } else { <option value="unverified">Unverified</option> }
+                            @if (passport.Circularity.RecycledContentShareVerification == "invalid") { <option value="invalid" selected>Invalid</option> } else { <option value="invalid">Invalid</option> }
                         </select>
+                        <small class="bp-field-help">@RequirementHelp("circularity.recycledContentShareVerification", "Verification state shown by the admin form.")</small>
                     </label>
-                    <label>Nickel pre consumer %<input type="number" step="any" name="recycledNickelPre" value="@Recycled("Nickel").PreConsumerShare" /></label>
-                    <label>Nickel post consumer %<input type="number" step="any" name="recycledNickelPost" value="@Recycled("Nickel").PostConsumerShare" /></label>
-                    <label>Nickel primary material %<input type="number" step="any" name="recycledNickelPrimary" value="@Recycled("Nickel").PrimaryMaterialShare" /></label>
-                    <label>Cobalt pre consumer %<input type="number" step="any" name="recycledCobaltPre" value="@Recycled("Cobalt").PreConsumerShare" /></label>
-                    <label>Cobalt post consumer %<input type="number" step="any" name="recycledCobaltPost" value="@Recycled("Cobalt").PostConsumerShare" /></label>
-                    <label>Cobalt primary material %<input type="number" step="any" name="recycledCobaltPrimary" value="@Recycled("Cobalt").PrimaryMaterialShare" /></label>
-                    <label>Lithium pre consumer %<input type="number" step="any" name="recycledLithiumPre" value="@Recycled("Lithium").PreConsumerShare" /></label>
-                    <label>Lithium post consumer %<input type="number" step="any" name="recycledLithiumPost" value="@Recycled("Lithium").PostConsumerShare" /></label>
-                    <label>Lithium primary material %<input type="number" step="any" name="recycledLithiumPrimary" value="@Recycled("Lithium").PrimaryMaterialShare" /></label>
-                    <label>Lead pre consumer %<input type="number" step="any" name="recycledLeadPre" value="@Recycled("Lead").PreConsumerShare" /></label>
-                    <label>Lead post consumer %<input type="number" step="any" name="recycledLeadPost" value="@Recycled("Lead").PostConsumerShare" /></label>
-                    <label>Lead primary material %<input type="number" step="any" name="recycledLeadPrimary" value="@Recycled("Lead").PrimaryMaterialShare" /></label>
+                    @foreach (var field in recycledFields)
+                    {
+                        <label class="bp-field-shell"><span>@field.Label <em class="bp-field-marker">@RequirementLabel(field.Key)</em></span><input type="number" step="any" name="@field.Name" value="@field.Value" /><small class="bp-field-help">@(field.IsDirty ? DirtySignedDataHelp(field.Key, field.Help) : RequirementHelp(field.Key, field.Help))</small></label>
+                    }
                 </div>
             </section>
 
             <section id="admin-carbon-footprint" class="bp-card bp-edit-section">
                 <h2>Carbon Footprint</h2>
                 <div class="bp-form-grid">
-                    <label>Amount gCO2e/kWh<input type="number" step="any" name="carbonFootprint" value="@passport.CarbonFootprint" /></label>
-                    <label>Performance class<input type="text" name="performanceClass" value="@passport.PerformanceClass" /></label>
-                    <label>Raw material extraction gCO2e/kWh<input type="number" step="any" name="carbonRawMaterial" value="@SegmentValue("raw material extraction", passport.CarbonFootprintSegments)" /></label>
-                    <label>Main production gCO2e/kWh<input type="number" step="any" name="carbonMainProduction" value="@SegmentValue("main production", passport.CarbonFootprintSegments)" /></label>
-                    <label>Distribution gCO2e/kWh<input type="number" step="any" name="carbonDistribution" value="@SegmentValue("distribution", passport.CarbonFootprintSegments)" /></label>
-                    <label>Recycling gCO2e/kWh<input type="number" step="any" name="carbonRecycling" value="@SegmentValue("recycling", passport.CarbonFootprintSegments)" /></label>
-                    <label>@passport.Documents.Co2StudyReference.Label<input type="text" name="document_co2StudyReference" value="@passport.Documents.Co2StudyReference.Url" /></label>
-                    <label>@passport.Documents.Co2StudyReference.Label visibility
-                        <select name="document_co2StudyReference_visibility">
-                            <option value="private" selected="@(!IsPublicDocument(passport.Documents.Co2StudyReference))">Private / privileged</option>
-                            <option value="public" selected="@(IsPublicDocument(passport.Documents.Co2StudyReference))">Public document</option>
-                        </select>
-                    </label>
+                    @foreach (var field in carbonFields)
+                    {
+                        <label class="bp-field-shell"><span>@field.Label <em class="bp-field-marker">@RequirementLabel(field.Key)</em></span><input type="number" step="any" name="@field.Name" value="@field.Value" /><small class="bp-field-help">@DirtySignedDataHelp(field.Key, field.Help)</small></label>
+                    }
+                    <label class="bp-field-shell"><span>Performance class <em class="bp-field-marker">@RequirementLabel("carbon.performanceClass")</em></span><input type="text" name="performanceClass" value="@passport.PerformanceClass" /><small class="bp-field-help">@DirtySignedDataHelp("carbon.performanceClass", "Carbon footprint performance class.")</small></label>
+                    <label class="bp-field-shell"><span>@passport.Documents.Co2StudyReference.Label <em class="bp-field-marker">@RequirementLabel("carbon.co2StudyReference")</em></span><input type="text" name="document_co2StudyReference" value="@passport.Documents.Co2StudyReference.Url" /><small class="bp-field-help">@DirtySignedDataHelp("carbon.co2StudyReference", "Reference URL for the carbon footprint study.")</small></label>
+                    <label class="bp-field-shell"><span>@passport.Documents.Co2StudyReference.Label visibility <em class="bp-field-marker">@RequirementLabel("carbon.co2StudyReference")</em></span><select name="document_co2StudyReference_visibility"><option value="private" selected="@(!IsPublicDocument(passport.Documents.Co2StudyReference))">Private / privileged</option><option value="public" selected="@(IsPublicDocument(passport.Documents.Co2StudyReference))">Public document</option></select><small class="bp-field-help">@DirtySignedDataHelp("carbon.co2StudyReference", "Controls who can download this study.")</small></label>
                 </div>
             </section>
 
@@ -301,7 +245,6 @@
         </div>
     </div>
 </main>
-
 @section Scripts {
     <script>
         (function () {
