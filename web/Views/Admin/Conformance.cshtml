@@ -10,6 +10,7 @@
     var showSignPassport = readiness.NextActionKey == PassportReadinessAction.Sign && readiness.CanSign;
     var showPublishPassport = readiness.NextActionKey == PassportReadinessAction.Publish && readiness.CanPublish;
     var showWorkflowComplete = readiness.NextActionKey == PassportReadinessAction.None || (readiness.CanPublish && isPublished);
+    var evidencePack = Model.EvidencePack;
 }
 
 <main class="bp-page bp-admin-page">
@@ -106,6 +107,60 @@
             <p>Latest validation</p>
             <strong>@summary.State</strong>
             <span>@(string.IsNullOrWhiteSpace(summary.ValidatedAt) ? "Not validated yet." : summary.ValidatedAt)</span>
+        </div>
+    </section>
+
+    <section class="bp-card bp-conformance-panel bp-evidence-panel">
+        <div class="bp-panel-heading">
+            <span class="bp-summary-title">Evidence readiness</span>
+            <span class="bp-count-pill @(evidencePack.BlockingCount == 0 ? "is-ready" : string.Empty)">@evidencePack.BlockingCount blockers</span>
+        </div>
+        <h2>Supporting document evidence</h2>
+        <p class="bp-help-text">Document hashes are checked against the latest signed revision. Replacing a file makes the passport dirty until it is signed again.</p>
+
+        <div class="bp-evidence-metrics" aria-label="Evidence metrics">
+            <div class="bp-readiness-card @(evidencePack.MissingRequiredCount == 0 ? "is-ready" : "is-blocked")">
+                <p>Missing required</p>
+                <strong>@evidencePack.MissingRequiredCount</strong>
+                <span>Required supporting files that still need an upload.</span>
+            </div>
+            <div class="bp-readiness-card @(evidencePack.ChangedSinceSigningCount == 0 ? "is-ready" : "is-warning")">
+                <p>Changed since signing</p>
+                <strong>@evidencePack.ChangedSinceSigningCount</strong>
+                <span>Uploaded hashes that differ from the latest signed revision.</span>
+            </div>
+            <div class="bp-readiness-card @(evidencePack.UploadedUnsignedCount == 0 ? "is-muted" : "is-warning")">
+                <p>Uploaded unsigned</p>
+                <strong>@evidencePack.UploadedUnsignedCount</strong>
+                <span>Uploaded files waiting for the next signature.</span>
+            </div>
+            <div class="bp-readiness-card @(evidencePack.VerifiedCount == evidencePack.RequiredCount && evidencePack.RequiredCount > 0 ? "is-ready" : "is-muted")">
+                <p>Verified documents</p>
+                <strong>@evidencePack.VerifiedCount</strong>
+                <span>Current hashes found in the latest signed revision.</span>
+            </div>
+        </div>
+
+        <div class="bp-evidence-list">
+            @foreach (var item in evidencePack.Items)
+            {
+                <article class="bp-evidence-item bp-evidence-status-@item.Status">
+                    <div class="bp-evidence-item-header">
+                        <div>
+                            <span>@(item.IsRequired ? "Required evidence" : "Optional evidence")</span>
+                            <strong>@item.Label</strong>
+                        </div>
+                        <span class="bp-evidence-status">@item.StatusLabel</span>
+                    </div>
+                    <dl class="bp-evidence-details">
+                        <div><dt>Visibility</dt><dd>@(item.Visibility == "public" ? "Public" : "Private / privileged")</dd></div>
+                        <div><dt>Current hash</dt><dd><code>@(string.IsNullOrWhiteSpace(item.CurrentHash) ? "-" : item.CurrentHash)</code></dd></div>
+                        <div><dt>Signed hash</dt><dd><code>@(string.IsNullOrWhiteSpace(item.SignedHash) ? "-" : item.SignedHash)</code></dd></div>
+                        <div><dt>Next action</dt><dd>@item.RecommendedAction</dd></div>
+                    </dl>
+                    <a class="bp-secondary-button bp-button-compact" href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/edit#@EvidenceEditAnchor(item.DocumentKey)">Upload or replace</a>
+                </article>
+            }
         </div>
     </section>
 
@@ -366,5 +421,16 @@
         return cleaned
             .Replace(".", " / ", StringComparison.Ordinal)
             .Replace("[", " [", StringComparison.Ordinal);
+    }
+
+    private static string EvidenceEditAnchor(string documentKey)
+    {
+        return documentKey switch
+        {
+            "conformityAssessment" or "euDeclarationOfConformity" => "admin-compliance",
+            "sustainabilityReport" or "dueDiligenceReport" or "thirdPartyAudit" or "taxonomyReport" => "admin-supply-chain",
+            "co2StudyReference" => "admin-carbon-footprint",
+            _ => "admin-general"
+        };
     }
 }

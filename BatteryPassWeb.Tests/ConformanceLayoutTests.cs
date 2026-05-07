@@ -220,6 +220,28 @@ public sealed class ConformanceLayoutTests
         Assert.Contains(".bp-advanced-diagnostics", css);
     }
 
+    [Fact]
+    public void ConformanceView_ShouldRenderEvidenceReadinessPanel()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Conformance.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("Evidence readiness", markup);
+        Assert.Contains("Model.EvidencePack", markup);
+        Assert.Contains("Missing required", markup);
+        Assert.Contains("Changed since signing", markup);
+        Assert.Contains("Uploaded unsigned", markup);
+        Assert.Contains("Verified documents", markup);
+        Assert.Contains("bp-evidence-panel", markup);
+        Assert.Contains("bp-evidence-item", markup);
+        Assert.Contains("bp-evidence-status", markup);
+
+        Assert.Contains(".bp-evidence-panel", css);
+        Assert.Contains(".bp-evidence-list", css);
+        Assert.Contains(".bp-evidence-item", css);
+        Assert.Contains(".bp-evidence-status", css);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

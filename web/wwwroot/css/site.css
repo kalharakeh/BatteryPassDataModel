@@ -1827,6 +1827,115 @@ a:hover {
   word-break: break-word;
 }
 
+.bp-evidence-panel {
+  margin-top: 18px;
+  border-color: #c7d7ea;
+  background:
+    radial-gradient(circle at top right, rgba(22, 163, 74, 0.1), transparent 30%),
+    linear-gradient(135deg, #ffffff 0%, #f7fbff 100%);
+}
+
+.bp-evidence-metrics {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.bp-evidence-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.bp-evidence-item {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #d8e3ef;
+  border-left: 4px solid #64748b;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 14px;
+}
+
+.bp-evidence-status-missingRequired,
+.bp-evidence-status-externalLinkOnly,
+.bp-evidence-status-missingFileReference {
+  border-left-color: #dc2626;
+}
+
+.bp-evidence-status-uploadedUnsigned,
+.bp-evidence-status-changedSinceSigning {
+  border-left-color: #d97706;
+}
+
+.bp-evidence-status-verified {
+  border-left-color: #16a34a;
+}
+
+.bp-evidence-item-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bp-evidence-item-header span:first-child {
+  display: block;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.bp-evidence-item-header strong {
+  display: block;
+  margin-top: 2px;
+  color: #041e42;
+}
+
+.bp-evidence-status {
+  border-radius: 999px;
+  background: #eef4fb;
+  color: #35506f;
+  font-size: 0.72rem;
+  font-weight: 850;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.bp-evidence-details {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.bp-evidence-details div {
+  display: grid;
+  gap: 3px;
+}
+
+.bp-evidence-details dt {
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.bp-evidence-details dd {
+  margin: 0;
+  color: #172033;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.bp-evidence-details code {
+  white-space: normal;
+  word-break: break-word;
+}
+
 .bp-trust-panel {
   margin-top: 18px;
   border: 1px solid #d8e3ef;
@@ -2067,6 +2176,14 @@ a:hover {
   }
 
   .bp-readiness-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bp-evidence-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .bp-evidence-details {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
