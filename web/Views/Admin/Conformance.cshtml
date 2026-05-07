@@ -209,7 +209,8 @@
                     }
                 </div>
                 <div>
-                    <h2>Proof and hash diagnostics</h2>
+                    <h2>Verification diagnostics</h2>
+                    <p class="bp-help-text">Proof and hash diagnostics for the latest signature check.</p>
                     <dl class="bp-diagnostics-list">
                         <div><dt>Issuer</dt><dd>@(string.IsNullOrWhiteSpace(Model.VerificationResult.Issuer) ? "-" : Model.VerificationResult.Issuer)</dd></div>
                         <div><dt>Signed date</dt><dd>@(string.IsNullOrWhiteSpace(Model.VerificationResult.SignedAt) ? "-" : Model.VerificationResult.SignedAt)</dd></div>
