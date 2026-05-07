@@ -33,6 +33,14 @@ public sealed class ConformanceLayoutTests
     }
 
     [Fact]
+    public void Program_ShouldRegisterPassportEvidenceService()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Program.cs"));
+
+        Assert.Contains("AddSingleton<PassportEvidenceService>", source);
+    }
+
+    [Fact]
     public void ConformanceView_ShouldRenderTrustSummaryAndActions()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Conformance.cshtml"));
@@ -154,6 +162,15 @@ public sealed class ConformanceLayoutTests
     }
 
     [Fact]
+    public void ConformanceModel_ShouldExposeEvidencePack()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "ConformanceViewModel.cs"));
+
+        Assert.Contains("EvidencePackResult", source);
+        Assert.Contains("EvidencePack", source);
+    }
+
+    [Fact]
     public void AdminController_ShouldComputePassportReadinessForConformance()
     {
         var source = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
@@ -163,6 +180,22 @@ public sealed class ConformanceLayoutTests
         Assert.Contains("_passportReadinessService.Evaluate", source);
         Assert.Contains("GroupedBlockingIssues", source);
         Assert.Contains("AddSingleton<PassportReadinessService>", program);
+    }
+
+    [Fact]
+    public void AdminAndApiControllers_ShouldAppendEvidenceValidationSection()
+    {
+        var admin = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+        var api = File.ReadAllText(RepoFile("web", "Controllers", "PassportsApiController.cs"));
+
+        Assert.Contains("PassportEvidenceService", admin);
+        Assert.Contains("_passportEvidenceService.Evaluate", admin);
+        Assert.Contains("AppendValidationSection", admin);
+        Assert.Contains("EvidencePack", admin);
+
+        Assert.Contains("PassportEvidenceService", api);
+        Assert.Contains("_passportEvidenceService.Evaluate", api);
+        Assert.Contains("AppendValidationSection", api);
     }
 
     [Fact]

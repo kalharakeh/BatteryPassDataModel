@@ -56,6 +56,7 @@ builder.Services.AddSingleton<JsonSchemaValidationService>();
 builder.Services.AddSingleton<PassportValidationService>();
 builder.Services.AddSingleton<PassportPublishPolicyService>();
 builder.Services.AddSingleton<PassportReadinessService>();
+builder.Services.AddSingleton<PassportEvidenceService>();
 builder.Services.AddSingleton<DataCompletionPolicyService>();
 builder.Services.AddSingleton<DemoRequiredDataCompletionService>();
 builder.Services.AddSingleton<DemoScenarioResetService>();

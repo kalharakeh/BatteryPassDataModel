@@ -8,6 +8,7 @@ public sealed class ConformanceViewModel
     public required PassportViewModel Passport { get; init; }
     public required TrustValidationSummary ValidationSummary { get; init; }
     public PassportReadinessDecision Readiness { get; init; } = new();
+    public EvidencePackResult EvidencePack { get; init; } = EvidencePackResult.Empty;
     public IReadOnlyList<ConformanceIssueGroupViewModel> GroupedBlockingIssues { get; init; } = [];
     public IReadOnlyList<ConformanceIssueGroupViewModel> GroupedWarningIssues { get; init; } = [];
     public bool CanSign { get; init; }

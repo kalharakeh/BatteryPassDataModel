@@ -34,6 +34,7 @@ public class AdminController : Controller
     private readonly PassportValidationService _passportValidationService;
     private readonly PassportPublishPolicyService _passportPublishPolicyService;
     private readonly PassportReadinessService _passportReadinessService;
+    private readonly PassportEvidenceService _passportEvidenceService;
     private readonly DataCompletionPolicyService _dataCompletionPolicyService;
     private readonly DemoRequiredDataCompletionService _demoRequiredDataCompletionService;
     private readonly DemoScenarioResetService _demoScenarioResetService;
@@ -48,6 +49,7 @@ public class AdminController : Controller
         PassportValidationService passportValidationService,
         PassportPublishPolicyService passportPublishPolicyService,
         PassportReadinessService passportReadinessService,
+        PassportEvidenceService passportEvidenceService,
         DataCompletionPolicyService dataCompletionPolicyService,
         DemoRequiredDataCompletionService demoRequiredDataCompletionService,
         DemoScenarioResetService demoScenarioResetService,
@@ -61,6 +63,7 @@ public class AdminController : Controller
         _passportValidationService = passportValidationService;
         _passportPublishPolicyService = passportPublishPolicyService;
         _passportReadinessService = passportReadinessService;
+        _passportEvidenceService = passportEvidenceService;
         _dataCompletionPolicyService = dataCompletionPolicyService;
         _demoRequiredDataCompletionService = demoRequiredDataCompletionService;
         _demoScenarioResetService = demoScenarioResetService;
@@ -242,7 +245,9 @@ public class AdminController : Controller
         var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
         var clusterNamesById = BuildClusterDictionary(clusters);
         var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
-        var summary = _passportValidationService.Validate(document, dataRequirements);
+        var validation = await ValidateWithEvidenceAsync(passportId, document, dataRequirements, cancellationToken);
+        var summary = validation.Summary;
+        var evidencePack = validation.EvidencePack;
         var publishDecision = _passportPublishPolicyService.Evaluate(document, summary);
         var verificationResult = _passportTrustService.Verify(document);
         var readiness = _passportReadinessService.Evaluate(document, summary, publishDecision, verificationResult);
@@ -254,6 +259,7 @@ public class AdminController : Controller
             Passport = _viewModelFactory.Create(document, clusterNamesById, verificationResult),
             ValidationSummary = summary,
             Readiness = readiness,
+            EvidencePack = evidencePack,
             GroupedBlockingIssues = groupedBlockingIssues,
             GroupedWarningIssues = groupedWarningIssues,
             CanSign = publishDecision.CanSign,
@@ -283,7 +289,8 @@ public class AdminController : Controller
         }
 
         var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
-        var summary = _passportValidationService.Validate(document, dataRequirements);
+        var validation = await ValidateWithEvidenceAsync(passportId, document, dataRequirements, cancellationToken);
+        var summary = validation.Summary;
         await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
         return Redirect($"/admin/passports/{Uri.EscapeDataString(passportId)}/conformance?status=validated");
     }
@@ -335,7 +342,8 @@ public class AdminController : Controller
         }
 
         var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
-        var summary = _passportValidationService.Validate(document, dataRequirements);
+        var validation = await ValidateWithEvidenceAsync(passportId, document, dataRequirements, cancellationToken);
+        var summary = validation.Summary;
         if (!_passportPublishPolicyService.CanSign(summary))
         {
             await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
@@ -417,7 +425,8 @@ public class AdminController : Controller
         }
 
         var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
-        var summary = _passportValidationService.Validate(document, dataRequirements);
+        var validation = await ValidateWithEvidenceAsync(passportId, document, dataRequirements, cancellationToken);
+        var summary = validation.Summary;
         if (!_passportPublishPolicyService.CanSign(summary))
         {
             await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
@@ -1025,6 +1034,19 @@ public class AdminController : Controller
             && !normalizedStatus.Equals("published", StringComparison.OrdinalIgnoreCase)
                 ? "Draft saved. Publishing is blocked until validation passes and a current signature proof exists."
                 : string.Empty;
+    }
+
+    private async Task<(TrustValidationSummary Summary, EvidencePackResult EvidencePack)> ValidateWithEvidenceAsync(
+        string passportId,
+        BsonDocument document,
+        DataCompletionPolicySnapshot dataRequirements,
+        CancellationToken cancellationToken)
+    {
+        var summary = _passportValidationService.Validate(document, dataRequirements);
+        var latestRevision = await _auditRevisionService.GetLatestSignedRevisionAsync(passportId, cancellationToken);
+        var evidencePack = _passportEvidenceService.Evaluate(document, latestRevision, dataRequirements);
+        summary = PassportEvidenceService.AppendValidationSection(summary, evidencePack);
+        return (summary, evidencePack);
     }
 
     private static string BuildConformanceRedirect(string passportId, string status = "", string error = "")

@@ -1,3 +1,4 @@
+using BatteryPassWeb.Models.Trust;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,6 +20,7 @@ public class PassportsApiController : ControllerBase
     private readonly PassportValidationService _passportValidationService;
     private readonly PassportPublishPolicyService _passportPublishPolicyService;
     private readonly DataCompletionPolicyService _dataCompletionPolicyService;
+    private readonly PassportEvidenceService _passportEvidenceService;
     private readonly PassportTrustService _passportTrustService;
     private readonly AuditRevisionService _auditRevisionService;
 
@@ -27,6 +29,7 @@ public class PassportsApiController : ControllerBase
         PassportValidationService passportValidationService,
         PassportPublishPolicyService passportPublishPolicyService,
         DataCompletionPolicyService dataCompletionPolicyService,
+        PassportEvidenceService passportEvidenceService,
         PassportTrustService passportTrustService,
         AuditRevisionService auditRevisionService)
     {
@@ -34,6 +37,7 @@ public class PassportsApiController : ControllerBase
         _passportValidationService = passportValidationService;
         _passportPublishPolicyService = passportPublishPolicyService;
         _dataCompletionPolicyService = dataCompletionPolicyService;
+        _passportEvidenceService = passportEvidenceService;
         _passportTrustService = passportTrustService;
         _auditRevisionService = auditRevisionService;
     }
@@ -155,7 +159,7 @@ public class PassportsApiController : ControllerBase
         }
 
         var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
-        var summary = _passportValidationService.Validate(passport, dataRequirements);
+        var summary = await ValidateWithEvidenceAsync(passportId, passport, dataRequirements, cancellationToken);
         await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
         return Ok(new
         {
@@ -184,7 +188,7 @@ public class PassportsApiController : ControllerBase
         }
 
         var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
-        var summary = _passportValidationService.Validate(passport, dataRequirements);
+        var summary = await ValidateWithEvidenceAsync(passportId, passport, dataRequirements, cancellationToken);
         if (!_passportPublishPolicyService.CanSign(summary))
         {
             await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
@@ -271,7 +275,7 @@ public class PassportsApiController : ControllerBase
         }
 
         var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
-        var summary = _passportValidationService.Validate(passport, dataRequirements);
+        var summary = await ValidateWithEvidenceAsync(passportId, passport, dataRequirements, cancellationToken);
         if (!_passportPublishPolicyService.CanSign(summary))
         {
             await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
@@ -437,6 +441,18 @@ public class PassportsApiController : ControllerBase
     private static string NormalizeDraftRegistryStatus(string requestedStatus)
     {
         return requestedStatus.Equals("archived", StringComparison.OrdinalIgnoreCase) ? "archived" : "draft";
+    }
+
+    private async Task<TrustValidationSummary> ValidateWithEvidenceAsync(
+        string passportId,
+        BsonDocument passport,
+        DataCompletionPolicySnapshot dataRequirements,
+        CancellationToken cancellationToken)
+    {
+        var summary = _passportValidationService.Validate(passport, dataRequirements);
+        var latestRevision = await _auditRevisionService.GetLatestSignedRevisionAsync(passportId, cancellationToken);
+        var evidencePack = _passportEvidenceService.Evaluate(passport, latestRevision, dataRequirements);
+        return PassportEvidenceService.AppendValidationSection(summary, evidencePack);
     }
 
     private string CurrentActor()
