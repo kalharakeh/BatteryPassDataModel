@@ -35,6 +35,19 @@ public sealed class DocumentAccessControlTests
     }
 
     [Fact]
+    public void FilesApiController_ShouldAuditDocumentUploadAndReplacement()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Controllers", "FilesApiController.cs"));
+
+        Assert.Contains("AppendFileUploadedAuditEventAsync", source);
+        Assert.Contains("passport.file.uploaded", source);
+        Assert.Contains("passport.file.replaced", source);
+        Assert.Contains("previousFileId", source);
+        Assert.Contains("sha256", source);
+        Assert.Contains("supportingDocumentChanged", source);
+    }
+
+    [Fact]
     public void AccessControlService_ShouldDefinePassportDocumentDownloadPolicy()
     {
         var source = File.ReadAllText(RepoFile("web", "Services", "AccessControlService.cs"));

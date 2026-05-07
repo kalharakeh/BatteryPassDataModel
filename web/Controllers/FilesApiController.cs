@@ -71,6 +71,9 @@ public class FilesApiController : ControllerBase
             return StatusCode(StatusCodes.Status403Forbidden, new { error = "You do not have access to upload files for this passport." });
         }
 
+        var previousReference = ResolveDocumentReference(passport, normalizedDocumentKey, string.Empty);
+        var previousFileId = BsonHelpers.GetString(previousReference, "fileId");
+
         var contentType = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType;
         if (contentType != "application/pdf" && !contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
         {
@@ -118,6 +121,15 @@ public class FilesApiController : ControllerBase
             visibility,
             cancellationToken);
         await _passportRepository.MarkCanonicalDirtyAsync(normalizedPassportId, "supportingDocumentChanged", cancellationToken);
+        await AppendFileUploadedAuditEventAsync(
+            normalizedPassportId,
+            uploadId.ToString(),
+            previousFileId,
+            normalizedDocumentKey,
+            visibility,
+            sha256,
+            contentType,
+            cancellationToken);
 
         return Ok(new
         {
@@ -275,6 +287,43 @@ public class FilesApiController : ControllerBase
             cancellationToken);
     }
 
+    private async Task AppendFileUploadedAuditEventAsync(
+        string passportId,
+        string fileId,
+        string previousFileId,
+        string documentKey,
+        string visibility,
+        string sha256,
+        string contentType,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(passportId))
+        {
+            return;
+        }
+
+        var isReplacement = !string.IsNullOrWhiteSpace(previousFileId)
+            && !previousFileId.Equals(fileId, StringComparison.OrdinalIgnoreCase);
+
+        await _auditRevisionService.AppendAuditEventAsync(
+            passportId,
+            isReplacement ? "passport.file.replaced" : "passport.file.uploaded",
+            CurrentActor(),
+            CurrentActorRole(),
+            "files-api",
+            isReplacement ? "Passport supporting file replaced." : "Passport supporting file uploaded.",
+            new BsonDocument
+            {
+                ["fileId"] = fileId,
+                ["previousFileId"] = previousFileId,
+                ["documentKey"] = documentKey,
+                ["visibility"] = visibility,
+                ["sha256"] = sha256,
+                ["contentType"] = contentType
+            },
+            cancellationToken);
+    }
+
     private static BsonDocument ResolveDocumentReference(BsonDocument passport, string documentKey, string fileId)
     {
         var documents = BsonHelpers.GetValue(passport, "app", "documents") as BsonDocument;
@@ -303,6 +352,11 @@ public class FilesApiController : ControllerBase
 
     private static bool DocumentReferenceMatchesFile(BsonDocument documentReference, string fileId)
     {
+        if (string.IsNullOrWhiteSpace(fileId))
+        {
+            return false;
+        }
+
         var referencedFileId = BsonHelpers.GetString(documentReference, "fileId");
         if (!string.IsNullOrWhiteSpace(referencedFileId))
         {
