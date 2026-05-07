@@ -166,6 +166,36 @@ public sealed class AuditRevisionService
         return result.MatchedCount > 0;
     }
 
+    public async Task DeleteDemoLedgerAsync(
+        IReadOnlyCollection<string> passportIds,
+        CancellationToken cancellationToken = default)
+    {
+        var filteredPassportIds = passportIds
+            .Where(passportId => !string.IsNullOrWhiteSpace(passportId))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (filteredPassportIds.Length == 0)
+        {
+            return;
+        }
+
+        var revisionCollection = GetPassportRevisionsCollection();
+        if (revisionCollection != null)
+        {
+            await revisionCollection.DeleteManyAsync(
+                Builders<BsonDocument>.Filter.In("passportId", filteredPassportIds),
+                cancellationToken);
+        }
+
+        var auditCollection = GetAuditEventsCollection();
+        if (auditCollection != null)
+        {
+            await auditCollection.DeleteManyAsync(
+                Builders<BsonDocument>.Filter.In("passportId", filteredPassportIds),
+                cancellationToken);
+        }
+    }
+
     private async Task<int> GetNextRevisionNumberAsync(
         IMongoCollection<BsonDocument> collection,
         string passportId,

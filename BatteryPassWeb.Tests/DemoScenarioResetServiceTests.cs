@@ -32,4 +32,31 @@ public sealed class DemoScenarioResetServiceTests
         Assert.All(DemoScenarioCatalog.All, scenario =>
             Assert.Equal(DemoScenarioCatalog.DefaultClusterId, scenario.ClusterId));
     }
+
+    [Fact]
+    public void AuditRevisionService_ShouldExposeTargetedDemoLedgerCleanupOnly()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Services", "AuditRevisionService.cs"));
+
+        Assert.Contains("DeleteDemoLedgerAsync", source);
+        Assert.Contains("Builders<BsonDocument>.Filter.In(\"passportId\"", source);
+        Assert.DoesNotContain("DeleteManyAsync(Builders<BsonDocument>.Filter.Empty", source);
+    }
+
+    private static string RepoFile(params string[] parts)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory != null)
+        {
+            var candidate = Path.Combine(new[] { directory.FullName }.Concat(parts).ToArray());
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new FileNotFoundException($"Could not find repository file: {Path.Combine(parts)}");
+    }
 }
