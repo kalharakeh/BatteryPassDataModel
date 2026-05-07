@@ -20,6 +20,7 @@
             <p class="bp-passport-id">@passport.PassportId</p>
             <p class="bp-help-text mb-0">@readiness.PrimaryReason</p>
             <div class="bp-conformance-actions mt-3">
+                <a href="/admin/clusters?tab=passports" class="bp-secondary-button">Back to passport list</a>
                 <a href="/admin/help" class="bp-secondary-button">Admin help</a>
                 <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/edit" class="bp-secondary-button">Edit passport</a>
                 <a href="/@Uri.EscapeDataString(passport.PassportId)/summary" class="bp-secondary-button">Preview summary</a>

@@ -41,6 +41,8 @@ public sealed class ConformanceLayoutTests
         Assert.Contains("Blocking errors", markup);
         Assert.Contains("Warnings", markup);
         Assert.Contains("Validate passport", markup);
+        Assert.Contains("Back to passport list", markup);
+        Assert.Contains("/admin/clusters?tab=passports", markup);
         Assert.Contains("Latest validation", markup);
         Assert.Contains("What is stopping signing?", markup);
         Assert.Contains("Full-data requirements", markup);
