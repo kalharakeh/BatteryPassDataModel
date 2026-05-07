@@ -324,6 +324,11 @@ public class FilesApiController : ControllerBase
             return "public";
         }
 
+        if (value.Equals("restricted", StringComparison.OrdinalIgnoreCase))
+        {
+            return "private";
+        }
+
         return "private";
     }
 

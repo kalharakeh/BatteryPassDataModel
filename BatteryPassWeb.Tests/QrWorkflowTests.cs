@@ -131,6 +131,18 @@ public sealed class QrWorkflowTests
         Assert.Contains("Apache License", license);
     }
 
+    [Fact]
+    public void QrService_ShouldBuildPublicSummaryPayloadForDemoScenarioPassport()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Services", "PassportQrCodeService.cs"));
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "QrController.cs"));
+
+        Assert.Contains("/summary", source);
+        Assert.Contains("BuildPayloadUrl", source);
+        Assert.Contains("IsPubliclyVisible", controller);
+        Assert.Contains("CanOpenPassportDetailAsync", controller);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

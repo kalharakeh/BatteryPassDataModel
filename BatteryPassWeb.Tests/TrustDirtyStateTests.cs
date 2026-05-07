@@ -30,6 +30,18 @@ public sealed class TrustDirtyStateTests
         Assert.Contains("MarkCanonicalDirtyAsync(passportId", source);
     }
 
+    [Fact]
+    public void ExternalApiAcceptance_ShouldOnlyWriteOperationalFieldsWithoutCallingDirtyMarker()
+    {
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
+
+        Assert.Contains("app.operations.latestTelemetry", controller);
+        Assert.Contains("app.operations.locationOfUse", controller);
+        Assert.Contains("app.operations.contactPerson", controller);
+        Assert.DoesNotContain("MarkCanonicalDirtyAsync", controller);
+        Assert.DoesNotContain("trust.isDirty", controller);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

@@ -75,6 +75,20 @@ public sealed class DocumentAccessControlTests
         Assert.Contains("document.GetValue(\"visibility\"", factory);
     }
 
+    [Fact]
+    public void RestrictedDocumentAcceptance_ShouldDenyUnauthorizedDownloadAndAuditIt()
+    {
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "FilesApiController.cs"));
+        var access = File.ReadAllText(RepoFile("web", "Services", "AccessControlService.cs"));
+
+        Assert.Contains("visibility", controller);
+        Assert.Contains("restricted", controller);
+        Assert.Contains("CanDownloadPassportDocumentAsync", controller);
+        Assert.Contains("CanOpenPassportDetailAsync", access);
+        Assert.Contains("StatusCodes.Status403Forbidden", controller);
+        Assert.Contains("passport.file.download.denied", controller);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
