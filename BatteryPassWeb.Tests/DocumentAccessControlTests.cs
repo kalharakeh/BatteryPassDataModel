@@ -89,6 +89,54 @@ public sealed class DocumentAccessControlTests
     }
 
     [Fact]
+    public void AdminEditPassport_ShouldExposeHashBackedEvidenceUploadControls()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
+        var model = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "PassportViewModel.cs"));
+        var factory = File.ReadAllText(RepoFile("web", "Services", "PassportViewModelFactory.cs"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("data-document-upload-card", markup);
+        Assert.Contains("bp-document-row", markup);
+        Assert.Contains("bp-document-field-shell", markup);
+        Assert.Contains("bp-document-main-line", markup);
+        Assert.Contains("bp-document-visibility-field", markup);
+        Assert.Contains("bp-document-sha-field", markup);
+        Assert.Contains("data-document-sha", markup);
+        Assert.Contains("data-document-key=\"@document.DocumentKey\"", markup);
+        Assert.Contains("DocumentKey = \"conformityAssessment\"", markup);
+        Assert.Contains("DocumentKey = \"euDeclarationOfConformity\"", markup);
+        Assert.Contains("DocumentKey = \"sustainabilityReport\"", markup);
+        Assert.Contains("DocumentKey = \"dueDiligenceReport\"", markup);
+        Assert.Contains("DocumentKey = \"thirdPartyAudit\"", markup);
+        Assert.Contains("DocumentKey = \"taxonomyReport\"", markup);
+        Assert.Contains("data-document-key=\"co2StudyReference\"", markup);
+        Assert.Contains("accept=\"application/pdf,image/*\"", markup);
+        Assert.Contains("data-document-file", markup);
+        Assert.Contains("bp-document-hidden-file", markup);
+        Assert.Contains("data-document-upload", markup);
+        Assert.Contains("data-document-upload-label", markup);
+        Assert.Contains("Choose file", markup);
+        Assert.Contains("Upload selected file", markup);
+        Assert.Contains("Uploading...", markup);
+        Assert.Contains("fileInput.click()", markup);
+        Assert.Contains("fetch('/api/files'", markup);
+        Assert.Contains("formData.append('passportId'", markup);
+        Assert.Contains("formData.append('documentKey'", markup);
+        Assert.Contains("formData.append('file'", markup);
+        Assert.Contains("formData.append('publicAccess'", markup);
+        Assert.Contains("sha256", markup);
+        Assert.DoesNotContain("Upload hash-checkable evidence", markup);
+        Assert.DoesNotContain("PDF or image files are stored in MongoDB", markup);
+        Assert.DoesNotContain("Open current uploaded file", markup);
+        Assert.Contains("Sha256", model);
+        Assert.Contains("document.GetValue(\"sha256\"", factory);
+        Assert.Contains(".bp-document-row", css);
+        Assert.Contains(".bp-document-field-shell", css);
+        Assert.Contains(".bp-document-visibility-field", css);
+    }
+
+    [Fact]
     public void RestrictedDocumentAcceptance_ShouldDenyUnauthorizedDownloadAndAuditIt()
     {
         var controller = File.ReadAllText(RepoFile("web", "Controllers", "FilesApiController.cs"));

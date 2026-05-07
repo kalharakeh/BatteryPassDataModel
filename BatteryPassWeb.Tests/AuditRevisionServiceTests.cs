@@ -124,6 +124,45 @@ public sealed class AuditRevisionServiceTests
     }
 
     [Fact]
+    public void BuildChangeMetadata_ShouldCaptureChangedFieldsAndIgnoreTrustSystemState()
+    {
+        var before = new BsonDocument
+        {
+            ["passportId"] = "did:web:acme.battery.pass:test-001",
+            ["app"] = new BsonDocument
+            {
+                ["display"] = new BsonDocument
+                {
+                    ["modelNumber"] = "M-100",
+                    ["manufacturerName"] = "Old maker"
+                }
+            },
+            ["trust"] = new BsonDocument
+            {
+                ["state"] = "signed"
+            },
+            ["registryInfo"] = new BsonDocument
+            {
+                ["updatedAt"] = "2026-05-07T10:00:00Z"
+            }
+        };
+        var after = before.DeepClone().AsBsonDocument;
+        after["app"]["display"]["manufacturerName"] = "New maker";
+        after["trust"]["state"] = "dirty";
+        after["registryInfo"]["updatedAt"] = "2026-05-07T11:00:00Z";
+
+        var metadata = AuditRevisionService.BuildChangeMetadata(before, after, "adminPassportSave");
+        var changedFields = metadata["changedFields"].AsBsonArray.OfType<BsonDocument>().ToList();
+
+        Assert.Equal("adminPassportSave", metadata["dirtyReason"].AsString);
+        Assert.Equal(1, metadata["changedFieldCount"].AsInt32);
+        var changedField = Assert.Single(changedFields);
+        Assert.Equal("app.display.manufacturerName", changedField["path"].AsString);
+        Assert.Equal("Old maker", changedField["before"].AsString);
+        Assert.Equal("New maker", changedField["after"].AsString);
+    }
+
+    [Fact]
     public void PassportRepository_ShouldExposeTrustSignatureAndPublishPersistenceMethods()
     {
         var source = File.ReadAllText(RepoFile("web", "Services", "PassportRepository.cs"));

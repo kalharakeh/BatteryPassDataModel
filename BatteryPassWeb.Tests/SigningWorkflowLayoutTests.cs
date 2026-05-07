@@ -86,6 +86,17 @@ public sealed class SigningWorkflowLayoutTests
     }
 
     [Fact]
+    public void AdminEditPassport_ShouldLinkAuditAndRevisionLedgerPages()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
+
+        Assert.Contains("Audit trail", markup);
+        Assert.Contains("Revision history", markup);
+        Assert.Contains("/audit", markup);
+        Assert.Contains("/revisions", markup);
+    }
+
+    [Fact]
     public void PassportViewModel_ShouldExposePublicProofMetadata()
     {
         var source = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "PassportViewModel.cs"));
@@ -138,11 +149,30 @@ public sealed class SigningWorkflowLayoutTests
     {
         var audit = File.ReadAllText(RepoFile("web", "Views", "Admin", "Audit.cshtml"));
         var revisions = File.ReadAllText(RepoFile("web", "Views", "Admin", "Revisions.cshtml"));
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.Contains("Audit trail", audit);
         Assert.Contains("Model.AuditEvents", audit);
+        Assert.Contains("What changed", audit);
+        Assert.Contains("When", audit);
+        Assert.Contains("Who", audit);
+        Assert.Contains("Where", audit);
+        Assert.Contains("Changed fields", audit);
+        Assert.Contains("dirtyReason", audit);
+        Assert.Contains("metadata", audit);
         Assert.Contains("Revision history", revisions);
         Assert.Contains("Model.Revisions", revisions);
+        Assert.Contains("Document hashes", revisions);
+        Assert.Contains("Proof diagnostics", revisions);
+        Assert.Contains("Latest trust state", revisions);
+        Assert.Contains("passport.TrustIsDirty", revisions);
+        Assert.Contains("passport.updated", controller);
+        Assert.Contains("BuildChangeMetadata", controller);
+        Assert.Contains("changedFields", controller);
+        Assert.Contains(".bp-ledger", css);
+        Assert.Contains(".bp-ledger-timeline", css);
+        Assert.Contains(".bp-revision-card", css);
     }
 
     private static string RepoFile(params string[] parts)

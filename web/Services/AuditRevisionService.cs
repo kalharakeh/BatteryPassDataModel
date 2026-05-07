@@ -6,6 +6,19 @@ namespace BatteryPassWeb.Services;
 public sealed class AuditRevisionService
 {
     private readonly MongoContext? _mongoContext;
+    private static readonly string[] IgnoredChangePathPrefixes =
+    [
+        "_id",
+        "trust",
+        "validation"
+    ];
+
+    private static readonly string[] IgnoredChangePathSegments =
+    [
+        "updatedAt",
+        "lastUpdate",
+        "signedAt"
+    ];
 
     public AuditRevisionService(MongoContext? mongoContext = null)
     {
@@ -68,6 +81,49 @@ public sealed class AuditRevisionService
             ["message"] = message,
             ["metadata"] = metadata == null ? new BsonDocument() : metadata.DeepClone(),
             ["createdAt"] = timestamp
+        };
+    }
+
+    public static BsonDocument BuildChangeMetadata(
+        BsonDocument before,
+        BsonDocument after,
+        string dirtyReason,
+        int maxChanges = 60)
+    {
+        var beforeValues = new Dictionary<string, BsonValue>(StringComparer.OrdinalIgnoreCase);
+        var afterValues = new Dictionary<string, BsonValue>(StringComparer.OrdinalIgnoreCase);
+        FlattenComparableValues(before, string.Empty, beforeValues);
+        FlattenComparableValues(after, string.Empty, afterValues);
+
+        var changedFields = new BsonArray();
+        foreach (var path in beforeValues.Keys.Union(afterValues.Keys, StringComparer.OrdinalIgnoreCase).OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+        {
+            beforeValues.TryGetValue(path, out var beforeValue);
+            afterValues.TryGetValue(path, out var afterValue);
+            if (BsonValueEquals(beforeValue, afterValue))
+            {
+                continue;
+            }
+
+            changedFields.Add(new BsonDocument
+            {
+                ["path"] = path,
+                ["changeType"] = ChangeType(beforeValue, afterValue),
+                ["before"] = DisplayValue(beforeValue),
+                ["after"] = DisplayValue(afterValue)
+            });
+
+            if (changedFields.Count >= maxChanges)
+            {
+                break;
+            }
+        }
+
+        return new BsonDocument
+        {
+            ["dirtyReason"] = dirtyReason,
+            ["changedFieldCount"] = changedFields.Count,
+            ["changedFields"] = changedFields
         };
     }
 
@@ -244,5 +300,90 @@ public sealed class AuditRevisionService
     private static string NormalizeHash(string hash)
     {
         return hash.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) ? hash : $"sha256:{hash}";
+    }
+
+    private static void FlattenComparableValues(BsonValue value, string path, IDictionary<string, BsonValue> values)
+    {
+        if (ShouldIgnoreChangePath(path))
+        {
+            return;
+        }
+
+        if (value is BsonDocument document)
+        {
+            foreach (var element in document.Elements)
+            {
+                var childPath = string.IsNullOrWhiteSpace(path) ? element.Name : $"{path}.{element.Name}";
+                FlattenComparableValues(element.Value, childPath, values);
+            }
+
+            return;
+        }
+
+        values[path] = value.DeepClone();
+    }
+
+    private static bool ShouldIgnoreChangePath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return false;
+        }
+
+        if (IgnoredChangePathPrefixes.Any(prefix => path.Equals(prefix, StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith(prefix + ".", StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
+        var segments = path.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return segments.Any(segment => IgnoredChangePathSegments.Contains(segment, StringComparer.OrdinalIgnoreCase));
+    }
+
+    private static bool BsonValueEquals(BsonValue? left, BsonValue? right)
+    {
+        if (left == null && right == null)
+        {
+            return true;
+        }
+
+        if (left == null || right == null)
+        {
+            return false;
+        }
+
+        return left.Equals(right);
+    }
+
+    private static string ChangeType(BsonValue? before, BsonValue? after)
+    {
+        if (before == null)
+        {
+            return "added";
+        }
+
+        if (after == null)
+        {
+            return "removed";
+        }
+
+        return "updated";
+    }
+
+    private static string DisplayValue(BsonValue? value)
+    {
+        if (value == null || value.IsBsonNull)
+        {
+            return string.Empty;
+        }
+
+        var display = value is BsonArray or BsonDocument ? value.ToJson() : value.ToString();
+        if (string.IsNullOrWhiteSpace(display))
+        {
+            return string.Empty;
+        }
+
+        const int maxLength = 220;
+        return display.Length <= maxLength ? display : display[..maxLength] + "...";
     }
 }

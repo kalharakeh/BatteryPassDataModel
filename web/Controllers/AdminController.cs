@@ -215,6 +215,7 @@ public class AdminController : Controller
             return Redirect($"/admin/passports/{Uri.EscapeDataString(passportId)}/edit?error={Uri.EscapeDataString("Passport not found.")}");
         }
 
+        var beforeSave = document.DeepClone().AsBsonDocument;
         var now = DateTime.UtcNow.ToString("O");
         var requestedStatus = Text(form, "status", BsonHelpers.GetString(document, "registryInfo", "status"));
         ApplyPassportForm(document, form, now);
@@ -226,6 +227,25 @@ public class AdminController : Controller
 
         await _passportRepository.ReplaceAsync(passportId, document, cancellationToken);
         await _passportRepository.MarkCanonicalDirtyAsync(passportId, "adminPassportSave", cancellationToken);
+        var changeMetadata = AuditRevisionService.BuildChangeMetadata(beforeSave, document, "adminPassportSave");
+        var changedFields = changeMetadata.GetValue("changedFields", new BsonArray());
+        changeMetadata["requestedStatus"] = requestedStatus;
+        changeMetadata["normalizedStatus"] = normalizedStatus;
+        changeMetadata["blockingErrors"] = validationSummary.BlockingErrorCount;
+        changeMetadata["warnings"] = validationSummary.WarningCount;
+        if (changedFields is BsonArray { Count: > 0 })
+        {
+            await _auditRevisionService.AppendAuditEventAsync(
+                passportId,
+                "passport.updated",
+                CurrentActor(),
+                "admin",
+                "admin-edit-form",
+                "Passport data updated from the admin form.",
+                changeMetadata,
+                cancellationToken);
+        }
+
         var blockedPublishMessage = BuildBlockedPublishMessage(requestedStatus, normalizedStatus);
         var redirectUrl = $"/admin/passports/{Uri.EscapeDataString(passportId)}/edit?status=saved";
         return string.IsNullOrWhiteSpace(blockedPublishMessage)
@@ -292,6 +312,21 @@ public class AdminController : Controller
         var validation = await ValidateWithEvidenceAsync(passportId, document, dataRequirements, cancellationToken);
         var summary = validation.Summary;
         await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
+        await _auditRevisionService.AppendAuditEventAsync(
+            passportId,
+            "passport.validated",
+            CurrentActor(),
+            "admin",
+            "admin-ui",
+            "Passport validation completed.",
+            new BsonDocument
+            {
+                ["blockingErrors"] = summary.BlockingErrorCount,
+                ["warnings"] = summary.WarningCount,
+                ["passedChecks"] = summary.PassedCount,
+                ["canSign"] = summary.CanSign
+            },
+            cancellationToken);
         return Redirect($"/admin/passports/{Uri.EscapeDataString(passportId)}/conformance?status=validated");
     }
 

@@ -64,16 +64,16 @@
 
     var complianceDocuments = new[]
     {
-        new { Document = passport.Documents.ConformityAssessment, FieldName = "document_conformityAssessment", VisibilityName = "document_conformityAssessment_visibility", Key = "compliance.conformityAssessment", Help = "URL or reference for the conformity assessment report." },
-        new { Document = passport.Documents.EuDeclarationOfConformity, FieldName = "document_euDeclarationOfConformity", VisibilityName = "document_euDeclarationOfConformity_visibility", Key = "compliance.euDeclarationOfConformity", Help = "URL or reference for the EU declaration." }
+        new { Document = passport.Documents.ConformityAssessment, DocumentKey = "conformityAssessment", FieldName = "document_conformityAssessment", VisibilityName = "document_conformityAssessment_visibility", Key = "compliance.conformityAssessment", Help = "URL or reference for the conformity assessment report." },
+        new { Document = passport.Documents.EuDeclarationOfConformity, DocumentKey = "euDeclarationOfConformity", FieldName = "document_euDeclarationOfConformity", VisibilityName = "document_euDeclarationOfConformity_visibility", Key = "compliance.euDeclarationOfConformity", Help = "URL or reference for the EU declaration." }
     };
 
     var supplyChainDocuments = new[]
     {
-        new { Document = passport.Documents.SustainabilityReport, FieldName = "document_sustainabilityReport", VisibilityName = "document_sustainabilityReport_visibility", Key = "supplyChain.sustainabilityReport", Help = "Sustainability report reference." },
-        new { Document = passport.Documents.DueDiligenceReport, FieldName = "document_dueDiligenceReport", VisibilityName = "document_dueDiligenceReport_visibility", Key = "supplyChain.dueDiligenceReport", Help = "Due-diligence report reference." },
-        new { Document = passport.Documents.ThirdPartyAudit, FieldName = "document_thirdPartyAudit", VisibilityName = "document_thirdPartyAudit_visibility", Key = "supplyChain.thirdPartyAudit", Help = "Third-party assurance/audit reference." },
-        new { Document = passport.Documents.TaxonomyReport, FieldName = "document_taxonomyReport", VisibilityName = "document_taxonomyReport_visibility", Key = "supplyChain.taxonomyReport", Help = "Taxonomy report reference." }
+        new { Document = passport.Documents.SustainabilityReport, DocumentKey = "sustainabilityReport", FieldName = "document_sustainabilityReport", VisibilityName = "document_sustainabilityReport_visibility", Key = "supplyChain.sustainabilityReport", Help = "Sustainability report reference." },
+        new { Document = passport.Documents.DueDiligenceReport, DocumentKey = "dueDiligenceReport", FieldName = "document_dueDiligenceReport", VisibilityName = "document_dueDiligenceReport_visibility", Key = "supplyChain.dueDiligenceReport", Help = "Due-diligence report reference." },
+        new { Document = passport.Documents.ThirdPartyAudit, DocumentKey = "thirdPartyAudit", FieldName = "document_thirdPartyAudit", VisibilityName = "document_thirdPartyAudit_visibility", Key = "supplyChain.thirdPartyAudit", Help = "Third-party assurance/audit reference." },
+        new { Document = passport.Documents.TaxonomyReport, DocumentKey = "taxonomyReport", FieldName = "document_taxonomyReport", VisibilityName = "document_taxonomyReport_visibility", Key = "supplyChain.taxonomyReport", Help = "Taxonomy report reference." }
     };
 
     var recycledFields = new[]
@@ -114,6 +114,8 @@
             <div class="d-flex flex-wrap gap-2">
                 <a href="/admin/help" class="bp-secondary-button">Admin help</a>
                 <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/conformance" class="bp-secondary-button">Open conformance</a>
+                <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/audit" class="bp-secondary-button">Audit trail</a>
+                <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/revisions" class="bp-secondary-button">Revision history</a>
             </div>
         </div>
     </div>
@@ -121,7 +123,7 @@
     @if (!string.IsNullOrWhiteSpace(Model.StatusMessage)) { <div class="alert alert-success mt-3 mb-0">@Model.StatusMessage</div> }
     @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage)) { <div class="alert alert-danger mt-3 mb-0">@Model.ErrorMessage</div> }
 
-    <form method="post" action="@formAction" class="bp-edit-grid mt-4" data-edit-passport-form>
+    <form method="post" action="@formAction" class="bp-edit-grid mt-4" data-edit-passport-form data-passport-id="@passport.PassportId">
         @Html.AntiForgeryToken()
         <nav class="bp-edit-nav" aria-label="Passport categories">
             @foreach (var section in passport.Sections)
@@ -174,8 +176,23 @@
                 <div class="bp-form-grid">
                     @foreach (var document in complianceDocuments)
                     {
-                        <label class="bp-field-shell"><span>@document.Document.Label <em class="bp-field-marker">@RequirementLabel(document.Key)</em></span><input type="text" name="@document.FieldName" value="@document.Document.Url" /><small class="bp-field-help">@DirtySignedDataHelp(document.Key, document.Help)</small></label>
-                        <label class="bp-field-shell"><span>@document.Document.Label visibility <em class="bp-field-marker">@RequirementLabel(document.Key)</em></span><select name="@document.VisibilityName"><option value="private" selected="@(!IsPublicDocument(document.Document))">Private / privileged</option><option value="public" selected="@(IsPublicDocument(document.Document))">Public document</option></select><small class="bp-field-help">@DirtySignedDataHelp(document.Key, "Controls who can download this document.")</small></label>
+                        <div class="bp-document-row bp-span-all" data-document-upload-card data-document-key="@document.DocumentKey" data-upload-state="idle">
+                            <div class="bp-field-shell bp-document-field-shell">
+                                <span>@document.Document.Label <em class="bp-field-marker">@RequirementLabel(document.Key)</em></span>
+                                <div class="bp-document-main-line">
+                                    <input type="text" name="@document.FieldName" value="@document.Document.Url" data-document-url="@document.DocumentKey" aria-label="@document.Document.Label URL or reference" />
+                                    <button type="button" class="bp-secondary-button bp-button-compact bp-document-smart-upload" data-document-upload data-document-upload-label data-default-label="Choose file">Choose file</button>
+                                    <input type="file" class="bp-document-hidden-file" accept="application/pdf,image/*" data-document-file aria-label="Upload @document.Document.Label file" />
+                                </div>
+                                <small class="bp-field-help">@DirtySignedDataHelp(document.Key, document.Help)</small>
+                                <label class="bp-document-sha-field">
+                                    <span>SHA-256</span>
+                                    <input type="text" readonly data-document-sha value="@document.Document.Sha256" placeholder="No uploaded file hash yet" />
+                                </label>
+                                <p class="bp-document-upload-status" data-document-upload-status aria-live="polite" hidden></p>
+                            </div>
+                            <label class="bp-field-shell bp-document-visibility-field"><span>@document.Document.Label visibility <em class="bp-field-marker">@RequirementLabel(document.Key)</em></span><select name="@document.VisibilityName" data-document-visibility="@document.DocumentKey"><option value="private" selected="@(!IsPublicDocument(document.Document))">Private / privileged</option><option value="public" selected="@(IsPublicDocument(document.Document))">Public document</option></select><small class="bp-field-help">@DirtySignedDataHelp(document.Key, "Controls who can download this document.")</small></label>
+                        </div>
                     }
                 </div>
             </section>
@@ -186,8 +203,23 @@
                     <label class="bp-field-shell"><span>Supply chain index <em class="bp-field-marker">@RequirementLabel("supplyChain.supplyChainIndex")</em></span><input type="number" step="any" name="supplyChainIndex" value="@passport.SupplyChainIndex" /><small class="bp-field-help">@DirtySignedDataHelp("supplyChain.supplyChainIndex", "Supply chain due-diligence index.")</small></label>
                     @foreach (var document in supplyChainDocuments)
                     {
-                        <label class="bp-field-shell"><span>@document.Document.Label <em class="bp-field-marker">@RequirementLabel(document.Key)</em></span><input type="text" name="@document.FieldName" value="@document.Document.Url" /><small class="bp-field-help">@DirtySignedDataHelp(document.Key, document.Help)</small></label>
-                        <label class="bp-field-shell"><span>@document.Document.Label visibility <em class="bp-field-marker">@RequirementLabel(document.Key)</em></span><select name="@document.VisibilityName"><option value="private" selected="@(!IsPublicDocument(document.Document))">Private / privileged</option><option value="public" selected="@(IsPublicDocument(document.Document))">Public document</option></select><small class="bp-field-help">@DirtySignedDataHelp(document.Key, "Controls who can download this document.")</small></label>
+                        <div class="bp-document-row bp-span-all" data-document-upload-card data-document-key="@document.DocumentKey" data-upload-state="idle">
+                            <div class="bp-field-shell bp-document-field-shell">
+                                <span>@document.Document.Label <em class="bp-field-marker">@RequirementLabel(document.Key)</em></span>
+                                <div class="bp-document-main-line">
+                                    <input type="text" name="@document.FieldName" value="@document.Document.Url" data-document-url="@document.DocumentKey" aria-label="@document.Document.Label URL or reference" />
+                                    <button type="button" class="bp-secondary-button bp-button-compact bp-document-smart-upload" data-document-upload data-document-upload-label data-default-label="Choose file">Choose file</button>
+                                    <input type="file" class="bp-document-hidden-file" accept="application/pdf,image/*" data-document-file aria-label="Upload @document.Document.Label file" />
+                                </div>
+                                <small class="bp-field-help">@DirtySignedDataHelp(document.Key, document.Help)</small>
+                                <label class="bp-document-sha-field">
+                                    <span>SHA-256</span>
+                                    <input type="text" readonly data-document-sha value="@document.Document.Sha256" placeholder="No uploaded file hash yet" />
+                                </label>
+                                <p class="bp-document-upload-status" data-document-upload-status aria-live="polite" hidden></p>
+                            </div>
+                            <label class="bp-field-shell bp-document-visibility-field"><span>@document.Document.Label visibility <em class="bp-field-marker">@RequirementLabel(document.Key)</em></span><select name="@document.VisibilityName" data-document-visibility="@document.DocumentKey"><option value="private" selected="@(!IsPublicDocument(document.Document))">Private / privileged</option><option value="public" selected="@(IsPublicDocument(document.Document))">Public document</option></select><small class="bp-field-help">@DirtySignedDataHelp(document.Key, "Controls who can download this document.")</small></label>
+                        </div>
                     }
                 </div>
             </section>
@@ -221,8 +253,23 @@
                         <label class="bp-field-shell"><span>@field.Label <em class="bp-field-marker">@RequirementLabel(field.Key)</em></span><input type="number" step="any" name="@field.Name" value="@field.Value" /><small class="bp-field-help">@DirtySignedDataHelp(field.Key, field.Help)</small></label>
                     }
                     <label class="bp-field-shell"><span>Performance class <em class="bp-field-marker">@RequirementLabel("carbon.performanceClass")</em></span><input type="text" name="performanceClass" value="@passport.PerformanceClass" /><small class="bp-field-help">@DirtySignedDataHelp("carbon.performanceClass", "Carbon footprint performance class.")</small></label>
-                    <label class="bp-field-shell"><span>@passport.Documents.Co2StudyReference.Label <em class="bp-field-marker">@RequirementLabel("carbon.co2StudyReference")</em></span><input type="text" name="document_co2StudyReference" value="@passport.Documents.Co2StudyReference.Url" /><small class="bp-field-help">@DirtySignedDataHelp("carbon.co2StudyReference", "Reference URL for the carbon footprint study.")</small></label>
-                    <label class="bp-field-shell"><span>@passport.Documents.Co2StudyReference.Label visibility <em class="bp-field-marker">@RequirementLabel("carbon.co2StudyReference")</em></span><select name="document_co2StudyReference_visibility"><option value="private" selected="@(!IsPublicDocument(passport.Documents.Co2StudyReference))">Private / privileged</option><option value="public" selected="@(IsPublicDocument(passport.Documents.Co2StudyReference))">Public document</option></select><small class="bp-field-help">@DirtySignedDataHelp("carbon.co2StudyReference", "Controls who can download this study.")</small></label>
+                    <div class="bp-document-row bp-span-all" data-document-upload-card data-document-key="co2StudyReference" data-upload-state="idle">
+                        <div class="bp-field-shell bp-document-field-shell">
+                            <span>@passport.Documents.Co2StudyReference.Label <em class="bp-field-marker">@RequirementLabel("carbon.co2StudyReference")</em></span>
+                            <div class="bp-document-main-line">
+                                <input type="text" name="document_co2StudyReference" value="@passport.Documents.Co2StudyReference.Url" data-document-url="co2StudyReference" aria-label="@passport.Documents.Co2StudyReference.Label URL or reference" />
+                                <button type="button" class="bp-secondary-button bp-button-compact bp-document-smart-upload" data-document-upload data-document-upload-label data-default-label="Choose file">Choose file</button>
+                                <input type="file" class="bp-document-hidden-file" accept="application/pdf,image/*" data-document-file aria-label="Upload @passport.Documents.Co2StudyReference.Label file" />
+                            </div>
+                            <small class="bp-field-help">@DirtySignedDataHelp("carbon.co2StudyReference", "Reference URL for the carbon footprint study.")</small>
+                            <label class="bp-document-sha-field">
+                                <span>SHA-256</span>
+                                <input type="text" readonly data-document-sha value="@passport.Documents.Co2StudyReference.Sha256" placeholder="No uploaded file hash yet" />
+                            </label>
+                            <p class="bp-document-upload-status" data-document-upload-status aria-live="polite" hidden></p>
+                        </div>
+                        <label class="bp-field-shell bp-document-visibility-field"><span>@passport.Documents.Co2StudyReference.Label visibility <em class="bp-field-marker">@RequirementLabel("carbon.co2StudyReference")</em></span><select name="document_co2StudyReference_visibility" data-document-visibility="co2StudyReference"><option value="private" selected="@(!IsPublicDocument(passport.Documents.Co2StudyReference))">Private / privileged</option><option value="public" selected="@(IsPublicDocument(passport.Documents.Co2StudyReference))">Public document</option></select><small class="bp-field-help">@DirtySignedDataHelp("carbon.co2StudyReference", "Controls who can download this study.")</small></label>
+                    </div>
                 </div>
             </section>
 
@@ -266,12 +313,14 @@
             const cancelHref = cancelButton?.dataset.cancelHref ?? '';
             const batteryImageSelect = form.querySelector('[data-battery-image-select]');
             const categoryInput = form.querySelector('[data-image-category]');
+            const passportId = form.dataset.passportId ?? '';
+            const uploadCards = Array.from(form.querySelectorAll('[data-document-upload-card]'));
 
             const sectionById = new Map(sections.map((section) => [section.id, section]));
             const defaultSectionId = navButtons
                 .map((button) => button.dataset.sectionTarget)
                 .find((sectionId) => sectionId && sectionById.has(sectionId)) || sections[0].id;
-            const pristineFormState = serializeFormState(form);
+            let pristineFormState = serializeFormState(form);
 
             function serializeFormState(targetForm) {
                 const formData = new FormData(targetForm);
@@ -327,6 +376,118 @@
                 categoryInput.value = category;
             }
 
+            function setUploadStatus(card, state, message) {
+                const status = card.querySelector('[data-document-upload-status]');
+                card.dataset.uploadState = state;
+                if (status) {
+                    status.textContent = message;
+                    status.hidden = !message;
+                }
+            }
+
+            function setUploadButtonState(card, state, fileName) {
+                const button = card.querySelector('[data-document-upload]');
+                const label = card.querySelector('[data-document-upload-label]');
+                if (!button || !label) {
+                    return;
+                }
+
+                const defaultLabel = button.dataset.defaultLabel || 'Choose file';
+                if (state === 'ready') {
+                    label.textContent = 'Upload selected file';
+                    button.title = fileName ? `Upload ${fileName}` : 'Upload selected file';
+                    return;
+                }
+
+                if (state === 'busy') {
+                    label.textContent = 'Uploading...';
+                    button.title = 'Uploading evidence file';
+                    return;
+                }
+
+                if (state === 'success') {
+                    label.textContent = 'Uploaded';
+                    button.title = 'Click to choose a replacement file';
+                    return;
+                }
+
+                label.textContent = defaultLabel;
+                button.title = defaultLabel;
+            }
+
+            function syncUploadedDocumentReference(documentKey, result) {
+                const urlInput = form.querySelector(`[data-document-url="${documentKey}"]`);
+                const shaInput = form.querySelector(`[data-document-key="${documentKey}"] [data-document-sha]`);
+                if (urlInput && typeof result.url === 'string') {
+                    urlInput.value = result.url;
+                }
+                if (shaInput && typeof result.sha256 === 'string') {
+                    shaInput.value = result.sha256;
+                }
+            }
+
+            async function uploadDocumentEvidence(card) {
+                const documentKey = card.dataset.documentKey ?? '';
+                const fileInput = card.querySelector('[data-document-file]');
+                const button = card.querySelector('[data-document-upload]');
+                const visibilitySelect = form.querySelector(`[data-document-visibility="${documentKey}"]`);
+                const selectedFile = fileInput?.files?.[0];
+                if (!passportId || !documentKey) {
+                    setUploadStatus(card, 'error', 'Save or create the passport before uploading evidence.');
+                    return;
+                }
+
+                if (!selectedFile) {
+                    if (fileInput) {
+                        fileInput.click();
+                    }
+                    return;
+                }
+
+                const hadUnsavedChanges = hasUnsavedChanges();
+                const formData = new FormData();
+                formData.append('passportId', passportId);
+                formData.append('documentKey', documentKey);
+                formData.append('file', selectedFile);
+                formData.append('publicAccess', visibilitySelect?.value ?? 'private');
+
+                button?.setAttribute('disabled', 'disabled');
+                setUploadButtonState(card, 'busy');
+                setUploadStatus(card, 'busy', 'Uploading evidence and calculating SHA-256 hash...');
+
+                try {
+                    const token = form.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                    const response = await fetch('/api/files', {
+                        method: 'POST',
+                        headers: token ? { 'RequestVerificationToken': token } : {},
+                        body: formData
+                    });
+                    const result = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        throw new Error(result.error || 'Upload failed.');
+                    }
+
+                    syncUploadedDocumentReference(documentKey, result);
+                    if (fileInput) {
+                        fileInput.value = '';
+                    }
+                    setUploadButtonState(card, 'success');
+                    if (!hadUnsavedChanges) {
+                        pristineFormState = serializeFormState(form);
+                    }
+
+                    const sha256 = typeof result.sha256 === 'string' ? result.sha256 : '';
+                    const url = typeof result.url === 'string' ? result.url : '';
+                    setUploadStatus(card, 'success', `Uploaded to ${url}. SHA-256: ${sha256}`);
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : 'Upload failed.';
+                    setUploadButtonState(card, selectedFile ? 'ready' : 'idle', selectedFile?.name);
+                    setUploadStatus(card, 'error', message);
+                } finally {
+                    button?.removeAttribute('disabled');
+                }
+            }
+
             function setActiveSection(sectionId, updateHash) {
                 if (!sectionById.has(sectionId)) {
                     return;
@@ -375,6 +536,21 @@
             setActiveSection(sectionById.has(hashSectionId) ? hashSectionId : defaultSectionId, true);
             syncCategoryFromImage();
             batteryImageSelect?.addEventListener('change', syncCategoryFromImage);
+            uploadCards.forEach((card) => {
+                const button = card.querySelector('[data-document-upload]');
+                const fileInput = card.querySelector('[data-document-file]');
+                button?.addEventListener('click', () => uploadDocumentEvidence(card));
+                fileInput?.addEventListener('change', () => {
+                    const selectedFile = fileInput.files?.[0];
+                    if (!selectedFile) {
+                        setUploadButtonState(card, 'idle');
+                        return;
+                    }
+
+                    setUploadButtonState(card, 'ready', selectedFile.name);
+                    setUploadStatus(card, 'ready', selectedFile.name);
+                });
+            });
 
             cancelButton?.addEventListener('click', () => {
                 if (!cancelHref) {

@@ -1,56 +1,180 @@
 @using MongoDB.Bson
+@using BatteryPassWeb.Services
 @model BatteryPassWeb.Models.ViewModels.PassportAuditTrailViewModel
 @{
     ViewData["Title"] = "Passport audit trail";
     var passport = Model.Passport;
 }
 
-<main class="bp-page bp-admin-page">
-    <div class="d-flex justify-content-between flex-wrap gap-3 align-items-end">
+<main class="bp-page bp-admin-page bp-ledger">
+    <div class="bp-ledger-header">
         <div>
-            <h1 class="mb-1">Audit trail</h1>
+            <a href="/admin/clusters?tab=passports" class="bp-secondary-button bp-button-compact mb-3">Back to passports</a>
+            <span class="bp-summary-title">Audit trail</span>
+            <h1 class="mb-1">Who changed what, when, and where</h1>
             <p class="bp-passport-id mb-0">@passport.PassportId</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
+            <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/edit" class="bp-secondary-button">Edit passport</a>
             <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/conformance" class="bp-secondary-button">Conformance</a>
             <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/revisions" class="bp-secondary-button">Revision history</a>
         </div>
     </div>
 
-    <section class="bp-card">
-        <span class="bp-summary-title">Append-only events</span>
-        <p class="text-secondary mt-2">Each trust workflow action writes an audit event with actor, source, message, and supporting metadata.</p>
-        <div class="table-responsive">
-            <table class="table table-sm align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th>Created</th>
-                        <th>Event</th>
-                        <th>Actor</th>
-                        <th>Source</th>
-                        <th>Message</th>
-                        <th>Metadata</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var auditEvent in Model.AuditEvents)
-                    {
-                        var metadata = auditEvent.GetValue("metadata", new BsonDocument()) as BsonDocument ?? new BsonDocument();
-                        <tr>
-                            <td>@BatteryPassWeb.Services.BsonHelpers.GetString(auditEvent, "createdAt")</td>
-                            <td>@BatteryPassWeb.Services.BsonHelpers.GetString(auditEvent, "eventType")</td>
-                            <td>@BatteryPassWeb.Services.BsonHelpers.GetString(auditEvent, "actor")</td>
-                            <td>@BatteryPassWeb.Services.BsonHelpers.GetString(auditEvent, "source")</td>
-                            <td>@BatteryPassWeb.Services.BsonHelpers.GetString(auditEvent, "message")</td>
-                            <td><code>@metadata.ToJson()</code></td>
-                        </tr>
-                    }
-                    @if (Model.AuditEvents.Count == 0)
-                    {
-                        <tr><td colspan="6" class="bp-table-empty">No audit events recorded yet.</td></tr>
-                    }
-                </tbody>
-            </table>
+    <section class="bp-ledger-state-grid">
+        <article class="bp-card">
+            <span>Current trust state</span>
+            <strong>@passport.TrustState</strong>
+            <small>@(passport.TrustIsDirty ? "Dirty state is active. Check the latest update event for dirtyReason." : "No dirty state is currently active.")</small>
+        </article>
+        <article class="bp-card">
+            <span>Latest revision</span>
+            <strong>@(string.IsNullOrWhiteSpace(passport.TrustLatestRevisionId) ? "No signed revision" : passport.TrustLatestRevisionId)</strong>
+            <small>@(string.IsNullOrWhiteSpace(passport.TrustLastSignedAt) ? "Not signed yet" : passport.TrustLastSignedAt)</small>
+        </article>
+        <article class="bp-card">
+            <span>Latest hash</span>
+            <strong>@(string.IsNullOrWhiteSpace(passport.TrustLatestHash) ? "No hash" : passport.TrustLatestHash)</strong>
+            <small>@passport.TrustProofStatus</small>
+        </article>
+    </section>
+
+    <section class="bp-card bp-ledger-panel">
+        <div class="bp-ledger-panel-heading">
+            <div>
+                <span class="bp-summary-title">Append-only events</span>
+                <h2>Timeline</h2>
+            </div>
+            <p>Each event shows <strong>What changed</strong>, <strong>When</strong>, <strong>Who</strong>, and <strong>Where</strong>. Metadata is kept visible for proof, document hash, and dirty state diagnostics.</p>
+        </div>
+
+        <div class="bp-ledger-timeline">
+            @foreach (var auditEvent in Model.AuditEvents)
+            {
+                var metadata = Metadata(auditEvent);
+                var changedFields = ChangedFields(metadata);
+                var eventType = BsonHelpers.GetString(auditEvent, "eventType");
+                <article class="bp-ledger-event @EventTone(eventType)">
+                    <div class="bp-ledger-event-rail">
+                        <span>@EventShortName(eventType)</span>
+                    </div>
+                    <div class="bp-ledger-event-body">
+                        <div class="bp-ledger-event-title">
+                            <div>
+                                <span class="bp-ledger-label">What changed</span>
+                                <h3>@HumanizeEvent(eventType)</h3>
+                            </div>
+                            <code>@eventType</code>
+                        </div>
+
+                        <p>@BsonHelpers.GetString(auditEvent, "message")</p>
+
+                        <dl class="bp-ledger-kv">
+                            <div><dt>When</dt><dd>@BsonHelpers.GetString(auditEvent, "createdAt")</dd></div>
+                            <div><dt>Who</dt><dd>@BsonHelpers.GetString(auditEvent, "actor") <span>@BsonHelpers.GetString(auditEvent, "actorRole")</span></dd></div>
+                            <div><dt>Where</dt><dd>@BsonHelpers.GetString(auditEvent, "source")</dd></div>
+                            <div><dt>Why</dt><dd>@FirstNonEmpty(MetadataText(metadata, "dirtyReason"), MetadataText(metadata, "reason"), "-")</dd></div>
+                        </dl>
+
+                        @if (changedFields.Count > 0)
+                        {
+                            <div class="bp-ledger-changes">
+                                <span class="bp-ledger-label">Changed fields</span>
+                                @foreach (var changedField in changedFields)
+                                {
+                                    <div class="bp-ledger-change-row">
+                                        <code>@BsonHelpers.GetString(changedField, "path")</code>
+                                        <span>@BsonHelpers.GetString(changedField, "changeType")</span>
+                                        <small>@Shorten(BsonHelpers.GetString(changedField, "before")) -> @Shorten(BsonHelpers.GetString(changedField, "after"))</small>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        <details class="bp-ledger-metadata">
+                            <summary>Metadata</summary>
+                            <code>@metadata.ToJson()</code>
+                        </details>
+                    </div>
+                </article>
+            }
+
+            @if (Model.AuditEvents.Count == 0)
+            {
+                <div class="bp-table-empty">No audit events recorded yet.</div>
+            }
         </div>
     </section>
 </main>
+
+@functions {
+    private static BsonDocument Metadata(BsonDocument auditEvent)
+    {
+        return auditEvent.GetValue("metadata", new BsonDocument()) is BsonDocument metadata
+            ? metadata
+            : new BsonDocument();
+    }
+
+    private static IReadOnlyList<BsonDocument> ChangedFields(BsonDocument metadata)
+    {
+        return metadata.GetValue("changedFields", new BsonArray()) is BsonArray changedFields
+            ? changedFields.OfType<BsonDocument>().ToList()
+            : [];
+    }
+
+    private static string MetadataText(BsonDocument metadata, string key)
+    {
+        return BsonHelpers.GetString(metadata, key);
+    }
+
+    private static string FirstNonEmpty(params string[] values)
+    {
+        return values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? string.Empty;
+    }
+
+    private static string Shorten(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "-";
+        }
+
+        return value.Length <= 120 ? value : value[..120] + "...";
+    }
+
+    private static string EventTone(string eventType)
+    {
+        if (eventType.Contains("blocked", StringComparison.OrdinalIgnoreCase)
+            || eventType.Contains("denied", StringComparison.OrdinalIgnoreCase))
+        {
+            return "is-warning";
+        }
+
+        if (eventType.Contains("signed", StringComparison.OrdinalIgnoreCase)
+            || eventType.Contains("published", StringComparison.OrdinalIgnoreCase))
+        {
+            return "is-proof";
+        }
+
+        return eventType.Contains("updated", StringComparison.OrdinalIgnoreCase)
+            || eventType.Contains("uploaded", StringComparison.OrdinalIgnoreCase)
+            || eventType.Contains("replaced", StringComparison.OrdinalIgnoreCase)
+            ? "is-change"
+            : "is-neutral";
+    }
+
+    private static string EventShortName(string eventType)
+    {
+        var parts = eventType.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return parts.Length == 0 ? "event" : parts[^1];
+    }
+
+    private static string HumanizeEvent(string eventType)
+    {
+        return eventType
+            .Replace("passport.", string.Empty, StringComparison.OrdinalIgnoreCase)
+            .Replace("file.", "file ", StringComparison.OrdinalIgnoreCase)
+            .Replace('.', ' ')
+            .Replace('-', ' ');
+    }
+}

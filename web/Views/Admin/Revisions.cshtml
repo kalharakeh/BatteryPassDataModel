@@ -1,58 +1,162 @@
 @using MongoDB.Bson
+@using BatteryPassWeb.Services
 @model BatteryPassWeb.Models.ViewModels.PassportRevisionHistoryViewModel
 @{
     ViewData["Title"] = "Passport revision history";
     var passport = Model.Passport;
 }
 
-<main class="bp-page bp-admin-page">
-    <div class="d-flex justify-content-between flex-wrap gap-3 align-items-end">
+<main class="bp-page bp-admin-page bp-ledger">
+    <div class="bp-ledger-header">
         <div>
-            <h1 class="mb-1">Revision history</h1>
+            <a href="/admin/clusters?tab=passports" class="bp-secondary-button bp-button-compact mb-3">Back to passports</a>
+            <span class="bp-summary-title">Revision history</span>
+            <h1 class="mb-1">Immutable signed snapshots</h1>
             <p class="bp-passport-id mb-0">@passport.PassportId</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
+            <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/edit" class="bp-secondary-button">Edit passport</a>
             <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/conformance" class="bp-secondary-button">Conformance</a>
             <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/audit" class="bp-secondary-button">Audit trail</a>
         </div>
     </div>
 
-    <section class="bp-card">
-        <span class="bp-summary-title">Signed snapshots</span>
-        <p class="text-secondary mt-2">Revisions store the canonical passport core, hash, and proof that existed at signing time.</p>
-        <div class="table-responsive">
-            <table class="table table-sm align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th>Revision</th>
-                        <th>Status</th>
-                        <th>Signed</th>
-                        <th>Published</th>
-                        <th>Actor</th>
-                        <th>Hash</th>
-                        <th>Proof</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var revision in Model.Revisions)
-                    {
-                        var proof = revision.GetValue("proof", new BsonDocument()) as BsonDocument ?? new BsonDocument();
-                        <tr>
-                            <td>@BatteryPassWeb.Services.BsonHelpers.GetString(revision, "revisionNumber")</td>
-                            <td>@BatteryPassWeb.Services.BsonHelpers.GetString(revision, "status")</td>
-                            <td>@BatteryPassWeb.Services.BsonHelpers.GetString(revision, "signedAt")</td>
-                            <td>@BatteryPassWeb.Services.BsonHelpers.GetString(revision, "publishedAt")</td>
-                            <td>@BatteryPassWeb.Services.BsonHelpers.GetString(revision, "actor")</td>
-                            <td><code>@BatteryPassWeb.Services.BsonHelpers.GetString(revision, "hash")</code></td>
-                            <td><code>@BatteryPassWeb.Services.BsonHelpers.GetString(proof, "cryptosuite")</code></td>
-                        </tr>
-                    }
-                    @if (Model.Revisions.Count == 0)
-                    {
-                        <tr><td colspan="7" class="bp-table-empty">No signed revisions recorded yet.</td></tr>
-                    }
-                </tbody>
-            </table>
+    <section class="bp-ledger-state-grid">
+        <article class="bp-card">
+            <span>Latest trust state</span>
+            <strong>@passport.TrustState</strong>
+            <small>@(passport.TrustIsDirty ? "Current passport has changed since the latest trusted action." : "Current passport matches the latest trusted state.")</small>
+        </article>
+        <article class="bp-card">
+            <span>Current latest revision</span>
+            <strong>@(string.IsNullOrWhiteSpace(passport.TrustLatestRevisionId) ? "No revision" : passport.TrustLatestRevisionId)</strong>
+            <small>@(string.IsNullOrWhiteSpace(passport.TrustLastSignedAt) ? "Not signed yet" : passport.TrustLastSignedAt)</small>
+        </article>
+        <article class="bp-card">
+            <span>Published revision</span>
+            <strong>@(string.IsNullOrWhiteSpace(passport.TrustLatestHash) ? "No signed hash" : passport.TrustLatestHash)</strong>
+            <small>@passport.TrustVerificationMessage</small>
+        </article>
+    </section>
+
+    <section class="bp-card bp-ledger-panel">
+        <div class="bp-ledger-panel-heading">
+            <div>
+                <span class="bp-summary-title">Signed snapshots</span>
+                <h2>Revision cards</h2>
+            </div>
+            <p>Each revision stores the canonical passport core, proof metadata, hash, actor, and document hashes that existed at signing time.</p>
+        </div>
+
+        <div class="bp-revision-grid">
+            @foreach (var revision in Model.Revisions)
+            {
+                var proof = Proof(revision);
+                var documents = SnapshotDocuments(revision);
+                <article class="bp-revision-card">
+                    <div class="bp-revision-card-header">
+                        <div>
+                            <span>Revision @BsonHelpers.GetString(revision, "revisionNumber")</span>
+                            <h3>@BsonHelpers.GetString(revision, "status")</h3>
+                        </div>
+                        <code>@BsonHelpers.GetString(revision, "revisionId")</code>
+                    </div>
+
+                    <dl class="bp-ledger-kv">
+                        <div><dt>Signed</dt><dd>@BsonHelpers.GetString(revision, "signedAt")</dd></div>
+                        <div><dt>Published</dt><dd>@BsonHelpers.GetString(revision, "publishedAt")</dd></div>
+                        <div><dt>Actor</dt><dd>@BsonHelpers.GetString(revision, "actor")</dd></div>
+                        <div><dt>Hash</dt><dd><code>@BsonHelpers.GetString(revision, "hash")</code></dd></div>
+                    </dl>
+
+                    <div class="bp-revision-proof">
+                        <span class="bp-ledger-label">Proof diagnostics</span>
+                        <dl class="bp-ledger-kv">
+                            <div><dt>Cryptosuite</dt><dd>@BsonHelpers.GetString(proof, "cryptosuite")</dd></div>
+                            <div><dt>Purpose</dt><dd>@BsonHelpers.GetString(proof, "proofPurpose")</dd></div>
+                            <div><dt>Method</dt><dd>@BsonHelpers.GetString(proof, "verificationMethod")</dd></div>
+                            <div><dt>Proof</dt><dd><code>@Shorten(BsonHelpers.GetString(proof, "proofValue"))</code></dd></div>
+                        </dl>
+                    </div>
+
+                    <div class="bp-revision-documents">
+                        <span class="bp-ledger-label">Document hashes</span>
+                        @foreach (var document in documents)
+                        {
+                            <div class="bp-revision-document-row">
+                                <strong>@document.Name</strong>
+                                <code>@(string.IsNullOrWhiteSpace(document.Hash) ? "No hash" : document.Hash)</code>
+                                <small>@document.Visibility @document.FileId</small>
+                            </div>
+                        }
+                        @if (documents.Count == 0)
+                        {
+                            <p class="mb-0 text-secondary">No document hashes were captured in this revision.</p>
+                        }
+                    </div>
+                </article>
+            }
+
+            @if (Model.Revisions.Count == 0)
+            {
+                <div class="bp-table-empty">No signed revisions recorded yet.</div>
+            }
         </div>
     </section>
 </main>
+
+@functions {
+    private sealed record RevisionDocumentHash(string Name, string Hash, string Visibility, string FileId);
+
+    private static BsonDocument Proof(BsonDocument revision)
+    {
+        return revision.GetValue("proof", new BsonDocument()) is BsonDocument proof
+            ? proof
+            : new BsonDocument();
+    }
+
+    private static IReadOnlyList<RevisionDocumentHash> SnapshotDocuments(BsonDocument revision)
+    {
+        var snapshot = revision.GetValue("snapshot", new BsonDocument()) is BsonDocument snapshotDocument
+            ? snapshotDocument
+            : new BsonDocument();
+        var documents = BsonHelpers.GetValue(snapshot, "app", "documents") is BsonDocument documentMap
+            ? documentMap
+            : new BsonDocument();
+
+        return documents
+            .Elements
+            .Where(element => element.Value is BsonDocument)
+            .Select(element =>
+            {
+                var document = element.Value.AsBsonDocument;
+                return new RevisionDocumentHash(
+                    element.Name,
+                    NormalizeHash(BsonHelpers.GetString(document, "sha256")),
+                    BsonHelpers.GetString(document, "visibility"),
+                    BsonHelpers.GetString(document, "fileId"));
+            })
+            .Where(document => !string.IsNullOrWhiteSpace(document.Hash) || !string.IsNullOrWhiteSpace(document.FileId))
+            .ToList();
+    }
+
+    private static string NormalizeHash(string hash)
+    {
+        if (string.IsNullOrWhiteSpace(hash))
+        {
+            return string.Empty;
+        }
+
+        return hash.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) ? hash : $"sha256:{hash}";
+    }
+
+    private static string Shorten(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "-";
+        }
+
+        return value.Length <= 96 ? value : value[..96] + "...";
+    }
+}

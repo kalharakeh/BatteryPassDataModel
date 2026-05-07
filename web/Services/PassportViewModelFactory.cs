@@ -248,7 +248,9 @@ public sealed class PassportViewModelFactory
             url,
             fileId,
             ValueText(document.GetValue("contentType", string.Empty)),
-            ValueText(document.GetValue("visibility", "private")));
+            ValueText(document.GetValue("visibility", "private")),
+            ValueText(document.GetValue("sha256", string.Empty)),
+            ValueText(document.GetValue("uploadedAt", string.Empty)));
     }
 
     private static string NormalizeDocumentUrl(string url, string fileId)
