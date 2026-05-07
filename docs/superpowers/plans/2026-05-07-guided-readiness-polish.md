@@ -1030,6 +1030,19 @@ public sealed class AdminEditGuidanceTests
         Assert.Contains("Changing this after signing makes the passport dirty", markup);
         Assert.Contains("External HTTP updates to this live operational data do not dirty", markup);
         Assert.Contains("FieldRequirementByKey", markup);
+        Assert.Contains("general.passportId", markup);
+        Assert.Contains("general.serialNumber", markup);
+        Assert.Contains("general.batteryImageUrl", markup);
+        Assert.Contains("material.nickelMass", markup);
+        Assert.Contains("material.lithiumMass", markup);
+        Assert.Contains("performance.stateOfCharge", markup);
+        Assert.Contains("compliance.euDeclarationOfConformity", markup);
+        Assert.Contains("supplyChain.dueDiligenceReport", markup);
+        Assert.Contains("circularity.recycledLeadPrimary", markup);
+        Assert.Contains("carbon.co2StudyReference", markup);
+        Assert.DoesNotContain("<label>Name<input", markup);
+        Assert.DoesNotContain("<label>Rated energy kWh<input", markup);
+        Assert.DoesNotContain("<label>Amount gCO2e/kWh<input", markup);
 
         Assert.Contains(".bp-field-shell", css);
         Assert.Contains(".bp-field-marker", css);
@@ -1129,39 +1142,128 @@ Add these helpers near existing local functions:
 
     string RequirementHelp(string fieldKey, string fallback)
         => string.IsNullOrWhiteSpace(Requirement(fieldKey)?.Guidance) ? fallback : Requirement(fieldKey)!.Guidance;
+
+    string DirtySignedDataHelp(string fieldKey, string fallback)
+        => $"{RequirementHelp(fieldKey, fallback)} Changing this after signing makes the passport dirty until it is validated and signed again.";
+
+    string LiveOperationalHelp(string fieldKey, string fallback)
+        => $"{RequirementHelp(fieldKey, fallback)} External HTTP updates to this live operational data do not dirty the passport signature.";
 ```
 
-Add this small field note partial pattern by replacing at least the general section labels. For example, replace the serial field label with:
+Replace every visible editable form label in the seven admin form sections with the `bp-field-shell` pattern. The field key on each label must match this map so required/optional toggles saved in MongoDB drive the edit form:
+
+| Form input name | Requirement field key | Help text helper |
+| --- | --- | --- |
+| `passportId` | `general.passportId` | `DirtySignedDataHelp` |
+| `name` | `general.name` | `DirtySignedDataHelp` |
+| `modelNumber` | `general.modelNumber` | `DirtySignedDataHelp` |
+| `serialNumber` | `general.serialNumber` | `DirtySignedDataHelp` |
+| `category` | `general.category` | `DirtySignedDataHelp` |
+| `batteryStatus` | `general.batteryStatus` | `DirtySignedDataHelp` |
+| `batteryMass` | `general.batteryMass` | `DirtySignedDataHelp` |
+| `manufacturingDate` | `general.manufacturingDate` | `DirtySignedDataHelp` |
+| `facilityId` | `general.facilityId` | `DirtySignedDataHelp` |
+| `manufacturerName` | `general.manufacturerName` | `DirtySignedDataHelp` |
+| `status` | `general.registryStatus` | `DirtySignedDataHelp` |
+| `batteryImageUrl` | `general.batteryImageUrl` | `RequirementHelp` |
+| `materialNickel` | `material.nickelMass` | `DirtySignedDataHelp` |
+| `materialCopper` | `material.copperMass` | `DirtySignedDataHelp` |
+| `materialAluminium` | `material.aluminiumMass` | `DirtySignedDataHelp` |
+| `materialGraphite` | `material.graphiteMass` | `DirtySignedDataHelp` |
+| `materialManganese` | `material.manganeseMass` | `DirtySignedDataHelp` |
+| `materialCobalt` | `material.cobaltMass` | `DirtySignedDataHelp` |
+| `materialLithium` | `material.lithiumMass` | `DirtySignedDataHelp` |
+| `materialElectrolyte` | `material.electrolyteMass` | `DirtySignedDataHelp` |
+| `ratedEnergy` | `performance.ratedEnergy` | `DirtySignedDataHelp` |
+| `ratedCapacity` | `performance.ratedCapacity` | `DirtySignedDataHelp` |
+| `ratedMaximumPower` | `performance.ratedMaximumPower` | `DirtySignedDataHelp` |
+| `nominalVoltage` | `performance.nominalVoltage` | `DirtySignedDataHelp` |
+| `expectedLifetime` | `performance.expectedLifetime` | `DirtySignedDataHelp` |
+| `expectedNumberOfCycles` | `performance.expectedNumberOfCycles` | `DirtySignedDataHelp` |
+| `stateOfCharge` | `performance.stateOfCharge` | `LiveOperationalHelp` |
+| `remainingCapacity` | `performance.remainingCapacity` | `LiveOperationalHelp` |
+| `remainingEnergy` | `performance.remainingEnergy` | `LiveOperationalHelp` |
+| `fullCycles` | `performance.fullCycles` | `LiveOperationalHelp` |
+| `document_conformityAssessment` | `compliance.conformityAssessment` | `DirtySignedDataHelp` |
+| `document_conformityAssessment_visibility` | `compliance.conformityAssessment` | `DirtySignedDataHelp` |
+| `document_euDeclarationOfConformity` | `compliance.euDeclarationOfConformity` | `DirtySignedDataHelp` |
+| `document_euDeclarationOfConformity_visibility` | `compliance.euDeclarationOfConformity` | `DirtySignedDataHelp` |
+| `supplyChainIndex` | `supplyChain.supplyChainIndex` | `DirtySignedDataHelp` |
+| `document_sustainabilityReport` | `supplyChain.sustainabilityReport` | `DirtySignedDataHelp` |
+| `document_sustainabilityReport_visibility` | `supplyChain.sustainabilityReport` | `DirtySignedDataHelp` |
+| `document_dueDiligenceReport` | `supplyChain.dueDiligenceReport` | `DirtySignedDataHelp` |
+| `document_dueDiligenceReport_visibility` | `supplyChain.dueDiligenceReport` | `DirtySignedDataHelp` |
+| `document_thirdPartyAudit` | `supplyChain.thirdPartyAudit` | `DirtySignedDataHelp` |
+| `document_thirdPartyAudit_visibility` | `supplyChain.thirdPartyAudit` | `DirtySignedDataHelp` |
+| `document_taxonomyReport` | `supplyChain.taxonomyReport` | `DirtySignedDataHelp` |
+| `document_taxonomyReport_visibility` | `supplyChain.taxonomyReport` | `DirtySignedDataHelp` |
+| `separateCollection` | `circularity.separateCollection` | `DirtySignedDataHelp` |
+| `wastePrevention` | `circularity.wastePrevention` | `DirtySignedDataHelp` |
+| `recycledContentShareVerification` | `circularity.recycledContentShareVerification` | `RequirementHelp` |
+| `recycledNickelPre` | `circularity.recycledNickelPre` | `DirtySignedDataHelp` |
+| `recycledNickelPost` | `circularity.recycledNickelPost` | `DirtySignedDataHelp` |
+| `recycledNickelPrimary` | `circularity.recycledNickelPrimary` | `RequirementHelp` |
+| `recycledCobaltPre` | `circularity.recycledCobaltPre` | `DirtySignedDataHelp` |
+| `recycledCobaltPost` | `circularity.recycledCobaltPost` | `DirtySignedDataHelp` |
+| `recycledCobaltPrimary` | `circularity.recycledCobaltPrimary` | `RequirementHelp` |
+| `recycledLithiumPre` | `circularity.recycledLithiumPre` | `DirtySignedDataHelp` |
+| `recycledLithiumPost` | `circularity.recycledLithiumPost` | `DirtySignedDataHelp` |
+| `recycledLithiumPrimary` | `circularity.recycledLithiumPrimary` | `RequirementHelp` |
+| `recycledLeadPre` | `circularity.recycledLeadPre` | `DirtySignedDataHelp` |
+| `recycledLeadPost` | `circularity.recycledLeadPost` | `DirtySignedDataHelp` |
+| `recycledLeadPrimary` | `circularity.recycledLeadPrimary` | `RequirementHelp` |
+| `carbonFootprint` | `carbon.amount` | `DirtySignedDataHelp` |
+| `performanceClass` | `carbon.performanceClass` | `DirtySignedDataHelp` |
+| `carbonRawMaterial` | `carbon.rawMaterial` | `DirtySignedDataHelp` |
+| `carbonMainProduction` | `carbon.mainProduction` | `DirtySignedDataHelp` |
+| `carbonDistribution` | `carbon.distribution` | `DirtySignedDataHelp` |
+| `carbonRecycling` | `carbon.recycling` | `DirtySignedDataHelp` |
+| `document_co2StudyReference` | `carbon.co2StudyReference` | `DirtySignedDataHelp` |
+| `document_co2StudyReference_visibility` | `carbon.co2StudyReference` | `DirtySignedDataHelp` |
+
+Use this exact pattern for single-line text/number/date inputs:
 
 ```cshtml
 <label class="bp-field-shell">
     <span>Serial Number <em class="bp-field-marker">@RequirementLabel("general.serialNumber")</em></span>
     <input type="text" name="serialNumber" value="@passport.SerialNumber" />
-    <small class="bp-field-help">@RequirementHelp("general.serialNumber", "Manufacturer serial number.")</small>
+    <small class="bp-field-help">@DirtySignedDataHelp("general.serialNumber", "Manufacturer serial number.")</small>
 </label>
 ```
 
-Replace the weight field label with:
+Use this exact pattern for select controls:
 
 ```cshtml
 <label class="bp-field-shell">
-    <span>Weight kg <em class="bp-field-marker">@RequirementLabel("general.batteryMass")</em></span>
-    <input type="number" step="any" name="batteryMass" value="@passport.Weight" />
-    <small class="bp-field-help">Changing this after signing makes the passport dirty until it is validated and signed again.</small>
+    <span>Registry status <em class="bp-field-marker">@RequirementLabel("general.registryStatus")</em></span>
+    <select name="status">
+        <option value="draft" selected="@(passport.Status == "draft")">Draft</option>
+        <option value="published" selected="@(passport.Status == "published")">Published</option>
+        <option value="archived" selected="@(passport.Status == "archived")">Archived</option>
+    </select>
+    <small class="bp-field-help">@DirtySignedDataHelp("general.registryStatus", "Draft, published, or archived status.")</small>
 </label>
 ```
 
-Replace one live operational field in Performance, such as state of charge, with:
+Use this exact pattern for live HTTP operational fields:
 
 ```cshtml
 <label class="bp-field-shell">
     <span>State of charge % <em class="bp-field-marker">@RequirementLabel("performance.stateOfCharge")</em></span>
     <input type="number" step="any" name="stateOfCharge" value="@passport.Performance.StateOfCharge" />
-    <small class="bp-field-help">External HTTP updates to this live operational data do not dirty the passport signature.</small>
+    <small class="bp-field-help">@LiveOperationalHelp("performance.stateOfCharge", "Current state of charge.")</small>
 </label>
 ```
 
-For this task, do not convert every field manually. The implementation must include the visible required/optional pattern in every section header or at least representative fields in each section, then later polish can expand it.
+Use this exact pattern for textarea controls:
+
+```cshtml
+<label class="bp-field-shell bp-span-2">
+    <span>Separate collection <em class="bp-field-marker">@RequirementLabel("circularity.separateCollection")</em></span>
+    <textarea name="separateCollection">@passport.Circularity.SeparateCollection</textarea>
+    <small class="bp-field-help">@DirtySignedDataHelp("circularity.separateCollection", "Collection instructions or URL.")</small>
+</label>
+```
 
 - [ ] **Step 6: Add edit guidance CSS**
 
@@ -1504,7 +1606,7 @@ Spec coverage:
 
 Placeholder scan:
 
-- No `TBD`, `TODO`, or vague "write tests" placeholders remain. Each task has concrete files, snippets, commands, expected results, and commit boundaries.
+- The disallowed-marker search is clean. Each task has concrete files, snippets, commands, expected results, and commit boundaries.
 
 Type consistency:
 
