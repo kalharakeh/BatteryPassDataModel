@@ -36,6 +36,7 @@ public sealed class ConformanceLayoutTests
     public void ConformanceView_ShouldRenderTrustSummaryAndActions()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Conformance.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.Contains("Conformance", markup);
         Assert.Contains("Blocking errors", markup);
@@ -43,6 +44,14 @@ public sealed class ConformanceLayoutTests
         Assert.Contains("Validate passport", markup);
         Assert.Contains("Back to passport list", markup);
         Assert.Contains("/admin/clusters?tab=passports", markup);
+        Assert.Contains("bp-conformance-return-row", markup);
+        Assert.Contains("bp-conformance-return-link", markup);
+        Assert.True(
+            markup.IndexOf("bp-conformance-return-row", StringComparison.Ordinal) <
+            markup.IndexOf("bp-readiness-hero", StringComparison.Ordinal),
+            "Back navigation should sit outside and above the passport readiness container.");
+        Assert.Contains(".bp-conformance-return-row", css);
+        Assert.Contains(".bp-conformance-return-link", css);
         Assert.Contains("Latest validation", markup);
         Assert.Contains("What is stopping signing?", markup);
         Assert.Contains("Full-data requirements", markup);

@@ -1434,6 +1434,45 @@ a:hover {
   gap: 10px;
 }
 
+.bp-conformance-return-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: -8px;
+}
+
+.bp-conformance-return-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid #d9e4f2;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #35506f;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  padding: 0.52rem 0.9rem;
+  text-decoration: none;
+  box-shadow: 0 10px 24px rgba(15, 42, 73, 0.06);
+}
+
+.bp-conformance-return-link::before {
+  content: "";
+  width: 0.48rem;
+  height: 0.48rem;
+  border-bottom: 2px solid currentColor;
+  border-left: 2px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.bp-conformance-return-link:hover,
+.bp-conformance-return-link:focus-visible {
+  border-color: #b6c9dd;
+  color: #041e42;
+  background: #ffffff;
+  text-decoration: none;
+}
+
 .bp-conformance-shell .bp-summary-title,
 .bp-conformance-panel .bp-summary-title {
   border: 1px solid #d9e4f2;

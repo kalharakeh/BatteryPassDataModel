@@ -13,6 +13,10 @@
 }
 
 <main class="bp-page bp-admin-page">
+    <div class="bp-conformance-return-row">
+        <a href="/admin/clusters?tab=passports" class="bp-conformance-return-link">Back to passport list</a>
+    </div>
+
     <section class="bp-card bp-conformance-shell bp-readiness-hero bp-readiness-@readiness.Severity">
         <div class="bp-readiness-copy">
             <span class="bp-summary-title">Passport readiness</span>
@@ -20,7 +24,6 @@
             <p class="bp-passport-id">@passport.PassportId</p>
             <p class="bp-help-text mb-0">@readiness.PrimaryReason</p>
             <div class="bp-conformance-actions mt-3">
-                <a href="/admin/clusters?tab=passports" class="bp-secondary-button">Back to passport list</a>
                 <a href="/admin/help" class="bp-secondary-button">Admin help</a>
                 <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/edit" class="bp-secondary-button">Edit passport</a>
                 <a href="/@Uri.EscapeDataString(passport.PassportId)/summary" class="bp-secondary-button">Preview summary</a>
