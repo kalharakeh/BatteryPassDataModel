@@ -129,6 +129,27 @@ public sealed class AuditRevisionService
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<BsonDocument?> GetLatestSignedRevisionAsync(
+        string passportId,
+        CancellationToken cancellationToken = default)
+    {
+        var collection = GetPassportRevisionsCollection();
+        if (collection == null || string.IsNullOrWhiteSpace(passportId))
+        {
+            return null;
+        }
+
+        var filter = Builders<BsonDocument>.Filter.And(
+            Builders<BsonDocument>.Filter.Eq("passportId", passportId),
+            Builders<BsonDocument>.Filter.In("status", new[] { "signed", "published" }));
+
+        return await collection
+            .Find(filter)
+            .Sort(Builders<BsonDocument>.Sort.Descending("revisionNumber"))
+            .Limit(1)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<BsonDocument>> ListAuditEventsAsync(
         string passportId,
         CancellationToken cancellationToken = default)

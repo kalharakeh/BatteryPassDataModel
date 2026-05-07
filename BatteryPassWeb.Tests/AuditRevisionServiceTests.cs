@@ -111,6 +111,19 @@ public sealed class AuditRevisionServiceTests
     }
 
     [Fact]
+    public void AuditRevisionService_ShouldExposeLatestSignedRevisionLookup()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Services", "AuditRevisionService.cs"));
+
+        Assert.Contains("GetLatestSignedRevisionAsync", source);
+        Assert.Contains("passportRevisions", source);
+        Assert.Contains("revisionNumber", source);
+        Assert.Contains("status", source);
+        Assert.Contains("published", source);
+        Assert.Contains("signed", source);
+    }
+
+    [Fact]
     public void PassportRepository_ShouldExposeTrustSignatureAndPublishPersistenceMethods()
     {
         var source = File.ReadAllText(RepoFile("web", "Services", "PassportRepository.cs"));
