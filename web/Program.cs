@@ -58,6 +58,7 @@ builder.Services.AddSingleton<PassportPublishPolicyService>();
 builder.Services.AddSingleton<PassportReadinessService>();
 builder.Services.AddSingleton<DataCompletionPolicyService>();
 builder.Services.AddSingleton<DemoRequiredDataCompletionService>();
+builder.Services.AddSingleton<DemoScenarioResetService>();
 builder.Services.AddSingleton<PassportDataNormalizationService>();
 builder.Services.AddSingleton<CanonicalPassportSnapshotService>();
 builder.Services.AddSingleton<DemoSigningKeyService>();

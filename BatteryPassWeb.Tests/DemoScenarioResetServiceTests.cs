@@ -43,6 +43,31 @@ public sealed class DemoScenarioResetServiceTests
         Assert.DoesNotContain("DeleteManyAsync(Builders<BsonDocument>.Filter.Empty", source);
     }
 
+    [Fact]
+    public void DemoScenarioResetService_ShouldBuildEveryTrustScenarioExplicitly()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Services", "DemoScenarioResetService.cs"));
+
+        Assert.Contains("ResetAllAsync", source);
+        Assert.Contains("BuildBaseScenarioDocument", source);
+        Assert.Contains("ApplyValidatedStateAsync", source);
+        Assert.Contains("ApplySignedStateAsync", source);
+        Assert.Contains("ApplyPublishedStateAsync", source);
+        Assert.Contains("ApplyDirtyStateAsync", source);
+        Assert.Contains("ApplyInvalidSignatureStateAsync", source);
+        Assert.Contains("ApplyRestrictedDocumentMetadata", source);
+        Assert.Contains("DemoScenarioCatalog.All", source);
+        Assert.Contains("DemoScenarioCatalog.IsKnownPassportId", source);
+    }
+
+    [Fact]
+    public void Program_ShouldRegisterDemoScenarioResetService()
+    {
+        var program = File.ReadAllText(RepoFile("web", "Program.cs"));
+
+        Assert.Contains("AddSingleton<DemoScenarioResetService>", program);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
