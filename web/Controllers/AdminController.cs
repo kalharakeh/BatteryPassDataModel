@@ -33,6 +33,7 @@ public class AdminController : Controller
     private readonly ExternalApiRepository _externalApiRepository;
     private readonly PassportValidationService _passportValidationService;
     private readonly PassportPublishPolicyService _passportPublishPolicyService;
+    private readonly PassportReadinessService _passportReadinessService;
     private readonly DataCompletionPolicyService _dataCompletionPolicyService;
     private readonly DemoRequiredDataCompletionService _demoRequiredDataCompletionService;
     private readonly PassportTrustService _passportTrustService;
@@ -45,6 +46,7 @@ public class AdminController : Controller
         ExternalApiRepository externalApiRepository,
         PassportValidationService passportValidationService,
         PassportPublishPolicyService passportPublishPolicyService,
+        PassportReadinessService passportReadinessService,
         DataCompletionPolicyService dataCompletionPolicyService,
         DemoRequiredDataCompletionService demoRequiredDataCompletionService,
         PassportTrustService passportTrustService,
@@ -56,6 +58,7 @@ public class AdminController : Controller
         _externalApiRepository = externalApiRepository;
         _passportValidationService = passportValidationService;
         _passportPublishPolicyService = passportPublishPolicyService;
+        _passportReadinessService = passportReadinessService;
         _dataCompletionPolicyService = dataCompletionPolicyService;
         _demoRequiredDataCompletionService = demoRequiredDataCompletionService;
         _passportTrustService = passportTrustService;
@@ -231,11 +234,17 @@ public class AdminController : Controller
         var summary = _passportValidationService.Validate(document, dataRequirements);
         var publishDecision = _passportPublishPolicyService.Evaluate(document, summary);
         var verificationResult = _passportTrustService.Verify(document);
+        var readiness = _passportReadinessService.Evaluate(document, summary, publishDecision, verificationResult);
+        var groupedBlockingIssues = BuildIssueGroups(summary, TrustValidationSeverity.BlockingError);
+        var groupedWarningIssues = BuildIssueGroups(summary, TrustValidationSeverity.Warning);
 
         return View(new ConformanceViewModel
         {
             Passport = _viewModelFactory.Create(document, clusterNamesById, verificationResult),
             ValidationSummary = summary,
+            Readiness = readiness,
+            GroupedBlockingIssues = groupedBlockingIssues,
+            GroupedWarningIssues = groupedWarningIssues,
             CanSign = publishDecision.CanSign,
             CanPublish = publishDecision.CanPublish,
             PublishBlockReason = publishDecision.PublishBlockReason,
@@ -1007,6 +1016,39 @@ public class AdminController : Controller
     private static bool IsTrustPersistenceFailure(Exception exception)
     {
         return exception is InvalidOperationException or MongoException or TimeoutException;
+    }
+
+    private static IReadOnlyList<ConformanceIssueGroupViewModel> BuildIssueGroups(
+        TrustValidationSummary summary,
+        TrustValidationSeverity severity)
+    {
+        return summary.Sections
+            .Select(section => new ConformanceIssueGroupViewModel
+            {
+                SectionKey = section.SectionKey,
+                SectionLabel = section.SectionLabel,
+                EditAnchor = AdminSectionAnchor(section.SectionKey),
+                Issues = section.Issues
+                    .Where(issue => issue.Severity == severity)
+                    .ToList()
+            })
+            .Where(group => group.Issues.Count > 0)
+            .ToList();
+    }
+
+    private static string AdminSectionAnchor(string sectionKey)
+    {
+        return sectionKey switch
+        {
+            "generalProductInformation" or "identity" or "dataCompletionPolicy" => "admin-general",
+            "materialComposition" => "admin-material-composition",
+            "performanceAndDurability" => "admin-performance",
+            "labeling" => "admin-compliance",
+            "supplyChainDueDiligence" => "admin-supply-chain",
+            "circularity" => "admin-circularity",
+            "carbonFootprintForBatteries" => "admin-carbon-footprint",
+            _ => "admin-general"
+        };
     }
 
     private string CurrentActor()

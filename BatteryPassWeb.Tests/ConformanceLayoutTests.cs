@@ -131,6 +131,51 @@ public sealed class ConformanceLayoutTests
         Assert.Contains("/conformance", clusters);
     }
 
+    [Fact]
+    public void ConformanceModel_ShouldExposeGuidedReadinessData()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "ConformanceViewModel.cs"));
+
+        Assert.Contains("PassportReadinessDecision", source);
+        Assert.Contains("GroupedBlockingIssues", source);
+        Assert.Contains("GroupedWarningIssues", source);
+        Assert.Contains("ConformanceIssueGroupViewModel", source);
+    }
+
+    [Fact]
+    public void AdminController_ShouldComputePassportReadinessForConformance()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+        var program = File.ReadAllText(RepoFile("web", "Program.cs"));
+
+        Assert.Contains("PassportReadinessService", source);
+        Assert.Contains("_passportReadinessService.Evaluate", source);
+        Assert.Contains("GroupedBlockingIssues", source);
+        Assert.Contains("AddSingleton<PassportReadinessService>", program);
+    }
+
+    [Fact]
+    public void ConformanceView_ShouldRenderOneGuidedNextActionAndCollapsibleDiagnostics()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Conformance.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("bp-readiness-hero", markup);
+        Assert.Contains("Model.Readiness.StateLabel", markup);
+        Assert.Contains("Model.Readiness.NextActionLabel", markup);
+        Assert.Contains("bp-next-action-panel", markup);
+        Assert.Contains("bp-blocker-groups", markup);
+        Assert.Contains("bp-advanced-diagnostics", markup);
+        Assert.Contains("<details", markup);
+        Assert.DoesNotContain("Action blocked", markup);
+        Assert.DoesNotContain("disabled=\"", markup);
+
+        Assert.Contains(".bp-readiness-hero", css);
+        Assert.Contains(".bp-next-action-panel", css);
+        Assert.Contains(".bp-blocker-groups", css);
+        Assert.Contains(".bp-advanced-diagnostics", css);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
