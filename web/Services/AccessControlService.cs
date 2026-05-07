@@ -105,4 +105,29 @@ public sealed class AccessControlService
         var managedClusterIds = await GetAdministeredClusterIdsForUserAsync(user, cancellationToken);
         return managedClusterIds.Contains(clusterId, StringComparer.OrdinalIgnoreCase);
     }
+
+    public async Task<bool> CanDownloadPassportDocumentAsync(
+        ClaimsPrincipal user,
+        string clusterId,
+        string visibility,
+        bool isPassportPublic,
+        CancellationToken cancellationToken = default)
+    {
+        if (IsPublicVisibility(visibility) && isPassportPublic)
+        {
+            return true;
+        }
+
+        if (user.Identity?.IsAuthenticated != true)
+        {
+            return false;
+        }
+
+        return await CanOpenPassportDetailAsync(user, clusterId, cancellationToken);
+    }
+
+    private static bool IsPublicVisibility(string visibility)
+    {
+        return visibility.Equals("public", StringComparison.OrdinalIgnoreCase);
+    }
 }

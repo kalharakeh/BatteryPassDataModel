@@ -14,6 +14,7 @@ public sealed class ExternalApiInitializer
     private readonly PassportRepository _passportRepository;
     private readonly BatteryTelemetryRepository _batteryTelemetryRepository;
     private readonly ClusterRepository _clusterRepository;
+    private readonly PassportDataNormalizationService _passportDataNormalizationService;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private bool _initialized;
 
@@ -21,12 +22,14 @@ public sealed class ExternalApiInitializer
         ExternalApiRepository externalApiRepository,
         PassportRepository passportRepository,
         BatteryTelemetryRepository batteryTelemetryRepository,
-        ClusterRepository clusterRepository)
+        ClusterRepository clusterRepository,
+        PassportDataNormalizationService passportDataNormalizationService)
     {
         _externalApiRepository = externalApiRepository;
         _passportRepository = passportRepository;
         _batteryTelemetryRepository = batteryTelemetryRepository;
         _clusterRepository = clusterRepository;
+        _passportDataNormalizationService = passportDataNormalizationService;
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -48,6 +51,7 @@ public sealed class ExternalApiInitializer
             await _batteryTelemetryRepository.EnsureIndexesAsync(cancellationToken);
             await EnsureSamplePassportAsync(cancellationToken);
             await EnsureBatteryImagesAndCategoriesAsync(cancellationToken);
+            await NormalizeExistingPassportDataAsync(cancellationToken);
             await EnsureSampleTokensAsync(cancellationToken);
             await EnsureClusterTokensAsync(cancellationToken);
             _initialized = true;
@@ -144,6 +148,35 @@ public sealed class ExternalApiInitializer
         }
     }
 
+    private async Task NormalizeExistingPassportDataAsync(CancellationToken cancellationToken)
+    {
+        var passports = await _passportRepository.SearchDocumentsAsync(string.Empty, includeArchived: true, cancellationToken);
+        if (passports.Count == 0)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow.ToString("O");
+        foreach (var passport in passports)
+        {
+            var passportId = BsonHelpers.GetString(passport, "passportId");
+            if (string.IsNullOrWhiteSpace(passportId))
+            {
+                continue;
+            }
+
+            var before = passport.ToJson();
+            var normalized = _passportDataNormalizationService.Normalize(passport, now);
+            if (string.Equals(before, normalized.ToJson(), StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            normalized.Remove("_id");
+            await _passportRepository.ReplaceAsync(passportId, normalized, cancellationToken);
+        }
+    }
+
     private async Task EnsureBatteryImagesAndCategoriesAsync(CancellationToken cancellationToken)
     {
         var passports = await _passportRepository.SearchDocumentsAsync(string.Empty, includeArchived: true, cancellationToken);
@@ -169,8 +202,8 @@ public sealed class ExternalApiInitializer
 
             var currentImageUrl = BatteryImageCatalog.NormalizeAssetUrl(media.GetValue("batteryImageUrl", string.Empty).ToString());
             var selectedImageUrl = BatteryImageCatalog.NormalizeKnownImageUrl(currentImageUrl, passportId);
-            var selectedCategory = BatteryImageCatalog.CategoryForImageUrl(selectedImageUrl);
-            var currentCategory = generalPayload.GetValue("batteryCategory", string.Empty).ToString();
+            var currentCategory = BsonHelpers.GetString(generalPayload, "batteryCategory");
+            var selectedCategory = BatteryPassCanonicalDataCatalog.NormalizeBatteryCategory(currentCategory);
 
             var hasChanges = false;
             if (!string.Equals(currentImageUrl, selectedImageUrl, StringComparison.OrdinalIgnoreCase))
@@ -282,7 +315,7 @@ public sealed class ExternalApiInitializer
                 {
                     ["payload"] = new BsonDocument
                     {
-                        ["batteryCategory"] = BatteryImageCatalog.CategoryForImageUrl(BatteryImageCatalog.DefaultImageUrl)
+                        ["batteryCategory"] = BatteryPassCanonicalDataCatalog.DemoBatteryCategory
                     }
                 }
             }

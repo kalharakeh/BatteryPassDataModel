@@ -4,6 +4,7 @@ using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
+using MongoDB.Driver;
 using BCryptNet = BCrypt.Net.BCrypt;
 
 namespace BatteryPassWeb.Controllers;
@@ -12,26 +13,6 @@ namespace BatteryPassWeb.Controllers;
 [Route("admin")]
 public class AdminController : Controller
 {
-    private static readonly (string Field, string Label, string Color)[] MaterialFields =
-    [
-        ("materialNickel", "Nickel", "#4f6f7d"),
-        ("materialCopper", "Copper", "#d76f3d"),
-        ("materialAluminium", "Aluminium", "#aeb4ba"),
-        ("materialGraphite", "Graphite", "#27313f"),
-        ("materialManganese", "Manganese", "#d9b64e"),
-        ("materialCobalt", "Cobalt", "#0aa34f"),
-        ("materialLithium", "Lithium", "#85c7d6"),
-        ("materialElectrolyte", "Electrolyte and separators", "#e7d99d")
-    ];
-
-    private static readonly (string Field, string Label, string Stage, string Color)[] CarbonFields =
-    [
-        ("carbonRawMaterial", "raw material extraction", "RawMaterialExtraction", "#08a348"),
-        ("carbonMainProduction", "main production", "MainProduction", "#df6b3b"),
-        ("carbonDistribution", "distribution", "Distribution", "#ead9a4"),
-        ("carbonRecycling", "recycling", "Recycling", "#4f6f7d")
-    ];
-
     private static readonly string[] DocumentKeys =
     [
         "conformityAssessment",
@@ -44,6 +25,7 @@ public class AdminController : Controller
     ];
 
     private const string SamplePassportId = "did:web:acme.battery.pass:sample-customer-north-001";
+    private const string TrustWorkflowServiceErrorMessage = "The trust workflow could not be completed because MongoDB/service persistence is unavailable. No signed or published trust state was claimed. Please retry after the service is healthy.";
 
     private readonly PassportRepository _passportRepository;
     private readonly ClusterRepository _clusterRepository;
@@ -353,43 +335,55 @@ public class AdminController : Controller
             return Redirect(BuildConformanceRedirect(passportId, error: "Resolve blocking validation errors before signing."));
         }
 
-        var actor = CurrentActor();
-        var signature = _passportTrustService.Sign(document, actor);
-        var revision = await _auditRevisionService.CreateSignedRevisionAsync(
-            passportId,
-            signature.Snapshot,
-            signature.Hash,
-            signature.Proof,
-            actor,
-            signature.SignedAt,
-            cancellationToken);
-        var revisionId = BsonHelpers.GetString(revision, "revisionId");
+        try
+        {
+            var actor = CurrentActor();
+            var signature = _passportTrustService.Sign(document, actor);
+            var revision = await _auditRevisionService.CreateSignedRevisionAsync(
+                passportId,
+                signature.Snapshot,
+                signature.Hash,
+                signature.Proof,
+                actor,
+                signature.SignedAt,
+                cancellationToken);
+            var revisionId = BsonHelpers.GetString(revision, "revisionId");
 
-        await _passportRepository.UpdateTrustSignatureAsync(
-            passportId,
-            summary,
-            signature.Hash,
-            signature.Proof,
-            revisionId,
-            signature.SignedAt,
-            cancellationToken);
-        await _auditRevisionService.AppendAuditEventAsync(
-            passportId,
-            "passport.signed",
-            actor,
-            "admin",
-            "admin-ui",
-            "Passport signed.",
-            new BsonDocument
+            var trustUpdated = await _passportRepository.UpdateTrustSignatureAsync(
+                passportId,
+                summary,
+                signature.Hash,
+                signature.Proof,
+                revisionId,
+                signature.SignedAt,
+                cancellationToken);
+            if (!trustUpdated)
             {
-                ["revisionId"] = revisionId,
-                ["hash"] = $"sha256:{signature.Hash}",
-                ["blockingErrors"] = summary.BlockingErrorCount,
-                ["warnings"] = summary.WarningCount
-            },
-            cancellationToken);
+                throw new InvalidOperationException("Signing service could not persist the trust state after recording the signed revision.");
+            }
 
-        return Redirect(BuildConformanceRedirect(passportId, status: "signed"));
+            await _auditRevisionService.AppendAuditEventAsync(
+                passportId,
+                "passport.signed",
+                actor,
+                "admin",
+                "admin-ui",
+                "Passport signed.",
+                new BsonDocument
+                {
+                    ["revisionId"] = revisionId,
+                    ["hash"] = $"sha256:{signature.Hash}",
+                    ["blockingErrors"] = summary.BlockingErrorCount,
+                    ["warnings"] = summary.WarningCount
+                },
+                cancellationToken);
+
+            return Redirect(BuildConformanceRedirect(passportId, status: "signed"));
+        }
+        catch (Exception exception) when (IsTrustPersistenceFailure(exception))
+        {
+            return Redirect(BuildConformanceRedirect(passportId, error: $"{TrustWorkflowServiceErrorMessage} {exception.Message}"));
+        }
     }
 
     [HttpPost("passports/{passportId}/publish")]
@@ -440,30 +434,47 @@ public class AdminController : Controller
         var actor = CurrentActor();
         var publishedAt = DateTimeOffset.UtcNow.ToString("O");
         var publishedProof = BsonHelpers.GetValue(document, "trust", "latestProof") as BsonDocument ?? new BsonDocument();
-        await _passportRepository.PublishPassportAsync(
-            passportId,
-            revisionId,
-            publishedAt,
-            verification.CurrentHash,
-            publishedProof,
-            cancellationToken);
-        await _auditRevisionService.MarkRevisionPublishedAsync(revisionId, publishedAt, cancellationToken);
-        await _auditRevisionService.AppendAuditEventAsync(
-            passportId,
-            "passport.published",
-            actor,
-            "admin",
-            "admin-ui",
-            "Passport published.",
-            new BsonDocument
+        try
+        {
+            var published = await _passportRepository.PublishPassportAsync(
+                passportId,
+                revisionId,
+                publishedAt,
+                verification.CurrentHash,
+                publishedProof,
+                cancellationToken);
+            if (!published)
             {
-                ["revisionId"] = revisionId,
-                ["hash"] = verification.CurrentHash,
-                ["publishedAt"] = publishedAt
-            },
-            cancellationToken);
+                throw new InvalidOperationException("Publishing service could not persist the published trust state.");
+            }
 
-        return Redirect(BuildConformanceRedirect(passportId, status: "published"));
+            var revisionMarked = await _auditRevisionService.MarkRevisionPublishedAsync(revisionId, publishedAt, cancellationToken);
+            if (!revisionMarked)
+            {
+                throw new InvalidOperationException("Publishing service could not mark the immutable revision as published.");
+            }
+
+            await _auditRevisionService.AppendAuditEventAsync(
+                passportId,
+                "passport.published",
+                actor,
+                "admin",
+                "admin-ui",
+                "Passport published.",
+                new BsonDocument
+                {
+                    ["revisionId"] = revisionId,
+                    ["hash"] = verification.CurrentHash,
+                    ["publishedAt"] = publishedAt
+                },
+                cancellationToken);
+
+            return Redirect(BuildConformanceRedirect(passportId, status: "published"));
+        }
+        catch (Exception exception) when (IsTrustPersistenceFailure(exception))
+        {
+            return Redirect(BuildConformanceRedirect(passportId, error: $"{TrustWorkflowServiceErrorMessage} {exception.Message}"));
+        }
     }
 
     [HttpGet("passports/{passportId}/audit")]
@@ -993,6 +1004,11 @@ public class AdminController : Controller
         return url;
     }
 
+    private static bool IsTrustPersistenceFailure(Exception exception)
+    {
+        return exception is InvalidOperationException or MongoException or TimeoutException;
+    }
+
     private string CurrentActor()
     {
         var actor = AccessControlService.CurrentEmail(User);
@@ -1068,13 +1084,14 @@ public class AdminController : Controller
         var display = EnsureDocument(app, "display");
         var media = EnsureDocument(app, "media");
         var appDocuments = EnsureDocument(app, "documents");
-        var appCharts = EnsureDocument(app, "charts");
         var appNotes = EnsureDocument(app, "notes");
         var appCircularityNotes = EnsureDocument(appNotes, "circularity");
 
         display["name"] = Text(form, "name", display.GetValue("name", string.Empty).ToString());
         display["modelNumber"] = Text(form, "modelNumber", display.GetValue("modelNumber", string.Empty).ToString());
-        display["serialNumber"] = Text(form, "serialNumber", display.GetValue("serialNumber", string.Empty).ToString());
+        display["serialNumber"] = BatteryPassCanonicalDataCatalog.NormalizeManufacturerSerialNumber(
+            Text(form, "serialNumber", display.GetValue("serialNumber", string.Empty).ToString()),
+            BsonHelpers.GetString(document, "passportId"));
         display["facilityId"] = Text(form, "facilityId", display.GetValue("facilityId", string.Empty).ToString());
         display["manufacturerName"] = Text(form, "manufacturerName", display.GetValue("manufacturerName", string.Empty).ToString());
 
@@ -1095,14 +1112,23 @@ public class AdminController : Controller
             {
                 documentNode["url"] = url;
             }
+
+            documentNode["visibility"] = NormalizeDocumentVisibility(Text(
+                form,
+                $"document_{key}_visibility",
+                documentNode.GetValue("visibility", "private").ToString()));
         }
 
         var aspects = EnsureDocument(document, "aspects");
         var generalAspect = EnsureAspectPayload(aspects, "generalProductInformation", now, "draft");
         var generalPayload = EnsureDocument(generalAspect, "payload");
         generalPayload["productIdentifier"] = display.GetValue("modelNumber", string.Empty).ToString();
-        generalPayload["batteryPassportIdentifier"] = $"urn:acme:{display.GetValue("serialNumber", string.Empty).ToString().ToLowerInvariant().Replace("-", string.Empty)}";
-        generalPayload["batteryCategory"] = BatteryImageCatalog.CategoryForImageUrl(batteryImageUrl);
+        generalPayload["batteryPassportIdentifier"] = BatteryPassCanonicalDataCatalog.NormalizeBatteryPassportIdentifier(
+            BsonHelpers.GetString(generalPayload, "batteryPassportIdentifier"),
+            BsonText(display.GetValue("serialNumber", string.Empty)),
+            BsonHelpers.GetString(document, "passportId"));
+        generalPayload["batteryCategory"] = BatteryPassCanonicalDataCatalog.NormalizeBatteryCategory(
+            BsonHelpers.GetString(generalPayload, "batteryCategory"));
         generalPayload["batteryStatus"] = Text(form, "batteryStatus", generalPayload.GetValue("batteryStatus", "Original").ToString());
         generalPayload["batteryMass"] = Number(form, "batteryMass", generalPayload.GetValue("batteryMass", 0).ToDouble());
         generalPayload["manufacturingDate"] = $"{Text(form, "manufacturingDate", DateOnly(generalPayload.GetValue("manufacturingDate", string.Empty).ToString()))}T00:00:00.000Z";
@@ -1112,41 +1138,42 @@ public class AdminController : Controller
         var existingMaterials = materialPayload.GetValue("batteryMaterials", new BsonArray()) is BsonArray materials
             ? materials
             : new BsonArray();
-        var materialChart = new BsonArray();
         var materialRows = new BsonArray();
-        foreach (var (field, label, color) in MaterialFields)
+        foreach (var materialDefinition in BatteryPassCanonicalDataCatalog.Materials)
         {
             var fallbackMass = existingMaterials
                 .OfType<BsonDocument>()
-                .FirstOrDefault(item => item.GetValue("batteryMaterialName", string.Empty).ToString() == label)?
+                .FirstOrDefault(item => BsonText(item.GetValue("batteryMaterialName", string.Empty)).Equals(materialDefinition.Label, StringComparison.OrdinalIgnoreCase))?
                 .GetValue("batteryMaterialMass", 0).ToDouble() ?? 0;
-            var mass = Number(form, field, fallbackMass);
-            materialChart.Add(new BsonDocument
-            {
-                ["label"] = label,
-                ["value"] = mass,
-                ["unit"] = "kg",
-                ["color"] = color
-            });
+            var mass = BatteryPassCanonicalDataCatalog.NormalizeMaterialMass(
+                materialDefinition.Label,
+                Number(form, materialDefinition.Field, fallbackMass));
 
             var existing = existingMaterials.OfType<BsonDocument>()
-                .FirstOrDefault(item => item.GetValue("batteryMaterialName", string.Empty).ToString() == label);
+                .FirstOrDefault(item => BsonText(item.GetValue("batteryMaterialName", string.Empty)).Equals(materialDefinition.Label, StringComparison.OrdinalIgnoreCase));
             if (existing != null)
             {
+                existing["batteryMaterialName"] = materialDefinition.Label;
                 existing["batteryMaterialMass"] = mass;
+                if (existing.GetValue("batteryMaterialLocation", BsonNull.Value) is not BsonDocument)
+                {
+                    existing["batteryMaterialLocation"] = DemoMaterialLocation();
+                }
+                existing["isCriticalRawMaterial"] = materialDefinition.IsCriticalRawMaterial;
                 materialRows.Add(existing);
             }
             else
             {
                 materialRows.Add(new BsonDocument
                 {
-                    ["batteryMaterialName"] = label,
-                    ["batteryMaterialMass"] = mass
+                    ["batteryMaterialName"] = materialDefinition.Label,
+                    ["batteryMaterialMass"] = mass,
+                    ["batteryMaterialLocation"] = DemoMaterialLocation(),
+                    ["isCriticalRawMaterial"] = materialDefinition.IsCriticalRawMaterial
                 });
             }
         }
         materialPayload["batteryMaterials"] = materialRows;
-        appCharts["materialComposition"] = materialChart;
 
         var performanceAspect = EnsureAspectPayload(aspects, "performanceAndDurability", now, "draft");
         var performancePayload = EnsureDocument(performanceAspect, "payload");
@@ -1181,33 +1208,29 @@ public class AdminController : Controller
 
         var carbonAspect = EnsureAspectPayload(aspects, "carbonFootprintForBatteries", now, "draft");
         var carbonPayload = EnsureDocument(carbonAspect, "payload");
-        carbonPayload["batteryCarbonFootprint"] = Number(form, "carbonFootprint", carbonPayload.GetValue("batteryCarbonFootprint", 0).ToDouble());
-        carbonPayload["carbonFootprintPerformanceClass"] = Text(form, "performanceClass", carbonPayload.GetValue("carbonFootprintPerformanceClass", "B").ToString());
+        carbonPayload["batteryCarbonFootprint"] = BatteryPassCanonicalDataCatalog.NormalizeCarbonFootprint(
+            Number(form, "carbonFootprint", carbonPayload.GetValue("batteryCarbonFootprint", 0).ToDouble()));
+        carbonPayload["carbonFootprintPerformanceClass"] = BatteryPassCanonicalDataCatalog.NormalizePerformanceClass(
+            Text(form, "performanceClass", carbonPayload.GetValue("carbonFootprintPerformanceClass", "B").ToString()));
         var lifecycleRows = new BsonArray();
-        var carbonChart = new BsonArray();
-        foreach (var (field, label, stage, color) in CarbonFields)
+        foreach (var carbonStage in BatteryPassCanonicalDataCatalog.CarbonStages)
         {
-            var value = Number(form, field, 0);
+            var value = BatteryPassCanonicalDataCatalog.NormalizeCarbonStageValue(
+                carbonStage.Stage,
+                Number(form, carbonStage.Field, 0));
             lifecycleRows.Add(new BsonDocument
             {
-                ["lifecycleStage"] = stage,
+                ["lifecycleStage"] = carbonStage.Stage,
                 ["carbonFootprint"] = value
-            });
-            carbonChart.Add(new BsonDocument
-            {
-                ["label"] = label,
-                ["value"] = value,
-                ["unit"] = "gCO2e/kWh",
-                ["color"] = color
             });
         }
         carbonPayload["carbonFootprintPerLifecycleStage"] = lifecycleRows;
-        appCharts["carbonFootprint"] = carbonChart;
         carbonPayload["carbonFootprintStudy"] = EnsureDocument(appDocuments, "co2StudyReference").GetValue("url", string.Empty).ToString();
 
         var supplyAspect = EnsureAspectPayload(aspects, "supplyChainDueDiligence", now, "draft");
         var supplyPayload = EnsureDocument(supplyAspect, "payload");
-        supplyPayload["supplyChainIndicies"] = Number(form, "supplyChainIndex", supplyPayload.GetValue("supplyChainIndicies", 0).ToDouble());
+        supplyPayload["supplyChainIndicies"] = BatteryPassCanonicalDataCatalog.NormalizeSupplyChainIndex(
+            Number(form, "supplyChainIndex", supplyPayload.GetValue("supplyChainIndicies", 0).ToDouble()));
         supplyPayload["supplyChainDueDiligenceReport"] = EnsureDocument(appDocuments, "dueDiligenceReport").GetValue("url", string.Empty).ToString();
         supplyPayload["thirdPartyAussurances"] = EnsureDocument(appDocuments, "thirdPartyAudit").GetValue("url", string.Empty).ToString();
         supplyPayload["sustainabilityReport"] = EnsureDocument(appDocuments, "sustainabilityReport").GetValue("url", string.Empty).ToString();
@@ -1234,20 +1257,11 @@ public class AdminController : Controller
             ("recycledLithium", "Lithium"),
             ("recycledLead", "Lead")
         };
-        var recycledChart = new BsonArray();
         var recycledAspectRows = new BsonArray();
         foreach (var (prefix, material) in recycledMaterials)
         {
             var pre = Number(form, $"{prefix}Pre", 0);
             var post = Number(form, $"{prefix}Post", 0);
-            var primary = Number(form, $"{prefix}Primary", Math.Max(0, 100 - pre - post));
-            recycledChart.Add(new BsonDocument
-            {
-                ["material"] = material,
-                ["preConsumerShare"] = pre,
-                ["postConsumerShare"] = post,
-                ["primaryMaterialShare"] = primary
-            });
             recycledAspectRows.Add(new BsonDocument
             {
                 ["recycledMaterial"] = material,
@@ -1255,8 +1269,8 @@ public class AdminController : Controller
                 ["postConsumerShare"] = post
             });
         }
-        appCharts["recycledContent"] = recycledChart;
         circularityPayload["recycledContent"] = recycledAspectRows;
+        RemoveDuplicatedDisplayCharts(app);
 
         var registryInfo = EnsureDocument(document, "registryInfo");
         registryInfo["status"] = Text(form, "status", registryInfo.GetValue("status", "draft").ToString());
@@ -1304,10 +1318,10 @@ public class AdminController : Controller
         return document;
     }
 
-    private static string Text(IFormCollection form, string key, string fallback = "")
+    private static string Text(IFormCollection form, string key, string? fallback = "")
     {
         var value = form[key].FirstOrDefault()?.Trim();
-        return string.IsNullOrWhiteSpace(value) ? fallback : value;
+        return string.IsNullOrWhiteSpace(value) ? fallback ?? string.Empty : value;
     }
 
     private static double Number(IFormCollection form, string key, double fallback)
@@ -1316,7 +1330,7 @@ public class AdminController : Controller
         return double.TryParse(text, out var parsed) ? parsed : fallback;
     }
 
-    private static string DateOnly(string value)
+    private static string DateOnly(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -1324,6 +1338,41 @@ public class AdminController : Controller
         }
 
         return value.Length >= 10 ? value[..10] : value;
+    }
+
+    private static string NormalizeDocumentVisibility(string visibility)
+    {
+        return visibility.Equals("public", StringComparison.OrdinalIgnoreCase) ? "public" : "private";
+    }
+
+    private static string BsonText(BsonValue? value)
+    {
+        return value == null || value.IsBsonNull ? string.Empty : value.ToString() ?? string.Empty;
+    }
+
+    private static BsonDocument DemoMaterialLocation()
+    {
+        return new BsonDocument
+        {
+            ["componentName"] = "Cell",
+            ["componentId"] = "DEMO-CELL-01"
+        };
+    }
+
+    private static void RemoveDuplicatedDisplayCharts(BsonDocument app)
+    {
+        if (app.GetValue("charts", BsonNull.Value) is not BsonDocument charts)
+        {
+            return;
+        }
+
+        charts.Remove("materialComposition");
+        charts.Remove("carbonFootprint");
+        charts.Remove("recycledContent");
+        if (!charts.Any())
+        {
+            app.Remove("charts");
+        }
     }
 
     private static double NumberAtDocument(BsonDocument parent, string key, string nestedKey)

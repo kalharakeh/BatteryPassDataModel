@@ -94,6 +94,23 @@ public sealed class AuditRevisionServiceTests
     }
 
     [Fact]
+    public async Task CreateSignedRevisionAsync_ShouldFailWhenMongoPersistenceIsUnavailable()
+    {
+        var service = new AuditRevisionService();
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.CreateSignedRevisionAsync(
+                "did:web:acme.battery.pass:test-001",
+                BuildSnapshot(),
+                "abc123",
+                new BsonDocument { ["proofValue"] = "signature-demo" },
+                "admin@example.test",
+                "2026-05-06T10:00:00.0000000Z"));
+
+        Assert.Contains("signed revision was not recorded", exception.Message);
+        Assert.Contains("trust state was not changed", exception.Message);
+    }
+
+    [Fact]
     public void PassportRepository_ShouldExposeTrustSignatureAndPublishPersistenceMethods()
     {
         var source = File.ReadAllText(RepoFile("web", "Services", "PassportRepository.cs"));

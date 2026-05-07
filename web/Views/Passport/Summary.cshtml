@@ -39,11 +39,17 @@
                 }
                 <a class="bp-primary-button mt-3" href="/@Uri.EscapeDataString(passport.PassportId)">Detailed report</a>
             </div>
-            <div>
-                <div class="bp-image-wrap">
-                    <img src="@passport.BatteryImageUrl" alt="@passport.BatteryImageAlt" class="bp-battery-image" />
+            <div class="bp-summary-media-panel">
+                <div class="bp-summary-image-frame">
+                    <div class="bp-image-wrap">
+                        <img src="@passport.BatteryImageUrl" alt="@passport.BatteryImageAlt" class="bp-battery-image" />
+                    </div>
                 </div>
-                <p class="bp-help-text mt-2">@passport.BatteryImageAlt</p>
+                <a class="bp-summary-qr-download"
+                   href="/qr/@Uri.EscapeDataString(passport.PassportId)/download"
+                   aria-label="Save passport code for @passport.PassportId">
+                    <img src="/qr/@Uri.EscapeDataString(passport.PassportId)/svg" alt="QR code for @passport.PassportId" />
+                </a>
             </div>
         </div>
 

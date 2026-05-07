@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
+using MongoDB.Driver;
 using System.Text.Json;
 
 namespace BatteryPassWeb.Controllers;
@@ -12,6 +13,8 @@ namespace BatteryPassWeb.Controllers;
 [Route("api/passports")]
 public class PassportsApiController : ControllerBase
 {
+    private const string TrustWorkflowServiceErrorMessage = "The trust workflow could not be completed because MongoDB/service persistence is unavailable. No signed or published trust state was claimed. Please retry after the service is healthy.";
+
     private readonly PassportRepository _passportRepository;
     private readonly PassportValidationService _passportValidationService;
     private readonly PassportPublishPolicyService _passportPublishPolicyService;
@@ -195,50 +198,62 @@ public class PassportsApiController : ControllerBase
             });
         }
 
-        var actor = CurrentActor();
-        var signature = _passportTrustService.Sign(passport, actor);
-        var revision = await _auditRevisionService.CreateSignedRevisionAsync(
-            passportId,
-            signature.Snapshot,
-            signature.Hash,
-            signature.Proof,
-            actor,
-            signature.SignedAt,
-            cancellationToken);
-        var revisionId = BsonHelpers.GetString(revision, "revisionId");
-
-        await _passportRepository.UpdateTrustSignatureAsync(
-            passportId,
-            summary,
-            signature.Hash,
-            signature.Proof,
-            revisionId,
-            signature.SignedAt,
-            cancellationToken);
-        await _auditRevisionService.AppendAuditEventAsync(
-            passportId,
-            "passport.signed",
-            actor,
-            "admin",
-            "api",
-            "Passport signed through API.",
-            new BsonDocument
-            {
-                ["revisionId"] = revisionId,
-                ["hash"] = $"sha256:{signature.Hash}"
-            },
-            cancellationToken);
-
-        return Ok(new
+        try
         {
-            passportId,
-            signed = true,
-            revisionId,
-            hash = signature.Hash,
-            signedAt = signature.SignedAt,
-            proof = BsonHelpers.ToDotNet(signature.Proof),
-            verification = _passportTrustService.Verify(passport, signature.Hash, signature.Proof)
-        });
+            var actor = CurrentActor();
+            var signature = _passportTrustService.Sign(passport, actor);
+            var revision = await _auditRevisionService.CreateSignedRevisionAsync(
+                passportId,
+                signature.Snapshot,
+                signature.Hash,
+                signature.Proof,
+                actor,
+                signature.SignedAt,
+                cancellationToken);
+            var revisionId = BsonHelpers.GetString(revision, "revisionId");
+
+            var trustUpdated = await _passportRepository.UpdateTrustSignatureAsync(
+                passportId,
+                summary,
+                signature.Hash,
+                signature.Proof,
+                revisionId,
+                signature.SignedAt,
+                cancellationToken);
+            if (!trustUpdated)
+            {
+                throw new InvalidOperationException("Signing service could not persist the trust state after recording the signed revision.");
+            }
+
+            await _auditRevisionService.AppendAuditEventAsync(
+                passportId,
+                "passport.signed",
+                actor,
+                "admin",
+                "api",
+                "Passport signed through API.",
+                new BsonDocument
+                {
+                    ["revisionId"] = revisionId,
+                    ["hash"] = $"sha256:{signature.Hash}"
+                },
+                cancellationToken);
+
+            return Ok(new
+            {
+                passportId,
+                signed = true,
+                revisionId,
+                hash = signature.Hash,
+                signedAt = signature.SignedAt,
+                proof = BsonHelpers.ToDotNet(signature.Proof),
+                verification = _passportTrustService.Verify(passport, signature.Hash, signature.Proof)
+            });
+        }
+        catch (Exception exception) when (IsTrustPersistenceFailure(exception))
+        {
+            return TrustServiceUnavailable(passportId, exception);
+        }
     }
 
     [HttpPost("{passportId}/publish")]
@@ -299,37 +314,54 @@ public class PassportsApiController : ControllerBase
 
         var publishedAt = DateTimeOffset.UtcNow.ToString("O");
         var publishedProof = BsonHelpers.GetValue(passport, "trust", "latestProof") as BsonDocument ?? new BsonDocument();
-        await _passportRepository.PublishPassportAsync(
-            passportId,
-            revisionId,
-            publishedAt,
-            verification.CurrentHash,
-            publishedProof,
-            cancellationToken);
-        await _auditRevisionService.MarkRevisionPublishedAsync(revisionId, publishedAt, cancellationToken);
-        await _auditRevisionService.AppendAuditEventAsync(
-            passportId,
-            "passport.published",
-            CurrentActor(),
-            "admin",
-            "api",
-            "Passport published through API.",
-            new BsonDocument
-            {
-                ["revisionId"] = revisionId,
-                ["hash"] = verification.CurrentHash,
-                ["publishedAt"] = publishedAt
-            },
-            cancellationToken);
-
-        return Ok(new
+        try
         {
-            passportId,
-            published = true,
-            revisionId,
-            publishedAt,
-            verification
-        });
+            var published = await _passportRepository.PublishPassportAsync(
+                passportId,
+                revisionId,
+                publishedAt,
+                verification.CurrentHash,
+                publishedProof,
+                cancellationToken);
+            if (!published)
+            {
+                throw new InvalidOperationException("Publishing service could not persist the published trust state.");
+            }
+
+            var revisionMarked = await _auditRevisionService.MarkRevisionPublishedAsync(revisionId, publishedAt, cancellationToken);
+            if (!revisionMarked)
+            {
+                throw new InvalidOperationException("Publishing service could not mark the immutable revision as published.");
+            }
+
+            await _auditRevisionService.AppendAuditEventAsync(
+                passportId,
+                "passport.published",
+                CurrentActor(),
+                "admin",
+                "api",
+                "Passport published through API.",
+                new BsonDocument
+                {
+                    ["revisionId"] = revisionId,
+                    ["hash"] = verification.CurrentHash,
+                    ["publishedAt"] = publishedAt
+                },
+                cancellationToken);
+
+            return Ok(new
+            {
+                passportId,
+                published = true,
+                revisionId,
+                publishedAt,
+                verification
+            });
+        }
+        catch (Exception exception) when (IsTrustPersistenceFailure(exception))
+        {
+            return TrustServiceUnavailable(passportId, exception);
+        }
     }
 
     [AllowAnonymous]
@@ -411,6 +443,22 @@ public class PassportsApiController : ControllerBase
     {
         var actor = AccessControlService.CurrentEmail(User);
         return string.IsNullOrWhiteSpace(actor) ? "api-admin" : actor;
+    }
+
+    private ObjectResult TrustServiceUnavailable(string passportId, Exception exception)
+    {
+        return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+        {
+            error = TrustWorkflowServiceErrorMessage,
+            passportId,
+            detail = exception.Message,
+            retrySafe = true
+        });
+    }
+
+    private static bool IsTrustPersistenceFailure(Exception exception)
+    {
+        return exception is InvalidOperationException or MongoException or TimeoutException;
     }
 
     private static BsonDocument EnsureDocument(BsonDocument parent, string key)

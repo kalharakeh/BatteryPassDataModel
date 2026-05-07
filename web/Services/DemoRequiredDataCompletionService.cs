@@ -56,6 +56,7 @@ public sealed class DemoRequiredDataCompletionService
         var registryInfo = EnsureDocument(completed, "registryInfo");
         registryInfo["status"] = "draft";
         registryInfo["updatedAt"] = now;
+        RemoveDuplicatedDisplayCharts(completed);
         return completed;
     }
 
@@ -114,6 +115,9 @@ public sealed class DemoRequiredDataCompletionService
             case "carbonFootprintForBatteries":
                 ApplyCarbonFootprint(payload);
                 break;
+            case "supplyChainDueDiligence":
+                ApplySupplyChainDueDiligence(payload);
+                break;
         }
     }
 
@@ -122,8 +126,8 @@ public sealed class DemoRequiredDataCompletionService
         var display = BsonHelpers.GetValue(passport, "app", "display") as BsonDocument ?? new BsonDocument();
         var serialNumber = BsonHelpers.GetString(passport, "app", "display", "serialNumber");
         payload["productIdentifier"] = BsonHelpers.GetString(passport, "app", "display", "modelNumber");
-        payload["batteryPassportIdentifier"] = "urn:bmwk:123456687678";
-        payload["batteryCategory"] = "lmt";
+        payload["batteryPassportIdentifier"] = BatteryPassCanonicalDataCatalog.DemoBatteryPassportIdentifier;
+        payload["batteryCategory"] = BatteryPassCanonicalDataCatalog.DemoBatteryCategory;
         payload["batteryStatus"] = "Original";
         payload["batteryMass"] = 699;
         payload["manufacturingDate"] = now;
@@ -201,46 +205,31 @@ public sealed class DemoRequiredDataCompletionService
             payload["batteryMaterials"] = materials;
         }
 
-        var requiredMaterials = new[]
-        {
-            "Nickel",
-            "Copper",
-            "Aluminium",
-            "Graphite",
-            "Manganese",
-            "Cobalt",
-            "Lithium",
-            "Electrolyte and separators"
-        };
+        var existingByLabel = materials
+            .OfType<BsonDocument>()
+            .Where(material => !string.IsNullOrWhiteSpace(BsonHelpers.GetString(material, "batteryMaterialName")))
+            .GroupBy(material => BsonHelpers.GetString(material, "batteryMaterialName"), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
 
-        foreach (var materialName in requiredMaterials)
+        var canonicalRows = new BsonArray();
+        foreach (var definition in BatteryPassCanonicalDataCatalog.Materials)
         {
-            if (!materials.OfType<BsonDocument>().Any(material => BsonHelpers.GetString(material, "batteryMaterialName").Equals(materialName, StringComparison.OrdinalIgnoreCase)))
-            {
-                materials.Add(new BsonDocument
-                {
-                    ["batteryMaterialName"] = materialName,
-                    ["batteryMaterialMass"] = materialName.Equals("Electrolyte and separators", StringComparison.OrdinalIgnoreCase) ? 42.0 : 18.0,
-                    ["batteryMaterialLocation"] = DemoMaterialLocation()
-                });
-            }
-        }
+            var material = existingByLabel.TryGetValue(definition.Label, out var existing)
+                ? existing.DeepClone().AsBsonDocument
+                : new BsonDocument();
 
-        var index = 1;
-        foreach (var material in materials.OfType<BsonDocument>())
-        {
+            material["batteryMaterialName"] = definition.Label;
+            material["batteryMaterialMass"] = definition.DemoMassKg;
             if (material.GetValue("batteryMaterialLocation", BsonNull.Value) is not BsonDocument)
             {
                 material["batteryMaterialLocation"] = DemoMaterialLocation();
             }
             material["batteryMaterialIdentifier"] = "7439-93-2";
-            if (!material.Contains("isCriticalRawMaterial"))
-            {
-                material["isCriticalRawMaterial"] = index <= 3;
-            }
-
-            index++;
+            material["isCriticalRawMaterial"] = definition.IsCriticalRawMaterial;
+            canonicalRows.Add(material);
         }
+
+        payload["batteryMaterials"] = canonicalRows;
     }
 
     private static BsonDocument DemoMaterialLocation()
@@ -321,6 +310,15 @@ public sealed class DemoRequiredDataCompletionService
         }
     }
 
+    private static void ApplySupplyChainDueDiligence(BsonDocument payload)
+    {
+        payload["supplyChainIndicies"] = BatteryPassCanonicalDataCatalog.DemoSupplyChainIndex;
+        SetIfEmpty(payload, "supplyChainDueDiligenceReport", "https://example.test/supply-chain-due-diligence-report");
+        SetIfEmpty(payload, "thirdPartyAussurances", "https://example.test/third-party-audit");
+        SetIfEmpty(payload, "sustainabilityReport", "https://example.test/sustainability-report");
+        SetIfEmpty(payload, "taxonomyReport", "https://example.test/taxonomy-report");
+    }
+
     private static void EnsureMetric(BsonDocument parent, string key, string valueKey, double value, string now)
     {
         var metric = EnsureDocument(parent, key);
@@ -345,6 +343,22 @@ public sealed class DemoRequiredDataCompletionService
         }
 
         return document;
+    }
+
+    private static void RemoveDuplicatedDisplayCharts(BsonDocument passport)
+    {
+        if (BsonHelpers.GetValue(passport, "app", "charts") is not BsonDocument charts)
+        {
+            return;
+        }
+
+        charts.Remove("materialComposition");
+        charts.Remove("carbonFootprint");
+        charts.Remove("recycledContent");
+        if (!charts.Any() && BsonHelpers.GetValue(passport, "app") is BsonDocument app)
+        {
+            app.Remove("charts");
+        }
     }
 
     private static BsonDocument ToBsonDocument(JsonElement element)

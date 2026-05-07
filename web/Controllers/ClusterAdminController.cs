@@ -496,7 +496,8 @@ public class ClusterAdminController : Controller
 
         var generalAspect = EnsureDocument(aspects, "generalProductInformation");
         var generalPayload = EnsureDocument(generalAspect, "payload");
-        generalPayload["batteryCategory"] = BatteryImageCatalog.CategoryForImageUrl(batteryImageUrl);
+        generalPayload["batteryCategory"] = BatteryPassCanonicalDataCatalog.NormalizeBatteryCategory(
+            BsonHelpers.GetString(generalPayload, "batteryCategory"));
         var manufacturingPlace = EnsureDocument(generalPayload, "manufacturingPlace");
         manufacturingPlace["streetAddress"] = facilityId;
         var manufacturerInformation = EnsureDocument(generalPayload, "manufacturerInformation");
@@ -542,10 +543,10 @@ public class ClusterAdminController : Controller
         return document;
     }
 
-    private static string Text(IFormCollection form, string key, string fallback = "")
+    private static string Text(IFormCollection form, string key, string? fallback = "")
     {
         var value = form[key].FirstOrDefault()?.Trim();
-        return string.IsNullOrWhiteSpace(value) ? fallback : value;
+        return string.IsNullOrWhiteSpace(value) ? fallback ?? string.Empty : value;
     }
 
     private static double Number(IFormCollection form, string key, double fallback)

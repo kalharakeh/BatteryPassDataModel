@@ -16,6 +16,9 @@
     BatteryPassWeb.Models.ViewModels.RecycledContentChartViewModel Recycled(string material)
         => passport.RecycledContentCharts.FirstOrDefault(chart => chart.Material.Equals(material, StringComparison.OrdinalIgnoreCase))
             ?? new BatteryPassWeb.Models.ViewModels.RecycledContentChartViewModel { Material = material };
+
+    bool IsPublicDocument(BatteryPassWeb.Models.ViewModels.PassportDocumentLinkViewModel document)
+        => document.Visibility.Equals("public", StringComparison.OrdinalIgnoreCase);
 }
 <main class="bp-page bp-admin-page">
     <h1 class="mb-1">@(isNew ? "Create passport" : "Edit passport")</h1>
@@ -153,7 +156,19 @@
                 <h2>Compliance</h2>
                 <div class="bp-form-grid">
                     <label>@passport.Documents.ConformityAssessment.Label<input type="text" name="document_conformityAssessment" value="@passport.Documents.ConformityAssessment.Url" /></label>
+                    <label>@passport.Documents.ConformityAssessment.Label visibility
+                        <select name="document_conformityAssessment_visibility">
+                            <option value="private" selected="@(!IsPublicDocument(passport.Documents.ConformityAssessment))">Private / privileged</option>
+                            <option value="public" selected="@(IsPublicDocument(passport.Documents.ConformityAssessment))">Public document</option>
+                        </select>
+                    </label>
                     <label>@passport.Documents.EuDeclarationOfConformity.Label<input type="text" name="document_euDeclarationOfConformity" value="@passport.Documents.EuDeclarationOfConformity.Url" /></label>
+                    <label>@passport.Documents.EuDeclarationOfConformity.Label visibility
+                        <select name="document_euDeclarationOfConformity_visibility">
+                            <option value="private" selected="@(!IsPublicDocument(passport.Documents.EuDeclarationOfConformity))">Private / privileged</option>
+                            <option value="public" selected="@(IsPublicDocument(passport.Documents.EuDeclarationOfConformity))">Public document</option>
+                        </select>
+                    </label>
                 </div>
             </section>
 
@@ -162,9 +177,33 @@
                 <div class="bp-form-grid">
                     <label>Supply chain index<input type="number" step="any" name="supplyChainIndex" value="@passport.SupplyChainIndex" /></label>
                     <label>@passport.Documents.SustainabilityReport.Label<input type="text" name="document_sustainabilityReport" value="@passport.Documents.SustainabilityReport.Url" /></label>
+                    <label>@passport.Documents.SustainabilityReport.Label visibility
+                        <select name="document_sustainabilityReport_visibility">
+                            <option value="private" selected="@(!IsPublicDocument(passport.Documents.SustainabilityReport))">Private / privileged</option>
+                            <option value="public" selected="@(IsPublicDocument(passport.Documents.SustainabilityReport))">Public document</option>
+                        </select>
+                    </label>
                     <label>@passport.Documents.DueDiligenceReport.Label<input type="text" name="document_dueDiligenceReport" value="@passport.Documents.DueDiligenceReport.Url" /></label>
+                    <label>@passport.Documents.DueDiligenceReport.Label visibility
+                        <select name="document_dueDiligenceReport_visibility">
+                            <option value="private" selected="@(!IsPublicDocument(passport.Documents.DueDiligenceReport))">Private / privileged</option>
+                            <option value="public" selected="@(IsPublicDocument(passport.Documents.DueDiligenceReport))">Public document</option>
+                        </select>
+                    </label>
                     <label>@passport.Documents.ThirdPartyAudit.Label<input type="text" name="document_thirdPartyAudit" value="@passport.Documents.ThirdPartyAudit.Url" /></label>
+                    <label>@passport.Documents.ThirdPartyAudit.Label visibility
+                        <select name="document_thirdPartyAudit_visibility">
+                            <option value="private" selected="@(!IsPublicDocument(passport.Documents.ThirdPartyAudit))">Private / privileged</option>
+                            <option value="public" selected="@(IsPublicDocument(passport.Documents.ThirdPartyAudit))">Public document</option>
+                        </select>
+                    </label>
                     <label>@passport.Documents.TaxonomyReport.Label<input type="text" name="document_taxonomyReport" value="@passport.Documents.TaxonomyReport.Url" /></label>
+                    <label>@passport.Documents.TaxonomyReport.Label visibility
+                        <select name="document_taxonomyReport_visibility">
+                            <option value="private" selected="@(!IsPublicDocument(passport.Documents.TaxonomyReport))">Private / privileged</option>
+                            <option value="public" selected="@(IsPublicDocument(passport.Documents.TaxonomyReport))">Public document</option>
+                        </select>
+                    </label>
                 </div>
             </section>
 
@@ -233,7 +272,13 @@
                     <label>Main production gCO2e/kWh<input type="number" step="any" name="carbonMainProduction" value="@SegmentValue("main production", passport.CarbonFootprintSegments)" /></label>
                     <label>Distribution gCO2e/kWh<input type="number" step="any" name="carbonDistribution" value="@SegmentValue("distribution", passport.CarbonFootprintSegments)" /></label>
                     <label>Recycling gCO2e/kWh<input type="number" step="any" name="carbonRecycling" value="@SegmentValue("recycling", passport.CarbonFootprintSegments)" /></label>
-                    <label class="bp-span-2">@passport.Documents.Co2StudyReference.Label<input type="text" name="document_co2StudyReference" value="@passport.Documents.Co2StudyReference.Url" /></label>
+                    <label>@passport.Documents.Co2StudyReference.Label<input type="text" name="document_co2StudyReference" value="@passport.Documents.Co2StudyReference.Url" /></label>
+                    <label>@passport.Documents.Co2StudyReference.Label visibility
+                        <select name="document_co2StudyReference_visibility">
+                            <option value="private" selected="@(!IsPublicDocument(passport.Documents.Co2StudyReference))">Private / privileged</option>
+                            <option value="public" selected="@(IsPublicDocument(passport.Documents.Co2StudyReference))">Public document</option>
+                        </select>
+                    </label>
                 </div>
             </section>
 

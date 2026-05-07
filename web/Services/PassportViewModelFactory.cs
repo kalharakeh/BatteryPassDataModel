@@ -18,7 +18,6 @@ public sealed class PassportViewModelFactory
         var appDisplay = GetDocument(app.GetValue("display", new BsonDocument()));
         var appMedia = GetDocument(app.GetValue("media", new BsonDocument()));
         var appDocuments = GetDocument(app.GetValue("documents", new BsonDocument()));
-        var appCharts = GetDocument(app.GetValue("charts", new BsonDocument()));
         var appNotes = GetDocument(app.GetValue("notes", new BsonDocument()));
         var appOperations = GetDocument(app.GetValue("operations", new BsonDocument()));
         var circularityNotes = GetDocument(appNotes.GetValue("circularity", new BsonDocument()));
@@ -35,9 +34,9 @@ public sealed class PassportViewModelFactory
         var modelNumber = FirstNonEmpty(
             appDisplay.GetValue("modelNumber", string.Empty).ToString(),
             BsonHelpers.GetString(generalPayload, "productIdentifier"));
-        var serialNumber = FirstNonEmpty(
-            appDisplay.GetValue("serialNumber", string.Empty).ToString(),
-            BsonHelpers.GetString(generalPayload, "batteryPassportIdentifier"));
+        var serialNumber = BatteryPassCanonicalDataCatalog.NormalizeManufacturerSerialNumber(
+            BsonHelpers.GetString(appDisplay, "serialNumber"),
+            passportId);
         var displayName = FirstNonEmpty(
             appDisplay.GetValue("name", string.Empty).ToString(),
             modelNumber);
@@ -65,23 +64,9 @@ public sealed class PassportViewModelFactory
             appMedia.GetValue("batteryImageAlt", string.Empty).ToString(),
             $"Industrial EV battery pack for passport {modelNumber}");
 
-        var materialSegments = WithPercentages(ReadChartSegments(appCharts.GetValue("materialComposition", new BsonArray())));
-        if (materialSegments.Count == 0)
-        {
-            materialSegments = WithPercentages(BuildMaterialSegmentsFromAspects(materialPayload));
-        }
-
-        var carbonSegments = WithPercentages(ReadChartSegments(appCharts.GetValue("carbonFootprint", new BsonArray())));
-        if (carbonSegments.Count == 0)
-        {
-            carbonSegments = WithPercentages(BuildCarbonSegmentsFromAspects(carbonPayload));
-        }
-
-        var recycledContentCharts = ReadRecycledContentCharts(appCharts.GetValue("recycledContent", new BsonArray()));
-        if (recycledContentCharts.Count == 0)
-        {
-            recycledContentCharts = BuildRecycledContentFromAspects(circularityPayload);
-        }
+        var materialSegments = WithPercentages(BuildMaterialSegmentsFromAspects(materialPayload));
+        var carbonSegments = WithPercentages(BuildCarbonSegmentsFromAspects(carbonPayload));
+        var recycledContentCharts = BuildRecycledContentFromAspects(circularityPayload);
 
         var materialRows = ReadMaterialRows(materialPayload);
         var technical = GetDocument(performancePayload.GetValue("batteryTechicalProperties", new BsonDocument()));
@@ -133,7 +118,7 @@ public sealed class PassportViewModelFactory
                 BsonHelpers.GetString(carbonPayload, "carbonFootprintStudy"))
         };
 
-        var carbonFootprint = NumberAt(carbonPayload, "batteryCarbonFootprint");
+        var carbonFootprint = BatteryPassCanonicalDataCatalog.NormalizeCarbonFootprint(NumberAt(carbonPayload, "batteryCarbonFootprint"));
         var isValid = BoolAt(document, "validation", "isValid");
         var trust = GetDocument(document.GetValue("trust", new BsonDocument()));
         var validationSummary = GetDocument(trust.GetValue("validationSummary", new BsonDocument()));
@@ -200,7 +185,7 @@ public sealed class PassportViewModelFactory
             BatteryImageAlt = batteryImageAlt,
             CarbonFootprint = carbonFootprint,
             CarbonFootprintLabel = $"{carbonFootprint:F2}gCO2e/kWh",
-            PerformanceClass = BsonHelpers.GetString(carbonPayload, "carbonFootprintPerformanceClass"),
+            PerformanceClass = BatteryPassCanonicalDataCatalog.NormalizePerformanceClass(BsonHelpers.GetString(carbonPayload, "carbonFootprintPerformanceClass")),
             Performance = new PassportPerformanceViewModel
             {
                 RatedEnergy = NumberAt(technical, "ratedEnergy"),
@@ -248,21 +233,22 @@ public sealed class PassportViewModelFactory
             RecycledContentCharts = recycledContentCharts,
             BatteryMaterials = materialRows,
             MaterialCompositionTotal = materialSegments.Sum(segment => segment.Value),
-            SupplyChainIndex = NumberAt(supplyChainPayload, "supplyChainIndicies")
+            SupplyChainIndex = BatteryPassCanonicalDataCatalog.NormalizeSupplyChainIndex(NumberAt(supplyChainPayload, "supplyChainIndicies"))
         };
     }
 
     private static PassportDocumentLinkViewModel ReadDocument(BsonDocument appDocuments, string key, string fallbackLabel, string fallbackUrl)
     {
         var document = GetDocument(appDocuments.GetValue(key, new BsonDocument()));
-        var fileId = document.GetValue("fileId", string.Empty).ToString();
-        var label = FirstNonEmpty(document.GetValue("label", string.Empty).ToString(), fallbackLabel);
-        var url = NormalizeDocumentUrl(FirstNonEmpty(document.GetValue("url", string.Empty).ToString(), fallbackUrl), fileId);
+        var fileId = ValueText(document.GetValue("fileId", string.Empty));
+        var label = FirstNonEmpty(ValueText(document.GetValue("label", string.Empty)), fallbackLabel);
+        var url = NormalizeDocumentUrl(FirstNonEmpty(ValueText(document.GetValue("url", string.Empty)), fallbackUrl), fileId);
         return new PassportDocumentLinkViewModel(
             label,
             url,
             fileId,
-            document.GetValue("contentType", string.Empty).ToString());
+            ValueText(document.GetValue("contentType", string.Empty)),
+            ValueText(document.GetValue("visibility", "private")));
     }
 
     private static string NormalizeDocumentUrl(string url, string fileId)
@@ -312,7 +298,7 @@ public sealed class PassportViewModelFactory
         return value is BsonDocument document ? document : new BsonDocument();
     }
 
-    private static string FirstNonEmpty(params string[] values)
+    private static string FirstNonEmpty(params string?[] values)
     {
         foreach (var value in values)
         {
@@ -323,6 +309,21 @@ public sealed class PassportViewModelFactory
         }
 
         return string.Empty;
+    }
+
+    private static string ValueText(BsonValue? value)
+    {
+        return value == null || value.IsBsonNull ? string.Empty : value.ToString() ?? string.Empty;
+    }
+
+    private static double NumberFromValue(BsonValue value)
+    {
+        if (value.IsNumeric)
+        {
+            return value.ToDouble();
+        }
+
+        return double.TryParse(value.ToString(), out var parsed) ? parsed : 0;
     }
 
     private static string BuildProofStatus(
@@ -418,33 +419,6 @@ public sealed class PassportViewModelFactory
                 : value;
     }
 
-    private static List<ChartSegmentViewModel> ReadChartSegments(BsonValue chartValue)
-    {
-        if (chartValue is not BsonArray chartArray)
-        {
-            return [];
-        }
-
-        var segments = new List<ChartSegmentViewModel>();
-        foreach (var item in chartArray)
-        {
-            if (item is not BsonDocument segment)
-            {
-                continue;
-            }
-
-            segments.Add(new ChartSegmentViewModel
-            {
-                Label = segment.GetValue("label", string.Empty).ToString(),
-                Value = segment.GetValue("value", 0).ToDouble(),
-                Unit = segment.GetValue("unit", string.Empty).ToString(),
-                Color = segment.GetValue("color", string.Empty).ToString()
-            });
-        }
-
-        return segments.Where(segment => !string.IsNullOrWhiteSpace(segment.Label)).ToList();
-    }
-
     private static List<ChartSegmentViewModel> BuildMaterialSegmentsFromAspects(BsonDocument materialPayload)
     {
         var materials = materialPayload.GetValue("batteryMaterials", new BsonArray());
@@ -453,12 +427,6 @@ public sealed class PassportViewModelFactory
             return [];
         }
 
-        var colorByIndex = new[]
-        {
-            "#4f6f7d", "#d76f3d", "#aeb4ba", "#27313f", "#d9b64e", "#0aa34f", "#85c7d6", "#e7d99d"
-        };
-
-        var index = 0;
         var result = new List<ChartSegmentViewModel>();
         foreach (var item in materialArray)
         {
@@ -467,14 +435,16 @@ public sealed class PassportViewModelFactory
                 continue;
             }
 
+            var label = ValueText(material.GetValue("batteryMaterialName", string.Empty));
             result.Add(new ChartSegmentViewModel
             {
-                Label = material.GetValue("batteryMaterialName", string.Empty).ToString(),
-                Value = material.GetValue("batteryMaterialMass", 0).ToDouble(),
+                Label = label,
+                Value = BatteryPassCanonicalDataCatalog.NormalizeMaterialMass(
+                    label,
+                    NumberFromValue(material.GetValue("batteryMaterialMass", 0))),
                 Unit = "kg",
-                Color = colorByIndex[index % colorByIndex.Length]
+                Color = BatteryPassCanonicalDataCatalog.MaterialByLabel(label).Color
             });
-            index++;
         }
 
         return result.Where(segment => !string.IsNullOrWhiteSpace(segment.Label)).ToList();
@@ -496,11 +466,13 @@ public sealed class PassportViewModelFactory
                 continue;
             }
 
-            var rawLabel = stage.GetValue("lifecycleStage", string.Empty).ToString();
+            var rawLabel = ValueText(stage.GetValue("lifecycleStage", string.Empty));
             result.Add(new ChartSegmentViewModel
             {
                 Label = HumanizeLifecycleStage(rawLabel),
-                Value = stage.GetValue("carbonFootprint", 0).ToDouble(),
+                Value = BatteryPassCanonicalDataCatalog.NormalizeCarbonStageValue(
+                    rawLabel,
+                    NumberFromValue(stage.GetValue("carbonFootprint", 0))),
                 Unit = "gCO2e/kWh"
             });
         }
@@ -529,33 +501,6 @@ public sealed class PassportViewModelFactory
         return withSpaces.Replace("_", " ").Trim().ToLowerInvariant();
     }
 
-    private static List<RecycledContentChartViewModel> ReadRecycledContentCharts(BsonValue recycledValue)
-    {
-        if (recycledValue is not BsonArray recycledArray)
-        {
-            return [];
-        }
-
-        var result = new List<RecycledContentChartViewModel>();
-        foreach (var item in recycledArray)
-        {
-            if (item is not BsonDocument recycled)
-            {
-                continue;
-            }
-
-            result.Add(new RecycledContentChartViewModel
-            {
-                Material = recycled.GetValue("material", string.Empty).ToString(),
-                PreConsumerShare = recycled.GetValue("preConsumerShare", 0).ToDouble(),
-                PostConsumerShare = recycled.GetValue("postConsumerShare", 0).ToDouble(),
-                PrimaryMaterialShare = recycled.GetValue("primaryMaterialShare", 0).ToDouble()
-            });
-        }
-
-        return result.Where(row => !string.IsNullOrWhiteSpace(row.Material)).ToList();
-    }
-
     private static List<RecycledContentChartViewModel> BuildRecycledContentFromAspects(BsonDocument circularityPayload)
     {
         var recycledValues = circularityPayload.GetValue("recycledContent", new BsonArray());
@@ -576,7 +521,7 @@ public sealed class PassportViewModelFactory
             var post = recycled.GetValue("postConsumerShare", 0).ToDouble();
             result.Add(new RecycledContentChartViewModel
             {
-                Material = recycled.GetValue("recycledMaterial", string.Empty).ToString(),
+                Material = ValueText(recycled.GetValue("recycledMaterial", string.Empty)),
                 PreConsumerShare = pre,
                 PostConsumerShare = post,
                 PrimaryMaterialShare = Math.Max(0, 100 - pre - post)
@@ -605,9 +550,11 @@ public sealed class PassportViewModelFactory
             var location = GetDocument(material.GetValue("batteryMaterialLocation", new BsonDocument()));
             rows.Add(new BatteryMaterialRowViewModel
             {
-                MaterialName = material.GetValue("batteryMaterialName", string.Empty).ToString(),
-                MaterialMass = material.GetValue("batteryMaterialMass", 0).ToDouble(),
-                ComponentName = location.GetValue("componentName", string.Empty).ToString(),
+                MaterialName = ValueText(material.GetValue("batteryMaterialName", string.Empty)),
+                MaterialMass = BatteryPassCanonicalDataCatalog.NormalizeMaterialMass(
+                    ValueText(material.GetValue("batteryMaterialName", string.Empty)),
+                    NumberFromValue(material.GetValue("batteryMaterialMass", 0))),
+                ComponentName = ValueText(location.GetValue("componentName", string.Empty)),
                 IsCriticalRawMaterial = material.GetValue("isCriticalRawMaterial", false).ToBoolean()
             });
         }

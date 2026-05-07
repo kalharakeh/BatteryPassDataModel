@@ -410,3 +410,35 @@ These are not the token-based external integration API; they use app login/cooki
 6. Verify read token cannot write.
 7. Verify out-of-scope token gets `403`.
 8. Verify telemetry write appears in detail history charts.
+
+## 11. Trust workflow hardening checklist
+
+Use this checklist after Section 5 changes to verify the demonstrator is ready for a clean end-to-end demo.
+
+### 11.1 Happy path: validation -> sign -> publish -> QR scan
+
+1. Log in as a global admin.
+2. Open `/admin/passports/{passportId}/edit` and save complete required passport data.
+3. Open `/admin/passports/{passportId}/conformance`.
+4. Click `Validate passport` and confirm blocking errors are zero.
+5. Click `Sign passport` and confirm an immutable revision appears in revision history.
+6. Click `Publish passport` and confirm the passport is publicly searchable.
+7. Download or display the passport QR code.
+8. Open `/`, click the QR icon in the main search field, upload or scan the QR code, and confirm the public summary opens.
+
+### 11.2 Dirty recovery path: dirty -> validate -> sign -> publish
+
+1. Edit a signed passport canonical field in the admin form.
+2. Confirm the conformance page reports the passport as dirty or not currently publishable.
+3. Click `Validate passport`.
+4. Resolve any blocking errors shown by section and field path.
+5. Click `Sign passport` to create a new revision and proof hash.
+6. Click `Publish passport` again so the published state points to the latest signed revision.
+
+### 11.3 Failure and access checks
+
+1. MongoDB/service failure: temporarily use an invalid MongoDB URI in a local test environment and try to sign or publish. The UI/API should show a service error, and it must not claim a successful signed or published trust state.
+2. Signature mismatch: edit signed canonical data after signing and confirm verification shows an invalid/dirty state with hash diagnostics, without exposing private-key details.
+3. Validation failure: remove a required field, validate, and confirm draft edits remain saved while signing stays unavailable.
+4. Restricted file access: upload a private document, try to download it without the right login/cluster access, and confirm the restricted document download returns 403 and writes an audit event.
+5. QR scan fallback: test camera denial, unsupported native barcode detection, and SVG upload. Manual DID search should remain available.

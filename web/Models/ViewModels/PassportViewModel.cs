@@ -108,7 +108,7 @@ public sealed class PassportDocumentsViewModel
     public PassportDocumentLinkViewModel Co2StudyReference { get; init; } = new("CO2 study reference", string.Empty);
 }
 
-public sealed record PassportDocumentLinkViewModel(string Label, string Url, string FileId = "", string ContentType = "");
+public sealed record PassportDocumentLinkViewModel(string Label, string Url, string FileId = "", string ContentType = "", string Visibility = "private");
 
 public sealed class ChartSegmentViewModel
 {

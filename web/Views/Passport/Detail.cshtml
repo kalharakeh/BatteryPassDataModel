@@ -34,7 +34,9 @@
                 <p class="bp-passport-id">@passport.PassportId</p>
                 <h1>@passport.ModelNumber</h1>
                 <p class="text-secondary">Cluster: @passport.ClusterLabel</p>
-                <a href="/@Uri.EscapeDataString(passport.PassportId)/summary" class="bp-primary-button bp-button-compact mt-3">Open summary report</a>
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <a href="/@Uri.EscapeDataString(passport.PassportId)/summary" class="bp-primary-button bp-button-compact">Open summary report</a>
+                </div>
             </div>
             <div>
                 <div class="bp-image-wrap">

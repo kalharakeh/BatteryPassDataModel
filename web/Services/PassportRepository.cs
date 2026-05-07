@@ -187,6 +187,44 @@ public sealed class PassportRepository
         return result.MatchedCount > 0;
     }
 
+    public async Task<bool> UpdateDocumentReferenceAsync(
+        string passportId,
+        string documentKey,
+        string fileId,
+        string url,
+        string contentType,
+        string sha256,
+        string visibility,
+        CancellationToken cancellationToken = default)
+    {
+        var collection = GetCollection();
+        if (collection == null
+            || string.IsNullOrWhiteSpace(passportId)
+            || string.IsNullOrWhiteSpace(documentKey)
+            || !IsSafeDocumentKey(documentKey)
+            || string.IsNullOrWhiteSpace(fileId))
+        {
+            return false;
+        }
+
+        var now = DateTime.UtcNow.ToString("O");
+        var update = Builders<BsonDocument>.Update
+            .Set($"app.documents.{documentKey}.fileId", fileId)
+            .Set($"app.documents.{documentKey}.url", url)
+            .Set($"app.documents.{documentKey}.contentType", contentType)
+            .Set($"app.documents.{documentKey}.sha256", sha256)
+            .Set($"app.documents.{documentKey}.visibility", visibility)
+            .Set($"app.documents.{documentKey}.uploadedAt", now)
+            .Set("registryInfo.updatedAt", now);
+
+        var result = await collection.UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("passportId", passportId),
+            update,
+            cancellationToken: cancellationToken);
+
+        return result.MatchedCount > 0;
+    }
+
     public async Task UpdateTrustValidationAsync(string passportId, TrustValidationSummary summary, CancellationToken cancellationToken = default)
     {
         var collection = GetCollection();
@@ -236,7 +274,7 @@ public sealed class PassportRepository
             cancellationToken: cancellationToken);
     }
 
-    public async Task UpdateTrustSignatureAsync(
+    public async Task<bool> UpdateTrustSignatureAsync(
         string passportId,
         TrustValidationSummary summary,
         string hash,
@@ -248,12 +286,12 @@ public sealed class PassportRepository
         var collection = GetCollection();
         if (collection == null || string.IsNullOrWhiteSpace(passportId))
         {
-            return;
+            return false;
         }
 
         var now = DateTime.UtcNow.ToString("O");
         var proofValue = ProofValue(proof);
-        await collection.UpdateOneAsync(
+        var result = await collection.UpdateOneAsync(
             Builders<BsonDocument>.Filter.Eq("passportId", passportId),
             Builders<BsonDocument>.Update
                 .Set("validation.isValid", summary.BlockingErrorCount == 0)
@@ -281,9 +319,10 @@ public sealed class PassportRepository
                 .Set("trust.lastSignedAt", signedAt)
                 .Set("registryInfo.updatedAt", now),
             cancellationToken: cancellationToken);
+        return result.MatchedCount > 0;
     }
 
-    public async Task PublishPassportAsync(
+    public async Task<bool> PublishPassportAsync(
         string passportId,
         string revisionId,
         string publishedAt,
@@ -294,12 +333,12 @@ public sealed class PassportRepository
         var collection = GetCollection();
         if (collection == null || string.IsNullOrWhiteSpace(passportId))
         {
-            return;
+            return false;
         }
 
         var timestamp = string.IsNullOrWhiteSpace(publishedAt) ? DateTime.UtcNow.ToString("O") : publishedAt;
         var proofValue = ProofValue(proof);
-        await collection.UpdateOneAsync(
+        var result = await collection.UpdateOneAsync(
             Builders<BsonDocument>.Filter.Eq("passportId", passportId),
             Builders<BsonDocument>.Update
                 .Set("registryInfo.status", "published")
@@ -315,6 +354,7 @@ public sealed class PassportRepository
                 .Set("trust.publishedRevisionId", revisionId)
                 .Set("trust.publishedAt", timestamp),
             cancellationToken: cancellationToken);
+        return result.MatchedCount > 0;
     }
 
     private IMongoCollection<BsonDocument>? GetCollection()
@@ -357,6 +397,11 @@ public sealed class PassportRepository
     private static string ProofValue(BsonDocument proof)
     {
         return BsonHelpers.GetString(proof, "proofValue");
+    }
+
+    private static bool IsSafeDocumentKey(string documentKey)
+    {
+        return documentKey.All(character => char.IsLetterOrDigit(character) || character is '_' or '-');
     }
 
     private static PassportSummaryViewModel ToSummary(BsonDocument document)

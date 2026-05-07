@@ -81,16 +81,15 @@ public sealed class AuditRevisionService
         CancellationToken cancellationToken = default)
     {
         var collection = GetPassportRevisionsCollection();
-        var revisionNumber = collection == null
-            ? 1
-            : await GetNextRevisionNumberAsync(collection, passportId, cancellationToken);
-        var revision = BuildRevisionDocument(passportId, revisionNumber, snapshot, hash, proof, actor, signedAt);
-
-        if (collection != null)
+        if (collection == null)
         {
-            await collection.InsertOneAsync(revision, cancellationToken: cancellationToken);
+            throw new InvalidOperationException("MongoDB persistence is unavailable; signed revision was not recorded and trust state was not changed.");
         }
 
+        var revisionNumber = await GetNextRevisionNumberAsync(collection, passportId, cancellationToken);
+        var revision = BuildRevisionDocument(passportId, revisionNumber, snapshot, hash, proof, actor, signedAt);
+
+        await collection.InsertOneAsync(revision, cancellationToken: cancellationToken);
         return revision;
     }
 
@@ -146,7 +145,7 @@ public sealed class AuditRevisionService
             .ToListAsync(cancellationToken);
     }
 
-    public async Task MarkRevisionPublishedAsync(
+    public async Task<bool> MarkRevisionPublishedAsync(
         string revisionId,
         string publishedAt,
         CancellationToken cancellationToken = default)
@@ -154,16 +153,17 @@ public sealed class AuditRevisionService
         var collection = GetPassportRevisionsCollection();
         if (collection == null || string.IsNullOrWhiteSpace(revisionId))
         {
-            return;
+            return false;
         }
 
         var timestamp = string.IsNullOrWhiteSpace(publishedAt) ? DateTimeOffset.UtcNow.ToString("O") : publishedAt;
-        await collection.UpdateOneAsync(
+        var result = await collection.UpdateOneAsync(
             Builders<BsonDocument>.Filter.Eq("revisionId", revisionId),
             Builders<BsonDocument>.Update
                 .Set("status", "published")
                 .Set("publishedAt", timestamp),
             cancellationToken: cancellationToken);
+        return result.MatchedCount > 0;
     }
 
     private async Task<int> GetNextRevisionNumberAsync(

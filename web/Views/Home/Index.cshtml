@@ -1,6 +1,9 @@
 @{
     ViewData["Title"] = "Scania Battery Passport Viewer";
     var samplePassportId = ViewData["SamplePassportId"] as string ?? "did:web:acme.battery.pass:sample-customer-north-001";
+    var searchQuery = ViewData["SearchQuery"] as string ?? string.Empty;
+    var searchWasNotFound = ViewData["SearchNotFound"] is true;
+    var isAdminSearch = ViewData["IsAdminSearch"] is true;
 }
 <main class="bp-landing">
     <div class="bp-landing-content">
@@ -8,12 +11,343 @@
             <h1>Scania Battery Passport Viewer</h1>
             <p>Enter a battery passport DID to open the public demonstrator view.</p>
         </div>
-        <form action="/search" class="bp-search-form">
-            <input name="q" placeholder="@samplePassportId" />
-            <button type="submit">Search</button>
+        @if (searchWasNotFound && !string.IsNullOrWhiteSpace(searchQuery))
+        {
+            <p class="bp-warning">
+                @if (isAdminSearch)
+                {
+                    <span>No battery passport ID was found for <span class="fw-semibold">@searchQuery</span>.</span>
+                }
+                else
+                {
+                    <span>No published, verified battery passport ID was found for <span class="fw-semibold">@searchQuery</span>. Check the ID or ask an admin whether the passport is still a draft.</span>
+                }
+            </p>
+        }
+        <form action="/search" class="bp-search-form bp-landing-search" data-search-form>
+            <div class="bp-search-main-row">
+                <div class="bp-search-input-shell">
+                    <input name="q" value="@searchQuery" placeholder="@samplePassportId" data-search-query aria-describedby="bpLandingSearchMessage" />
+                    <button type="button" class="bp-qr-trigger" data-qr-trigger aria-label="Scan a battery passport QR code">
+                        <span class="bp-qr-trigger-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" focusable="false">
+                                <path d="M4 4h6v6H4V4Zm2 2v2h2V6H6Zm8-2h6v6h-6V4Zm2 2v2h2V6h-2ZM4 14h6v6H4v-6Zm2 2v2h2v-2H6Zm8-2h2v2h-2v-2Zm4 0h2v2h-2v-2Zm-4 4h2v2h-2v-2Zm4 0h2v2h-2v-2Z" />
+                            </svg>
+                        </span>
+                    </button>
+                </div>
+                <button type="submit">Search</button>
+            </div>
+            <p id="bpLandingSearchMessage" class="bp-search-inline-message" data-empty-search-message hidden>
+                Enter a battery passport DID or use the QR icon inside the field before searching.
+            </p>
         </form>
         <div class="bp-landing-links">
             <a href="/search?q=@Uri.EscapeDataString(samplePassportId)">Search sample battery</a>
         </div>
     </div>
+
+    <div class="bp-qr-modal" data-qr-modal hidden>
+        <button type="button" class="bp-qr-modal-backdrop" data-qr-close aria-label="Close QR scanner"></button>
+        <section class="bp-qr-modal-panel" data-qr-scanner role="dialog" aria-modal="true" aria-labelledby="qrScannerTitle">
+            <button type="button" class="bp-qr-close" data-qr-close aria-label="Close QR scanner">
+                <span aria-hidden="true">&times;</span>
+            </button>
+            <h2 id="qrScannerTitle">Scan a battery pass QR code</h2>
+            <div class="bp-qr-camera-frame">
+                <video class="bp-qr-video" data-qr-video muted playsinline hidden></video>
+                <div class="bp-qr-placeholder" data-qr-placeholder aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <path d="M4 4h6v6H4V4Zm2 2v2h2V6H6Zm8-2h6v6h-6V4Zm2 2v2h2V6h-2ZM4 14h6v6H4v-6Zm2 2v2h2v-2H6Zm8-2h2v2h-2v-2Zm4 0h2v2h-2v-2Zm-4 4h2v2h-2v-2Zm4 0h2v2h-2v-2Z" />
+                    </svg>
+                </div>
+            </div>
+            <button type="button" class="bp-primary-button bp-qr-start-button" data-qr-camera>Start scanning</button>
+            <button type="button" class="bp-secondary-button bp-qr-stop-button" data-qr-stop hidden>Stop camera</button>
+            <label class="bp-qr-upload-link">
+                Scan an image file
+                <input type="file" accept="image/*,.svg" data-qr-file />
+            </label>
+            <p class="bp-qr-status" data-qr-status>QR scan failed? Enter the DID manually in the search field.</p>
+        </section>
+    </div>
 </main>
+
+@section Scripts {
+    <script src="~/lib/jsqr/jsQR.js" asp-append-version="true"></script>
+    <script>
+        (() => {
+            const panel = document.querySelector('[data-qr-scanner]');
+            if (!panel) {
+                return;
+            }
+
+            const form = document.querySelector('[data-search-form]');
+            const input = document.querySelector('[data-search-query]');
+            const emptyMessage = document.querySelector('[data-empty-search-message]');
+            const triggerButton = document.querySelector('[data-qr-trigger]');
+            const modal = document.querySelector('[data-qr-modal]');
+            const closeButtons = document.querySelectorAll('[data-qr-close]');
+            const cameraButton = panel.querySelector('[data-qr-camera]');
+            const stopButton = panel.querySelector('[data-qr-stop]');
+            const fileInput = panel.querySelector('[data-qr-file]');
+            const video = panel.querySelector('[data-qr-video]');
+            const placeholder = panel.querySelector('[data-qr-placeholder]');
+            const status = panel.querySelector('[data-qr-status]');
+            let stream;
+            let scanning = false;
+
+            const setStatus = (message, isError = false) => {
+                status.textContent = message;
+                status.classList.toggle('is-error', isError);
+            };
+
+            const setEmptySearchMessage = (visible) => {
+                emptyMessage.hidden = !visible;
+            };
+
+            const openModal = () => {
+                modal.hidden = false;
+                document.body.classList.add('bp-modal-open');
+                setStatus('Use the camera or scan a saved QR image. Manual DID search stays available behind this dialog.');
+            };
+
+            const detectQrWithNativeDetector = async (source) => {
+                if (!('BarcodeDetector' in window)) {
+                    return '';
+                }
+
+                try {
+                    const detector = new BarcodeDetector({ formats: ['qr_code'] });
+                    const codes = await detector.detect(source);
+                    return codes[0]?.rawValue || '';
+                } catch {
+                    return '';
+                }
+            };
+
+            const readQrPixels = (source) => {
+                const width = source.videoWidth || source.naturalWidth || source.width;
+                const height = source.videoHeight || source.naturalHeight || source.height;
+                if (!width || !height) {
+                    throw new Error('The QR image is not ready yet.');
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+
+                const context = canvas.getContext('2d', { willReadFrequently: true });
+                if (!context) {
+                    throw new Error('Canvas decoding is not available in this browser.');
+                }
+
+                context.drawImage(source, 0, 0, width, height);
+                return context.getImageData(0, 0, width, height);
+            };
+
+            const detectQrWithFallback = (source) => {
+                if (typeof window.jsQR !== 'function') {
+                    throw new Error('The local QR decoder could not be loaded.');
+                }
+
+                const imageData = readQrPixels(source);
+                const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: 'attemptBoth'
+                });
+
+                return code?.data || '';
+            };
+
+            const loadQrImage = (file) => {
+                return new Promise((resolve, reject) => {
+                    const objectUrl = URL.createObjectURL(file);
+                    const image = new Image();
+
+                    image.onload = () => {
+                        URL.revokeObjectURL(objectUrl);
+                        resolve(image);
+                    };
+
+                    image.onerror = () => {
+                        URL.revokeObjectURL(objectUrl);
+                        reject(new Error('The selected image could not be loaded.'));
+                    };
+
+                    image.src = objectUrl;
+                });
+            };
+
+            const extractDidFromQr = (value) => {
+                const raw = (value || '').trim();
+                if (raw.startsWith('did:web:')) {
+                    return raw;
+                }
+
+                try {
+                    const parsed = new URL(raw, window.location.origin);
+                    const queryValue = parsed.searchParams.get('q') || parsed.searchParams.get('passportId');
+                    if (queryValue && queryValue.startsWith('did:web:')) {
+                        return queryValue;
+                    }
+
+                    for (const segment of parsed.pathname.split('/').filter(Boolean)) {
+                        const decoded = decodeURIComponent(segment);
+                        if (decoded.startsWith('did:web:')) {
+                            return decoded;
+                        }
+                    }
+                } catch {
+                    // Keep the fallback regex below for plain text QR payloads.
+                }
+
+                const match = raw.match(/did:web:[A-Za-z0-9:._-]+/);
+                return match ? match[0] : '';
+            };
+
+            const submitDid = (did) => {
+                if (!did) {
+                    setStatus('QR scan failed. The code did not contain a Battery Pass DID.', true);
+                    return;
+                }
+
+                input.value = did;
+                setEmptySearchMessage(false);
+                setStatus(`QR found ${did}. Searching...`);
+                if (form.requestSubmit) {
+                    form.requestSubmit();
+                    return;
+                }
+
+                form.submit();
+            };
+
+            const detectQr = async (source) => {
+                const nativeValue = await detectQrWithNativeDetector(source);
+                const rawValue = nativeValue || detectQrWithFallback(source);
+                if (!rawValue) {
+                    throw new Error('No QR code was detected.');
+                }
+
+                submitDid(extractDidFromQr(rawValue));
+            };
+
+            const stopCamera = () => {
+                scanning = false;
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    stream = null;
+                }
+
+                video.hidden = true;
+                placeholder.hidden = false;
+                stopButton.hidden = true;
+                cameraButton.hidden = false;
+            };
+
+            const closeModal = () => {
+                stopCamera();
+                modal.hidden = true;
+                document.body.classList.remove('bp-modal-open');
+            };
+
+            const scanFrame = async () => {
+                if (!scanning) {
+                    return;
+                }
+
+                try {
+                    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+                        await detectQr(video);
+                        stopCamera();
+                        return;
+                    }
+                } catch {
+                    // Keep scanning until a QR is visible or the user stops the camera.
+                }
+
+                window.requestAnimationFrame(scanFrame);
+            };
+
+            form.addEventListener('submit', (event) => {
+                if (input.value.trim()) {
+                    setEmptySearchMessage(false);
+                    return;
+                }
+
+                event.preventDefault();
+                setEmptySearchMessage(true);
+                input.focus();
+            });
+
+            input.addEventListener('input', () => {
+                if (input.value.trim()) {
+                    setEmptySearchMessage(false);
+                }
+            });
+
+            triggerButton.addEventListener('click', openModal);
+            closeButtons.forEach(button => button.addEventListener('click', closeModal));
+
+            cameraButton.addEventListener('click', async () => {
+                try {
+                    if (!navigator.mediaDevices?.getUserMedia) {
+                        throw new Error('Camera scanning is not available in this browser.');
+                    }
+
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    video.srcObject = stream;
+                    video.hidden = false;
+                    placeholder.hidden = true;
+                    stopButton.hidden = false;
+                    cameraButton.hidden = true;
+                    scanning = true;
+                    await video.play();
+                    setStatus('Point the camera at the battery passport QR code.');
+                    scanFrame();
+                } catch (error) {
+                    stopCamera();
+                    setStatus(`QR scan failed. ${error.message} Use manual DID search instead.`, true);
+                }
+            });
+
+            stopButton.addEventListener('click', () => {
+                stopCamera();
+                setStatus('Camera stopped. You can upload a QR image or search manually.');
+            });
+
+            fileInput.addEventListener('change', async () => {
+                const file = fileInput.files && fileInput.files[0];
+                if (!file) {
+                    return;
+                }
+
+                try {
+                    let lastError;
+                    try {
+                        const bitmap = await createImageBitmap(file);
+                        try {
+                            await detectQr(bitmap);
+                            return;
+                        } finally {
+                            bitmap.close?.();
+                        }
+                    } catch (error) {
+                        lastError = error;
+                    }
+
+                    try {
+                        const image = await loadQrImage(file);
+                        await detectQr(image);
+                    } catch (error) {
+                        throw error || lastError;
+                    }
+                } catch (error) {
+                    setStatus(`QR scan failed. ${error.message} Use manual DID search instead.`, true);
+                } finally {
+                    fileInput.value = '';
+                }
+            });
+        })();
+    </script>
+}
