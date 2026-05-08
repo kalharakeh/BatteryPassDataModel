@@ -3,42 +3,43 @@ namespace BatteryPassWeb.Tests;
 public sealed class Phase6ADocumentationTests
 {
     [Fact]
-    public void AdminController_ShouldExposeAdminOnlyDemoScenarioReset()
+    public void AdminController_ShouldExposeAdminOnlyProductTemplateReset()
     {
         var source = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
 
-        Assert.Contains("DemoScenarioResetService", source);
-        Assert.Contains("[HttpPost(\"demo-scenarios/reset\")]", source);
-        Assert.Contains("ResetDemoScenarios", source);
-        Assert.Contains("_demoScenarioResetService.ResetAllAsync", source);
-        Assert.Contains("Demo scenarios reset", source);
+        Assert.Contains("ProductTemplateService", source);
+        Assert.Contains("[HttpPost(\"product-templates/reset\")]", source);
+        Assert.Contains("ResetProductTemplateDemo", source);
+        Assert.Contains("_productTemplateService.ResetTemplateDemoAsync", source);
+        Assert.Contains("Product template demo reset completed", source);
     }
 
     [Fact]
-    public void AdminHelp_ShouldShowCompactPhase6ADemoResetAction()
+    public void AdminHelp_ShouldShowCompactProductTemplateResetAction()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        Assert.Contains("Phase 6A demo reset", markup);
-        Assert.Contains("/admin/demo-scenarios/reset", markup);
+        Assert.Contains("Product template reset", markup);
+        Assert.Contains("/admin/product-templates/reset", markup);
         Assert.Contains("bp-admin-help-demo-reset", markup);
         Assert.Contains(".bp-admin-help-demo-reset", css);
     }
 
     [Fact]
-    public void SampleAccounts_ShouldDocumentEveryPhase6AScenarioPassport()
+    public void SampleAccounts_ShouldDocumentEveryProductTemplatePassport()
     {
         var docs = File.ReadAllText(RepoFile("docs", "sample-cluster-test-accounts.md"));
 
-        Assert.Contains("Phase 6A demo scenarios", docs);
-        Assert.Contains("did:web:acme.battery.pass:demo-published-trusted-001", docs);
-        Assert.Contains("did:web:acme.battery.pass:demo-draft-incomplete-001", docs);
-        Assert.Contains("did:web:acme.battery.pass:demo-ready-to-sign-001", docs);
-        Assert.Contains("did:web:acme.battery.pass:demo-signed-unpublished-001", docs);
-        Assert.Contains("did:web:acme.battery.pass:demo-dirty-after-edit-001", docs);
-        Assert.Contains("did:web:acme.battery.pass:demo-invalid-signature-001", docs);
-        Assert.Contains("did:web:acme.battery.pass:demo-restricted-document-001", docs);
+        Assert.Contains("Product Template Reset", docs);
+        Assert.Contains("Compact 7M", docs);
+        Assert.Contains("Compact 13M", docs);
+        Assert.Contains("Core", docs);
+        Assert.Contains("did:web:acme.battery.pass:0226151e-949c-d067-8ef3-162431e28976", docs);
+        Assert.Contains("did:web:acme.battery.pass:sample-customer-north-001", docs);
+        Assert.Contains("did:web:acme.battery.pass:sample-customer-south-001", docs);
+        Assert.Contains("did:web:acme.battery.pass:sample-end-user-fleet-001", docs);
+        Assert.DoesNotContain("sample-end-user-storage-001", docs);
     }
 
     [Fact]
@@ -47,10 +48,11 @@ public sealed class Phase6ADocumentationTests
         var guide = File.ReadAllText(RepoFile("docs", "end-user-testing-guide.md"));
 
         Assert.Contains("Phase 6A end-to-end demo hardening checklist", guide);
-        Assert.Contains("Reset demo scenarios", guide);
+        Assert.Contains("Reset product-template passports", guide);
+        Assert.Contains("Product template baseline checklist", guide);
         Assert.Contains("Expected state: Published, signed, clean, public, QR-ready", guide);
-        Assert.Contains("Expected state: Missing required data, blocked from signing", guide);
-        Assert.Contains("Expected state: Signed core changed after proof", guide);
+        Assert.Contains("Confirm three product templates are listed", guide);
+        Assert.Contains("Confirm matching batteries preserve manual overrides", guide);
         Assert.Contains("External HTTP telemetry update does not dirty the passport", guide);
         Assert.Contains("Restricted document download returns 403 for unauthorized users", guide);
     }
@@ -71,6 +73,30 @@ public sealed class Phase6ADocumentationTests
         Assert.Contains("Evidence readiness", help);
         Assert.Contains("document hash", help, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("sign again", help, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Guidance_ShouldMatchCurrentProductTemplateSoftwareAndUiWorkflow()
+    {
+        var apiHelp = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
+        var adminHelp = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
+        var guide = File.ReadAllText(RepoFile("docs", "end-user-testing-guide.md"));
+
+        Assert.Contains("current installed software", apiHelp);
+        Assert.Contains("product-template baseline", apiHelp);
+        Assert.Contains("public summary and the detailed Software tab", apiHelp);
+        Assert.Contains("does not dirty the signed passport", apiHelp);
+
+        Assert.Contains("Software display and API updates", adminHelp);
+        Assert.Contains("Detailed report Software tab", adminHelp);
+        Assert.Contains("API software updates do not dirty", adminHelp);
+        Assert.Contains("release date and latest update values", adminHelp);
+
+        Assert.Contains("Software", guide);
+        Assert.Contains("Detailed report tabs", guide);
+        Assert.Contains("current software version", guide);
+        Assert.Contains("Software tab", guide);
+        Assert.Contains("public summary shows the current software version", guide);
     }
 
     private static string RepoFile(params string[] parts)

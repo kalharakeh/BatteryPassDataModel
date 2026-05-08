@@ -17,6 +17,8 @@ public sealed class CanonicalPassportSnapshotServiceTests
         Assert.True(snapshot["schemaVersions"].AsBsonDocument.Contains("generalProductInformation"));
         Assert.Equal(12.5, snapshot["aspects"]["generalProductInformation"]["payload"]["batteryMass"].ToDouble());
         Assert.Equal("https://example.test/report.pdf", snapshot["app"]["documents"]["sustainabilityReport"]["url"].AsString);
+        Assert.Equal("compact-7m", snapshot["app"]["product"]["productId"].AsString);
+        Assert.Equal("2.0", snapshot["app"]["product"]["softwareVersion"].AsString);
         Assert.False(snapshot.Contains("_id"));
         Assert.False(snapshot.Contains("clusterId"));
         Assert.False(snapshot.Contains("trust"));
@@ -89,6 +91,14 @@ public sealed class CanonicalPassportSnapshotServiceTests
                 {
                     ["modelNumber"] = "MODEL-1",
                     ["serialNumber"] = "SERIAL-1"
+                },
+                ["product"] = new BsonDocument
+                {
+                    ["productId"] = "compact-7m",
+                    ["productName"] = "Compact 7M",
+                    ["softwareVersion"] = "2.0",
+                    ["softwareReleaseDate"] = "2026-02-01",
+                    ["softwareLatestUpdate"] = "2026-04-15"
                 },
                 ["documents"] = new BsonDocument
                 {

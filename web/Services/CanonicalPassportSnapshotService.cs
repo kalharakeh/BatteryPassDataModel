@@ -108,38 +108,64 @@ public sealed class CanonicalPassportSnapshotService
     private static BsonDocument BuildSignedApp(BsonDocument passport)
     {
         var signedApp = new BsonDocument();
-        var documents = BsonHelpers.GetValue(passport, "app", "documents") as BsonDocument;
-        if (documents == null)
+        var product = BsonHelpers.GetValue(passport, "app", "product") as BsonDocument;
+        if (product != null && product.ElementCount > 0)
         {
-            return signedApp;
-        }
-
-        var signedDocuments = new BsonDocument();
-        foreach (var document in documents.Elements.OrderBy(element => element.Name, StringComparer.Ordinal))
-        {
-            if (document.Value is not BsonDocument documentInfo)
+            var signedProduct = new BsonDocument();
+            foreach (var field in new[]
             {
-                continue;
-            }
-
-            var signedDocument = new BsonDocument();
-            foreach (var field in new[] { "url", "fileId", "sha256", "contentType", "visibility" })
+                "productId",
+                "productName",
+                "description",
+                "moduleCount",
+                "softwareVersion",
+                "softwareReleaseDate",
+                "softwareLatestUpdate",
+                "templateHash"
+            })
             {
-                if (documentInfo.TryGetValue(field, out var value) && !value.IsBsonNull)
+                if (product.TryGetValue(field, out var value) && !value.IsBsonNull)
                 {
-                    signedDocument[field] = value.DeepClone();
+                    signedProduct[field] = value.DeepClone();
                 }
             }
 
-            if (signedDocument.ElementCount > 0)
+            if (signedProduct.ElementCount > 0)
             {
-                signedDocuments[document.Name] = signedDocument;
+                signedApp["product"] = signedProduct;
             }
         }
 
-        if (signedDocuments.ElementCount > 0)
+        var documents = BsonHelpers.GetValue(passport, "app", "documents") as BsonDocument;
+        if (documents != null)
         {
-            signedApp["documents"] = signedDocuments;
+            var signedDocuments = new BsonDocument();
+            foreach (var document in documents.Elements.OrderBy(element => element.Name, StringComparer.Ordinal))
+            {
+                if (document.Value is not BsonDocument documentInfo)
+                {
+                    continue;
+                }
+
+                var signedDocument = new BsonDocument();
+                foreach (var field in new[] { "url", "fileId", "sha256", "contentType", "visibility" })
+                {
+                    if (documentInfo.TryGetValue(field, out var value) && !value.IsBsonNull)
+                    {
+                        signedDocument[field] = value.DeepClone();
+                    }
+                }
+
+                if (signedDocument.ElementCount > 0)
+                {
+                    signedDocuments[document.Name] = signedDocument;
+                }
+            }
+
+            if (signedDocuments.ElementCount > 0)
+            {
+                signedApp["documents"] = signedDocuments;
+            }
         }
 
         return signedApp;

@@ -5,7 +5,7 @@
 <main class="bp-page bp-admin-page bp-help-page">
     <section class="bp-card">
         <h1 class="mb-2">External Battery Passport API</h1>
-        <p class="text-secondary mb-3">Read and write battery passport data through the app using token-protected HTTP requests.</p>
+        <p class="text-secondary mb-3">Read battery passport data and update live operational values through token-protected HTTP requests.</p>
         <div class="bp-help-kv-grid">
             <div>
                 <p class="mb-1 text-secondary small">Base path</p>
@@ -67,7 +67,7 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/section/circularity</code>
                 <article class="bp-help-doc-item">
                     <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{passportId}/values?path=...</h3>
                     <p class="mb-1">Read one or more specific values by alias or exact document path.</p>
-                    <p class="mb-1">Aliases: <code>ratedEnergy</code>, <code>ratedCapacity</code>, <code>ratedMaximumPower</code>, <code>nominalVoltage</code>, <code>nickelMass</code>, <code>currentConsumptionKwh</code>, <code>currentChargeLevelPct</code>, <code>currentVoltageV</code>, <code>currentCurrentA</code>, <code>locationOfUse</code>, <code>contactPerson</code>, <code>isActive</code>.</p>
+                    <p class="mb-1">Aliases: <code>ratedEnergy</code>, <code>ratedCapacity</code>, <code>ratedMaximumPower</code>, <code>nominalVoltage</code>, <code>nickelMass</code>, <code>currentConsumptionKwh</code>, <code>currentChargeLevelPct</code>, <code>currentVoltageV</code>, <code>currentCurrentA</code>, <code>softwareVersion</code>, <code>softwareReleaseDate</code>, <code>softwareLatestUpdate</code>, <code>locationOfUse</code>, <code>contactPerson</code>, <code>isActive</code>.</p>
                     <p class="mb-1">Need the full set of readable values (not only aliases)? Open <a id="supported-values-link" href="@($"{Model.BasePath}/batteries/{Model.SamplePassportId}/paths?section=full")&amp;includeContainers=true" target="_blank" rel="noopener noreferrer"><code>@Model.BasePath/batteries/@Model.SamplePassportId/paths?section=full&amp;includeContainers=true</code></a> in a new tab.</p>
                     <pre class="bp-help-pre mb-2"><code>GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=ratedEnergy&amp;path=ratedCapacity
 GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=nickelMass
@@ -82,6 +82,13 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=aspects.circul
     ]
   }
 }</code></pre>
+                </article>
+
+                <article class="bp-help-doc-item">
+                    <h3 class="h6 mb-2">Product template and software model</h3>
+                    <p class="mb-1">Each passport is created from a MongoDB product-template baseline such as Compact 7M, Compact 13M, or Core. The selected baseline provides shared product data, required/optional policy, evidence references, product image, and software release metadata.</p>
+                    <p class="mb-1">The API software endpoint updates the current installed software in <code>app.operations</code>. The product-template baseline remains in <code>app.product</code>, which is part of the signed passport core.</p>
+                    <p class="mb-0">The public summary and the detailed Software tab show the current software version, release date, and latest update. If an API software update exists, the UI prefers that current operational value; otherwise it falls back to the product-template baseline.</p>
                 </article>
 
                 <article class="bp-help-doc-item">
@@ -145,6 +152,16 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
   }
 }</code></pre>
                 </article>
+
+                <article class="bp-help-doc-item">
+                    <h3 class="h6 mb-2"><span class="bp-help-method">PATCH</span> @Model.BasePath/batteries/{passportId}/software</h3>
+                    <p class="mb-1">Update the battery's current installed software version through the external API.</p>
+                    <p class="mb-1">The version must exist in the selected product template software list. This API write updates live operational software metadata in <code>app.operations</code> and does not dirty the signed passport.</p>
+                    <p class="mb-1">A missing or unknown version returns <code>400 Bad Request</code> with the allowed versions for the product.</p>
+                    <pre class="bp-help-pre mb-0"><code>{
+  "softwareVersion": "2.0"
+}</code></pre>
+                </article>
             </div>
         </section>
 
@@ -162,6 +179,7 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
                         <option value="readHistory24h">Read telemetry history 24h</option>
                         <option value="writeTelemetryPoint">Write telemetry point</option>
                         <option value="patchOperations">Patch operations metadata</option>
+                        <option value="patchSoftwareVersion">Patch software version</option>
                     </select>
                 </label>
                 <label>HTTP method
@@ -212,6 +230,7 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
                 <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="readHistory24h">History 24h</button>
                 <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="readValuesAliases">Read specific values</button>
                 <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="writeTelemetryPoint">Post telemetry</button>
+                <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="patchSoftwareVersion">Patch software</button>
             </div>
 
             <div class="mt-3">
@@ -341,6 +360,14 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
                             name: 'Sample Contact',
                             email: 'sample@example.test'
                         }
+                    }, null, 2),
+                    tokenPreset: 'sample-read-write'
+                },
+                patchSoftwareVersion: {
+                    method: 'PATCH',
+                    path: `${basePath}/batteries/${samplePassportId}/software`,
+                    body: JSON.stringify({
+                        softwareVersion: '2.0'
                     }, null, 2),
                     tokenPreset: 'sample-read-write'
                 }

@@ -35,6 +35,9 @@ public class ExternalApiController : ControllerBase
         ["currentChargeLevelPct"] = "app.operations.latestTelemetry.currentChargeLevelPct",
         ["currentVoltageV"] = "app.operations.latestTelemetry.currentVoltageV",
         ["currentCurrentA"] = "app.operations.latestTelemetry.currentCurrentA",
+        ["softwareVersion"] = "app.operations.softwareVersion",
+        ["softwareReleaseDate"] = "app.operations.softwareReleaseDate",
+        ["softwareLatestUpdate"] = "app.operations.softwareLatestUpdate",
         ["locationOfUse"] = "app.operations.locationOfUse",
         ["contactPerson"] = "app.operations.contactPerson",
         ["isActive"] = "app.operations.isActive"
@@ -43,15 +46,18 @@ public class ExternalApiController : ControllerBase
     private readonly PassportRepository _passportRepository;
     private readonly ExternalApiRepository _externalApiRepository;
     private readonly BatteryTelemetryRepository _batteryTelemetryRepository;
+    private readonly ProductTemplateService _productTemplateService;
 
     public ExternalApiController(
         PassportRepository passportRepository,
         ExternalApiRepository externalApiRepository,
-        BatteryTelemetryRepository batteryTelemetryRepository)
+        BatteryTelemetryRepository batteryTelemetryRepository,
+        ProductTemplateService productTemplateService)
     {
         _passportRepository = passportRepository;
         _externalApiRepository = externalApiRepository;
         _batteryTelemetryRepository = batteryTelemetryRepository;
+        _productTemplateService = productTemplateService;
     }
 
     [HttpGet("batteries/{passportId}")]
@@ -354,6 +360,72 @@ public class ExternalApiController : ControllerBase
         setValues["app.operations.lastUpdatedAt"] = DateTime.UtcNow.ToString("O");
         await _passportRepository.UpdateFieldsAsync(passportId, setValues, cancellationToken);
         return Envelope(StatusCodes.Status200OK, "Operations fields updated successfully.", new { passportId });
+    }
+
+    [HttpPatch("batteries/{passportId}/software")]
+    public async Task<IActionResult> UpdateSoftwareVersion(string passportId, [FromBody] JsonElement payload, CancellationToken cancellationToken)
+    {
+        var auth = await AuthorizeAsync(passportId, requireWrite: true, cancellationToken);
+        if (auth.ErrorResult != null)
+        {
+            return auth.ErrorResult;
+        }
+
+        if (payload.ValueKind != JsonValueKind.Object)
+        {
+            return Envelope(StatusCodes.Status400BadRequest, "Body must be a JSON object.");
+        }
+
+        if (!TryGetPropertyIgnoreCase(payload, "softwareVersion", out var softwareVersionElement)
+            || softwareVersionElement.ValueKind != JsonValueKind.String
+            || string.IsNullOrWhiteSpace(softwareVersionElement.GetString()))
+        {
+            return Envelope(StatusCodes.Status400BadRequest, "softwareVersion is required and must be a string.");
+        }
+
+        var requestedVersion = softwareVersionElement.GetString()!.Trim();
+        var productId = BsonHelpers.GetString(auth.Passport!, "app", "product", "productId");
+        if (string.IsNullOrWhiteSpace(productId))
+        {
+            return Envelope(StatusCodes.Status400BadRequest, "Battery is not linked to a product template, so software version cannot be validated.");
+        }
+
+        var product = await _productTemplateService.GetProductAsync(productId, cancellationToken);
+        if (product == null)
+        {
+            return Envelope(StatusCodes.Status400BadRequest, $"Product template '{productId}' was not found.");
+        }
+
+        var software = product.SoftwareVersions.FirstOrDefault(version =>
+            version.Version.Equals(requestedVersion, StringComparison.OrdinalIgnoreCase));
+        if (software == null)
+        {
+            var allowedVersions = string.Join(", ", product.SoftwareVersions.Select(version => version.Version));
+            return Envelope(
+                StatusCodes.Status400BadRequest,
+                $"Software version '{requestedVersion}' is not defined for product '{productId}'. Allowed versions: {allowedVersions}.");
+        }
+
+        var now = DateTime.UtcNow.ToString("O");
+        var setValues = new Dictionary<string, BsonValue>
+        {
+            ["app.operations.softwareVersion"] = software.Version,
+            ["app.operations.softwareReleaseDate"] = software.ReleaseDate,
+            ["app.operations.softwareLatestUpdate"] = software.LatestUpdate,
+            ["app.operations.softwareUpdatedAt"] = now,
+            ["app.operations.lastUpdatedAt"] = now
+        };
+
+        await _passportRepository.UpdateFieldsAsync(passportId, setValues, cancellationToken);
+        return Envelope(StatusCodes.Status200OK, "Software version updated successfully.", new
+        {
+            passportId,
+            productId,
+            softwareVersion = software.Version,
+            softwareReleaseDate = software.ReleaseDate,
+            softwareLatestUpdate = software.LatestUpdate,
+            dirtyStateUnchanged = true
+        });
     }
 
     private async Task<ExternalAuthResult> AuthorizeAsync(string passportId, bool requireWrite, CancellationToken cancellationToken)

@@ -1,4 +1,5 @@
 @using BatteryPassWeb.Models.Trust
+@using System.Text.Json
 @model BatteryPassWeb.Models.ViewModels.EditPassportViewModel
 @{
     var isNew = Model.Mode.Equals("new", StringComparison.OrdinalIgnoreCase);
@@ -10,6 +11,7 @@
     var batteryImageOptions = BatteryPassWeb.Services.BatteryImageCatalog.Options;
     var selectedBatteryImageUrl = BatteryPassWeb.Services.BatteryImageCatalog.NormalizeKnownImageUrl(passport.BatteryImageUrl, passport.PassportId);
     var selectedBatteryCategory = BatteryPassWeb.Services.BatteryImageCatalog.CategoryForImageUrl(selectedBatteryImageUrl);
+    var productTemplateCatalogJson = JsonSerializer.Serialize(Model.ProductTemplateCatalog);
 
     double SegmentValue(string label, IReadOnlyList<BatteryPassWeb.Models.ViewModels.ChartSegmentViewModel> segments)
         => segments.FirstOrDefault(segment => segment.Label.Equals(label, StringComparison.OrdinalIgnoreCase))?.Value ?? 0;
@@ -123,6 +125,8 @@
     @if (!string.IsNullOrWhiteSpace(Model.StatusMessage)) { <div class="alert alert-success mt-3 mb-0">@Model.StatusMessage</div> }
     @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage)) { <div class="alert alert-danger mt-3 mb-0">@Model.ErrorMessage</div> }
 
+    <script type="application/json" data-product-template-catalog>@Html.Raw(productTemplateCatalogJson)</script>
+
     <form method="post" action="@formAction" class="bp-edit-grid mt-4" data-edit-passport-form data-passport-id="@passport.PassportId">
         @Html.AntiForgeryToken()
         <nav class="bp-edit-nav" aria-label="Passport categories">
@@ -136,12 +140,17 @@
         <div class="bp-edit-form">
             <section id="admin-general" class="bp-card bp-edit-section">
                 <h2>General</h2>
+                <p class="bp-template-sync-note">
+                    Select a product and software version below. Shared technical fields update from the template; identity fields stay battery-specific and editable.
+                </p>
                 <div class="bp-form-grid">
                     <label class="bp-field-shell"><span>Passport ID <em class="bp-field-marker">@RequirementLabel("general.passportId")</em></span>@if (isNew) { <input type="text" name="passportId" value="@passport.PassportId" required /> } else { <input type="text" name="passportId" value="@passport.PassportId" readonly /> }<small class="bp-field-help">@DirtySignedDataHelp("general.passportId", "Unique DID-style battery identifier.")</small></label>
+                    <label class="bp-field-shell"><span>Product <em class="bp-field-marker">@RequirementLabel("general.product")</em></span><select name="productId" data-product-template-select>@foreach (var productTemplate in Model.ProductTemplates) { if (productTemplate.ProductId.Equals(Model.SelectedProductId, StringComparison.OrdinalIgnoreCase)) { <option value="@productTemplate.ProductId" selected>@productTemplate.ProductName</option> } else { <option value="@productTemplate.ProductId">@productTemplate.ProductName</option> } }</select><small class="bp-field-help">@DirtySignedDataHelp("general.product", "Product template copied into this battery.")</small></label>
+                    <label class="bp-field-shell"><span>Software version <em class="bp-field-marker">@RequirementLabel("general.softwareVersion")</em></span><select name="softwareVersion" data-product-software-select>@foreach (var software in Model.ProductSoftwareVersions) { if (software.Version.Equals(Model.SelectedSoftwareVersion, StringComparison.OrdinalIgnoreCase)) { <option value="@software.Version" selected>@software.Version - updated @software.LatestUpdate</option> } else { <option value="@software.Version">@software.Version - updated @software.LatestUpdate</option> } }</select><small class="bp-field-help">@DirtySignedDataHelp("general.softwareVersion", "Software baseline copied from the selected product template.")</small></label>
                     <label class="bp-field-shell"><span>Name <em class="bp-field-marker">@RequirementLabel("general.name")</em></span><input type="text" name="name" value="@passport.DisplayName" /><small class="bp-field-help">@DirtySignedDataHelp("general.name", "Human-readable battery name.")</small></label>
                     <label class="bp-field-shell"><span>Model Number <em class="bp-field-marker">@RequirementLabel("general.modelNumber")</em></span><input type="text" name="modelNumber" value="@passport.ModelNumber" /><small class="bp-field-help">@DirtySignedDataHelp("general.modelNumber", "Model identifier shown on public reports.")</small></label>
                     <label class="bp-field-shell"><span>Serial Number <em class="bp-field-marker">@RequirementLabel("general.serialNumber")</em></span><input type="text" name="serialNumber" value="@passport.SerialNumber" /><small class="bp-field-help">@DirtySignedDataHelp("general.serialNumber", "Manufacturer serial number.")</small></label>
-                    <label class="bp-field-shell"><span>Category <em class="bp-field-marker">@RequirementLabel("general.category")</em></span><input type="text" name="category" value="@selectedBatteryCategory" readonly data-image-category /><small class="bp-field-help">@DirtySignedDataHelp("general.category", "Battery category is set by the selected image/catalog type.")</small></label>
+                    <label class="bp-field-shell"><span>Official schema category <em class="bp-field-marker">@RequirementLabel("general.category")</em></span><input type="text" name="category" value="@selectedBatteryCategory" readonly data-image-category /><small class="bp-field-help">@DirtySignedDataHelp("general.category", "Battery Pass schema category. Product is managed separately above.")</small></label>
                     <label class="bp-field-shell"><span>Status <em class="bp-field-marker">@RequirementLabel("general.batteryStatus")</em></span><input type="text" name="batteryStatus" value="@passport.BatteryStatus" /><small class="bp-field-help">@DirtySignedDataHelp("general.batteryStatus", "Lifecycle/original status for the battery.")</small></label>
                     <label class="bp-field-shell"><span>Weight kg <em class="bp-field-marker">@RequirementLabel("general.batteryMass")</em></span><input type="number" step="any" name="batteryMass" value="@passport.Weight" /><small class="bp-field-help">@DirtySignedDataHelp("general.batteryMass", "Battery mass in kg.")</small></label>
                     <label class="bp-field-shell"><span>Manufactured date <em class="bp-field-marker">@RequirementLabel("general.manufacturingDate")</em></span><input type="date" name="manufacturingDate" value="@passport.ManufacturedDate" /><small class="bp-field-help">@DirtySignedDataHelp("general.manufacturingDate", "Manufacturing date.")</small></label>
@@ -313,6 +322,10 @@
             const cancelHref = cancelButton?.dataset.cancelHref ?? '';
             const batteryImageSelect = form.querySelector('[data-battery-image-select]');
             const categoryInput = form.querySelector('[data-image-category]');
+            const productTemplateSelect = form.querySelector('[data-product-template-select]');
+            const productSoftwareSelect = form.querySelector('[data-product-software-select]');
+            const productTemplateCatalogElement = document.querySelector('[data-product-template-catalog]');
+            const productTemplateCatalog = parseProductTemplateCatalog(productTemplateCatalogElement?.textContent || '[]');
             const passportId = form.dataset.passportId ?? '';
             const uploadCards = Array.from(form.querySelectorAll('[data-document-upload-card]'));
 
@@ -344,6 +357,124 @@
 
             function hasUnsavedChanges() {
                 return serializeFormState(form) !== pristineFormState;
+            }
+
+            function parseProductTemplateCatalog(rawJson) {
+                try {
+                    const parsed = JSON.parse(rawJson);
+                    return Array.isArray(parsed) ? parsed : [];
+                } catch {
+                    return [];
+                }
+            }
+
+            function setFieldValue(name, value) {
+                const input = form.elements[name];
+                if (!input) {
+                    return;
+                }
+
+                input.value = value ?? '';
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            function findCatalogProduct(productId) {
+                return productTemplateCatalog.find((product) =>
+                    String(product.ProductId || '').toLowerCase() === String(productId || '').toLowerCase());
+            }
+
+            function updateSoftwareOptions(product, preferredVersion) {
+                if (!productSoftwareSelect || !product) {
+                    return;
+                }
+
+                const versions = Array.isArray(product.SoftwareVersions) ? product.SoftwareVersions : [];
+                productSoftwareSelect.innerHTML = '';
+                versions.forEach((software) => {
+                    const option = document.createElement('option');
+                    option.value = software.Version || '';
+                    option.textContent = `${software.Version || ''} - updated ${software.LatestUpdate || ''}`.trim();
+                    productSoftwareSelect.appendChild(option);
+                });
+
+                const hasPreferred = versions.some((software) =>
+                    String(software.Version || '').toLowerCase() === String(preferredVersion || '').toLowerCase());
+                productSoftwareSelect.value = hasPreferred
+                    ? preferredVersion
+                    : versions[0]?.Version || '';
+            }
+
+            function applyProductTemplateSelection(updateSoftwareList) {
+                const product = findCatalogProduct(productTemplateSelect?.value || '');
+                if (!product) {
+                    return;
+                }
+
+                const previousSoftware = productSoftwareSelect?.value || '';
+                if (updateSoftwareList) {
+                    updateSoftwareOptions(product, previousSoftware);
+                }
+
+                const materialFieldMap = {
+                    Nickel: 'materialNickel',
+                    Copper: 'materialCopper',
+                    Aluminium: 'materialAluminium',
+                    Graphite: 'materialGraphite',
+                    Manganese: 'materialManganese',
+                    Cobalt: 'materialCobalt',
+                    Lithium: 'materialLithium',
+                    'Electrolyte and separators': 'materialElectrolyte'
+                };
+                const carbonFieldMap = {
+                    'raw material extraction': 'carbonRawMaterial',
+                    'main production': 'carbonMainProduction',
+                    distribution: 'carbonDistribution',
+                    recycling: 'carbonRecycling'
+                };
+                const recycledFieldMap = {
+                    Nickel: 'recycledNickel',
+                    Cobalt: 'recycledCobalt',
+                    Lithium: 'recycledLithium',
+                    Lead: 'recycledLead'
+                };
+
+                setFieldValue('batteryImageUrl', product.ImageUrl || '');
+                setFieldValue('batteryMass', product.BatteryMassKg);
+                setFieldValue('ratedEnergy', product.RatedEnergyKwh);
+                setFieldValue('ratedCapacity', product.RatedCapacityAh);
+                setFieldValue('ratedMaximumPower', product.RatedMaximumPowerKw);
+                setFieldValue('nominalVoltage', product.NominalVoltageV);
+                setFieldValue('expectedLifetime', product.ExpectedLifetimeYears);
+                setFieldValue('expectedNumberOfCycles', product.ExpectedCycles);
+                setFieldValue('remainingEnergy', Math.round((Number(product.RatedEnergyKwh || 0) * 0.95) * 100) / 100);
+                setFieldValue('supplyChainIndex', product.SupplyChainIndex);
+                setFieldValue('carbonFootprint', product.CarbonFootprint);
+                setFieldValue('performanceClass', product.PerformanceClass || '');
+
+                Object.entries(product.MaterialMassesKg || {}).forEach(([label, value]) => {
+                    if (materialFieldMap[label]) {
+                        setFieldValue(materialFieldMap[label], value);
+                    }
+                });
+                Object.entries(product.CarbonStages || {}).forEach(([label, value]) => {
+                    if (carbonFieldMap[label]) {
+                        setFieldValue(carbonFieldMap[label], value);
+                    }
+                });
+                Object.entries(product.RecycledContent || {}).forEach(([label, value]) => {
+                    const prefix = recycledFieldMap[label];
+                    if (!prefix) {
+                        return;
+                    }
+
+                    setFieldValue(`${prefix}Pre`, value.PreConsumerShare);
+                    setFieldValue(`${prefix}Post`, value.PostConsumerShare);
+                    const primaryShare = Math.max(0, 100 - Number(value.PreConsumerShare || 0) - Number(value.PostConsumerShare || 0));
+                    setFieldValue(`${prefix}Primary`, primaryShare);
+                });
+
+                syncCategoryFromImage();
             }
 
             function openCancelModal() {
@@ -536,6 +667,13 @@
             setActiveSection(sectionById.has(hashSectionId) ? hashSectionId : defaultSectionId, true);
             syncCategoryFromImage();
             batteryImageSelect?.addEventListener('change', syncCategoryFromImage);
+            pristineFormState = serializeFormState(form);
+            productTemplateSelect?.addEventListener('change', () => {
+                applyProductTemplateSelection(true);
+            });
+            productSoftwareSelect?.addEventListener('change', () => {
+                applyProductTemplateSelection(false);
+            });
             uploadCards.forEach((card) => {
                 const button = card.querySelector('[data-document-upload]');
                 const fileInput = card.querySelector('[data-document-file]');

@@ -1,0 +1,352 @@
+@using BatteryPassWeb.Services
+@model BatteryPassWeb.Models.ViewModels.ProductTemplateEditViewModel
+@{
+    ViewData["Title"] = string.IsNullOrWhiteSpace(Model.ProductId) ? "New product template" : $"Edit {Model.ProductName}";
+    var isNew = string.IsNullOrWhiteSpace(Model.ProductId);
+    var imageOptions = BatteryImageCatalog.Options;
+    var selectedImageUrl = BatteryImageCatalog.NormalizeKnownImageUrl(Model.ImageUrl, string.Empty);
+    var materialMasses = BatteryPassCanonicalDataCatalog.Materials
+        .Select(material => new
+        {
+            material.Label,
+            Value = Model.MaterialMassesKg.TryGetValue(material.Label, out var value) ? value : material.DemoMassKg
+        })
+        .ToList();
+    var carbonStages = BatteryPassCanonicalDataCatalog.CarbonStages
+        .Select(stage => new
+        {
+            stage.Stage,
+            Value = Model.CarbonStages.TryGetValue(stage.Stage, out var value) ? value : stage.DemoValue
+        })
+        .ToList();
+    var recycledContent = new[] { "Nickel", "Cobalt", "Lithium", "Lead" }
+        .Select(material =>
+        {
+            var value = Model.RecycledContent.TryGetValue(material, out var existing)
+                ? existing
+                : new BatteryPassWeb.Models.ViewModels.ProductTemplateRecycledContentViewModel();
+            return new { Material = material, value.PreConsumerShare, value.PostConsumerShare };
+        })
+        .ToList();
+}
+
+<main class="bp-page bp-admin-page">
+    <div class="bp-page-return-row">
+        <a href="/admin/clusters?tab=products" class="bp-page-return-link">Back to product templates</a>
+    </div>
+
+    <section class="bp-card bp-product-editor-hero">
+        <div>
+            <span class="bp-summary-title">Product template</span>
+            <h1>@(isNew ? "Create product template" : Model.ProductName)</h1>
+            <p class="mb-0">
+                Shared product, software, evidence, and completion-policy data stored in MongoDB.
+                New batteries copy this data first, then battery-specific identifiers are added on top.
+            </p>
+        </div>
+        <div class="bp-product-editor-preview">
+            <img src="@selectedImageUrl" alt="Product preview image" />
+        </div>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+    {
+        <div class="alert alert-success mt-3 mb-0">@Model.StatusMessage</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger mt-3 mb-0">@Model.ErrorMessage</div>
+    }
+
+    <form method="post" action="/admin/products/save" class="bp-product-editor-grid mt-4">
+        @Html.AntiForgeryToken()
+
+        <section class="bp-card bp-product-editor-section">
+            <h2>Product identity</h2>
+            <div class="bp-form-grid bp-product-identity-grid">
+                <label class="bp-field-shell">
+                    <span>Product ID</span>
+                    @if (isNew)
+                    {
+                        <input type="text" name="productId" value="@Model.ProductId" placeholder="compact-7m" required />
+                    }
+                    else
+                    {
+                        <input type="text" name="productId" value="@Model.ProductId" readonly />
+                    }
+                    <small class="bp-field-help">Stable MongoDB key used to link batteries to this product template.</small>
+                </label>
+                <label class="bp-field-shell">
+                    <span>Product name</span>
+                    @if (isNew)
+                    {
+                        <input type="text" name="productName" value="@Model.ProductName" placeholder="Compact 7M" required />
+                    }
+                    else
+                    {
+                        <input type="text" name="productName" value="@Model.ProductName" readonly />
+                    }
+                    <small class="bp-field-help">Friendly product name shown in admin and signed product metadata. Existing product names are locked.</small>
+                </label>
+                <label class="bp-field-shell bp-span-2">
+                    <span>Description</span>
+                    <textarea name="description">@Model.Description</textarea>
+                    <small class="bp-field-help">Short description that helps admins pick the right baseline.</small>
+                </label>
+                <label class="bp-field-shell">
+                    <span>Product image</span>
+                    <select name="imageUrl">
+                        @foreach (var imageOption in imageOptions)
+                        {
+                            <option value="@imageOption.Url" selected="@(imageOption.Url.Equals(selectedImageUrl, StringComparison.OrdinalIgnoreCase))">@imageOption.Label</option>
+                        }
+                    </select>
+                    <small class="bp-field-help">The image copied to batteries created from this template.</small>
+                </label>
+                <label class="bp-field-shell">
+                    <span>Module count</span>
+                    <input type="number" name="moduleCount" min="1" step="1" value="@Model.ModuleCount" />
+                    <small class="bp-field-help">Useful product context; Compact 7M has 7 modules and Compact 13M has 13.</small>
+                </label>
+            </div>
+        </section>
+
+        <section class="bp-card bp-product-editor-section">
+            <div class="bp-product-section-heading">
+                <div>
+                    <h2>Software versions</h2>
+                    <p class="bp-help-text mb-0">Each software version defines the version, release date, and latest update available for this product.</p>
+                    <p class="bp-help-text mb-0">Saved software version numbers cannot be changed. Add a new software version instead.</p>
+                </div>
+                <button type="button" class="bp-secondary-button bp-button-compact" data-add-software-version>Add software</button>
+            </div>
+            <div class="bp-template-version-list" data-software-version-list>
+                @foreach (var software in Model.SoftwareVersions)
+                {
+                    <article class="bp-template-version-row" data-software-version-row>
+                        <label class="bp-field-shell">
+                            <span>Version</span>
+                            <input type="text" name="softwareVersion" value="@software.Version" readonly />
+                        </label>
+                        <label class="bp-field-shell">
+                            <span>Release date</span>
+                            <input type="date" name="softwareReleaseDate" value="@software.ReleaseDate" required />
+                        </label>
+                        <label class="bp-field-shell">
+                            <span>Latest update</span>
+                            <input type="date" name="softwareLatestUpdate" value="@software.LatestUpdate" required />
+                        </label>
+                        @if (!isNew)
+                        {
+                            <div class="bp-template-version-action">
+                                <button
+                                    type="submit"
+                                    form="push-@Model.ProductId-@software.Version"
+                                    class="bp-secondary-button bp-button-compact">
+                                    Push to batteries
+                                </button>
+                                <button type="button" class="bp-danger-button bp-button-compact" data-remove-software-version>Remove</button>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="bp-template-version-action">
+                                <button type="button" class="bp-danger-button bp-button-compact" data-remove-software-version>Remove</button>
+                            </div>
+                        }
+                    </article>
+                }
+            </div>
+            <p class="bp-help-text mb-0">Save product changes before pushing. Push updates only template-owned fields and preserves manual battery overrides.</p>
+        </section>
+
+        <section class="bp-card bp-product-editor-section">
+            <h2>Shared product values</h2>
+            <div class="bp-form-grid">
+                <label class="bp-field-shell"><span>Battery mass kg</span><input type="number" step="any" name="batteryMassKg" value="@Model.BatteryMassKg" /></label>
+                <label class="bp-field-shell"><span>Rated energy kWh</span><input type="number" step="any" name="ratedEnergyKwh" value="@Model.RatedEnergyKwh" /></label>
+                <label class="bp-field-shell"><span>Rated capacity Ah</span><input type="number" step="any" name="ratedCapacityAh" value="@Model.RatedCapacityAh" /></label>
+                <label class="bp-field-shell"><span>Maximum power kW</span><input type="number" step="any" name="ratedMaximumPowerKw" value="@Model.RatedMaximumPowerKw" /></label>
+                <label class="bp-field-shell"><span>Nominal voltage V</span><input type="number" step="any" name="nominalVoltageV" value="@Model.NominalVoltageV" /></label>
+                <label class="bp-field-shell"><span>Expected lifetime years</span><input type="number" step="any" name="expectedLifetimeYears" value="@Model.ExpectedLifetimeYears" /></label>
+                <label class="bp-field-shell"><span>Expected cycles</span><input type="number" step="any" name="expectedCycles" value="@Model.ExpectedCycles" /></label>
+                <label class="bp-field-shell"><span>Supply chain index</span><input type="number" step="any" name="supplyChainIndex" value="@Model.SupplyChainIndex" /></label>
+                <label class="bp-field-shell"><span>Carbon footprint gCO2e/kWh</span><input type="number" step="any" name="carbonFootprint" value="@Model.CarbonFootprint" /></label>
+                <label class="bp-field-shell"><span>Performance class</span><input type="text" name="performanceClass" value="@Model.PerformanceClass" /></label>
+            </div>
+        </section>
+
+        <section class="bp-card bp-product-editor-section">
+            <h2>Material composition</h2>
+            <div class="bp-form-grid">
+                @foreach (var material in materialMasses)
+                {
+                    <label class="bp-field-shell">
+                        <span>@material.Label kg</span>
+                        <input type="hidden" name="materialName" value="@material.Label" />
+                        <input type="number" step="any" name="materialMass" value="@material.Value" />
+                    </label>
+                }
+            </div>
+        </section>
+
+        <section class="bp-card bp-product-editor-section">
+            <h2>Carbon lifecycle stages</h2>
+            <div class="bp-form-grid">
+                @foreach (var stage in carbonStages)
+                {
+                    <label class="bp-field-shell">
+                        <span>@stage.Stage gCO2e/kWh</span>
+                        <input type="hidden" name="carbonStage" value="@stage.Stage" />
+                        <input type="number" step="any" name="carbonStageValue" value="@stage.Value" />
+                    </label>
+                }
+            </div>
+        </section>
+
+        <section class="bp-card bp-product-editor-section">
+            <h2>Circularity</h2>
+            <p class="bp-help-text">Product-level recycled-content values copied to batteries from this template.</p>
+            <div class="bp-form-grid">
+                @foreach (var recycled in recycledContent)
+                {
+                    <label class="bp-field-shell">
+                        <span>@recycled.Material pre consumer %</span>
+                        <input type="number" step="any" name="recycled@(recycled.Material)Pre" value="@recycled.PreConsumerShare" />
+                    </label>
+                    <label class="bp-field-shell">
+                        <span>@recycled.Material post consumer %</span>
+                        <input type="number" step="any" name="recycled@(recycled.Material)Post" value="@recycled.PostConsumerShare" />
+                    </label>
+                }
+            </div>
+        </section>
+
+        <section class="bp-card bp-product-editor-section bp-span-all">
+            @{
+                var dataRequirements = Model.DataRequirements;
+                var totalFields = dataRequirements.Sections.Sum(section => section.Fields.Count);
+                var totalRequired = dataRequirements.Sections.Sum(section => section.RequiredCount);
+            }
+            <div class="bp-data-requirements-hero">
+                <div>
+                    <span class="bp-summary-title">Template completion policy</span>
+                    <h2>Required and optional parameters</h2>
+                    <p class="mb-0">These checkboxes are saved per product in MongoDB and used by validation, signing, publishing, and the conformance page for batteries linked to this product.</p>
+                </div>
+                <div class="bp-requirement-stats">
+                    <div><span>Parameters</span><strong>@totalFields</strong></div>
+                    <div><span>Required</span><strong>@totalRequired</strong></div>
+                    <div><span>Optional</span><strong>@(totalFields - totalRequired)</strong></div>
+                </div>
+            </div>
+            <div class="bp-data-requirements-grid mt-3">
+                @foreach (var requirementSection in dataRequirements.Sections.OrderBy(section => section.SortOrder))
+                {
+                    <article class="bp-requirement-section-card">
+                        <div class="bp-requirement-section-header">
+                            <div>
+                                <span>Section</span>
+                                <h3>@requirementSection.Label</h3>
+                            </div>
+                            <div class="bp-requirement-section-count">
+                                <strong>@requirementSection.RequiredCount</strong>
+                                <span>required</span>
+                            </div>
+                        </div>
+                        <div class="bp-requirement-list">
+                            @foreach (var requirementField in requirementSection.Fields.OrderBy(field => field.SortOrder))
+                            {
+                                <label class="bp-requirement-switch">
+                                    <input type="checkbox" name="requiredFieldKeys" value="@requirementField.FieldKey" checked="@requirementField.IsRequired" />
+                                    <span class="bp-requirement-toggle" aria-hidden="true"></span>
+                                    <span class="bp-requirement-copy">
+                                        <strong>@requirementField.Label</strong>
+                                        <small>@requirementField.Guidance</small>
+                                        <code>@requirementField.DataPath</code>
+                                    </span>
+                                </label>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
+        </section>
+
+        <div class="bp-product-editor-savebar bp-span-all">
+            <div>
+                <strong>Save product template to MongoDB</strong>
+                <span>Existing batteries stay unchanged until you push a software-version update.</span>
+            </div>
+            <button type="submit" class="bp-primary-button">Save product template</button>
+        </div>
+    </form>
+
+    @if (!isNew)
+    {
+        @foreach (var software in Model.SoftwareVersions)
+        {
+            <form id="push-@Model.ProductId-@software.Version" method="post" action="/admin/products/@Uri.EscapeDataString(Model.ProductId)/software/@Uri.EscapeDataString(software.Version)/push">
+                @Html.AntiForgeryToken()
+            </form>
+        }
+    }
+</main>
+
+@section Scripts {
+    <script>
+        (() => {
+            const list = document.querySelector('[data-software-version-list]');
+            const addButton = document.querySelector('[data-add-software-version]');
+            if (!list || !addButton) {
+                return;
+            }
+
+            function bindRemoveButton(row) {
+                row.querySelector('[data-remove-software-version]')?.addEventListener('click', () => {
+                    const rows = Array.from(list.querySelectorAll('[data-software-version-row]'));
+                    if (rows.length <= 1) {
+                        row.querySelectorAll('input').forEach(input => {
+                            input.value = '';
+                        });
+                        row.querySelector('input[name="softwareVersion"]')?.focus();
+                        return;
+                    }
+
+                    row.remove();
+                });
+            }
+
+            function createRow() {
+                const row = document.createElement('article');
+                row.className = 'bp-template-version-row';
+                row.dataset.softwareVersionRow = '';
+                row.innerHTML = `
+                    <label class="bp-field-shell">
+                        <span>Version</span>
+                        <input type="text" name="softwareVersion" value="" placeholder="4.0" required />
+                    </label>
+                    <label class="bp-field-shell">
+                        <span>Release date</span>
+                        <input type="date" name="softwareReleaseDate" value="" required />
+                    </label>
+                    <label class="bp-field-shell">
+                        <span>Latest update</span>
+                        <input type="date" name="softwareLatestUpdate" value="" required />
+                    </label>
+                    <div class="bp-template-version-action">
+                        <button type="button" class="bp-danger-button bp-button-compact" data-remove-software-version>Remove</button>
+                    </div>`;
+                bindRemoveButton(row);
+                return row;
+            }
+
+            list.querySelectorAll('[data-software-version-row]').forEach(bindRemoveButton);
+            addButton.addEventListener('click', () => {
+                const row = createRow();
+                list.appendChild(row);
+                row.querySelector('input[name="softwareVersion"]')?.focus();
+            });
+        })();
+    </script>
+}

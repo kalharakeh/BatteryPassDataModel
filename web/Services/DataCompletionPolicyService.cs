@@ -67,6 +67,28 @@ public sealed class DataCompletionPolicyService
         return FromBsonDocument(document);
     }
 
+    public async Task<DataCompletionPolicySnapshot> GetPolicyForPassportAsync(BsonDocument passport, CancellationToken cancellationToken = default)
+    {
+        var productId = BsonHelpers.GetString(passport, "app", "product", "productId");
+        return string.IsNullOrWhiteSpace(productId)
+            ? await GetPolicyAsync(cancellationToken)
+            : await GetProductPolicyAsync(productId, cancellationToken);
+    }
+
+    public async Task<DataCompletionPolicySnapshot> GetProductPolicyAsync(string productId, CancellationToken cancellationToken = default)
+    {
+        var collection = GetProductPolicyCollection();
+        if (collection == null || string.IsNullOrWhiteSpace(productId))
+        {
+            return await GetPolicyAsync(cancellationToken);
+        }
+
+        var document = await collection
+            .Find(Builders<BsonDocument>.Filter.Eq("productId", productId.Trim()))
+            .FirstOrDefaultAsync(cancellationToken);
+        return document == null ? CreateDefaultPolicy() : FromBsonDocument(document);
+    }
+
     public async Task SavePolicyAsync(IReadOnlyCollection<string> requiredFieldKeys, string actor, CancellationToken cancellationToken = default)
     {
         var required = requiredFieldKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -74,6 +96,34 @@ public sealed class DataCompletionPolicyService
             .SelectMany(section => section.Fields)
             .ToDictionary(field => field.FieldKey, field => required.Contains(field.FieldKey), StringComparer.OrdinalIgnoreCase));
         await SavePolicyAsync(policy, actor, cancellationToken);
+    }
+
+    public async Task SaveProductPolicyAsync(string productId, IReadOnlyCollection<string> requiredFieldKeys, string actor, CancellationToken cancellationToken = default)
+    {
+        var required = requiredFieldKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var policy = CreateDefaultPolicy(DefaultSections
+            .SelectMany(section => section.Fields)
+            .ToDictionary(field => field.FieldKey, field => required.Contains(field.FieldKey), StringComparer.OrdinalIgnoreCase));
+        await SaveProductPolicyAsync(productId, policy, actor, cancellationToken);
+    }
+
+    public async Task SaveProductPolicyAsync(string productId, DataCompletionPolicySnapshot policy, string actor, CancellationToken cancellationToken = default)
+    {
+        var collection = GetProductPolicyCollection();
+        if (collection == null || string.IsNullOrWhiteSpace(productId))
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow.ToString("O");
+        var document = ToBsonDocument(policy, actor, now);
+        document["productId"] = productId.Trim();
+        document["policyKey"] = $"{PolicyKey}:product:{productId.Trim()}";
+        await collection.ReplaceOneAsync(
+            Builders<BsonDocument>.Filter.Eq("productId", productId.Trim()),
+            document,
+            new ReplaceOptions { IsUpsert = true },
+            cancellationToken);
     }
 
     public async Task SavePolicyAsync(DataCompletionPolicySnapshot policy, string actor, CancellationToken cancellationToken = default)
@@ -194,6 +244,11 @@ public sealed class DataCompletionPolicyService
         return _mongoContext.Database?.GetCollection<BsonDocument>("dataCompletionPolicies");
     }
 
+    private IMongoCollection<BsonDocument>? GetProductPolicyCollection()
+    {
+        return _mongoContext.Database?.GetCollection<BsonDocument>("batteryProductCompletionPolicies");
+    }
+
     private static bool HasCompletionValue(BsonDocument passport, string dataPath)
     {
         var value = ResolveValue(passport, dataPath);
@@ -296,9 +351,11 @@ public sealed class DataCompletionPolicyService
         sections.Add(Section("general", "General", 10,
             Field("general.passportId", "Passport ID", "passportId", "Unique DID-style battery identifier.", true, 10),
             Field("general.name", "Name", "app.display.name", "Human-readable battery name.", true, 20),
+            Field("general.product", "Product", "app.product.productId", "Battery product template selected for this passport.", true, 25),
+            Field("general.softwareVersion", "Software version", "app.product.softwareVersion", "Software version selected for this product.", true, 26),
             Field("general.modelNumber", "Model Number", "app.display.modelNumber", "Model identifier shown on public reports.", true, 30),
             Field("general.serialNumber", "Serial Number", "app.display.serialNumber", "Manufacturer serial number.", true, 40),
-            Field("general.category", "Category", "aspects.generalProductInformation.payload.batteryCategory", "Battery category used by the official schema.", true, 50),
+            Field("general.category", "Product category", "aspects.generalProductInformation.payload.batteryCategory", "Official Battery Pass battery category used by the schema.", true, 50),
             Field("general.batteryStatus", "Status", "aspects.generalProductInformation.payload.batteryStatus", "Lifecycle/original status for the battery.", true, 60),
             Field("general.batteryMass", "Battery mass", "aspects.generalProductInformation.payload.batteryMass", "Battery mass in kg.", true, 70),
             Field("general.manufacturingDate", "Manufactured date", "aspects.generalProductInformation.payload.manufacturingDate", "Manufacturing date.", true, 80),

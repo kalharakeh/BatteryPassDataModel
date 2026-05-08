@@ -142,7 +142,7 @@ public class FilesApiController : ControllerBase
     }
 
     [HttpGet("{fileId}")]
-    public async Task<IActionResult> Download(string fileId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Download(string fileId, [FromQuery] string? passportId, CancellationToken cancellationToken)
     {
         if (_mongoContext.Database == null)
         {
@@ -165,9 +165,9 @@ public class FilesApiController : ControllerBase
         }
 
         var metadata = fileMetadata.GetValue("metadata", new BsonDocument()) as BsonDocument ?? new BsonDocument();
-        var passportId = BsonHelpers.GetString(metadata, "passportId");
+        var linkedPassportId = FirstNonEmpty(passportId?.Trim() ?? string.Empty, BsonHelpers.GetString(metadata, "passportId"));
         var documentKey = BsonHelpers.GetString(metadata, "documentKey");
-        if (string.IsNullOrWhiteSpace(passportId))
+        if (string.IsNullOrWhiteSpace(linkedPassportId))
         {
             return await DenyDownloadAsync(
                 fileId,
@@ -179,12 +179,12 @@ public class FilesApiController : ControllerBase
                 cancellationToken);
         }
 
-        var passport = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
+        var passport = await _passportRepository.GetByPassportIdAsync(linkedPassportId, cancellationToken);
         if (passport == null)
         {
             return await DenyDownloadAsync(
                 fileId,
-                passportId,
+                linkedPassportId,
                 documentKey,
                 NormalizeVisibility(BsonHelpers.GetString(metadata, "visibility")),
                 "passportNotFound",
@@ -201,7 +201,7 @@ public class FilesApiController : ControllerBase
         {
             return await DenyDownloadAsync(
                 fileId,
-                passportId,
+                linkedPassportId,
                 documentKey,
                 visibility,
                 "fileReferenceMismatch",
@@ -220,7 +220,7 @@ public class FilesApiController : ControllerBase
         {
             return await DenyDownloadAsync(
                 fileId,
-                passportId,
+                linkedPassportId,
                 documentKey,
                 visibility,
                 "accessDenied",

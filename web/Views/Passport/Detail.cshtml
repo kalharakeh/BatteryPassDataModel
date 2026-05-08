@@ -49,6 +49,7 @@
         <dl class="bp-field-grid">
             <div><dt>Model Number</dt><dd>@passport.ModelNumber</dd></div>
             <div><dt>Serial Number</dt><dd>@passport.SerialNumber</dd></div>
+            <div><dt>Software version</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareVersion) ? "-" : passport.SoftwareVersion)</dd></div>
             <div><dt>Category</dt><dd>@passport.Category</dd></div>
             <div><dt>Status</dt><dd>@passport.BatteryStatus</dd></div>
             <div><dt>Weight</dt><dd>@passport.WeightLabel</dd></div>
@@ -61,6 +62,7 @@
     <section class="bp-card">
         <ul class="nav nav-tabs bp-tabs" id="detail-tabs" role="tablist">
             <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-general" type="button" role="tab">General</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-software" type="button" role="tab">Software</button></li>
             <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-material" type="button" role="tab">Material composition</button></li>
             <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-performance" type="button" role="tab">Performance</button></li>
             <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-compliance" type="button" role="tab">Compliance</button></li>
@@ -86,6 +88,29 @@
                     <div><dt>Status</dt><dd>@passport.BatteryStatus</dd></div>
                     <div><dt>Weight</dt><dd>@passport.WeightLabel</dd></div>
                 </dl>
+            </div>
+
+            <div class="tab-pane fade" id="tab-software" role="tabpanel">
+                <div class="bp-software-panel">
+                    <div class="bp-software-hero">
+                        <span class="bp-summary-title">Software information</span>
+                        <h2>Installed software baseline</h2>
+                        <p class="bp-help-text mb-0">
+                            The current software version is shown separately from trust diagnostics.
+                            External API software updates are operational data and do not dirty the signed passport core.
+                        </p>
+                    </div>
+                    <div class="bp-software-version-card">
+                        <span>Current version</span>
+                        <strong>@(string.IsNullOrWhiteSpace(passport.SoftwareVersion) ? "-" : passport.SoftwareVersion)</strong>
+                    </div>
+                    <dl class="bp-field-grid mt-0">
+                        <div><dt>Product</dt><dd>@(string.IsNullOrWhiteSpace(passport.ProductName) ? "-" : passport.ProductName)</dd></div>
+                        <div><dt>Product ID</dt><dd>@(string.IsNullOrWhiteSpace(passport.ProductId) ? "-" : passport.ProductId)</dd></div>
+                        <div><dt>Release date</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareReleaseDate) ? "-" : passport.SoftwareReleaseDate)</dd></div>
+                        <div><dt>Latest update</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareLatestUpdate) ? "-" : passport.SoftwareLatestUpdate)</dd></div>
+                    </dl>
+                </div>
             </div>
 
             <div class="tab-pane fade" id="tab-material" role="tabpanel">

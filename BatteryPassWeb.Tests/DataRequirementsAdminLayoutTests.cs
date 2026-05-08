@@ -11,33 +11,44 @@ public sealed class DataRequirementsAdminLayoutTests
     }
 
     [Fact]
-    public void AdminController_ShouldLoadAndSaveDataRequirementsPolicy()
+    public void AdminController_ShouldUseProductScopedRequirementsInsteadOfGlobalAdminSave()
     {
         var source = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
 
         Assert.Contains("DataCompletionPolicyService", source);
-        Assert.Contains("DataRequirements = dataRequirements", source);
-        Assert.Contains("[HttpPost(\"data-requirements/save\")]", source);
-        Assert.Contains("SavePolicyAsync", source);
+        Assert.Contains("GetPolicyForPassportAsync", source);
+        Assert.Contains("GetProductPolicyAsync", source);
+        Assert.DoesNotContain("[HttpPost(\"data-requirements/save\")]", source);
+        Assert.DoesNotContain("SaveDataRequirements", source);
     }
 
     [Fact]
-    public void AdminWorkspace_ShouldRenderDataRequirementsTabBeforeHelp()
+    public void AdminWorkspace_ShouldNotRenderGlobalDataRequirementsTab()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
         var model = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "AdminClusterViewModel.cs"));
-        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+        var adminClusterModel = model[..model.IndexOf("public sealed class ProductTemplateSummaryViewModel", StringComparison.Ordinal)];
 
-        Assert.Contains("Data requirements", markup);
-        Assert.Contains("tab=data-requirements", markup);
-        Assert.Contains("selectedTab == \"data-requirements\"", markup);
-        Assert.True(markup.IndexOf("Data requirements", StringComparison.Ordinal) < markup.IndexOf("Help", StringComparison.Ordinal));
+        Assert.Contains("Product templates", markup);
+        Assert.Contains("tab=products", markup);
+        Assert.Contains("Required fields", markup);
+        Assert.DoesNotContain("tab=data-requirements", markup);
+        Assert.DoesNotContain("selectedTab == \"data-requirements\"", markup);
+        Assert.DoesNotContain("Save data requirements", markup);
+        Assert.DoesNotContain("Model.DataRequirements", markup);
+
+        Assert.DoesNotContain("DataRequirements", adminClusterModel);
+    }
+
+    [Fact]
+    public void ProductTemplateEditor_ShouldRemainRequirementSourceOfTruth()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Product.cshtml"));
+
+        Assert.Contains("Template completion policy", markup);
+        Assert.Contains("Required and optional parameters", markup);
         Assert.Contains("name=\"requiredFieldKeys\"", markup);
-        Assert.Contains("Model.DataRequirements", markup);
-
-        Assert.Contains("DataRequirements", model);
-        Assert.Contains(".bp-data-requirements-shell", css);
-        Assert.Contains(".bp-requirement-switch", css);
+        Assert.Contains("Product templates tab", File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml")));
     }
 
     private static string RepoFile(params string[] parts)

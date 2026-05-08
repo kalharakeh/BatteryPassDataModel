@@ -19,8 +19,9 @@ public sealed class ConformanceLayoutTests
 
         Assert.Contains("[HttpGet(\"passports/{passportId}/conformance\")]", source);
         Assert.Contains("[HttpPost(\"passports/{passportId}/validate\")]", source);
-        Assert.Contains("[HttpPost(\"passports/{passportId}/complete-required-data\")]", source);
-        Assert.Contains("DemoRequiredDataCompletionService", source);
+        Assert.Contains("ProductTemplateService", source);
+        Assert.Contains("GetPolicyForPassportAsync", source);
+        Assert.DoesNotContain("[HttpPost(\"passports/{passportId}/complete-required-data\")]", source);
         Assert.Contains("ConformanceViewModel", source);
     }
 
@@ -69,13 +70,13 @@ public sealed class ConformanceLayoutTests
         Assert.Contains("Invalid format", markup);
         Assert.Contains("Invalid value", markup);
         Assert.Contains("Business-rule data", markup);
-        Assert.Contains("Complete required demo data", markup);
+        Assert.Contains("Product template", markup);
         Assert.Contains("bp-conformance-shell", markup);
         Assert.Contains("bp-issue-list", markup);
         Assert.Contains("bp-completion-checklist", markup);
         Assert.Contains("bp-completion-section", markup);
         Assert.Contains("bp-action-control", markup);
-        Assert.Contains("showCompleteRequiredData", markup);
+        Assert.DoesNotContain("showCompleteRequiredData", markup);
         Assert.Contains("showSignPassport", markup);
         Assert.Contains("showPublishPassport", markup);
     }
@@ -91,7 +92,8 @@ public sealed class ConformanceLayoutTests
         Assert.DoesNotContain("disabled=\"", markup);
         Assert.DoesNotContain("disabled=@", markup);
         Assert.DoesNotContain("Sign passport is disabled", markup);
-        Assert.Contains("@if (showCompleteRequiredData)", markup);
+        Assert.DoesNotContain("@if (showCompleteRequiredData)", markup);
+        Assert.DoesNotContain("Complete required demo data", markup);
         Assert.Contains("@if (showSignPassport)", markup);
         Assert.Contains("@if (showPublishPassport)", markup);
     }

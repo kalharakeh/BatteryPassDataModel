@@ -18,15 +18,15 @@
         <div class="bp-alert bp-alert-danger">@errorMessage</div>
     }
 
-    <section class="bp-admin-help-demo-reset" aria-label="Phase 6A demo reset">
+    <section class="bp-admin-help-demo-reset" aria-label="Product template reset">
         <div>
-            <span class="bp-summary-title">Phase 6A demo reset</span>
-            <strong>Restore the known demo passports before a guided test run.</strong>
-            <p>Only the allow-listed Phase 6A demo IDs are reset. User-created passports are not touched.</p>
+            <span class="bp-summary-title">Product template reset</span>
+            <strong>Restore the four known passports from MongoDB product templates.</strong>
+            <p>This guarded reset recreates the Compact 7M, Compact 13M, and Core product templates, software versions, evidence files, clusters, users, and exactly four passport records.</p>
         </div>
-        <form method="post" action="/admin/demo-scenarios/reset">
+        <form method="post" action="/admin/product-templates/reset">
             @Html.AntiForgeryToken()
-            <button type="submit" class="bp-secondary-button bp-button-accent">Reset demo scenarios</button>
+            <button type="submit" class="bp-secondary-button bp-button-accent">Reset product-template passports</button>
         </form>
     </section>
 
@@ -35,12 +35,12 @@
             <span class="bp-summary-title">Admin workflow help</span>
             <h1>Create, validate, sign, publish, and recover clean trust state</h1>
             <p class="mb-0">
-                Use this page when you need the practical workflow: create the battery ID, fill the required facts,
+                Use this page when you need the practical workflow: create the battery ID from a product template, fill the battery-specific facts,
                 validate the passport, sign the canonical core, publish it, and recover after edits.
             </p>
             <div class="bp-admin-help-actions">
                 <a href="/admin/passports/new" class="bp-primary-button">Create battery ID</a>
-                <a href="/admin/clusters?tab=data-requirements" class="bp-secondary-button">Open data requirements</a>
+                <a href="/admin/clusters?tab=products" class="bp-secondary-button">Open product templates</a>
                 <a href="/admin/clusters?tab=passports" class="bp-secondary-button">Open passports</a>
             </div>
         </div>
@@ -59,7 +59,7 @@
             <h2>Jump straight to the admin surface you need</h2>
         </div>
         <a class="bp-admin-help-task-card" href="/admin/passports/new"><span>Create</span><strong>New battery ID</strong><small>Start a draft passport.</small></a>
-        <a class="bp-admin-help-task-card" href="/admin/clusters?tab=data-requirements"><span>Define</span><strong>Data requirements</strong><small>Choose required vs optional fields.</small></a>
+        <a class="bp-admin-help-task-card" href="/admin/clusters?tab=products"><span>Define</span><strong>Product templates</strong><small>Edit products, software, and required fields.</small></a>
         <a class="bp-admin-help-task-card" href="/admin/clusters?tab=passports"><span>Manage</span><strong>Passport workspace</strong><small>Open drafts, signed, dirty, and published records.</small></a>
         <a class="bp-admin-help-task-card" href="#workflow-steps"><span>Learn</span><strong>Step-by-step flow</strong><small>Validate, sign, publish, and recover clean state.</small></a>
     </section>
@@ -98,7 +98,7 @@
             <span class="bp-summary-title">Dirty state rule</span>
             <h2>What makes trust dirty?</h2>
             <p>Editing saved passport core data after signing makes the passport dirty because the signed hash no longer represents the current content.</p>
-            <p class="mb-0">HTTP telemetry does not make the passport dirty because live operational requests are outside the signed canonical passport core.</p>
+            <p class="mb-0">HTTP telemetry does not make the passport dirty. API software updates also do not dirty the passport because live operational requests are outside the signed canonical passport core.</p>
         </article>
         <article class="bp-card bp-admin-help-callout">
             <span class="bp-summary-title">Public discovery</span>
@@ -109,9 +109,9 @@
         <article class="bp-card bp-admin-help-callout bp-admin-help-policy-link">
             <span class="bp-summary-title">Completion policy</span>
             <h2>Who decides required data?</h2>
-            <p>The <strong>Data requirements tab</strong> controls required/optional switches. The settings are saved in MongoDB in the <code>dataCompletionPolicies</code> collection.</p>
-            <p class="mb-0">Validation, signing, publishing, edit guidance, and conformance checklists read that saved policy.</p>
-            <a href="/admin/clusters?tab=data-requirements" class="bp-secondary-button bp-button-compact mt-3">Open data requirements</a>
+            <p>The <strong>Product templates tab</strong> controls required/optional switches per product. The settings are saved in MongoDB and used by batteries linked to that product.</p>
+            <p class="mb-0">Validation, signing, publishing, edit guidance, and conformance checklists read the saved product policy.</p>
+            <a href="/admin/clusters?tab=products" class="bp-secondary-button bp-button-compact mt-3">Open product templates</a>
         </article>
     </section>
 
@@ -126,9 +126,9 @@
                 <span class="bp-summary-title">First-time passport checklist</span>
                 <h4>Create a trusted passport from scratch</h4>
                 <ol>
-                    <li>Create battery ID and save the draft.</li>
-                    <li>Fill battery information in every admin section.</li>
-                    <li>Open <a href="/admin/clusters?tab=data-requirements">data requirements</a> to confirm required and optional fields.</li>
+                    <li>Create battery ID, choose Product and Software version, and save the draft.</li>
+                    <li>Review the copied product template data and fill battery-specific information in every admin section.</li>
+                    <li>Open <a href="/admin/clusters?tab=products">product templates</a> to confirm required and optional fields for that product.</li>
                     <li>Validate passport and resolve every blocking field.</li>
                     <li>Sign passport when blockers are zero.</li>
                     <li>Publish passport when the page says publishing is ready.</li>
@@ -159,6 +159,29 @@
                 </ol>
                 <p>External links can describe evidence, but uploaded files with document hash values are what the app can verify against a signed revision.</p>
             </article>
+            <article class="bp-admin-help-check-card">
+                <span class="bp-summary-title">Product template push</span>
+                <h4>Update matching batteries safely</h4>
+                <ol>
+                    <li>Open product templates and edit shared product data or software release date and latest update values.</li>
+                    <li>Save the product template to MongoDB.</li>
+                    <li>Use Push to matching batteries for the software version you changed.</li>
+                    <li>The app updates fields that still match the previous template baseline.</li>
+                    <li>Manual battery overrides are preserved and reported as skipped paths.</li>
+                    <li>Updated batteries become dirty until validation, signing, and publishing are repeated.</li>
+                </ol>
+            </article>
+            <article class="bp-admin-help-check-card">
+                <span class="bp-summary-title">Software display and API updates</span>
+                <h4>Know where software data appears</h4>
+                <ol>
+                    <li>New passports copy software version, release date, and latest update values from the selected product template.</li>
+                    <li>The public summary shows the current software version as a normal battery fact.</li>
+                    <li>The Detailed report Software tab shows product, product ID, software version, release date, and latest update.</li>
+                    <li>API software updates do not dirty the passport because they update current operational software in <code>app.operations</code>.</li>
+                    <li>If a current API software value exists, the summary and detail pages show it before the signed product baseline.</li>
+                </ol>
+            </article>
         </div>
         <div class="bp-admin-help-split-checklists">
             <article class="bp-admin-help-check-card">
@@ -174,21 +197,21 @@
             <div>
                 <h4>Required data</h4>
                 <ul>
-                    <li>Identity, manufacturer, category, mass, status, manufacturing date, and facility details.</li>
+                    <li>Identity, manufacturer, product, software version, mass, status, manufacturing date, and facility details.</li>
                     <li>Material composition, recycled-content, performance, durability, carbon footprint, labels, certificates, circularity, and due-diligence references marked required in policy.</li>
                 </ul>
             </div>
             <div>
                 <h4>Optional data</h4>
                 <ul>
-                    <li>Any parameter switched off in the Data requirements tab.</li>
+                    <li>Any parameter switched off in the product template required/optional policy.</li>
                     <li>Display image, optional documents, and live operational HTTP request data unless policy says otherwise.</li>
                 </ul>
             </div>
         </div>
         <ol class="bp-admin-help-steps">
-            <li class="bp-admin-help-step-card"><div class="bp-admin-help-step-number">1</div><div class="bp-admin-help-step-copy"><h3>Create battery ID</h3><p>Create the DID, fill identity basics, and save the draft.</p></div></li>
-            <li class="bp-admin-help-step-card"><div class="bp-admin-help-step-number">2</div><div class="bp-admin-help-step-copy"><h3>Fill battery information</h3><p>The edit form marks fields as Required or Optional from the saved MongoDB policy.</p></div></li>
+            <li class="bp-admin-help-step-card"><div class="bp-admin-help-step-number">1</div><div class="bp-admin-help-step-copy"><h3>Create battery ID</h3><p>Create the DID, choose Product and Software version, and save the draft copied from the template.</p></div></li>
+            <li class="bp-admin-help-step-card"><div class="bp-admin-help-step-number">2</div><div class="bp-admin-help-step-copy"><h3>Fill battery information</h3><p>The edit form marks fields as Required or Optional from the product's saved MongoDB policy.</p></div></li>
             <li class="bp-admin-help-step-card"><div class="bp-admin-help-step-number">3</div><div class="bp-admin-help-step-copy"><h3>Validate passport</h3><p>Validation checks official schemas, business rules, and completion policy. Signing appears only when blockers are zero.</p></div></li>
             <li class="bp-admin-help-step-card"><div class="bp-admin-help-step-number">4</div><div class="bp-admin-help-step-copy"><h3>Sign passport</h3><p>Signing canonicalizes the passport core, creates a hash, stores proof metadata, and records an immutable signed revision.</p></div></li>
             <li class="bp-admin-help-step-card"><div class="bp-admin-help-step-number">5</div><div class="bp-admin-help-step-copy"><h3>Publish passport</h3><p>Publishing requires a current valid signature proof and makes the passport publicly searchable.</p><p>The <strong>Trust &amp; conformance tab is visible only</strong> to general admins or local cluster admins for the battery's cluster.</p></div></li>

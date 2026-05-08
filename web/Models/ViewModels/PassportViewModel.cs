@@ -11,6 +11,11 @@ public sealed class PassportViewModel
     public string RegistryStatus { get; init; } = string.Empty;
     public string ClusterId { get; init; } = string.Empty;
     public string ClusterLabel { get; init; } = "No cluster assigned";
+    public string ProductId { get; init; } = string.Empty;
+    public string ProductName { get; init; } = string.Empty;
+    public string SoftwareVersion { get; init; } = string.Empty;
+    public string SoftwareReleaseDate { get; init; } = string.Empty;
+    public string SoftwareLatestUpdate { get; init; } = string.Empty;
     public string Category { get; init; } = string.Empty;
     public string BatteryStatus { get; init; } = string.Empty;
     public string ManufacturedDate { get; init; } = string.Empty;
@@ -48,6 +53,7 @@ public sealed class PassportViewModel
     public IReadOnlyList<string> Sections { get; init; } =
     [
         "General",
+        "Software",
         "Material composition",
         "Performance",
         "Compliance",

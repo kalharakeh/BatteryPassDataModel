@@ -20,6 +20,7 @@ public sealed class PassportViewModelFactory
         var appDocuments = GetDocument(app.GetValue("documents", new BsonDocument()));
         var appNotes = GetDocument(app.GetValue("notes", new BsonDocument()));
         var appOperations = GetDocument(app.GetValue("operations", new BsonDocument()));
+        var appProduct = GetDocument(app.GetValue("product", new BsonDocument()));
         var circularityNotes = GetDocument(appNotes.GetValue("circularity", new BsonDocument()));
 
         var aspects = GetDocument(BsonHelpers.GetValue(document, "aspects"));
@@ -162,6 +163,17 @@ public sealed class PassportViewModelFactory
             RegistryStatus = BsonHelpers.GetString(document, "registryInfo", "status"),
             ClusterId = clusterId,
             ClusterLabel = clusterLabel,
+            ProductId = BsonHelpers.GetString(appProduct, "productId"),
+            ProductName = BsonHelpers.GetString(appProduct, "productName"),
+            SoftwareVersion = FirstNonEmpty(
+                BsonHelpers.GetString(appOperations, "softwareVersion"),
+                BsonHelpers.GetString(appProduct, "softwareVersion")),
+            SoftwareReleaseDate = DateOnly(FirstNonEmpty(
+                BsonHelpers.GetString(appOperations, "softwareReleaseDate"),
+                BsonHelpers.GetString(appProduct, "softwareReleaseDate"))),
+            SoftwareLatestUpdate = DateOnly(FirstNonEmpty(
+                BsonHelpers.GetString(appOperations, "softwareLatestUpdate"),
+                BsonHelpers.GetString(appProduct, "softwareLatestUpdate"))),
             Category = batteryCategory,
             BatteryStatus = BsonHelpers.GetString(generalPayload, "batteryStatus"),
             ManufacturedDate = DateOnly(BsonHelpers.GetString(generalPayload, "manufacturingDate")),

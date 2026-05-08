@@ -6,7 +6,6 @@
     var readiness = Model.Readiness;
     var summary = Model.ValidationSummary;
     var isPublished = string.Equals(passport.RegistryStatus, "published", StringComparison.OrdinalIgnoreCase);
-    var showCompleteRequiredData = readiness.NextActionKey == PassportReadinessAction.CompleteData && readiness.CanCompleteDemoData;
     var showSignPassport = readiness.NextActionKey == PassportReadinessAction.Sign && readiness.CanSign;
     var showPublishPassport = readiness.NextActionKey == PassportReadinessAction.Publish && readiness.CanPublish;
     var showWorkflowComplete = readiness.NextActionKey == PassportReadinessAction.None || (readiness.CanPublish && isPublished);
@@ -43,15 +42,6 @@
                         <button type="submit" class="bp-secondary-button">Validate passport</button>
                     </form>
                 </div>
-                @if (showCompleteRequiredData)
-                {
-                    <div class="bp-action-control">
-                        <form method="post" action="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/complete-required-data">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="bp-secondary-button bp-button-accent">Complete required demo data</button>
-                        </form>
-                    </div>
-                }
                 @if (showSignPassport)
                 {
                     <div class="bp-action-control">
@@ -88,6 +78,11 @@
     }
 
     <section class="bp-readiness-strip" aria-label="Readiness metrics">
+        <div class="bp-readiness-card is-muted">
+            <p>Product template</p>
+            <strong>@(string.IsNullOrWhiteSpace(passport.ProductName) ? "Unlinked" : passport.ProductName)</strong>
+            <span>Template-owned data must be valid before signing; manual battery overrides stay dirty until re-signed.</span>
+        </div>
         <div class="bp-readiness-card @(summary.BlockingErrorCount == 0 ? "is-ready" : "is-blocked")">
             <p>Blocking errors</p>
             <strong>@summary.BlockingErrorCount</strong>

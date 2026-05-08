@@ -150,6 +150,19 @@ public sealed class DocumentAccessControlTests
         Assert.Contains("passport.file.download.denied", controller);
     }
 
+    [Fact]
+    public void ProductTemplateDocuments_ShouldDownloadThroughPassportScopedAccess()
+    {
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "FilesApiController.cs"));
+        var productTemplateService = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateService.cs"));
+
+        Assert.Contains("[FromQuery] string? passportId", controller);
+        Assert.Contains("linkedPassportId", controller);
+        Assert.Contains("FirstNonEmpty(passportId?.Trim()", controller);
+        Assert.Contains("?passportId=", productTemplateService);
+        Assert.Contains("source\"] = \"productTemplate\"", productTemplateService);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

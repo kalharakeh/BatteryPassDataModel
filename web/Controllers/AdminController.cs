@@ -36,8 +36,7 @@ public class AdminController : Controller
     private readonly PassportReadinessService _passportReadinessService;
     private readonly PassportEvidenceService _passportEvidenceService;
     private readonly DataCompletionPolicyService _dataCompletionPolicyService;
-    private readonly DemoRequiredDataCompletionService _demoRequiredDataCompletionService;
-    private readonly DemoScenarioResetService _demoScenarioResetService;
+    private readonly ProductTemplateService _productTemplateService;
     private readonly PassportTrustService _passportTrustService;
     private readonly AuditRevisionService _auditRevisionService;
 
@@ -51,8 +50,7 @@ public class AdminController : Controller
         PassportReadinessService passportReadinessService,
         PassportEvidenceService passportEvidenceService,
         DataCompletionPolicyService dataCompletionPolicyService,
-        DemoRequiredDataCompletionService demoRequiredDataCompletionService,
-        DemoScenarioResetService demoScenarioResetService,
+        ProductTemplateService productTemplateService,
         PassportTrustService passportTrustService,
         AuditRevisionService auditRevisionService)
     {
@@ -65,8 +63,7 @@ public class AdminController : Controller
         _passportReadinessService = passportReadinessService;
         _passportEvidenceService = passportEvidenceService;
         _dataCompletionPolicyService = dataCompletionPolicyService;
-        _demoRequiredDataCompletionService = demoRequiredDataCompletionService;
-        _demoScenarioResetService = demoScenarioResetService;
+        _productTemplateService = productTemplateService;
         _passportTrustService = passportTrustService;
         _auditRevisionService = auditRevisionService;
     }
@@ -98,20 +95,17 @@ public class AdminController : Controller
         var draftPassportId = string.IsNullOrWhiteSpace(passportId)
             ? $"did:web:acme.battery.pass:{Guid.NewGuid():N}"
             : passportId.Trim();
-        var document = await BuildDraftPassportDocumentAsync(draftPassportId, cancellationToken);
-        var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
-        var clusterNamesById = BuildClusterDictionary(clusters);
-        var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
-
-        var model = new EditPassportViewModel
-        {
-            Passport = _viewModelFactory.Create(document, clusterNamesById),
-            Mode = "new",
-            DataRequirements = dataRequirements,
-            FieldRequirementByKey = BuildFieldRequirementDictionary(dataRequirements),
-            StatusMessage = status == "created" ? "Passport created." : string.Empty,
-            ErrorMessage = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error)
-        };
+        var document = await BuildDraftPassportDocumentAsync(
+            draftPassportId,
+            BatteryProductTemplateCatalog.DefaultProductId,
+            BatteryProductTemplateCatalog.DefaultSoftwareVersion,
+            cancellationToken);
+        var model = await BuildEditPassportModelAsync(
+            document,
+            "new",
+            status == "created" ? "Passport created." : string.Empty,
+            error,
+            cancellationToken);
 
         return View("EditPassport", model);
     }
@@ -146,15 +140,20 @@ public class AdminController : Controller
             return Redirect($"/admin/passports/new?passportId={Uri.EscapeDataString(passportId)}&error={Uri.EscapeDataString("Passport ID already exists.")}");
         }
 
-        var document = await BuildDraftPassportDocumentAsync(passportId, cancellationToken);
+        var document = await BuildDraftPassportDocumentAsync(
+            passportId,
+            Text(form, "productId", BatteryProductTemplateCatalog.DefaultProductId),
+            Text(form, "softwareVersion", BatteryProductTemplateCatalog.DefaultSoftwareVersion),
+            cancellationToken);
         var now = DateTime.UtcNow.ToString("O");
         var requestedStatus = Text(form, "status", "draft");
         ApplyPassportForm(document, form, now);
+        await ApplySelectedProductTemplateMetadataAsync(document, form, cancellationToken);
         _passportPublishPolicyService.SanitizeTrustClaimsForDraftSave(document);
         document["passportId"] = passportId;
         document.Remove("_id");
 
-        var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
+        var dataRequirements = await _dataCompletionPolicyService.GetPolicyForPassportAsync(document, cancellationToken);
         var validationSummary = _passportValidationService.Validate(document, dataRequirements);
         var normalizedStatus = _passportPublishPolicyService.NormalizeRegistryStatus(requestedStatus, document, validationSummary);
         EnsureDocument(document, "registryInfo")["status"] = normalizedStatus;
@@ -177,23 +176,17 @@ public class AdminController : Controller
             return NotFound();
         }
 
-        var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
-        var clusterNamesById = BuildClusterDictionary(clusters);
-        var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
-        var model = new EditPassportViewModel
-        {
-            Passport = _viewModelFactory.Create(document, clusterNamesById),
-            Mode = "edit",
-            DataRequirements = dataRequirements,
-            FieldRequirementByKey = BuildFieldRequirementDictionary(dataRequirements),
-            StatusMessage = status switch
+        var model = await BuildEditPassportModelAsync(
+            document,
+            "edit",
+            status switch
             {
                 "saved" => "Passport changes saved.",
                 "created" => "Passport created.",
                 _ => string.Empty
             },
-            ErrorMessage = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error)
-        };
+            error,
+            cancellationToken);
 
         return View(model);
     }
@@ -219,8 +212,9 @@ public class AdminController : Controller
         var now = DateTime.UtcNow.ToString("O");
         var requestedStatus = Text(form, "status", BsonHelpers.GetString(document, "registryInfo", "status"));
         ApplyPassportForm(document, form, now);
+        await ApplySelectedProductTemplateMetadataAsync(document, form, cancellationToken);
         _passportPublishPolicyService.InvalidateValidationClaimForDraftSave(document);
-        var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
+        var dataRequirements = await _dataCompletionPolicyService.GetPolicyForPassportAsync(document, cancellationToken);
         var validationSummary = _passportValidationService.Validate(document, dataRequirements);
         var normalizedStatus = _passportPublishPolicyService.NormalizeRegistryStatus(requestedStatus, document, validationSummary);
         EnsureDocument(document, "registryInfo")["status"] = normalizedStatus;
@@ -264,7 +258,7 @@ public class AdminController : Controller
 
         var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
         var clusterNamesById = BuildClusterDictionary(clusters);
-        var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
+        var dataRequirements = await _dataCompletionPolicyService.GetPolicyForPassportAsync(document, cancellationToken);
         var validation = await ValidateWithEvidenceAsync(passportId, document, dataRequirements, cancellationToken);
         var summary = validation.Summary;
         var evidencePack = validation.EvidencePack;
@@ -289,7 +283,6 @@ public class AdminController : Controller
             StatusMessage = status switch
             {
                 "validated" => "Passport validation completed.",
-                "completed-data" => "Required demo data completed and validation recalculated. Sign once the page shows Can sign = Yes.",
                 "signed" => "Passport signed and immutable revision recorded.",
                 "published" => "Passport published from the latest verified revision.",
                 _ => string.Empty
@@ -308,7 +301,7 @@ public class AdminController : Controller
             return NotFound();
         }
 
-        var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
+        var dataRequirements = await _dataCompletionPolicyService.GetPolicyForPassportAsync(document, cancellationToken);
         var validation = await ValidateWithEvidenceAsync(passportId, document, dataRequirements, cancellationToken);
         var summary = validation.Summary;
         await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
@@ -330,42 +323,6 @@ public class AdminController : Controller
         return Redirect($"/admin/passports/{Uri.EscapeDataString(passportId)}/conformance?status=validated");
     }
 
-    [HttpPost("passports/{passportId}/complete-required-data")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CompleteRequiredData(string passportId, CancellationToken cancellationToken)
-    {
-        var document = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
-        if (document == null)
-        {
-            return NotFound();
-        }
-
-        var actor = CurrentActor();
-        var completed = _demoRequiredDataCompletionService.CompleteRequiredData(document);
-        _passportPublishPolicyService.InvalidateValidationClaimForDraftSave(completed);
-        var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
-        var summary = _passportValidationService.Validate(completed, dataRequirements);
-
-        await _passportRepository.ReplaceAsync(passportId, completed, cancellationToken);
-        await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
-        await _passportRepository.MarkCanonicalDirtyAsync(passportId, "requiredDemoDataCompleted", cancellationToken);
-        await _auditRevisionService.AppendAuditEventAsync(
-            passportId,
-            "passport.requiredData.completed",
-            actor,
-            "admin",
-            "admin-ui",
-            "Required schema demo data completed.",
-            new BsonDocument
-            {
-                ["blockingErrors"] = summary.BlockingErrorCount,
-                ["warnings"] = summary.WarningCount
-            },
-            cancellationToken);
-
-        return Redirect(BuildConformanceRedirect(passportId, status: "completed-data"));
-    }
-
     [HttpPost("passports/{passportId}/sign")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SignPassport(string passportId, CancellationToken cancellationToken)
@@ -376,7 +333,7 @@ public class AdminController : Controller
             return NotFound();
         }
 
-        var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
+        var dataRequirements = await _dataCompletionPolicyService.GetPolicyForPassportAsync(document, cancellationToken);
         var validation = await ValidateWithEvidenceAsync(passportId, document, dataRequirements, cancellationToken);
         var summary = validation.Summary;
         if (!_passportPublishPolicyService.CanSign(summary))
@@ -459,7 +416,7 @@ public class AdminController : Controller
             return NotFound();
         }
 
-        var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
+        var dataRequirements = await _dataCompletionPolicyService.GetPolicyForPassportAsync(document, cancellationToken);
         var validation = await ValidateWithEvidenceAsync(passportId, document, dataRequirements, cancellationToken);
         var summary = validation.Summary;
         if (!_passportPublishPolicyService.CanSign(summary))
@@ -579,22 +536,81 @@ public class AdminController : Controller
         });
     }
 
-    [HttpPost("demo-scenarios/reset")]
+    [HttpGet("products/new")]
+    public async Task<IActionResult> NewProduct([FromQuery] string? error, CancellationToken cancellationToken)
+    {
+        await _productTemplateService.EnsureDefaultTemplatesAsync(CurrentActor(), cancellationToken);
+        var starter = BatteryProductTemplateCatalog.DefaultProduct with
+        {
+            ProductId = string.Empty,
+            ProductName = string.Empty,
+            Description = string.Empty
+        };
+        var dataRequirements = DataCompletionPolicyService.CreateDefaultPolicy();
+        return View("Product", BuildProductEditModel(starter, dataRequirements, string.Empty, error));
+    }
+
+    [HttpGet("products/{productId}")]
+    public async Task<IActionResult> Product(string productId, [FromQuery] string? status, [FromQuery] string? error, CancellationToken cancellationToken)
+    {
+        await _productTemplateService.EnsureDefaultTemplatesAsync(CurrentActor(), cancellationToken);
+        var product = await _productTemplateService.GetProductAsync(productId, cancellationToken);
+        if (product == null)
+        {
+            return NotFound();
+        }
+
+        var dataRequirements = await _dataCompletionPolicyService.GetProductPolicyAsync(product.ProductId, cancellationToken);
+        return View("Product", BuildProductEditModel(product, dataRequirements, status, error));
+    }
+
+    [HttpPost("products/save")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ResetDemoScenarios(CancellationToken cancellationToken)
+    public async Task<IActionResult> SaveProduct(CancellationToken cancellationToken)
+    {
+        var form = Request.Form;
+        var productId = Text(form, "productId").Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(productId))
+        {
+            return Redirect($"/admin/products/new?error={Uri.EscapeDataString("Product ID is required.")}");
+        }
+
+        var existing = await _productTemplateService.GetProductAsync(productId, cancellationToken)
+            ?? BatteryProductTemplateCatalog.FindProduct(productId)
+            ?? (BatteryProductTemplateCatalog.DefaultProduct with { ProductId = productId });
+        var product = BuildProductTemplateFromForm(form, existing);
+        await _productTemplateService.SaveProductAsync(product, CurrentActor(), cancellationToken);
+        return Redirect($"/admin/products/{Uri.EscapeDataString(product.ProductId)}?status={Uri.EscapeDataString("Product template saved. Push a software version when you want matching batteries to receive safe template changes.")}");
+    }
+
+    [HttpPost("products/{productId}/software/{softwareVersion}/push")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PushProductTemplate(string productId, string softwareVersion, CancellationToken cancellationToken)
+    {
+        var result = await _productTemplateService.PushTemplateAsync(productId, softwareVersion, CurrentActor(), cancellationToken);
+        var message = $"Template push finished: {result.UpdatedBatteries} of {result.MatchedBatteries} matching batteries updated. Manual overrides were preserved.";
+        return Redirect($"/admin/products/{Uri.EscapeDataString(productId)}?status={Uri.EscapeDataString(message)}");
+    }
+
+    [HttpPost("product-templates/reset")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ResetProductTemplateDemo(CancellationToken cancellationToken)
     {
         try
         {
-            var result = await _demoScenarioResetService.ResetAllAsync(CurrentActor(), cancellationToken);
-            return Redirect($"/admin/help?status={Uri.EscapeDataString($"Demo scenarios reset: {result.ResetCount} passports restored.")}");
+            var result = await _productTemplateService.ResetTemplateDemoAsync(CurrentActor(), cancellationToken);
+            TempData["StatusMessage"] = $"Product template demo reset completed: {result.PassportCount} passports restored from MongoDB product templates.";
+            return Redirect("/admin/clusters?tab=products");
         }
         catch (Exception exception) when (IsTrustPersistenceFailure(exception))
         {
-            return Redirect($"/admin/help?error={Uri.EscapeDataString($"{TrustWorkflowServiceErrorMessage} {exception.Message}")}");
+            TempData["ErrorMessage"] = $"{TrustWorkflowServiceErrorMessage} {exception.Message}";
+            return Redirect("/admin/clusters?tab=products");
         }
         catch (InvalidOperationException exception)
         {
-            return Redirect($"/admin/help?error={Uri.EscapeDataString(exception.Message)}");
+            TempData["ErrorMessage"] = exception.Message;
+            return Redirect("/admin/clusters?tab=products");
         }
     }
 
@@ -621,7 +637,7 @@ public class AdminController : Controller
         var memberships = await _clusterRepository.ListClusterMembershipsAsync(cancellationToken);
         var apiTokens = await _externalApiRepository.ListTokensAsync(cancellationToken);
         var batterySecrets = await _externalApiRepository.ListBatterySecretsAsync(cancellationToken: cancellationToken);
-        var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
+        var productTemplates = await _productTemplateService.ListProductsAsync(cancellationToken);
 
         var model = new AdminClusterViewModel
         {
@@ -705,7 +721,7 @@ public class AdminController : Controller
                     UpdatedAt = BsonHelpers.GetString(secret, "updatedAt")
                 };
             }).OrderBy(secret => secret.PassportId, StringComparer.OrdinalIgnoreCase).ToList(),
-            DataRequirements = dataRequirements,
+            ProductTemplates = BuildProductTemplateSummaries(productTemplates),
             SamplePassportId = ExternalApiInitializer.SamplePassportId,
             SampleReadToken = await ResolveTokenValueAsync(ExternalApiInitializer.SampleReadTokenId, ExternalApiInitializer.SampleReadTokenValue, cancellationToken),
             SampleReadWriteToken = await ResolveTokenValueAsync(ExternalApiInitializer.SampleReadWriteTokenId, ExternalApiInitializer.SampleReadWriteTokenValue, cancellationToken),
@@ -715,19 +731,6 @@ public class AdminController : Controller
         };
 
         return View(model);
-    }
-
-    [HttpPost("data-requirements/save")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SaveDataRequirements(CancellationToken cancellationToken)
-    {
-        var requiredFieldKeys = Request.Form["requiredFieldKeys"]
-            .Select(value => value ?? string.Empty)
-            .Where(value => !string.IsNullOrWhiteSpace(value))
-            .ToList();
-        await _dataCompletionPolicyService.SavePolicyAsync(requiredFieldKeys, CurrentActor(), cancellationToken);
-        TempData["StatusMessage"] = "Data requirements policy saved. Future validation and signing checks will use the updated required/optional settings.";
-        return Redirect("/admin/clusters?tab=data-requirements");
     }
 
     [HttpPost("clusters/create")]
@@ -1058,7 +1061,7 @@ public class AdminController : Controller
             "users" => "users",
             "api-tokens" => "api-tokens",
             "battery-secrets" => "battery-secrets",
-            "data-requirements" => "data-requirements",
+            "products" => "products",
             _ => "passports"
         };
     }
@@ -1145,6 +1148,269 @@ public class AdminController : Controller
             .ToDictionary(field => field.FieldKey, field => field, StringComparer.OrdinalIgnoreCase);
     }
 
+    private async Task<EditPassportViewModel> BuildEditPassportModelAsync(
+        BsonDocument document,
+        string mode,
+        string statusMessage,
+        string? error,
+        CancellationToken cancellationToken)
+    {
+        var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
+        var clusterNamesById = BuildClusterDictionary(clusters);
+        var products = await _productTemplateService.ListProductsAsync(cancellationToken);
+        var selectedProductId = FirstNonEmpty(
+            BsonHelpers.GetString(document, "app", "product", "productId"),
+            BatteryProductTemplateCatalog.DefaultProductId);
+        var selectedProduct = products.FirstOrDefault(product => product.ProductId.Equals(selectedProductId, StringComparison.OrdinalIgnoreCase))
+            ?? BatteryProductTemplateCatalog.DefaultProduct;
+        var selectedSoftwareVersion = FirstNonEmpty(
+            BsonHelpers.GetString(document, "app", "product", "softwareVersion"),
+            selectedProduct.SoftwareVersions.FirstOrDefault()?.Version ?? BatteryProductTemplateCatalog.DefaultSoftwareVersion);
+        var dataRequirements = await _dataCompletionPolicyService.GetPolicyForPassportAsync(document, cancellationToken);
+
+        return new EditPassportViewModel
+        {
+            Passport = _viewModelFactory.Create(document, clusterNamesById),
+            Mode = mode,
+            DataRequirements = dataRequirements,
+            ProductTemplates = BuildProductTemplateSummaries(products),
+            ProductTemplateCatalog = BuildProductTemplateFormCatalog(products),
+            ProductSoftwareVersions = selectedProduct.SoftwareVersions
+                .Select(software => new ProductSoftwareVersionViewModel
+                {
+                    Version = software.Version,
+                    ReleaseDate = software.ReleaseDate,
+                    LatestUpdate = software.LatestUpdate
+                })
+                .ToList(),
+            SelectedProductId = selectedProduct.ProductId,
+            SelectedSoftwareVersion = selectedSoftwareVersion,
+            FieldRequirementByKey = BuildFieldRequirementDictionary(dataRequirements),
+            StatusMessage = statusMessage,
+            ErrorMessage = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error)
+        };
+    }
+
+    private static IReadOnlyList<ProductTemplateSummaryViewModel> BuildProductTemplateSummaries(IEnumerable<BatteryProductTemplate> products)
+    {
+        return products
+            .Select(product => new ProductTemplateSummaryViewModel
+            {
+                ProductId = product.ProductId,
+                ProductName = product.ProductName,
+                Description = product.Description,
+                ImageUrl = product.ImageUrl,
+                ModuleCount = product.ModuleCount,
+                SoftwareVersionCount = product.SoftwareVersions.Count,
+                RequiredFieldCount = product.RequiredFieldKeys.Count,
+                DocumentCount = product.TemplateDocuments.Count
+            })
+            .OrderBy(product => product.ProductName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static ProductTemplateEditViewModel BuildProductEditModel(
+        BatteryProductTemplate product,
+        DataCompletionPolicySnapshot dataRequirements,
+        string? status,
+        string? error)
+    {
+        return new ProductTemplateEditViewModel
+        {
+            ProductId = product.ProductId,
+            ProductName = product.ProductName,
+            Description = product.Description,
+            ImageUrl = product.ImageUrl,
+            ModuleCount = product.ModuleCount,
+            BatteryMassKg = product.BatteryMassKg,
+            RatedEnergyKwh = product.RatedEnergyKwh,
+            RatedCapacityAh = product.RatedCapacityAh,
+            RatedMaximumPowerKw = product.RatedMaximumPowerKw,
+            NominalVoltageV = product.NominalVoltageV,
+            ExpectedLifetimeYears = product.ExpectedLifetimeYears,
+            ExpectedCycles = product.ExpectedCycles,
+            SupplyChainIndex = product.SupplyChainIndex,
+            CarbonFootprint = product.CarbonFootprint,
+            PerformanceClass = product.PerformanceClass,
+            MaterialMassesKg = product.MaterialMassesKg,
+            CarbonStages = product.CarbonStages,
+            RecycledContent = product.RecycledContent.ToDictionary(
+                pair => pair.Key,
+                pair => new ProductTemplateRecycledContentViewModel
+                {
+                    PreConsumerShare = pair.Value.PreConsumerShare,
+                    PostConsumerShare = pair.Value.PostConsumerShare
+                },
+                StringComparer.OrdinalIgnoreCase),
+            SoftwareVersions = product.SoftwareVersions
+                .Select(software => new ProductSoftwareVersionViewModel
+                {
+                    Version = software.Version,
+                    ReleaseDate = software.ReleaseDate,
+                    LatestUpdate = software.LatestUpdate
+                })
+                .ToList(),
+            DataRequirements = dataRequirements,
+            StatusMessage = string.IsNullOrWhiteSpace(status) ? string.Empty : Uri.UnescapeDataString(status),
+            ErrorMessage = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error)
+        };
+    }
+
+    private static BatteryProductTemplate BuildProductTemplateFromForm(IFormCollection form, BatteryProductTemplate existing)
+    {
+        var requiredFieldKeys = form["requiredFieldKeys"]
+            .Select(value => value ?? string.Empty)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .ToList();
+
+        return existing with
+        {
+            ProductId = Text(form, "productId", existing.ProductId).Trim().ToLowerInvariant(),
+            ProductName = Text(form, "productName", existing.ProductName),
+            Description = Text(form, "description", existing.Description),
+            ImageUrl = BatteryImageCatalog.NormalizeKnownImageUrl(Text(form, "imageUrl", existing.ImageUrl), string.Empty),
+            ModuleCount = (int)Math.Max(1, Number(form, "moduleCount", existing.ModuleCount)),
+            BatteryMassKg = Number(form, "batteryMassKg", existing.BatteryMassKg),
+            RatedEnergyKwh = Number(form, "ratedEnergyKwh", existing.RatedEnergyKwh),
+            RatedCapacityAh = Number(form, "ratedCapacityAh", existing.RatedCapacityAh),
+            RatedMaximumPowerKw = Number(form, "ratedMaximumPowerKw", existing.RatedMaximumPowerKw),
+            NominalVoltageV = Number(form, "nominalVoltageV", existing.NominalVoltageV),
+            ExpectedLifetimeYears = Number(form, "expectedLifetimeYears", existing.ExpectedLifetimeYears),
+            ExpectedCycles = Number(form, "expectedCycles", existing.ExpectedCycles),
+            SupplyChainIndex = BatteryPassCanonicalDataCatalog.NormalizeSupplyChainIndex(Number(form, "supplyChainIndex", existing.SupplyChainIndex)),
+            CarbonFootprint = BatteryPassCanonicalDataCatalog.NormalizeCarbonFootprint(Number(form, "carbonFootprint", existing.CarbonFootprint)),
+            PerformanceClass = BatteryPassCanonicalDataCatalog.NormalizePerformanceClass(Text(form, "performanceClass", existing.PerformanceClass)),
+            MaterialMassesKg = ReadNumberMap(form, "materialName", "materialMass", existing.MaterialMassesKg),
+            CarbonStages = ReadNumberMap(form, "carbonStage", "carbonStageValue", existing.CarbonStages),
+            RecycledContent = ReadRecycledContentMap(form, existing.RecycledContent),
+            SoftwareVersions = ReadSoftwareVersions(form, existing.SoftwareVersions),
+            RequiredFieldKeys = requiredFieldKeys
+        };
+    }
+
+    private static IReadOnlyList<ProductTemplateFormCatalogItemViewModel> BuildProductTemplateFormCatalog(IEnumerable<BatteryProductTemplate> products)
+    {
+        return products
+            .Select(product => new ProductTemplateFormCatalogItemViewModel
+            {
+                ProductId = product.ProductId,
+                ProductName = product.ProductName,
+                ImageUrl = product.ImageUrl,
+                ModuleCount = product.ModuleCount,
+                BatteryMassKg = product.BatteryMassKg,
+                RatedEnergyKwh = product.RatedEnergyKwh,
+                RatedCapacityAh = product.RatedCapacityAh,
+                RatedMaximumPowerKw = product.RatedMaximumPowerKw,
+                NominalVoltageV = product.NominalVoltageV,
+                ExpectedLifetimeYears = product.ExpectedLifetimeYears,
+                ExpectedCycles = product.ExpectedCycles,
+                SupplyChainIndex = product.SupplyChainIndex,
+                CarbonFootprint = product.CarbonFootprint,
+                PerformanceClass = product.PerformanceClass,
+                MaterialMassesKg = product.MaterialMassesKg,
+                CarbonStages = product.CarbonStages,
+                RecycledContent = product.RecycledContent.ToDictionary(
+                    pair => pair.Key,
+                    pair => new ProductTemplateRecycledContentViewModel
+                    {
+                        PreConsumerShare = pair.Value.PreConsumerShare,
+                        PostConsumerShare = pair.Value.PostConsumerShare
+                    },
+                    StringComparer.OrdinalIgnoreCase),
+                SoftwareVersions = product.SoftwareVersions
+                    .Select(software => new ProductSoftwareVersionViewModel
+                    {
+                        Version = software.Version,
+                        ReleaseDate = software.ReleaseDate,
+                        LatestUpdate = software.LatestUpdate
+                    })
+                    .ToList()
+            })
+            .ToList();
+    }
+
+    private static IReadOnlyDictionary<string, double> ReadNumberMap(
+        IFormCollection form,
+        string nameKey,
+        string valueKey,
+        IReadOnlyDictionary<string, double> fallback)
+    {
+        var names = form[nameKey];
+        var values = form[valueKey];
+        if (names.Count == 0 || values.Count == 0)
+        {
+            return fallback;
+        }
+
+        var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        for (var index = 0; index < names.Count; index++)
+        {
+            var name = names[index]?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                continue;
+            }
+
+            var fallbackValue = fallback.TryGetValue(name, out var existingValue) ? existingValue : 0;
+            result[name] = double.TryParse(index < values.Count ? values[index] : string.Empty, out var parsed)
+                ? parsed
+                : fallbackValue;
+        }
+
+        return result.Count == 0 ? fallback : result;
+    }
+
+    private static IReadOnlyDictionary<string, ProductTemplateRecycledContent> ReadRecycledContentMap(
+        IFormCollection form,
+        IReadOnlyDictionary<string, ProductTemplateRecycledContent> fallback)
+    {
+        var result = new Dictionary<string, ProductTemplateRecycledContent>(StringComparer.OrdinalIgnoreCase);
+        foreach (var material in new[] { "Nickel", "Cobalt", "Lithium", "Lead" })
+        {
+            var fallbackValue = fallback.TryGetValue(material, out var existing)
+                ? existing
+                : new ProductTemplateRecycledContent(0, 0);
+            result[material] = new ProductTemplateRecycledContent(
+                Number(form, $"recycled{material}Pre", fallbackValue.PreConsumerShare),
+                Number(form, $"recycled{material}Post", fallbackValue.PostConsumerShare));
+        }
+
+        return result;
+    }
+
+    private static IReadOnlyList<BatteryProductSoftwareVersion> ReadSoftwareVersions(
+        IFormCollection form,
+        IReadOnlyList<BatteryProductSoftwareVersion> fallback)
+    {
+        var versions = form["softwareVersion"];
+        var releases = form["softwareReleaseDate"];
+        var updates = form["softwareLatestUpdate"];
+        if (versions.Count == 0)
+        {
+            return fallback;
+        }
+
+        var result = new List<BatteryProductSoftwareVersion>();
+        for (var index = 0; index < versions.Count; index++)
+        {
+            var version = versions[index]?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(version))
+            {
+                continue;
+            }
+
+            var fallbackVersion = fallback.FirstOrDefault(item => item.Version.Equals(version, StringComparison.OrdinalIgnoreCase));
+            result.Add(new BatteryProductSoftwareVersion(
+                version,
+                DateOnly(index < releases.Count ? releases[index] : fallbackVersion?.ReleaseDate),
+                DateOnly(index < updates.Count ? updates[index] : fallbackVersion?.LatestUpdate)));
+        }
+
+        return result.Count == 0
+            ? fallback
+            : result.OrderBy(item => item.Version, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
     private string CurrentActor()
     {
         var actor = AccessControlService.CurrentEmail(User);
@@ -1174,44 +1440,34 @@ public class AdminController : Controller
         return _externalApiRepository.RevealToken(tokenDocument);
     }
 
-    private async Task<BsonDocument> BuildDraftPassportDocumentAsync(string passportId, CancellationToken cancellationToken)
+    private async Task<BsonDocument> BuildDraftPassportDocumentAsync(
+        string passportId,
+        string productId,
+        string softwareVersion,
+        CancellationToken cancellationToken)
     {
-        var document = await _passportRepository.GetByPassportIdAsync(SamplePassportId, cancellationToken);
-        if (document == null)
+        var suffix = passportId.Split(':', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? Guid.NewGuid().ToString("N");
+        var normalizedSuffix = new string(suffix.Where(char.IsLetterOrDigit).Take(12).ToArray());
+        if (string.IsNullOrWhiteSpace(normalizedSuffix))
         {
-            var candidates = await _passportRepository.SearchDocumentsAsync(string.Empty, includeArchived: true, cancellationToken);
-            document = candidates.FirstOrDefault();
+            normalizedSuffix = Guid.NewGuid().ToString("N")[..12];
         }
 
-        var draft = document != null ? document.DeepClone().AsBsonDocument : new BsonDocument();
-        draft.Remove("_id");
-        draft.Remove("clusterId");
-        draft["passportId"] = passportId;
-
-        var now = DateTime.UtcNow.ToString("O");
-        var registryInfo = EnsureDocument(draft, "registryInfo");
-        registryInfo["registryId"] = Guid.NewGuid().ToString("N");
-        registryInfo["status"] = "draft";
-        registryInfo["createdAt"] = now;
-        registryInfo["updatedAt"] = now;
-
-        var validation = EnsureDocument(draft, "validation");
-        validation["isValid"] = false;
-        validation["signedAt"] = BsonNull.Value;
-        if (!validation.Contains("hash"))
-        {
-            validation["hash"] = string.Empty;
-        }
-        if (!validation.Contains("signature"))
-        {
-            validation["signature"] = string.Empty;
-        }
-        if (!validation.Contains("proof"))
-        {
-            validation["proof"] = new BsonDocument();
-        }
-
-        return draft;
+        return await _productTemplateService.BuildPassportFromTemplateAsync(
+            passportId,
+            FirstNonEmpty(productId, BatteryProductTemplateCatalog.DefaultProductId),
+            FirstNonEmpty(softwareVersion, BatteryProductTemplateCatalog.DefaultSoftwareVersion),
+            new ProductTemplateBatteryIdentity
+            {
+                ModelNumber = string.Empty,
+                SerialNumber = string.Empty,
+                DisplayName = string.Empty,
+                FacilityId = string.Empty,
+                ClusterId = string.Empty,
+                ManufacturingDate = string.Empty
+            },
+            CurrentActor(),
+            cancellationToken);
     }
 
     private static void ApplyPassportForm(BsonDocument document, IFormCollection form, string now)
@@ -1222,6 +1478,9 @@ public class AdminController : Controller
         var appDocuments = EnsureDocument(app, "documents");
         var appNotes = EnsureDocument(app, "notes");
         var appCircularityNotes = EnsureDocument(appNotes, "circularity");
+        var productNode = EnsureDocument(app, "product");
+        productNode["productId"] = Text(form, "productId", productNode.GetValue("productId", BatteryProductTemplateCatalog.DefaultProductId).ToString());
+        productNode["softwareVersion"] = Text(form, "softwareVersion", productNode.GetValue("softwareVersion", BatteryProductTemplateCatalog.DefaultSoftwareVersion).ToString());
 
         display["name"] = Text(form, "name", display.GetValue("name", string.Empty).ToString());
         display["modelNumber"] = Text(form, "modelNumber", display.GetValue("modelNumber", string.Empty).ToString());
@@ -1423,6 +1682,40 @@ public class AdminController : Controller
         var validation = EnsureDocument(document, "validation");
         validation["isValid"] = false;
         validation["signedAt"] = BsonNull.Value;
+    }
+
+    private async Task ApplySelectedProductTemplateMetadataAsync(
+        BsonDocument document,
+        IFormCollection form,
+        CancellationToken cancellationToken)
+    {
+        var app = EnsureDocument(document, "app");
+        var productNode = EnsureDocument(app, "product");
+        var productId = Text(form, "productId", BsonHelpers.GetString(productNode, "productId"));
+        var softwareVersion = Text(form, "softwareVersion", BsonHelpers.GetString(productNode, "softwareVersion"));
+        var product = await _productTemplateService.GetProductAsync(productId, cancellationToken);
+        if (product == null)
+        {
+            return;
+        }
+
+        var software = product.SoftwareVersions.FirstOrDefault(version => version.Version.Equals(softwareVersion, StringComparison.OrdinalIgnoreCase))
+            ?? product.SoftwareVersions.FirstOrDefault();
+        productNode["productId"] = product.ProductId;
+        productNode["productName"] = product.ProductName;
+        productNode["description"] = product.Description;
+        productNode["moduleCount"] = product.ModuleCount;
+        if (software != null)
+        {
+            productNode["softwareVersion"] = software.Version;
+            productNode["softwareReleaseDate"] = software.ReleaseDate;
+            productNode["softwareLatestUpdate"] = software.LatestUpdate;
+        }
+
+        await _productTemplateService.ApplyProductTemplateReferencesAsync(document, product.ProductId, cancellationToken);
+        productNode["templateHash"] = ProductTemplatePassportBuilder.ComputeTemplateHash(ProductTemplatePassportBuilder.BuildTemplateBaseline(document));
+        EnsureDocument(app, "templateBaseline").Clear();
+        app["templateBaseline"] = ProductTemplatePassportBuilder.BuildTemplateBaseline(document);
     }
 
     private static BsonDocument EnsureAspectPayload(BsonDocument aspects, string key, string now, string state)

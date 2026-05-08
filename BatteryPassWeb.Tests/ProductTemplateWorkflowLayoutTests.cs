@@ -1,0 +1,117 @@
+namespace BatteryPassWeb.Tests;
+
+public sealed class ProductTemplateWorkflowLayoutTests
+{
+    [Fact]
+    public void Program_ShouldRegisterProductTemplateServices()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Program.cs"));
+
+        Assert.Contains("AddSingleton<ProductTemplateService>", source);
+        Assert.DoesNotContain("DemoScenarioResetService", source);
+    }
+
+    [Fact]
+    public void AdminController_ShouldExposeProductTemplateRoutesAndUseProductPolicies()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+
+        Assert.Contains("ProductTemplateService", source);
+        Assert.Contains("[HttpGet(\"products/{productId}\")]", source);
+        Assert.Contains("[HttpPost(\"products/save\")]", source);
+        Assert.Contains("[HttpPost(\"products/{productId}/software/{softwareVersion}/push\")]", source);
+        Assert.Contains("GetPolicyForPassportAsync", source);
+        Assert.DoesNotContain("[HttpPost(\"passports/{passportId}/complete-required-data\")]", source);
+    }
+
+    [Fact]
+    public void AdminPages_ShouldExposeProductsTabAndTemplateBasedNewPassportFlow()
+    {
+        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var edit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
+        var help = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
+
+        Assert.Contains("tab=products", clusters);
+        Assert.Contains("Product templates", clusters);
+        Assert.Contains("name=\"productId\"", edit);
+        Assert.Contains("name=\"softwareVersion\"", edit);
+        Assert.Contains("data-product-template-select", edit);
+        Assert.DoesNotContain("Complete required demo data", help);
+        Assert.Contains("Open product templates", help);
+    }
+
+    [Fact]
+    public void AdminProductTemplateUi_ShouldUseCalmerMinimalSurfaceStyling()
+    {
+        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var edit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("bp-product-template-actions", clusters);
+        Assert.Contains("bp-template-sync-note", edit);
+        Assert.DoesNotContain("Template sync", edit);
+        Assert.DoesNotContain("Overrides:", edit);
+        Assert.DoesNotContain("bp-template-sync-meta", edit);
+        Assert.Contains(".bp-summary-title", css);
+        Assert.DoesNotContain("background: #1d4ed8", css);
+        Assert.DoesNotContain("radial-gradient(circle at 92% 8%, rgba(28, 118, 103", css);
+        Assert.DoesNotContain("bp-template-sync-card", edit);
+    }
+
+    [Fact]
+    public void EditPassport_ShouldUpdateProductTemplateFieldsLiveFromCatalogData()
+    {
+        var edit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
+
+        Assert.Contains("data-product-template-catalog", edit);
+        Assert.Contains("data-product-template-select", edit);
+        Assert.Contains("data-product-software-select", edit);
+        Assert.Contains("applyProductTemplateSelection", edit);
+        Assert.Contains("updateSoftwareOptions", edit);
+        Assert.Contains("materialNickel", edit);
+        Assert.Contains("ratedEnergy", edit);
+        Assert.Contains("recycledNickelPre", edit);
+        Assert.Contains("carbonRawMaterial", edit);
+    }
+
+    [Fact]
+    public void ConformanceWorkflow_ShouldNotOfferDemoCompletion()
+    {
+        var conformance = File.ReadAllText(RepoFile("web", "Views", "Admin", "Conformance.cshtml"));
+
+        Assert.DoesNotContain("Complete required demo data", conformance);
+        Assert.DoesNotContain("showCompleteRequiredData", conformance);
+        Assert.Contains("Product template", conformance);
+    }
+
+    [Fact]
+    public void Documentation_ShouldExplainProductTemplateWorkflow()
+    {
+        var guide = File.ReadAllText(RepoFile("docs", "end-user-testing-guide.md"));
+        var accounts = File.ReadAllText(RepoFile("docs", "sample-cluster-test-accounts.md"));
+
+        Assert.Contains("product template", guide, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Compact 7M", guide);
+        Assert.Contains("Compact 13M", guide);
+        Assert.Contains("Core", guide);
+        Assert.DoesNotContain("sample-end-user-storage-001", accounts);
+        Assert.DoesNotContain("demo-draft-incomplete-001", accounts);
+    }
+
+    private static string RepoFile(params string[] parts)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory != null)
+        {
+            var candidate = Path.Combine(new[] { directory.FullName }.Concat(parts).ToArray());
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new FileNotFoundException($"Could not find repository file: {Path.Combine(parts)}");
+    }
+}
