@@ -21,9 +21,9 @@ This is the starting point for someone testing the Battery Pass app without prio
 
 Expected baseline after reset:
 
-- Four passport records exist.
+- Seven passport records exist: one unassigned demonstrator plus six clustered customer batteries.
 - Product templates exist for Compact 7M, Compact 13M, and Core.
-- Each product has software versions `1.0`, `2.0`, and `3.0`.
+- Each product has product/battery versions, and each product/battery version has its own nested software versions.
 - The known passports are published, signed, clean, and QR-ready unless a test intentionally changes them.
 
 ## Tester accounts
@@ -33,6 +33,7 @@ Shared seeded password: `Password123!`
 | Purpose | Account | What to verify |
 | --- | --- | --- |
 | General admin | `admin@example.test` | Full admin workflow, product templates, validation, signing, publishing, document evidence, API tokens, battery secrets. |
+| North customer | `customer_001_001@customer.org` / `12345` | Can open North Operations Cluster batteries such as CP7M-NORTH-001. |
 | North normal user | `north.user@example.test` | Can view North cluster battery details only. |
 | North local admin | `north.admin@example.test` | Can use cluster admin tools for North cluster and local battery fields. |
 | South normal user | `south.user@example.test` | Can view South cluster battery details only. |
@@ -43,8 +44,11 @@ Main battery IDs:
 | Purpose | Passport ID |
 | --- | --- |
 | Main happy path | `did:web:acme.battery.pass:sample-customer-north-001` |
+| North second product version | `did:web:acme.battery.pass:sample-customer-north-002` |
 | Compact 13M comparison | `did:web:acme.battery.pass:sample-customer-south-001` |
+| Compact 13M second product version | `did:web:acme.battery.pass:sample-customer-south-002` |
 | Core product comparison | `did:web:acme.battery.pass:sample-end-user-fleet-001` |
+| Core second product version | `did:web:acme.battery.pass:sample-end-user-fleet-002` |
 | API/testing preserved ID | `did:web:acme.battery.pass:0226151e-949c-d067-8ef3-162431e28976` |
 
 ## Scenario matrix
@@ -57,8 +61,9 @@ Main battery IDs:
 | Summary page | Open `/{passportId}/summary`. | Shows battery facts, current software version, QR, charts, and no internal conformance/proof diagnostics. |
 | Detailed report | Open `/{passportId}` while logged in with access. | Shows General, Software tab, Material, Performance, Compliance, Supply chain, Circularity, Carbon Footprint, and admin-only Trust tab when allowed. |
 | Software tab | Patch software through `/help` workbench or cURL. | Summary and Software tab show the current installed software. Passport remains clean. |
-| Product templates | Edit a template and push a software version to matching batteries. | Template-owned fields update, manual overrides are preserved, and changed signed core data becomes dirty. |
-| Admin create | Create a new passport from `/admin/passports/new`. | Product and software are selected first; battery-specific fields stay editable/blank for admin entry. |
+| Product templates | Edit a product/battery version and push a software version to matching batteries. | Template-owned fields update, manual overrides are preserved, and changed signed core data becomes dirty. |
+| Admin create | Create a new passport from `/admin/passports/new`. | Product, product/battery version, and software are selected first; battery-specific fields stay editable/blank for admin entry. |
+| API Token Management | Open `/admin/clusters?tab=api-token-management`. | API tokens and battery secrets are managed on one page with internal tabs. |
 | Validate, sign, publish | Open conformance, validate, sign, publish. | Signing requires zero blockers; publishing requires a current valid proof. |
 | Dirty recovery | Edit signed core data such as weight, save, then validate, sign, publish again. | Passport becomes dirty after edit and clean after re-signing/publishing. |
 | Document evidence | Upload or replace required document evidence. | Hash is stored, evidence becomes part of validation/signature flow, changed evidence requires a new signature. |
@@ -73,7 +78,7 @@ Mark each item pass/fail during a formal test run.
 
 | Check | Pass/Fail | Notes |
 | --- | --- | --- |
-| Reset product-template passports restores exactly the four known passports. |  |  |
+| Reset product-template passports restores one unassigned demonstrator plus six clustered customer batteries. |  |  |
 | Public search opens a published passport summary. |  |  |
 | Public summary shows current software version and no trust/conformance diagnostics. |  |  |
 | QR download/scan opens the same summary. |  |  |
@@ -108,7 +113,7 @@ Mark each item pass/fail during a formal test run.
 
 - This is still a demonstrator, not the final production deployment.
 - Product templates and seeded passports are realistic enough for testing but are not official production master data.
-- The reset action intentionally deletes older sample/demo passports and restores the four known test passports.
+- The reset action intentionally deletes older sample/demo passports and restores one unassigned demonstrator plus six clustered customer batteries.
 - External API writes are limited to telemetry, operations metadata, and current installed software version.
 - API telemetry and API software updates are operational data and should not dirty the signed passport.
 - Signing verifies the canonical passport core and referenced evidence hashes; it does not parse PDF contents.

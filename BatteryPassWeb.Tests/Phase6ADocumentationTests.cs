@@ -99,6 +99,30 @@ public sealed class Phase6ADocumentationTests
         Assert.Contains("public summary shows the current software version", guide);
     }
 
+    [Fact]
+    public void Documentation_ShouldExplainVersionedTemplatesCredentialsAndResetAccounts()
+    {
+        var apiHelp = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
+        var adminHelp = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
+        var guide = File.ReadAllText(RepoFile("docs", "end-user-testing-guide.md"));
+        var qa = File.ReadAllText(RepoFile("docs", "qa-test-pack.md"));
+        var accounts = File.ReadAllText(RepoFile("docs", "sample-cluster-test-accounts.md"));
+
+        Assert.Contains("product/battery version", guide, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("API Token Management", guide);
+        Assert.Contains("one unassigned demonstrator plus six clustered customer batteries", guide);
+        Assert.Contains("API Token Management", qa);
+        Assert.Contains("one unassigned demonstrator plus six clustered customer batteries", qa);
+        Assert.Contains("customer_001_001@customer.org", accounts);
+        Assert.Contains("12345", accounts);
+        Assert.Contains("CP7M-NORTH-002", accounts);
+        Assert.Contains("CP13M-SOUTH-002", accounts);
+        Assert.Contains("CORE-FLEET-002", accounts);
+        Assert.Contains("Local editable fields", adminHelp);
+        Assert.Contains("Token Value", apiHelp);
+        Assert.Contains("Battery Secret", apiHelp);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

@@ -5,7 +5,7 @@
 ## 1. What this app is and how it is built
 
 - App type: ASP.NET Core MVC web app (`web/BatteryPassWeb.csproj`, target `net10.0`).
-- Backend storage: MongoDB collections for passports, product template data, product software versions, users, clusters, memberships, API tokens, battery secrets, telemetry.
+- Backend storage: MongoDB collections for passports, product templates, product/battery versions, product-version software versions, users, clusters, memberships, API tokens, battery secrets, telemetry.
 - Authentication: Cookie login (`/login`) with roles.
 - Main code areas:
   - Controllers: `web/Controllers/*`
@@ -39,8 +39,8 @@
   - `/login/logout` (POST)
 - Admin:
   - `/admin` -> redirects to `/admin/clusters?tab=passports`
-  - `/admin/clusters?tab=passports|battery|clusters|users|api-tokens|battery-secrets|products`
-  - `/admin/products/{productId}` product template editor for shared product data, software versions, and per-product required/optional parameters.
+  - `/admin/clusters?tab=passports|battery|clusters|users|local-editable-fields|api-token-management|products`
+  - `/admin/products/{productId}` product template editor for shared product data, product/battery versions, nested software versions, and per-product-version required/optional parameters.
 - Cluster admin:
   - `/cluster-admin/passports`
   - `/cluster-admin/users`
@@ -57,15 +57,15 @@
 - Can create and manage clusters.
 - Can assign batteries to clusters.
 - Can create users and assign memberships.
-- Can create/manage all API tokens.
-- Can create/manage all battery secrets.
+- Can create/manage API tokens and battery secrets from API Token Management.
+- Can set Local editable fields globally for local admins.
 - Can open detailed report for any battery, including unassigned batteries.
 
 ## 3.2 Cluster admin (local admin)
 
 - Can access `/cluster-admin/*`.
 - Scope limited to clusters where membership role is `clusterAdmin`.
-- Can edit local fields for batteries in managed clusters:
+- Can edit local fields for batteries in managed clusters. The exact list is set globally by the general admin in **Local editable fields**:
   - Facility ID
   - Battery image URL
   - State of charge
@@ -124,6 +124,8 @@
 
 See `docs/sample-cluster-test-accounts.md` for provided test users and their linked batteries/clusters.
 
+Product template reset restores one unassigned demonstrator plus six clustered customer batteries. The North customer test account is `customer_001_001@customer.org` with password `12345`.
+
 ## 5. What the Battery Pass contains and where to find it
 
 Detailed report tabs are in `/{passportId}` and grouped into:
@@ -153,10 +155,12 @@ The public summary shows the current software version in the battery fact grid. 
 - Shows current software information:
   - Product name
   - Product ID
+  - Product/battery version
   - Current software version
   - Release date
   - Latest update
 - Source paths:
+  - Product/battery version: `app.product.productVersion`
   - Product-template baseline: `app.product.softwareVersion`, `app.product.softwareReleaseDate`, `app.product.softwareLatestUpdate`
   - Current installed software from API updates: `app.operations.softwareVersion`, `app.operations.softwareReleaseDate`, `app.operations.softwareLatestUpdate`
 - Display rule:
@@ -265,7 +269,7 @@ Headers:
 
 Managed by:
 
-- General admin in `/admin/clusters?tab=api-tokens`
+- General admin in `/admin/clusters?tab=api-token-management` under **API Token Management**
 
 Token properties:
 
@@ -285,7 +289,7 @@ Important:
 
 Managed by:
 
-- General admin: `/admin/clusters?tab=battery-secrets`
+- General admin: `/admin/clusters?tab=api-token-management` under **API Token Management**
 - Cluster admin (own clusters): `/cluster-admin/secrets`
 
 Behavior:
@@ -313,7 +317,7 @@ Write (requires `readWrite` token):
 Software update behavior:
 
 - Body: `{ "softwareVersion": "2.0" }`
-- The requested version must exist in the MongoDB software list for the battery's product template.
+- The requested version must exist in the MongoDB software list for the battery's selected product/battery version.
 - If the version is not found, the API returns `400 Bad Request` and lists the allowed versions.
 - The API writes current installed software under `app.operations.*`, so it does not dirty the signed passport.
 - The product-template baseline stays under `app.product.*` and remains part of the signed passport core.
@@ -327,7 +331,7 @@ Software update behavior:
 - Cannot access batteries outside token cluster scope.
 - Cannot bypass active battery secret.
 - Cannot query telemetry history with `hours` outside `1..168`.
-- Cannot set software to a version that is not defined for the battery product.
+- Cannot set software to a version that is not defined for the battery product/battery version.
 
 ### 7.6 Sections and value aliases
 
@@ -448,7 +452,7 @@ These are not the token-based external integration API; they use app login/cooki
 2. Create a new cluster, assign one battery, assign one local admin and one normal user.
 3. Log in as local admin and verify cluster-scoped limits, including that global admin users cannot be modified.
 4. Log in as normal user and verify `/registry` shows only own cluster batteries and detail access works only for own cluster battery.
-5. Create API token + battery secret, then call external API with and without secret.
+5. Open API Token Management, create an API token + battery secret, then call external API with and without secret.
 6. Verify read token cannot write.
 7. Verify out-of-scope token gets `403`.
 8. Verify telemetry write appears in detail history charts.
@@ -517,16 +521,19 @@ Use this checklist after the product-template migration to prove the app can res
 1. Login as `admin@example.test`.
 2. Open `/admin/clusters?tab=products`.
 3. Confirm three product templates are listed: Compact 7M, Compact 13M, and Core.
-4. Open each product template and confirm software versions `1.0`, `2.0`, and `3.0` have release date and latest update values.
-5. Confirm required and optional parameters are shown section by section and saved per product in MongoDB.
+4. Open each product template and confirm product/battery versions are listed newest-first and each version has nested software versions.
+5. Confirm required and optional parameters are shown section by section and saved per product/battery version in MongoDB.
 6. Press **Reset product-template passports** from the product templates tab or admin help.
-7. Confirm exactly the four documented passports are restored:
+7. Confirm one unassigned demonstrator plus six clustered customer batteries are restored:
    - `did:web:acme.battery.pass:0226151e-949c-d067-8ef3-162431e28976`
    - `did:web:acme.battery.pass:sample-customer-north-001`
+   - `did:web:acme.battery.pass:sample-customer-north-002`
    - `did:web:acme.battery.pass:sample-customer-south-001`
+   - `did:web:acme.battery.pass:sample-customer-south-002`
    - `did:web:acme.battery.pass:sample-end-user-fleet-001`
-8. Open `/admin/passports/new` and confirm Product and Software version are chosen before the draft is created.
-9. Edit a product template value, save it, then push one software version to matching batteries.
+   - `did:web:acme.battery.pass:sample-end-user-fleet-002`
+8. Open `/admin/passports/new` and confirm Product, product/battery version, and Software version are chosen before the draft is created.
+9. Edit a product/battery version value, save it, then push one software version to matching batteries.
 10. Confirm matching batteries preserve manual overrides, become dirty when template-owned signed data changes, and require validate, sign, and publish to return clean.
 
 ### Phase 6A end-to-end demo hardening checklist
