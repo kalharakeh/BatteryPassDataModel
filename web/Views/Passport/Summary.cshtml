@@ -31,7 +31,7 @@
                     <span class="bp-pill bp-pill-muted">@passport.BatteryStatus</span>
                 </div>
                 <p class="bp-passport-id">@passport.PassportId</p>
-                <h1>@passport.ModelNumber</h1>
+                <h1>@(string.IsNullOrWhiteSpace(passport.BatteryFamily) ? passport.PassportId : passport.BatteryFamily)</h1>
                 <p class="text-secondary">Cluster: @passport.ClusterLabel</p>
                 @if (!string.IsNullOrWhiteSpace(Model.DetailAccessNotice))
                 {
@@ -54,12 +54,13 @@
         </div>
 
         <dl class="bp-field-grid">
-            <div><dt>Model Number</dt><dd>@passport.ModelNumber</dd></div>
-            <div><dt>Serial Number</dt><dd>@passport.SerialNumber</dd></div>
-            <div><dt>Product/battery version</dt><dd>@(string.IsNullOrWhiteSpace(passport.ProductVersion) ? "-" : passport.ProductVersion)</dd></div>
+            <div><dt>Battery Family</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatteryFamily) ? "-" : passport.BatteryFamily)</dd></div>
+            <div><dt>Battery serial number</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatterySerialNumber) ? "-" : passport.BatterySerialNumber)</dd></div>
+            <div><dt>Battery version</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatteryVersion) ? "-" : passport.BatteryVersion)</dd></div>
             <div><dt>Software version</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareVersion) ? "-" : passport.SoftwareVersion)</dd></div>
             <div><dt>Category</dt><dd>@passport.Category</dd></div>
-            <div><dt>Status</dt><dd>@passport.BatteryStatus</dd></div>
+            <div><dt>Battery status</dt><dd>@passport.BatteryStatus</dd></div>
+            <div><dt>Passport status</dt><dd>@passport.PassportStatus</dd></div>
             <div><dt>Weight</dt><dd>@passport.WeightLabel</dd></div>
             <div><dt>Manufactured date</dt><dd>@passport.ManufacturedDate</dd></div>
             <div><dt>Manufactured by</dt><dd>@passport.ManufacturerName</dd></div>

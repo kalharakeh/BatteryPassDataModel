@@ -12,7 +12,7 @@
         <input
             name="q"
             value="@Context.Request.Query["q"]"
-            placeholder="Search by passport ID, model, serial, or manufacturer" />
+            placeholder="Search by battery ID, battery family, serial, or manufacturer" />
         <button type="submit">Search</button>
     </form>
 
@@ -28,13 +28,13 @@
             <table class="table table-hover align-middle mb-0">
                 <thead>
                     <tr>
-                        <th class="px-3 py-3">Passport ID</th>
-                        <th class="px-3 py-3">Name</th>
-                        <th class="px-3 py-3">Model</th>
-                        <th class="px-3 py-3">Manufacturer</th>
-                        <th class="px-3 py-3">Status</th>
-                        <th class="px-3 py-3">Cluster</th>
-                        <th class="px-3 py-3"></th>
+                        <th class="px-3 py-3">Battery ID</th>
+                        <th class="px-3 py-3">Battery Family</th>
+                        <th class="px-3 py-3">Battery version</th>
+                        <th class="px-3 py-3">Battery serial number</th>
+                        <th class="px-3 py-3">Passport status</th>
+                        <th class="px-3 py-3">Updated</th>
+                        <th class="px-3 py-3">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -42,11 +42,11 @@
                     {
                         <tr>
                             <td class="px-3 py-3 text-break">@row.PassportId</td>
-                            <td class="px-3 py-3">@row.DisplayName</td>
-                            <td class="px-3 py-3">@row.ModelNumber</td>
-                            <td class="px-3 py-3">@row.ManufacturerName</td>
-                            <td class="px-3 py-3">@row.RegistryStatus</td>
-                            <td class="px-3 py-3">@row.ClusterLabel</td>
+                            <td class="px-3 py-3">@row.BatteryFamily</td>
+                            <td class="px-3 py-3">@row.BatteryVersion</td>
+                            <td class="px-3 py-3">@row.BatterySerialNumber</td>
+                            <td class="px-3 py-3">@row.PassportStatus</td>
+                            <td class="px-3 py-3">@(string.IsNullOrWhiteSpace(row.UpdatedDate) ? "-" : row.UpdatedDate[..Math.Min(10, row.UpdatedDate.Length)])</td>
                             <td class="px-3 py-3 text-end"><a href="/@Uri.EscapeDataString(row.PassportId)/summary" class="bp-secondary-button">Summary</a></td>
                         </tr>
                     }

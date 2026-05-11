@@ -87,11 +87,10 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=aspects.circul
                 </article>
 
                 <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2">Product template and software model</h3>
-                    <p class="mb-1">Each passport is created from a MongoDB product-template baseline such as Compact 7M, Compact 13M, or Core. Products contain product/battery versions, and each product/battery version contains its own software versions.</p>
-                    <p class="mb-1">The selected product/battery version provides shared product data, required/optional policy, evidence references, product image, and software release metadata.</p>
-                    <p class="mb-1">The API software endpoint updates the current installed software in <code>app.operations</code>. The product-template baseline remains in <code>app.product</code>, which is part of the signed passport core.</p>
-                    <p class="mb-0">The public summary and the detailed Software tab show the current software version, release date, and latest update. If an API software update exists, the UI prefers that current operational value; otherwise it falls back to the product-template baseline.</p>
+                    <h3 class="h6 mb-2">Battery family and software parameters</h3>
+                    <p class="mb-1">Each passport is created from a MongoDB battery family baseline such as Compact 7M, Compact 13M, or Core. Battery families contain battery versions, and each battery version carries software version, released date, and latest update as parameters.</p>
+                    <p class="mb-1">The selected battery version provides shared battery data, required/optional policy, evidence references, battery image, and software release metadata.</p>
+                    <p class="mb-0">The public summary and the detailed Software tab show the software version, released date, and latest update copied from the selected battery version.</p>
                 </article>
 
                 <article class="bp-help-doc-item">
@@ -156,15 +155,6 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
 }</code></pre>
                 </article>
 
-                <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">PATCH</span> @Model.BasePath/batteries/{passportId}/software</h3>
-                    <p class="mb-1">Update the battery's current installed software version through the external API.</p>
-                    <p class="mb-1">The version must exist in the selected product/battery version software list. This API write updates live operational software metadata in <code>app.operations</code> and does not dirty the signed passport.</p>
-                    <p class="mb-1">A missing or unknown version returns <code>400 Bad Request</code> with the allowed versions for the product.</p>
-                    <pre class="bp-help-pre mb-0"><code>{
-  "softwareVersion": "2.0"
-}</code></pre>
-                </article>
             </div>
         </section>
 
@@ -182,7 +172,6 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
                         <option value="readHistory24h">Read telemetry history 24h</option>
                         <option value="writeTelemetryPoint">Write telemetry point</option>
                         <option value="patchOperations">Patch operations metadata</option>
-                        <option value="patchSoftwareVersion">Patch software version</option>
                     </select>
                 </label>
                 <label>HTTP method
@@ -233,7 +222,6 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
                 <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="readHistory24h">History 24h</button>
                 <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="readValuesAliases">Read specific values</button>
                 <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="writeTelemetryPoint">Post telemetry</button>
-                <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="patchSoftwareVersion">Patch software</button>
             </div>
 
             <div class="mt-3">
@@ -363,14 +351,6 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
                             name: 'Sample Contact',
                             email: 'sample@example.test'
                         }
-                    }, null, 2),
-                    tokenPreset: 'sample-read-write'
-                },
-                patchSoftwareVersion: {
-                    method: 'PATCH',
-                    path: `${basePath}/batteries/${samplePassportId}/software`,
-                    body: JSON.stringify({
-                        softwareVersion: '2.0'
                     }, null, 2),
                     tokenPreset: 'sample-read-write'
                 }

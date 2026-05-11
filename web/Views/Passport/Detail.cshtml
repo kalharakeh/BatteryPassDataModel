@@ -32,7 +32,7 @@
                     <span class="bp-pill bp-pill-muted">@passport.BatteryStatus</span>
                 </div>
                 <p class="bp-passport-id">@passport.PassportId</p>
-                <h1>@passport.ModelNumber</h1>
+                <h1>@(string.IsNullOrWhiteSpace(passport.BatteryFamily) ? passport.PassportId : passport.BatteryFamily)</h1>
                 <p class="text-secondary">Cluster: @passport.ClusterLabel</p>
                 <div class="d-flex flex-wrap gap-2 mt-3">
                     <a href="/@Uri.EscapeDataString(passport.PassportId)/summary" class="bp-primary-button bp-button-compact">Open summary report</a>
@@ -47,12 +47,13 @@
         </div>
 
         <dl class="bp-field-grid">
-            <div><dt>Model Number</dt><dd>@passport.ModelNumber</dd></div>
-            <div><dt>Serial Number</dt><dd>@passport.SerialNumber</dd></div>
-            <div><dt>Product/battery version</dt><dd>@(string.IsNullOrWhiteSpace(passport.ProductVersion) ? "-" : passport.ProductVersion)</dd></div>
+            <div><dt>Battery Family</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatteryFamily) ? "-" : passport.BatteryFamily)</dd></div>
+            <div><dt>Battery serial number</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatterySerialNumber) ? "-" : passport.BatterySerialNumber)</dd></div>
+            <div><dt>Battery version</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatteryVersion) ? "-" : passport.BatteryVersion)</dd></div>
             <div><dt>Software version</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareVersion) ? "-" : passport.SoftwareVersion)</dd></div>
             <div><dt>Category</dt><dd>@passport.Category</dd></div>
-            <div><dt>Status</dt><dd>@passport.BatteryStatus</dd></div>
+            <div><dt>Battery status</dt><dd>@passport.BatteryStatus</dd></div>
+            <div><dt>Passport status</dt><dd>@passport.PassportStatus</dd></div>
             <div><dt>Weight</dt><dd>@passport.WeightLabel</dd></div>
             <div><dt>Manufactured date</dt><dd>@passport.ManufacturedDate</dd></div>
             <div><dt>Manufactured by</dt><dd>@passport.ManufacturerName</dd></div>
@@ -81,12 +82,12 @@
                 <h2 class="h5 mb-2">General</h2>
                 <p class="bp-help-text">Generic information about the battery</p>
                 <dl class="bp-field-grid">
-                    <div><dt>Name</dt><dd>@passport.DisplayName</dd></div>
                     <div><dt>Manufactured date</dt><dd>@passport.ManufacturedDate</dd></div>
                     <div><dt>Facility ID</dt><dd>@passport.FacilityId</dd></div>
                     <div><dt>Manufactured by</dt><dd>@passport.ManufacturerName</dd></div>
                     <div><dt>Category</dt><dd>@passport.Category</dd></div>
-                    <div><dt>Status</dt><dd>@passport.BatteryStatus</dd></div>
+                    <div><dt>Battery status</dt><dd>@passport.BatteryStatus</dd></div>
+                    <div><dt>Passport status</dt><dd>@passport.PassportStatus</dd></div>
                     <div><dt>Weight</dt><dd>@passport.WeightLabel</dd></div>
                 </dl>
             </div>
@@ -103,9 +104,8 @@
                     </div>
                     <dl class="bp-field-grid mt-0">
                         <div><dt>Current version</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareVersion) ? "-" : passport.SoftwareVersion)</dd></div>
-                        <div><dt>Product</dt><dd>@(string.IsNullOrWhiteSpace(passport.ProductName) ? "-" : passport.ProductName)</dd></div>
-                        <div><dt>Product ID</dt><dd>@(string.IsNullOrWhiteSpace(passport.ProductId) ? "-" : passport.ProductId)</dd></div>
-                        <div><dt>Product/battery version</dt><dd>@(string.IsNullOrWhiteSpace(passport.ProductVersion) ? "-" : passport.ProductVersion)</dd></div>
+                        <div><dt>Battery Family</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatteryFamily) ? "-" : passport.BatteryFamily)</dd></div>
+                        <div><dt>Battery version</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatteryVersion) ? "-" : passport.BatteryVersion)</dd></div>
                         <div><dt>Release date</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareReleaseDate) ? "-" : passport.SoftwareReleaseDate)</dd></div>
                         <div><dt>Latest update</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareLatestUpdate) ? "-" : passport.SoftwareLatestUpdate)</dd></div>
                     </dl>
