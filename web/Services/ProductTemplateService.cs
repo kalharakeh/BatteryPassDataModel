@@ -12,8 +12,11 @@ public sealed class ProductTemplateService
     [
         "did:web:acme.battery.pass:0226151e-949c-d067-8ef3-162431e28976",
         "did:web:acme.battery.pass:sample-customer-north-001",
+        "did:web:acme.battery.pass:sample-customer-north-002",
         "did:web:acme.battery.pass:sample-customer-south-001",
-        "did:web:acme.battery.pass:sample-end-user-fleet-001"
+        "did:web:acme.battery.pass:sample-customer-south-002",
+        "did:web:acme.battery.pass:sample-end-user-fleet-001",
+        "did:web:acme.battery.pass:sample-end-user-fleet-002"
     ];
 
     private static readonly IReadOnlyDictionary<string, (string Name, string UserEmail, string AdminEmail)> FixedClusters =
@@ -356,30 +359,34 @@ public sealed class ProductTemplateService
         var resetAt = DateTimeOffset.UtcNow.ToString("O");
         var seeds = new[]
         {
-            ("did:web:acme.battery.pass:0226151e-949c-d067-8ef3-162431e28976", "compact-7m", "1.0", "cluster-default-demonstrator", "CP7M-DEMO-001", "SN-0226151E", "Compact 7M demonstrator battery", "DEFAULT-LINE-01"),
-            ("did:web:acme.battery.pass:sample-customer-north-001", "compact-7m", "2.0", "cluster-north-operations", "CP7M-NORTH-001", "SN-NORTH-001", "North Compact 7M customer battery", "NORTH-LINE-01"),
-            ("did:web:acme.battery.pass:sample-customer-south-001", "compact-13m", "2.0", "cluster-south-operations", "CP13M-SOUTH-001", "SN-SOUTH-001", "South Compact 13M customer battery", "SOUTH-LINE-01"),
-            ("did:web:acme.battery.pass:sample-end-user-fleet-001", "core", "3.0", "cluster-fleet-operations", "CORE-FLEET-001", "SN-FLEET-001", "Fleet Core customer battery", "FLEET-LINE-01")
+            (PassportId: "did:web:acme.battery.pass:0226151e-949c-d067-8ef3-162431e28976", ProductId: "compact-7m", ProductVersion: "1.0", SoftwareVersion: "2.0", ClusterId: string.Empty, ModelNumber: "CP7M-DEMO-001", SerialNumber: "SN-0226151E", DisplayName: "Compact 7M unassigned demonstrator battery", FacilityId: "DEFAULT-LINE-01"),
+            (PassportId: "did:web:acme.battery.pass:sample-customer-north-001", ProductId: "compact-7m", ProductVersion: "1.0", SoftwareVersion: "2.0", ClusterId: "cluster-north-operations", ModelNumber: "CP7M-NORTH-001", SerialNumber: "SN-NORTH-001", DisplayName: "North Compact 7M customer battery v1", FacilityId: "NORTH-LINE-01"),
+            (PassportId: "did:web:acme.battery.pass:sample-customer-north-002", ProductId: "compact-7m", ProductVersion: "2.0", SoftwareVersion: "4.0", ClusterId: "cluster-north-operations", ModelNumber: "CP7M-NORTH-002", SerialNumber: "SN-NORTH-002", DisplayName: "North Compact 7M customer battery v2", FacilityId: "NORTH-LINE-02"),
+            (PassportId: "did:web:acme.battery.pass:sample-customer-south-001", ProductId: "compact-13m", ProductVersion: "1.0", SoftwareVersion: "2.0", ClusterId: "cluster-south-operations", ModelNumber: "CP13M-SOUTH-001", SerialNumber: "SN-SOUTH-001", DisplayName: "South Compact 13M customer battery v1", FacilityId: "SOUTH-LINE-01"),
+            (PassportId: "did:web:acme.battery.pass:sample-customer-south-002", ProductId: "compact-13m", ProductVersion: "2.0", SoftwareVersion: "4.0", ClusterId: "cluster-south-operations", ModelNumber: "CP13M-SOUTH-002", SerialNumber: "SN-SOUTH-002", DisplayName: "South Compact 13M customer battery v2", FacilityId: "SOUTH-LINE-02"),
+            (PassportId: "did:web:acme.battery.pass:sample-end-user-fleet-001", ProductId: "core", ProductVersion: "1.0", SoftwareVersion: "2.0", ClusterId: "cluster-fleet-operations", ModelNumber: "CORE-FLEET-001", SerialNumber: "SN-FLEET-001", DisplayName: "Fleet Core customer battery v1", FacilityId: "FLEET-LINE-01"),
+            (PassportId: "did:web:acme.battery.pass:sample-end-user-fleet-002", ProductId: "core", ProductVersion: "2.0", SoftwareVersion: "4.0", ClusterId: "cluster-fleet-operations", ModelNumber: "CORE-FLEET-002", SerialNumber: "SN-FLEET-002", DisplayName: "Fleet Core customer battery v2", FacilityId: "FLEET-LINE-02")
         };
 
         foreach (var seed in seeds)
         {
             var document = await BuildPassportFromTemplateAsync(
-                seed.Item1,
-                seed.Item2,
-                seed.Item3,
+                seed.PassportId,
+                seed.ProductId,
+                seed.ProductVersion,
+                seed.SoftwareVersion,
                 new ProductTemplateBatteryIdentity
                 {
-                    ClusterId = seed.Item4,
-                    ModelNumber = seed.Item5,
-                    SerialNumber = seed.Item6,
-                    DisplayName = seed.Item7,
-                    FacilityId = seed.Item8,
+                    ClusterId = seed.ClusterId,
+                    ModelNumber = seed.ModelNumber,
+                    SerialNumber = seed.SerialNumber,
+                    DisplayName = seed.DisplayName,
+                    FacilityId = seed.FacilityId,
                     ManufacturingDate = resetAt[..10]
                 },
                 actor,
                 cancellationToken);
-            await _passportRepository.ReplaceAsync(seed.Item1, document, cancellationToken);
+            await _passportRepository.ReplaceAsync(seed.PassportId, document, cancellationToken);
 
             var policy = await _dataCompletionPolicyService.GetPolicyForPassportAsync(document, cancellationToken);
             var summary = _passportValidationService.Validate(document, policy);
@@ -393,11 +400,11 @@ public sealed class ProductTemplateService
                 signature.SignedAt,
                 cancellationToken);
             var revisionId = BsonHelpers.GetString(revision, "revisionId");
-            await _passportRepository.UpdateTrustSignatureAsync(seed.Item1, summary, signature.Hash, signature.Proof, revisionId, signature.SignedAt, cancellationToken);
-            await _passportRepository.PublishPassportAsync(seed.Item1, revisionId, resetAt, $"sha256:{signature.Hash}", signature.Proof, cancellationToken);
+            await _passportRepository.UpdateTrustSignatureAsync(seed.PassportId, summary, signature.Hash, signature.Proof, revisionId, signature.SignedAt, cancellationToken);
+            await _passportRepository.PublishPassportAsync(seed.PassportId, revisionId, resetAt, $"sha256:{signature.Hash}", signature.Proof, cancellationToken);
             await _auditRevisionService.MarkRevisionPublishedAsync(revisionId, resetAt, cancellationToken);
             await _auditRevisionService.AppendAuditEventAsync(
-                seed.Item1,
+                seed.PassportId,
                 "passport.productTemplate.seeded",
                 actor,
                 "admin",
@@ -405,8 +412,9 @@ public sealed class ProductTemplateService
                 "Passport seeded from product template.",
                 new BsonDocument
                 {
-                    ["productId"] = seed.Item2,
-                    ["softwareVersion"] = seed.Item3,
+                    ["productId"] = seed.ProductId,
+                    ["productVersion"] = seed.ProductVersion,
+                    ["softwareVersion"] = seed.SoftwareVersion,
                     ["resetAt"] = resetAt
                 },
                 cancellationToken);
@@ -541,6 +549,9 @@ public sealed class ProductTemplateService
     {
         const string password = "Password123!";
         var passwordHash = BCryptNet.HashPassword(password);
+        const string northCustomerEmail = "customer_001_001@customer.org";
+        const string northCustomerPassword = "12345";
+        var northCustomerPasswordHash = BCryptNet.HashPassword(northCustomerPassword);
         await _clusterRepository.UpsertUserAsync("admin@example.test", "General Admin", ["admin"], passwordHash, cancellationToken);
         foreach (var (clusterId, definition) in FixedClusters)
         {
@@ -557,6 +568,9 @@ public sealed class ProductTemplateService
                 await _clusterRepository.UpsertClusterMembershipAsync(definition.AdminEmail, clusterId, "clusterAdmin", cancellationToken);
             }
         }
+
+        await _clusterRepository.UpsertUserAsync(northCustomerEmail, "North Customer 001", ["viewer"], northCustomerPasswordHash, cancellationToken);
+        await _clusterRepository.UpsertClusterMembershipAsync(northCustomerEmail, "cluster-north-operations", "member", cancellationToken);
     }
 
     private async Task<IReadOnlyList<BsonDocument>> BuildTemplateDocumentReferencesAsync(

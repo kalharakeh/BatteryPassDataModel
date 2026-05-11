@@ -216,4 +216,39 @@ public sealed class ProductTemplateServiceTests
         Assert.Equal("2.0", BsonHelpers.GetString(result.UpdatedPassport, "app", "product", "productVersion"));
         Assert.Equal("Manually changed", BsonHelpers.GetString(result.UpdatedPassport, "aspects", "generalProductInformation", "payload", "batteryStatus"));
     }
+
+    [Fact]
+    public void ResetTemplateDemo_ShouldSeedVersionedBatteriesAndNorthCustomerAccount()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateService.cs"));
+
+        Assert.Contains("customer_001_001@customer.org", source);
+        Assert.Contains("\"12345\"", source);
+        Assert.Contains("CP7M-NORTH-001", source);
+        Assert.Contains("CP7M-NORTH-002", source);
+        Assert.Contains("CP13M-SOUTH-001", source);
+        Assert.Contains("CP13M-SOUTH-002", source);
+        Assert.Contains("CORE-FLEET-001", source);
+        Assert.Contains("CORE-FLEET-002", source);
+        Assert.Contains("sample-customer-north-002", source);
+        Assert.Contains("sample-customer-south-002", source);
+        Assert.Contains("sample-end-user-fleet-002", source);
+    }
+
+    private static string RepoFile(params string[] parts)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory != null)
+        {
+            var candidate = Path.Combine(new[] { directory.FullName }.Concat(parts).ToArray());
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new FileNotFoundException($"Could not find repository file: {Path.Combine(parts)}");
+    }
 }
