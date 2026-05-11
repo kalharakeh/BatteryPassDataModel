@@ -56,6 +56,7 @@
         <dl class="bp-field-grid">
             <div><dt>Model Number</dt><dd>@passport.ModelNumber</dd></div>
             <div><dt>Serial Number</dt><dd>@passport.SerialNumber</dd></div>
+            <div><dt>Product/battery version</dt><dd>@(string.IsNullOrWhiteSpace(passport.ProductVersion) ? "-" : passport.ProductVersion)</dd></div>
             <div><dt>Software version</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareVersion) ? "-" : passport.SoftwareVersion)</dd></div>
             <div><dt>Category</dt><dd>@passport.Category</dd></div>
             <div><dt>Status</dt><dd>@passport.BatteryStatus</dd></div>

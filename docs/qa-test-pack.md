@@ -61,7 +61,7 @@ Main battery IDs:
 | Summary page | Open `/{passportId}/summary`. | Shows battery facts, current software version, QR, charts, and no internal conformance/proof diagnostics. |
 | Detailed report | Open `/{passportId}` while logged in with access. | Shows General, Software tab, Material, Performance, Compliance, Supply chain, Circularity, Carbon Footprint, and admin-only Trust tab when allowed. |
 | Software tab | Patch software through `/help` workbench or cURL. | Summary and Software tab show the current installed software. Passport remains clean. |
-| Product templates | Edit a product/battery version and push a software version to matching batteries. | Template-owned fields update, manual overrides are preserved, and changed signed core data becomes dirty. |
+| Product templates | Edit a product/battery version, save it, then push that saved product/battery version to matching batteries. Edit software metadata separately and push the saved software version. | Template-owned fields update, manual overrides are preserved, and changed signed core data becomes dirty. |
 | Admin create | Create a new passport from `/admin/passports/new`. | Product, product/battery version, and software are selected first; battery-specific fields stay editable/blank for admin entry. |
 | API Token Management | Open `/admin/clusters?tab=api-token-management`. | API tokens and battery secrets are managed on one page with internal tabs. |
 | Validate, sign, publish | Open conformance, validate, sign, publish. | Signing requires zero blockers; publishing requires a current valid proof. |

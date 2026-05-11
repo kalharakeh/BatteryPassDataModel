@@ -13,6 +13,7 @@ public sealed class PassportViewModel
     public string ClusterLabel { get; init; } = "No cluster assigned";
     public string ProductId { get; init; } = string.Empty;
     public string ProductName { get; init; } = string.Empty;
+    public string ProductVersion { get; init; } = string.Empty;
     public string SoftwareVersion { get; init; } = string.Empty;
     public string SoftwareReleaseDate { get; init; } = string.Empty;
     public string SoftwareLatestUpdate { get; init; } = string.Empty;

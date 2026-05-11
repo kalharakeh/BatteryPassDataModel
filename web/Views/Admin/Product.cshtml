@@ -6,6 +6,7 @@
     var isNew = string.IsNullOrWhiteSpace(Model.ProductId);
     var currentProductVersion = Model.ProductVersions.FirstOrDefault();
     var baseProductCatalogJson = JsonSerializer.Serialize(Model.BaseProductCatalog);
+    var productVersionsJson = JsonSerializer.Serialize(Model.ProductVersions);
     var imageOptions = BatteryImageCatalog.Options;
     var selectedImageUrl = BatteryImageCatalog.NormalizeKnownImageUrl(Model.ImageUrl, string.Empty);
     var materialMasses = BatteryPassCanonicalDataCatalog.Materials
@@ -62,6 +63,7 @@
     }
 
     <script type="application/json" data-base-product-catalog>@Html.Raw(baseProductCatalogJson)</script>
+    <script type="application/json" data-product-versions-json-source>@Html.Raw(productVersionsJson)</script>
 
     <form method="post" action="/admin/products/save" class="bp-product-editor-grid mt-4">
         @Html.AntiForgeryToken()
@@ -103,7 +105,7 @@
             </section>
         }
 
-        <section class="bp-card bp-product-editor-section">
+        <section class="bp-card bp-product-editor-section bp-product-identity-section">
             <h2>Product identity</h2>
             <div class="bp-form-grid bp-product-identity-grid">
                 <label class="bp-field-shell">
@@ -153,22 +155,51 @@
             </div>
         </section>
 
-        <section class="bp-card bp-product-editor-section bp-span-all" data-product-version-list>
+        <section class="bp-card bp-product-editor-section bp-product-version-sidebar" data-product-version-manager>
             <div class="bp-product-section-heading">
                 <div>
-                    <h2>Product/battery version</h2>
-                    <p class="bp-help-text mb-0">This version owns the shared product parameters. Software versions below belong to this product/battery version.</p>
+                    <h2>Product/battery versions</h2>
+                    <p class="bp-help-text mb-0">Each tab owns the software and parameter values shown below.</p>
                 </div>
-                <label class="bp-field-shell bp-version-field-compact bp-product-version-current">
-                    <span>Current version</span>
-                    <input type="text" name="productVersion" value="@(currentProductVersion?.Version ?? "1.0")" placeholder="2.0" required />
-                </label>
+                <button type="button" class="bp-secondary-button bp-button-compact" data-add-product-version>Add version</button>
             </div>
+            <input type="hidden" name="productVersion" value="@(currentProductVersion?.Version ?? "1.0")" data-current-product-version />
+            <input type="hidden" name="productVersionsJson" value="" data-product-versions-json />
+            <div class="bp-product-version-tab-rail" role="tablist" aria-label="Product/battery versions" data-product-version-list data-product-version-tab-rail>
+                @foreach (var productVersion in Model.ProductVersions)
+                {
+                    var isCurrentVersion = currentProductVersion?.Version.Equals(productVersion.Version, StringComparison.OrdinalIgnoreCase) == true;
+                    <article class="bp-product-version-tab @(isCurrentVersion ? "is-active" : string.Empty)" data-product-version-row data-product-version-tab data-version="@productVersion.Version">
+                        <button type="button" class="bp-product-version-tab-main" role="tab" aria-selected="@(isCurrentVersion ? "true" : "false")" title="Edit version @productVersion.Version" data-edit-product-version>
+                            <span>Edit version</span>
+                            <strong>@productVersion.Version</strong>
+                        </button>
+                        <label class="bp-product-version-tab-input">
+                            <span>Version number</span>
+                            <input type="text" value="@productVersion.Version" readonly data-product-version-input />
+                        </label>
+                        <div class="bp-product-version-tab-actions">
+                            @if (!isNew)
+                            {
+                                <button
+                                    type="submit"
+                                    form="push-product-version-@Model.ProductId-@productVersion.Version"
+                                    class="bp-secondary-button bp-button-compact">
+                                    Push to batteries
+                                </button>
+                            }
+                            <button type="button" class="bp-danger-button bp-button-compact" data-remove-product-version>Remove</button>
+                        </div>
+                    </article>
+                }
+            </div>
+            <p class="bp-help-text mb-0">Save new product/battery versions before pushing. A new version normally matches zero batteries until passports are created with it.</p>
         </section>
 
-        <section class="bp-card bp-product-editor-section">
+        <section class="bp-card bp-product-editor-section bp-product-version-editor-shell" data-version-scoped-section>
             <div class="bp-product-section-heading">
                 <div>
+                    <span class="bp-summary-title">Selected product/battery version: <strong data-selected-product-version-label>@(currentProductVersion?.Version ?? "1.0")</strong></span>
                     <h2>Software versions</h2>
                     <p class="bp-help-text mb-0">Each software version defines the version, release date, and latest update available for this product/battery version.</p>
                     <p class="bp-help-text mb-0">Saved software version numbers cannot be changed. Add a new software version instead.</p>
@@ -215,8 +246,8 @@
             <p class="bp-help-text mb-0">Save product changes before pushing. Push updates only template-owned fields and preserves manual battery overrides.</p>
         </section>
 
-        <section class="bp-card bp-product-editor-section">
-            <h2>Shared product values</h2>
+        <section class="bp-card bp-product-editor-section bp-product-version-editor-shell" data-version-scoped-section>
+            <h2>Shared product values for <span data-selected-product-version-label>@(currentProductVersion?.Version ?? "1.0")</span></h2>
             <div class="bp-form-grid">
                 <label class="bp-field-shell"><span>Battery mass kg</span><input type="number" step="any" name="batteryMassKg" value="@Model.BatteryMassKg" /></label>
                 <label class="bp-field-shell"><span>Rated energy kWh</span><input type="number" step="any" name="ratedEnergyKwh" value="@Model.RatedEnergyKwh" /></label>
@@ -231,8 +262,8 @@
             </div>
         </section>
 
-        <section class="bp-card bp-product-editor-section">
-            <h2>Material composition</h2>
+        <section class="bp-card bp-product-editor-section bp-product-version-editor-shell" data-version-scoped-section>
+            <h2>Material composition for <span data-selected-product-version-label>@(currentProductVersion?.Version ?? "1.0")</span></h2>
             <div class="bp-form-grid">
                 @foreach (var material in materialMasses)
                 {
@@ -245,8 +276,8 @@
             </div>
         </section>
 
-        <section class="bp-card bp-product-editor-section">
-            <h2>Carbon lifecycle stages</h2>
+        <section class="bp-card bp-product-editor-section bp-product-version-editor-shell" data-version-scoped-section>
+            <h2>Carbon lifecycle stages for <span data-selected-product-version-label>@(currentProductVersion?.Version ?? "1.0")</span></h2>
             <div class="bp-form-grid">
                 @foreach (var stage in carbonStages)
                 {
@@ -259,9 +290,9 @@
             </div>
         </section>
 
-        <section class="bp-card bp-product-editor-section">
-            <h2>Circularity</h2>
-            <p class="bp-help-text">Product-level recycled-content values copied to batteries from this template.</p>
+        <section class="bp-card bp-product-editor-section bp-product-version-editor-shell" data-version-scoped-section>
+            <h2>Circularity for <span data-selected-product-version-label>@(currentProductVersion?.Version ?? "1.0")</span></h2>
+            <p class="bp-help-text">Version-level recycled-content values copied to batteries using this product/battery version.</p>
             <div class="bp-form-grid">
                 @foreach (var recycled in recycledContent)
                 {
@@ -331,7 +362,7 @@
         <div class="bp-product-editor-savebar bp-span-all">
             <div>
                 <strong>Save product template to MongoDB</strong>
-                <span>Existing batteries stay unchanged until you push a software-version update.</span>
+                <span>Existing batteries stay unchanged until you push a saved product/battery version or software-version update.</span>
             </div>
             <button type="submit" class="bp-primary-button">Save product template</button>
         </div>
@@ -339,12 +370,20 @@
 
     @if (!isNew)
     {
-        @foreach (var software in Model.SoftwareVersions)
+        @foreach (var productVersion in Model.ProductVersions)
         {
-            var productVersion = currentProductVersion?.Version ?? "1.0";
-            <form id="push-@Model.ProductId-@productVersion-@software.Version" method="post" action="/admin/products/@Uri.EscapeDataString(Model.ProductId)/versions/@Uri.EscapeDataString(productVersion)/software/@Uri.EscapeDataString(software.Version)/push">
+            <form id="push-product-version-@Model.ProductId-@productVersion.Version" method="post" action="/admin/products/@Uri.EscapeDataString(Model.ProductId)/versions/@Uri.EscapeDataString(productVersion.Version)/push">
                 @Html.AntiForgeryToken()
             </form>
+        }
+        @foreach (var version in Model.ProductVersions)
+        {
+            @foreach (var software in version.SoftwareVersions)
+            {
+                <form id="push-@Model.ProductId-@version.Version-@software.Version" method="post" action="/admin/products/@Uri.EscapeDataString(Model.ProductId)/versions/@Uri.EscapeDataString(version.Version)/software/@Uri.EscapeDataString(software.Version)/push">
+                    @Html.AntiForgeryToken()
+                </form>
+            }
         }
     }
 </main>
@@ -352,15 +391,30 @@
 @section Scripts {
     <script>
         (() => {
-            const list = document.querySelector('[data-software-version-list]');
-            const addButton = document.querySelector('[data-add-software-version]');
+            const form = document.querySelector('.bp-product-editor-grid');
+            const softwareList = document.querySelector('[data-software-version-list]');
+            const addSoftwareButton = document.querySelector('[data-add-software-version]');
+            const productVersionList = document.querySelector('[data-product-version-list]');
+            const addProductVersionButton = document.querySelector('[data-add-product-version]');
+            const selectedProductVersionLabels = document.querySelectorAll('[data-selected-product-version-label]');
+            const productVersionsInput = document.querySelector('[data-product-versions-json]');
+            const productVersionsSource = document.querySelector('[data-product-versions-json-source]');
+            const currentProductVersionInput = document.querySelector('[data-current-product-version]');
             const baseCatalogElement = document.querySelector('[data-base-product-catalog]');
             const baseProductSelect = document.querySelector('[data-base-product-select]');
             const baseProductVersionSelect = document.querySelector('[data-base-product-version-select]');
             const baseSoftwareSelect = document.querySelector('[data-base-software-select]');
             const applyBaseButton = document.querySelector('[data-apply-base-template]');
             const baseCatalog = parseBaseCatalog(baseCatalogElement?.textContent || '[]');
-            if (!list || !addButton) {
+            const isNewProduct = @JsonSerializer.Serialize(isNew);
+            const productId = @JsonSerializer.Serialize(Model.ProductId);
+            const savedProductVersionKeys = new Set(parseBaseCatalog(productVersionsSource?.textContent || '[]')
+                .map(version => normalizeVersionKey(version.Version))
+                .filter(Boolean));
+            let productVersions = parseBaseCatalog(productVersionsSource?.textContent || '[]');
+            let currentProductVersion = currentProductVersionInput?.value || productVersions[0]?.Version || '1.0';
+
+            if (!form || !softwareList || !addSoftwareButton || !productVersionList || !productVersionsInput || !currentProductVersionInput) {
                 return;
             }
 
@@ -373,12 +427,242 @@
                 }
             }
 
+            function normalizeVersionKey(value) {
+                return String(value || '').trim().toLowerCase();
+            }
+
             function setField(name, value) {
                 const field = document.querySelector(`[name="${name}"]`);
                 if (field) {
                     field.value = value ?? '';
+                    field.dispatchEvent(new Event('input', { bubbles: true }));
                     field.dispatchEvent(new Event('change', { bubbles: true }));
                 }
+            }
+
+            function numberField(name) {
+                const value = Number(document.querySelector(`[name="${name}"]`)?.value || 0);
+                return Number.isFinite(value) ? value : 0;
+            }
+
+            function collectNumberMap(nameKey, valueKey) {
+                const names = Array.from(document.querySelectorAll(`[name="${nameKey}"]`));
+                const values = Array.from(document.querySelectorAll(`[name="${valueKey}"]`));
+                return names.reduce((result, nameInput, index) => {
+                    const name = String(nameInput.value || '').trim();
+                    if (name) {
+                        result[name] = Number(values[index]?.value || 0);
+                    }
+                    return result;
+                }, {});
+            }
+
+            function collectRecycledContent() {
+                return ['Nickel', 'Cobalt', 'Lithium', 'Lead'].reduce((result, material) => {
+                    result[material] = {
+                        PreConsumerShare: numberField(`recycled${material}Pre`),
+                        PostConsumerShare: numberField(`recycled${material}Post`)
+                    };
+                    return result;
+                }, {});
+            }
+
+            function collectSoftwareVersions() {
+                return Array.from(softwareList.querySelectorAll('[data-software-version-row]'))
+                    .map(row => ({
+                        Version: row.querySelector('[name="softwareVersion"]')?.value?.trim() || '',
+                        ReleaseDate: row.querySelector('[name="softwareReleaseDate"]')?.value || '',
+                        LatestUpdate: row.querySelector('[name="softwareLatestUpdate"]')?.value || ''
+                    }))
+                    .filter(software => software.Version);
+            }
+
+            function collectCurrentProductVersion() {
+                return {
+                    Version: currentProductVersion,
+                    BatteryMassKg: numberField('batteryMassKg'),
+                    RatedEnergyKwh: numberField('ratedEnergyKwh'),
+                    RatedCapacityAh: numberField('ratedCapacityAh'),
+                    RatedMaximumPowerKw: numberField('ratedMaximumPowerKw'),
+                    NominalVoltageV: numberField('nominalVoltageV'),
+                    ExpectedLifetimeYears: numberField('expectedLifetimeYears'),
+                    ExpectedCycles: numberField('expectedCycles'),
+                    SupplyChainIndex: numberField('supplyChainIndex'),
+                    CarbonFootprint: numberField('carbonFootprint'),
+                    PerformanceClass: document.querySelector('[name="performanceClass"]')?.value || '',
+                    MaterialMassesKg: collectNumberMap('materialName', 'materialMass'),
+                    CarbonStages: collectNumberMap('carbonStage', 'carbonStageValue'),
+                    RecycledContent: collectRecycledContent(),
+                    SoftwareVersions: collectSoftwareVersions()
+                };
+            }
+
+            function sortVersions(versions) {
+                return versions.sort((left, right) => String(right.Version || '').localeCompare(String(left.Version || ''), undefined, { numeric: true }));
+            }
+
+            function saveCurrentVersion() {
+                if (!currentProductVersion) {
+                    return;
+                }
+
+                const next = collectCurrentProductVersion();
+                const index = productVersions.findIndex(version =>
+                    String(version.Version || '').toLowerCase() === String(currentProductVersion || '').toLowerCase());
+                if (index >= 0) {
+                    productVersions[index] = next;
+                } else {
+                    productVersions.push(next);
+                }
+                productVersions = sortVersions(productVersions.filter(version => version.Version));
+                writeProductVersionsJson();
+            }
+
+            function writeProductVersionsJson() {
+                productVersionsInput.value = JSON.stringify(productVersions);
+                currentProductVersionInput.value = currentProductVersion;
+                updateSelectedProductVersionLabels();
+            }
+
+            function updateSelectedProductVersionLabels() {
+                selectedProductVersionLabels.forEach(label => {
+                    label.textContent = currentProductVersion || '';
+                });
+            }
+
+            function currentVersionModel() {
+                return productVersions.find(version =>
+                    String(version.Version || '').toLowerCase() === String(currentProductVersion || '').toLowerCase())
+                    || productVersions[0];
+            }
+
+            function setNumberMap(nameKey, valueKey, values) {
+                const names = Array.from(document.querySelectorAll(`[name="${nameKey}"]`));
+                const inputs = Array.from(document.querySelectorAll(`[name="${valueKey}"]`));
+                names.forEach((nameInput, index) => {
+                    const key = nameInput.value || '';
+                    if (Object.prototype.hasOwnProperty.call(values || {}, key) && inputs[index]) {
+                        inputs[index].value = values[key];
+                    }
+                });
+            }
+
+            function setRecycledContent(values) {
+                Object.entries(values || {}).forEach(([material, content]) => {
+                    setField(`recycled${material}Pre`, content?.PreConsumerShare ?? 0);
+                    setField(`recycled${material}Post`, content?.PostConsumerShare ?? 0);
+                });
+            }
+
+            function renderSoftwareRows(versions) {
+                softwareList.innerHTML = '';
+                const rows = versions?.length ? versions : [{ Version: '', ReleaseDate: '', LatestUpdate: '' }];
+                rows.forEach(software => softwareList.appendChild(createSoftwareRow(software)));
+            }
+
+            function applyProductVersion(version) {
+                if (!version) {
+                    return;
+                }
+
+                currentProductVersion = version.Version || currentProductVersion;
+                currentProductVersionInput.value = currentProductVersion;
+                setField('productVersion', currentProductVersion);
+                setField('batteryMassKg', version.BatteryMassKg);
+                setField('ratedEnergyKwh', version.RatedEnergyKwh);
+                setField('ratedCapacityAh', version.RatedCapacityAh);
+                setField('ratedMaximumPowerKw', version.RatedMaximumPowerKw);
+                setField('nominalVoltageV', version.NominalVoltageV);
+                setField('expectedLifetimeYears', version.ExpectedLifetimeYears);
+                setField('expectedCycles', version.ExpectedCycles);
+                setField('supplyChainIndex', version.SupplyChainIndex);
+                setField('carbonFootprint', version.CarbonFootprint);
+                setField('performanceClass', version.PerformanceClass || '');
+                setNumberMap('materialName', 'materialMass', version.MaterialMassesKg || {});
+                setNumberMap('carbonStage', 'carbonStageValue', version.CarbonStages || {});
+                setRecycledContent(version.RecycledContent || {});
+                renderSoftwareRows(version.SoftwareVersions || []);
+                renderProductVersionRows();
+                writeProductVersionsJson();
+            }
+
+            function renderProductVersionRows() {
+                productVersionList.innerHTML = '';
+                productVersions.forEach(version => {
+                    const versionKey = normalizeVersionKey(version.Version);
+                    const isSavedVersion = !isNewProduct && savedProductVersionKeys.has(versionKey);
+                    const isActive = String(version.Version || '').toLowerCase() === String(currentProductVersion || '').toLowerCase();
+                    const row = document.createElement('article');
+                    row.className = `bp-product-version-tab bp-product-version-row ${isActive ? 'is-active' : ''}`;
+                    row.dataset.productVersionRow = '';
+                    row.dataset.productVersionTab = '';
+                    row.dataset.version = version.Version || '';
+                    const pushFormId = `push-product-version-${productId}-${version.Version || ''}`;
+                    const pushDisabled = !isSavedVersion || !document.getElementById(pushFormId);
+                    const readonlyAttr = isSavedVersion ? 'readonly' : '';
+                    row.innerHTML = `
+                        <button type="button" class="bp-product-version-tab-main" role="tab" aria-selected="${isActive ? 'true' : 'false'}" title="Edit version ${escapeHtml(version.Version || '')}" data-edit-product-version>
+                            <span>Edit version</span>
+                            <strong>${escapeHtml(version.Version || '')}</strong>
+                        </button>
+                        <label class="bp-product-version-tab-input">
+                            <span>Version number</span>
+                            <input type="text" value="${escapeHtml(version.Version || '')}" data-product-version-input ${readonlyAttr} required />
+                        </label>
+                        <div class="bp-product-version-tab-actions">
+                            <button type="submit" form="${escapeHtml(pushFormId)}" class="bp-secondary-button bp-button-compact" ${pushDisabled ? 'disabled' : ''}>Push to batteries</button>
+                            <button type="button" class="bp-danger-button bp-button-compact" data-remove-product-version>Remove</button>
+                        </div>`;
+                    bindProductVersionRow(row, version);
+                    productVersionList.appendChild(row);
+                });
+            }
+
+            function bindProductVersionRow(row, version) {
+                const input = row.querySelector('[data-product-version-input]');
+                row.querySelector('[data-edit-product-version]')?.addEventListener('click', () => {
+                    saveCurrentVersion();
+                    applyProductVersion(version);
+                });
+                row.querySelector('[data-remove-product-version]')?.addEventListener('click', () => {
+                    if (productVersions.length <= 1) {
+                        input?.focus();
+                        return;
+                    }
+                    productVersions = productVersions.filter(candidate => candidate !== version);
+                    if (String(currentProductVersion || '').toLowerCase() === String(version.Version || '').toLowerCase()) {
+                        currentProductVersion = productVersions[0]?.Version || '';
+                        applyProductVersion(productVersions[0]);
+                    } else {
+                        renderProductVersionRows();
+                        writeProductVersionsJson();
+                    }
+                });
+                input?.addEventListener('input', () => {
+                    if (input.readOnly) {
+                        return;
+                    }
+
+                    const previous = version.Version || '';
+                    version.Version = input.value.trim();
+                    if (String(currentProductVersion || '').toLowerCase() === String(previous).toLowerCase()) {
+                        currentProductVersion = version.Version;
+                    }
+                    row.dataset.version = version.Version;
+                    const tabLabel = row.querySelector('.bp-product-version-tab-main strong');
+                    if (tabLabel) {
+                        tabLabel.textContent = version.Version;
+                    }
+                    writeProductVersionsJson();
+                });
+            }
+
+            function escapeHtml(value) {
+                return String(value)
+                    .replaceAll('&', '&amp;')
+                    .replaceAll('<', '&lt;')
+                    .replaceAll('>', '&gt;')
+                    .replaceAll('"', '&quot;');
             }
 
             function selectedBaseProduct() {
@@ -430,22 +714,22 @@
 
                 setField('imageUrl', product.ImageUrl);
                 setField('moduleCount', product.ModuleCount);
-                setField('productVersion', version.Version);
-                setField('batteryMassKg', version.BatteryMassKg);
-                setField('ratedEnergyKwh', version.RatedEnergyKwh);
-                setField('ratedCapacityAh', version.RatedCapacityAh);
-                setField('ratedMaximumPowerKw', version.RatedMaximumPowerKw);
-                setField('nominalVoltageV', version.NominalVoltageV);
-                setField('expectedLifetimeYears', version.ExpectedLifetimeYears);
-                setField('expectedCycles', version.ExpectedCycles);
-                setField('supplyChainIndex', version.SupplyChainIndex);
-                setField('carbonFootprint', version.CarbonFootprint);
-                setField('performanceClass', version.PerformanceClass);
+                saveCurrentVersion();
+                currentProductVersion = version.Version || currentProductVersion;
+                const existingIndex = productVersions.findIndex(candidate =>
+                    String(candidate.Version || '').toLowerCase() === String(currentProductVersion || '').toLowerCase());
+                if (existingIndex >= 0) {
+                    productVersions[existingIndex] = { ...version };
+                } else {
+                    productVersions.push({ ...version });
+                }
+                applyProductVersion(productVersions.find(candidate =>
+                    String(candidate.Version || '').toLowerCase() === String(currentProductVersion || '').toLowerCase()));
             }
 
             function bindRemoveButton(row) {
                 row.querySelector('[data-remove-software-version]')?.addEventListener('click', () => {
-                    const rows = Array.from(list.querySelectorAll('[data-software-version-row]'));
+                    const rows = Array.from(softwareList.querySelectorAll('[data-software-version-row]'));
                     if (rows.length <= 1) {
                         row.querySelectorAll('input').forEach(input => {
                             input.value = '';
@@ -458,38 +742,68 @@
                 });
             }
 
-            function createRow() {
+            function createSoftwareRow(software = {}) {
                 const row = document.createElement('article');
+                const pushFormId = `push-${productId}-${currentProductVersion}-${software.Version || ''}`;
+                const pushDisabled = isNewProduct || !document.getElementById(pushFormId);
                 row.className = 'bp-template-version-row';
                 row.dataset.softwareVersionRow = '';
                 row.innerHTML = `
                     <label class="bp-field-shell">
                         <span>Version</span>
-                        <input type="text" name="softwareVersion" value="" placeholder="4.0" required />
+                        <input type="text" name="softwareVersion" value="${escapeHtml(software.Version || '')}" placeholder="4.0" required />
                     </label>
                     <label class="bp-field-shell">
                         <span>Release date</span>
-                        <input type="date" name="softwareReleaseDate" value="" required />
+                        <input type="date" name="softwareReleaseDate" value="${escapeHtml(software.ReleaseDate || '')}" required />
                     </label>
                     <label class="bp-field-shell">
                         <span>Latest update</span>
-                        <input type="date" name="softwareLatestUpdate" value="" required />
+                        <input type="date" name="softwareLatestUpdate" value="${escapeHtml(software.LatestUpdate || '')}" required />
                     </label>
                     <div class="bp-template-version-action">
+                        <button type="submit" form="${escapeHtml(pushFormId)}" class="bp-secondary-button bp-button-compact" ${pushDisabled ? 'disabled' : ''}>Push to batteries</button>
                         <button type="button" class="bp-danger-button bp-button-compact" data-remove-software-version>Remove</button>
                     </div>`;
                 bindRemoveButton(row);
                 return row;
             }
 
-            list.querySelectorAll('[data-software-version-row]').forEach(bindRemoveButton);
+            function nextProductVersion() {
+                const major = productVersions
+                    .map(version => Number.parseInt(String(version.Version || '').split('.')[0], 10))
+                    .filter(Number.isFinite)
+                    .reduce((max, value) => Math.max(max, value), 0);
+                return `${major + 1}.0`;
+            }
+
+            softwareList.querySelectorAll('[data-software-version-row]').forEach(bindRemoveButton);
+            renderProductVersionRows();
             baseProductSelect?.addEventListener('change', updateBaseProductVersions);
             baseProductVersionSelect?.addEventListener('change', updateBaseSoftware);
             applyBaseButton?.addEventListener('click', applyBaseTemplate);
-            addButton.addEventListener('click', () => {
-                const row = createRow();
-                list.appendChild(row);
+            addSoftwareButton.addEventListener('click', () => {
+                const row = createSoftwareRow();
+                softwareList.appendChild(row);
                 row.querySelector('input[name="softwareVersion"]')?.focus();
+            });
+            addProductVersionButton?.addEventListener('click', () => {
+                saveCurrentVersion();
+                const version = {
+                    ...collectCurrentProductVersion(),
+                    Version: nextProductVersion()
+                };
+                productVersions.push(version);
+                currentProductVersion = version.Version;
+                applyProductVersion(version);
+                Array.from(productVersionList.querySelectorAll('[data-product-version-row]'))
+                    .find(row => String(row.dataset.version || '') === String(version.Version || ''))
+                    ?.querySelector('[data-product-version-input]')
+                    ?.focus();
+            });
+            form.addEventListener('submit', () => {
+                saveCurrentVersion();
+                writeProductVersionsJson();
             });
         })();
     </script>

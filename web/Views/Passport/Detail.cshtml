@@ -49,6 +49,7 @@
         <dl class="bp-field-grid">
             <div><dt>Model Number</dt><dd>@passport.ModelNumber</dd></div>
             <div><dt>Serial Number</dt><dd>@passport.SerialNumber</dd></div>
+            <div><dt>Product/battery version</dt><dd>@(string.IsNullOrWhiteSpace(passport.ProductVersion) ? "-" : passport.ProductVersion)</dd></div>
             <div><dt>Software version</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareVersion) ? "-" : passport.SoftwareVersion)</dd></div>
             <div><dt>Category</dt><dd>@passport.Category</dd></div>
             <div><dt>Status</dt><dd>@passport.BatteryStatus</dd></div>
@@ -104,6 +105,7 @@
                         <div><dt>Current version</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareVersion) ? "-" : passport.SoftwareVersion)</dd></div>
                         <div><dt>Product</dt><dd>@(string.IsNullOrWhiteSpace(passport.ProductName) ? "-" : passport.ProductName)</dd></div>
                         <div><dt>Product ID</dt><dd>@(string.IsNullOrWhiteSpace(passport.ProductId) ? "-" : passport.ProductId)</dd></div>
+                        <div><dt>Product/battery version</dt><dd>@(string.IsNullOrWhiteSpace(passport.ProductVersion) ? "-" : passport.ProductVersion)</dd></div>
                         <div><dt>Release date</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareReleaseDate) ? "-" : passport.SoftwareReleaseDate)</dd></div>
                         <div><dt>Latest update</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareLatestUpdate) ? "-" : passport.SoftwareLatestUpdate)</dd></div>
                     </dl>

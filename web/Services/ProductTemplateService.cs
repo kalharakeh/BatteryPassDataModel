@@ -141,12 +141,17 @@ public sealed class ProductTemplateService
         return await collection.Find(Builders<BsonDocument>.Filter.Eq("productId", productId.Trim())).FirstOrDefaultAsync(cancellationToken);
     }
 
-    public async Task EnsureDefaultTemplatesAsync(string actor, CancellationToken cancellationToken = default)
+    public async Task EnsureDefaultTemplatesAsync(string actor, CancellationToken cancellationToken = default, bool force = false)
     {
         var productCollection = ProductCollection();
         var productVersionCollection = ProductVersionCollection();
         var softwareCollection = SoftwareCollection();
         if (productCollection == null || productVersionCollection == null || softwareCollection == null)
+        {
+            return;
+        }
+
+        if (!force && await productCollection.CountDocumentsAsync(Builders<BsonDocument>.Filter.Empty, cancellationToken: cancellationToken) > 0)
         {
             return;
         }
@@ -336,7 +341,7 @@ public sealed class ProductTemplateService
 
     public async Task<ProductTemplateResetResult> ResetTemplateDemoAsync(string actor, CancellationToken cancellationToken = default)
     {
-        await EnsureDefaultTemplatesAsync(actor, cancellationToken);
+        await EnsureDefaultTemplatesAsync(actor, cancellationToken, force: true);
         await EnsureFixedClustersAndUsersAsync(cancellationToken);
 
         var collection = PassportCollection();
@@ -368,13 +373,23 @@ public sealed class ProductTemplateService
             (PassportId: "did:web:acme.battery.pass:sample-end-user-fleet-002", ProductId: "core", ProductVersion: "2.0", SoftwareVersion: "4.0", ClusterId: "cluster-fleet-operations", ModelNumber: "CORE-FLEET-002", SerialNumber: "SN-FLEET-002", DisplayName: "Fleet Core customer battery v2", FacilityId: "FLEET-LINE-02")
         };
 
+        var products = await ListProductsAsync(cancellationToken);
+        var productsById = products.ToDictionary(product => product.ProductId, StringComparer.OrdinalIgnoreCase);
+
         foreach (var seed in seeds)
         {
-            var document = await BuildPassportFromTemplateAsync(
+            var product = productsById.TryGetValue(seed.ProductId, out var selectedProduct)
+                ? selectedProduct
+                : BatteryProductTemplateCatalog.DefaultProduct;
+            var productVersion = product.ProductVersions.FirstOrDefault(version => version.Version.Equals(seed.ProductVersion, StringComparison.OrdinalIgnoreCase))
+                ?? product.LatestProductVersion;
+            var software = productVersion.SoftwareVersions.FirstOrDefault(version => version.Version.Equals(seed.SoftwareVersion, StringComparison.OrdinalIgnoreCase))
+                ?? productVersion.SoftwareVersions.First();
+            var document = ProductTemplatePassportBuilder.BuildPassportFromTemplate(
                 seed.PassportId,
-                seed.ProductId,
-                seed.ProductVersion,
-                seed.SoftwareVersion,
+                product,
+                productVersion,
+                software,
                 new ProductTemplateBatteryIdentity
                 {
                     ClusterId = seed.ClusterId,
@@ -384,15 +399,16 @@ public sealed class ProductTemplateService
                     FacilityId = seed.FacilityId,
                     ManufacturingDate = resetAt[..10]
                 },
-                actor,
-                cancellationToken);
+                resetAt);
+            ApplyTemplateDocumentReferences(document, await GetProductDocumentAsync(product.ProductId, cancellationToken));
+            document["app"]["templateBaseline"] = ProductTemplatePassportBuilder.BuildTemplateBaseline(document);
             await _passportRepository.ReplaceAsync(seed.PassportId, document, cancellationToken);
 
             var policy = await _dataCompletionPolicyService.GetPolicyForPassportAsync(document, cancellationToken);
             var summary = _passportValidationService.Validate(document, policy);
             var signature = _passportTrustService.Sign(document, actor);
             var revision = await _auditRevisionService.CreateSignedRevisionAsync(
-                seed.Item1,
+                seed.PassportId,
                 signature.Snapshot,
                 signature.Hash,
                 signature.Proof,
@@ -421,6 +437,83 @@ public sealed class ProductTemplateService
         }
 
         return new ProductTemplateResetResult(seeds.Length, FixedPassportIds, resetAt);
+    }
+
+    public async Task<ProductTemplatePushResult> PushProductVersionAsync(
+        string productId,
+        string productVersion,
+        string actor,
+        CancellationToken cancellationToken = default)
+    {
+        var product = await GetProductAsync(productId, cancellationToken);
+        if (product == null)
+        {
+            return new ProductTemplatePushResult();
+        }
+
+        var selectedProductVersion = product.ProductVersions.FirstOrDefault(version => version.Version.Equals(productVersion, StringComparison.OrdinalIgnoreCase))
+            ?? product.LatestProductVersion;
+        var collection = PassportCollection();
+        if (collection == null)
+        {
+            return new ProductTemplatePushResult();
+        }
+
+        var filter = Builders<BsonDocument>.Filter.And(
+            Builders<BsonDocument>.Filter.Eq("app.product.productId", product.ProductId),
+            Builders<BsonDocument>.Filter.Eq("app.product.productVersion", selectedProductVersion.Version));
+        var passports = await collection.Find(filter).ToListAsync(cancellationToken);
+        var productDocument = await GetProductDocumentAsync(product.ProductId, cancellationToken);
+        var updatedPassportIds = new List<string>();
+        var skippedPaths = new List<string>();
+        var now = DateTimeOffset.UtcNow.ToString("O");
+
+        foreach (var passport in passports)
+        {
+            var currentSoftwareVersion = BsonHelpers.GetString(passport, "app", "product", "softwareVersion");
+            var software = selectedProductVersion.SoftwareVersions.FirstOrDefault(version => version.Version.Equals(currentSoftwareVersion, StringComparison.OrdinalIgnoreCase))
+                ?? selectedProductVersion.SoftwareVersions.First();
+            var result = BuildSafeTemplatePushUpdate(passport, product, selectedProductVersion, software, productDocument, now);
+            if (result.UpdatedPaths.Count == 0)
+            {
+                skippedPaths.AddRange(result.SkippedOverridePaths);
+                continue;
+            }
+
+            var passportId = BsonHelpers.GetString(passport, "passportId");
+            result.UpdatedPassport.Remove("_id");
+            await _passportRepository.ReplaceAsync(passportId, result.UpdatedPassport, cancellationToken);
+            await _passportRepository.MarkCanonicalDirtyAsync(passportId, "productVersionTemplatePushed", cancellationToken);
+            updatedPassportIds.Add(passportId);
+            skippedPaths.AddRange(result.SkippedOverridePaths);
+            await _auditRevisionService.AppendAuditEventAsync(
+                passportId,
+                "passport.productVersionTemplate.pushed",
+                actor,
+                "admin",
+                "product-version-template-push",
+                "Product/battery version template changes pushed to passport.",
+                new BsonDocument
+                {
+                    ["productId"] = product.ProductId,
+                    ["productVersion"] = selectedProductVersion.Version,
+                    ["softwareVersion"] = software.Version,
+                    ["updatedPaths"] = new BsonArray(result.UpdatedPaths),
+                    ["skippedOverridePaths"] = new BsonArray(result.SkippedOverridePaths)
+                },
+                cancellationToken);
+        }
+
+        await RecordPushRunAsync(product.ProductId, selectedProductVersion.Version, string.Empty, actor, now, passports.Count, updatedPassportIds.Count, skippedPaths, cancellationToken);
+
+        return new ProductTemplatePushResult
+        {
+            MatchedBatteries = passports.Count,
+            UpdatedBatteries = updatedPassportIds.Count,
+            SkippedBatteries = passports.Count - updatedPassportIds.Count,
+            UpdatedPassportIds = updatedPassportIds,
+            SkippedOverridePaths = skippedPaths.Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+        };
     }
 
     public async Task<ProductTemplatePushResult> PushTemplateAsync(
@@ -464,32 +557,14 @@ public sealed class ProductTemplateService
             Builders<BsonDocument>.Filter.Eq("app.product.productVersion", selectedProductVersion.Version),
             Builders<BsonDocument>.Filter.Eq("app.product.softwareVersion", software.Version));
         var passports = await collection.Find(filter).ToListAsync(cancellationToken);
+        var productDocument = await GetProductDocumentAsync(product.ProductId, cancellationToken);
         var updatedPassportIds = new List<string>();
         var skippedPaths = new List<string>();
         var now = DateTimeOffset.UtcNow.ToString("O");
 
         foreach (var passport in passports)
         {
-            var oldTemplate = BsonHelpers.GetValue(passport, "app", "templateBaseline") as BsonDocument ?? new BsonDocument();
-            var identity = new ProductTemplateBatteryIdentity
-            {
-                ClusterId = BsonHelpers.GetString(passport, "clusterId"),
-                ModelNumber = BsonHelpers.GetString(passport, "app", "display", "modelNumber"),
-                SerialNumber = BsonHelpers.GetString(passport, "app", "display", "serialNumber"),
-                DisplayName = BsonHelpers.GetString(passport, "app", "display", "name"),
-                FacilityId = BsonHelpers.GetString(passport, "app", "display", "facilityId"),
-                ManufacturingDate = BsonHelpers.GetString(passport, "aspects", "generalProductInformation", "payload", "manufacturingDate")
-            };
-            var fresh = ProductTemplatePassportBuilder.BuildPassportFromTemplate(
-                BsonHelpers.GetString(passport, "passportId"),
-                product,
-                selectedProductVersion,
-                software,
-                identity,
-                now);
-            ApplyTemplateDocumentReferences(fresh, await GetProductDocumentAsync(product.ProductId, cancellationToken));
-            var newTemplate = ProductTemplatePassportBuilder.BuildTemplateBaseline(fresh);
-            var result = ProductTemplatePassportBuilder.ComputeSafeTemplateUpdates(passport, oldTemplate, newTemplate);
+            var result = BuildSafeTemplatePushUpdate(passport, product, selectedProductVersion, software, productDocument, now);
             if (result.UpdatedPaths.Count == 0)
             {
                 skippedPaths.AddRange(result.SkippedOverridePaths);
@@ -519,21 +594,7 @@ public sealed class ProductTemplateService
                 cancellationToken);
         }
 
-        var pushRunsCollection = PushRunsCollection();
-        if (pushRunsCollection != null)
-        {
-            await pushRunsCollection.InsertOneAsync(new BsonDocument
-            {
-                ["productId"] = product.ProductId,
-                ["productVersion"] = selectedProductVersion.Version,
-                ["softwareVersion"] = software.Version,
-                ["actor"] = actor,
-                ["createdAt"] = now,
-                ["matchedBatteries"] = passports.Count,
-                ["updatedBatteries"] = updatedPassportIds.Count,
-                ["skippedOverridePaths"] = new BsonArray(skippedPaths.Distinct(StringComparer.OrdinalIgnoreCase))
-            }, cancellationToken: cancellationToken);
-        }
+        await RecordPushRunAsync(product.ProductId, selectedProductVersion.Version, software.Version, actor, now, passports.Count, updatedPassportIds.Count, skippedPaths, cancellationToken);
 
         return new ProductTemplatePushResult
         {
@@ -543,6 +604,66 @@ public sealed class ProductTemplateService
             UpdatedPassportIds = updatedPassportIds,
             SkippedOverridePaths = skippedPaths.Distinct(StringComparer.OrdinalIgnoreCase).ToList()
         };
+    }
+
+    private static ProductTemplateSafeUpdateResult BuildSafeTemplatePushUpdate(
+        BsonDocument passport,
+        BatteryProductTemplate product,
+        BatteryProductVersion selectedProductVersion,
+        BatteryProductSoftwareVersion software,
+        BsonDocument? productDocument,
+        string now)
+    {
+        var oldTemplate = BsonHelpers.GetValue(passport, "app", "templateBaseline") as BsonDocument ?? new BsonDocument();
+        var identity = new ProductTemplateBatteryIdentity
+        {
+            ClusterId = BsonHelpers.GetString(passport, "clusterId"),
+            ModelNumber = BsonHelpers.GetString(passport, "app", "display", "modelNumber"),
+            SerialNumber = BsonHelpers.GetString(passport, "app", "display", "serialNumber"),
+            DisplayName = BsonHelpers.GetString(passport, "app", "display", "name"),
+            FacilityId = BsonHelpers.GetString(passport, "app", "display", "facilityId"),
+            ManufacturingDate = BsonHelpers.GetString(passport, "aspects", "generalProductInformation", "payload", "manufacturingDate")
+        };
+        var fresh = ProductTemplatePassportBuilder.BuildPassportFromTemplate(
+            BsonHelpers.GetString(passport, "passportId"),
+            product,
+            selectedProductVersion,
+            software,
+            identity,
+            now);
+        ApplyTemplateDocumentReferences(fresh, productDocument);
+        var newTemplate = ProductTemplatePassportBuilder.BuildTemplateBaseline(fresh);
+        return ProductTemplatePassportBuilder.ComputeSafeTemplateUpdates(passport, oldTemplate, newTemplate);
+    }
+
+    private async Task RecordPushRunAsync(
+        string productId,
+        string productVersion,
+        string softwareVersion,
+        string actor,
+        string now,
+        int matchedBatteries,
+        int updatedBatteries,
+        IReadOnlyList<string> skippedPaths,
+        CancellationToken cancellationToken)
+    {
+        var pushRunsCollection = PushRunsCollection();
+        if (pushRunsCollection == null)
+        {
+            return;
+        }
+
+        await pushRunsCollection.InsertOneAsync(new BsonDocument
+        {
+            ["productId"] = productId,
+            ["productVersion"] = productVersion,
+            ["softwareVersion"] = softwareVersion,
+            ["actor"] = actor,
+            ["createdAt"] = now,
+            ["matchedBatteries"] = matchedBatteries,
+            ["updatedBatteries"] = updatedBatteries,
+            ["skippedOverridePaths"] = new BsonArray(skippedPaths.Distinct(StringComparer.OrdinalIgnoreCase))
+        }, cancellationToken: cancellationToken);
     }
 
     private async Task EnsureFixedClustersAndUsersAsync(CancellationToken cancellationToken)

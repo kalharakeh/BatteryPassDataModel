@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using System.Text.Json;
 using BCryptNet = BCrypt.Net.BCrypt;
 
 namespace BatteryPassWeb.Controllers;
@@ -162,16 +163,30 @@ public class AdminController : Controller
 
         var dataRequirements = await _dataCompletionPolicyService.GetPolicyForPassportAsync(document, cancellationToken);
         var validationSummary = _passportValidationService.Validate(document, dataRequirements);
+        if (validationSummary.BlockingErrorCount > 0)
+        {
+            var model = await BuildEditPassportModelAsync(
+                document,
+                "new",
+                string.Empty,
+                BuildCreateBlockedMessage(validationSummary),
+                cancellationToken);
+            return View("EditPassport", model);
+        }
+
         var normalizedStatus = _passportPublishPolicyService.NormalizeRegistryStatus(requestedStatus, document, validationSummary);
         EnsureDocument(document, "registryInfo")["status"] = normalizedStatus;
 
         await _passportRepository.ReplaceAsync(passportId, document, cancellationToken);
         await _passportRepository.UpdateTrustValidationAsync(passportId, validationSummary, cancellationToken);
         var blockedPublishMessage = BuildBlockedPublishMessage(requestedStatus, normalizedStatus);
-        var redirectUrl = $"/admin/passports/{Uri.EscapeDataString(passportId)}/edit?status=created";
-        return string.IsNullOrWhiteSpace(blockedPublishMessage)
-            ? Redirect(redirectUrl)
-            : Redirect($"{redirectUrl}&error={Uri.EscapeDataString(blockedPublishMessage)}");
+        if (!string.IsNullOrWhiteSpace(blockedPublishMessage))
+        {
+            TempData["ErrorMessage"] = blockedPublishMessage;
+        }
+
+        TempData["StatusMessage"] = $"Passport {passportId} created.";
+        return Redirect("/admin/clusters?tab=passports");
     }
 
     [HttpGet("passports/{passportId}/edit")]
@@ -608,6 +623,15 @@ public class AdminController : Controller
         return Redirect($"/admin/products/{Uri.EscapeDataString(productId)}?status={Uri.EscapeDataString(message)}");
     }
 
+    [HttpPost("products/{productId}/versions/{productVersion}/push")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PushProductVersionTemplate(string productId, string productVersion, CancellationToken cancellationToken)
+    {
+        var result = await _productTemplateService.PushProductVersionAsync(productId, productVersion, CurrentActor(), cancellationToken);
+        var message = $"Product/battery version push finished: {result.UpdatedBatteries} of {result.MatchedBatteries} matching batteries updated. Manual overrides were preserved.";
+        return Redirect($"/admin/products/{Uri.EscapeDataString(productId)}?status={Uri.EscapeDataString(message)}");
+    }
+
     [HttpPost("product-templates/reset")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResetProductTemplateDemo(CancellationToken cancellationToken)
@@ -649,13 +673,33 @@ public class AdminController : Controller
             .ToList();
 
         var clusterNamesById = clusterViewModels.ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
-        var passports = await _passportRepository.SearchAsync(q ?? string.Empty, includeArchived: true, cancellationToken);
-        var users = await _clusterRepository.ListUsersAsync(cancellationToken);
-        var memberships = await _clusterRepository.ListClusterMembershipsAsync(cancellationToken);
-        var apiTokens = await _externalApiRepository.ListTokensAsync(cancellationToken);
-        var batterySecrets = await _externalApiRepository.ListBatterySecretsAsync(cancellationToken: cancellationToken);
-        var productTemplates = await _productTemplateService.ListProductsAsync(cancellationToken);
-        var localEditableFieldPolicy = await _localAdminEditableFieldPolicyService.GetPolicyAsync(cancellationToken);
+        var needsPassports = selectedTab is "passports" or "battery" or "api-token-management";
+        var needsUsers = selectedTab == "users";
+        var needsCredentials = selectedTab == "api-token-management";
+        var needsProducts = selectedTab == "products";
+        var needsLocalEditablePolicy = selectedTab == "local-editable-fields";
+
+        IReadOnlyList<PassportSummaryViewModel> passports = needsPassports
+            ? await _passportRepository.SearchAsync(q ?? string.Empty, includeArchived: true, cancellationToken)
+            : Array.Empty<PassportSummaryViewModel>();
+        IReadOnlyList<BsonDocument> users = needsUsers
+            ? await _clusterRepository.ListUsersAsync(cancellationToken)
+            : Array.Empty<BsonDocument>();
+        IReadOnlyList<BsonDocument> memberships = needsUsers
+            ? await _clusterRepository.ListClusterMembershipsAsync(cancellationToken)
+            : Array.Empty<BsonDocument>();
+        IReadOnlyList<BsonDocument> apiTokens = needsCredentials
+            ? await _externalApiRepository.ListTokensAsync(cancellationToken)
+            : Array.Empty<BsonDocument>();
+        IReadOnlyList<BsonDocument> batterySecrets = needsCredentials
+            ? await _externalApiRepository.ListBatterySecretsAsync(cancellationToken: cancellationToken)
+            : Array.Empty<BsonDocument>();
+        IReadOnlyList<BatteryProductTemplate> productTemplates = needsProducts
+            ? await _productTemplateService.ListProductsAsync(cancellationToken)
+            : Array.Empty<BatteryProductTemplate>();
+        var localEditableFieldPolicy = needsLocalEditablePolicy
+            ? await _localAdminEditableFieldPolicyService.GetPolicyAsync(cancellationToken)
+            : LocalAdminEditableFieldPolicyService.CreateDefaultPolicy();
 
         var model = new AdminClusterViewModel
         {
@@ -1118,6 +1162,24 @@ public class AdminController : Controller
                 : string.Empty;
     }
 
+    private static string BuildCreateBlockedMessage(TrustValidationSummary summary)
+    {
+        var blockers = summary.Sections
+            .SelectMany(section => section.Issues)
+            .Where(issue => issue.Severity == TrustValidationSeverity.BlockingError)
+            .Select(issue => string.IsNullOrWhiteSpace(issue.Path)
+                ? issue.Message
+                : $"{issue.Path}: {issue.Message}")
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(5)
+            .ToList();
+
+        var details = blockers.Count == 0
+            ? string.Empty
+            : $" Missing or invalid: {string.Join("; ", blockers)}";
+        return $"Create passport is blocked until {summary.BlockingErrorCount} required or invalid field(s) are fixed.{details}";
+    }
+
     private async Task<(TrustValidationSummary Summary, EvidencePackResult EvidencePack)> ValidateWithEvidenceAsync(
         string passportId,
         BsonDocument document,
@@ -1360,6 +1422,66 @@ public class AdminController : Controller
             .Where(value => !string.IsNullOrWhiteSpace(value))
             .ToList();
 
+        var productVersions = ReadProductVersions(form, existing, requiredFieldKeys);
+        var latestProductVersion = productVersions.FirstOrDefault() ?? existing.LatestProductVersion;
+
+        return existing with
+        {
+            ProductId = Text(form, "productId", existing.ProductId).Trim().ToLowerInvariant(),
+            ProductName = Text(form, "productName", existing.ProductName),
+            Description = Text(form, "description", existing.Description),
+            ImageUrl = BatteryImageCatalog.NormalizeKnownImageUrl(Text(form, "imageUrl", existing.ImageUrl), string.Empty),
+            ModuleCount = (int)Math.Max(1, Number(form, "moduleCount", existing.ModuleCount)),
+            BatteryMassKg = latestProductVersion.BatteryMassKg,
+            RatedEnergyKwh = latestProductVersion.RatedEnergyKwh,
+            RatedCapacityAh = latestProductVersion.RatedCapacityAh,
+            RatedMaximumPowerKw = latestProductVersion.RatedMaximumPowerKw,
+            NominalVoltageV = latestProductVersion.NominalVoltageV,
+            ExpectedLifetimeYears = latestProductVersion.ExpectedLifetimeYears,
+            ExpectedCycles = latestProductVersion.ExpectedCycles,
+            SupplyChainIndex = latestProductVersion.SupplyChainIndex,
+            CarbonFootprint = latestProductVersion.CarbonFootprint,
+            PerformanceClass = latestProductVersion.PerformanceClass,
+            MaterialMassesKg = latestProductVersion.MaterialMassesKg,
+            CarbonStages = latestProductVersion.CarbonStages,
+            RecycledContent = latestProductVersion.RecycledContent,
+            SoftwareVersions = latestProductVersion.SoftwareVersions,
+            RequiredFieldKeys = requiredFieldKeys,
+            ProductVersions = productVersions
+        };
+    }
+
+    private static IReadOnlyList<BatteryProductVersion> ReadProductVersions(
+        IFormCollection form,
+        BatteryProductTemplate existing,
+        IReadOnlyList<string> requiredFieldKeys)
+    {
+        var payloadJson = Text(form, "productVersionsJson");
+        if (!string.IsNullOrWhiteSpace(payloadJson))
+        {
+            try
+            {
+                var payloads = JsonSerializer.Deserialize<List<ProductVersionFormPayload>>(
+                    payloadJson,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? [];
+                var parsed = payloads
+                    .Select(payload => BuildProductVersionFromPayload(payload, existing, requiredFieldKeys))
+                    .Where(version => !string.IsNullOrWhiteSpace(version.Version))
+                    .GroupBy(version => version.Version, StringComparer.OrdinalIgnoreCase)
+                    .Select(group => group.First())
+                    .OrderBy(version => version.Version, VersionStringComparer.Descending)
+                    .ToList();
+                if (parsed.Count > 0)
+                {
+                    return parsed;
+                }
+            }
+            catch (JsonException)
+            {
+                // Fall back to the visible form fields below so a malformed client payload does not drop edits.
+            }
+        }
+
         var softwareVersions = ReadSoftwareVersions(form, existing.LatestProductVersion.SoftwareVersions);
         var productVersion = new BatteryProductVersion(
             Text(form, "productVersion", existing.LatestProductVersion.Version),
@@ -1380,30 +1502,66 @@ public class AdminController : Controller
             existing.LatestProductVersion.TemplateDocuments,
             requiredFieldKeys);
 
-        return existing with
+        return [productVersion];
+    }
+
+    private static BatteryProductVersion BuildProductVersionFromPayload(
+        ProductVersionFormPayload payload,
+        BatteryProductTemplate existing,
+        IReadOnlyList<string> requiredFieldKeys)
+    {
+        var fallback = existing.ProductVersions.FirstOrDefault(version =>
+                version.Version.Equals(payload.Version ?? string.Empty, StringComparison.OrdinalIgnoreCase))
+            ?? existing.LatestProductVersion;
+        var softwareVersions = (payload.SoftwareVersions ?? [])
+            .Select(software =>
+            {
+                var fallbackSoftware = fallback.SoftwareVersions.FirstOrDefault(item =>
+                    item.Version.Equals(software.Version ?? string.Empty, StringComparison.OrdinalIgnoreCase));
+                return new BatteryProductSoftwareVersion(
+                    software.Version?.Trim() ?? string.Empty,
+                    DateOnly(software.ReleaseDate ?? fallbackSoftware?.ReleaseDate),
+                    DateOnly(software.LatestUpdate ?? fallbackSoftware?.LatestUpdate));
+            })
+            .Where(software => !string.IsNullOrWhiteSpace(software.Version))
+            .GroupBy(software => software.Version, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .OrderBy(software => software.Version, VersionStringComparer.Descending)
+            .ToList();
+
+        return new BatteryProductVersion(
+            payload.Version?.Trim() ?? fallback.Version,
+            payload.BatteryMassKg,
+            payload.RatedEnergyKwh,
+            payload.RatedCapacityAh,
+            payload.RatedMaximumPowerKw,
+            payload.NominalVoltageV,
+            payload.ExpectedLifetimeYears,
+            payload.ExpectedCycles,
+            BatteryPassCanonicalDataCatalog.NormalizeSupplyChainIndex(payload.SupplyChainIndex),
+            BatteryPassCanonicalDataCatalog.NormalizeCarbonFootprint(payload.CarbonFootprint),
+            BatteryPassCanonicalDataCatalog.NormalizePerformanceClass(payload.PerformanceClass ?? fallback.PerformanceClass),
+            payload.MaterialMassesKg?.Count > 0 ? payload.MaterialMassesKg : fallback.MaterialMassesKg,
+            payload.CarbonStages?.Count > 0 ? payload.CarbonStages : fallback.CarbonStages,
+            ToRecycledContent(payload.RecycledContent, fallback.RecycledContent),
+            softwareVersions.Count == 0 ? fallback.SoftwareVersions : softwareVersions,
+            fallback.TemplateDocuments,
+            requiredFieldKeys);
+    }
+
+    private static IReadOnlyDictionary<string, ProductTemplateRecycledContent> ToRecycledContent(
+        Dictionary<string, ProductTemplateRecycledContentFormPayload>? payload,
+        IReadOnlyDictionary<string, ProductTemplateRecycledContent> fallback)
+    {
+        if (payload == null || payload.Count == 0)
         {
-            ProductId = Text(form, "productId", existing.ProductId).Trim().ToLowerInvariant(),
-            ProductName = Text(form, "productName", existing.ProductName),
-            Description = Text(form, "description", existing.Description),
-            ImageUrl = BatteryImageCatalog.NormalizeKnownImageUrl(Text(form, "imageUrl", existing.ImageUrl), string.Empty),
-            ModuleCount = (int)Math.Max(1, Number(form, "moduleCount", existing.ModuleCount)),
-            BatteryMassKg = Number(form, "batteryMassKg", existing.BatteryMassKg),
-            RatedEnergyKwh = Number(form, "ratedEnergyKwh", existing.RatedEnergyKwh),
-            RatedCapacityAh = Number(form, "ratedCapacityAh", existing.RatedCapacityAh),
-            RatedMaximumPowerKw = Number(form, "ratedMaximumPowerKw", existing.RatedMaximumPowerKw),
-            NominalVoltageV = Number(form, "nominalVoltageV", existing.NominalVoltageV),
-            ExpectedLifetimeYears = Number(form, "expectedLifetimeYears", existing.ExpectedLifetimeYears),
-            ExpectedCycles = Number(form, "expectedCycles", existing.ExpectedCycles),
-            SupplyChainIndex = BatteryPassCanonicalDataCatalog.NormalizeSupplyChainIndex(Number(form, "supplyChainIndex", existing.SupplyChainIndex)),
-            CarbonFootprint = BatteryPassCanonicalDataCatalog.NormalizeCarbonFootprint(Number(form, "carbonFootprint", existing.CarbonFootprint)),
-            PerformanceClass = BatteryPassCanonicalDataCatalog.NormalizePerformanceClass(Text(form, "performanceClass", existing.PerformanceClass)),
-            MaterialMassesKg = ReadNumberMap(form, "materialName", "materialMass", existing.MaterialMassesKg),
-            CarbonStages = ReadNumberMap(form, "carbonStage", "carbonStageValue", existing.CarbonStages),
-            RecycledContent = ReadRecycledContentMap(form, existing.RecycledContent),
-            SoftwareVersions = softwareVersions,
-            RequiredFieldKeys = requiredFieldKeys,
-            ProductVersions = [productVersion]
-        };
+            return fallback;
+        }
+
+        return payload.ToDictionary(
+            pair => pair.Key,
+            pair => new ProductTemplateRecycledContent(pair.Value.PreConsumerShare, pair.Value.PostConsumerShare),
+            StringComparer.OrdinalIgnoreCase);
     }
 
     private static IReadOnlyList<ProductTemplateFormCatalogItemViewModel> BuildProductTemplateFormCatalog(IEnumerable<BatteryProductTemplate> products)
@@ -1529,7 +1687,76 @@ public class AdminController : Controller
 
         return result.Count == 0
             ? fallback
-            : result.OrderBy(item => item.Version, StringComparer.OrdinalIgnoreCase).ToList();
+            : result.OrderBy(item => item.Version, VersionStringComparer.Descending).ToList();
+    }
+
+    private sealed class ProductVersionFormPayload
+    {
+        public string? Version { get; init; }
+        public double BatteryMassKg { get; init; }
+        public double RatedEnergyKwh { get; init; }
+        public double RatedCapacityAh { get; init; }
+        public double RatedMaximumPowerKw { get; init; }
+        public double NominalVoltageV { get; init; }
+        public double ExpectedLifetimeYears { get; init; }
+        public double ExpectedCycles { get; init; }
+        public double SupplyChainIndex { get; init; }
+        public double CarbonFootprint { get; init; }
+        public string? PerformanceClass { get; init; }
+        public Dictionary<string, double>? MaterialMassesKg { get; init; }
+        public Dictionary<string, double>? CarbonStages { get; init; }
+        public Dictionary<string, ProductTemplateRecycledContentFormPayload>? RecycledContent { get; init; }
+        public List<ProductSoftwareVersionFormPayload>? SoftwareVersions { get; init; }
+    }
+
+    private sealed class ProductSoftwareVersionFormPayload
+    {
+        public string? Version { get; init; }
+        public string? ReleaseDate { get; init; }
+        public string? LatestUpdate { get; init; }
+    }
+
+    private sealed class ProductTemplateRecycledContentFormPayload
+    {
+        public double PreConsumerShare { get; init; }
+        public double PostConsumerShare { get; init; }
+    }
+
+    private sealed class VersionStringComparer : IComparer<string>
+    {
+        public static readonly VersionStringComparer Descending = new(descending: true);
+
+        private readonly bool _descending;
+
+        private VersionStringComparer(bool descending)
+        {
+            _descending = descending;
+        }
+
+        public int Compare(string? x, string? y)
+        {
+            var result = CompareAscending(x ?? string.Empty, y ?? string.Empty);
+            return _descending ? -result : result;
+        }
+
+        private static int CompareAscending(string left, string right)
+        {
+            var leftParts = left.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var rightParts = right.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var max = Math.Max(leftParts.Length, rightParts.Length);
+            for (var index = 0; index < max; index++)
+            {
+                var leftValue = index < leftParts.Length && int.TryParse(leftParts[index], out var parsedLeft) ? parsedLeft : 0;
+                var rightValue = index < rightParts.Length && int.TryParse(rightParts[index], out var parsedRight) ? parsedRight : 0;
+                var partResult = leftValue.CompareTo(rightValue);
+                if (partResult != 0)
+                {
+                    return partResult;
+                }
+            }
+
+            return StringComparer.OrdinalIgnoreCase.Compare(left, right);
+        }
     }
 
     private string CurrentActor()
@@ -1650,7 +1877,13 @@ public class AdminController : Controller
             BsonHelpers.GetString(generalPayload, "batteryCategory"));
         generalPayload["batteryStatus"] = Text(form, "batteryStatus", generalPayload.GetValue("batteryStatus", "Original").ToString());
         generalPayload["batteryMass"] = Number(form, "batteryMass", generalPayload.GetValue("batteryMass", 0).ToDouble());
-        generalPayload["manufacturingDate"] = $"{Text(form, "manufacturingDate", DateOnly(generalPayload.GetValue("manufacturingDate", string.Empty).ToString()))}T00:00:00.000Z";
+        var manufacturingDate = Text(form, "manufacturingDate", DateOnly(generalPayload.GetValue("manufacturingDate", string.Empty).ToString()));
+        generalPayload["manufacturingDate"] = $"{manufacturingDate}T00:00:00.000Z";
+        var existingPuttingIntoService = BsonHelpers.GetString(generalPayload, "puttingIntoService");
+        var puttingIntoServiceDate = string.IsNullOrWhiteSpace(existingPuttingIntoService)
+            ? manufacturingDate
+            : DateOnly(existingPuttingIntoService);
+        generalPayload["puttingIntoService"] = $"{puttingIntoServiceDate}T00:00:00.000Z";
 
         var materialAspect = EnsureAspectPayload(aspects, "materialComposition", now, "draft");
         var materialPayload = EnsureDocument(materialAspect, "payload");

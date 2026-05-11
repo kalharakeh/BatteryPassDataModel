@@ -137,6 +137,7 @@ public static class BatteryProductTemplateCatalog
     [
         "general.passportId",
         "general.product",
+        "general.productVersion",
         "general.softwareVersion",
         "general.name",
         "general.modelNumber",

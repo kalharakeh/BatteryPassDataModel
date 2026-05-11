@@ -16,6 +16,7 @@ public sealed class ProductTemplateServiceTests
             Assert.Equal(["1.0", "2.0", "3.0"], product.SoftwareVersions.Select(version => version.Version).ToArray());
             Assert.NotEmpty(product.ImageUrl);
             Assert.Contains(product.RequiredFieldKeys, key => key == "general.product");
+            Assert.Contains(product.RequiredFieldKeys, key => key == "general.productVersion");
             Assert.Contains(product.TemplateDocuments, document => document.DocumentKey == "conformityAssessment");
             Assert.Contains(product.TemplateDocuments, document => document.DocumentKey == "co2StudyReference");
         });
@@ -215,6 +216,17 @@ public sealed class ProductTemplateServiceTests
         Assert.Contains("aspects.generalProductInformation.payload.batteryStatus", result.SkippedOverridePaths);
         Assert.Equal("2.0", BsonHelpers.GetString(result.UpdatedPassport, "app", "product", "productVersion"));
         Assert.Equal("Manually changed", BsonHelpers.GetString(result.UpdatedPassport, "aspects", "generalProductInformation", "payload", "batteryStatus"));
+    }
+
+    [Fact]
+    public void ProductTemplateService_ShouldSupportProductVersionPushWithoutChangingSoftwareVersion()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateService.cs"));
+
+        Assert.Contains("PushProductVersionAsync", source);
+        Assert.Contains("Eq(\"app.product.productVersion\", selectedProductVersion.Version)", source);
+        Assert.Contains("currentSoftwareVersion", source);
+        Assert.Contains("selectedProductVersion.SoftwareVersions.FirstOrDefault(version => version.Version.Equals(currentSoftwareVersion", source);
     }
 
     [Fact]

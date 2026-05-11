@@ -165,6 +165,7 @@ public sealed class PassportViewModelFactory
             ClusterLabel = clusterLabel,
             ProductId = BsonHelpers.GetString(appProduct, "productId"),
             ProductName = BsonHelpers.GetString(appProduct, "productName"),
+            ProductVersion = BsonHelpers.GetString(appProduct, "productVersion"),
             SoftwareVersion = FirstNonEmpty(
                 BsonHelpers.GetString(appOperations, "softwareVersion"),
                 BsonHelpers.GetString(appProduct, "softwareVersion")),

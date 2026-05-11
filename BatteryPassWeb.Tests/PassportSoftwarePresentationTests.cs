@@ -22,6 +22,7 @@ public sealed class PassportSoftwarePresentationTests
                 {
                     ["productId"] = "compact-7m",
                     ["productName"] = "Compact 7M",
+                    ["productVersion"] = "1.0",
                     ["softwareVersion"] = "1.0",
                     ["softwareReleaseDate"] = "2025-09-30",
                     ["softwareLatestUpdate"] = "2026-01-18"
@@ -41,6 +42,7 @@ public sealed class PassportSoftwarePresentationTests
         Assert.Equal("2026-02-01", passport.SoftwareReleaseDate);
         Assert.Equal("2026-04-15", passport.SoftwareLatestUpdate);
         Assert.Equal("Compact 7M", passport.ProductName);
+        Assert.Equal("1.0", passport.ProductVersion);
     }
 
     [Fact]
@@ -48,6 +50,8 @@ public sealed class PassportSoftwarePresentationTests
     {
         var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
 
+        Assert.Contains("Product/battery version", summary);
+        Assert.Contains("passport.ProductVersion", summary);
         Assert.Contains("Software version", summary);
         Assert.Contains("passport.SoftwareVersion", summary);
     }
@@ -62,6 +66,7 @@ public sealed class PassportSoftwarePresentationTests
         Assert.Contains("id=\"tab-software\"", detail);
         Assert.Contains("passport.ProductName", detail);
         Assert.Contains("passport.ProductId", detail);
+        Assert.Contains("passport.ProductVersion", detail);
         Assert.Contains("passport.SoftwareVersion", detail);
         Assert.Contains("passport.SoftwareReleaseDate", detail);
         Assert.Contains("passport.SoftwareLatestUpdate", detail);

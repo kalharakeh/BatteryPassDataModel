@@ -533,7 +533,7 @@ Use this checklist after the product-template migration to prove the app can res
    - `did:web:acme.battery.pass:sample-end-user-fleet-001`
    - `did:web:acme.battery.pass:sample-end-user-fleet-002`
 8. Open `/admin/passports/new` and confirm Product, product/battery version, and Software version are chosen before the draft is created.
-9. Edit a product/battery version value, save it, then push one software version to matching batteries.
+9. Edit a product/battery version value, save it, then push that saved product/battery version to matching batteries. Edit software metadata separately and use the software push only for saved software versions.
 10. Confirm matching batteries preserve manual overrides, become dirty when template-owned signed data changes, and require validate, sign, and publish to return clean.
 
 ### Phase 6A end-to-end demo hardening checklist

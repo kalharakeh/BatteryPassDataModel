@@ -129,7 +129,7 @@
 
     <script type="application/json" data-product-template-catalog>@Html.Raw(productTemplateCatalogJson)</script>
 
-    <form method="post" action="@formAction" class="bp-edit-grid mt-4" data-edit-passport-form data-passport-id="@passport.PassportId">
+    <form method="post" action="@formAction" class="bp-edit-grid mt-4" data-edit-passport-form data-required-passport-validation="@isNew.ToString().ToLowerInvariant()" data-passport-id="@passport.PassportId">
         @Html.AntiForgeryToken()
         <nav class="bp-edit-nav" aria-label="Passport categories">
             @foreach (var section in passport.Sections)
@@ -146,13 +146,10 @@
                     Select a product and software version below. Shared technical fields update from the template; identity fields stay battery-specific and editable.
                 </p>
                 <div class="bp-form-grid">
-                    <label class="bp-field-shell"><span>Passport ID <em class="bp-field-marker">@RequirementLabel("general.passportId")</em></span>@if (isNew) { <input type="text" name="passportId" value="@passport.PassportId" required /> } else { <input type="text" name="passportId" value="@passport.PassportId" readonly /> }<small class="bp-field-help">@DirtySignedDataHelp("general.passportId", "Unique DID-style battery identifier.")</small></label>
-                    <label class="bp-field-shell"><span>Product <em class="bp-field-marker">@RequirementLabel("general.product")</em></span><select name="productId" data-product-template-select>@foreach (var productTemplate in Model.ProductTemplates) { if (productTemplate.ProductId.Equals(Model.SelectedProductId, StringComparison.OrdinalIgnoreCase)) { <option value="@productTemplate.ProductId" selected>@productTemplate.ProductName</option> } else { <option value="@productTemplate.ProductId">@productTemplate.ProductName</option> } }</select><small class="bp-field-help">@DirtySignedDataHelp("general.product", "Product template copied into this battery.")</small></label>
-                    <label class="bp-field-shell"><span>Product/battery version <em class="bp-field-marker">@RequirementLabel("general.productVersion")</em></span><select name="productVersion" data-product-version-select>@foreach (var productVersion in selectedProductVersions) { if (productVersion.Version.Equals(Model.SelectedProductVersion, StringComparison.OrdinalIgnoreCase)) { <option value="@productVersion.Version" selected>@productVersion.Version</option> } else { <option value="@productVersion.Version">@productVersion.Version</option> } }</select><small class="bp-field-help">@DirtySignedDataHelp("general.productVersion", "Product/battery version copied into this battery.")</small></label>
-                    <label class="bp-field-shell"><span>Software version <em class="bp-field-marker">@RequirementLabel("general.softwareVersion")</em></span><select name="softwareVersion" data-product-software-select>@foreach (var software in Model.ProductSoftwareVersions) { if (software.Version.Equals(Model.SelectedSoftwareVersion, StringComparison.OrdinalIgnoreCase)) { <option value="@software.Version" selected>@software.Version - updated @software.LatestUpdate</option> } else { <option value="@software.Version">@software.Version - updated @software.LatestUpdate</option> } }</select><small class="bp-field-help">@DirtySignedDataHelp("general.softwareVersion", "Software baseline copied from the selected product template.")</small></label>
-                    <label class="bp-field-shell"><span>Name <em class="bp-field-marker">@RequirementLabel("general.name")</em></span><input type="text" name="name" value="@passport.DisplayName" /><small class="bp-field-help">@DirtySignedDataHelp("general.name", "Human-readable battery name.")</small></label>
-                    <label class="bp-field-shell"><span>Model Number <em class="bp-field-marker">@RequirementLabel("general.modelNumber")</em></span><input type="text" name="modelNumber" value="@passport.ModelNumber" /><small class="bp-field-help">@DirtySignedDataHelp("general.modelNumber", "Model identifier shown on public reports.")</small></label>
-                    <label class="bp-field-shell"><span>Serial Number <em class="bp-field-marker">@RequirementLabel("general.serialNumber")</em></span><input type="text" name="serialNumber" value="@passport.SerialNumber" /><small class="bp-field-help">@DirtySignedDataHelp("general.serialNumber", "Manufacturer serial number.")</small></label>
+                    <label class="bp-field-shell" data-field-key="general.passportId"><span>Passport ID <em class="bp-field-marker">@RequirementLabel("general.passportId")</em></span>@if (isNew) { <input type="text" name="passportId" value="@passport.PassportId" required /> } else { <input type="text" name="passportId" value="@passport.PassportId" readonly /> }<small class="bp-field-help">@DirtySignedDataHelp("general.passportId", "Unique DID-style battery identifier.")</small></label>
+                    <label class="bp-field-shell" data-field-key="general.name"><span>Name <em class="bp-field-marker">@RequirementLabel("general.name")</em></span><input type="text" name="name" value="@passport.DisplayName" /><small class="bp-field-help">@DirtySignedDataHelp("general.name", "Human-readable battery name.")</small></label>
+                    <label class="bp-field-shell" data-field-key="general.modelNumber"><span>Model Number <em class="bp-field-marker">@RequirementLabel("general.modelNumber")</em></span><input type="text" name="modelNumber" value="@passport.ModelNumber" /><small class="bp-field-help">@DirtySignedDataHelp("general.modelNumber", "Model identifier shown on public reports.")</small></label>
+                    <label class="bp-field-shell" data-field-key="general.serialNumber"><span>Serial Number <em class="bp-field-marker">@RequirementLabel("general.serialNumber")</em></span><input type="text" name="serialNumber" value="@passport.SerialNumber" /><small class="bp-field-help">@DirtySignedDataHelp("general.serialNumber", "Manufacturer serial number.")</small></label>
                     <label class="bp-field-shell"><span>Official schema category <em class="bp-field-marker">@RequirementLabel("general.category")</em></span><input type="text" name="category" value="@selectedBatteryCategory" readonly data-image-category /><small class="bp-field-help">@DirtySignedDataHelp("general.category", "Battery Pass schema category. Product is managed separately above.")</small></label>
                     <label class="bp-field-shell"><span>Status <em class="bp-field-marker">@RequirementLabel("general.batteryStatus")</em></span><input type="text" name="batteryStatus" value="@passport.BatteryStatus" /><small class="bp-field-help">@DirtySignedDataHelp("general.batteryStatus", "Lifecycle/original status for the battery.")</small></label>
                     <label class="bp-field-shell"><span>Weight kg <em class="bp-field-marker">@RequirementLabel("general.batteryMass")</em></span><input type="number" step="any" name="batteryMass" value="@passport.Weight" /><small class="bp-field-help">@DirtySignedDataHelp("general.batteryMass", "Battery mass in kg.")</small></label>
@@ -163,6 +160,19 @@
                     <label class="bp-field-shell"><span>Battery image <em class="bp-field-marker">@RequirementLabel("general.batteryImageUrl")</em></span><select name="batteryImageUrl" data-battery-image-select>@foreach (var imageOption in batteryImageOptions) { if (imageOption.Url.Equals(selectedBatteryImageUrl, StringComparison.OrdinalIgnoreCase)) { <option value="@imageOption.Url" data-image-category="@imageOption.Category" selected>@imageOption.Label (@imageOption.Category)</option> } else { <option value="@imageOption.Url" data-image-category="@imageOption.Category">@imageOption.Label (@imageOption.Category)</option> } }</select><small class="bp-field-help">@RequirementHelp("general.batteryImageUrl", "Display image for the report.")</small></label>
                 </div>
             </section>
+
+            <section id="admin-software" class="bp-card bp-edit-section">
+                <h2>Software</h2>
+                <p class="bp-template-sync-note">
+                    Choose the product, product/battery version, and software baseline before creating the passport. Shared technical fields update from this selection.
+                </p>
+                <div class="bp-form-grid">
+                    <label class="bp-field-shell" data-field-key="general.product"><span>Product <em class="bp-field-marker">@RequirementLabel("general.product")</em></span><select name="productId" data-product-template-select>@foreach (var productTemplate in Model.ProductTemplates) { if (productTemplate.ProductId.Equals(Model.SelectedProductId, StringComparison.OrdinalIgnoreCase)) { <option value="@productTemplate.ProductId" selected>@productTemplate.ProductName</option> } else { <option value="@productTemplate.ProductId">@productTemplate.ProductName</option> } }</select><small class="bp-field-help">@DirtySignedDataHelp("general.product", "Product template copied into this battery.")</small></label>
+                    <label class="bp-field-shell" data-field-key="general.productVersion"><span>Product/battery version <em class="bp-field-marker">@RequirementLabel("general.productVersion")</em></span><select name="productVersion" data-product-version-select>@foreach (var productVersion in selectedProductVersions) { if (productVersion.Version.Equals(Model.SelectedProductVersion, StringComparison.OrdinalIgnoreCase)) { <option value="@productVersion.Version" selected>@productVersion.Version</option> } else { <option value="@productVersion.Version">@productVersion.Version</option> } }</select><small class="bp-field-help">@DirtySignedDataHelp("general.productVersion", "Product/battery version copied into this battery.")</small></label>
+                    <label class="bp-field-shell" data-field-key="general.softwareVersion"><span>Software version <em class="bp-field-marker">@RequirementLabel("general.softwareVersion")</em></span><select name="softwareVersion" data-product-software-select>@foreach (var software in Model.ProductSoftwareVersions) { if (software.Version.Equals(Model.SelectedSoftwareVersion, StringComparison.OrdinalIgnoreCase)) { <option value="@software.Version" selected>@software.Version - updated @software.LatestUpdate</option> } else { <option value="@software.Version">@software.Version - updated @software.LatestUpdate</option> } }</select><small class="bp-field-help">@DirtySignedDataHelp("general.softwareVersion", "Software baseline copied from the selected product template.")</small></label>
+                </div>
+            </section>
+
             <section id="admin-material-composition" class="bp-card bp-edit-section">
                 <h2>Material composition</h2>
                 <div class="bp-form-grid">
@@ -685,6 +695,47 @@
                 }
             }
 
+            function fieldShellControl(shell) {
+                return shell.querySelector('input:not([type="hidden"]), select, textarea');
+            }
+
+            function isRequiredFieldShell(shell) {
+                return (shell.querySelector('.bp-field-marker')?.textContent || '').trim().toLowerCase() === 'required';
+            }
+
+            function controlIsMissingOrInvalid(control) {
+                if (!control || control.disabled || control.readOnly) {
+                    return false;
+                }
+
+                const value = String(control.value || '').trim();
+                return value.length === 0 || (control.validity && !control.validity.valid);
+            }
+
+            function clearMissingRequiredFields() {
+                form.querySelectorAll('.bp-field-shell.is-invalid').forEach((shell) => shell.classList.remove('is-invalid'));
+                navButtons.forEach((button) => button.classList.remove('has-missing-fields'));
+            }
+
+            function markMissingRequiredFields() {
+                clearMissingRequiredFields();
+                const missingShells = Array.from(form.querySelectorAll('.bp-field-shell'))
+                    .filter(isRequiredFieldShell)
+                    .filter((shell) => controlIsMissingOrInvalid(fieldShellControl(shell)));
+                missingShells.forEach((shell) => {
+                    shell.classList.add('is-invalid');
+                    const section = shell.closest('.bp-edit-section[id]');
+                    if (!section) {
+                        return;
+                    }
+
+                    const button = navButtons.find((candidate) => candidate.dataset.sectionTarget === section.id);
+                    button?.classList.add('has-missing-fields');
+                });
+
+                return missingShells;
+            }
+
             navButtons.forEach((button) => {
                 button.addEventListener('click', () => {
                     const targetSection = button.dataset.sectionTarget;
@@ -716,6 +767,23 @@
             });
             productSoftwareSelect?.addEventListener('change', () => {
                 applyProductTemplateSelection(false, false);
+            });
+            form.addEventListener('submit', (event) => {
+                if (form.dataset.requiredPassportValidation !== 'true') {
+                    return;
+                }
+
+                const missingShells = markMissingRequiredFields();
+                if (missingShells.length === 0) {
+                    return;
+                }
+
+                event.preventDefault();
+                const firstSection = missingShells[0].closest('.bp-edit-section[id]');
+                if (firstSection) {
+                    setActiveSection(firstSection.id, true);
+                }
+                fieldShellControl(missingShells[0])?.focus();
             });
             uploadCards.forEach((card) => {
                 const button = card.querySelector('[data-document-upload]');

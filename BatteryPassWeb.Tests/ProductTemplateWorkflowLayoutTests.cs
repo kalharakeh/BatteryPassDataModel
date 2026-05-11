@@ -21,7 +21,7 @@ public sealed class ProductTemplateWorkflowLayoutTests
         Assert.Contains("ProductTemplateService", source);
         Assert.Contains("[HttpGet(\"products/{productId}\")]", source);
         Assert.Contains("[HttpPost(\"products/save\")]", source);
-        Assert.Contains("[HttpPost(\"products/{productId}/software/{softwareVersion}/push\")]", source);
+        Assert.Contains("[HttpPost(\"products/{productId}/versions/{productVersion}/software/{softwareVersion}/push\")]", source);
         Assert.Contains("GetPolicyForPassportAsync", source);
         Assert.Contains("batteryProductTemplateVersions", service);
         Assert.Contains("batteryProductTemplateSoftwareVersions", service);
@@ -73,9 +73,19 @@ public sealed class ProductTemplateWorkflowLayoutTests
 
         Assert.Contains("name=\"productVersion\"", productView);
         Assert.Contains("data-product-version-list", productView);
+        Assert.Contains("data-product-version-row", productView);
+        Assert.Contains("data-product-version-tab-rail", productView);
+        Assert.Contains("data-product-version-tab", productView);
+        Assert.Contains("data-selected-product-version-label", productView);
+        Assert.Contains("data-version-scoped-section", productView);
+        Assert.Contains("data-add-product-version", productView);
+        Assert.Contains("data-edit-product-version", productView);
+        Assert.Contains("data-remove-product-version", productView);
+        Assert.Contains("name=\"productVersionsJson\"", productView);
         Assert.Contains("data-base-product-select", productView);
         Assert.Contains("data-base-product-version-select", productView);
         Assert.Contains("data-base-software-select", productView);
+        Assert.Contains("products/{productId}/versions/{productVersion}/push", adminController);
         Assert.Contains("products/{productId}/versions/{productVersion}/software/{softwareVersion}/push", adminController);
         Assert.DoesNotContain("does not create three default software versions", productView);
     }
@@ -106,10 +116,17 @@ public sealed class ProductTemplateWorkflowLayoutTests
 
         Assert.Contains("data-product-template-catalog", edit);
         Assert.Contains("data-product-template-select", edit);
+        Assert.Contains("id=\"admin-software\"", edit);
         Assert.Contains("name=\"productVersion\"", edit);
         Assert.Contains("data-product-version-select", edit);
         Assert.Contains("data-product-software-select", edit);
         Assert.Contains("SelectedProductVersion", editModelSource);
+        Assert.Contains("data-required-passport-validation", edit);
+        Assert.Contains("data-field-key", edit);
+        Assert.Contains("has-missing-fields", edit);
+        Assert.Contains("markMissingRequiredFields", edit);
+        Assert.Contains("puttingIntoService", File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs")));
+        Assert.Contains("return Redirect(\"/admin/clusters?tab=passports", File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs")));
         Assert.Contains("applyProductTemplateSelection", edit);
         Assert.Contains("updateProductVersionOptions", edit);
         Assert.Contains("updateSoftwareOptions(productVersion", edit);
