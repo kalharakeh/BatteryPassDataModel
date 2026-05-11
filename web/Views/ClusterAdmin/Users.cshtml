@@ -21,10 +21,14 @@
         <div class="alert alert-danger mt-2 mb-0">@errorMessage</div>
     }
 
-    <div class="bp-two-column mt-4">
-        <section class="bp-card">
-            <h2 class="h5 mb-3">Add or update user</h2>
-            <form method="post" action="/cluster-admin/users/save" class="bp-stack-form">
+    <div class="bp-management-shell mt-4">
+        <section class="bp-card bp-management-create-card">
+            <div>
+                <span class="bp-summary-title">Cluster user setup</span>
+                <h2 class="h5 mb-2">Add or update user</h2>
+                <p class="text-secondary mb-0">Manage memberships only for clusters where you are a local admin.</p>
+            </div>
+            <form method="post" action="/cluster-admin/users/save" class="bp-user-form-grid">
                 @Html.AntiForgeryToken()
                 <label>
                     Email
@@ -61,93 +65,95 @@
             </form>
         </section>
 
-        <section class="bp-card p-0 overflow-auto">
-            <table class="table table-hover align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th class="px-3 py-3">User</th>
-                        <th class="px-3 py-3">Managed cluster memberships</th>
-                        <th class="px-3 py-3">Edit membership</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (Model.Users.Count == 0)
-                    {
-                        <tr>
-                            <td class="px-3 py-4 text-secondary" colspan="3">No users are connected to your managed clusters yet.</td>
-                        </tr>
-                    }
-                    else
-                    {
-                        @foreach (var user in Model.Users.OrderBy(user => user.Email, StringComparer.OrdinalIgnoreCase))
-                        {
-                            var memberships = Model.Memberships
-                                .Where(membership => membership.Email.Equals(user.Email, StringComparison.OrdinalIgnoreCase))
-                                .OrderBy(membership => membership.ClusterId, StringComparer.OrdinalIgnoreCase)
-                                .ToList();
+        <section class="bp-user-management-list">
+            @if (Model.Users.Count == 0)
+            {
+                <article class="bp-management-card">
+                    <p class="text-secondary mb-0">No users are connected to your managed clusters yet.</p>
+                </article>
+            }
+            else
+            {
+                @foreach (var user in Model.Users.OrderBy(user => user.Email, StringComparer.OrdinalIgnoreCase))
+                {
+                    var memberships = Model.Memberships
+                        .Where(membership => membership.Email.Equals(user.Email, StringComparison.OrdinalIgnoreCase))
+                        .OrderBy(membership => membership.ClusterId, StringComparer.OrdinalIgnoreCase)
+                        .ToList();
 
-                            <tr>
-                                <td class="px-3 py-3 align-top">
-                                    <p class="mb-1 fw-semibold">@user.Email</p>
-                                    @if (!string.IsNullOrWhiteSpace(user.Name))
+                    <article class="bp-management-card bp-user-card">
+                        <div class="bp-user-card-identity">
+                            <h3>@(string.IsNullOrWhiteSpace(user.Name) ? user.Email : user.Name)</h3>
+                            <p>@user.Email</p>
+                            @if (user.Roles.Count > 0)
+                            {
+                                <dl class="bp-user-role-summary">
+                                    <div><dt>System role</dt><dd>@string.Join(", ", user.Roles)</dd></div>
+                                </dl>
+                            }
+                        </div>
+                        <div class="bp-membership-panel">
+                            <h4>Managed cluster memberships</h4>
+                            @if (memberships.Count == 0)
+                            {
+                                <p class="text-secondary mb-0">No cluster membership</p>
+                            }
+                            else
+                            {
+                                <div class="bp-membership-list">
+                                    @foreach (var membership in memberships)
                                     {
-                                        <p class="mb-0 small text-secondary">@user.Name</p>
+                                        var clusterName = clustersById.TryGetValue(membership.ClusterId, out var cluster) ? cluster.Name : membership.ClusterId;
+                                        <form method="post" action="/cluster-admin/users/delete-membership" class="bp-membership-row">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="email" value="@membership.Email" />
+                                            <input type="hidden" name="clusterId" value="@membership.ClusterId" />
+                                            <div>
+                                                <strong>@clusterName</strong>
+                                                <span>@membership.ClusterId</span>
+                                            </div>
+                                            <span>@(membership.Role == "clusterAdmin" ? "Local Admin" : "Normal User")</span>
+                                            <button type="submit" class="bp-icon-button" aria-label="Remove membership">x</button>
+                                        </form>
                                     }
-                                    @if (user.Roles.Count > 0)
+                                </div>
+                            }
+                        </div>
+                        <form method="post" action="/cluster-admin/users/save" class="bp-membership-edit-form">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="email" value="@user.Email" />
+                            <label>
+                                Display name
+                                <input class="form-control form-control-sm" name="name" value="@user.Name" placeholder="Display name" />
+                            </label>
+                            <label>
+                                New password
+                                <span class="bp-password-field bp-password-field-inline">
+                                    <input class="form-control form-control-sm" type="password" name="password" placeholder="Leave blank to keep current password" />
+                                    <button type="button" class="bp-password-reveal" data-password-reveal aria-label="Show password">Show</button>
+                                </span>
+                            </label>
+                            <label>
+                                Cluster
+                                <select name="clusterId" class="form-select form-select-sm">
+                                    @foreach (var cluster in Model.Clusters)
                                     {
-                                        <p class="mb-0 small text-secondary">@string.Join(", ", user.Roles)</p>
+                                        <option value="@cluster.ClusterId">@cluster.Name</option>
                                     }
-                                </td>
-                                <td class="px-3 py-3 align-top">
-                                    @if (memberships.Count == 0)
-                                    {
-                                        <span class="text-secondary">No cluster membership</span>
-                                    }
-                                    else
-                                    {
-                                        <div class="d-flex flex-wrap gap-2">
-                                            @foreach (var membership in memberships)
-                                            {
-                                                var clusterName = clustersById.TryGetValue(membership.ClusterId, out var cluster) ? cluster.Name : membership.ClusterId;
-                                                <form method="post" action="/cluster-admin/users/delete-membership" class="bp-tag">
-                                                    @Html.AntiForgeryToken()
-                                                    <input type="hidden" name="email" value="@membership.Email" />
-                                                    <input type="hidden" name="clusterId" value="@membership.ClusterId" />
-                                                    <span>@clusterName (@membership.ClusterId)</span>
-                                                    <span class="bp-role-tag">@(membership.Role == "clusterAdmin" ? "Local Admin" : "Normal User")</span>
-                                                    <button type="submit" class="bp-tag-delete" aria-label="Delete membership">x</button>
-                                                </form>
-                                            }
-                                        </div>
-                                    }
-                                </td>
-                                <td class="px-3 py-3 align-top">
-                                    <form method="post" action="/cluster-admin/users/save" class="d-flex flex-wrap gap-2">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="email" value="@user.Email" />
-                                        <input class="form-control form-control-sm" name="name" value="@user.Name" placeholder="Display name" style="min-width: 180px;" />
-                                        <span class="bp-password-field bp-password-field-inline">
-                                            <input class="form-control form-control-sm" type="password" name="password" placeholder="New password" style="min-width: 180px;" />
-                                            <button type="button" class="bp-password-reveal" data-password-reveal aria-label="Show password">Show</button>
-                                        </span>
-                                        <select name="clusterId" class="form-select form-select-sm" style="min-width: 220px;">
-                                            @foreach (var cluster in Model.Clusters)
-                                            {
-                                                <option value="@cluster.ClusterId">@cluster.Name</option>
-                                            }
-                                        </select>
-                                        <select name="role" class="form-select form-select-sm" style="min-width: 170px;">
-                                            <option value="member">Normal User</option>
-                                            <option value="clusterAdmin">Local Admin</option>
-                                        </select>
-                                        <button type="submit" class="bp-secondary-button">Save</button>
-                                    </form>
-                                </td>
-                            </tr>
-                        }
-                    }
-                </tbody>
-            </table>
+                                </select>
+                            </label>
+                            <label>
+                                Membership role
+                                <select name="role" class="form-select form-select-sm">
+                                    <option value="member">Normal User</option>
+                                    <option value="clusterAdmin">Local Admin</option>
+                                </select>
+                            </label>
+                            <button type="submit" class="bp-secondary-button">Save membership</button>
+                        </form>
+                    </article>
+                }
+            }
         </section>
     </div>
 </main>

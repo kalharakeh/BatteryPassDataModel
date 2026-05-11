@@ -137,8 +137,6 @@ public static class BatteryProductTemplateCatalog
         "general.product",
         "general.productVersion",
         "general.softwareVersion",
-        "general.name",
-        "general.modelNumber",
         "general.serialNumber",
         "general.category",
         "general.batteryStatus",

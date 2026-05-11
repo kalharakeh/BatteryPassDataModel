@@ -62,11 +62,15 @@ public class RegistryController : Controller
         {
             PassportId = passport.PassportId,
             DisplayName = passport.DisplayName,
-            ModelNumber = passport.ModelNumber,
-            ManufacturerName = passport.ManufacturerName,
-            SerialNumber = passport.SerialNumber,
-            RegistryStatus = passport.RegistryStatus,
-            ClusterId = passport.ClusterId,
+                ModelNumber = passport.ModelNumber,
+                ManufacturerName = passport.ManufacturerName,
+                SerialNumber = passport.SerialNumber,
+                RegistryStatus = passport.RegistryStatus,
+                BatteryFamily = passport.BatteryFamily,
+                BatteryVersion = passport.BatteryVersion,
+                BatterySerialNumber = passport.BatterySerialNumber,
+                PassportStatus = passport.PassportStatus,
+                ClusterId = passport.ClusterId,
             ClusterLabel = string.IsNullOrWhiteSpace(passport.ClusterId)
                 ? "No cluster assigned"
                 : clusterNameById.TryGetValue(passport.ClusterId, out var clusterName)

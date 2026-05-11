@@ -50,7 +50,6 @@ public sealed class PassportValidationService
         var issues = new List<TrustValidationIssue>();
         AddRequiredString(passport, "passportId", "Passport ID is required.", issues);
         AddRequiredString(passport, "registryInfo.registryId", "Registry ID is required.", issues);
-        AddRequiredString(passport, "app.display.modelNumber", "Model number is required.", issues);
         AddRequiredString(passport, "app.display.serialNumber", "Serial number is required.", issues);
         AddRequiredString(passport, "app.display.manufacturerName", "Manufacturer name is required.", issues);
 

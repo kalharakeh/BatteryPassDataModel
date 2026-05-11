@@ -7,8 +7,10 @@ public sealed class AdminCredentialLayoutTests
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
 
+        Assert.Contains("bp-token-console", markup);
         Assert.Contains("bp-credential-stack", markup);
-        Assert.Contains("bp-credential-form-grid bp-token-form-grid", markup);
+        Assert.Contains("bp-token-create-grid", markup);
+        Assert.Contains("bp-cluster-picker", markup);
         Assert.Contains("bp-credential-table", markup);
         Assert.Contains("bp-status-pill", markup);
         Assert.Contains("bp-action-row", markup);
@@ -45,7 +47,8 @@ public sealed class AdminCredentialLayoutTests
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.Contains(".bp-credential-stack", css);
-        Assert.Contains(".bp-credential-form-grid", css);
+        Assert.Contains(".bp-token-create-grid", css);
+        Assert.Contains(".bp-cluster-picker", css);
         Assert.Contains(".bp-checkbox-option", css);
         Assert.Contains(".bp-credential-table", css);
         Assert.Contains(".bp-action-row", css);

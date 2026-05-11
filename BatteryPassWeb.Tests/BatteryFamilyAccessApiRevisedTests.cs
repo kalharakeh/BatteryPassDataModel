@@ -143,7 +143,8 @@ public sealed class BatteryFamilyAccessApiRevisedTests
         Assert.Contains("title=\"Conformance\"", adminClusters);
         Assert.Contains("title=\"Archive\"", adminClusters);
         Assert.Contains("title=\"Unarchive\"", adminClusters);
-        Assert.Contains("return confirm('Archive passport", adminClusters);
+        Assert.Contains("bp-confirm-modal", adminClusters);
+        Assert.Contains("data-confirm-action", adminClusters);
         Assert.Contains("UnarchivePassportAsync", repository);
         Assert.Contains("[HttpPost(\"passports/unarchive\")]", controller);
     }

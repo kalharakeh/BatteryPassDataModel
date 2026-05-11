@@ -549,7 +549,7 @@ public class AdminController : Controller
     public async Task<IActionResult> PushProductVersionTemplate(string productId, string productVersion, CancellationToken cancellationToken)
     {
         var result = await _productTemplateService.PushProductVersionAsync(productId, productVersion, CurrentActor(), cancellationToken);
-        var message = $"Product/battery version push finished: {result.UpdatedBatteries} of {result.MatchedBatteries} matching batteries updated. Manual overrides were preserved.";
+        var message = $"Battery version push finished: {result.UpdatedBatteries} of {result.MatchedBatteries} matching batteries updated. Manual overrides were preserved.";
         return Redirect($"/admin/products/{Uri.EscapeDataString(productId)}?status={Uri.EscapeDataString(message)}");
     }
 

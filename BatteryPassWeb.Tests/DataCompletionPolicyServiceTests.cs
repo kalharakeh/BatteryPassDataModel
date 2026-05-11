@@ -20,7 +20,8 @@ public sealed class DataCompletionPolicyServiceTests
         Assert.Contains(policy.Sections, section => section.SectionKey == "circularity" && section.Label == "Circularity");
         Assert.Contains(policy.Sections, section => section.SectionKey == "carbonFootprint" && section.Label == "Carbon Footprint");
 
-        Assert.Contains(fields, field => field.FieldKey == "general.modelNumber" && field.IsRequired);
+        Assert.DoesNotContain(fields, field => field.FieldKey == "general.name");
+        Assert.DoesNotContain(fields, field => field.FieldKey == "general.modelNumber");
         Assert.Contains(fields, field => field.FieldKey == "general.batteryImageUrl" && !field.IsRequired);
         Assert.Contains(fields, field => field.FieldKey == "material.lithiumMass" && field.Label == "Lithium kg");
         Assert.Contains(fields, field => field.FieldKey == "performance.ratedEnergy" && field.DataPath.Contains("ratedEnergy"));

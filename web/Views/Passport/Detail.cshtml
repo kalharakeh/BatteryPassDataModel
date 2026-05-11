@@ -28,14 +28,17 @@
     <section class="bp-card">
         <div class="bp-summary-grid">
             <div>
-                <div class="bp-badge-row">
-                    <span class="bp-pill bp-pill-muted">@passport.PassportStatus</span>
-                </div>
                 <p class="bp-passport-id">@passport.PassportId</p>
                 <h1>@(string.IsNullOrWhiteSpace(passport.BatteryFamily) ? passport.PassportId : passport.BatteryFamily)</h1>
                 <p class="text-secondary">Cluster: @passport.ClusterLabel</p>
                 <div class="d-flex flex-wrap gap-2 mt-3">
-                    <a href="/@Uri.EscapeDataString(passport.PassportId)/summary" class="bp-primary-button bp-button-compact">Open summary report</a>
+                    <a href="/@Uri.EscapeDataString(passport.PassportId)/summary" class="bp-report-action" aria-label="Summary report" title="Summary report" data-tooltip="Summary report">
+                        <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6 3h9l3 3v15H6z" />
+                            <path d="M15 3v4h4" />
+                            <path d="M9 11h6M9 15h6M9 19h4" />
+                        </svg>
+                    </a>
                 </div>
             </div>
             <div>

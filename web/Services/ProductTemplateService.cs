@@ -429,7 +429,7 @@ public sealed class ProductTemplateService
                 actor,
                 "admin",
                 "product-version-template-push",
-                "Product/battery version template changes pushed to passport.",
+                "Battery version template changes pushed to passport.",
                 new BsonDocument
                 {
                     ["productId"] = product.ProductId,

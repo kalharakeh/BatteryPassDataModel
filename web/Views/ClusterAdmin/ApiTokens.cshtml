@@ -48,15 +48,21 @@
                         <option value="sign">Validate + sign</option>
                     </select>
                 </label>
-                <fieldset class="bp-fieldset">
+                <fieldset class="bp-cluster-picker">
                     <legend>Clusters</legend>
+                    <p>Select one or several administered clusters for this token.</p>
+                    <div class="bp-cluster-picker-grid">
                     @foreach (var cluster in Model.Clusters)
                     {
-                        <label class="bp-check-row">
+                        <label>
                             <input type="checkbox" name="clusterIds" value="@cluster.ClusterId" />
-                            <span>@cluster.Name (@cluster.ClusterId)</span>
+                            <span>
+                                <strong>@cluster.Name</strong>
+                                <small>@cluster.ClusterId</small>
+                            </span>
                         </label>
                     }
+                    </div>
                 </fieldset>
                 <button type="submit" class="bp-primary-button">Create token</button>
             </form>
@@ -111,7 +117,7 @@
                                         <form method="post" action="/cluster-admin/api-tokens/delete">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="tokenId" value="@token.TokenId" />
-                                            <button type="submit" class="bp-danger-button" onclick="return confirm('Delete API token @token.Name?');">Delete</button>
+                                            <button type="submit" class="bp-danger-button" data-confirm-action data-confirm-title="Delete API token" data-confirm-message="Delete @token.Name? Existing integrations using this token will stop working." data-confirm-submit="Delete">Delete</button>
                                         </form>
                                     </div>
                                 </td>
@@ -122,4 +128,58 @@
             </table>
         </section>
     </div>
+    <div class="bp-confirm-modal" data-confirm-modal hidden>
+        <div class="bp-confirm-modal-backdrop" data-confirm-cancel></div>
+        <section class="bp-confirm-modal-panel" role="dialog" aria-modal="true" aria-labelledby="bp-confirm-title">
+            <p class="bp-summary-title">Please confirm</p>
+            <h2 id="bp-confirm-title">Confirm action</h2>
+            <p class="bp-confirm-message" data-confirm-message>Are you sure?</p>
+            <div class="bp-confirm-actions">
+                <button type="button" class="bp-secondary-button" data-confirm-cancel>Cancel</button>
+                <button type="button" class="bp-danger-button" data-confirm-submit>Confirm</button>
+            </div>
+        </section>
+    </div>
 </main>
+
+@section Scripts {
+    <script>
+        (function () {
+            const confirmModal = document.querySelector('[data-confirm-modal]');
+            const confirmTitle = document.getElementById('bp-confirm-title');
+            const confirmMessage = confirmModal?.querySelector('[data-confirm-message]');
+            const confirmSubmit = confirmModal?.querySelector('[data-confirm-submit]');
+            let pendingForm = null;
+
+            document.querySelectorAll('[data-confirm-action]').forEach((button) => {
+                button.addEventListener('click', (event) => {
+                    const form = button.closest('form');
+                    if (!form || !confirmModal || !confirmTitle || !confirmMessage || !confirmSubmit) {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    pendingForm = form;
+                    confirmTitle.textContent = button.dataset.confirmTitle || 'Confirm action';
+                    confirmMessage.textContent = button.dataset.confirmMessage || 'Continue with this action?';
+                    confirmSubmit.textContent = button.dataset.confirmSubmit || 'Confirm';
+                    confirmModal.hidden = false;
+                    confirmSubmit.focus();
+                });
+            });
+
+            confirmModal?.querySelectorAll('[data-confirm-cancel]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    confirmModal.hidden = true;
+                    pendingForm = null;
+                });
+            });
+
+            confirmSubmit?.addEventListener('click', () => {
+                if (pendingForm) {
+                    pendingForm.submit();
+                }
+            });
+        })();
+    </script>
+}
