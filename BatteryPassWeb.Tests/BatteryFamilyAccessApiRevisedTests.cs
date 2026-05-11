@@ -127,6 +127,27 @@ public sealed class BatteryFamilyAccessApiRevisedTests
         Assert.DoesNotContain("legitimateInterest\") ||", source);
     }
 
+    [Fact]
+    public void RegistryAndAdminViews_ShouldUseIconActionsAndRecoverableArchive()
+    {
+        var registry = File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml"));
+        var adminClusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var repository = File.ReadAllText(RepoFile("web", "Services", "PassportRepository.cs"));
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+
+        Assert.Contains("aria-label=\"Summary report\"", registry);
+        Assert.Contains("title=\"Summary report\"", registry);
+        Assert.Contains("aria-label=\"Detailed report\"", registry);
+        Assert.Contains("title=\"Detailed report\"", registry);
+        Assert.Contains("title=\"Edit\"", adminClusters);
+        Assert.Contains("title=\"Conformance\"", adminClusters);
+        Assert.Contains("title=\"Archive\"", adminClusters);
+        Assert.Contains("title=\"Unarchive\"", adminClusters);
+        Assert.Contains("return confirm('Archive passport", adminClusters);
+        Assert.Contains("UnarchivePassportAsync", repository);
+        Assert.Contains("[HttpPost(\"passports/unarchive\")]", controller);
+    }
+
     private static BsonDocument MinimalPassport(string registryStatus, string trustState)
     {
         return new BsonDocument

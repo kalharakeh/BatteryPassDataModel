@@ -47,7 +47,16 @@
                             <td class="px-3 py-3">@row.BatterySerialNumber</td>
                             <td class="px-3 py-3">@row.PassportStatus</td>
                             <td class="px-3 py-3">@(string.IsNullOrWhiteSpace(row.UpdatedDate) ? "-" : row.UpdatedDate[..Math.Min(10, row.UpdatedDate.Length)])</td>
-                            <td class="px-3 py-3 text-end"><a href="/@Uri.EscapeDataString(row.PassportId)/summary" class="bp-secondary-button">Summary</a></td>
+                            <td class="px-3 py-3">
+                                <div class="bp-icon-action-row">
+                                    <a href="/@Uri.EscapeDataString(row.PassportId)/summary" class="bp-icon-button" aria-label="Summary report" title="Summary report">
+                                        <span aria-hidden="true">S</span>
+                                    </a>
+                                    <a href="/@Uri.EscapeDataString(row.PassportId)" class="bp-icon-button" aria-label="Detailed report" title="Detailed report">
+                                        <span aria-hidden="true">D</span>
+                                    </a>
+                                </div>
+                            </td>
                         </tr>
                     }
                 </tbody>

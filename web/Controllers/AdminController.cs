@@ -133,6 +133,19 @@ public class AdminController : Controller
         return Redirect("/admin/clusters?tab=passports");
     }
 
+    [HttpPost("passports/unarchive")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UnarchivePassport(CancellationToken cancellationToken)
+    {
+        var passportId = Text(Request.Form, "passportId");
+        if (!string.IsNullOrWhiteSpace(passportId))
+        {
+            await _passportRepository.UnarchivePassportAsync(passportId, cancellationToken);
+        }
+
+        return Redirect("/admin/clusters?tab=passports");
+    }
+
     [HttpPost("passports/create")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreatePassport(CancellationToken cancellationToken)

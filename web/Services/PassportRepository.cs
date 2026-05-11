@@ -146,10 +146,49 @@ public sealed class PassportRepository
         }
 
         var now = DateTime.UtcNow.ToString("O");
+        var existing = await collection
+            .Find(Builders<BsonDocument>.Filter.Eq("passportId", passportId))
+            .Project(Builders<BsonDocument>.Projection.Include("registryInfo.status"))
+            .FirstOrDefaultAsync(cancellationToken);
+        var previousStatus = BsonHelpers.GetString(existing ?? new BsonDocument(), "registryInfo", "status");
+        if (string.IsNullOrWhiteSpace(previousStatus) || previousStatus.Equals("archived", StringComparison.OrdinalIgnoreCase))
+        {
+            previousStatus = "draft";
+        }
+
         await collection.UpdateOneAsync(
             Builders<BsonDocument>.Filter.Eq("passportId", passportId),
             Builders<BsonDocument>.Update
+                .Set("registryInfo.previousStatus", previousStatus)
                 .Set("registryInfo.status", "archived")
+                .Set("registryInfo.updatedAt", now),
+            cancellationToken: cancellationToken);
+    }
+
+    public async Task UnarchivePassportAsync(string passportId, CancellationToken cancellationToken = default)
+    {
+        var collection = GetCollection();
+        if (collection == null)
+        {
+            return;
+        }
+
+        var existing = await collection
+            .Find(Builders<BsonDocument>.Filter.Eq("passportId", passportId))
+            .Project(Builders<BsonDocument>.Projection.Include("registryInfo.previousStatus"))
+            .FirstOrDefaultAsync(cancellationToken);
+        var restoredStatus = BsonHelpers.GetString(existing ?? new BsonDocument(), "registryInfo", "previousStatus");
+        if (string.IsNullOrWhiteSpace(restoredStatus) || restoredStatus.Equals("archived", StringComparison.OrdinalIgnoreCase))
+        {
+            restoredStatus = "draft";
+        }
+
+        var now = DateTime.UtcNow.ToString("O");
+        await collection.UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("passportId", passportId),
+            Builders<BsonDocument>.Update
+                .Set("registryInfo.status", restoredStatus)
+                .Unset("registryInfo.previousStatus")
                 .Set("registryInfo.updatedAt", now),
             cancellationToken: cancellationToken);
     }

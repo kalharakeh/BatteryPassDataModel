@@ -29,7 +29,7 @@
         <div class="bp-summary-grid">
             <div>
                 <div class="bp-badge-row">
-                    <span class="bp-pill bp-pill-muted">@passport.BatteryStatus</span>
+                    <span class="bp-pill bp-pill-muted">@passport.PassportStatus</span>
                 </div>
                 <p class="bp-passport-id">@passport.PassportId</p>
                 <h1>@(string.IsNullOrWhiteSpace(passport.BatteryFamily) ? passport.PassportId : passport.BatteryFamily)</h1>
@@ -42,7 +42,6 @@
                 <div class="bp-image-wrap">
                     <img src="@passport.BatteryImageUrl" alt="@passport.BatteryImageAlt" class="bp-battery-image" />
                 </div>
-                <p class="bp-help-text mt-2">@passport.BatteryImageAlt</p>
             </div>
         </div>
 
@@ -64,7 +63,6 @@
     <section class="bp-card">
         <ul class="nav nav-tabs bp-tabs" id="detail-tabs" role="tablist">
             <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-general" type="button" role="tab">General</button></li>
-            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-software" type="button" role="tab">Software</button></li>
             <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-material" type="button" role="tab">Material composition</button></li>
             <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-performance" type="button" role="tab">Performance</button></li>
             <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-compliance" type="button" role="tab">Compliance</button></li>
@@ -88,28 +86,11 @@
                     <div><dt>Category</dt><dd>@passport.Category</dd></div>
                     <div><dt>Battery status</dt><dd>@passport.BatteryStatus</dd></div>
                     <div><dt>Passport status</dt><dd>@passport.PassportStatus</dd></div>
+                    <div><dt>Software version</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareVersion) ? "-" : passport.SoftwareVersion)</dd></div>
+                    <div><dt>Software release date</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareReleaseDate) ? "-" : passport.SoftwareReleaseDate)</dd></div>
+                    <div><dt>Software latest update</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareLatestUpdate) ? "-" : passport.SoftwareLatestUpdate)</dd></div>
                     <div><dt>Weight</dt><dd>@passport.WeightLabel</dd></div>
                 </dl>
-            </div>
-
-            <div class="tab-pane fade" id="tab-software" role="tabpanel">
-                <div class="bp-software-panel">
-                    <div class="bp-software-hero">
-                        <span class="bp-summary-title">Software information</span>
-                        <h2>Installed software baseline</h2>
-                        <p class="bp-help-text mb-0">
-                            The current software version is shown separately from trust diagnostics.
-                            External API software updates are operational data and do not dirty the signed passport core.
-                        </p>
-                    </div>
-                    <dl class="bp-field-grid mt-0">
-                        <div><dt>Current version</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareVersion) ? "-" : passport.SoftwareVersion)</dd></div>
-                        <div><dt>Battery Family</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatteryFamily) ? "-" : passport.BatteryFamily)</dd></div>
-                        <div><dt>Battery version</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatteryVersion) ? "-" : passport.BatteryVersion)</dd></div>
-                        <div><dt>Release date</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareReleaseDate) ? "-" : passport.SoftwareReleaseDate)</dd></div>
-                        <div><dt>Latest update</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareLatestUpdate) ? "-" : passport.SoftwareLatestUpdate)</dd></div>
-                    </dl>
-                </div>
             </div>
 
             <div class="tab-pane fade" id="tab-material" role="tabpanel">

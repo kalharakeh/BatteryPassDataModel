@@ -538,6 +538,54 @@ a:hover {
   font-size: 0.88rem;
 }
 
+.bp-icon-action-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.bp-icon-action-row form {
+  margin: 0;
+}
+
+.bp-actions-column {
+  width: 132px;
+}
+
+.bp-icon-button {
+  inline-size: 2rem;
+  block-size: 2rem;
+  min-inline-size: 2rem;
+  min-block-size: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #b4c0cf;
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0;
+}
+
+.bp-icon-button:hover {
+  border-color: var(--bp-primary);
+  color: var(--bp-primary);
+  text-decoration: none;
+}
+
+.bp-icon-button.is-danger {
+  border-color: #fda29b;
+  color: var(--bp-danger);
+}
+
+.bp-icon-button.is-danger:hover {
+  background: #fff5f5;
+  color: var(--bp-danger);
+}
+
 .bp-danger-button {
   display: inline-flex;
   align-items: center;

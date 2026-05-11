@@ -71,7 +71,7 @@
                         <th class="px-4 py-3">Battery serial number</th>
                         <th class="px-4 py-3">Passport status</th>
                         <th class="px-4 py-3">Updated</th>
-                        <th class="px-4 py-3">Actions</th>
+                        <th class="px-4 py-3 bp-actions-column">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -90,14 +90,25 @@
                             <td class="px-4 py-3">@row.PassportStatus</td>
                             <td class="px-4 py-3">@updated</td>
                             <td class="px-4 py-3">
-                                <div class="d-flex gap-3">
-                                    <a href="/admin/passports/@Uri.EscapeDataString(row.PassportId)/edit">Edit</a>
-                                    <a href="/admin/passports/@Uri.EscapeDataString(row.PassportId)/conformance">Conformance</a>
-                                    <form method="post" action="/admin/passports/archive">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="passportId" value="@row.PassportId" />
-                                        <button type="submit" class="btn btn-link p-0 text-danger">Archive</button>
-                                    </form>
+                                <div class="bp-icon-action-row">
+                                    <a href="/admin/passports/@Uri.EscapeDataString(row.PassportId)/edit" class="bp-icon-button" aria-label="Edit" title="Edit"><span aria-hidden="true">&#9998;</span></a>
+                                    <a href="/admin/passports/@Uri.EscapeDataString(row.PassportId)/conformance" class="bp-icon-button" aria-label="Conformance" title="Conformance"><span aria-hidden="true">&#10003;</span></a>
+                                    @if (row.RegistryStatus.Equals("archived", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <form method="post" action="/admin/passports/unarchive">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="passportId" value="@row.PassportId" />
+                                            <button type="submit" class="bp-icon-button" aria-label="Unarchive" title="Unarchive"><span aria-hidden="true">&#8634;</span></button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form method="post" action="/admin/passports/archive">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="passportId" value="@row.PassportId" />
+                                            <button type="submit" class="bp-icon-button is-danger" aria-label="Archive" title="Archive" onclick="return confirm('Archive passport @row.PassportId? You can unarchive it from Administration.');"><span aria-hidden="true">&#9635;</span></button>
+                                        </form>
+                                    }
                                 </div>
                             </td>
                         </tr>
