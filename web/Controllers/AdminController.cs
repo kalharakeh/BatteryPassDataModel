@@ -738,6 +738,30 @@ public class AdminController : Controller
     public async Task<IActionResult> DeleteCluster(CancellationToken cancellationToken)
     {
         var clusterId = Text(Request.Form, "clusterId");
+        var passportCount = await _passportRepository.CountPassportsByClusterAsync(clusterId, cancellationToken);
+        var membershipCount = await _clusterRepository.CountMembershipsByClusterAsync(clusterId, cancellationToken);
+        if (passportCount > 0 || membershipCount > 0)
+        {
+            TempData["ErrorMessage"] = $"Cluster {clusterId} has {passportCount} linked passport(s) and {membershipCount} linked user membership(s). Use force delete only after confirming linked data removal.";
+            return Redirect("/admin/clusters?tab=clusters");
+        }
+
+        await _clusterRepository.DeleteClusterAsync(clusterId, cancellationToken);
+        return Redirect("/admin/clusters?tab=clusters");
+    }
+
+    [HttpPost("clusters/force-delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ForceDeleteClusterAsync(CancellationToken cancellationToken)
+    {
+        var clusterId = Text(Request.Form, "clusterId");
+        var confirmation = Text(Request.Form, "confirmation");
+        if (!confirmation.Equals("I understand this deletes linked cluster data", StringComparison.Ordinal))
+        {
+            TempData["ErrorMessage"] = "Type: I understand this deletes linked cluster data";
+            return Redirect("/admin/clusters?tab=clusters");
+        }
+
         await _passportRepository.ClearPassportClusterAsync(clusterId, cancellationToken);
         await _clusterRepository.DeleteClusterAsync(clusterId, cancellationToken);
         return Redirect("/admin/clusters?tab=clusters");

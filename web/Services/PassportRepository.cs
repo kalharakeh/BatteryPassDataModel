@@ -137,6 +137,19 @@ public sealed class PassportRepository
             cancellationToken: cancellationToken);
     }
 
+    public async Task<long> CountPassportsByClusterAsync(string clusterId, CancellationToken cancellationToken = default)
+    {
+        var collection = GetCollection();
+        if (collection == null || string.IsNullOrWhiteSpace(clusterId))
+        {
+            return 0;
+        }
+
+        return await collection.CountDocumentsAsync(
+            Builders<BsonDocument>.Filter.Eq("clusterId", clusterId),
+            cancellationToken: cancellationToken);
+    }
+
     public async Task ArchivePassportAsync(string passportId, CancellationToken cancellationToken = default)
     {
         var collection = GetCollection();

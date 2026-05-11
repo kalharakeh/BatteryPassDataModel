@@ -236,6 +236,12 @@ public class ClusterAdminController : Controller
             return NotFound();
         }
 
+        var currentEmail = AccessControlService.CurrentEmail(User).Trim().ToLowerInvariant();
+        if (!AccessControlService.IsAdmin(User) && email.Equals(currentEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            return Redirect($"/cluster-admin/users?error={Uri.EscapeDataString("Cannot change your own local admin role.")}");
+        }
+
         var existingUser = await _clusterRepository.GetUserByEmailAsync(email, cancellationToken);
         var existingRoles = existingUser?.GetValue("roles", new BsonArray()) is BsonArray roleArray
             ? roleArray
@@ -282,6 +288,12 @@ public class ClusterAdminController : Controller
         if (!await _accessControlService.CanAdministerClusterAsync(User, clusterId, cancellationToken))
         {
             return NotFound();
+        }
+
+        var currentEmail = AccessControlService.CurrentEmail(User).Trim().ToLowerInvariant();
+        if (!AccessControlService.IsAdmin(User) && email.Trim().ToLowerInvariant().Equals(currentEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            return Redirect($"/cluster-admin/users?error={Uri.EscapeDataString("Cannot change your own local admin role.")}");
         }
 
         await _clusterRepository.DeleteClusterMembershipAsync(email, clusterId, cancellationToken);

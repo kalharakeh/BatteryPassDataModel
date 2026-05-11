@@ -5,11 +5,23 @@
     var showAdminLink = User.IsInRole("admin");
     var showClusterAdminLink = User.IsInRole("clusterAdmin") && !showAdminLink;
     var identityLabel = string.Empty;
+    var customerName = string.Empty;
+    var customerRole = string.Empty;
     var clusterNames = new List<string>();
 
     if (isAuthenticated)
     {
         identityLabel = BatteryPassWeb.Services.AccessControlService.CurrentEmail(User);
+        customerRole = BatteryPassWeb.Services.AccessControlService.DisplayRoleLabel(User);
+        var userDocument = await ClusterRepository.GetUserByEmailAsync(identityLabel);
+        customerName = userDocument == null
+            ? User.Identity?.Name ?? identityLabel
+            : BatteryPassWeb.Services.BsonHelpers.GetString(userDocument, "name");
+        if (string.IsNullOrWhiteSpace(customerName))
+        {
+            customerName = identityLabel;
+        }
+
         var memberships = await ClusterRepository.GetClusterMembershipsForUserAsync(identityLabel);
         var clusters = await ClusterRepository.ListClustersAsync();
         var clusterNameById = clusters
@@ -74,12 +86,14 @@
                         @if (isAuthenticated)
                         {
                             <a href="/help">Help</a>
+                            <a href="/account">Account</a>
                         }
                         </div>
                         @if (isAuthenticated)
                         {
                             <div class="bp-identity">
                                 <p>@identityLabel</p>
+                                <p>@customerName / @customerRole</p>
                                 <p>@(clusterNames.Count > 0 ? string.Join(", ", clusterNames) : "No cluster")</p>
                             </div>
                         }

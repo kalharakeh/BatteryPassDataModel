@@ -74,6 +74,48 @@ public sealed class AuthService
         return null;
     }
 
+    public async Task<ClaimsPrincipal?> CreatePrincipalForUserAsync(string email, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return null;
+        }
+
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        if (_mongoContext.Database != null)
+        {
+            var user = await _mongoContext.Database.GetCollection<BsonDocument>("users")
+                .Find(Builders<BsonDocument>.Filter.Eq("email", normalizedEmail))
+                .FirstOrDefaultAsync(cancellationToken);
+            if (user != null)
+            {
+                var roles = ExtractRoles(user).ToList();
+                if (!roles.Contains(AccessControlService.RoleAdmin, StringComparer.OrdinalIgnoreCase))
+                {
+                    var hasClusterAdminMembership = await _mongoContext.Database
+                        .GetCollection<BsonDocument>("clusterMemberships")
+                        .Find(Builders<BsonDocument>.Filter.And(
+                            Builders<BsonDocument>.Filter.Eq("email", normalizedEmail),
+                            Builders<BsonDocument>.Filter.Eq("role", AccessControlService.RoleClusterAdmin)))
+                        .AnyAsync(cancellationToken);
+                    if (hasClusterAdminMembership)
+                    {
+                        roles.Add(AccessControlService.RoleClusterAdmin);
+                    }
+                }
+
+                return BuildPrincipal(normalizedEmail, BsonHelpers.GetString(user, "name"), roles);
+            }
+        }
+
+        if (normalizedEmail.Equals(_options.DemoAdminEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            return BuildPrincipal(_options.DemoAdminEmail, "Demo Administrator", [AccessControlService.RoleAdmin]);
+        }
+
+        return null;
+    }
+
     private static ClaimsPrincipal BuildPrincipal(string email, string name, IReadOnlyList<string> roles)
     {
         var claims = new List<Claim>

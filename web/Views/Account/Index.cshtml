@@ -1,0 +1,66 @@
+@model BatteryPassWeb.Models.ViewModels.AccountProfileViewModel
+@{
+    ViewData["Title"] = "Account";
+}
+
+<main class="bp-page bp-admin-page">
+    <div>
+        <h1 class="mb-1">Account</h1>
+        <p class="text-secondary mb-0">Update your customer profile, email, and password.</p>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+    {
+        <div class="alert alert-success mt-3 mb-0">@Model.StatusMessage</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger mt-3 mb-0">@Model.ErrorMessage</div>
+    }
+
+    <section class="bp-card mt-4">
+        <form method="post" action="/account" class="bp-stack-form">
+            @Html.AntiForgeryToken()
+            <label>
+                Customer name
+                <input type="text" name="name" value="@Model.Name" />
+            </label>
+            <label>
+                Customer email
+                <input type="email" name="email" value="@Model.Email" required />
+            </label>
+            <label>
+                Role
+                <input type="text" value="@Model.RoleLabel" readonly />
+            </label>
+            <label>
+                New password
+                <span class="bp-password-field">
+                    <input type="password" name="password" placeholder="Leave empty to keep current password" />
+                    <button type="button" class="bp-password-reveal" data-password-reveal aria-label="Show password">Show</button>
+                </span>
+            </label>
+            <button type="submit" class="bp-primary-button">Save account</button>
+        </form>
+    </section>
+</main>
+
+@section Scripts {
+    <script>
+        (function () {
+            document.querySelectorAll('[data-password-reveal]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const input = button.closest('.bp-password-field')?.querySelector('input');
+                    if (!input) {
+                        return;
+                    }
+
+                    const reveal = input.type === 'password';
+                    input.type = reveal ? 'text' : 'password';
+                    button.textContent = reveal ? 'Hide' : 'Show';
+                    button.setAttribute('aria-label', reveal ? 'Hide password' : 'Show password');
+                });
+            });
+        })();
+    </script>
+}

@@ -212,10 +212,16 @@
                                     </form>
                                 </td>
                                 <td class="px-3 py-3">
-                                    <form method="post" action="/admin/clusters/delete">
+                                    <form method="post" action="/admin/clusters/delete" class="mb-2">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
-                                        <button type="submit" class="bp-danger-button">Delete</button>
+                                        <button type="submit" class="bp-danger-button" onclick="return confirm('Delete cluster @cluster.ClusterId? This is only allowed when no batteries or users are linked.');">Delete</button>
+                                    </form>
+                                    <form method="post" action="/admin/clusters/force-delete" class="bp-stack-form">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
+                                        <input class="form-control form-control-sm" name="confirmation" placeholder="I understand this deletes linked cluster data" />
+                                        <button type="submit" class="bp-danger-button" onclick="return confirm('Force delete cluster @cluster.ClusterId and remove linked cluster data?');">Force delete</button>
                                     </form>
                                 </td>
                             </tr>

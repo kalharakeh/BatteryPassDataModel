@@ -79,6 +79,17 @@ public sealed class ClusterRepository
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<long> CountMembershipsByClusterAsync(string clusterId, CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(clusterId))
+        {
+            return 0;
+        }
+
+        return await _mongoContext.Database.GetCollection<BsonDocument>("clusterMemberships")
+            .CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq("clusterId", clusterId), cancellationToken: cancellationToken);
+    }
+
     public async Task UpsertUserAsync(
         string email,
         string name,
@@ -121,6 +132,63 @@ public sealed class ClusterRepository
             Builders<BsonDocument>.Update.Combine(updates),
             new UpdateOptions { IsUpsert = true },
             cancellationToken);
+    }
+
+    public async Task UpdateUserProfileAsync(
+        string email,
+        string name,
+        string? passwordHash = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email))
+        {
+            return;
+        }
+
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        var updates = new List<UpdateDefinition<BsonDocument>>
+        {
+            Builders<BsonDocument>.Update.Set("name", string.IsNullOrWhiteSpace(name) ? normalizedEmail : name.Trim()),
+            Builders<BsonDocument>.Update.Set("updatedAt", DateTime.UtcNow.ToString("O"))
+        };
+        if (!string.IsNullOrWhiteSpace(passwordHash))
+        {
+            updates.Add(Builders<BsonDocument>.Update.Set("passwordHash", passwordHash));
+        }
+
+        await _mongoContext.Database.GetCollection<BsonDocument>("users").UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("email", normalizedEmail),
+            Builders<BsonDocument>.Update.Combine(updates),
+            cancellationToken: cancellationToken);
+    }
+
+    public async Task UpdateUserEmailAsync(string currentEmail, string newEmail, CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(currentEmail) || string.IsNullOrWhiteSpace(newEmail))
+        {
+            return;
+        }
+
+        var current = currentEmail.Trim().ToLowerInvariant();
+        var next = newEmail.Trim().ToLowerInvariant();
+        if (current.Equals(next, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow.ToString("O");
+        await _mongoContext.Database.GetCollection<BsonDocument>("users").UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("email", current),
+            Builders<BsonDocument>.Update
+                .Set("email", next)
+                .Set("updatedAt", now),
+            cancellationToken: cancellationToken);
+        await _mongoContext.Database.GetCollection<BsonDocument>("clusterMemberships").UpdateManyAsync(
+            Builders<BsonDocument>.Filter.Eq("email", current),
+            Builders<BsonDocument>.Update
+                .Set("email", next)
+                .Set("updatedAt", now),
+            cancellationToken: cancellationToken);
     }
 
     public async Task UpsertClusterAsync(string clusterId, string name, CancellationToken cancellationToken = default)

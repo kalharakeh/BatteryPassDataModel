@@ -148,6 +148,32 @@ public sealed class BatteryFamilyAccessApiRevisedTests
         Assert.Contains("[HttpPost(\"passports/unarchive\")]", controller);
     }
 
+    [Fact]
+    public void AccountAndClusterGuardrails_ShouldBePresent()
+    {
+        var accountController = RepoFile("web", "Controllers", "AccountController.cs");
+        var accountView = RepoFile("web", "Views", "Account", "Index.cshtml");
+        var clusterRepository = File.ReadAllText(RepoFile("web", "Services", "ClusterRepository.cs"));
+        var passportRepository = File.ReadAllText(RepoFile("web", "Services", "PassportRepository.cs"));
+        var authService = File.ReadAllText(RepoFile("web", "Services", "AuthService.cs"));
+        var adminController = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+        var clusterAdminController = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
+        var layout = File.ReadAllText(RepoFile("web", "Views", "Shared", "_Layout.cshtml"));
+
+        Assert.True(File.Exists(accountController));
+        Assert.True(File.Exists(accountView));
+        Assert.Contains("CountPassportsByClusterAsync", passportRepository);
+        Assert.Contains("CountMembershipsByClusterAsync", clusterRepository);
+        Assert.Contains("ForceDeleteClusterAsync", adminController);
+        Assert.Contains("I understand this deletes linked cluster data", adminController);
+        Assert.Contains("CreatePrincipalForUserAsync", authService);
+        Assert.Contains("UpdateUserEmailAsync", clusterRepository);
+        Assert.Contains("UpdateUserProfileAsync", clusterRepository);
+        Assert.Contains("Cannot change your own local admin role", clusterAdminController);
+        Assert.Contains("href=\"/account\"", layout);
+        Assert.Contains("@customerName / @customerRole", layout);
+    }
+
     private static BsonDocument MinimalPassport(string registryStatus, string trustState)
     {
         return new BsonDocument
