@@ -143,7 +143,7 @@
             <section id="admin-general" class="bp-card bp-edit-section">
                 <h2>General</h2>
                 <p class="bp-template-sync-note">
-                    Select a product and software version below. Shared technical fields update from the template; identity fields stay battery-specific and editable.
+                    Select a battery family and battery version below. Shared technical fields update from the template; identity fields stay battery-specific and editable.
                 </p>
                 <div class="bp-form-grid">
                     <label class="bp-field-shell" data-field-key="general.passportId"><span>Passport ID <em class="bp-field-marker">@RequirementLabel("general.passportId")</em></span>@if (isNew) { <input type="text" name="passportId" value="@passport.PassportId" required /> } else { <input type="text" name="passportId" value="@passport.PassportId" readonly /> }<small class="bp-field-help">@DirtySignedDataHelp("general.passportId", "Unique DID-style battery identifier.")</small></label>
@@ -167,9 +167,11 @@
                     Choose the product, product/battery version, and software baseline before creating the passport. Shared technical fields update from this selection.
                 </p>
                 <div class="bp-form-grid">
-                    <label class="bp-field-shell" data-field-key="general.product"><span>Product <em class="bp-field-marker">@RequirementLabel("general.product")</em></span><select name="productId" data-product-template-select>@foreach (var productTemplate in Model.ProductTemplates) { if (productTemplate.ProductId.Equals(Model.SelectedProductId, StringComparison.OrdinalIgnoreCase)) { <option value="@productTemplate.ProductId" selected>@productTemplate.ProductName</option> } else { <option value="@productTemplate.ProductId">@productTemplate.ProductName</option> } }</select><small class="bp-field-help">@DirtySignedDataHelp("general.product", "Product template copied into this battery.")</small></label>
-                    <label class="bp-field-shell" data-field-key="general.productVersion"><span>Product/battery version <em class="bp-field-marker">@RequirementLabel("general.productVersion")</em></span><select name="productVersion" data-product-version-select>@foreach (var productVersion in selectedProductVersions) { if (productVersion.Version.Equals(Model.SelectedProductVersion, StringComparison.OrdinalIgnoreCase)) { <option value="@productVersion.Version" selected>@productVersion.Version</option> } else { <option value="@productVersion.Version">@productVersion.Version</option> } }</select><small class="bp-field-help">@DirtySignedDataHelp("general.productVersion", "Product/battery version copied into this battery.")</small></label>
-                    <label class="bp-field-shell" data-field-key="general.softwareVersion"><span>Software version <em class="bp-field-marker">@RequirementLabel("general.softwareVersion")</em></span><select name="softwareVersion" data-product-software-select>@foreach (var software in Model.ProductSoftwareVersions) { if (software.Version.Equals(Model.SelectedSoftwareVersion, StringComparison.OrdinalIgnoreCase)) { <option value="@software.Version" selected>@software.Version - updated @software.LatestUpdate</option> } else { <option value="@software.Version">@software.Version - updated @software.LatestUpdate</option> } }</select><small class="bp-field-help">@DirtySignedDataHelp("general.softwareVersion", "Software baseline copied from the selected product template.")</small></label>
+                    <label class="bp-field-shell" data-field-key="general.product"><span>Battery family <em class="bp-field-marker">@RequirementLabel("general.product")</em></span><select name="productId" data-product-template-select>@foreach (var productTemplate in Model.ProductTemplates) { if (productTemplate.ProductId.Equals(Model.SelectedProductId, StringComparison.OrdinalIgnoreCase)) { <option value="@productTemplate.ProductId" selected>@productTemplate.ProductName</option> } else { <option value="@productTemplate.ProductId">@productTemplate.ProductName</option> } }</select><small class="bp-field-help">@DirtySignedDataHelp("general.product", "Battery family copied into this battery.")</small></label>
+                    <label class="bp-field-shell" data-field-key="general.productVersion"><span>Battery version <em class="bp-field-marker">@RequirementLabel("general.productVersion")</em></span><select name="productVersion" data-product-version-select>@foreach (var productVersion in selectedProductVersions) { if (productVersion.Version.Equals(Model.SelectedProductVersion, StringComparison.OrdinalIgnoreCase)) { <option value="@productVersion.Version" selected>@productVersion.Version</option> } else { <option value="@productVersion.Version">@productVersion.Version</option> } }</select><small class="bp-field-help">@DirtySignedDataHelp("general.productVersion", "Battery version copied into this battery.")</small></label>
+                    <label class="bp-field-shell" data-field-key="general.softwareVersion"><span>Software version <em class="bp-field-marker">@RequirementLabel("general.softwareVersion")</em></span><input type="text" name="softwareVersion" value="@passport.SoftwareVersion" readonly data-product-software-version /><small class="bp-field-help">@DirtySignedDataHelp("general.softwareVersion", "Software version parameter copied from the selected battery version.")</small></label>
+                    <label class="bp-field-shell"><span>Software release date</span><input type="date" name="softwareReleaseDate" value="@passport.SoftwareReleaseDate" readonly data-product-software-release /></label>
+                    <label class="bp-field-shell"><span>Software latest update</span><input type="date" name="softwareLatestUpdate" value="@passport.SoftwareLatestUpdate" readonly data-product-software-update /></label>
                 </div>
             </section>
 
@@ -337,7 +339,9 @@
             const categoryInput = form.querySelector('[data-image-category]');
             const productTemplateSelect = form.querySelector('[data-product-template-select]');
             const productVersionSelect = form.querySelector('[data-product-version-select]');
-            const productSoftwareSelect = form.querySelector('[data-product-software-select]');
+            const productSoftwareVersionInput = form.querySelector('[data-product-software-version]');
+            const productSoftwareReleaseInput = form.querySelector('[data-product-software-release]');
+            const productSoftwareUpdateInput = form.querySelector('[data-product-software-update]');
             const productTemplateCatalogElement = document.querySelector('[data-product-template-catalog]');
             const productTemplateCatalog = parseProductTemplateCatalog(productTemplateCatalogElement?.textContent || '[]');
             const passportId = form.dataset.passportId ?? '';
@@ -427,25 +431,20 @@
                     : versions[0]?.Version || '';
             }
 
-            function updateSoftwareOptions(productVersion, preferredVersion) {
-                if (!productSoftwareSelect || !productVersion) {
+            function updateSoftwareParameters(productVersion) {
+                if (!productVersion) {
                     return;
                 }
 
-                const versions = Array.isArray(productVersion.SoftwareVersions) ? productVersion.SoftwareVersions : [];
-                productSoftwareSelect.innerHTML = '';
-                versions.forEach((software) => {
-                    const option = document.createElement('option');
-                    option.value = software.Version || '';
-                    option.textContent = `${software.Version || ''} - updated ${software.LatestUpdate || ''}`.trim();
-                    productSoftwareSelect.appendChild(option);
-                });
-
-                const hasPreferred = versions.some((software) =>
-                    String(software.Version || '').toLowerCase() === String(preferredVersion || '').toLowerCase());
-                productSoftwareSelect.value = hasPreferred
-                    ? preferredVersion
-                    : versions[0]?.Version || '';
+                if (productSoftwareVersionInput) {
+                    productSoftwareVersionInput.value = productVersion.SoftwareVersion || '';
+                }
+                if (productSoftwareReleaseInput) {
+                    productSoftwareReleaseInput.value = productVersion.SoftwareReleaseDate || '';
+                }
+                if (productSoftwareUpdateInput) {
+                    productSoftwareUpdateInput.value = productVersion.SoftwareLatestUpdate || '';
+                }
             }
 
             function applyProductTemplateSelection(updateVersionList, updateSoftwareList) {
@@ -455,14 +454,13 @@
                 }
 
                 const previousProductVersion = productVersionSelect?.value || '';
-                const previousSoftware = productSoftwareSelect?.value || '';
                 if (updateVersionList) {
                     updateProductVersionOptions(product, previousProductVersion);
                 }
 
                 const productVersion = findCatalogProductVersion(product, productVersionSelect?.value || '');
                 if (updateSoftwareList) {
-                    updateSoftwareOptions(productVersion, previousSoftware);
+                    updateSoftwareParameters(productVersion);
                 }
 
                 const materialFieldMap = {
@@ -764,9 +762,6 @@
             });
             productVersionSelect?.addEventListener('change', () => {
                 applyProductTemplateSelection(false, true);
-            });
-            productSoftwareSelect?.addEventListener('change', () => {
-                applyProductTemplateSelection(false, false);
             });
             form.addEventListener('submit', (event) => {
                 if (form.dataset.requiredPassportValidation !== 'true') {

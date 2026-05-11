@@ -105,7 +105,7 @@ public class AdminController : Controller
             draftPassportId,
             defaultProduct.ProductId,
             defaultProductVersion.Version,
-            defaultProductVersion.SoftwareVersions.FirstOrDefault()?.Version ?? BatteryProductTemplateCatalog.DefaultSoftwareVersion,
+            defaultProductVersion.SoftwareVersion,
             cancellationToken);
         var model = await BuildEditPassportModelAsync(
             document,
@@ -602,25 +602,7 @@ public class AdminController : Controller
             ?? (BatteryProductTemplateCatalog.DefaultProduct with { ProductId = productId });
         var product = BuildProductTemplateFromForm(form, existing);
         await _productTemplateService.SaveProductAsync(product, CurrentActor(), cancellationToken);
-        return Redirect($"/admin/products/{Uri.EscapeDataString(product.ProductId)}?status={Uri.EscapeDataString("Product template saved. Push a software version when you want matching batteries to receive safe template changes.")}");
-    }
-
-    [HttpPost("products/{productId}/software/{softwareVersion}/push")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> PushProductTemplate(string productId, string softwareVersion, CancellationToken cancellationToken)
-    {
-        var result = await _productTemplateService.PushTemplateAsync(productId, softwareVersion, CurrentActor(), cancellationToken);
-        var message = $"Template push finished: {result.UpdatedBatteries} of {result.MatchedBatteries} matching batteries updated. Manual overrides were preserved.";
-        return Redirect($"/admin/products/{Uri.EscapeDataString(productId)}?status={Uri.EscapeDataString(message)}");
-    }
-
-    [HttpPost("products/{productId}/versions/{productVersion}/software/{softwareVersion}/push")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> PushProductTemplateVersion(string productId, string productVersion, string softwareVersion, CancellationToken cancellationToken)
-    {
-        var result = await _productTemplateService.PushTemplateAsync(productId, productVersion, softwareVersion, CurrentActor(), cancellationToken);
-        var message = $"Template push finished: {result.UpdatedBatteries} of {result.MatchedBatteries} matching batteries updated. Manual overrides were preserved.";
-        return Redirect($"/admin/products/{Uri.EscapeDataString(productId)}?status={Uri.EscapeDataString(message)}");
+        return Redirect($"/admin/products/{Uri.EscapeDataString(product.ProductId)}?status={Uri.EscapeDataString("Battery family saved. Push a battery version when you want matching batteries to receive safe template changes.")}");
     }
 
     [HttpPost("products/{productId}/versions/{productVersion}/push")]
@@ -1274,9 +1256,6 @@ public class AdminController : Controller
             selectedProduct.LatestProductVersion.Version);
         var selectedVersion = selectedProduct.ProductVersions.FirstOrDefault(version => version.Version.Equals(selectedProductVersion, StringComparison.OrdinalIgnoreCase))
             ?? selectedProduct.LatestProductVersion;
-        var selectedSoftwareVersion = FirstNonEmpty(
-            BsonHelpers.GetString(document, "app", "product", "softwareVersion"),
-            selectedVersion.SoftwareVersions.FirstOrDefault()?.Version ?? BatteryProductTemplateCatalog.DefaultSoftwareVersion);
         var dataRequirements = await _dataCompletionPolicyService.GetPolicyForPassportAsync(document, cancellationToken);
 
         return new EditPassportViewModel
@@ -1286,17 +1265,8 @@ public class AdminController : Controller
             DataRequirements = dataRequirements,
             ProductTemplates = BuildProductTemplateSummaries(products),
             ProductTemplateCatalog = BuildProductTemplateFormCatalog(products),
-            ProductSoftwareVersions = selectedVersion.SoftwareVersions
-                .Select(software => new ProductSoftwareVersionViewModel
-                {
-                    Version = software.Version,
-                    ReleaseDate = software.ReleaseDate,
-                    LatestUpdate = software.LatestUpdate
-                })
-                .ToList(),
             SelectedProductId = selectedProduct.ProductId,
             SelectedProductVersion = selectedVersion.Version,
-            SelectedSoftwareVersion = selectedSoftwareVersion,
             FieldRequirementByKey = BuildFieldRequirementDictionary(dataRequirements),
             StatusMessage = statusMessage,
             ErrorMessage = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error)
@@ -1313,7 +1283,7 @@ public class AdminController : Controller
                 Description = product.Description,
                 ImageUrl = product.ImageUrl,
                 ModuleCount = product.ModuleCount,
-                SoftwareVersionCount = product.SoftwareVersions.Count,
+                BatteryVersionCount = product.ProductVersions.Count == 0 ? 1 : product.ProductVersions.Count,
                 RequiredFieldCount = product.RequiredFieldKeys.Count,
                 DocumentCount = product.TemplateDocuments.Count
             })
@@ -1359,14 +1329,6 @@ public class AdminController : Controller
                     PostConsumerShare = pair.Value.PostConsumerShare
                 },
                 StringComparer.OrdinalIgnoreCase),
-            SoftwareVersions = currentVersion?.SoftwareVersions ?? product.SoftwareVersions
-                .Select(software => new ProductSoftwareVersionViewModel
-                {
-                    Version = software.Version,
-                    ReleaseDate = software.ReleaseDate,
-                    LatestUpdate = software.LatestUpdate
-                })
-                .ToList(),
             DataRequirements = dataRequirements,
             StatusMessage = string.IsNullOrWhiteSpace(status) ? string.Empty : Uri.UnescapeDataString(status),
             ErrorMessage = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error),
@@ -1403,14 +1365,9 @@ public class AdminController : Controller
                         PostConsumerShare = pair.Value.PostConsumerShare
                     },
                     StringComparer.OrdinalIgnoreCase),
-                SoftwareVersions = version.SoftwareVersions
-                    .Select(software => new ProductSoftwareVersionViewModel
-                    {
-                        Version = software.Version,
-                        ReleaseDate = software.ReleaseDate,
-                        LatestUpdate = software.LatestUpdate
-                    })
-                    .ToList(),
+                SoftwareVersion = version.SoftwareVersion,
+                SoftwareReleaseDate = version.SoftwareReleaseDate,
+                SoftwareLatestUpdate = version.SoftwareLatestUpdate,
                 TemplateDocuments = version.TemplateDocuments
                     .Select(document => new ProductTemplateDocumentViewModel
                     {
@@ -1455,7 +1412,6 @@ public class AdminController : Controller
             MaterialMassesKg = latestProductVersion.MaterialMassesKg,
             CarbonStages = latestProductVersion.CarbonStages,
             RecycledContent = latestProductVersion.RecycledContent,
-            SoftwareVersions = latestProductVersion.SoftwareVersions,
             RequiredFieldKeys = latestProductVersion.RequiredFieldKeys,
             ProductVersions = productVersions
         };
@@ -1492,7 +1448,6 @@ public class AdminController : Controller
             }
         }
 
-        var softwareVersions = ReadSoftwareVersions(form, existing.LatestProductVersion.SoftwareVersions);
         var productVersion = new BatteryProductVersion(
             Text(form, "productVersion", existing.LatestProductVersion.Version),
             Number(form, "batteryMassKg", existing.LatestProductVersion.BatteryMassKg),
@@ -1508,7 +1463,9 @@ public class AdminController : Controller
             ReadNumberMap(form, "materialName", "materialMass", existing.LatestProductVersion.MaterialMassesKg),
             ReadNumberMap(form, "carbonStage", "carbonStageValue", existing.LatestProductVersion.CarbonStages),
             ReadRecycledContentMap(form, existing.LatestProductVersion.RecycledContent),
-            softwareVersions,
+            Text(form, "softwareVersion", existing.LatestProductVersion.SoftwareVersion),
+            DateOnly(Text(form, "softwareReleaseDate", existing.LatestProductVersion.SoftwareReleaseDate)),
+            DateOnly(Text(form, "softwareLatestUpdate", existing.LatestProductVersion.SoftwareLatestUpdate)),
             existing.LatestProductVersion.TemplateDocuments,
             requiredFieldKeys);
 
@@ -1523,21 +1480,6 @@ public class AdminController : Controller
         var fallback = existing.ProductVersions.FirstOrDefault(version =>
                 version.Version.Equals(payload.Version ?? string.Empty, StringComparison.OrdinalIgnoreCase))
             ?? existing.LatestProductVersion;
-        var softwareVersions = (payload.SoftwareVersions ?? [])
-            .Select(software =>
-            {
-                var fallbackSoftware = fallback.SoftwareVersions.FirstOrDefault(item =>
-                    item.Version.Equals(software.Version ?? string.Empty, StringComparison.OrdinalIgnoreCase));
-                return new BatteryProductSoftwareVersion(
-                    software.Version?.Trim() ?? string.Empty,
-                    DateOnly(software.ReleaseDate ?? fallbackSoftware?.ReleaseDate),
-                    DateOnly(software.LatestUpdate ?? fallbackSoftware?.LatestUpdate));
-            })
-            .Where(software => !string.IsNullOrWhiteSpace(software.Version))
-            .GroupBy(software => software.Version, StringComparer.OrdinalIgnoreCase)
-            .Select(group => group.First())
-            .OrderBy(software => software.Version, VersionStringComparer.Descending)
-            .ToList();
         var templateDocuments = ToTemplateDocuments(payload.TemplateDocuments, fallback.TemplateDocuments);
 
         return new BatteryProductVersion(
@@ -1555,7 +1497,9 @@ public class AdminController : Controller
             payload.MaterialMassesKg?.Count > 0 ? payload.MaterialMassesKg : fallback.MaterialMassesKg,
             payload.CarbonStages?.Count > 0 ? payload.CarbonStages : fallback.CarbonStages,
             ToRecycledContent(payload.RecycledContent, fallback.RecycledContent),
-            softwareVersions.Count == 0 ? fallback.SoftwareVersions : softwareVersions,
+            FirstNonEmpty(payload.SoftwareVersion?.Trim() ?? string.Empty, fallback.SoftwareVersion),
+            DateOnly(FirstNonEmpty(payload.SoftwareReleaseDate ?? string.Empty, fallback.SoftwareReleaseDate)),
+            DateOnly(FirstNonEmpty(payload.SoftwareLatestUpdate ?? string.Empty, fallback.SoftwareLatestUpdate)),
             templateDocuments,
             payload.RequiredFieldKeys is null
                 ? requiredFieldKeys
@@ -1631,14 +1575,6 @@ public class AdminController : Controller
                         PostConsumerShare = pair.Value.PostConsumerShare
                     },
                     StringComparer.OrdinalIgnoreCase),
-                SoftwareVersions = product.SoftwareVersions
-                    .Select(software => new ProductSoftwareVersionViewModel
-                    {
-                        Version = software.Version,
-                        ReleaseDate = software.ReleaseDate,
-                        LatestUpdate = software.LatestUpdate
-                    })
-                    .ToList(),
                 ProductVersions = BuildProductVersionEditModels(product.ProductVersions.Count == 0
                     ? [product.LatestProductVersion]
                     : product.ProductVersions)
@@ -1695,39 +1631,6 @@ public class AdminController : Controller
         return result;
     }
 
-    private static IReadOnlyList<BatteryProductSoftwareVersion> ReadSoftwareVersions(
-        IFormCollection form,
-        IReadOnlyList<BatteryProductSoftwareVersion> fallback)
-    {
-        var versions = form["softwareVersion"];
-        var releases = form["softwareReleaseDate"];
-        var updates = form["softwareLatestUpdate"];
-        if (versions.Count == 0)
-        {
-            return fallback;
-        }
-
-        var result = new List<BatteryProductSoftwareVersion>();
-        for (var index = 0; index < versions.Count; index++)
-        {
-            var version = versions[index]?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(version))
-            {
-                continue;
-            }
-
-            var fallbackVersion = fallback.FirstOrDefault(item => item.Version.Equals(version, StringComparison.OrdinalIgnoreCase));
-            result.Add(new BatteryProductSoftwareVersion(
-                version,
-                DateOnly(index < releases.Count ? releases[index] : fallbackVersion?.ReleaseDate),
-                DateOnly(index < updates.Count ? updates[index] : fallbackVersion?.LatestUpdate)));
-        }
-
-        return result.Count == 0
-            ? fallback
-            : result.OrderBy(item => item.Version, VersionStringComparer.Descending).ToList();
-    }
-
     private sealed class ProductVersionFormPayload
     {
         public string? Version { get; init; }
@@ -1744,16 +1647,11 @@ public class AdminController : Controller
         public Dictionary<string, double>? MaterialMassesKg { get; init; }
         public Dictionary<string, double>? CarbonStages { get; init; }
         public Dictionary<string, ProductTemplateRecycledContentFormPayload>? RecycledContent { get; init; }
-        public List<ProductSoftwareVersionFormPayload>? SoftwareVersions { get; init; }
+        public string? SoftwareVersion { get; init; }
+        public string? SoftwareReleaseDate { get; init; }
+        public string? SoftwareLatestUpdate { get; init; }
         public List<ProductTemplateDocumentFormPayload>? TemplateDocuments { get; init; }
         public List<string>? RequiredFieldKeys { get; init; }
-    }
-
-    private sealed class ProductSoftwareVersionFormPayload
-    {
-        public string? Version { get; init; }
-        public string? ReleaseDate { get; init; }
-        public string? LatestUpdate { get; init; }
     }
 
     private sealed class ProductTemplateRecycledContentFormPayload
@@ -2098,7 +1996,6 @@ public class AdminController : Controller
         var productNode = EnsureDocument(app, "product");
         var productId = Text(form, "productId", BsonHelpers.GetString(productNode, "productId"));
         var productVersion = Text(form, "productVersion", BsonHelpers.GetString(productNode, "productVersion"));
-        var softwareVersion = Text(form, "softwareVersion", BsonHelpers.GetString(productNode, "softwareVersion"));
         var product = await _productTemplateService.GetProductAsync(productId, cancellationToken);
         if (product == null)
         {
@@ -2106,21 +2003,16 @@ public class AdminController : Controller
         }
 
         var selectedProductVersion = product.ProductVersions.FirstOrDefault(version =>
-                version.Version.Equals(productVersion, StringComparison.OrdinalIgnoreCase))
+            version.Version.Equals(productVersion, StringComparison.OrdinalIgnoreCase))
             ?? product.LatestProductVersion;
-        var software = selectedProductVersion.SoftwareVersions.FirstOrDefault(version => version.Version.Equals(softwareVersion, StringComparison.OrdinalIgnoreCase))
-            ?? selectedProductVersion.SoftwareVersions.FirstOrDefault();
         productNode["productId"] = product.ProductId;
         productNode["productVersion"] = selectedProductVersion.Version;
         productNode["productName"] = product.ProductName;
         productNode["description"] = product.Description;
         productNode["moduleCount"] = product.ModuleCount;
-        if (software != null)
-        {
-            productNode["softwareVersion"] = software.Version;
-            productNode["softwareReleaseDate"] = software.ReleaseDate;
-            productNode["softwareLatestUpdate"] = software.LatestUpdate;
-        }
+        productNode["softwareVersion"] = selectedProductVersion.SoftwareVersion;
+        productNode["softwareReleaseDate"] = selectedProductVersion.SoftwareReleaseDate;
+        productNode["softwareLatestUpdate"] = selectedProductVersion.SoftwareLatestUpdate;
 
         await _productTemplateService.ApplyProductTemplateReferencesAsync(document, product.ProductId, cancellationToken);
         productNode["templateHash"] = ProductTemplatePassportBuilder.ComputeTemplateHash(ProductTemplatePassportBuilder.BuildTemplateBaseline(document));

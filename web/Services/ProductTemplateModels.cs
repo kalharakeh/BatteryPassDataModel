@@ -24,7 +24,6 @@ public sealed record BatteryProductTemplate(
     IReadOnlyDictionary<string, double> MaterialMassesKg,
     IReadOnlyDictionary<string, double> CarbonStages,
     IReadOnlyDictionary<string, ProductTemplateRecycledContent> RecycledContent,
-    IReadOnlyList<BatteryProductSoftwareVersion> SoftwareVersions,
     IReadOnlyList<ProductTemplateDocumentSeed> TemplateDocuments,
     IReadOnlyList<string> RequiredFieldKeys)
 {
@@ -47,7 +46,9 @@ public sealed record BatteryProductTemplate(
             MaterialMassesKg,
             CarbonStages,
             RecycledContent,
-            SoftwareVersions,
+            BatteryProductTemplateCatalog.DefaultSoftwareVersion,
+            string.Empty,
+            string.Empty,
             TemplateDocuments,
             RequiredFieldKeys);
 }
@@ -67,14 +68,11 @@ public sealed record BatteryProductVersion(
     IReadOnlyDictionary<string, double> MaterialMassesKg,
     IReadOnlyDictionary<string, double> CarbonStages,
     IReadOnlyDictionary<string, ProductTemplateRecycledContent> RecycledContent,
-    IReadOnlyList<BatteryProductSoftwareVersion> SoftwareVersions,
+    string SoftwareVersion,
+    string SoftwareReleaseDate,
+    string SoftwareLatestUpdate,
     IReadOnlyList<ProductTemplateDocumentSeed> TemplateDocuments,
     IReadOnlyList<string> RequiredFieldKeys);
-
-public sealed record BatteryProductSoftwareVersion(
-    string Version,
-    string ReleaseDate,
-    string LatestUpdate);
 
 public sealed record ProductTemplateDocumentSeed(
     string DocumentKey,
@@ -289,7 +287,8 @@ public static class BatteryProductTemplateCatalog
                 stage => Math.Round(stage.DemoValue * carbonScale, 2),
                 StringComparer.OrdinalIgnoreCase);
 
-        var softwareVersions = BuildSoftwareVersions(productId);
+        var latestSoftware = BuildSoftwareParameters(productId, "2.0");
+        var firstSoftware = BuildSoftwareParameters(productId, "1.0");
         var latestVersion = new BatteryProductVersion(
             "2.0",
             batteryMassKg,
@@ -305,7 +304,9 @@ public static class BatteryProductTemplateCatalog
             materialMasses,
             carbonStages,
             BuildRecycledContent(recycledProfile),
-            BuildSoftwareVersions(productId, "2.0"),
+            latestSoftware.Version,
+            latestSoftware.ReleaseDate,
+            latestSoftware.LatestUpdate,
             DefaultDocuments,
             DefaultRequiredFields);
         var firstVersion = new BatteryProductVersion(
@@ -323,7 +324,9 @@ public static class BatteryProductTemplateCatalog
             materialMasses.ToDictionary(pair => pair.Key, pair => Math.Round(pair.Value * 0.96, 2), StringComparer.OrdinalIgnoreCase),
             carbonStages.ToDictionary(pair => pair.Key, pair => Math.Round(pair.Value * 1.04, 2), StringComparer.OrdinalIgnoreCase),
             BuildRecycledContent(recycledProfile),
-            BuildSoftwareVersions(productId, "1.0"),
+            firstSoftware.Version,
+            firstSoftware.ReleaseDate,
+            firstSoftware.LatestUpdate,
             DefaultDocuments,
             DefaultRequiredFields);
 
@@ -346,7 +349,6 @@ public static class BatteryProductTemplateCatalog
             materialMasses,
             carbonStages,
             BuildRecycledContent(recycledProfile),
-            softwareVersions,
             DefaultDocuments,
             DefaultRequiredFields)
         {
@@ -387,32 +389,7 @@ public static class BatteryProductTemplateCatalog
             StringComparer.OrdinalIgnoreCase);
     }
 
-    private static IReadOnlyList<BatteryProductSoftwareVersion> BuildSoftwareVersions(string productId)
-    {
-        return productId switch
-        {
-            "compact-13m" =>
-            [
-                new("1.0", "2025-10-15", "2026-01-25"),
-                new("2.0", "2026-02-20", "2026-04-22"),
-                new("3.0", "2026-05-01", "2026-05-08")
-            ],
-            "core" =>
-            [
-                new("1.0", "2025-11-10", "2026-02-14"),
-                new("2.0", "2026-03-05", "2026-04-28"),
-                new("3.0", "2026-05-03", "2026-05-08")
-            ],
-            _ =>
-            [
-                new("1.0", "2025-09-30", "2026-01-18"),
-                new("2.0", "2026-02-01", "2026-04-15"),
-                new("3.0", "2026-04-25", "2026-05-08")
-            ]
-        };
-    }
-
-    private static IReadOnlyList<BatteryProductSoftwareVersion> BuildSoftwareVersions(string productId, string productVersion)
+    private static (string Version, string ReleaseDate, string LatestUpdate) BuildSoftwareParameters(string productId, string productVersion)
     {
         var prefix = productId switch
         {
@@ -421,19 +398,9 @@ public static class BatteryProductTemplateCatalog
             _ => ("2026-01-05", "2026-04-18", "2026-05-02", "2026-05-09")
         };
 
-        return productVersion switch
-        {
-            "2.0" =>
-            [
-                new("4.0", prefix.Item3, prefix.Item4),
-                new("3.0", prefix.Item2, prefix.Item3)
-            ],
-            _ =>
-            [
-                new("2.0", prefix.Item1, prefix.Item2),
-                new("1.0", productId == "compact-13m" ? "2025-10-15" : productId == "core" ? "2025-11-10" : "2025-09-30", prefix.Item1)
-            ]
-        };
+        return productVersion.Equals("2.0", StringComparison.OrdinalIgnoreCase)
+            ? ("4.0", prefix.Item3, prefix.Item4)
+            : ("2.0", prefix.Item1, prefix.Item2);
     }
 }
 
@@ -461,21 +428,16 @@ public static class ProductTemplatePassportBuilder
     public static BsonDocument BuildPassportFromTemplate(
         string passportId,
         BatteryProductTemplate product,
-        BatteryProductSoftwareVersion softwareVersion,
         ProductTemplateBatteryIdentity identity,
         string now)
     {
-        var productVersion = product.ProductVersions
-            .FirstOrDefault(version => version.SoftwareVersions.Any(software => software.Version.Equals(softwareVersion.Version, StringComparison.OrdinalIgnoreCase)))
-            ?? product.LatestProductVersion;
-        return BuildPassportFromTemplate(passportId, product, productVersion, softwareVersion, identity, now);
+        return BuildPassportFromTemplate(passportId, product, product.LatestProductVersion, identity, now);
     }
 
     public static BsonDocument BuildPassportFromTemplate(
         string passportId,
         BatteryProductTemplate product,
         BatteryProductVersion productVersion,
-        BatteryProductSoftwareVersion softwareVersion,
         ProductTemplateBatteryIdentity identity,
         string now)
     {
@@ -525,7 +487,7 @@ public static class ProductTemplatePassportBuilder
         registryInfo["updatedAt"] = normalizedNow;
 
         ApplyBatteryIdentity(completed, product, identity, manufacturingDate);
-        ApplyProductTemplateValues(completed, product, productVersion, softwareVersion, normalizedNow);
+        ApplyProductTemplateValues(completed, product, productVersion, normalizedNow);
 
         var baseline = BuildTemplateBaseline(completed);
         EnsureDocument(EnsureDocument(completed, "app"), "templateBaseline").Clear();
@@ -678,6 +640,9 @@ public static class ProductTemplatePassportBuilder
                 ["preConsumerShare"] = pair.Value.PreConsumerShare,
                 ["postConsumerShare"] = pair.Value.PostConsumerShare
             }))),
+            ["softwareVersion"] = productVersion.SoftwareVersion,
+            ["softwareReleaseDate"] = productVersion.SoftwareReleaseDate,
+            ["softwareLatestUpdate"] = productVersion.SoftwareLatestUpdate,
             ["requiredFieldKeys"] = new BsonArray(productVersion.RequiredFieldKeys),
             ["templateDocuments"] = new BsonArray(productVersion.TemplateDocuments.Select(document => new BsonDocument
             {
@@ -691,32 +656,7 @@ public static class ProductTemplatePassportBuilder
         };
     }
 
-    public static BsonDocument ToSoftwareDocument(string productId, BatteryProductSoftwareVersion software, string updatedAt, string updatedBy)
-    {
-        return new BsonDocument
-        {
-            ["productId"] = productId,
-            ["version"] = software.Version,
-            ["releaseDate"] = software.ReleaseDate,
-            ["latestUpdate"] = software.LatestUpdate,
-            ["updatedAt"] = updatedAt,
-            ["updatedBy"] = updatedBy
-        };
-    }
-
-    public static BsonDocument ToSoftwareDocument(
-        string productId,
-        string productVersion,
-        BatteryProductSoftwareVersion software,
-        string updatedAt,
-        string updatedBy)
-    {
-        var document = ToSoftwareDocument(productId, software, updatedAt, updatedBy);
-        document["productVersion"] = productVersion;
-        return document;
-    }
-
-    public static BatteryProductTemplate FromProductDocument(BsonDocument product, IReadOnlyList<BatteryProductSoftwareVersion> softwareVersions)
+    public static BatteryProductTemplate FromProductDocument(BsonDocument product)
     {
         var productId = BsonHelpers.GetString(product, "productId");
         var defaults = BatteryProductTemplateCatalog.FindProduct(productId) ?? BatteryProductTemplateCatalog.DefaultProduct;
@@ -740,23 +680,13 @@ public static class ProductTemplatePassportBuilder
             MaterialMassesKg = ReadNumberMap(product, "materialMassesKg", defaults.MaterialMassesKg),
             CarbonStages = ReadNumberMap(product, "carbonStages", defaults.CarbonStages),
             RecycledContent = ReadRecycledContentMap(product, "recycledContent", defaults.RecycledContent),
-            SoftwareVersions = softwareVersions.Count == 0 ? defaults.SoftwareVersions : softwareVersions,
             RequiredFieldKeys = ReadStringArray(product, "requiredFieldKeys", defaults.RequiredFieldKeys)
         };
     }
 
-    public static BatteryProductSoftwareVersion FromSoftwareDocument(BsonDocument software)
-    {
-        return new BatteryProductSoftwareVersion(
-            BsonHelpers.GetString(software, "version"),
-            BsonHelpers.GetString(software, "releaseDate"),
-            BsonHelpers.GetString(software, "latestUpdate"));
-    }
-
     public static BatteryProductVersion FromProductVersionDocument(
         BsonDocument productVersion,
-        BatteryProductTemplate fallback,
-        IReadOnlyList<BatteryProductSoftwareVersion> softwareVersions)
+        BatteryProductTemplate fallback)
     {
         var defaults = fallback.ProductVersions.FirstOrDefault(version =>
             version.Version.Equals(BsonHelpers.GetString(productVersion, "version"), StringComparison.OrdinalIgnoreCase))
@@ -777,7 +707,9 @@ public static class ProductTemplatePassportBuilder
             MaterialMassesKg = ReadNumberMap(productVersion, "materialMassesKg", defaults.MaterialMassesKg),
             CarbonStages = ReadNumberMap(productVersion, "carbonStages", defaults.CarbonStages),
             RecycledContent = ReadRecycledContentMap(productVersion, "recycledContent", defaults.RecycledContent),
-            SoftwareVersions = softwareVersions.Count == 0 ? defaults.SoftwareVersions : softwareVersions,
+            SoftwareVersion = FirstNonEmpty(BsonHelpers.GetString(productVersion, "softwareVersion"), defaults.SoftwareVersion),
+            SoftwareReleaseDate = FirstNonEmpty(BsonHelpers.GetString(productVersion, "softwareReleaseDate"), defaults.SoftwareReleaseDate),
+            SoftwareLatestUpdate = FirstNonEmpty(BsonHelpers.GetString(productVersion, "softwareLatestUpdate"), defaults.SoftwareLatestUpdate),
             RequiredFieldKeys = ReadStringArray(productVersion, "requiredFieldKeys", defaults.RequiredFieldKeys)
         };
     }
@@ -815,7 +747,6 @@ public static class ProductTemplatePassportBuilder
         BsonDocument passport,
         BatteryProductTemplate product,
         BatteryProductVersion productVersion,
-        BatteryProductSoftwareVersion softwareVersion,
         string now)
     {
         var app = EnsureDocument(passport, "app");
@@ -825,9 +756,9 @@ public static class ProductTemplatePassportBuilder
         productNode["description"] = product.Description;
         productNode["moduleCount"] = product.ModuleCount;
         productNode["productVersion"] = productVersion.Version;
-        productNode["softwareVersion"] = softwareVersion.Version;
-        productNode["softwareReleaseDate"] = softwareVersion.ReleaseDate;
-        productNode["softwareLatestUpdate"] = softwareVersion.LatestUpdate;
+        productNode["softwareVersion"] = productVersion.SoftwareVersion;
+        productNode["softwareReleaseDate"] = productVersion.SoftwareReleaseDate;
+        productNode["softwareLatestUpdate"] = productVersion.SoftwareLatestUpdate;
         productNode["templateAppliedAt"] = now;
 
         var media = EnsureDocument(app, "media");

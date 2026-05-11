@@ -6,50 +6,56 @@ namespace BatteryPassWeb.Tests;
 public sealed class ProductTemplateServiceTests
 {
     [Fact]
-    public void ProductTemplateCatalog_ShouldSeedThreeProductsWithSoftwareVersionsAndEvidence()
+    public void BatteryFamilyCatalog_ShouldSeedThreeFamiliesWithBatteryVersionsAndSoftwareParameters()
     {
-        var products = BatteryProductTemplateCatalog.DefaultProducts;
+        var families = BatteryProductTemplateCatalog.DefaultProducts;
 
-        Assert.Equal(["compact-7m", "compact-13m", "core"], products.Select(product => product.ProductId).ToArray());
-        Assert.All(products, product =>
+        Assert.Equal(["compact-7m", "compact-13m", "core"], families.Select(family => family.ProductId).ToArray());
+        Assert.All(families, family =>
         {
-            Assert.Equal(["1.0", "2.0", "3.0"], product.SoftwareVersions.Select(version => version.Version).ToArray());
-            Assert.NotEmpty(product.ImageUrl);
-            Assert.Contains(product.RequiredFieldKeys, key => key == "general.product");
-            Assert.Contains(product.RequiredFieldKeys, key => key == "general.productVersion");
-            Assert.Contains(product.TemplateDocuments, document => document.DocumentKey == "conformityAssessment");
-            Assert.Contains(product.TemplateDocuments, document => document.DocumentKey == "co2StudyReference");
+            Assert.NotEmpty(family.ImageUrl);
+            Assert.NotEmpty(family.ProductVersions);
+            Assert.Contains(family.RequiredFieldKeys, key => key == "general.product");
+            Assert.Contains(family.RequiredFieldKeys, key => key == "general.productVersion");
+            Assert.Contains(family.TemplateDocuments, document => document.DocumentKey == "conformityAssessment");
+            Assert.Contains(family.TemplateDocuments, document => document.DocumentKey == "co2StudyReference");
+            Assert.All(family.ProductVersions, version =>
+            {
+                Assert.False(string.IsNullOrWhiteSpace(version.SoftwareVersion));
+                Assert.False(string.IsNullOrWhiteSpace(version.SoftwareReleaseDate));
+                Assert.False(string.IsNullOrWhiteSpace(version.SoftwareLatestUpdate));
+            });
         });
     }
 
     [Fact]
-    public void ProductTemplateCatalog_ShouldNestSoftwareUnderProductVersionsNewestFirst()
+    public void BatteryFamilyCatalog_ShouldListBatteryVersionsNewestFirst()
     {
         var product = BatteryProductTemplateCatalog.DefaultProducts.Single(item => item.ProductId == "compact-7m");
 
         Assert.Equal(["2.0", "1.0"], product.ProductVersions.Select(version => version.Version).ToArray());
-        Assert.All(product.ProductVersions, version => Assert.NotEmpty(version.SoftwareVersions));
-        Assert.Equal(["4.0", "3.0"], product.ProductVersions.First().SoftwareVersions.Select(version => version.Version).ToArray());
+        Assert.Equal("4.0", product.ProductVersions.First().SoftwareVersion);
+        Assert.Equal("2.0", product.ProductVersions.Last().SoftwareVersion);
     }
 
     [Fact]
-    public void BuildPassportFromTemplate_ShouldStoreProductVersionAndSoftwareVersion()
+    public void BuildPassportFromTemplate_ShouldStoreBatteryVersionAndSoftwareParameters()
     {
         var product = BatteryProductTemplateCatalog.DefaultProducts.Single(item => item.ProductId == "compact-7m");
         var productVersion = product.ProductVersions.Single(item => item.Version == "2.0");
-        var software = productVersion.SoftwareVersions.Single(item => item.Version == "4.0");
 
         var passport = ProductTemplatePassportBuilder.BuildPassportFromTemplate(
             "did:web:acme.battery.pass:versioned-001",
             product,
             productVersion,
-            software,
             new ProductTemplateBatteryIdentity(),
             "2026-05-11T10:00:00.0000000Z");
 
         Assert.Equal("compact-7m", BsonHelpers.GetString(passport, "app", "product", "productId"));
         Assert.Equal("2.0", BsonHelpers.GetString(passport, "app", "product", "productVersion"));
-        Assert.Equal("4.0", BsonHelpers.GetString(passport, "app", "product", "softwareVersion"));
+        Assert.Equal(productVersion.SoftwareVersion, BsonHelpers.GetString(passport, "app", "product", "softwareVersion"));
+        Assert.Equal(productVersion.SoftwareReleaseDate, BsonHelpers.GetString(passport, "app", "product", "softwareReleaseDate"));
+        Assert.Equal(productVersion.SoftwareLatestUpdate, BsonHelpers.GetString(passport, "app", "product", "softwareLatestUpdate"));
         Assert.True((BsonHelpers.GetValue(passport, "app", "templateBaseline") as BsonDocument)?.ElementCount > 0);
     }
 
@@ -76,12 +82,11 @@ public sealed class ProductTemplateServiceTests
     public void BuildPassportFromTemplate_ShouldKeepBatterySpecificFieldsEmptyWhenIdentityIsEmpty()
     {
         var product = BatteryProductTemplateCatalog.DefaultProducts.Single(item => item.ProductId == "compact-7m");
-        var software = product.SoftwareVersions.Single(item => item.Version == "1.0");
 
         var passport = ProductTemplatePassportBuilder.BuildPassportFromTemplate(
             "did:web:acme.battery.pass:new-empty-fields-001",
             product,
-            software,
+            product.LatestProductVersion,
             new ProductTemplateBatteryIdentity(),
             "2026-05-08T10:00:00.0000000Z");
 
@@ -97,12 +102,11 @@ public sealed class ProductTemplateServiceTests
     public void BuildPassportFromTemplate_ShouldCopyProductDataAndPreserveBatterySpecificFields()
     {
         var product = BatteryProductTemplateCatalog.DefaultProducts.Single(item => item.ProductId == "compact-7m");
-        var software = product.SoftwareVersions.Single(item => item.Version == "2.0");
 
         var passport = ProductTemplatePassportBuilder.BuildPassportFromTemplate(
             "did:web:acme.battery.pass:test-template-001",
             product,
-            software,
+            product.LatestProductVersion,
             new ProductTemplateBatteryIdentity
             {
                 ModelNumber = "CT-7M-TEST-001",
@@ -117,7 +121,7 @@ public sealed class ProductTemplateServiceTests
         Assert.Equal("did:web:acme.battery.pass:test-template-001", BsonHelpers.GetString(passport, "passportId"));
         Assert.Equal("cluster-north-operations", BsonHelpers.GetString(passport, "clusterId"));
         Assert.Equal("Compact 7M", BsonHelpers.GetString(passport, "app", "product", "productName"));
-        Assert.Equal("2.0", BsonHelpers.GetString(passport, "app", "product", "softwareVersion"));
+        Assert.Equal(product.LatestProductVersion.SoftwareVersion, BsonHelpers.GetString(passport, "app", "product", "softwareVersion"));
         Assert.Equal("CT-7M-TEST-001", BsonHelpers.GetString(passport, "app", "display", "modelNumber"));
         Assert.Equal("SN-TEMPLATE-001", BsonHelpers.GetString(passport, "app", "display", "serialNumber"));
         Assert.Equal("industrial", BsonHelpers.GetString(passport, "aspects", "generalProductInformation", "payload", "batteryCategory"));
@@ -171,19 +175,16 @@ public sealed class ProductTemplateServiceTests
     }
 
     [Fact]
-    public void ComputeSafeTemplateUpdates_ShouldUpdateBetweenProductVersionsAndPreserveManualOverrides()
+    public void ComputeSafeTemplateUpdates_ShouldUpdateBetweenBatteryVersionsAndPreserveManualOverrides()
     {
         var product = BatteryProductTemplateCatalog.DefaultProducts.Single(item => item.ProductId == "compact-7m");
         var oldVersion = product.ProductVersions.Single(item => item.Version == "1.0");
         var newVersion = product.ProductVersions.Single(item => item.Version == "2.0");
-        var oldSoftware = oldVersion.SoftwareVersions.First();
-        var newSoftware = newVersion.SoftwareVersions.First();
 
         var passport = ProductTemplatePassportBuilder.BuildPassportFromTemplate(
             "did:web:acme.battery.pass:safe-version-push-001",
             product,
             oldVersion,
-            oldSoftware,
             new ProductTemplateBatteryIdentity
             {
                 ModelNumber = "CP7M-TEST-001",
@@ -199,7 +200,6 @@ public sealed class ProductTemplateServiceTests
             BsonHelpers.GetString(passport, "passportId"),
             product,
             newVersion,
-            newSoftware,
             new ProductTemplateBatteryIdentity
             {
                 ModelNumber = BsonHelpers.GetString(passport, "app", "display", "modelNumber"),
@@ -213,20 +213,23 @@ public sealed class ProductTemplateServiceTests
         var result = ProductTemplatePassportBuilder.ComputeSafeTemplateUpdates(passport, oldTemplate, newTemplate);
 
         Assert.Contains("app.product.productVersion", result.UpdatedPaths);
+        Assert.Contains("app.product.softwareVersion", result.UpdatedPaths);
         Assert.Contains("aspects.generalProductInformation.payload.batteryStatus", result.SkippedOverridePaths);
         Assert.Equal("2.0", BsonHelpers.GetString(result.UpdatedPassport, "app", "product", "productVersion"));
+        Assert.Equal(newVersion.SoftwareVersion, BsonHelpers.GetString(result.UpdatedPassport, "app", "product", "softwareVersion"));
         Assert.Equal("Manually changed", BsonHelpers.GetString(result.UpdatedPassport, "aspects", "generalProductInformation", "payload", "batteryStatus"));
     }
 
     [Fact]
-    public void ProductTemplateService_ShouldSupportProductVersionPushWithoutChangingSoftwareVersion()
+    public void ProductTemplateService_ShouldSupportBatteryVersionPushWithSoftwareParameters()
     {
         var source = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateService.cs"));
 
         Assert.Contains("PushProductVersionAsync", source);
         Assert.Contains("Eq(\"app.product.productVersion\", selectedProductVersion.Version)", source);
-        Assert.Contains("currentSoftwareVersion", source);
-        Assert.Contains("selectedProductVersion.SoftwareVersions.FirstOrDefault(version => version.Version.Equals(currentSoftwareVersion", source);
+        Assert.Contains("BuildSafeTemplatePushUpdate(passport, product, selectedProductVersion", source);
+        Assert.DoesNotContain("PushTemplateAsync", source);
+        Assert.DoesNotContain("SoftwareCollection", source);
     }
 
     [Fact]

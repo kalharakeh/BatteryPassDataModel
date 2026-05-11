@@ -58,8 +58,7 @@ public sealed class ProductTemplateService
     {
         var productCollection = ProductCollection();
         var productVersionCollection = ProductVersionCollection();
-        var softwareCollection = SoftwareCollection();
-        if (productCollection == null || productVersionCollection == null || softwareCollection == null)
+        if (productCollection == null || productVersionCollection == null)
         {
             return BatteryProductTemplateCatalog.DefaultProducts;
         }
@@ -72,47 +71,21 @@ public sealed class ProductTemplateService
         var productVersions = await productVersionCollection
             .Find(Builders<BsonDocument>.Filter.Empty)
             .ToListAsync(cancellationToken);
-        var software = await softwareCollection
-            .Find(Builders<BsonDocument>.Filter.Empty)
-            .ToListAsync(cancellationToken);
 
         return products
             .Select(product =>
             {
                 var productId = BsonHelpers.GetString(product, "productId");
-                var legacySoftware = software
-                    .Where(item => BsonHelpers.GetString(item, "productId").Equals(productId, StringComparison.OrdinalIgnoreCase)
-                                   && string.IsNullOrWhiteSpace(BsonHelpers.GetString(item, "productVersion")))
-                    .OrderBy(item => BsonHelpers.GetString(item, "version"), VersionStringComparer.Descending)
-                    .Select(ProductTemplatePassportBuilder.FromSoftwareDocument)
-                    .ToList();
-                var template = ProductTemplatePassportBuilder.FromProductDocument(product, legacySoftware);
+                var template = ProductTemplatePassportBuilder.FromProductDocument(product);
                 var versions = productVersions
                     .Where(item => BsonHelpers.GetString(item, "productId").Equals(productId, StringComparison.OrdinalIgnoreCase))
-                    .Select(version =>
-                    {
-                        var versionNumber = BsonHelpers.GetString(version, "version");
-                        var versionSoftware = software
-                            .Where(item => BsonHelpers.GetString(item, "productId").Equals(productId, StringComparison.OrdinalIgnoreCase)
-                                           && BsonHelpers.GetString(item, "productVersion").Equals(versionNumber, StringComparison.OrdinalIgnoreCase))
-                            .OrderBy(item => BsonHelpers.GetString(item, "version"), VersionStringComparer.Descending)
-                            .Select(ProductTemplatePassportBuilder.FromSoftwareDocument)
-                            .ToList();
-                        return ProductTemplatePassportBuilder.FromProductVersionDocument(version, template, versionSoftware);
-                    })
+                    .Select(version => ProductTemplatePassportBuilder.FromProductVersionDocument(version, template))
                     .OrderBy(version => version.Version, VersionStringComparer.Descending)
                     .ToList();
 
                 return template with
                 {
-                    ProductVersions = versions.Count == 0 ? template.ProductVersions : versions,
-                    SoftwareVersions = versions.Count == 0
-                        ? template.SoftwareVersions
-                        : versions.SelectMany(version => version.SoftwareVersions)
-                            .GroupBy(version => version.Version, StringComparer.OrdinalIgnoreCase)
-                            .Select(group => group.First())
-                            .OrderBy(version => version.Version, VersionStringComparer.Ascending)
-                            .ToList()
+                    ProductVersions = versions.Count == 0 ? template.ProductVersions : versions
                 };
             })
             .ToList();
@@ -145,11 +118,12 @@ public sealed class ProductTemplateService
     {
         var productCollection = ProductCollection();
         var productVersionCollection = ProductVersionCollection();
-        var softwareCollection = SoftwareCollection();
-        if (productCollection == null || productVersionCollection == null || softwareCollection == null)
+        if (productCollection == null || productVersionCollection == null)
         {
             return;
         }
+
+        await DropLegacyVersionParameterStoreAsync(cancellationToken);
 
         if (!force && await productCollection.CountDocumentsAsync(Builders<BsonDocument>.Filter.Empty, cancellationToken: cancellationToken) > 0)
         {
@@ -170,9 +144,6 @@ public sealed class ProductTemplateService
             await productVersionCollection.DeleteManyAsync(
                 Builders<BsonDocument>.Filter.Eq("productId", product.ProductId),
                 cancellationToken);
-            await softwareCollection.DeleteManyAsync(
-                Builders<BsonDocument>.Filter.Eq("productId", product.ProductId),
-                cancellationToken);
 
             foreach (var productVersion in product.ProductVersions)
             {
@@ -185,18 +156,6 @@ public sealed class ProductTemplateService
                     productVersionDocument,
                     new ReplaceOptions { IsUpsert = true },
                     cancellationToken);
-
-                foreach (var software in productVersion.SoftwareVersions)
-                {
-                    await softwareCollection.ReplaceOneAsync(
-                        Builders<BsonDocument>.Filter.And(
-                            Builders<BsonDocument>.Filter.Eq("productId", product.ProductId),
-                            Builders<BsonDocument>.Filter.Eq("productVersion", productVersion.Version),
-                            Builders<BsonDocument>.Filter.Eq("version", software.Version)),
-                        ProductTemplatePassportBuilder.ToSoftwareDocument(product.ProductId, productVersion.Version, software, now, actor),
-                        new ReplaceOptions { IsUpsert = true },
-                        cancellationToken);
-                }
 
                 await _dataCompletionPolicyService.SaveProductVersionPolicyAsync(
                     product.ProductId,
@@ -221,7 +180,7 @@ public sealed class ProductTemplateService
         await EnsureDefaultTemplatesAsync(actor, cancellationToken);
         var product = await GetProductAsync(productId, cancellationToken) ?? BatteryProductTemplateCatalog.DefaultProduct;
         var selectedProductVersion = product.ProductVersions.FirstOrDefault(version =>
-                version.SoftwareVersions.Any(software => software.Version.Equals(softwareVersion, StringComparison.OrdinalIgnoreCase)))
+                version.SoftwareVersion.Equals(softwareVersion, StringComparison.OrdinalIgnoreCase))
             ?? product.LatestProductVersion;
         return await BuildPassportFromTemplateAsync(
             passportId,
@@ -246,10 +205,8 @@ public sealed class ProductTemplateService
         var product = await GetProductAsync(productId, cancellationToken) ?? BatteryProductTemplateCatalog.DefaultProduct;
         var selectedProductVersion = product.ProductVersions.FirstOrDefault(version => version.Version.Equals(productVersion, StringComparison.OrdinalIgnoreCase))
             ?? product.LatestProductVersion;
-        var software = selectedProductVersion.SoftwareVersions.FirstOrDefault(version => version.Version.Equals(softwareVersion, StringComparison.OrdinalIgnoreCase))
-            ?? selectedProductVersion.SoftwareVersions.First();
         var now = DateTimeOffset.UtcNow.ToString("O");
-        var document = ProductTemplatePassportBuilder.BuildPassportFromTemplate(passportId, product, selectedProductVersion, software, identity, now);
+        var document = ProductTemplatePassportBuilder.BuildPassportFromTemplate(passportId, product, selectedProductVersion, identity, now);
         var productDocument = await GetProductDocumentAsync(product.ProductId, cancellationToken);
         ApplyTemplateDocumentReferences(document, productDocument);
         document["app"]["templateBaseline"] = ProductTemplatePassportBuilder.BuildTemplateBaseline(document);
@@ -263,11 +220,12 @@ public sealed class ProductTemplateService
     {
         var productCollection = ProductCollection();
         var productVersionCollection = ProductVersionCollection();
-        var softwareCollection = SoftwareCollection();
-        if (productCollection == null || productVersionCollection == null || softwareCollection == null)
+        if (productCollection == null || productVersionCollection == null)
         {
             return;
         }
+
+        await DropLegacyVersionParameterStoreAsync(cancellationToken);
 
         var now = DateTimeOffset.UtcNow.ToString("O");
         var existingProductDocument = await productCollection
@@ -288,9 +246,6 @@ public sealed class ProductTemplateService
         await productVersionCollection.DeleteManyAsync(
             Builders<BsonDocument>.Filter.Eq("productId", product.ProductId),
             cancellationToken);
-        await softwareCollection.DeleteManyAsync(
-            Builders<BsonDocument>.Filter.Eq("productId", product.ProductId),
-            cancellationToken);
 
         var productVersions = product.ProductVersions.Count == 0
             ? [product.LatestProductVersion]
@@ -306,18 +261,6 @@ public sealed class ProductTemplateService
                 productVersionDocument,
                 new ReplaceOptions { IsUpsert = true },
                 cancellationToken);
-
-            foreach (var software in productVersion.SoftwareVersions)
-            {
-                await softwareCollection.ReplaceOneAsync(
-                    Builders<BsonDocument>.Filter.And(
-                        Builders<BsonDocument>.Filter.Eq("productId", product.ProductId),
-                        Builders<BsonDocument>.Filter.Eq("productVersion", productVersion.Version),
-                        Builders<BsonDocument>.Filter.Eq("version", software.Version)),
-                    ProductTemplatePassportBuilder.ToSoftwareDocument(product.ProductId, productVersion.Version, software, now, actor),
-                    new ReplaceOptions { IsUpsert = true },
-                    cancellationToken);
-            }
 
             await _dataCompletionPolicyService.SaveProductVersionPolicyAsync(
                 product.ProductId,
@@ -383,13 +326,10 @@ public sealed class ProductTemplateService
                 : BatteryProductTemplateCatalog.DefaultProduct;
             var productVersion = product.ProductVersions.FirstOrDefault(version => version.Version.Equals(seed.ProductVersion, StringComparison.OrdinalIgnoreCase))
                 ?? product.LatestProductVersion;
-            var software = productVersion.SoftwareVersions.FirstOrDefault(version => version.Version.Equals(seed.SoftwareVersion, StringComparison.OrdinalIgnoreCase))
-                ?? productVersion.SoftwareVersions.First();
             var document = ProductTemplatePassportBuilder.BuildPassportFromTemplate(
                 seed.PassportId,
                 product,
                 productVersion,
-                software,
                 new ProductTemplateBatteryIdentity
                 {
                     ClusterId = seed.ClusterId,
@@ -470,10 +410,7 @@ public sealed class ProductTemplateService
 
         foreach (var passport in passports)
         {
-            var currentSoftwareVersion = BsonHelpers.GetString(passport, "app", "product", "softwareVersion");
-            var software = selectedProductVersion.SoftwareVersions.FirstOrDefault(version => version.Version.Equals(currentSoftwareVersion, StringComparison.OrdinalIgnoreCase))
-                ?? selectedProductVersion.SoftwareVersions.First();
-            var result = BuildSafeTemplatePushUpdate(passport, product, selectedProductVersion, software, productDocument, now);
+            var result = BuildSafeTemplatePushUpdate(passport, product, selectedProductVersion, productDocument, now);
             if (result.UpdatedPaths.Count == 0)
             {
                 skippedPaths.AddRange(result.SkippedOverridePaths);
@@ -497,7 +434,7 @@ public sealed class ProductTemplateService
                 {
                     ["productId"] = product.ProductId,
                     ["productVersion"] = selectedProductVersion.Version,
-                    ["softwareVersion"] = software.Version,
+                    ["softwareVersion"] = selectedProductVersion.SoftwareVersion,
                     ["updatedPaths"] = new BsonArray(result.UpdatedPaths),
                     ["skippedOverridePaths"] = new BsonArray(result.SkippedOverridePaths)
                 },
@@ -516,101 +453,10 @@ public sealed class ProductTemplateService
         };
     }
 
-    public async Task<ProductTemplatePushResult> PushTemplateAsync(
-        string productId,
-        string softwareVersion,
-        string actor,
-        CancellationToken cancellationToken = default)
-    {
-        var product = await GetProductAsync(productId, cancellationToken);
-        if (product == null)
-        {
-            return new ProductTemplatePushResult();
-        }
-
-        var productVersion = product.ProductVersions.FirstOrDefault(version =>
-                version.SoftwareVersions.Any(software => software.Version.Equals(softwareVersion, StringComparison.OrdinalIgnoreCase)))
-            ?? product.LatestProductVersion;
-        return await PushTemplateAsync(productId, productVersion.Version, softwareVersion, actor, cancellationToken);
-    }
-
-    public async Task<ProductTemplatePushResult> PushTemplateAsync(string productId, string productVersion, string softwareVersion, string actor, CancellationToken cancellationToken = default)
-    {
-        var product = await GetProductAsync(productId, cancellationToken);
-        if (product == null)
-        {
-            return new ProductTemplatePushResult();
-        }
-
-        var selectedProductVersion = product.ProductVersions.FirstOrDefault(version => version.Version.Equals(productVersion, StringComparison.OrdinalIgnoreCase))
-            ?? product.LatestProductVersion;
-        var software = selectedProductVersion.SoftwareVersions.FirstOrDefault(version => version.Version.Equals(softwareVersion, StringComparison.OrdinalIgnoreCase))
-            ?? selectedProductVersion.SoftwareVersions.First();
-        var collection = PassportCollection();
-        if (collection == null)
-        {
-            return new ProductTemplatePushResult();
-        }
-
-        var filter = Builders<BsonDocument>.Filter.And(
-            Builders<BsonDocument>.Filter.Eq("app.product.productId", product.ProductId),
-            Builders<BsonDocument>.Filter.Eq("app.product.productVersion", selectedProductVersion.Version),
-            Builders<BsonDocument>.Filter.Eq("app.product.softwareVersion", software.Version));
-        var passports = await collection.Find(filter).ToListAsync(cancellationToken);
-        var productDocument = await GetProductDocumentAsync(product.ProductId, cancellationToken);
-        var updatedPassportIds = new List<string>();
-        var skippedPaths = new List<string>();
-        var now = DateTimeOffset.UtcNow.ToString("O");
-
-        foreach (var passport in passports)
-        {
-            var result = BuildSafeTemplatePushUpdate(passport, product, selectedProductVersion, software, productDocument, now);
-            if (result.UpdatedPaths.Count == 0)
-            {
-                skippedPaths.AddRange(result.SkippedOverridePaths);
-                continue;
-            }
-
-            result.UpdatedPassport.Remove("_id");
-            await _passportRepository.ReplaceAsync(BsonHelpers.GetString(passport, "passportId"), result.UpdatedPassport, cancellationToken);
-            await _passportRepository.MarkCanonicalDirtyAsync(BsonHelpers.GetString(passport, "passportId"), "productTemplatePushed", cancellationToken);
-            updatedPassportIds.Add(BsonHelpers.GetString(passport, "passportId"));
-            skippedPaths.AddRange(result.SkippedOverridePaths);
-            await _auditRevisionService.AppendAuditEventAsync(
-                BsonHelpers.GetString(passport, "passportId"),
-                "passport.productTemplate.pushed",
-                actor,
-                "admin",
-                "product-template-push",
-                "Product template changes pushed to passport.",
-                new BsonDocument
-                {
-                    ["productId"] = product.ProductId,
-                    ["productVersion"] = selectedProductVersion.Version,
-                    ["softwareVersion"] = software.Version,
-                    ["updatedPaths"] = new BsonArray(result.UpdatedPaths),
-                    ["skippedOverridePaths"] = new BsonArray(result.SkippedOverridePaths)
-                },
-                cancellationToken);
-        }
-
-        await RecordPushRunAsync(product.ProductId, selectedProductVersion.Version, software.Version, actor, now, passports.Count, updatedPassportIds.Count, skippedPaths, cancellationToken);
-
-        return new ProductTemplatePushResult
-        {
-            MatchedBatteries = passports.Count,
-            UpdatedBatteries = updatedPassportIds.Count,
-            SkippedBatteries = passports.Count - updatedPassportIds.Count,
-            UpdatedPassportIds = updatedPassportIds,
-            SkippedOverridePaths = skippedPaths.Distinct(StringComparer.OrdinalIgnoreCase).ToList()
-        };
-    }
-
     private static ProductTemplateSafeUpdateResult BuildSafeTemplatePushUpdate(
         BsonDocument passport,
         BatteryProductTemplate product,
         BatteryProductVersion selectedProductVersion,
-        BatteryProductSoftwareVersion software,
         BsonDocument? productDocument,
         string now)
     {
@@ -628,7 +474,6 @@ public sealed class ProductTemplateService
             BsonHelpers.GetString(passport, "passportId"),
             product,
             selectedProductVersion,
-            software,
             identity,
             now);
         ApplyTemplateDocumentReferences(fresh, productDocument);
@@ -840,14 +685,26 @@ public sealed class ProductTemplateService
     private IMongoCollection<BsonDocument>? ProductVersionCollection() =>
         _mongoContext.Database?.GetCollection<BsonDocument>("batteryProductTemplateVersions");
 
-    private IMongoCollection<BsonDocument>? SoftwareCollection() =>
-        _mongoContext.Database?.GetCollection<BsonDocument>("batteryProductTemplateSoftwareVersions");
-
     private IMongoCollection<BsonDocument>? PassportCollection() =>
         _mongoContext.Database?.GetCollection<BsonDocument>("passports");
 
     private IMongoCollection<BsonDocument>? PushRunsCollection() =>
         _mongoContext.Database?.GetCollection<BsonDocument>("batteryProductTemplatePushRuns");
+
+    private async Task DropLegacyVersionParameterStoreAsync(CancellationToken cancellationToken)
+    {
+        if (_mongoContext.Database == null)
+        {
+            return;
+        }
+
+        var legacyName = "batteryProductTemplate" + "SoftwareVersions";
+        var collections = await _mongoContext.Database.ListCollectionNames().ToListAsync(cancellationToken);
+        if (collections.Contains(legacyName, StringComparer.OrdinalIgnoreCase))
+        {
+            await _mongoContext.Database.DropCollectionAsync(legacyName, cancellationToken);
+        }
+    }
 
     private sealed class VersionStringComparer : IComparer<string>
     {

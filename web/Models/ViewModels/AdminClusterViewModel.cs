@@ -31,16 +31,9 @@ public sealed class ProductTemplateSummaryViewModel
     public string Description { get; init; } = string.Empty;
     public string ImageUrl { get; init; } = string.Empty;
     public int ModuleCount { get; init; }
-    public int SoftwareVersionCount { get; init; }
+    public int BatteryVersionCount { get; init; }
     public int RequiredFieldCount { get; init; }
     public int DocumentCount { get; init; }
-}
-
-public sealed class ProductSoftwareVersionViewModel
-{
-    public string Version { get; init; } = string.Empty;
-    public string ReleaseDate { get; init; } = string.Empty;
-    public string LatestUpdate { get; init; } = string.Empty;
 }
 
 public sealed class ProductVersionEditViewModel
@@ -59,7 +52,9 @@ public sealed class ProductVersionEditViewModel
     public IReadOnlyDictionary<string, double> MaterialMassesKg { get; init; } = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
     public IReadOnlyDictionary<string, double> CarbonStages { get; init; } = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
     public IReadOnlyDictionary<string, ProductTemplateRecycledContentViewModel> RecycledContent { get; init; } = new Dictionary<string, ProductTemplateRecycledContentViewModel>(StringComparer.OrdinalIgnoreCase);
-    public IReadOnlyList<ProductSoftwareVersionViewModel> SoftwareVersions { get; init; } = [];
+    public string SoftwareVersion { get; init; } = string.Empty;
+    public string SoftwareReleaseDate { get; init; } = string.Empty;
+    public string SoftwareLatestUpdate { get; init; } = string.Empty;
     public IReadOnlyList<ProductTemplateDocumentViewModel> TemplateDocuments { get; init; } = [];
     public IReadOnlyList<string> RequiredFieldKeys { get; init; } = [];
 }
@@ -91,7 +86,6 @@ public sealed class ProductTemplateFormCatalogItemViewModel
     public IReadOnlyDictionary<string, double> MaterialMassesKg { get; init; } = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
     public IReadOnlyDictionary<string, double> CarbonStages { get; init; } = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
     public IReadOnlyDictionary<string, ProductTemplateRecycledContentViewModel> RecycledContent { get; init; } = new Dictionary<string, ProductTemplateRecycledContentViewModel>(StringComparer.OrdinalIgnoreCase);
-    public IReadOnlyList<ProductSoftwareVersionViewModel> SoftwareVersions { get; init; } = [];
     public IReadOnlyList<ProductVersionEditViewModel> ProductVersions { get; init; } = [];
 }
 
@@ -121,7 +115,6 @@ public sealed class ProductTemplateEditViewModel
     public IReadOnlyDictionary<string, double> MaterialMassesKg { get; init; } = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
     public IReadOnlyDictionary<string, double> CarbonStages { get; init; } = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
     public IReadOnlyDictionary<string, ProductTemplateRecycledContentViewModel> RecycledContent { get; init; } = new Dictionary<string, ProductTemplateRecycledContentViewModel>(StringComparer.OrdinalIgnoreCase);
-    public IReadOnlyList<ProductSoftwareVersionViewModel> SoftwareVersions { get; init; } = [];
     public DataCompletionPolicySnapshot DataRequirements { get; init; } = new();
     public string StatusMessage { get; init; } = string.Empty;
     public string ErrorMessage { get; init; } = string.Empty;
