@@ -163,6 +163,10 @@ public sealed class PassportViewModelFactory
             RegistryStatus = BsonHelpers.GetString(document, "registryInfo", "status"),
             ClusterId = clusterId,
             ClusterLabel = clusterLabel,
+            BatteryFamily = BsonHelpers.GetString(appProduct, "productName"),
+            BatteryVersion = BsonHelpers.GetString(appProduct, "productVersion"),
+            BatterySerialNumber = serialNumber,
+            PassportStatus = BuildPassportStatus(document, trustState),
             ProductId = BsonHelpers.GetString(appProduct, "productId"),
             ProductName = BsonHelpers.GetString(appProduct, "productName"),
             ProductVersion = BsonHelpers.GetString(appProduct, "productVersion"),
@@ -248,6 +252,24 @@ public sealed class PassportViewModelFactory
             MaterialCompositionTotal = materialSegments.Sum(segment => segment.Value),
             SupplyChainIndex = BatteryPassCanonicalDataCatalog.NormalizeSupplyChainIndex(NumberAt(supplyChainPayload, "supplyChainIndicies"))
         };
+    }
+
+    private static string BuildPassportStatus(BsonDocument document, string trustState)
+    {
+        var registryStatus = BsonHelpers.GetString(document, "registryInfo", "status");
+        if (registryStatus.Equals("archived", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Archived";
+        }
+
+        if (registryStatus.Equals("published", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Published";
+        }
+
+        return trustState.Equals(TrustState.Signed, StringComparison.OrdinalIgnoreCase)
+            ? "Signed"
+            : "Draft";
     }
 
     private static PassportDocumentLinkViewModel ReadDocument(BsonDocument appDocuments, string key, string fallbackLabel, string fallbackUrl)

@@ -426,8 +426,31 @@ public sealed class PassportRepository
             RegistryStatus = status,
             ClusterId = clusterId,
             ClusterLabel = string.IsNullOrWhiteSpace(clusterId) ? "No cluster assigned" : clusterId,
+            BatteryFamily = BsonHelpers.GetString(document, "app", "product", "productName"),
+            BatteryVersion = BsonHelpers.GetString(document, "app", "product", "productVersion"),
+            BatterySerialNumber = serialNumber,
+            PassportStatus = BuildPassportStatus(document),
             BatteryImageUrl = normalizedImageUrl,
             UpdatedDate = BsonHelpers.GetString(document, "registryInfo", "updatedAt")
         };
+    }
+
+    private static string BuildPassportStatus(BsonDocument document)
+    {
+        var registryStatus = BsonHelpers.GetString(document, "registryInfo", "status");
+        if (registryStatus.Equals("archived", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Archived";
+        }
+
+        if (registryStatus.Equals("published", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Published";
+        }
+
+        var trustState = BsonHelpers.GetString(document, "trust", "state");
+        return trustState.Equals(TrustState.Signed, StringComparison.OrdinalIgnoreCase)
+            ? "Signed"
+            : "Draft";
     }
 }
