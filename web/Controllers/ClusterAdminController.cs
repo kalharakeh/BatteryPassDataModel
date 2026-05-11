@@ -16,19 +16,22 @@ public class ClusterAdminController : Controller
     private readonly PassportViewModelFactory _viewModelFactory;
     private readonly AccessControlService _accessControlService;
     private readonly ExternalApiRepository _externalApiRepository;
+    private readonly LocalAdminEditableFieldPolicyService _localAdminEditableFieldPolicyService;
 
     public ClusterAdminController(
         PassportRepository passportRepository,
         ClusterRepository clusterRepository,
         PassportViewModelFactory viewModelFactory,
         AccessControlService accessControlService,
-        ExternalApiRepository externalApiRepository)
+        ExternalApiRepository externalApiRepository,
+        LocalAdminEditableFieldPolicyService localAdminEditableFieldPolicyService)
     {
         _passportRepository = passportRepository;
         _clusterRepository = clusterRepository;
         _viewModelFactory = viewModelFactory;
         _accessControlService = accessControlService;
         _externalApiRepository = externalApiRepository;
+        _localAdminEditableFieldPolicyService = localAdminEditableFieldPolicyService;
     }
 
     [HttpGet("")]
@@ -108,10 +111,12 @@ public class ClusterAdminController : Controller
             .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
             .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
 
+        var editablePolicy = await _localAdminEditableFieldPolicyService.GetPolicyAsync(cancellationToken);
         var model = new Models.ViewModels.EditPassportViewModel
         {
             Passport = _viewModelFactory.Create(document, clusterNamesById),
             Mode = "cluster-edit",
+            FieldEditableByKey = BuildEditableFieldDictionary(editablePolicy),
             StatusMessage = status == "saved" ? "Local passport fields saved." : string.Empty,
             ErrorMessage = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error)
         };
@@ -141,7 +146,8 @@ public class ClusterAdminController : Controller
             return NotFound();
         }
 
-        ApplyLocalPassportForm(document, Request.Form, DateTime.UtcNow.ToString("O"));
+        var editablePolicy = await _localAdminEditableFieldPolicyService.GetPolicyAsync(cancellationToken);
+        ApplyLocalPassportForm(document, Request.Form, DateTime.UtcNow.ToString("O"), editablePolicy.EditableFieldKeys.ToHashSet(StringComparer.OrdinalIgnoreCase));
         await _passportRepository.ReplaceAsync(passportId, document, cancellationToken);
         return Redirect($"/cluster-admin/passports/{Uri.EscapeDataString(passportId)}/edit?status=saved");
     }
@@ -474,59 +480,87 @@ public class ClusterAdminController : Controller
         return managedClusterIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
-    private static void ApplyLocalPassportForm(BsonDocument document, IFormCollection form, string now)
+    private static IReadOnlyDictionary<string, bool> BuildEditableFieldDictionary(LocalAdminEditableFieldPolicySnapshot policy)
+    {
+        return policy.Sections
+            .SelectMany(section => section.Fields)
+            .ToDictionary(field => field.FieldKey, field => policy.IsEditable(field.FieldKey), StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static void ApplyLocalPassportForm(BsonDocument document, IFormCollection form, string now, IReadOnlySet<string> editableFieldKeys)
     {
         var app = EnsureDocument(document, "app");
         var display = EnsureDocument(app, "display");
         var media = EnsureDocument(app, "media");
         var aspects = EnsureDocument(document, "aspects");
 
-        var facilityId = Text(form, "facilityId", display.GetValue("facilityId", string.Empty).ToString());
-        var batteryImageUrl = BatteryImageCatalog.NormalizeKnownImageUrl(
-            Text(form, "batteryImageUrl", media.GetValue("batteryImageUrl", BatteryImageCatalog.DefaultImageUrl).ToString()),
-            BsonHelpers.GetString(document, "passportId"));
-        var stateOfCharge = ClampNumber(Number(form, "stateOfCharge", NumberAtDocument(EnsureDocument(EnsureDocument(EnsureDocument(aspects, "performanceAndDurability"), "payload"), "batteryCondition"), "stateOfCharge", "stateOfChargeValue")), 0, 100);
-        var remainingCapacity = ClampNumber(Number(form, "remainingCapacity", NumberAtDocument(EnsureDocument(EnsureDocument(EnsureDocument(aspects, "performanceAndDurability"), "payload"), "batteryCondition"), "remainingCapacity", "remainingCapacityValue")), 0, 100);
-        var remainingEnergy = Math.Max(0, Number(form, "remainingEnergy", NumberAtDocument(EnsureDocument(EnsureDocument(EnsureDocument(aspects, "performanceAndDurability"), "payload"), "batteryCondition"), "remainingEnergy", "remainingEnergyValue")));
-        var fullCycles = Math.Max(0, Math.Truncate(Number(form, "fullCycles", NumberAtDocument(EnsureDocument(EnsureDocument(EnsureDocument(aspects, "performanceAndDurability"), "payload"), "batteryCondition"), "numberOfFullCycles", "numberOfFullCyclesValue"))));
-
-        display["facilityId"] = facilityId;
-        media["batteryImageUrl"] = batteryImageUrl;
-        media["batteryImageAlt"] = $"Industrial battery pack for passport {display.GetValue("modelNumber", string.Empty)}";
-
         var generalAspect = EnsureDocument(aspects, "generalProductInformation");
         var generalPayload = EnsureDocument(generalAspect, "payload");
         generalPayload["batteryCategory"] = BatteryPassCanonicalDataCatalog.NormalizeBatteryCategory(
             BsonHelpers.GetString(generalPayload, "batteryCategory"));
-        var manufacturingPlace = EnsureDocument(generalPayload, "manufacturingPlace");
-        manufacturingPlace["streetAddress"] = facilityId;
-        var manufacturerInformation = EnsureDocument(generalPayload, "manufacturerInformation");
-        var postalAddress = EnsureDocument(manufacturerInformation, "postalAddress");
-        postalAddress["streetAddress"] = facilityId;
-
         var performanceAspect = EnsureDocument(aspects, "performanceAndDurability");
         var performancePayload = EnsureDocument(performanceAspect, "payload");
         var batteryCondition = EnsureDocument(performancePayload, "batteryCondition");
-        batteryCondition["stateOfCharge"] = new BsonDocument
+
+        if (editableFieldKeys.Contains("general.facilityId"))
+        {
+            var facilityId = Text(form, "facilityId", display.GetValue("facilityId", string.Empty).ToString());
+            display["facilityId"] = facilityId;
+            var manufacturingPlace = EnsureDocument(generalPayload, "manufacturingPlace");
+            manufacturingPlace["streetAddress"] = facilityId;
+            var manufacturerInformation = EnsureDocument(generalPayload, "manufacturerInformation");
+            var postalAddress = EnsureDocument(manufacturerInformation, "postalAddress");
+            postalAddress["streetAddress"] = facilityId;
+        }
+
+        if (editableFieldKeys.Contains("general.batteryImageUrl"))
+        {
+            var batteryImageUrl = BatteryImageCatalog.NormalizeKnownImageUrl(
+                Text(form, "batteryImageUrl", media.GetValue("batteryImageUrl", BatteryImageCatalog.DefaultImageUrl).ToString()),
+                BsonHelpers.GetString(document, "passportId"));
+            media["batteryImageUrl"] = batteryImageUrl;
+            media["batteryImageAlt"] = $"Industrial battery pack for passport {display.GetValue("modelNumber", string.Empty)}";
+        }
+
+        if (editableFieldKeys.Contains("performance.stateOfCharge"))
+        {
+            var stateOfCharge = ClampNumber(Number(form, "stateOfCharge", NumberAtDocument(batteryCondition, "stateOfCharge", "stateOfChargeValue")), 0, 100);
+            batteryCondition["stateOfCharge"] = new BsonDocument
         {
             ["stateOfChargeValue"] = stateOfCharge,
             ["lastUpdate"] = now
         };
-        batteryCondition["remainingCapacity"] = new BsonDocument
+        }
+
+        if (editableFieldKeys.Contains("performance.remainingCapacity"))
+        {
+            var remainingCapacity = ClampNumber(Number(form, "remainingCapacity", NumberAtDocument(batteryCondition, "remainingCapacity", "remainingCapacityValue")), 0, 100);
+            batteryCondition["remainingCapacity"] = new BsonDocument
         {
             ["remainingCapacityValue"] = remainingCapacity,
             ["lastUpdate"] = now
         };
-        batteryCondition["remainingEnergy"] = new BsonDocument
+        }
+
+        if (editableFieldKeys.Contains("performance.remainingEnergy"))
+        {
+            var remainingEnergy = Math.Max(0, Number(form, "remainingEnergy", NumberAtDocument(batteryCondition, "remainingEnergy", "remainingEnergyValue")));
+            batteryCondition["remainingEnergy"] = new BsonDocument
         {
             ["remainingEnergyValue"] = remainingEnergy,
             ["lastUpdate"] = now
         };
-        batteryCondition["numberOfFullCycles"] = new BsonDocument
+        }
+
+        if (editableFieldKeys.Contains("performance.fullCycles"))
+        {
+            var fullCycles = Math.Max(0, Math.Truncate(Number(form, "fullCycles", NumberAtDocument(batteryCondition, "numberOfFullCycles", "numberOfFullCyclesValue"))));
+            batteryCondition["numberOfFullCycles"] = new BsonDocument
         {
             ["numberOfFullCyclesValue"] = fullCycles,
             ["lastUpdate"] = now
         };
+        }
 
         var registryInfo = EnsureDocument(document, "registryInfo");
         registryInfo["updatedAt"] = now;

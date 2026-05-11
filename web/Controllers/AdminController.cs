@@ -36,6 +36,7 @@ public class AdminController : Controller
     private readonly PassportReadinessService _passportReadinessService;
     private readonly PassportEvidenceService _passportEvidenceService;
     private readonly DataCompletionPolicyService _dataCompletionPolicyService;
+    private readonly LocalAdminEditableFieldPolicyService _localAdminEditableFieldPolicyService;
     private readonly ProductTemplateService _productTemplateService;
     private readonly PassportTrustService _passportTrustService;
     private readonly AuditRevisionService _auditRevisionService;
@@ -50,6 +51,7 @@ public class AdminController : Controller
         PassportReadinessService passportReadinessService,
         PassportEvidenceService passportEvidenceService,
         DataCompletionPolicyService dataCompletionPolicyService,
+        LocalAdminEditableFieldPolicyService localAdminEditableFieldPolicyService,
         ProductTemplateService productTemplateService,
         PassportTrustService passportTrustService,
         AuditRevisionService auditRevisionService)
@@ -63,6 +65,7 @@ public class AdminController : Controller
         _passportReadinessService = passportReadinessService;
         _passportEvidenceService = passportEvidenceService;
         _dataCompletionPolicyService = dataCompletionPolicyService;
+        _localAdminEditableFieldPolicyService = localAdminEditableFieldPolicyService;
         _productTemplateService = productTemplateService;
         _passportTrustService = passportTrustService;
         _auditRevisionService = auditRevisionService;
@@ -651,6 +654,7 @@ public class AdminController : Controller
         var apiTokens = await _externalApiRepository.ListTokensAsync(cancellationToken);
         var batterySecrets = await _externalApiRepository.ListBatterySecretsAsync(cancellationToken: cancellationToken);
         var productTemplates = await _productTemplateService.ListProductsAsync(cancellationToken);
+        var localEditableFieldPolicy = await _localAdminEditableFieldPolicyService.GetPolicyAsync(cancellationToken);
 
         var model = new AdminClusterViewModel
         {
@@ -735,6 +739,7 @@ public class AdminController : Controller
                 };
             }).OrderBy(secret => secret.PassportId, StringComparer.OrdinalIgnoreCase).ToList(),
             ProductTemplates = BuildProductTemplateSummaries(productTemplates),
+            LocalEditableFieldPolicy = localEditableFieldPolicy,
             SamplePassportId = ExternalApiInitializer.SamplePassportId,
             SampleReadToken = await ResolveTokenValueAsync(ExternalApiInitializer.SampleReadTokenId, ExternalApiInitializer.SampleReadTokenValue, cancellationToken),
             SampleReadWriteToken = await ResolveTokenValueAsync(ExternalApiInitializer.SampleReadWriteTokenId, ExternalApiInitializer.SampleReadWriteTokenValue, cancellationToken),
@@ -1064,6 +1069,21 @@ public class AdminController : Controller
         return Redirect("/admin/clusters?tab=battery-secrets");
     }
 
+    [HttpPost("local-editable-fields/save")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveLocalEditableFields(CancellationToken cancellationToken)
+    {
+        var editableFieldKeys = Request.Form["editableFieldKeys"]
+            .Select(value => value?.Trim() ?? string.Empty)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        await _localAdminEditableFieldPolicyService.SavePolicyAsync(editableFieldKeys, CurrentActor(), cancellationToken);
+        TempData["StatusMessage"] = "Local editable fields updated.";
+        return Redirect("/admin/clusters?tab=local-editable-fields");
+    }
+
     private static string NormalizeTab(string? value)
     {
         return value?.ToLowerInvariant() switch
@@ -1074,6 +1094,7 @@ public class AdminController : Controller
             "users" => "users",
             "api-tokens" => "api-tokens",
             "battery-secrets" => "battery-secrets",
+            "local-editable-fields" => "local-editable-fields",
             "products" => "products",
             _ => "passports"
         };

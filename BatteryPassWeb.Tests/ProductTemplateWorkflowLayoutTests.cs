@@ -81,6 +81,24 @@ public sealed class ProductTemplateWorkflowLayoutTests
     }
 
     [Fact]
+    public void AdminAndClusterAdmin_ShouldExposeLocalEditableFieldPolicy()
+    {
+        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var clusterEdit = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "EditPassport.cshtml"));
+        var adminController = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+        var clusterAdminController = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
+        var program = File.ReadAllText(RepoFile("web", "Program.cs"));
+
+        Assert.Contains("tab=local-editable-fields", clusters);
+        Assert.Contains("Local editable fields", clusters);
+        Assert.Contains("/admin/local-editable-fields/save", clusters);
+        Assert.Contains("FieldEditableByKey", clusterEdit);
+        Assert.Contains("LocalAdminEditableFieldPolicyService", adminController);
+        Assert.Contains("LocalAdminEditableFieldPolicyService", clusterAdminController);
+        Assert.Contains("AddSingleton<LocalAdminEditableFieldPolicyService>", program);
+    }
+
+    [Fact]
     public void EditPassport_ShouldUpdateProductTemplateFieldsLiveFromCatalogData()
     {
         var edit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));

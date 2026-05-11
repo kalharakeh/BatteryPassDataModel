@@ -5,6 +5,7 @@
     var batteryImageOptions = BatteryPassWeb.Services.BatteryImageCatalog.Options;
     var selectedBatteryImageUrl = BatteryPassWeb.Services.BatteryImageCatalog.NormalizeKnownImageUrl(passport.BatteryImageUrl, passport.PassportId);
     var selectedBatteryCategory = BatteryPassWeb.Services.BatteryImageCatalog.CategoryForImageUrl(selectedBatteryImageUrl);
+    bool CanEditField(string fieldKey) => Model.FieldEditableByKey.TryGetValue(fieldKey, out var editable) && editable;
 }
 <main class="bp-page bp-admin-page">
     <div class="d-flex justify-content-between flex-wrap gap-3 align-items-end">
@@ -35,23 +36,37 @@
             </label>
             <label>
                 Facility ID
-                <input type="text" name="facilityId" value="@passport.FacilityId" />
+                @if (CanEditField("general.facilityId"))
+                {
+                    <input type="text" name="facilityId" value="@passport.FacilityId" />
+                }
+                else
+                {
+                    <input type="text" value="@passport.FacilityId" readonly />
+                }
             </label>
             <label>
                 Battery image
-                <select name="batteryImageUrl" data-battery-image-select>
-                    @foreach (var imageOption in batteryImageOptions)
-                    {
-                        if (imageOption.Url.Equals(selectedBatteryImageUrl, StringComparison.OrdinalIgnoreCase))
+                @if (CanEditField("general.batteryImageUrl"))
+                {
+                    <select name="batteryImageUrl" data-battery-image-select>
+                        @foreach (var imageOption in batteryImageOptions)
                         {
-                            <option value="@imageOption.Url" data-image-category="@imageOption.Category" selected>@imageOption.Label (@imageOption.Category)</option>
+                            if (imageOption.Url.Equals(selectedBatteryImageUrl, StringComparison.OrdinalIgnoreCase))
+                            {
+                                <option value="@imageOption.Url" data-image-category="@imageOption.Category" selected>@imageOption.Label (@imageOption.Category)</option>
+                            }
+                            else
+                            {
+                                <option value="@imageOption.Url" data-image-category="@imageOption.Category">@imageOption.Label (@imageOption.Category)</option>
+                            }
                         }
-                        else
-                        {
-                            <option value="@imageOption.Url" data-image-category="@imageOption.Category">@imageOption.Label (@imageOption.Category)</option>
-                        }
-                    }
-                </select>
+                    </select>
+                }
+                else
+                {
+                    <input type="text" value="@selectedBatteryImageUrl" readonly />
+                }
             </label>
             <label>
                 Category
@@ -59,19 +74,47 @@
             </label>
             <label>
                 State of charge %
-                <input type="number" step="any" min="0" max="100" name="stateOfCharge" value="@passport.Performance.StateOfCharge" />
+                @if (CanEditField("performance.stateOfCharge"))
+                {
+                    <input type="number" step="any" min="0" max="100" name="stateOfCharge" value="@passport.Performance.StateOfCharge" />
+                }
+                else
+                {
+                    <input type="number" step="any" value="@passport.Performance.StateOfCharge" readonly />
+                }
             </label>
             <label>
                 Remaining capacity %
-                <input type="number" step="any" min="0" max="100" name="remainingCapacity" value="@passport.Performance.RemainingCapacity" />
+                @if (CanEditField("performance.remainingCapacity"))
+                {
+                    <input type="number" step="any" min="0" max="100" name="remainingCapacity" value="@passport.Performance.RemainingCapacity" />
+                }
+                else
+                {
+                    <input type="number" step="any" value="@passport.Performance.RemainingCapacity" readonly />
+                }
             </label>
             <label>
                 Remaining energy kWh
-                <input type="number" step="any" min="0" name="remainingEnergy" value="@passport.Performance.RemainingEnergy" />
+                @if (CanEditField("performance.remainingEnergy"))
+                {
+                    <input type="number" step="any" min="0" name="remainingEnergy" value="@passport.Performance.RemainingEnergy" />
+                }
+                else
+                {
+                    <input type="number" step="any" value="@passport.Performance.RemainingEnergy" readonly />
+                }
             </label>
             <label>
                 Full cycles
-                <input type="number" step="1" min="0" name="fullCycles" value="@passport.Performance.Cycles" />
+                @if (CanEditField("performance.fullCycles"))
+                {
+                    <input type="number" step="1" min="0" name="fullCycles" value="@passport.Performance.Cycles" />
+                }
+                else
+                {
+                    <input type="number" step="1" value="@passport.Performance.Cycles" readonly />
+                }
             </label>
 
             <div class="d-flex justify-content-between flex-wrap gap-2 pt-2">

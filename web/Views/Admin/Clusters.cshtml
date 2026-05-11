@@ -6,6 +6,7 @@
     string TabClass(string tab) => selectedTab == tab ? "bp-tab bp-tab-active" : "bp-tab";
     var query = Model.PassportsQuery ?? string.Empty;
     var querySuffix = string.IsNullOrWhiteSpace(query) ? string.Empty : $"&q={Uri.EscapeDataString(query)}";
+    var localEditableKeys = Model.LocalEditableFieldPolicy.EditableFieldKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
 }
 <main class="bp-page bp-admin-page">
     <div>
@@ -18,6 +19,7 @@
         <a class="@TabClass("battery")" href="/admin/clusters?tab=battery">Battery cluster assignments</a>
         <a class="@TabClass("clusters")" href="/admin/clusters?tab=clusters">Registered clusters</a>
         <a class="@TabClass("users")" href="/admin/clusters?tab=users">Users</a>
+        <a class="@TabClass("local-editable-fields")" href="/admin/clusters?tab=local-editable-fields">Local editable fields</a>
         <a class="@TabClass("api-tokens")" href="/admin/clusters?tab=api-tokens">API tokens</a>
         <a class="@TabClass("battery-secrets")" href="/admin/clusters?tab=battery-secrets">Battery secrets</a>
         <a class="@TabClass("products")" href="/admin/clusters?tab=products">Product templates</a>
@@ -333,6 +335,41 @@
                 </table>
             </section>
         </div>
+    }
+
+    @if (selectedTab == "local-editable-fields")
+    {
+        <section class="bp-card mt-4">
+            <div class="d-flex justify-content-between flex-wrap gap-3 align-items-start">
+                <div>
+                    <h2 class="h5 mb-1">Local editable fields</h2>
+                    <p class="text-secondary mb-0">Choose which passport fields local admins can update globally across all batteries.</p>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(Model.LocalEditableFieldPolicy.UpdatedAt))
+                {
+                    <p class="small text-secondary mb-0">Updated @Model.LocalEditableFieldPolicy.UpdatedAt by @Model.LocalEditableFieldPolicy.UpdatedBy</p>
+                }
+            </div>
+            <form method="post" action="/admin/local-editable-fields/save" class="bp-stack-form mt-3">
+                @Html.AntiForgeryToken()
+                @foreach (var policySection in Model.LocalEditableFieldPolicy.Sections.OrderBy(policySection => policySection.SortOrder))
+                {
+                    <fieldset class="bp-policy-section">
+                        <legend>@policySection.Label</legend>
+                        <div class="bp-requirement-grid">
+                            @foreach (var field in policySection.Fields.OrderBy(field => field.SortOrder))
+                            {
+                                <label class="bp-checkbox-option">
+                                    <input type="checkbox" name="editableFieldKeys" value="@field.FieldKey" checked="@localEditableKeys.Contains(field.FieldKey)" />
+                                    <span>@field.Label</span>
+                                </label>
+                            }
+                        </div>
+                    </fieldset>
+                }
+                <button type="submit" class="bp-primary-button">Save local editable fields</button>
+            </form>
+        </section>
     }
 
     @if (selectedTab == "api-tokens")
