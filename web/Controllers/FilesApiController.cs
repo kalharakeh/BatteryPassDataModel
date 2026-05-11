@@ -212,9 +212,10 @@ public class FilesApiController : ControllerBase
         var isPassportPublic = _passportPublishPolicyService.IsPubliclyVisible(passport);
         var canDownload = await _accessControlService.CanDownloadPassportDocumentAsync(
             User,
-            BsonHelpers.GetString(passport, "clusterId"),
+            passport,
             visibility,
             isPassportPublic,
+            _passportPublishPolicyService,
             cancellationToken);
         if (!canDownload)
         {

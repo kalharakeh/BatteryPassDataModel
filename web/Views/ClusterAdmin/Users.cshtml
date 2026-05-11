@@ -50,8 +50,8 @@
                 <label>
                     Membership role
                     <select name="role">
-                        <option value="member">Normal user</option>
-                        <option value="clusterAdmin">Local admin</option>
+                        <option value="member">Normal User</option>
+                        <option value="clusterAdmin">Local Admin</option>
                     </select>
                 </label>
                 <button type="submit" class="bp-primary-button">Save user</button>
@@ -111,7 +111,7 @@
                                                     <input type="hidden" name="email" value="@membership.Email" />
                                                     <input type="hidden" name="clusterId" value="@membership.ClusterId" />
                                                     <span>@clusterName (@membership.ClusterId)</span>
-                                                    <span class="bp-role-tag">@(membership.Role == "clusterAdmin" ? "Local admin" : "Normal user")</span>
+                                                    <span class="bp-role-tag">@(membership.Role == "clusterAdmin" ? "Local Admin" : "Normal User")</span>
                                                     <button type="submit" class="bp-tag-delete" aria-label="Delete membership">x</button>
                                                 </form>
                                             }
@@ -134,8 +134,8 @@
                                             }
                                         </select>
                                         <select name="role" class="form-select form-select-sm" style="min-width: 170px;">
-                                            <option value="member">Normal user</option>
-                                            <option value="clusterAdmin">Local admin</option>
+                                            <option value="member">Normal User</option>
+                                            <option value="clusterAdmin">Local Admin</option>
                                         </select>
                                         <button type="submit" class="bp-secondary-button">Save</button>
                                     </form>

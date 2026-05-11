@@ -195,6 +195,7 @@ public class ClusterAdminController : Controller
                 Roles = (user.GetValue("roles", new BsonArray()) as BsonArray ?? new BsonArray())
                     .Select(role => role.ToString() ?? string.Empty)
                     .Where(role => !string.IsNullOrWhiteSpace(role))
+                    .Select(AccessControlService.DisplayRoleLabel)
                     .ToList()
             }).OrderBy(user => user.Email, StringComparer.OrdinalIgnoreCase).ToList(),
             Memberships = visibleMemberships.Select(membership => new ClusterMembershipViewModel
@@ -243,7 +244,7 @@ public class ClusterAdminController : Controller
                 .Select(entry => entry!)
                 .ToList()
             : [];
-        if (!AccessControlService.IsAdmin(User) && existingRoles.Contains("admin", StringComparer.OrdinalIgnoreCase))
+        if (!AccessControlService.IsAdmin(User) && existingRoles.Contains(AccessControlService.RoleAdmin, StringComparer.OrdinalIgnoreCase))
         {
             return Redirect($"/cluster-admin/users?error={Uri.EscapeDataString("Local admins cannot modify global admin users.")}");
         }
@@ -254,10 +255,10 @@ public class ClusterAdminController : Controller
             return Redirect($"/cluster-admin/users?error={Uri.EscapeDataString("Password is required for new users.")}");
         }
 
-        var roles = existingRoles.Where(existingRole => !existingRole.Equals("admin", StringComparison.OrdinalIgnoreCase)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var roles = existingRoles.Where(existingRole => !existingRole.Equals(AccessControlService.RoleAdmin, StringComparison.OrdinalIgnoreCase)).ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (roles.Count == 0)
         {
-            roles.Add("viewer");
+            roles.Add(AccessControlService.RoleNormalUser);
         }
 
         var displayName = Text(Request.Form, "name", email);

@@ -50,7 +50,7 @@ public class PassportController : Controller
         {
             return NotFound();
         }
-        if (!AccessControlService.IsAdmin(User) && !_passportPublishPolicyService.IsPubliclyVisible(document))
+        if (!await _accessControlService.CanOpenPassportSummaryAsync(User, document, _passportPublishPolicyService, cancellationToken))
         {
             return NotFound();
         }
@@ -69,7 +69,7 @@ public class PassportController : Controller
 
         if (User.Identity?.IsAuthenticated == true)
         {
-            canOpenDetail = await _accessControlService.CanOpenPassportDetailAsync(User, passport.ClusterId, cancellationToken);
+            canOpenDetail = await _accessControlService.CanOpenPassportDetailAsync(User, document, _passportPublishPolicyService, cancellationToken);
         }
 
         var detailAccessNotice = string.Empty;
@@ -129,11 +129,6 @@ public class PassportController : Controller
         {
             return NotFound();
         }
-        if (!AccessControlService.IsAdmin(User) && !_passportPublishPolicyService.IsPubliclyVisible(document))
-        {
-            return NotFound();
-        }
-
         var clusterDocuments = await _clusterRepository.ListClustersAsync(cancellationToken);
         var clusterNamesById = clusterDocuments
             .Select(cluster => new
@@ -145,9 +140,14 @@ public class PassportController : Controller
             .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
 
         var passport = _viewModelFactory.Create(document, clusterNamesById, _passportTrustService.Verify(document));
-        var canOpen = await _accessControlService.CanOpenPassportDetailAsync(User, passport.ClusterId, cancellationToken);
+        var canOpen = await _accessControlService.CanOpenPassportDetailAsync(User, document, _passportPublishPolicyService, cancellationToken);
         if (!canOpen)
         {
+            if (!await _accessControlService.CanOpenPassportSummaryAsync(User, document, _passportPublishPolicyService, cancellationToken))
+            {
+                return NotFound();
+            }
+
             return Redirect($"/{Uri.EscapeDataString(decodedPassportId)}/summary?access=wrong-cluster");
         }
         var canViewTrustConformance = await _accessControlService.CanViewTrustConformanceAsync(User, passport.ClusterId, cancellationToken);

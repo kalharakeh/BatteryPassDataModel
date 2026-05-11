@@ -19,6 +19,22 @@ public sealed class PublicVisibilityPolicyTests
         Assert.False(service.IsPubliclyVisible(ReadyPassport(status: "published", proofValue: string.Empty)));
     }
 
+    [Fact]
+    public void AccessControlService_ShouldEncodeRevisedRoleVisibility()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Services", "AccessControlService.cs"));
+
+        Assert.Contains("RoleNormalUser", source);
+        Assert.Contains("RoleNotifiedBody", source);
+        Assert.Contains("RoleMarketSurveillanceAuthority", source);
+        Assert.Contains("RoleCommission", source);
+        Assert.Contains("RoleLegitimateInterest", source);
+        Assert.Contains("CanSeeDraftPassports", source);
+        Assert.Contains("CanSeeSignedPassports", source);
+        Assert.Contains("HasGlobalReportReadRole", source);
+        Assert.Contains("CanViewTrustConformanceAsync", source);
+    }
+
     private static BsonDocument ReadyPassport(
         string status = "published",
         string trustState = TrustState.Signed,
@@ -49,5 +65,22 @@ public sealed class PublicVisibilityPolicyTests
                 }
             }
         };
+    }
+
+    private static string RepoFile(params string[] parts)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory != null)
+        {
+            var candidate = Path.Combine(new[] { directory.FullName }.Concat(parts).ToArray());
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new FileNotFoundException($"Could not find repository file: {Path.Combine(parts)}");
     }
 }

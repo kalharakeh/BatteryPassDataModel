@@ -99,7 +99,7 @@ public sealed class ClusterRepository
             .ToList();
         if (normalizedRoles.Count == 0)
         {
-            normalizedRoles.Add("viewer");
+            normalizedRoles.Add(AccessControlService.RoleNormalUser);
         }
 
         var updates = new List<UpdateDefinition<BsonDocument>>
@@ -179,7 +179,9 @@ public sealed class ClusterRepository
         }
 
         var normalizedEmail = email.Trim().ToLowerInvariant();
-        var normalizedRole = role.Equals("clusterAdmin", StringComparison.OrdinalIgnoreCase) ? "clusterAdmin" : "member";
+        var normalizedRole = role.Equals(AccessControlService.RoleClusterAdmin, StringComparison.OrdinalIgnoreCase)
+            ? AccessControlService.RoleClusterAdmin
+            : AccessControlService.RoleNormalUser;
         var now = DateTime.UtcNow.ToString("O");
         await _mongoContext.Database.GetCollection<BsonDocument>("clusterMemberships").UpdateOneAsync(
             Builders<BsonDocument>.Filter.And(

@@ -39,17 +39,17 @@ public sealed class AuthService
                     if (!string.IsNullOrWhiteSpace(passwordHash) && BCrypt.Net.BCrypt.Verify(password, passwordHash))
                     {
                         var roles = ExtractRoles(user).ToList();
-                        if (!roles.Contains("admin", StringComparer.OrdinalIgnoreCase))
+                        if (!roles.Contains(AccessControlService.RoleAdmin, StringComparer.OrdinalIgnoreCase))
                         {
                             var hasClusterAdminMembership = await _mongoContext.Database
                                 .GetCollection<BsonDocument>("clusterMemberships")
                                 .Find(Builders<BsonDocument>.Filter.And(
                                     Builders<BsonDocument>.Filter.Eq("email", normalizedEmail.ToLowerInvariant()),
-                                    Builders<BsonDocument>.Filter.Eq("role", "clusterAdmin")))
+                                    Builders<BsonDocument>.Filter.Eq("role", AccessControlService.RoleClusterAdmin)))
                                 .AnyAsync(cancellationToken);
                             if (hasClusterAdminMembership)
                             {
-                                roles.Add("clusterAdmin");
+                                roles.Add(AccessControlService.RoleClusterAdmin);
                             }
                         }
 
@@ -68,7 +68,7 @@ public sealed class AuthService
         if (normalizedEmail.Equals(_options.DemoAdminEmail, StringComparison.OrdinalIgnoreCase)
             && password == _options.DemoAdminPassword)
         {
-            return BuildPrincipal(_options.DemoAdminEmail, "Demo Administrator", ["admin"]);
+            return BuildPrincipal(_options.DemoAdminEmail, "Demo Administrator", [AccessControlService.RoleAdmin]);
         }
 
         return null;
@@ -96,15 +96,22 @@ public sealed class AuthService
     {
         if (!user.TryGetValue("roles", out var rolesValue) || rolesValue is not BsonArray roleArray)
         {
-            return ["member"];
+            return [AccessControlService.RoleNormalUser];
         }
 
         var roles = roleArray
-            .Select(role => role.ToString())
+            .Select(role => NormalizeRole(role.ToString() ?? string.Empty))
             .Where(role => !string.IsNullOrWhiteSpace(role))
             .Select(role => role!)
             .ToList();
 
-        return roles.Count > 0 ? roles : ["member"];
+        return roles.Count > 0 ? roles : [AccessControlService.RoleNormalUser];
+    }
+
+    private static string NormalizeRole(string role)
+    {
+        return role.Equals("viewer", StringComparison.OrdinalIgnoreCase)
+            ? AccessControlService.RoleNormalUser
+            : role;
     }
 }

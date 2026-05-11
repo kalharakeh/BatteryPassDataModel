@@ -643,6 +643,7 @@ public class AdminController : Controller
                 Roles = (user.GetValue("roles", new BsonArray()) as BsonArray ?? new BsonArray())
                     .Select(role => role.ToString() ?? string.Empty)
                     .Where(role => !string.IsNullOrWhiteSpace(role))
+                    .Select(AccessControlService.DisplayRoleLabel)
                     .ToList()
             }).ToList(),
             Memberships = memberships.Select(membership => new ClusterMembershipViewModel
@@ -765,27 +766,10 @@ public class AdminController : Controller
         var requestedSystemRole = Text(Request.Form, "systemRole", "member");
         var existingUser = await _clusterRepository.GetUserByEmailAsync(email, cancellationToken);
 
-        var existingRoles = existingUser?.GetValue("roles", new BsonArray()) is BsonArray roleArray
-            ? roleArray
-                .Select(role => role.ToString())
-                .Where(role => !string.IsNullOrWhiteSpace(role))
-                .Select(role => role!)
-                .ToList()
-            : [];
-        var roles = new HashSet<string>(existingRoles, StringComparer.OrdinalIgnoreCase);
-        if (requestedSystemRole.Equals("admin", StringComparison.OrdinalIgnoreCase))
+        var roles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            roles.Add("admin");
-            roles.Add("viewer");
-        }
-        else
-        {
-            roles.Remove("admin");
-            if (roles.Count == 0)
-            {
-                roles.Add("viewer");
-            }
-        }
+            NormalizeSystemRole(requestedSystemRole)
+        };
 
         if (existingUser == null && string.IsNullOrWhiteSpace(password))
         {
@@ -1024,6 +1008,19 @@ public class AdminController : Controller
     private static bool IsTrustPersistenceFailure(Exception exception)
     {
         return exception is InvalidOperationException or MongoException or TimeoutException;
+    }
+
+    private static string NormalizeSystemRole(string role)
+    {
+        return role.Trim() switch
+        {
+            AccessControlService.RoleAdmin => AccessControlService.RoleAdmin,
+            AccessControlService.RoleNotifiedBody => AccessControlService.RoleNotifiedBody,
+            AccessControlService.RoleMarketSurveillanceAuthority => AccessControlService.RoleMarketSurveillanceAuthority,
+            AccessControlService.RoleCommission => AccessControlService.RoleCommission,
+            AccessControlService.RoleLegitimateInterest => AccessControlService.RoleLegitimateInterest,
+            _ => AccessControlService.RoleNormalUser
+        };
     }
 
     private static IReadOnlyList<ConformanceIssueGroupViewModel> BuildIssueGroups(

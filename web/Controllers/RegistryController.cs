@@ -34,16 +34,16 @@ public class RegistryController : Controller
         var documents = await _passportRepository.SearchDocumentsAsync(query, includeArchived: isAdmin, cancellationToken);
         if (!isAdmin)
         {
-            var clusterIds = await _accessControlService.GetClusterIdsForUserAsync(User, cancellationToken);
-            documents = documents
-                .Where(_passportPublishPolicyService.IsPubliclyVisible)
-                .Where(passport =>
+            var visibleDocuments = new List<MongoDB.Bson.BsonDocument>();
+            foreach (var document in documents)
+            {
+                if (await _accessControlService.CanOpenPassportDetailAsync(User, document, _passportPublishPolicyService, cancellationToken))
                 {
-                    var clusterId = BsonHelpers.GetString(passport, "clusterId");
-                    return !string.IsNullOrWhiteSpace(clusterId)
-                        && clusterIds.Contains(clusterId, StringComparer.OrdinalIgnoreCase);
-                })
-                .ToList();
+                    visibleDocuments.Add(document);
+                }
+            }
+
+            documents = visibleDocuments;
         }
 
         var passports = documents.Select(_passportRepository.ToSummaryViewModel).ToList();
@@ -84,10 +84,10 @@ public class RegistryController : Controller
 
         ViewData["RegistryScopeLabel"] = isAdmin
             ? "Search and open all registered battery passports, including drafts and archived records."
-            : "Search and open published, verified battery passports linked to your account.";
+            : "Search and open signed or published battery passports available to your role.";
         ViewData["RegistryEmptyLabel"] = isAdmin
             ? "No batteries are currently available in the registry."
-            : "No published, verified batteries are currently linked to your account.";
+            : "No signed or published batteries are currently available to your role.";
         return View(passports);
     }
 }
