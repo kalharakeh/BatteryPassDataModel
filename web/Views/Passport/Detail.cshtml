@@ -100,11 +100,8 @@
                             External API software updates are operational data and do not dirty the signed passport core.
                         </p>
                     </div>
-                    <div class="bp-software-version-card">
-                        <span>Current version</span>
-                        <strong>@(string.IsNullOrWhiteSpace(passport.SoftwareVersion) ? "-" : passport.SoftwareVersion)</strong>
-                    </div>
                     <dl class="bp-field-grid mt-0">
+                        <div><dt>Current version</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareVersion) ? "-" : passport.SoftwareVersion)</dd></div>
                         <div><dt>Product</dt><dd>@(string.IsNullOrWhiteSpace(passport.ProductName) ? "-" : passport.ProductName)</dd></div>
                         <div><dt>Product ID</dt><dd>@(string.IsNullOrWhiteSpace(passport.ProductId) ? "-" : passport.ProductId)</dd></div>
                         <div><dt>Release date</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareReleaseDate) ? "-" : passport.SoftwareReleaseDate)</dd></div>

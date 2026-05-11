@@ -69,6 +69,29 @@ public sealed class PassportSoftwarePresentationTests
         Assert.Contains(".bp-software-panel", css);
     }
 
+    [Fact]
+    public void PassportDetailTabs_ShouldStayOnSingleScrollableRow()
+    {
+        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("class=\"nav nav-tabs bp-tabs\"", detail);
+        Assert.Contains("flex-wrap: nowrap;", css);
+        Assert.Contains("overflow-x: auto;", css);
+        Assert.Contains(".bp-tabs .nav-item", css);
+        Assert.Contains("flex: 0 0 auto;", css);
+        Assert.Contains("white-space: nowrap;", css);
+    }
+
+    [Fact]
+    public void PassportDetailSoftwareTab_ShouldRenderCurrentVersionAsCompactField()
+    {
+        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
+
+        Assert.Contains("<div><dt>Current version</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareVersion) ? \"-\" : passport.SoftwareVersion)</dd></div>", detail);
+        Assert.DoesNotContain("bp-software-version-card", detail);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

@@ -1006,13 +1006,24 @@ a:hover {
 
 .bp-tabs.nav-tabs {
   border-bottom-color: var(--bp-border);
+  display: flex;
+  flex-wrap: nowrap;
   gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.bp-tabs .nav-item {
+  flex: 0 0 auto;
 }
 
 .bp-tabs .nav-link {
   border: 0;
   color: #334155;
   border-radius: 8px;
+  padding: 0.5rem 0.72rem;
+  white-space: nowrap;
 }
 
 .bp-tabs .nav-link.active {
@@ -1033,32 +1044,6 @@ a:hover {
 
 .bp-software-hero h2 {
   margin: 4px 0 8px;
-}
-
-.bp-software-version-card {
-  width: min(100%, 360px);
-  border: 1px solid #c9d8ea;
-  border-radius: 16px;
-  padding: 16px 18px;
-  background: #fff;
-  box-shadow: 0 14px 30px rgba(4, 30, 66, 0.06);
-}
-
-.bp-software-version-card span {
-  display: block;
-  color: var(--bp-muted);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.bp-software-version-card strong {
-  display: block;
-  margin-top: 6px;
-  color: var(--bp-scania-blue);
-  font-size: clamp(2rem, 5vw, 3.4rem);
-  line-height: 1;
 }
 
 .bp-two-column {
