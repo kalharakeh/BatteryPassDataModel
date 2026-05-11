@@ -3887,6 +3887,21 @@ a:hover {
   outline: 3px solid rgba(54, 117, 181, 0.12);
 }
 
+.bp-product-version-row,
+.bp-product-version-current {
+  min-width: 0;
+}
+
+.bp-version-field-compact {
+  max-width: 220px;
+  margin: 0;
+}
+
+.bp-version-field-compact input,
+.bp-version-field-compact select {
+  min-height: 42px;
+}
+
 .bp-template-version-action {
   display: flex;
   flex-wrap: wrap;

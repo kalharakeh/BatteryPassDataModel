@@ -66,6 +66,21 @@ public sealed class ProductTemplateWorkflowLayoutTests
     }
 
     [Fact]
+    public void ProductEditor_ShouldExposeProductVersionsAndBaseTemplateControls()
+    {
+        var productView = File.ReadAllText(RepoFile("web", "Views", "Admin", "Product.cshtml"));
+        var adminController = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+
+        Assert.Contains("name=\"productVersion\"", productView);
+        Assert.Contains("data-product-version-list", productView);
+        Assert.Contains("data-base-product-select", productView);
+        Assert.Contains("data-base-product-version-select", productView);
+        Assert.Contains("data-base-software-select", productView);
+        Assert.Contains("products/{productId}/versions/{productVersion}/software/{softwareVersion}/push", adminController);
+        Assert.DoesNotContain("does not create three default software versions", productView);
+    }
+
+    [Fact]
     public void EditPassport_ShouldUpdateProductTemplateFieldsLiveFromCatalogData()
     {
         var edit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));

@@ -592,6 +592,15 @@ public class AdminController : Controller
         return Redirect($"/admin/products/{Uri.EscapeDataString(productId)}?status={Uri.EscapeDataString(message)}");
     }
 
+    [HttpPost("products/{productId}/versions/{productVersion}/software/{softwareVersion}/push")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PushProductTemplateVersion(string productId, string productVersion, string softwareVersion, CancellationToken cancellationToken)
+    {
+        var result = await _productTemplateService.PushTemplateAsync(productId, productVersion, softwareVersion, CurrentActor(), cancellationToken);
+        var message = $"Template push finished: {result.UpdatedBatteries} of {result.MatchedBatteries} matching batteries updated. Manual overrides were preserved.";
+        return Redirect($"/admin/products/{Uri.EscapeDataString(productId)}?status={Uri.EscapeDataString(message)}");
+    }
+
     [HttpPost("product-templates/reset")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResetProductTemplateDemo(CancellationToken cancellationToken)
@@ -1215,6 +1224,11 @@ public class AdminController : Controller
         string? status,
         string? error)
     {
+        var productVersions = BuildProductVersionEditModels(product.ProductVersions.Count == 0
+            ? [product.LatestProductVersion]
+            : product.ProductVersions);
+        var currentVersion = productVersions.FirstOrDefault();
+
         return new ProductTemplateEditViewModel
         {
             ProductId = product.ProductId,
@@ -1222,19 +1236,19 @@ public class AdminController : Controller
             Description = product.Description,
             ImageUrl = product.ImageUrl,
             ModuleCount = product.ModuleCount,
-            BatteryMassKg = product.BatteryMassKg,
-            RatedEnergyKwh = product.RatedEnergyKwh,
-            RatedCapacityAh = product.RatedCapacityAh,
-            RatedMaximumPowerKw = product.RatedMaximumPowerKw,
-            NominalVoltageV = product.NominalVoltageV,
-            ExpectedLifetimeYears = product.ExpectedLifetimeYears,
-            ExpectedCycles = product.ExpectedCycles,
-            SupplyChainIndex = product.SupplyChainIndex,
-            CarbonFootprint = product.CarbonFootprint,
-            PerformanceClass = product.PerformanceClass,
-            MaterialMassesKg = product.MaterialMassesKg,
-            CarbonStages = product.CarbonStages,
-            RecycledContent = product.RecycledContent.ToDictionary(
+            BatteryMassKg = currentVersion?.BatteryMassKg ?? product.BatteryMassKg,
+            RatedEnergyKwh = currentVersion?.RatedEnergyKwh ?? product.RatedEnergyKwh,
+            RatedCapacityAh = currentVersion?.RatedCapacityAh ?? product.RatedCapacityAh,
+            RatedMaximumPowerKw = currentVersion?.RatedMaximumPowerKw ?? product.RatedMaximumPowerKw,
+            NominalVoltageV = currentVersion?.NominalVoltageV ?? product.NominalVoltageV,
+            ExpectedLifetimeYears = currentVersion?.ExpectedLifetimeYears ?? product.ExpectedLifetimeYears,
+            ExpectedCycles = currentVersion?.ExpectedCycles ?? product.ExpectedCycles,
+            SupplyChainIndex = currentVersion?.SupplyChainIndex ?? product.SupplyChainIndex,
+            CarbonFootprint = currentVersion?.CarbonFootprint ?? product.CarbonFootprint,
+            PerformanceClass = currentVersion?.PerformanceClass ?? product.PerformanceClass,
+            MaterialMassesKg = currentVersion?.MaterialMassesKg ?? product.MaterialMassesKg,
+            CarbonStages = currentVersion?.CarbonStages ?? product.CarbonStages,
+            RecycledContent = currentVersion?.RecycledContent ?? product.RecycledContent.ToDictionary(
                 pair => pair.Key,
                 pair => new ProductTemplateRecycledContentViewModel
                 {
@@ -1242,7 +1256,7 @@ public class AdminController : Controller
                     PostConsumerShare = pair.Value.PostConsumerShare
                 },
                 StringComparer.OrdinalIgnoreCase),
-            SoftwareVersions = product.SoftwareVersions
+            SoftwareVersions = currentVersion?.SoftwareVersions ?? product.SoftwareVersions
                 .Select(software => new ProductSoftwareVersionViewModel
                 {
                     Version = software.Version,
@@ -1252,8 +1266,50 @@ public class AdminController : Controller
                 .ToList(),
             DataRequirements = dataRequirements,
             StatusMessage = string.IsNullOrWhiteSpace(status) ? string.Empty : Uri.UnescapeDataString(status),
-            ErrorMessage = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error)
+            ErrorMessage = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error),
+            ProductVersions = productVersions,
+            BaseProductCatalog = BuildProductTemplateFormCatalog(BatteryProductTemplateCatalog.DefaultProducts)
         };
+    }
+
+    private static IReadOnlyList<ProductVersionEditViewModel> BuildProductVersionEditModels(IEnumerable<BatteryProductVersion> productVersions)
+    {
+        return productVersions
+            .OrderBy(version => version.Version, StringComparer.OrdinalIgnoreCase)
+            .Reverse()
+            .Select(version => new ProductVersionEditViewModel
+            {
+                Version = version.Version,
+                BatteryMassKg = version.BatteryMassKg,
+                RatedEnergyKwh = version.RatedEnergyKwh,
+                RatedCapacityAh = version.RatedCapacityAh,
+                RatedMaximumPowerKw = version.RatedMaximumPowerKw,
+                NominalVoltageV = version.NominalVoltageV,
+                ExpectedLifetimeYears = version.ExpectedLifetimeYears,
+                ExpectedCycles = version.ExpectedCycles,
+                SupplyChainIndex = version.SupplyChainIndex,
+                CarbonFootprint = version.CarbonFootprint,
+                PerformanceClass = version.PerformanceClass,
+                MaterialMassesKg = version.MaterialMassesKg,
+                CarbonStages = version.CarbonStages,
+                RecycledContent = version.RecycledContent.ToDictionary(
+                    pair => pair.Key,
+                    pair => new ProductTemplateRecycledContentViewModel
+                    {
+                        PreConsumerShare = pair.Value.PreConsumerShare,
+                        PostConsumerShare = pair.Value.PostConsumerShare
+                    },
+                    StringComparer.OrdinalIgnoreCase),
+                SoftwareVersions = version.SoftwareVersions
+                    .Select(software => new ProductSoftwareVersionViewModel
+                    {
+                        Version = software.Version,
+                        ReleaseDate = software.ReleaseDate,
+                        LatestUpdate = software.LatestUpdate
+                    })
+                    .ToList()
+            })
+            .ToList();
     }
 
     private static BatteryProductTemplate BuildProductTemplateFromForm(IFormCollection form, BatteryProductTemplate existing)
@@ -1262,6 +1318,26 @@ public class AdminController : Controller
             .Select(value => value ?? string.Empty)
             .Where(value => !string.IsNullOrWhiteSpace(value))
             .ToList();
+
+        var softwareVersions = ReadSoftwareVersions(form, existing.LatestProductVersion.SoftwareVersions);
+        var productVersion = new BatteryProductVersion(
+            Text(form, "productVersion", existing.LatestProductVersion.Version),
+            Number(form, "batteryMassKg", existing.LatestProductVersion.BatteryMassKg),
+            Number(form, "ratedEnergyKwh", existing.LatestProductVersion.RatedEnergyKwh),
+            Number(form, "ratedCapacityAh", existing.LatestProductVersion.RatedCapacityAh),
+            Number(form, "ratedMaximumPowerKw", existing.LatestProductVersion.RatedMaximumPowerKw),
+            Number(form, "nominalVoltageV", existing.LatestProductVersion.NominalVoltageV),
+            Number(form, "expectedLifetimeYears", existing.LatestProductVersion.ExpectedLifetimeYears),
+            Number(form, "expectedCycles", existing.LatestProductVersion.ExpectedCycles),
+            BatteryPassCanonicalDataCatalog.NormalizeSupplyChainIndex(Number(form, "supplyChainIndex", existing.LatestProductVersion.SupplyChainIndex)),
+            BatteryPassCanonicalDataCatalog.NormalizeCarbonFootprint(Number(form, "carbonFootprint", existing.LatestProductVersion.CarbonFootprint)),
+            BatteryPassCanonicalDataCatalog.NormalizePerformanceClass(Text(form, "performanceClass", existing.LatestProductVersion.PerformanceClass)),
+            ReadNumberMap(form, "materialName", "materialMass", existing.LatestProductVersion.MaterialMassesKg),
+            ReadNumberMap(form, "carbonStage", "carbonStageValue", existing.LatestProductVersion.CarbonStages),
+            ReadRecycledContentMap(form, existing.LatestProductVersion.RecycledContent),
+            softwareVersions,
+            existing.LatestProductVersion.TemplateDocuments,
+            requiredFieldKeys);
 
         return existing with
         {
@@ -1283,8 +1359,9 @@ public class AdminController : Controller
             MaterialMassesKg = ReadNumberMap(form, "materialName", "materialMass", existing.MaterialMassesKg),
             CarbonStages = ReadNumberMap(form, "carbonStage", "carbonStageValue", existing.CarbonStages),
             RecycledContent = ReadRecycledContentMap(form, existing.RecycledContent),
-            SoftwareVersions = ReadSoftwareVersions(form, existing.SoftwareVersions),
-            RequiredFieldKeys = requiredFieldKeys
+            SoftwareVersions = softwareVersions,
+            RequiredFieldKeys = requiredFieldKeys,
+            ProductVersions = [productVersion]
         };
     }
 
@@ -1324,7 +1401,10 @@ public class AdminController : Controller
                         ReleaseDate = software.ReleaseDate,
                         LatestUpdate = software.LatestUpdate
                     })
-                    .ToList()
+                    .ToList(),
+                ProductVersions = BuildProductVersionEditModels(product.ProductVersions.Count == 0
+                    ? [product.LatestProductVersion]
+                    : product.ProductVersions)
             })
             .ToList();
     }

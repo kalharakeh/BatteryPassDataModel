@@ -40,6 +40,25 @@ public sealed class ProductSoftwareVersionViewModel
     public string LatestUpdate { get; init; } = string.Empty;
 }
 
+public sealed class ProductVersionEditViewModel
+{
+    public string Version { get; init; } = string.Empty;
+    public double BatteryMassKg { get; init; }
+    public double RatedEnergyKwh { get; init; }
+    public double RatedCapacityAh { get; init; }
+    public double RatedMaximumPowerKw { get; init; }
+    public double NominalVoltageV { get; init; }
+    public double ExpectedLifetimeYears { get; init; }
+    public double ExpectedCycles { get; init; }
+    public double SupplyChainIndex { get; init; }
+    public double CarbonFootprint { get; init; }
+    public string PerformanceClass { get; init; } = string.Empty;
+    public IReadOnlyDictionary<string, double> MaterialMassesKg { get; init; } = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+    public IReadOnlyDictionary<string, double> CarbonStages { get; init; } = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+    public IReadOnlyDictionary<string, ProductTemplateRecycledContentViewModel> RecycledContent { get; init; } = new Dictionary<string, ProductTemplateRecycledContentViewModel>(StringComparer.OrdinalIgnoreCase);
+    public IReadOnlyList<ProductSoftwareVersionViewModel> SoftwareVersions { get; init; } = [];
+}
+
 public sealed class ProductTemplateFormCatalogItemViewModel
 {
     public string ProductId { get; init; } = string.Empty;
@@ -60,6 +79,7 @@ public sealed class ProductTemplateFormCatalogItemViewModel
     public IReadOnlyDictionary<string, double> CarbonStages { get; init; } = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
     public IReadOnlyDictionary<string, ProductTemplateRecycledContentViewModel> RecycledContent { get; init; } = new Dictionary<string, ProductTemplateRecycledContentViewModel>(StringComparer.OrdinalIgnoreCase);
     public IReadOnlyList<ProductSoftwareVersionViewModel> SoftwareVersions { get; init; } = [];
+    public IReadOnlyList<ProductVersionEditViewModel> ProductVersions { get; init; } = [];
 }
 
 public sealed class ProductTemplateRecycledContentViewModel
@@ -92,6 +112,8 @@ public sealed class ProductTemplateEditViewModel
     public DataCompletionPolicySnapshot DataRequirements { get; init; } = new();
     public string StatusMessage { get; init; } = string.Empty;
     public string ErrorMessage { get; init; } = string.Empty;
+    public IReadOnlyList<ProductVersionEditViewModel> ProductVersions { get; init; } = [];
+    public IReadOnlyList<ProductTemplateFormCatalogItemViewModel> BaseProductCatalog { get; init; } = [];
 }
 
 public sealed class ClusterViewModel

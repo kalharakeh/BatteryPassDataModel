@@ -1,8 +1,11 @@
 @using BatteryPassWeb.Services
+@using System.Text.Json
 @model BatteryPassWeb.Models.ViewModels.ProductTemplateEditViewModel
 @{
     ViewData["Title"] = string.IsNullOrWhiteSpace(Model.ProductId) ? "New product template" : $"Edit {Model.ProductName}";
     var isNew = string.IsNullOrWhiteSpace(Model.ProductId);
+    var currentProductVersion = Model.ProductVersions.FirstOrDefault();
+    var baseProductCatalogJson = JsonSerializer.Serialize(Model.BaseProductCatalog);
     var imageOptions = BatteryImageCatalog.Options;
     var selectedImageUrl = BatteryImageCatalog.NormalizeKnownImageUrl(Model.ImageUrl, string.Empty);
     var materialMasses = BatteryPassCanonicalDataCatalog.Materials
@@ -58,8 +61,47 @@
         <div class="alert alert-danger mt-3 mb-0">@Model.ErrorMessage</div>
     }
 
+    <script type="application/json" data-base-product-catalog>@Html.Raw(baseProductCatalogJson)</script>
+
     <form method="post" action="/admin/products/save" class="bp-product-editor-grid mt-4">
         @Html.AntiForgeryToken()
+
+        @if (isNew)
+        {
+            <section class="bp-card bp-product-editor-section bp-span-all">
+                <div class="bp-product-section-heading">
+                    <div>
+                        <h2>Base on existing template</h2>
+                        <p class="bp-help-text mb-0">Start empty, or choose an existing product, product/battery version, and software version to fill the editable fields.</p>
+                    </div>
+                    <button type="button" class="bp-secondary-button bp-button-compact" data-apply-base-template>Use selected base</button>
+                </div>
+                <div class="bp-form-grid">
+                    <label class="bp-field-shell">
+                        <span>Base product</span>
+                        <select data-base-product-select>
+                            <option value="">No base product</option>
+                            @foreach (var product in Model.BaseProductCatalog)
+                            {
+                                <option value="@product.ProductId">@product.ProductName</option>
+                            }
+                        </select>
+                    </label>
+                    <label class="bp-field-shell">
+                        <span>Base product/battery version</span>
+                        <select data-base-product-version-select>
+                            <option value="">Select a product first</option>
+                        </select>
+                    </label>
+                    <label class="bp-field-shell">
+                        <span>Base software version</span>
+                        <select data-base-software-select>
+                            <option value="">Select a product version first</option>
+                        </select>
+                    </label>
+                </div>
+            </section>
+        }
 
         <section class="bp-card bp-product-editor-section">
             <h2>Product identity</h2>
@@ -111,11 +153,24 @@
             </div>
         </section>
 
+        <section class="bp-card bp-product-editor-section bp-span-all" data-product-version-list>
+            <div class="bp-product-section-heading">
+                <div>
+                    <h2>Product/battery version</h2>
+                    <p class="bp-help-text mb-0">This version owns the shared product parameters. Software versions below belong to this product/battery version.</p>
+                </div>
+                <label class="bp-field-shell bp-version-field-compact bp-product-version-current">
+                    <span>Current version</span>
+                    <input type="text" name="productVersion" value="@(currentProductVersion?.Version ?? "1.0")" placeholder="2.0" required />
+                </label>
+            </div>
+        </section>
+
         <section class="bp-card bp-product-editor-section">
             <div class="bp-product-section-heading">
                 <div>
                     <h2>Software versions</h2>
-                    <p class="bp-help-text mb-0">Each software version defines the version, release date, and latest update available for this product.</p>
+                    <p class="bp-help-text mb-0">Each software version defines the version, release date, and latest update available for this product/battery version.</p>
                     <p class="bp-help-text mb-0">Saved software version numbers cannot be changed. Add a new software version instead.</p>
                 </div>
                 <button type="button" class="bp-secondary-button bp-button-compact" data-add-software-version>Add software</button>
@@ -141,7 +196,7 @@
                             <div class="bp-template-version-action">
                                 <button
                                     type="submit"
-                                    form="push-@Model.ProductId-@software.Version"
+                                    form="push-@Model.ProductId-@(currentProductVersion?.Version ?? "1.0")-@software.Version"
                                     class="bp-secondary-button bp-button-compact">
                                     Push to batteries
                                 </button>
@@ -286,7 +341,8 @@
     {
         @foreach (var software in Model.SoftwareVersions)
         {
-            <form id="push-@Model.ProductId-@software.Version" method="post" action="/admin/products/@Uri.EscapeDataString(Model.ProductId)/software/@Uri.EscapeDataString(software.Version)/push">
+            var productVersion = currentProductVersion?.Version ?? "1.0";
+            <form id="push-@Model.ProductId-@productVersion-@software.Version" method="post" action="/admin/products/@Uri.EscapeDataString(Model.ProductId)/versions/@Uri.EscapeDataString(productVersion)/software/@Uri.EscapeDataString(software.Version)/push">
                 @Html.AntiForgeryToken()
             </form>
         }
@@ -298,8 +354,93 @@
         (() => {
             const list = document.querySelector('[data-software-version-list]');
             const addButton = document.querySelector('[data-add-software-version]');
+            const baseCatalogElement = document.querySelector('[data-base-product-catalog]');
+            const baseProductSelect = document.querySelector('[data-base-product-select]');
+            const baseProductVersionSelect = document.querySelector('[data-base-product-version-select]');
+            const baseSoftwareSelect = document.querySelector('[data-base-software-select]');
+            const applyBaseButton = document.querySelector('[data-apply-base-template]');
+            const baseCatalog = parseBaseCatalog(baseCatalogElement?.textContent || '[]');
             if (!list || !addButton) {
                 return;
+            }
+
+            function parseBaseCatalog(rawJson) {
+                try {
+                    const parsed = JSON.parse(rawJson);
+                    return Array.isArray(parsed) ? parsed : [];
+                } catch {
+                    return [];
+                }
+            }
+
+            function setField(name, value) {
+                const field = document.querySelector(`[name="${name}"]`);
+                if (field) {
+                    field.value = value ?? '';
+                    field.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+
+            function selectedBaseProduct() {
+                return baseCatalog.find(product => String(product.ProductId || '').toLowerCase() === String(baseProductSelect?.value || '').toLowerCase());
+            }
+
+            function selectedBaseProductVersion() {
+                const product = selectedBaseProduct();
+                return (product?.ProductVersions || []).find(version => String(version.Version || '').toLowerCase() === String(baseProductVersionSelect?.value || '').toLowerCase());
+            }
+
+            function updateBaseProductVersions() {
+                if (!baseProductVersionSelect) {
+                    return;
+                }
+
+                const versions = selectedBaseProduct()?.ProductVersions || [];
+                baseProductVersionSelect.innerHTML = '';
+                versions.forEach(version => {
+                    const option = document.createElement('option');
+                    option.value = version.Version || '';
+                    option.textContent = version.Version || '';
+                    baseProductVersionSelect.appendChild(option);
+                });
+                updateBaseSoftware();
+            }
+
+            function updateBaseSoftware() {
+                if (!baseSoftwareSelect) {
+                    return;
+                }
+
+                const versions = selectedBaseProductVersion()?.SoftwareVersions || [];
+                baseSoftwareSelect.innerHTML = '';
+                versions.forEach(software => {
+                    const option = document.createElement('option');
+                    option.value = software.Version || '';
+                    option.textContent = `${software.Version || ''} - updated ${software.LatestUpdate || ''}`;
+                    baseSoftwareSelect.appendChild(option);
+                });
+            }
+
+            function applyBaseTemplate() {
+                const product = selectedBaseProduct();
+                const version = selectedBaseProductVersion();
+                if (!product || !version) {
+                    return;
+                }
+
+                setField('imageUrl', product.ImageUrl);
+                setField('moduleCount', product.ModuleCount);
+                setField('productVersion', version.Version);
+                setField('batteryMassKg', version.BatteryMassKg);
+                setField('ratedEnergyKwh', version.RatedEnergyKwh);
+                setField('ratedCapacityAh', version.RatedCapacityAh);
+                setField('ratedMaximumPowerKw', version.RatedMaximumPowerKw);
+                setField('nominalVoltageV', version.NominalVoltageV);
+                setField('expectedLifetimeYears', version.ExpectedLifetimeYears);
+                setField('expectedCycles', version.ExpectedCycles);
+                setField('supplyChainIndex', version.SupplyChainIndex);
+                setField('carbonFootprint', version.CarbonFootprint);
+                setField('performanceClass', version.PerformanceClass);
             }
 
             function bindRemoveButton(row) {
@@ -342,6 +483,9 @@
             }
 
             list.querySelectorAll('[data-software-version-row]').forEach(bindRemoveButton);
+            baseProductSelect?.addEventListener('change', updateBaseProductVersions);
+            baseProductVersionSelect?.addEventListener('change', updateBaseSoftware);
+            applyBaseButton?.addEventListener('click', applyBaseTemplate);
             addButton.addEventListener('click', () => {
                 const row = createRow();
                 list.appendChild(row);
