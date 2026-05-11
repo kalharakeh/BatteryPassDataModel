@@ -30,22 +30,23 @@ public sealed class AdminHelpPageTests
     }
 
     [Fact]
-    public void AdminHelpView_ShouldRenderPageLevelBackToMainAdminLink()
+    public void AdminHelpView_ShouldRenderDenseNavigationWithoutBackToMainAdminLink()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
-        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        Assert.Contains("Back to main admin page", markup);
-        Assert.Contains("href=\"/admin\"", markup);
-        Assert.Contains("bp-page-return-row", markup);
-        Assert.Contains("bp-page-return-link", markup);
+        Assert.Contains("bp-console-header", markup);
+        Assert.Contains("Administration tabs", markup);
+        Assert.Contains("bp-tab-active", markup);
+        Assert.Contains("href=\"/admin/clusters?tab=passports\"", markup);
+        Assert.Contains("href=\"/admin/clusters?tab=local-editable-fields\"", markup);
+        Assert.Contains("href=\"/admin/help\"", markup);
+        Assert.DoesNotContain("Back to main admin page", markup);
+        Assert.DoesNotContain("bp-page-return-row", markup);
+        Assert.DoesNotContain("bp-page-return-link", markup);
         Assert.True(
-            markup.IndexOf("bp-page-return-row", StringComparison.Ordinal) <
-            markup.IndexOf("bp-admin-help-hero", StringComparison.Ordinal),
-            "The help return link should sit above the help hero instead of inside the content card.");
-
-        Assert.Contains(".bp-page-return-row", css);
-        Assert.Contains(".bp-page-return-link", css);
+            markup.IndexOf("bp-tab-row", StringComparison.Ordinal) <
+            markup.IndexOf("bp-admin-help-start-panel", StringComparison.Ordinal),
+            "The admin help tab navigation should stay above the readable start panel.");
     }
 
     [Fact]
@@ -110,18 +111,24 @@ public sealed class AdminHelpPageTests
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.Contains("bp-admin-help-overview", markup);
-        Assert.Contains("bp-admin-help-quicknav", markup);
-        Assert.Contains("bp-admin-help-lifecycle", markup);
+        Assert.Contains("bp-admin-help-navigation-panel", markup);
+        Assert.Contains("bp-admin-help-link-list", markup);
+        Assert.Contains("bp-admin-help-anchor-tabs", markup);
+        Assert.Contains("bp-admin-help-lifecycle-guide", markup);
+        Assert.Contains("bp-admin-help-lifecycle-list", markup);
         Assert.Contains("href=\"#workflow-steps\"", markup);
         Assert.Contains("id=\"target-state\"", markup);
         Assert.Contains("id=\"workflow-steps\"", markup);
         Assert.Contains("id=\"status-dictionary\"", markup);
         Assert.Contains("id=\"ready-checklist\"", markup);
+        Assert.DoesNotContain("bp-admin-help-quicknav", markup);
 
         Assert.Contains(".bp-admin-help-overview", css);
-        Assert.Contains(".bp-admin-help-quicknav", css);
-        Assert.Contains(".bp-admin-help-lifecycle", css);
-        Assert.Contains("position: sticky", css);
+        Assert.Contains(".bp-admin-help-navigation-panel", css);
+        Assert.Contains(".bp-admin-help-link-list", css);
+        Assert.Contains(".bp-admin-help-anchor-tabs", css);
+        Assert.Contains(".bp-admin-help-lifecycle-guide", css);
+        Assert.Contains(".bp-admin-help-lifecycle-list", css);
     }
 
     [Fact]
@@ -130,21 +137,41 @@ public sealed class AdminHelpPageTests
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        Assert.Contains("bp-admin-help-hero-panel", markup);
-        Assert.Contains("bp-admin-help-trust-chip", markup);
-        Assert.Contains("bp-admin-help-task-strip", markup);
-        Assert.Contains("bp-admin-help-task-card", markup);
+        Assert.Contains("bp-admin-help-start-panel", markup);
+        Assert.Contains("bp-admin-help-start-copy", markup);
+        Assert.Contains("bp-admin-help-start-actions", markup);
         Assert.Contains("bp-admin-help-step-card", markup);
         Assert.Contains("bp-admin-help-step-copy", markup);
-        Assert.Contains("Trust gate", markup);
-        Assert.Contains("Need to act now?", markup);
+        Assert.DoesNotContain("bp-admin-help-hero-panel", markup);
+        Assert.DoesNotContain("bp-admin-help-workflow-card", markup);
+        Assert.DoesNotContain("bp-admin-help-task-card", markup);
+        Assert.DoesNotContain("bp-admin-help-workflow-chip-row", markup);
+        Assert.DoesNotContain("bp-admin-help-action-console", markup);
+        Assert.DoesNotContain("bp-admin-help-action-pills", markup);
+        Assert.DoesNotContain("Need to act now?", markup);
 
-        Assert.Contains(".bp-admin-help-hero-panel", css);
-        Assert.Contains(".bp-admin-help-trust-chip", css);
-        Assert.Contains(".bp-admin-help-task-strip", css);
-        Assert.Contains(".bp-admin-help-task-card", css);
+        Assert.Contains(".bp-admin-help-start-panel", css);
+        Assert.Contains(".bp-admin-help-start-copy", css);
+        Assert.Contains(".bp-admin-help-start-actions", css);
         Assert.Contains(".bp-admin-help-step-card", css);
         Assert.Contains(".bp-admin-help-step-copy", css);
+    }
+
+    [Fact]
+    public void AdminHelpView_ShouldKeepResetInMaintenanceDisclosureAfterPrimaryGuide()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("bp-admin-help-maintenance-reset", markup);
+        Assert.Contains("<summary>", markup);
+        Assert.Contains("Maintenance", markup);
+        Assert.True(
+            markup.IndexOf("bp-admin-help-maintenance-reset", StringComparison.Ordinal) >
+            markup.IndexOf("id=\"ready-checklist\"", StringComparison.Ordinal),
+            "The reset action should be available, but it should not dominate the first help screen.");
+
+        Assert.Contains(".bp-admin-help-maintenance-reset", css);
     }
 
     [Fact]

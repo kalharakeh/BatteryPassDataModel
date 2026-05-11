@@ -174,7 +174,7 @@
     @if (selectedTab == "clusters")
     {
         <div class="bp-management-shell mt-4">
-            <section class="bp-card bp-management-create-card">
+            <section class="bp-card bp-management-create-card bp-console-form-card">
                 <div>
                     <span class="bp-summary-title">Cluster setup</span>
                     <h2 class="h5 mb-2">Add cluster</h2>
@@ -196,7 +196,7 @@
             <section class="bp-cluster-management-list">
                 @foreach (var cluster in Model.Clusters)
                 {
-                    <article class="bp-management-card">
+                    <article class="bp-management-card bp-console-form-card">
                         <div class="bp-management-card-main">
                             <div class="bp-management-card-title">
                                 <h3>@cluster.Name</h3>
@@ -237,7 +237,7 @@
     @if (selectedTab == "users")
     {
         <div class="bp-management-shell mt-4">
-            <section class="bp-card bp-management-create-card">
+            <section class="bp-card bp-management-create-card bp-console-form-card">
                 <div>
                     <span class="bp-summary-title">User setup</span>
                     <h2 class="h5 mb-2">Add or update user</h2>
@@ -300,7 +300,7 @@
                         .OrderBy(membership => membership.ClusterId, StringComparer.OrdinalIgnoreCase)
                         .ToList();
 
-                    <article class="bp-management-card bp-user-card">
+                    <article class="bp-management-card bp-user-card bp-console-form-card">
                         <div class="bp-user-card-identity">
                             <h3>@(string.IsNullOrWhiteSpace(user.Name) ? user.Email : user.Name)</h3>
                             <p>@user.Email</p>
@@ -367,7 +367,7 @@
 
     @if (selectedTab == "local-editable-fields")
     {
-        <section class="bp-card mt-4">
+        <section class="bp-card bp-policy-console mt-4">
             <div class="d-flex justify-content-between flex-wrap gap-3 align-items-start">
                 <div>
                     <h2 class="h5 mb-1">Local editable fields</h2>
@@ -375,26 +375,28 @@
                 </div>
                 @if (!string.IsNullOrWhiteSpace(Model.LocalEditableFieldPolicy.UpdatedAt))
                 {
-                    <p class="small text-secondary mb-0">Updated @Model.LocalEditableFieldPolicy.UpdatedAt by @Model.LocalEditableFieldPolicy.UpdatedBy</p>
+                    <p class="bp-policy-meta mb-0">Updated @Model.LocalEditableFieldPolicy.UpdatedAt by @Model.LocalEditableFieldPolicy.UpdatedBy</p>
                 }
             </div>
             <form method="post" action="/admin/local-editable-fields/save" class="bp-stack-form mt-3">
                 @Html.AntiForgeryToken()
-                @foreach (var policySection in Model.LocalEditableFieldPolicy.Sections.OrderBy(policySection => policySection.SortOrder))
-                {
-                    <fieldset class="bp-policy-section">
-                        <legend>@policySection.Label</legend>
-                        <div class="bp-requirement-grid">
-                            @foreach (var field in policySection.Fields.OrderBy(field => field.SortOrder))
-                            {
-                                <label class="bp-checkbox-option">
-                                    <input type="checkbox" name="editableFieldKeys" value="@field.FieldKey" checked="@localEditableKeys.Contains(field.FieldKey)" />
-                                    <span>@field.Label</span>
-                                </label>
-                            }
-                        </div>
-                    </fieldset>
-                }
+                <div class="bp-policy-section-grid">
+                    @foreach (var policySection in Model.LocalEditableFieldPolicy.Sections.OrderBy(policySection => policySection.SortOrder))
+                    {
+                        <fieldset class="bp-policy-section">
+                            <legend>@policySection.Label</legend>
+                            <div class="bp-requirement-grid">
+                                @foreach (var field in policySection.Fields.OrderBy(field => field.SortOrder))
+                                {
+                                    <label class="bp-checkbox-option">
+                                        <input type="checkbox" name="editableFieldKeys" value="@field.FieldKey" checked="@localEditableKeys.Contains(field.FieldKey)" />
+                                        <span>@field.Label</span>
+                                    </label>
+                                }
+                            </div>
+                        </fieldset>
+                    }
+                </div>
                 <button type="submit" class="bp-primary-button">Save local editable fields</button>
             </form>
         </section>
@@ -416,7 +418,7 @@
             </div>
         </section>
         <div class="bp-credential-stack mt-4" data-credential-panel="api-tokens">
-            <section class="bp-card bp-credential-panel">
+            <section class="bp-card bp-credential-panel bp-console-form-card">
                 <div class="bp-credential-panel-header">
                     <div>
                         <span class="bp-summary-title">New token</span>

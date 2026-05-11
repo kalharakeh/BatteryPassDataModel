@@ -7,12 +7,31 @@ public sealed class HelpWorkbenchLayoutTests
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
 
-        var documentationIndex = markup.IndexOf("<h2 class=\"h5 mb-0\">Documentation</h2>", StringComparison.Ordinal);
-        var workbenchIndex = markup.IndexOf("<h2 class=\"h5 mb-3\">Request Workbench</h2>", StringComparison.Ordinal);
+        var documentationIndex = markup.IndexOf("API documentation", StringComparison.Ordinal);
+        var workbenchIndex = markup.IndexOf("Request workbench", StringComparison.Ordinal);
 
         Assert.True(documentationIndex >= 0, "Documentation heading should exist.");
         Assert.True(workbenchIndex > documentationIndex, "Request Workbench should be rendered under Documentation.");
         Assert.Contains("bp-help-stack", markup);
+    }
+
+    [Fact]
+    public void HelpPage_ShouldUseDenseConsoleHelpShell()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("bp-api-help-page", markup);
+        Assert.Contains("bp-console-header", markup);
+        Assert.Contains("bp-console-toolbar", markup);
+        Assert.Contains("bp-api-help-meta-strip", markup);
+        Assert.Contains("bp-api-help-section-card", markup);
+        Assert.Contains("bp-api-help-doc-heading", markup);
+
+        Assert.Contains(".bp-api-help-page", css);
+        Assert.Contains(".bp-api-help-meta-strip", css);
+        Assert.Contains(".bp-api-help-section-card", css);
+        Assert.Contains(".bp-api-help-doc-heading", css);
     }
 
     [Fact]
@@ -25,6 +44,7 @@ public sealed class HelpWorkbenchLayoutTests
         Assert.Contains("parseRawRequest", markup);
         Assert.Contains("requestSource: 'raw'", markup);
         Assert.Contains("templateSelect?.addEventListener('change'", markup);
+        Assert.DoesNotContain("batterySecretEl", markup);
     }
 
     [Fact]

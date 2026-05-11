@@ -4,50 +4,62 @@
     var registryScopeLabel = ViewData["RegistryScopeLabel"] as string ?? "Search and open battery passports linked to your account.";
     var registryEmptyLabel = ViewData["RegistryEmptyLabel"] as string ?? "No batteries are currently linked to your account.";
 }
-<main class="bp-page">
-    <h1 class="mb-1">Scania Passport Registry</h1>
-    <p class="text-secondary mb-0">@registryScopeLabel</p>
+<main class="bp-page bp-admin-page bp-registry-page">
+    <header class="bp-console-header">
+        <div>
+            <h1>Scania Passport Registry</h1>
+            <p class="text-secondary mb-0">@registryScopeLabel</p>
+        </div>
+    </header>
 
-    <form action="/registry" class="bp-search-form mt-4">
-        <input
-            name="q"
-            value="@Context.Request.Query["q"]"
-            placeholder="Search by battery ID, battery family, serial, or manufacturer" />
-        <button type="submit">Search</button>
-    </form>
+    <section class="bp-console-toolbar">
+        <form action="/registry" class="bp-search-form">
+            <input
+                name="q"
+                value="@Context.Request.Query["q"]"
+                placeholder="Search by battery ID, battery family, serial, or manufacturer" />
+            <button type="submit">Search</button>
+        </form>
+    </section>
 
     @if (Model.Count == 0)
     {
-        <div class="bp-card mt-4">
+        <div class="bp-card">
             @registryEmptyLabel
         </div>
     }
     else
     {
-        <div class="bp-card mt-4 p-0 overflow-auto">
-            <table class="table table-hover align-middle mb-0">
+        <div class="bp-card bp-table-card">
+            <div class="bp-table-scroll">
+            <table class="table table-hover align-middle bp-console-table">
                 <thead>
                     <tr>
-                        <th class="px-3 py-3">Battery ID</th>
-                        <th class="px-3 py-3">Battery Family</th>
-                        <th class="px-3 py-3">Battery version</th>
-                        <th class="px-3 py-3">Battery serial number</th>
-                        <th class="px-3 py-3">Passport status</th>
-                        <th class="px-3 py-3">Updated</th>
-                        <th class="px-3 py-3">Actions</th>
+                        <th>Battery ID</th>
+                        <th>Battery Family</th>
+                        <th>Battery version</th>
+                        <th>Battery serial number</th>
+                        <th>Passport status</th>
+                        <th>Updated</th>
+                        <th class="bp-action-cell">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var row in Model)
                     {
+                        var passportStatusClass = row.PassportStatus.Equals("published", StringComparison.OrdinalIgnoreCase)
+                            ? "bp-status-pill is-published"
+                            : row.PassportStatus.Equals("signed", StringComparison.OrdinalIgnoreCase)
+                                ? "bp-status-pill is-signed"
+                                : "bp-status-pill is-draft";
                         <tr>
-                            <td class="px-3 py-3 text-break">@row.PassportId</td>
-                            <td class="px-3 py-3">@row.BatteryFamily</td>
-                            <td class="px-3 py-3">@row.BatteryVersion</td>
-                            <td class="px-3 py-3">@row.BatterySerialNumber</td>
-                            <td class="px-3 py-3">@row.PassportStatus</td>
-                            <td class="px-3 py-3">@(string.IsNullOrWhiteSpace(row.UpdatedDate) ? "-" : row.UpdatedDate[..Math.Min(10, row.UpdatedDate.Length)])</td>
-                            <td class="px-3 py-3">
+                            <td><span class="bp-battery-id-cell">@row.PassportId</span></td>
+                            <td>@row.BatteryFamily</td>
+                            <td>@row.BatteryVersion</td>
+                            <td>@row.BatterySerialNumber</td>
+                            <td><span class="@passportStatusClass">@row.PassportStatus</span></td>
+                            <td>@(string.IsNullOrWhiteSpace(row.UpdatedDate) ? "-" : row.UpdatedDate[..Math.Min(10, row.UpdatedDate.Length)])</td>
+                            <td class="bp-action-cell">
                                 <div class="bp-icon-action-row">
                                     <a href="/@Uri.EscapeDataString(row.PassportId)/summary" class="bp-report-action" aria-label="Summary report" title="Summary report" data-tooltip="Summary report">
                                         <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -70,6 +82,7 @@
                     }
                 </tbody>
             </table>
+            </div>
         </div>
     }
 </main>

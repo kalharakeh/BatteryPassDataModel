@@ -8,6 +8,12 @@
     var customerName = string.Empty;
     var customerRole = string.Empty;
     var clusterNames = new List<string>();
+    var requestPath = Context.Request.Path;
+    var mainClass = requestPath.StartsWithSegments("/registry")
+        || requestPath.StartsWithSegments("/admin")
+        || requestPath.StartsWithSegments("/cluster-admin")
+            ? "bp-main-wide"
+            : string.Empty;
 
     if (isAuthenticated)
     {
@@ -115,7 +121,7 @@
             </div>
         </header>
 
-        <main class="bp-main">
+        <main class="bp-main @mainClass">
             @RenderBody()
         </main>
 

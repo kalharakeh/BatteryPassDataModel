@@ -69,50 +69,69 @@
         @Html.AntiForgeryToken()
 
         <div class="bp-product-editor-workspace">
-            <aside class="bp-card bp-product-editor-section bp-product-version-sidebar" data-product-version-manager>
-                <div class="bp-product-section-heading">
+            <section class="bp-card bp-product-version-console bp-console-form-card" data-product-version-manager>
+                <div class="bp-product-version-console-header">
                     <div>
                         <h2>Battery versions</h2>
                         <p class="bp-help-text mb-0">Select a tab to edit its software, parameters, documents, and completion policy.</p>
                     </div>
                     <button type="button" class="bp-secondary-button bp-button-compact" data-add-product-version>Add version</button>
                 </div>
-                <div class="bp-product-version-current-pill">
-                    <span>Currently editing</span>
-                    <strong data-selected-product-version-label>@(currentProductVersion?.Version ?? "1.0")</strong>
-                </div>
                 <input type="hidden" name="productVersion" value="@(currentProductVersion?.Version ?? "1.0")" data-current-product-version />
                 <input type="hidden" name="productVersionsJson" value="" data-product-versions-json />
-                <div class="bp-product-version-tab-rail" role="tablist" aria-label="Battery versions" data-product-version-list data-product-version-tab-rail>
+                <div class="bp-product-version-tab-rail bp-product-version-chip-rail" role="tablist" aria-label="Battery versions" data-product-version-list data-product-version-tab-rail>
                     @foreach (var productVersion in Model.ProductVersions)
                     {
                         var isCurrentVersion = currentProductVersion?.Version.Equals(productVersion.Version, StringComparison.OrdinalIgnoreCase) == true;
-                        <article class="bp-product-version-tab is-saved-version @(isCurrentVersion ? "is-active" : string.Empty)" data-product-version-row data-product-version-tab data-version="@productVersion.Version">
+                        <article class="bp-product-version-tab bp-product-version-chip is-saved-version @(isCurrentVersion ? "is-active" : string.Empty)" data-product-version-row data-product-version-tab data-version="@productVersion.Version">
                             <button type="button" class="bp-product-version-tab-main" role="tab" aria-selected="@(isCurrentVersion ? "true" : "false")" title="Edit version @productVersion.Version" data-edit-product-version>
-                                <span>Edit version</span>
+                                <span>Battery version</span>
                                 <strong>@productVersion.Version</strong>
                             </button>
                             <label class="bp-product-version-tab-input">
                                 <span>Version number</span>
                                 <input type="text" value="@productVersion.Version" readonly data-product-version-input />
                             </label>
-                            <div class="bp-product-version-tab-actions">
-                                @if (!isNew)
-                                {
-                                    <button
-                                        type="submit"
-                                        form="push-product-version-@Model.ProductId-@productVersion.Version"
-                                        class="bp-secondary-button bp-button-compact">
-                                        Push to batteries
-                                    </button>
-                                }
-                                <button type="button" class="bp-danger-button bp-button-compact" data-remove-product-version>Remove</button>
-                            </div>
+                            <span class="bp-product-version-chip-pill">@(isCurrentVersion ? "Selected" : "Saved")</span>
+                            <small>@(isCurrentVersion ? "Currently editing this version" : "Saved battery version")</small>
                         </article>
                     }
                 </div>
-                <p class="bp-help-text mb-0">Save new battery versions before pushing. A new version normally matches zero batteries until passports are created with it.</p>
-            </aside>
+                <div class="bp-product-version-selected-panel">
+                    <label class="bp-product-version-selected-field">
+                        <span>Currently editing</span>
+                        @if (isNew)
+                        {
+                            <input type="text" value="@(currentProductVersion?.Version ?? "1.0")" data-selected-product-version-label data-selected-product-version-input />
+                        }
+                        else
+                        {
+                            <input type="text" value="@(currentProductVersion?.Version ?? "1.0")" readonly data-selected-product-version-label data-selected-product-version-input />
+                        }
+                    </label>
+                    <div class="bp-product-version-selected-meta">
+                        <strong>Push is version-level</strong>
+                        <span>Push updates template-owned fields for batteries using this battery version. Manual battery overrides are preserved.</span>
+                    </div>
+                    <div class="bp-product-version-selected-actions">
+                        @if (!isNew && currentProductVersion != null)
+                        {
+                            <button
+                                type="submit"
+                                form="push-product-version-@Model.ProductId-@currentProductVersion.Version"
+                                class="bp-secondary-button bp-button-compact"
+                                data-push-selected-product-version>
+                                Push to batteries
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="submit" class="bp-secondary-button bp-button-compact" data-push-selected-product-version disabled>Push to batteries</button>
+                        }
+                        <button type="button" class="bp-danger-button bp-button-compact" data-remove-product-version data-remove-selected-product-version>Remove</button>
+                    </div>
+                </div>
+            </section>
 
             <div class="bp-product-editor-content">
                 <div class="bp-product-editor-grid">
@@ -389,6 +408,9 @@
             const productVersionList = document.querySelector('[data-product-version-list]');
             const addProductVersionButton = document.querySelector('[data-add-product-version]');
             const selectedProductVersionLabels = document.querySelectorAll('[data-selected-product-version-label]');
+            const selectedProductVersionInput = document.querySelector('[data-selected-product-version-input]');
+            const pushSelectedProductVersionButton = document.querySelector('[data-push-selected-product-version]');
+            const removeSelectedProductVersionButton = document.querySelector('[data-remove-selected-product-version]');
             const templateDocumentList = document.querySelector('[data-template-document-list]');
             const requiredFieldInputs = Array.from(document.querySelectorAll('[name="requiredFieldKeys"]'));
             const requirementRequired = document.querySelector('[data-requirement-required]');
@@ -551,12 +573,33 @@
                 productVersionsInput.value = JSON.stringify(productVersions);
                 currentProductVersionInput.value = currentProductVersion;
                 updateSelectedProductVersionLabels();
+                updateSelectedProductVersionControls();
             }
 
             function updateSelectedProductVersionLabels() {
                 selectedProductVersionLabels.forEach(label => {
-                    label.textContent = currentProductVersion || '';
+                    if ('value' in label) {
+                        label.value = currentProductVersion || '';
+                    } else {
+                        label.textContent = currentProductVersion || '';
+                    }
                 });
+            }
+
+            function updateSelectedProductVersionControls() {
+                const currentKey = normalizeVersionKey(currentProductVersion);
+                const currentIsSaved = !isNewProduct && savedProductVersionKeys.has(currentKey);
+                if (selectedProductVersionInput) {
+                    selectedProductVersionInput.readOnly = currentIsSaved;
+                }
+                if (pushSelectedProductVersionButton) {
+                    const pushFormId = `push-product-version-${productId}-${currentProductVersion || ''}`;
+                    pushSelectedProductVersionButton.setAttribute('form', pushFormId);
+                    pushSelectedProductVersionButton.disabled = !currentIsSaved || !document.getElementById(pushFormId);
+                }
+                if (removeSelectedProductVersionButton) {
+                    removeSelectedProductVersionButton.disabled = productVersions.length <= 1;
+                }
             }
 
             function currentVersionModel() {
@@ -664,29 +707,41 @@
                     const isSavedVersion = !isNewProduct && savedProductVersionKeys.has(versionKey);
                     const isActive = String(version.Version || '').toLowerCase() === String(currentProductVersion || '').toLowerCase();
                     const row = document.createElement('article');
-                    row.className = `bp-product-version-tab bp-product-version-row ${isSavedVersion ? 'is-saved-version' : 'is-new-version'} ${isActive ? 'is-active' : ''}`;
+                    row.className = `bp-product-version-tab bp-product-version-chip bp-product-version-row ${isSavedVersion ? 'is-saved-version' : 'is-new-version'} ${isActive ? 'is-active' : ''}`;
                     row.dataset.productVersionRow = '';
                     row.dataset.productVersionTab = '';
                     row.dataset.version = version.Version || '';
-                    const pushFormId = `push-product-version-${productId}-${version.Version || ''}`;
-                    const pushDisabled = !isSavedVersion || !document.getElementById(pushFormId);
                     const readonlyAttr = isSavedVersion ? 'readonly' : '';
                     row.innerHTML = `
                         <button type="button" class="bp-product-version-tab-main" role="tab" aria-selected="${isActive ? 'true' : 'false'}" title="Edit version ${escapeHtml(version.Version || '')}" data-edit-product-version>
-                            <span>Edit version</span>
+                            <span>Battery version</span>
                             <strong>${escapeHtml(version.Version || '')}</strong>
                         </button>
                         <label class="bp-product-version-tab-input">
                             <span>Version number</span>
                             <input type="text" value="${escapeHtml(version.Version || '')}" data-product-version-input ${readonlyAttr} required />
                         </label>
-                        <div class="bp-product-version-tab-actions">
-                            <button type="submit" form="${escapeHtml(pushFormId)}" class="bp-secondary-button bp-button-compact" ${pushDisabled ? 'disabled' : ''}>Push to batteries</button>
-                            <button type="button" class="bp-danger-button bp-button-compact" data-remove-product-version>Remove</button>
-                        </div>`;
+                        <span class="bp-product-version-chip-pill">${isActive ? 'Selected' : isSavedVersion ? 'Saved' : 'New'}</span>
+                        <small>${isActive ? 'Currently editing this version' : isSavedVersion ? 'Saved battery version' : 'Save before pushing'}</small>`;
                     bindProductVersionRow(row, version);
                     productVersionList.appendChild(row);
                 });
+            }
+
+            function removeProductVersion(version) {
+                if (productVersions.length <= 1) {
+                    selectedProductVersionInput?.focus();
+                    return;
+                }
+
+                productVersions = productVersions.filter(candidate => candidate !== version);
+                if (String(currentProductVersion || '').toLowerCase() === String(version.Version || '').toLowerCase()) {
+                    currentProductVersion = productVersions[0]?.Version || '';
+                    applyProductVersion(productVersions[0]);
+                } else {
+                    renderProductVersionRows();
+                    writeProductVersionsJson();
+                }
             }
 
             function bindProductVersionRow(row, version) {
@@ -701,7 +756,7 @@
                     if (versionInput && !versionInput.readOnly) {
                         return;
                     }
-                    if (event.target.closest('[data-remove-product-version], .bp-product-version-tab-actions')) {
+                    if (event.target.closest('[data-remove-product-version]')) {
                         return;
                     }
                     selectProductVersion(version);
@@ -710,21 +765,6 @@
                     event.preventDefault();
                     event.stopPropagation();
                     selectProductVersion(version);
-                });
-                row.querySelector('[data-remove-product-version]')?.addEventListener('click', event => {
-                    event.stopPropagation();
-                    if (productVersions.length <= 1) {
-                        input?.focus();
-                        return;
-                    }
-                    productVersions = productVersions.filter(candidate => candidate !== version);
-                    if (String(currentProductVersion || '').toLowerCase() === String(version.Version || '').toLowerCase()) {
-                        currentProductVersion = productVersions[0]?.Version || '';
-                        applyProductVersion(productVersions[0]);
-                    } else {
-                        renderProductVersionRows();
-                        writeProductVersionsJson();
-                    }
                 });
                 input?.addEventListener('input', () => {
                     if (input.readOnly) {
@@ -744,6 +784,40 @@
                     writeProductVersionsJson();
                 });
             }
+
+            selectedProductVersionInput?.addEventListener('input', () => {
+                if (selectedProductVersionInput.readOnly) {
+                    return;
+                }
+
+                const current = currentVersionModel();
+                if (!current) {
+                    return;
+                }
+
+                current.Version = selectedProductVersionInput.value.trim();
+                currentProductVersion = current.Version;
+                const activeRow = productVersionList.querySelector('.bp-product-version-tab.is-active');
+                if (activeRow) {
+                    activeRow.dataset.version = currentProductVersion;
+                    const tabLabel = activeRow.querySelector('.bp-product-version-tab-main strong');
+                    if (tabLabel) {
+                        tabLabel.textContent = currentProductVersion;
+                    }
+                    const tabInput = activeRow.querySelector('[data-product-version-input]');
+                    if (tabInput) {
+                        tabInput.value = currentProductVersion;
+                    }
+                }
+                writeProductVersionsJson();
+            });
+
+            removeSelectedProductVersionButton?.addEventListener('click', () => {
+                const current = currentVersionModel();
+                if (current) {
+                    removeProductVersion(current);
+                }
+            });
 
             function escapeHtml(value) {
                 return String(value)
@@ -810,6 +884,7 @@
             requiredFieldInputs.forEach(input => input.addEventListener('change', updateRequirementStats));
             updateRequirementStats();
             renderProductVersionRows();
+            updateSelectedProductVersionControls();
             baseProductSelect?.addEventListener('change', updateBaseProductVersions);
             baseProductVersionSelect?.addEventListener('change', () => {});
             applyBaseButton?.addEventListener('click', applyBaseTemplate);
@@ -822,10 +897,7 @@
                 productVersions.push(version);
                 currentProductVersion = version.Version;
                 applyProductVersion(version);
-                Array.from(productVersionList.querySelectorAll('[data-product-version-row]'))
-                    .find(row => String(row.dataset.version || '') === String(version.Version || ''))
-                    ?.querySelector('[data-product-version-input]')
-                    ?.focus();
+                selectedProductVersionInput?.focus();
             });
             form.addEventListener('submit', () => {
                 saveCurrentVersion();

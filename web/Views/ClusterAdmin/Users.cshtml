@@ -5,24 +5,28 @@
     var clustersById = Model.Clusters.ToDictionary(cluster => cluster.ClusterId, cluster => cluster, StringComparer.OrdinalIgnoreCase);
 }
 <main class="bp-page bp-admin-page">
-    <div class="d-flex justify-content-between flex-wrap gap-3 align-items-end">
+    <header class="bp-console-header">
         <div>
-            <h1 class="mb-1">Cluster users</h1>
+            <h1>Cluster users</h1>
             <p class="text-secondary mb-0">Add, edit, or remove users in clusters where you are a local admin.</p>
         </div>
-        <div class="d-flex gap-2">
-            <a href="/cluster-admin/passports" class="bp-secondary-button">Managed passports</a>
-            <a href="/cluster-admin/api-tokens" class="bp-secondary-button">API tokens</a>
+    </header>
+
+    <nav class="bp-local-admin-nav" aria-label="Local admin tabs">
+        <div class="bp-tab-row">
+            <a class="bp-tab" href="/cluster-admin/passports">Managed passports</a>
+            <a class="bp-tab bp-tab-active" href="/cluster-admin/users">Users</a>
+            <a class="bp-tab" href="/cluster-admin/api-tokens">API token management</a>
         </div>
-    </div>
+    </nav>
 
     @if (!string.IsNullOrWhiteSpace(errorMessage))
     {
         <div class="alert alert-danger mt-2 mb-0">@errorMessage</div>
     }
 
-    <div class="bp-management-shell mt-4">
-        <section class="bp-card bp-management-create-card">
+    <div class="bp-management-shell bp-console-split">
+        <section class="bp-card bp-management-create-card bp-console-form-card">
             <div>
                 <span class="bp-summary-title">Cluster user setup</span>
                 <h2 class="h5 mb-2">Add or update user</h2>
@@ -68,7 +72,7 @@
         <section class="bp-user-management-list">
             @if (Model.Users.Count == 0)
             {
-                <article class="bp-management-card">
+                <article class="bp-management-card bp-console-form-card">
                     <p class="text-secondary mb-0">No users are connected to your managed clusters yet.</p>
                 </article>
             }
@@ -81,7 +85,7 @@
                         .OrderBy(membership => membership.ClusterId, StringComparer.OrdinalIgnoreCase)
                         .ToList();
 
-                    <article class="bp-management-card bp-user-card">
+                    <article class="bp-management-card bp-user-card bp-console-form-card">
                         <div class="bp-user-card-identity">
                             <h3>@(string.IsNullOrWhiteSpace(user.Name) ? user.Email : user.Name)</h3>
                             <p>@user.Email</p>

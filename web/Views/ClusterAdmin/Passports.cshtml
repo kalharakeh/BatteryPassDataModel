@@ -4,44 +4,50 @@
     var query = ViewData["Query"] as string ?? string.Empty;
 }
 <main class="bp-page bp-admin-page">
-    <div class="d-flex justify-content-between flex-wrap gap-3 align-items-end">
+    <header class="bp-console-header">
         <div>
-            <h1 class="mb-1">Managed passports</h1>
+            <h1>Managed passports</h1>
             <p class="text-secondary mb-0">Edit local operational fields for passports in your administered clusters.</p>
         </div>
-        <div class="d-flex gap-2">
-            <a href="/cluster-admin/users" class="bp-secondary-button">Manage users</a>
-            <a href="/cluster-admin/api-tokens" class="bp-secondary-button">API tokens</a>
-        </div>
-    </div>
+    </header>
 
-    <section class="bp-card mt-2">
-        <form action="/cluster-admin/passports" class="bp-search-form mb-0">
+    <nav class="bp-local-admin-nav" aria-label="Local admin tabs">
+        <div class="bp-tab-row">
+            <a class="bp-tab bp-tab-active" href="/cluster-admin/passports">Managed passports</a>
+            <a class="bp-tab" href="/cluster-admin/users">Users</a>
+            <a class="bp-tab" href="/cluster-admin/api-tokens">API token management</a>
+        </div>
+    </nav>
+
+    <section class="bp-console-toolbar">
+        <form action="/cluster-admin/passports" class="bp-search-form">
             <input
                 name="q"
                 value="@query"
-                placeholder="Search by passport ID, model, serial, or manufacturer" />
+                placeholder="Search by battery ID, battery family, serial, or manufacturer" />
             <button type="submit">Search</button>
         </form>
     </section>
 
-    <section class="bp-card p-0 overflow-auto">
-        <table class="table table-hover align-middle mb-0">
+    <section class="bp-card bp-table-card">
+        <div class="bp-table-scroll">
+        <table class="table table-hover align-middle bp-console-table">
             <thead>
                 <tr>
-                    <th class="px-4 py-3">Passport ID</th>
-                    <th class="px-4 py-3">Model</th>
-                    <th class="px-4 py-3">Serial</th>
-                    <th class="px-4 py-3">Cluster</th>
-                    <th class="px-4 py-3">Updated</th>
-                    <th class="px-4 py-3">Actions</th>
+                    <th>Battery ID</th>
+                    <th>Battery Family</th>
+                    <th>Battery version</th>
+                    <th>Battery serial number</th>
+                    <th>Cluster</th>
+                    <th>Updated</th>
+                    <th class="bp-action-cell">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 @if (Model.Count == 0)
                 {
                     <tr>
-                        <td class="px-4 py-4 text-secondary" colspan="6">No managed passports found for this account.</td>
+                        <td class="text-secondary" colspan="7">No managed passports found for this account.</td>
                     </tr>
                 }
                 else
@@ -54,18 +60,42 @@
                                 ? row.UpdatedDate.Substring(0, 10)
                                 : row.UpdatedDate;
                         <tr>
-                            <td class="px-4 py-3 text-break">@row.PassportId</td>
-                            <td class="px-4 py-3">@row.ModelNumber</td>
-                            <td class="px-4 py-3">@row.SerialNumber</td>
-                            <td class="px-4 py-3">@row.ClusterLabel</td>
-                            <td class="px-4 py-3">@updated</td>
-                            <td class="px-4 py-3">
-                                <a href="/cluster-admin/passports/@Uri.EscapeDataString(row.PassportId)/edit">Edit local fields</a>
+                            <td><span class="bp-battery-id-cell">@row.PassportId</span></td>
+                            <td>@row.BatteryFamily</td>
+                            <td>@row.BatteryVersion</td>
+                            <td>@row.BatterySerialNumber</td>
+                            <td>@row.ClusterLabel</td>
+                            <td>@updated</td>
+                            <td class="bp-action-cell">
+                                <div class="bp-icon-action-row">
+                                    <a href="/@Uri.EscapeDataString(row.PassportId)/summary" class="bp-report-action" aria-label="Summary report" title="Summary report" data-tooltip="Summary report">
+                                        <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M6 3h9l3 3v15H6z" />
+                                            <path d="M15 3v4h4" />
+                                            <path d="M9 11h6M9 15h6M9 19h4" />
+                                        </svg>
+                                    </a>
+                                    <a href="/@Uri.EscapeDataString(row.PassportId)" class="bp-report-action" aria-label="Detailed report" title="Detailed report" data-tooltip="Detailed report">
+                                        <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M6 3h9l3 3v15H6z" />
+                                            <path d="M15 3v4h4" />
+                                            <path d="M10 12a3 3 0 1 0 4.24 4.24" />
+                                            <path d="m14 16 3 3" />
+                                        </svg>
+                                    </a>
+                                    <a href="/cluster-admin/passports/@Uri.EscapeDataString(row.PassportId)/edit" class="bp-report-action" aria-label="Edit local fields" title="Edit local fields" data-tooltip="Edit local fields">
+                                        <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M12 20h9" />
+                                            <path d="m16.5 3.5 4 4L7 21H3v-4L16.5 3.5Z" />
+                                        </svg>
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                     }
                 }
             </tbody>
         </table>
+        </div>
     </section>
 </main>

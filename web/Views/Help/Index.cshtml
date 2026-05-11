@@ -2,10 +2,15 @@
 @{
     ViewData["Title"] = "External API Help";
 }
-<main class="bp-page bp-admin-page bp-help-page">
-    <section class="bp-card">
-        <h1 class="mb-2">External Battery Passport API</h1>
-        <p class="text-secondary mb-3">Read battery passport data and update live operational values through token-protected HTTP requests.</p>
+<main class="bp-page bp-admin-page bp-help-page bp-api-help-page">
+    <header class="bp-console-header">
+        <div>
+            <h1>API help</h1>
+            <p class="text-secondary mb-0">Read passport data, update operational values, and run token-protected trust actions.</p>
+        </div>
+    </header>
+
+    <section class="bp-console-toolbar bp-api-help-meta-strip" aria-label="API connection values">
         <div class="bp-help-kv-grid">
             <div>
                 <p class="mb-1 text-secondary small">Base path</p>
@@ -27,10 +32,13 @@
     </section>
 
     <div class="bp-help-stack">
-        <section class="bp-card">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                <h2 class="h5 mb-0">Documentation</h2>
-                <input id="doc-search" class="form-control" style="max-width: 340px;" placeholder="Search endpoint, field, alias, section" />
+        <section class="bp-card bp-api-help-section-card">
+            <div class="bp-api-help-doc-heading">
+                <div>
+                    <span class="bp-summary-title">Reference</span>
+                    <h2>API documentation</h2>
+                </div>
+                <input id="doc-search" class="form-control bp-api-help-search" placeholder="Search endpoint, field, alias, section" />
             </div>
 
             <div class="bp-help-doc-list" id="doc-list">
@@ -175,8 +183,13 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
             </div>
         </section>
 
-        <section class="bp-card bp-help-tester-card">
-            <h2 class="h5 mb-3">Request Workbench</h2>
+        <section class="bp-card bp-help-tester-card bp-api-help-section-card">
+            <div class="bp-api-help-doc-heading">
+                <div>
+                    <span class="bp-summary-title">Sandbox</span>
+                    <h2>Request workbench</h2>
+                </div>
+            </div>
 
             <div class="bp-form-grid">
                 <label>Template
@@ -666,7 +679,6 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
             document.getElementById('tester-reset')?.addEventListener('click', () => {
                 templateSelect.value = 'readFull';
                 authFormatEl.value = 'base64';
-                batterySecretEl.value = '';
                 applyTemplate('readFull');
                 setStatus('-');
                 setResponse('{}');
@@ -689,7 +701,7 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
                 });
             });
 
-            [methodEl, pathEl, authFormatEl, tokenEl, batterySecretEl, bodyEl].forEach(element => {
+            [methodEl, pathEl, authFormatEl, tokenEl, bodyEl].forEach(element => {
                 element?.addEventListener('input', syncRawRequestFromControls);
                 element?.addEventListener('change', syncRawRequestFromControls);
             });

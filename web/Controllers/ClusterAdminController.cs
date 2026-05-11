@@ -76,6 +76,10 @@ public class ClusterAdminController : Controller
                     : clusterNamesById.TryGetValue(passport.ClusterId, out var clusterName)
                         ? clusterName
                         : passport.ClusterId,
+                BatteryFamily = passport.BatteryFamily,
+                BatteryVersion = passport.BatteryVersion,
+                BatterySerialNumber = passport.BatterySerialNumber,
+                PassportStatus = passport.PassportStatus,
                 BatteryImageUrl = passport.BatteryImageUrl,
                 UpdatedDate = passport.UpdatedDate
             })

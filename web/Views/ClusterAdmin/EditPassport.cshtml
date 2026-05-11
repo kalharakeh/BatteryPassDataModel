@@ -8,13 +8,21 @@
     bool CanEditField(string fieldKey) => Model.FieldEditableByKey.TryGetValue(fieldKey, out var editable) && editable;
 }
 <main class="bp-page bp-admin-page">
-    <div class="d-flex justify-content-between flex-wrap gap-3 align-items-end">
+    <header class="bp-console-header">
         <div>
-            <h1 class="mb-1">Edit local passport fields</h1>
+            <h1>Edit local passport fields</h1>
             <p class="bp-passport-id mb-0">@passport.PassportId</p>
         </div>
         <a href="/cluster-admin/passports" class="bp-secondary-button">Back to managed passports</a>
-    </div>
+    </header>
+
+    <nav class="bp-local-admin-nav" aria-label="Local admin tabs">
+        <div class="bp-tab-row">
+            <a class="bp-tab bp-tab-active" href="/cluster-admin/passports">Managed passports</a>
+            <a class="bp-tab" href="/cluster-admin/users">Users</a>
+            <a class="bp-tab" href="/cluster-admin/api-tokens">API token management</a>
+        </div>
+    </nav>
 
     @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
     {
@@ -26,16 +34,16 @@
     }
 
     <section class="bp-card">
-        <form method="post" action="/cluster-admin/passports/save" class="bp-stack-form" data-local-passport-form>
+        <form method="post" action="/cluster-admin/passports/save" class="bp-local-edit-grid" data-local-passport-form>
             @Html.AntiForgeryToken()
             <input type="hidden" name="passportId" value="@passport.PassportId" />
 
-            <label>
-                Cluster
+            <label class="bp-field-shell">
+                <span>Cluster</span>
                 <input type="text" value="@passport.ClusterLabel" readonly />
             </label>
-            <label>
-                Facility ID
+            <label class="bp-field-shell">
+                <span>Facility ID</span>
                 @if (CanEditField("general.facilityId"))
                 {
                     <input type="text" name="facilityId" value="@passport.FacilityId" />
@@ -45,8 +53,8 @@
                     <input type="text" value="@passport.FacilityId" readonly />
                 }
             </label>
-            <label>
-                Battery image
+            <label class="bp-field-shell">
+                <span>Battery image</span>
                 @if (CanEditField("general.batteryImageUrl"))
                 {
                     <select name="batteryImageUrl" data-battery-image-select>
@@ -68,12 +76,12 @@
                     <input type="text" value="@selectedBatteryImageUrl" readonly />
                 }
             </label>
-            <label>
-                Category
+            <label class="bp-field-shell">
+                <span>Category</span>
                 <input type="text" name="category" value="@selectedBatteryCategory" readonly data-image-category />
             </label>
-            <label>
-                State of charge %
+            <label class="bp-field-shell">
+                <span>State of charge %</span>
                 @if (CanEditField("performance.stateOfCharge"))
                 {
                     <input type="number" step="any" min="0" max="100" name="stateOfCharge" value="@passport.Performance.StateOfCharge" />
@@ -83,8 +91,8 @@
                     <input type="number" step="any" value="@passport.Performance.StateOfCharge" readonly />
                 }
             </label>
-            <label>
-                Remaining capacity %
+            <label class="bp-field-shell">
+                <span>Remaining capacity %</span>
                 @if (CanEditField("performance.remainingCapacity"))
                 {
                     <input type="number" step="any" min="0" max="100" name="remainingCapacity" value="@passport.Performance.RemainingCapacity" />
@@ -94,8 +102,8 @@
                     <input type="number" step="any" value="@passport.Performance.RemainingCapacity" readonly />
                 }
             </label>
-            <label>
-                Remaining energy kWh
+            <label class="bp-field-shell">
+                <span>Remaining energy kWh</span>
                 @if (CanEditField("performance.remainingEnergy"))
                 {
                     <input type="number" step="any" min="0" name="remainingEnergy" value="@passport.Performance.RemainingEnergy" />
@@ -105,8 +113,8 @@
                     <input type="number" step="any" value="@passport.Performance.RemainingEnergy" readonly />
                 }
             </label>
-            <label>
-                Full cycles
+            <label class="bp-field-shell">
+                <span>Full cycles</span>
                 @if (CanEditField("performance.fullCycles"))
                 {
                     <input type="number" step="1" min="0" name="fullCycles" value="@passport.Performance.Cycles" />
@@ -117,7 +125,7 @@
                 }
             </label>
 
-            <div class="d-flex justify-content-between flex-wrap gap-2 pt-2">
+            <div class="bp-local-edit-actions d-flex justify-content-between flex-wrap gap-2 pt-2">
                 <a href="/@Uri.EscapeDataString(passport.PassportId)/summary" class="bp-secondary-button">Open summary report</a>
                 <button type="submit" class="bp-primary-button">Save local updates</button>
             </div>

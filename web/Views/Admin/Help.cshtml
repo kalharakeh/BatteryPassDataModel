@@ -5,9 +5,23 @@
 }
 
 <main class="bp-page bp-admin-page bp-admin-help-page">
-    <div class="bp-page-return-row">
-        <a href="/admin" class="bp-page-return-link">Back to main admin page</a>
-    </div>
+    <header class="bp-console-header">
+        <div>
+            <h1>Administration</h1>
+            <p class="text-secondary mb-0">Create, validate, sign, publish, and recover clean trust state.</p>
+        </div>
+    </header>
+
+    <nav class="bp-tab-row" aria-label="Administration tabs">
+        <a class="bp-tab" href="/admin/clusters?tab=passports">Passports</a>
+        <a class="bp-tab" href="/admin/clusters?tab=battery">Battery cluster assignments</a>
+        <a class="bp-tab" href="/admin/clusters?tab=clusters">Registered clusters</a>
+        <a class="bp-tab" href="/admin/clusters?tab=users">Users</a>
+        <a class="bp-tab" href="/admin/clusters?tab=local-editable-fields">Local editable fields</a>
+        <a class="bp-tab" href="/admin/clusters?tab=api-token-management">API Token Management</a>
+        <a class="bp-tab" href="/admin/clusters?tab=products">Battery families</a>
+        <a class="bp-tab bp-tab-active" href="/admin/help">Help</a>
+    </nav>
 
     @if (!string.IsNullOrWhiteSpace(statusMessage))
     {
@@ -18,70 +32,55 @@
         <div class="bp-alert bp-alert-danger">@errorMessage</div>
     }
 
-    <section class="bp-admin-help-demo-reset" aria-label="Battery family reset">
-        <div>
-            <span class="bp-summary-title">Battery family reset</span>
-            <strong>Restore one unassigned demonstrator plus six clustered customer batteries from MongoDB battery families.</strong>
-            <p>This guarded reset recreates Compact 7M, Compact 13M, and Core battery families with battery versions, software parameters, evidence files, clusters, users, and exactly seven passport records.</p>
-        </div>
-        <form method="post" action="/admin/product-templates/reset">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="bp-secondary-button bp-button-accent">Reset battery-family passports</button>
-        </form>
-    </section>
-
-    <section class="bp-card bp-admin-help-hero">
-        <div class="bp-admin-help-hero-copy">
+    <section class="bp-card bp-admin-help-start-panel" aria-label="Admin workflow help">
+        <div class="bp-admin-help-start-copy">
             <span class="bp-summary-title">Admin workflow help</span>
-            <h1>Create, validate, sign, publish, and recover clean trust state</h1>
-            <p class="mb-0">
-                Use this page when you need the practical workflow: create the battery ID from a battery family, fill the battery-specific facts,
-                validate the passport, sign the canonical core, publish it, and recover after edits.
-            </p>
-            <div class="bp-admin-help-actions">
-                <a href="/admin/passports/new" class="bp-primary-button">Create battery ID</a>
-                <a href="/admin/clusters?tab=products" class="bp-secondary-button">Open battery families</a>
-                <a href="/admin/clusters?tab=passports" class="bp-secondary-button">Open passports</a>
-            </div>
+            <h2>Guide the passport from draft to public proof.</h2>
+            <p>Start with the battery ID, complete the required data, validate, sign, and publish. If signed data changes later, use the recovery flow to return to clean trust state.</p>
         </div>
-        <aside class="bp-admin-help-hero-panel" aria-label="Trust gate">
-            <span class="bp-summary-title">Trust gate</span>
-            <h2>Ready means all three pass</h2>
-            <div class="bp-admin-help-trust-chip"><strong>Validated</strong><small>Zero blocking errors</small></div>
-            <div class="bp-admin-help-trust-chip"><strong>Signed</strong><small>Current core has proof</small></div>
-            <div class="bp-admin-help-trust-chip"><strong>Published</strong><small>Clean proof is public</small></div>
-        </aside>
-    </section>
-
-    <section class="bp-admin-help-task-strip" aria-label="Need to act now?">
-        <div class="bp-admin-help-task-intro">
-            <span class="bp-summary-title">Need to act now?</span>
-            <h2>Jump straight to the admin surface you need</h2>
-        </div>
-        <a class="bp-admin-help-task-card" href="/admin/passports/new"><span>Create</span><strong>New battery ID</strong><small>Start a draft passport.</small></a>
-        <a class="bp-admin-help-task-card" href="/admin/clusters?tab=products"><span>Define</span><strong>Battery families</strong><small>Edit battery versions, software parameters, and required fields.</small></a>
-        <a class="bp-admin-help-task-card" href="/admin/clusters?tab=local-editable-fields"><span>Delegate</span><strong>Local editable fields</strong><small>Choose what local admins can edit globally.</small></a>
-        <a class="bp-admin-help-task-card" href="/admin/clusters?tab=api-token-management"><span>Integrate</span><strong>API Token Management</strong><small>Manage API tokens and sign tokens.</small></a>
-        <a class="bp-admin-help-task-card" href="/admin/clusters?tab=passports"><span>Manage</span><strong>Passport workspace</strong><small>Open drafts, signed, dirty, and published records.</small></a>
-        <a class="bp-admin-help-task-card" href="#workflow-steps"><span>Learn</span><strong>Step-by-step flow</strong><small>Validate, sign, publish, and recover clean state.</small></a>
+        <nav class="bp-admin-help-start-actions" aria-label="Primary admin actions">
+            <a href="/admin/passports/new" class="bp-primary-button">Create battery ID</a>
+            <a href="/admin/clusters?tab=products" class="bp-secondary-button">Open battery families</a>
+            <a href="/admin/clusters?tab=passports" class="bp-secondary-button">Open passports</a>
+        </nav>
     </section>
 
     <section class="bp-admin-help-overview" aria-label="Admin workflow map">
-        <nav class="bp-card bp-admin-help-quicknav" aria-label="Admin help sections">
-            <span class="bp-summary-title">Page map</span>
-            <strong>Find the exact admin task</strong>
-            <a href="#target-state">Target state</a>
-            <a href="#workflow-steps">Workflow steps</a>
-            <a href="#status-dictionary">Status dictionary</a>
-            <a href="#ready-checklist">Ready checklist</a>
-        </nav>
-        <div class="bp-admin-help-lifecycle" aria-label="Battery passport lifecycle">
-            <article><span>01</span><strong>Draft</strong><small>Create the DID and save incomplete admin data safely.</small></article>
-            <article><span>02</span><strong>Validate</strong><small>Run schema, business-rule, and completion-policy checks.</small></article>
-            <article><span>03</span><strong>Sign</strong><small>Hash and sign the canonical passport core.</small></article>
-            <article><span>04</span><strong>Publish</strong><small>Expose only a clean passport with a current proof.</small></article>
-            <article><span>05</span><strong>Recover</strong><small>After edits, validate and sign again to leave dirty state.</small></article>
-        </div>
+        <section class="bp-card bp-admin-help-navigation-panel" aria-label="Admin shortcuts and page map">
+            <div class="bp-admin-help-navigation-copy">
+                <span class="bp-summary-title">Admin surfaces</span>
+                <h2>Choose where to work</h2>
+                <p>Use the first row for actions in the app. Use the help links below when you want the explanation instead.</p>
+            </div>
+            <nav class="bp-admin-help-link-list" aria-label="Admin action shortcuts">
+                <a href="/admin/passports/new"><strong>New battery ID</strong><small>Create a draft passport.</small></a>
+                <a href="/admin/clusters?tab=products"><strong>Battery families</strong><small>Versions, software parameters, and policy.</small></a>
+                <a href="/admin/clusters?tab=local-editable-fields"><strong>Local fields</strong><small>What cluster admins may edit.</small></a>
+                <a href="/admin/clusters?tab=api-token-management"><strong>API tokens</strong><small>External access and signing.</small></a>
+                <a href="/admin/clusters?tab=passports"><strong>Passports</strong><small>Drafts, signed records, and published records.</small></a>
+            </nav>
+            <nav class="bp-admin-help-anchor-tabs" aria-label="Admin help sections">
+                <a href="#target-state">Target state</a>
+                <a href="#workflow-steps">Workflow steps</a>
+                <a href="#status-dictionary">Status dictionary</a>
+                <a href="#ready-checklist">Ready checklist</a>
+            </nav>
+        </section>
+
+        <section class="bp-card bp-admin-help-lifecycle-guide" aria-label="Battery passport lifecycle">
+            <div class="bp-admin-help-lifecycle-copy">
+                <span class="bp-summary-title">Lifecycle</span>
+                <h2>Five states, one path</h2>
+                <p>These are the checkpoints that matter. Drafts are safe to save, published passports need a current proof, and edited signed data must be recovered.</p>
+            </div>
+            <ol class="bp-admin-help-lifecycle-list">
+                <li><span>01</span><div><strong>Draft</strong><small>Create the DID and save incomplete admin data safely.</small></div></li>
+                <li><span>02</span><div><strong>Validate</strong><small>Run schema, business-rule, and completion-policy checks.</small></div></li>
+                <li><span>03</span><div><strong>Sign</strong><small>Hash and sign the canonical passport core.</small></div></li>
+                <li><span>04</span><div><strong>Publish</strong><small>Expose only a clean passport with a current proof.</small></div></li>
+                <li><span>05</span><div><strong>Recover</strong><small>After edits, validate and sign again to leave dirty state.</small></div></li>
+            </ol>
+        </section>
     </section>
 
     <section id="target-state" class="bp-admin-help-grid">
@@ -263,4 +262,19 @@
             <li>The detailed report shows proof information to authorized admins only.</li>
         </ul>
     </section>
+
+    <details class="bp-card bp-admin-help-demo-reset bp-admin-help-maintenance-reset" id="maintenance-reset">
+        <summary>
+            <span class="bp-summary-title">Maintenance</span>
+            <strong>Battery family reset</strong>
+            <small>Restore one unassigned demonstrator plus six clustered customer batteries.</small>
+        </summary>
+        <div class="bp-admin-help-maintenance-body">
+            <p>This guarded reset recreates Compact 7M, Compact 13M, and Core battery families with battery versions, software parameters, evidence files, clusters, users, and exactly seven passport records.</p>
+            <form method="post" action="/admin/product-templates/reset">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="bp-secondary-button bp-button-accent">Reset battery-family passports</button>
+            </form>
+        </div>
+    </details>
 </main>
