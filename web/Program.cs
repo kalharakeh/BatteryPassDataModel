@@ -66,6 +66,7 @@ builder.Services.AddSingleton<CanonicalPassportSnapshotService>();
 builder.Services.AddSingleton<DemoSigningKeyService>();
 builder.Services.AddSingleton<PassportTrustService>();
 builder.Services.AddSingleton<AuditRevisionService>();
+builder.Services.AddSingleton<PassportTrustWorkflowService>();
 builder.Services.AddSingleton<AccessControlService>();
 builder.Services.AddSingleton<PassportQrCodeService>();
 builder.Services.AddSingleton<AuthService>();

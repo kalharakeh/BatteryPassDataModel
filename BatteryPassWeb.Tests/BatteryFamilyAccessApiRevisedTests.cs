@@ -96,6 +96,21 @@ public sealed class BatteryFamilyAccessApiRevisedTests
     }
 
     [Fact]
+    public void ValidateSignPublish_ShouldUseSharedAutoRepublishWorkflow()
+    {
+        var admin = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+        var api = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
+        var repository = File.ReadAllText(RepoFile("web", "Services", "PassportRepository.cs"));
+        var workflow = File.ReadAllText(RepoFile("web", "Services", "PassportTrustWorkflowService.cs"));
+
+        Assert.Contains("PassportTrustWorkflowService", admin);
+        Assert.Contains("PassportTrustWorkflowService", api);
+        Assert.Contains("ShouldAutoPublishAfterSign", workflow);
+        Assert.Contains("AutoPublished", workflow);
+        Assert.Contains("registryInfo.hasBeenPublished", repository);
+    }
+
+    [Fact]
     public void AccessControl_ShouldDefineRevisedRolesAndTrustVisibility()
     {
         var source = File.ReadAllText(RepoFile("web", "Services", "AccessControlService.cs"));

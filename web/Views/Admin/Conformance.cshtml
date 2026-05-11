@@ -49,6 +49,10 @@
                             @Html.AntiForgeryToken()
                             <button type="submit" class="bp-primary-button">Sign passport</button>
                         </form>
+                        @if (isPublished)
+                        {
+                            <p class="bp-help-text mb-0">Signing will automatically publish the new revision.</p>
+                        }
                     </div>
                 }
                 @if (showPublishPassport)

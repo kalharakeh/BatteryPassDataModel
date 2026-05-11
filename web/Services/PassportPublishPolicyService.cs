@@ -46,6 +46,22 @@ public sealed class PassportPublishPolicyService
             && HasCurrentValidSignature(passport);
     }
 
+    public bool HasBeenPublishedBefore(BsonDocument passport)
+    {
+        if (BsonHelpers.GetValue(passport, "registryInfo", "hasBeenPublished") is { IsBoolean: true } value
+            && value.AsBoolean)
+        {
+            return true;
+        }
+
+        return string.Equals(BsonHelpers.GetString(passport, "registryInfo", "status"), "published", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public bool ShouldAutoPublishAfterSign(BsonDocument passport)
+    {
+        return HasBeenPublishedBefore(passport);
+    }
+
     public string NormalizeRegistryStatus(string requestedStatus, BsonDocument passport, TrustValidationSummary summary)
     {
         return requestedStatus.Trim().ToLowerInvariant() switch

@@ -47,29 +47,20 @@ public class ExternalApiController : ControllerBase
     private readonly ExternalApiRepository _externalApiRepository;
     private readonly BatteryTelemetryRepository _batteryTelemetryRepository;
     private readonly ProductTemplateService _productTemplateService;
-    private readonly DataCompletionPolicyService _dataCompletionPolicyService;
-    private readonly PassportValidationService _passportValidationService;
-    private readonly PassportTrustService _passportTrustService;
-    private readonly AuditRevisionService _auditRevisionService;
+    private readonly PassportTrustWorkflowService _passportTrustWorkflowService;
 
     public ExternalApiController(
         PassportRepository passportRepository,
         ExternalApiRepository externalApiRepository,
         BatteryTelemetryRepository batteryTelemetryRepository,
         ProductTemplateService productTemplateService,
-        DataCompletionPolicyService dataCompletionPolicyService,
-        PassportValidationService passportValidationService,
-        PassportTrustService passportTrustService,
-        AuditRevisionService auditRevisionService)
+        PassportTrustWorkflowService passportTrustWorkflowService)
     {
         _passportRepository = passportRepository;
         _externalApiRepository = externalApiRepository;
         _batteryTelemetryRepository = batteryTelemetryRepository;
         _productTemplateService = productTemplateService;
-        _dataCompletionPolicyService = dataCompletionPolicyService;
-        _passportValidationService = passportValidationService;
-        _passportTrustService = passportTrustService;
-        _auditRevisionService = auditRevisionService;
+        _passportTrustWorkflowService = passportTrustWorkflowService;
     }
 
     [HttpGet("batteries/{passportId}")]
@@ -423,31 +414,14 @@ public class ExternalApiController : ControllerBase
             return auth.ErrorResult;
         }
 
-        var policy = await _dataCompletionPolicyService.GetPolicyForPassportAsync(auth.Passport!, cancellationToken);
-        var summary = _passportValidationService.Validate(auth.Passport!, policy);
-        await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
-        await _auditRevisionService.AppendAuditEventAsync(
-            passportId,
-            "passport.validated",
-            auth.TokenContext!.Name,
-            "api",
-            "external-api",
-            "Passport validation completed through external API.",
-            new BsonDocument
-            {
-                ["blockingErrors"] = summary.BlockingErrorCount,
-                ["warnings"] = summary.WarningCount,
-                ["passedChecks"] = summary.PassedCount,
-                ["canSign"] = summary.CanSign
-            },
-            cancellationToken);
+        var result = await _passportTrustWorkflowService.ValidateAsync(passportId, auth.TokenContext!.Name, "external-api", cancellationToken);
 
-        return Envelope(StatusCodes.Status200OK, "Passport validation completed.", new
+        return Envelope(result.Success ? StatusCodes.Status200OK : StatusCodes.Status400BadRequest, result.Message, new
         {
             passportId,
-            blockingErrors = summary.BlockingErrorCount,
-            warnings = summary.WarningCount,
-            canSign = summary.CanSign
+            blockingErrors = result.ValidationSummary?.BlockingErrorCount ?? 0,
+            warnings = result.ValidationSummary?.WarningCount ?? 0,
+            canSign = result.ValidationSummary?.CanSign ?? false
         });
     }
 
@@ -460,58 +434,16 @@ public class ExternalApiController : ControllerBase
             return auth.ErrorResult;
         }
 
-        var policy = await _dataCompletionPolicyService.GetPolicyForPassportAsync(auth.Passport!, cancellationToken);
-        var summary = _passportValidationService.Validate(auth.Passport!, policy);
-        if (summary.BlockingErrorCount > 0)
-        {
-            await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
-            return Envelope(StatusCodes.Status400BadRequest, "Resolve blocking validation errors before signing.", new
-            {
-                passportId,
-                blockingErrors = summary.BlockingErrorCount,
-                warnings = summary.WarningCount
-            });
-        }
+        var result = await _passportTrustWorkflowService.SignAsync(passportId, auth.TokenContext!.Name, "external-api", cancellationToken);
 
-        var actor = auth.TokenContext!.Name;
-        var signature = _passportTrustService.Sign(auth.Passport!, actor);
-        var revision = await _auditRevisionService.CreateSignedRevisionAsync(
-            passportId,
-            signature.Snapshot,
-            signature.Hash,
-            signature.Proof,
-            actor,
-            signature.SignedAt,
-            cancellationToken);
-        var revisionId = BsonHelpers.GetString(revision, "revisionId");
-        await _passportRepository.UpdateTrustSignatureAsync(
-            passportId,
-            summary,
-            signature.Hash,
-            signature.Proof,
-            revisionId,
-            signature.SignedAt,
-            cancellationToken);
-        await _auditRevisionService.AppendAuditEventAsync(
-            passportId,
-            "passport.signed",
-            actor,
-            "api",
-            "external-api",
-            "Passport signed through external API.",
-            new BsonDocument
-            {
-                ["revisionId"] = revisionId,
-                ["hash"] = $"sha256:{signature.Hash}"
-            },
-            cancellationToken);
-
-        return Envelope(StatusCodes.Status200OK, "Passport signed.", new
+        return Envelope(result.Success ? StatusCodes.Status200OK : StatusCodes.Status400BadRequest, result.Message, new
         {
             passportId,
-            revisionId,
-            hash = $"sha256:{signature.Hash}",
-            signedAt = signature.SignedAt
+            revisionId = result.RevisionId,
+            autoPublished = result.AutoPublished,
+            passportStatus = result.AutoPublished ? "Published" : "Signed",
+            blockingErrors = result.ValidationSummary?.BlockingErrorCount ?? 0,
+            warnings = result.ValidationSummary?.WarningCount ?? 0
         });
     }
 

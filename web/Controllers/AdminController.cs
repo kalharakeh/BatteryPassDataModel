@@ -41,6 +41,7 @@ public class AdminController : Controller
     private readonly ProductTemplateService _productTemplateService;
     private readonly PassportTrustService _passportTrustService;
     private readonly AuditRevisionService _auditRevisionService;
+    private readonly PassportTrustWorkflowService _passportTrustWorkflowService;
 
     public AdminController(
         PassportRepository passportRepository,
@@ -55,7 +56,8 @@ public class AdminController : Controller
         LocalAdminEditableFieldPolicyService localAdminEditableFieldPolicyService,
         ProductTemplateService productTemplateService,
         PassportTrustService passportTrustService,
-        AuditRevisionService auditRevisionService)
+        AuditRevisionService auditRevisionService,
+        PassportTrustWorkflowService passportTrustWorkflowService)
     {
         _passportRepository = passportRepository;
         _clusterRepository = clusterRepository;
@@ -70,6 +72,7 @@ public class AdminController : Controller
         _productTemplateService = productTemplateService;
         _passportTrustService = passportTrustService;
         _auditRevisionService = auditRevisionService;
+        _passportTrustWorkflowService = passportTrustWorkflowService;
     }
 
     [HttpGet("")]
@@ -317,31 +320,12 @@ public class AdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ValidatePassport(string passportId, CancellationToken cancellationToken)
     {
-        var document = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
-        if (document == null)
+        var result = await _passportTrustWorkflowService.ValidateAsync(passportId, CurrentActor(), "admin-ui", cancellationToken);
+        if (!result.Success && result.ValidationSummary == null)
         {
             return NotFound();
         }
 
-        var dataRequirements = await _dataCompletionPolicyService.GetPolicyForPassportAsync(document, cancellationToken);
-        var validation = await ValidateWithEvidenceAsync(passportId, document, dataRequirements, cancellationToken);
-        var summary = validation.Summary;
-        await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
-        await _auditRevisionService.AppendAuditEventAsync(
-            passportId,
-            "passport.validated",
-            CurrentActor(),
-            "admin",
-            "admin-ui",
-            "Passport validation completed.",
-            new BsonDocument
-            {
-                ["blockingErrors"] = summary.BlockingErrorCount,
-                ["warnings"] = summary.WarningCount,
-                ["passedChecks"] = summary.PassedCount,
-                ["canSign"] = summary.CanSign
-            },
-            cancellationToken);
         return Redirect($"/admin/passports/{Uri.EscapeDataString(passportId)}/conformance?status=validated");
     }
 
@@ -349,78 +333,20 @@ public class AdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SignPassport(string passportId, CancellationToken cancellationToken)
     {
-        var document = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
-        if (document == null)
-        {
-            return NotFound();
-        }
-
-        var dataRequirements = await _dataCompletionPolicyService.GetPolicyForPassportAsync(document, cancellationToken);
-        var validation = await ValidateWithEvidenceAsync(passportId, document, dataRequirements, cancellationToken);
-        var summary = validation.Summary;
-        if (!_passportPublishPolicyService.CanSign(summary))
-        {
-            await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
-            await _auditRevisionService.AppendAuditEventAsync(
-                passportId,
-                "passport.sign.blocked",
-                CurrentActor(),
-                "admin",
-                "admin-ui",
-                "Passport signing blocked by validation errors.",
-                new BsonDocument
-                {
-                    ["blockingErrors"] = summary.BlockingErrorCount,
-                    ["warnings"] = summary.WarningCount
-                },
-                cancellationToken);
-            return Redirect(BuildConformanceRedirect(passportId, error: "Resolve blocking validation errors before signing."));
-        }
-
         try
         {
-            var actor = CurrentActor();
-            var signature = _passportTrustService.Sign(document, actor);
-            var revision = await _auditRevisionService.CreateSignedRevisionAsync(
-                passportId,
-                signature.Snapshot,
-                signature.Hash,
-                signature.Proof,
-                actor,
-                signature.SignedAt,
-                cancellationToken);
-            var revisionId = BsonHelpers.GetString(revision, "revisionId");
-
-            var trustUpdated = await _passportRepository.UpdateTrustSignatureAsync(
-                passportId,
-                summary,
-                signature.Hash,
-                signature.Proof,
-                revisionId,
-                signature.SignedAt,
-                cancellationToken);
-            if (!trustUpdated)
+            var result = await _passportTrustWorkflowService.SignAsync(passportId, CurrentActor(), "admin-ui", cancellationToken);
+            if (!result.Success && result.ValidationSummary == null)
             {
-                throw new InvalidOperationException("Signing service could not persist the trust state after recording the signed revision.");
+                return NotFound();
             }
 
-            await _auditRevisionService.AppendAuditEventAsync(
-                passportId,
-                "passport.signed",
-                actor,
-                "admin",
-                "admin-ui",
-                "Passport signed.",
-                new BsonDocument
-                {
-                    ["revisionId"] = revisionId,
-                    ["hash"] = $"sha256:{signature.Hash}",
-                    ["blockingErrors"] = summary.BlockingErrorCount,
-                    ["warnings"] = summary.WarningCount
-                },
-                cancellationToken);
+            if (!result.Success)
+            {
+                return Redirect(BuildConformanceRedirect(passportId, error: result.Message));
+            }
 
-            return Redirect(BuildConformanceRedirect(passportId, status: "signed"));
+            return Redirect(BuildConformanceRedirect(passportId, status: result.AutoPublished ? "published" : "signed"));
         }
         catch (Exception exception) when (IsTrustPersistenceFailure(exception))
         {

@@ -77,6 +77,29 @@ public sealed class PassportPublishPolicyServiceTests
     }
 
     [Fact]
+    public void HasBeenPublishedBefore_ShouldUseDurableHistoricalFlag()
+    {
+        var service = new PassportPublishPolicyService();
+
+        Assert.False(service.HasBeenPublishedBefore(new BsonDocument()));
+        Assert.True(service.HasBeenPublishedBefore(new BsonDocument
+        {
+            ["registryInfo"] = new BsonDocument
+            {
+                ["hasBeenPublished"] = true,
+                ["status"] = "draft"
+            }
+        }));
+        Assert.True(service.HasBeenPublishedBefore(new BsonDocument
+        {
+            ["registryInfo"] = new BsonDocument
+            {
+                ["status"] = "published"
+            }
+        }));
+    }
+
+    [Fact]
     public void NormalizeRegistryStatus_ShouldForceDraftWhenPublishIsBlocked()
     {
         var passport = new BsonDocument();

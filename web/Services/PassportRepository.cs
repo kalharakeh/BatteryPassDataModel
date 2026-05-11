@@ -342,6 +342,7 @@ public sealed class PassportRepository
             Builders<BsonDocument>.Filter.Eq("passportId", passportId),
             Builders<BsonDocument>.Update
                 .Set("registryInfo.status", "published")
+                .Set("registryInfo.hasBeenPublished", true)
                 .Set("registryInfo.publishedAt", timestamp)
                 .Set("registryInfo.updatedAt", timestamp)
                 .Set("validation.status", "published")
