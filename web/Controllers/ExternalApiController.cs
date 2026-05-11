@@ -47,23 +47,35 @@ public class ExternalApiController : ControllerBase
     private readonly ExternalApiRepository _externalApiRepository;
     private readonly BatteryTelemetryRepository _batteryTelemetryRepository;
     private readonly ProductTemplateService _productTemplateService;
+    private readonly DataCompletionPolicyService _dataCompletionPolicyService;
+    private readonly PassportValidationService _passportValidationService;
+    private readonly PassportTrustService _passportTrustService;
+    private readonly AuditRevisionService _auditRevisionService;
 
     public ExternalApiController(
         PassportRepository passportRepository,
         ExternalApiRepository externalApiRepository,
         BatteryTelemetryRepository batteryTelemetryRepository,
-        ProductTemplateService productTemplateService)
+        ProductTemplateService productTemplateService,
+        DataCompletionPolicyService dataCompletionPolicyService,
+        PassportValidationService passportValidationService,
+        PassportTrustService passportTrustService,
+        AuditRevisionService auditRevisionService)
     {
         _passportRepository = passportRepository;
         _externalApiRepository = externalApiRepository;
         _batteryTelemetryRepository = batteryTelemetryRepository;
         _productTemplateService = productTemplateService;
+        _dataCompletionPolicyService = dataCompletionPolicyService;
+        _passportValidationService = passportValidationService;
+        _passportTrustService = passportTrustService;
+        _auditRevisionService = auditRevisionService;
     }
 
     [HttpGet("batteries/{passportId}")]
     public async Task<IActionResult> GetBattery(string passportId, CancellationToken cancellationToken)
     {
-        var auth = await AuthorizeAsync(passportId, requireWrite: false, cancellationToken);
+        var auth = await AuthorizeAsync(passportId, ExternalTokenRequirement.Read, cancellationToken);
         if (auth.ErrorResult != null)
         {
             return auth.ErrorResult;
@@ -80,7 +92,7 @@ public class ExternalApiController : ControllerBase
     [HttpGet("batteries/{passportId}/section/{sectionName}")]
     public async Task<IActionResult> GetBatterySection(string passportId, string sectionName, CancellationToken cancellationToken)
     {
-        var auth = await AuthorizeAsync(passportId, requireWrite: false, cancellationToken);
+        var auth = await AuthorizeAsync(passportId, ExternalTokenRequirement.Read, cancellationToken);
         if (auth.ErrorResult != null)
         {
             return auth.ErrorResult;
@@ -119,7 +131,7 @@ public class ExternalApiController : ControllerBase
     [HttpGet("batteries/{passportId}/values")]
     public async Task<IActionResult> GetBatteryValues(string passportId, [FromQuery(Name = "path")] string[] paths, CancellationToken cancellationToken)
     {
-        var auth = await AuthorizeAsync(passportId, requireWrite: false, cancellationToken);
+        var auth = await AuthorizeAsync(passportId, ExternalTokenRequirement.Read, cancellationToken);
         if (auth.ErrorResult != null)
         {
             return auth.ErrorResult;
@@ -158,7 +170,7 @@ public class ExternalApiController : ControllerBase
         [FromQuery] bool includeContainers,
         CancellationToken cancellationToken)
     {
-        var auth = await AuthorizeAsync(passportId, requireWrite: false, cancellationToken);
+        var auth = await AuthorizeAsync(passportId, ExternalTokenRequirement.Read, cancellationToken);
         if (auth.ErrorResult != null)
         {
             return auth.ErrorResult;
@@ -218,7 +230,7 @@ public class ExternalApiController : ControllerBase
     [HttpPost("batteries/{passportId}/telemetry")]
     public async Task<IActionResult> WriteTelemetry(string passportId, [FromBody] JsonElement payload, CancellationToken cancellationToken)
     {
-        var auth = await AuthorizeAsync(passportId, requireWrite: true, cancellationToken);
+        var auth = await AuthorizeAsync(passportId, ExternalTokenRequirement.Write, cancellationToken);
         if (auth.ErrorResult != null)
         {
             return auth.ErrorResult;
@@ -267,7 +279,7 @@ public class ExternalApiController : ControllerBase
     [HttpGet("batteries/{passportId}/telemetry/history")]
     public async Task<IActionResult> ReadTelemetryHistory(string passportId, [FromQuery] int? hours, CancellationToken cancellationToken)
     {
-        var auth = await AuthorizeAsync(passportId, requireWrite: false, cancellationToken);
+        var auth = await AuthorizeAsync(passportId, ExternalTokenRequirement.Read, cancellationToken);
         if (auth.ErrorResult != null)
         {
             return auth.ErrorResult;
@@ -303,7 +315,7 @@ public class ExternalApiController : ControllerBase
     [HttpPatch("batteries/{passportId}/operations")]
     public async Task<IActionResult> UpdateOperations(string passportId, [FromBody] JsonElement payload, CancellationToken cancellationToken)
     {
-        var auth = await AuthorizeAsync(passportId, requireWrite: true, cancellationToken);
+        var auth = await AuthorizeAsync(passportId, ExternalTokenRequirement.Write, cancellationToken);
         if (auth.ErrorResult != null)
         {
             return auth.ErrorResult;
@@ -362,7 +374,148 @@ public class ExternalApiController : ControllerBase
         return Envelope(StatusCodes.Status200OK, "Operations fields updated successfully.", new { passportId });
     }
 
-    private async Task<ExternalAuthResult> AuthorizeAsync(string passportId, bool requireWrite, CancellationToken cancellationToken)
+    [HttpPatch("batteries/{passportId}/battery-version")]
+    public async Task<IActionResult> UpdateBatteryVersion(string passportId, [FromBody] JsonElement payload, CancellationToken cancellationToken)
+    {
+        var auth = await AuthorizeAsync(passportId, ExternalTokenRequirement.Write, cancellationToken);
+        if (auth.ErrorResult != null)
+        {
+            return auth.ErrorResult;
+        }
+
+        if (payload.ValueKind != JsonValueKind.Object
+            || !TryGetPropertyIgnoreCase(payload, "batteryVersion", out var batteryVersionElement)
+            || batteryVersionElement.ValueKind != JsonValueKind.String
+            || string.IsNullOrWhiteSpace(batteryVersionElement.GetString()))
+        {
+            return Envelope(StatusCodes.Status400BadRequest, "batteryVersion is required and must be a string.");
+        }
+
+        var result = await _productTemplateService.ChangePassportBatteryVersionAsync(
+            auth.Passport!,
+            batteryVersionElement.GetString()!.Trim(),
+            auth.TokenContext!.Name,
+            cancellationToken);
+        if (result == null)
+        {
+            return Envelope(StatusCodes.Status400BadRequest, "Battery version is not defined for this Battery Family.");
+        }
+
+        result.UpdatedPassport.Remove("_id");
+        await _passportRepository.ReplaceAsync(passportId, result.UpdatedPassport, cancellationToken);
+        await _passportRepository.MarkCanonicalDirtyAsync(passportId, "batteryVersionChanged", cancellationToken);
+        return Envelope(StatusCodes.Status200OK, "Battery version updated. Validation and signing are required.", new
+        {
+            passportId,
+            batteryFamily = BsonHelpers.GetString(result.UpdatedPassport, "app", "product", "productName"),
+            batteryVersion = BsonHelpers.GetString(result.UpdatedPassport, "app", "product", "productVersion"),
+            validationSigningRequired = true,
+            changedPaths = result.UpdatedPaths
+        });
+    }
+
+    [HttpPost("batteries/{passportId}/validate")]
+    public async Task<IActionResult> ValidateBatteryPassport(string passportId, CancellationToken cancellationToken)
+    {
+        var auth = await AuthorizeAsync(passportId, ExternalTokenRequirement.Sign, cancellationToken);
+        if (auth.ErrorResult != null)
+        {
+            return auth.ErrorResult;
+        }
+
+        var policy = await _dataCompletionPolicyService.GetPolicyForPassportAsync(auth.Passport!, cancellationToken);
+        var summary = _passportValidationService.Validate(auth.Passport!, policy);
+        await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
+        await _auditRevisionService.AppendAuditEventAsync(
+            passportId,
+            "passport.validated",
+            auth.TokenContext!.Name,
+            "api",
+            "external-api",
+            "Passport validation completed through external API.",
+            new BsonDocument
+            {
+                ["blockingErrors"] = summary.BlockingErrorCount,
+                ["warnings"] = summary.WarningCount,
+                ["passedChecks"] = summary.PassedCount,
+                ["canSign"] = summary.CanSign
+            },
+            cancellationToken);
+
+        return Envelope(StatusCodes.Status200OK, "Passport validation completed.", new
+        {
+            passportId,
+            blockingErrors = summary.BlockingErrorCount,
+            warnings = summary.WarningCount,
+            canSign = summary.CanSign
+        });
+    }
+
+    [HttpPost("batteries/{passportId}/sign")]
+    public async Task<IActionResult> SignBatteryPassport(string passportId, CancellationToken cancellationToken)
+    {
+        var auth = await AuthorizeAsync(passportId, ExternalTokenRequirement.Sign, cancellationToken);
+        if (auth.ErrorResult != null)
+        {
+            return auth.ErrorResult;
+        }
+
+        var policy = await _dataCompletionPolicyService.GetPolicyForPassportAsync(auth.Passport!, cancellationToken);
+        var summary = _passportValidationService.Validate(auth.Passport!, policy);
+        if (summary.BlockingErrorCount > 0)
+        {
+            await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
+            return Envelope(StatusCodes.Status400BadRequest, "Resolve blocking validation errors before signing.", new
+            {
+                passportId,
+                blockingErrors = summary.BlockingErrorCount,
+                warnings = summary.WarningCount
+            });
+        }
+
+        var actor = auth.TokenContext!.Name;
+        var signature = _passportTrustService.Sign(auth.Passport!, actor);
+        var revision = await _auditRevisionService.CreateSignedRevisionAsync(
+            passportId,
+            signature.Snapshot,
+            signature.Hash,
+            signature.Proof,
+            actor,
+            signature.SignedAt,
+            cancellationToken);
+        var revisionId = BsonHelpers.GetString(revision, "revisionId");
+        await _passportRepository.UpdateTrustSignatureAsync(
+            passportId,
+            summary,
+            signature.Hash,
+            signature.Proof,
+            revisionId,
+            signature.SignedAt,
+            cancellationToken);
+        await _auditRevisionService.AppendAuditEventAsync(
+            passportId,
+            "passport.signed",
+            actor,
+            "api",
+            "external-api",
+            "Passport signed through external API.",
+            new BsonDocument
+            {
+                ["revisionId"] = revisionId,
+                ["hash"] = $"sha256:{signature.Hash}"
+            },
+            cancellationToken);
+
+        return Envelope(StatusCodes.Status200OK, "Passport signed.", new
+        {
+            passportId,
+            revisionId,
+            hash = $"sha256:{signature.Hash}",
+            signedAt = signature.SignedAt
+        });
+    }
+
+    private async Task<ExternalAuthResult> AuthorizeAsync(string passportId, ExternalTokenRequirement requirement, CancellationToken cancellationToken)
     {
         if (!_externalApiRepository.IsAvailable || !_batteryTelemetryRepository.IsAvailable)
         {
@@ -373,7 +526,9 @@ public class ExternalApiController : ControllerBase
         }
 
         var token = ExtractToken();
-        var tokenValidation = await _externalApiRepository.ValidateTokenAsync(token, requireWrite, cancellationToken);
+        var tokenValidation = requirement == ExternalTokenRequirement.Sign
+            ? await _externalApiRepository.ValidateTokenAsync(token, ExternalTokenRequirement.Sign, cancellationToken)
+            : await _externalApiRepository.ValidateTokenAsync(token, requirement, cancellationToken);
         if (!tokenValidation.Success || tokenValidation.Context == null)
         {
             return new ExternalAuthResult
@@ -397,16 +552,6 @@ public class ExternalApiController : ControllerBase
             return new ExternalAuthResult
             {
                 ErrorResult = Envelope(StatusCodes.Status403Forbidden, "Token cannot access this battery cluster scope.")
-            };
-        }
-
-        var batterySecret = Request.Headers["X-Battery-Secret"].FirstOrDefault();
-        var secretValidation = await _externalApiRepository.ValidateBatterySecretAsync(passportId, batterySecret, cancellationToken);
-        if (!secretValidation.IsValid)
-        {
-            return new ExternalAuthResult
-            {
-                ErrorResult = Envelope(StatusCodes.Status403Forbidden, secretValidation.Message)
             };
         }
 

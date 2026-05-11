@@ -453,6 +453,40 @@ public sealed class ProductTemplateService
         };
     }
 
+    public async Task<ProductTemplateSafeUpdateResult?> ChangePassportBatteryVersionAsync(
+        BsonDocument passport,
+        string requestedBatteryVersion,
+        string actor,
+        CancellationToken cancellationToken = default)
+    {
+        var productId = BsonHelpers.GetString(passport, "app", "product", "productId");
+        if (string.IsNullOrWhiteSpace(productId) || string.IsNullOrWhiteSpace(requestedBatteryVersion))
+        {
+            return null;
+        }
+
+        var product = await GetProductAsync(productId, cancellationToken);
+        if (product == null)
+        {
+            return null;
+        }
+
+        var selectedVersion = product.ProductVersions.FirstOrDefault(version =>
+            version.Version.Equals(requestedBatteryVersion.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (selectedVersion == null)
+        {
+            return null;
+        }
+
+        var productDocument = await GetProductDocumentAsync(product.ProductId, cancellationToken);
+        return BuildSafeTemplatePushUpdate(
+            passport,
+            product,
+            selectedVersion,
+            productDocument,
+            DateTime.UtcNow.ToString("O"));
+    }
+
     private static ProductTemplateSafeUpdateResult BuildSafeTemplatePushUpdate(
         BsonDocument passport,
         BatteryProductTemplate product,

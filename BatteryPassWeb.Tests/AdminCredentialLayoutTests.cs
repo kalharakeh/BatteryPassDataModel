@@ -22,10 +22,9 @@ public sealed class AdminCredentialLayoutTests
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.Contains("API Token Management", clusters);
-        Assert.Contains("data-credential-tab=\"api-tokens\"", clusters);
-        Assert.Contains("data-credential-tab=\"battery-secrets\"", clusters);
         Assert.DoesNotContain(">API tokens</a>", clusters);
         Assert.DoesNotContain(">Battery secrets</a>", clusters);
+        Assert.DoesNotContain("Battery secrets", clusters);
         Assert.Contains("data-password-reveal", clusters);
         Assert.Contains("data-password-reveal", clusterUsers);
         Assert.Contains(".bp-tab-row", css);
@@ -33,15 +32,11 @@ public sealed class AdminCredentialLayoutTests
     }
 
     [Fact]
-    public void ClusterSecretsPage_ShouldUseRoomyCredentialLayout()
+    public void ClusterSecretsPage_ShouldBeRemoved()
     {
-        var markup = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "Secrets.cshtml"));
+        var path = RepoPath("web", "Views", "ClusterAdmin", "Secrets.cshtml");
 
-        Assert.Contains("bp-credential-stack", markup);
-        Assert.Contains("bp-credential-form-grid bp-secret-form-grid", markup);
-        Assert.Contains("bp-credential-table", markup);
-        Assert.Contains("bp-status-pill", markup);
-        Assert.Contains("bp-action-row", markup);
+        Assert.False(File.Exists(path));
     }
 
     [Fact]
@@ -71,5 +66,22 @@ public sealed class AdminCredentialLayoutTests
         }
 
         throw new FileNotFoundException($"Could not find repository file: {Path.Combine(parts)}");
+    }
+
+    private static string RepoPath(params string[] parts)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory != null)
+        {
+            var candidate = Path.Combine(new[] { directory.FullName }.Concat(parts).ToArray());
+            if (Directory.Exists(Path.GetDirectoryName(candidate)))
+            {
+                return candidate;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException($"Could not find repository path: {Path.Combine(parts)}");
     }
 }

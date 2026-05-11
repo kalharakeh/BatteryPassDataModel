@@ -13,7 +13,6 @@ public sealed class AdminClusterViewModel
     public IReadOnlyList<UserViewModel> Users { get; init; } = [];
     public IReadOnlyList<ClusterMembershipViewModel> Memberships { get; init; } = [];
     public IReadOnlyList<ApiTokenViewModel> ApiTokens { get; init; } = [];
-    public IReadOnlyList<BatterySecretViewModel> BatterySecrets { get; init; } = [];
     public IReadOnlyList<ProductTemplateSummaryViewModel> ProductTemplates { get; init; } = [];
     public LocalAdminEditableFieldPolicySnapshot LocalEditableFieldPolicy { get; init; } = LocalAdminEditableFieldPolicyService.CreateDefaultPolicy();
     public string SamplePassportId { get; init; } = string.Empty;
@@ -159,14 +158,4 @@ public sealed class ApiTokenViewModel
     public string CreatedAt { get; init; } = string.Empty;
     public string UpdatedAt { get; init; } = string.Empty;
     public string LastUsedAt { get; init; } = string.Empty;
-}
-
-public sealed class BatterySecretViewModel
-{
-    public string PassportId { get; init; } = string.Empty;
-    public string ClusterId { get; init; } = string.Empty;
-    public string ClusterLabel { get; init; } = string.Empty;
-    public bool IsActive { get; init; } = true;
-    public string CreatedAt { get; init; } = string.Empty;
-    public string UpdatedAt { get; init; } = string.Empty;
 }

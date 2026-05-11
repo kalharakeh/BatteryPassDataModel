@@ -190,8 +190,7 @@
                 <ol>
                     <li>Open API Token Management to create or regenerate external API tokens.</li>
                     <li>The generated Token Value is the secret credential used in the Authorization header and is shown only at create/regenerate time.</li>
-                    <li>Use the Battery secrets tab for per-battery shared write credentials.</li>
-                    <li>An active Battery Secret requires clients to send <code>X-Battery-Secret</code> alongside a valid API token.</li>
+                    <li>Cluster scope on each token controls which batteries the external system can read, write, validate, or sign.</li>
                 </ol>
             </article>
             <article class="bp-admin-help-check-card">

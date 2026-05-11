@@ -37,9 +37,7 @@
                 <article class="bp-help-doc-item">
                     <h3 class="h6 mb-2">Authentication</h3>
                     <p class="mb-1">Required header: <code>Authorization: Basic &lt;base64(token:)&gt;</code> or <code>Authorization: Basic &lt;token&gt;</code>.</p>
-                    <p class="mb-1">Optional header when battery secret is active: <code>X-Battery-Secret: &lt;secret&gt;</code>.</p>
                     <p class="mb-1"><strong>Token Value</strong> is the generated API credential shown only when an admin creates or regenerates a token in API Token Management. Use the token value in the Authorization header; the token ID shown in tables is not the secret credential.</p>
-                    <p class="mb-1"><strong>Battery Secret</strong> is a per-battery shared write credential. When active, a battery client must send it with <code>X-Battery-Secret</code> in addition to an API token for write operations.</p>
                     <p class="mb-1">HTTP codes: <code>200</code>, <code>201</code>, <code>400</code>, <code>401</code>, <code>403</code>, <code>404</code>, <code>500</code>, <code>503</code>.</p>
                     <ul class="mb-0">
                         <li><code>200 OK</code>: Request succeeded (read/patch operations completed).</li>
@@ -200,9 +198,6 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
                 <label class="bp-span-2">Token value
                     <input id="tester-token" value="@Model.SampleReadToken" />
                 </label>
-                <label class="bp-span-all">Battery secret
-                    <input id="tester-battery-secret" placeholder="Only required if secret is active for this battery" />
-                </label>
                 <label class="bp-span-all">Body JSON
                     <textarea id="tester-body" rows="9"></textarea>
                 </label>
@@ -261,7 +256,6 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
             const authFormatEl = document.getElementById('tester-auth-format');
             const tokenPresetEl = document.getElementById('tester-token-preset');
             const tokenEl = document.getElementById('tester-token');
-            const batterySecretEl = document.getElementById('tester-battery-secret');
             const bodyEl = document.getElementById('tester-body');
             const rawRequestEl = document.getElementById('tester-raw-request');
             const statusEl = document.getElementById('tester-status');
@@ -469,10 +463,6 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
                 }
                 lines.push('Accept: application/json');
 
-                const batterySecret = (batterySecretEl.value || '').trim();
-                if (batterySecret) {
-                    lines.push(`X-Battery-Secret: ${batterySecret}`);
-                }
                 if (bodyText) {
                     lines.push('Content-Type: application/json');
                 }
@@ -557,11 +547,6 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
                 }
                 pathEl.value = parsed.target;
                 bodyEl.value = parsed.body || '';
-
-                const secret = headerValue(parsed.headers, 'X-Battery-Secret');
-                if (secret) {
-                    batterySecretEl.value = secret;
-                }
 
                 const authorization = headerValue(parsed.headers, 'Authorization');
                 if (authorization.toLowerCase().startsWith('basic ')) {

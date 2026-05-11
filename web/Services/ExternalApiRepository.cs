@@ -7,7 +7,15 @@ namespace BatteryPassWeb.Services;
 public enum ExternalTokenAccessMode
 {
     Read,
-    ReadWrite
+    ReadWrite,
+    Sign
+}
+
+public enum ExternalTokenRequirement
+{
+    Read,
+    Write,
+    Sign
 }
 
 public sealed class ExternalApiTokenValidationResult
@@ -28,13 +36,6 @@ public sealed class ExternalApiTokenContext
     public bool IsActive { get; init; }
     public IReadOnlyList<string> ClusterIds { get; init; } = [];
     public bool IsSample { get; init; }
-}
-
-public sealed class BatterySecretValidationResult
-{
-    public bool IsRequired { get; init; }
-    public bool IsValid { get; init; }
-    public string Message { get; init; } = string.Empty;
 }
 
 public sealed class ExternalApiRepository
@@ -67,14 +68,11 @@ public sealed class ExternalApiRepository
         };
         await tokens.Indexes.CreateManyAsync(tokenIndexes, cancellationToken);
 
-        var secrets = _mongoContext.Database.GetCollection<BsonDocument>("batterySecrets");
-        var secretIndexes = new[]
+        var collectionNames = await _mongoContext.Database.ListCollectionNames().ToListAsync(cancellationToken);
+        if (collectionNames.Contains("batterySecrets", StringComparer.OrdinalIgnoreCase))
         {
-            new CreateIndexModel<BsonDocument>(Builders<BsonDocument>.IndexKeys.Ascending("passportId"), new CreateIndexOptions { Unique = true }),
-            new CreateIndexModel<BsonDocument>(Builders<BsonDocument>.IndexKeys.Ascending("clusterId")),
-            new CreateIndexModel<BsonDocument>(Builders<BsonDocument>.IndexKeys.Ascending("isActive"))
-        };
-        await secrets.Indexes.CreateManyAsync(secretIndexes, cancellationToken);
+            await _mongoContext.Database.DropCollectionAsync("batterySecrets", cancellationToken);
+        }
     }
 
     public async Task<IReadOnlyList<BsonDocument>> ListTokensAsync(CancellationToken cancellationToken = default)
@@ -133,7 +131,7 @@ public sealed class ExternalApiRepository
         {
             ["tokenId"] = tokenId,
             ["name"] = string.IsNullOrWhiteSpace(name) ? tokenId : name.Trim(),
-            ["accessMode"] = accessMode == ExternalTokenAccessMode.ReadWrite ? "readWrite" : "read",
+            ["accessMode"] = AccessModeValue(accessMode),
             ["clusterIds"] = new BsonArray(normalizedClusters),
             ["allowUnassigned"] = allowUnassigned,
             ["globalAccess"] = globalAccess,
@@ -195,7 +193,15 @@ public sealed class ExternalApiRepository
         return result.MatchedCount > 0 ? newToken : null;
     }
 
-    public async Task<ExternalApiTokenValidationResult> ValidateTokenAsync(string rawToken, bool requireWrite, CancellationToken cancellationToken = default)
+    public Task<ExternalApiTokenValidationResult> ValidateTokenAsync(string rawToken, bool requireWrite, CancellationToken cancellationToken = default)
+    {
+        return ValidateTokenAsync(
+            rawToken,
+            requireWrite ? ExternalTokenRequirement.Write : ExternalTokenRequirement.Read,
+            cancellationToken);
+    }
+
+    public async Task<ExternalApiTokenValidationResult> ValidateTokenAsync(string rawToken, ExternalTokenRequirement requirement, CancellationToken cancellationToken = default)
     {
         if (_mongoContext.Database == null)
         {
@@ -228,13 +234,13 @@ public sealed class ExternalApiRepository
             }
 
             var context = ToTokenContext(document);
-            if (requireWrite && context.AccessMode != ExternalTokenAccessMode.ReadWrite)
+            if (!HasRequiredAccess(context.AccessMode, requirement))
             {
                 return new ExternalApiTokenValidationResult
                 {
                     Success = false,
                     StatusCode = StatusCodes.Status403Forbidden,
-                    Message = "Token does not have write access.",
+                    Message = TokenRequirementMessage(requirement),
                     Context = context
                 };
             }
@@ -269,149 +275,14 @@ public sealed class ExternalApiRepository
         };
     }
 
-    public async Task<IReadOnlyList<BsonDocument>> ListBatterySecretsAsync(IReadOnlyCollection<string>? clusterIds = null, CancellationToken cancellationToken = default)
-    {
-        if (_mongoContext.Database == null)
-        {
-            return [];
-        }
-
-        FilterDefinition<BsonDocument> filter = Builders<BsonDocument>.Filter.Empty;
-        if (clusterIds != null && clusterIds.Count > 0)
-        {
-            filter = Builders<BsonDocument>.Filter.In("clusterId", clusterIds);
-        }
-
-        return await _mongoContext.Database.GetCollection<BsonDocument>("batterySecrets")
-            .Find(filter)
-            .SortBy(document => document["passportId"])
-            .ToListAsync(cancellationToken);
-    }
-
-    public async Task<BsonDocument?> GetBatterySecretAsync(string passportId, CancellationToken cancellationToken = default)
-    {
-        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(passportId))
-        {
-            return null;
-        }
-
-        return await _mongoContext.Database.GetCollection<BsonDocument>("batterySecrets")
-            .Find(Builders<BsonDocument>.Filter.Eq("passportId", passportId.Trim()))
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
-    public async Task<string> UpsertBatterySecretAsync(
-        string passportId,
-        string clusterId,
-        string actor,
-        bool active,
-        string? fixedSecret = null,
-        CancellationToken cancellationToken = default)
-    {
-        if (_mongoContext.Database == null)
-        {
-            throw new InvalidOperationException("Database is not connected.");
-        }
-
-        var secret = string.IsNullOrWhiteSpace(fixedSecret) ? _securityService.CreateToken() : fixedSecret.Trim();
-        var now = DateTime.UtcNow.ToString("O");
-        var update = Builders<BsonDocument>.Update
-            .Set("passportId", passportId.Trim())
-            .Set("clusterId", clusterId.Trim())
-            .Set("isActive", active)
-            .Set("secretHash", _securityService.HashSecret(secret))
-            .Set("encryptedSecret", _securityService.Encrypt(secret))
-            .Set("updatedBy", actor)
-            .Set("updatedAt", now)
-            .SetOnInsert("createdBy", actor)
-            .SetOnInsert("createdAt", now);
-
-        await _mongoContext.Database.GetCollection<BsonDocument>("batterySecrets")
-            .UpdateOneAsync(
-                Builders<BsonDocument>.Filter.Eq("passportId", passportId.Trim()),
-                update,
-                new UpdateOptions { IsUpsert = true },
-                cancellationToken);
-
-        return secret;
-    }
-
-    public async Task<bool> SetBatterySecretActiveAsync(string passportId, bool active, string actor, CancellationToken cancellationToken = default)
-    {
-        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(passportId))
-        {
-            return false;
-        }
-
-        var update = Builders<BsonDocument>.Update
-            .Set("isActive", active)
-            .Set("updatedBy", actor)
-            .Set("updatedAt", DateTime.UtcNow.ToString("O"));
-
-        var result = await _mongoContext.Database.GetCollection<BsonDocument>("batterySecrets")
-            .UpdateOneAsync(Builders<BsonDocument>.Filter.Eq("passportId", passportId.Trim()), update, cancellationToken: cancellationToken);
-        return result.MatchedCount > 0;
-    }
-
-    public async Task<BatterySecretValidationResult> ValidateBatterySecretAsync(string passportId, string? providedSecret, CancellationToken cancellationToken = default)
-    {
-        if (_mongoContext.Database == null)
-        {
-            return new BatterySecretValidationResult
-            {
-                IsRequired = true,
-                IsValid = false,
-                Message = "Database is not connected."
-            };
-        }
-
-        var secretDocument = await GetBatterySecretAsync(passportId, cancellationToken);
-        if (secretDocument == null || !secretDocument.GetValue("isActive", false).ToBoolean())
-        {
-            return new BatterySecretValidationResult
-            {
-                IsRequired = false,
-                IsValid = true,
-                Message = "Battery secret is not required."
-            };
-        }
-
-        if (string.IsNullOrWhiteSpace(providedSecret))
-        {
-            return new BatterySecretValidationResult
-            {
-                IsRequired = true,
-                IsValid = false,
-                Message = "Battery secret is required."
-            };
-        }
-
-        var hash = BsonHelpers.GetString(secretDocument, "secretHash");
-        var isValid = _securityService.VerifySecret(providedSecret.Trim(), hash);
-        return new BatterySecretValidationResult
-        {
-            IsRequired = true,
-            IsValid = isValid,
-            Message = isValid ? "Battery secret accepted." : "Battery secret is invalid."
-        };
-    }
-
     public string RevealToken(BsonDocument tokenDocument)
     {
         return _securityService.Decrypt(BsonHelpers.GetString(tokenDocument, "encryptedToken"));
     }
 
-    public string RevealBatterySecret(BsonDocument secretDocument)
-    {
-        return _securityService.Decrypt(BsonHelpers.GetString(secretDocument, "encryptedSecret"));
-    }
-
     private static ExternalApiTokenContext ToTokenContext(BsonDocument tokenDocument)
     {
-        var accessMode = BsonHelpers.GetString(tokenDocument, "accessMode")
-            .Equals("readWrite", StringComparison.OrdinalIgnoreCase)
-            ? ExternalTokenAccessMode.ReadWrite
-            : ExternalTokenAccessMode.Read;
+        var accessMode = AccessModeFromValue(BsonHelpers.GetString(tokenDocument, "accessMode"));
 
         var clusters = tokenDocument.GetValue("clusterIds", new BsonArray()) is BsonArray clusterArray
             ? clusterArray
@@ -432,6 +303,48 @@ public sealed class ExternalApiRepository
             IsActive = tokenDocument.GetValue("isActive", false).ToBoolean(),
             ClusterIds = clusters,
             IsSample = tokenDocument.GetValue("isSample", false).ToBoolean()
+        };
+    }
+
+    private static string AccessModeValue(ExternalTokenAccessMode accessMode)
+    {
+        return accessMode switch
+        {
+            ExternalTokenAccessMode.Sign => "sign",
+            ExternalTokenAccessMode.ReadWrite => "readWrite",
+            _ => "read"
+        };
+    }
+
+    private static ExternalTokenAccessMode AccessModeFromValue(string accessMode)
+    {
+        if (accessMode.Equals("sign", StringComparison.OrdinalIgnoreCase))
+        {
+            return ExternalTokenAccessMode.Sign;
+        }
+
+        return accessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase)
+            ? ExternalTokenAccessMode.ReadWrite
+            : ExternalTokenAccessMode.Read;
+    }
+
+    private static bool HasRequiredAccess(ExternalTokenAccessMode accessMode, ExternalTokenRequirement requirement)
+    {
+        return requirement switch
+        {
+            ExternalTokenRequirement.Sign => accessMode == ExternalTokenAccessMode.Sign,
+            ExternalTokenRequirement.Write => accessMode == ExternalTokenAccessMode.ReadWrite,
+            _ => true
+        };
+    }
+
+    private static string TokenRequirementMessage(ExternalTokenRequirement requirement)
+    {
+        return requirement switch
+        {
+            ExternalTokenRequirement.Sign => "Token does not have sign access.",
+            ExternalTokenRequirement.Write => "Token does not have write access.",
+            _ => "Token does not have read access."
         };
     }
 

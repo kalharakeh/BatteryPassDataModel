@@ -673,9 +673,6 @@ public class AdminController : Controller
         IReadOnlyList<BsonDocument> apiTokens = needsCredentials
             ? await _externalApiRepository.ListTokensAsync(cancellationToken)
             : Array.Empty<BsonDocument>();
-        IReadOnlyList<BsonDocument> batterySecrets = needsCredentials
-            ? await _externalApiRepository.ListBatterySecretsAsync(cancellationToken: cancellationToken)
-            : Array.Empty<BsonDocument>();
         IReadOnlyList<BatteryProductTemplate> productTemplates = needsProducts
             ? await _productTemplateService.ListProductsAsync(cancellationToken)
             : Array.Empty<BatteryProductTemplate>();
@@ -698,6 +695,10 @@ public class AdminController : Controller
                     ManufacturerName = passport.ManufacturerName,
                     SerialNumber = passport.SerialNumber,
                     RegistryStatus = passport.RegistryStatus,
+                    BatteryFamily = passport.BatteryFamily,
+                    BatteryVersion = passport.BatteryVersion,
+                    BatterySerialNumber = passport.BatterySerialNumber,
+                    PassportStatus = passport.PassportStatus,
                     ClusterId = passport.ClusterId,
                     ClusterLabel = string.IsNullOrWhiteSpace(passport.ClusterId)
                         ? "No cluster assigned"
@@ -749,23 +750,6 @@ public class AdminController : Controller
                     LastUsedAt = BsonHelpers.GetString(token, "lastUsedAt")
                 };
             }).OrderBy(token => token.Name, StringComparer.OrdinalIgnoreCase).ToList(),
-            BatterySecrets = batterySecrets.Select(secret =>
-            {
-                var clusterId = BsonHelpers.GetString(secret, "clusterId");
-                return new BatterySecretViewModel
-                {
-                    PassportId = BsonHelpers.GetString(secret, "passportId"),
-                    ClusterId = clusterId,
-                    ClusterLabel = string.IsNullOrWhiteSpace(clusterId)
-                        ? "No cluster assigned"
-                        : clusterNamesById.TryGetValue(clusterId, out var clusterName)
-                            ? clusterName
-                            : clusterId,
-                    IsActive = secret.GetValue("isActive", false).ToBoolean(),
-                    CreatedAt = BsonHelpers.GetString(secret, "createdAt"),
-                    UpdatedAt = BsonHelpers.GetString(secret, "updatedAt")
-                };
-            }).OrderBy(secret => secret.PassportId, StringComparer.OrdinalIgnoreCase).ToList(),
             ProductTemplates = BuildProductTemplateSummaries(productTemplates),
             LocalEditableFieldPolicy = localEditableFieldPolicy,
             SamplePassportId = ExternalApiInitializer.SamplePassportId,
@@ -911,9 +895,12 @@ public class AdminController : Controller
     {
         var name = Text(Request.Form, "name", "External API token");
         var accessModeText = Text(Request.Form, "accessMode", "read");
-        var accessMode = accessModeText.Equals("readwrite", StringComparison.OrdinalIgnoreCase)
-            ? ExternalTokenAccessMode.ReadWrite
-            : ExternalTokenAccessMode.Read;
+        var accessMode = accessModeText.ToLowerInvariant() switch
+        {
+            "sign" => ExternalTokenAccessMode.Sign,
+            "readwrite" => ExternalTokenAccessMode.ReadWrite,
+            _ => ExternalTokenAccessMode.Read
+        };
         var allowUnassigned = Request.Form["allowUnassigned"].FirstOrDefault()?.Equals("on", StringComparison.OrdinalIgnoreCase) == true;
         var globalAccess = Request.Form["globalAccess"].FirstOrDefault()?.Equals("on", StringComparison.OrdinalIgnoreCase) == true;
         if (globalAccess)
@@ -1015,88 +1002,6 @@ public class AdminController : Controller
         return Redirect("/admin/clusters?tab=api-tokens");
     }
 
-    [HttpPost("api/secrets/upsert")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpsertBatterySecret(CancellationToken cancellationToken)
-    {
-        var passportId = Text(Request.Form, "passportId");
-        var active = Request.Form["isActive"].FirstOrDefault()?.Equals("on", StringComparison.OrdinalIgnoreCase) != false;
-        if (string.IsNullOrWhiteSpace(passportId))
-        {
-            TempData["ErrorMessage"] = "Passport ID is required.";
-            return Redirect("/admin/clusters?tab=battery-secrets");
-        }
-
-        var passport = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
-        if (passport == null)
-        {
-            TempData["ErrorMessage"] = $"Passport {passportId} does not exist.";
-            return Redirect("/admin/clusters?tab=battery-secrets");
-        }
-
-        var clusterId = BsonHelpers.GetString(passport, "clusterId");
-        var actor = AccessControlService.CurrentEmail(User);
-        var secretValue = await _externalApiRepository.UpsertBatterySecretAsync(
-            passportId,
-            clusterId,
-            string.IsNullOrWhiteSpace(actor) ? "admin" : actor,
-            active,
-            cancellationToken: cancellationToken);
-
-        TempData["StatusMessage"] = $"Battery secret created/updated for {passportId}.";
-        TempData["GeneratedCredential"] = secretValue;
-        return Redirect("/admin/clusters?tab=battery-secrets");
-    }
-
-    [HttpPost("api/secrets/set-active")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetBatterySecretActive(CancellationToken cancellationToken)
-    {
-        var passportId = Text(Request.Form, "passportId");
-        var isActive = Request.Form["isActive"].FirstOrDefault()?.Equals("true", StringComparison.OrdinalIgnoreCase) == true;
-        var actor = AccessControlService.CurrentEmail(User);
-        var success = await _externalApiRepository.SetBatterySecretActiveAsync(
-            passportId,
-            isActive,
-            string.IsNullOrWhiteSpace(actor) ? "admin" : actor,
-            cancellationToken);
-        TempData[success ? "StatusMessage" : "ErrorMessage"] = success
-            ? $"Battery secret for {passportId} updated."
-            : $"Battery secret for {passportId} not found.";
-        return Redirect("/admin/clusters?tab=battery-secrets");
-    }
-
-    [HttpPost("api/secrets/regenerate")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RegenerateBatterySecret(CancellationToken cancellationToken)
-    {
-        var passportId = Text(Request.Form, "passportId");
-        if (string.IsNullOrWhiteSpace(passportId))
-        {
-            TempData["ErrorMessage"] = "Passport ID is required.";
-            return Redirect("/admin/clusters?tab=battery-secrets");
-        }
-
-        var passport = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
-        if (passport == null)
-        {
-            TempData["ErrorMessage"] = $"Passport {passportId} does not exist.";
-            return Redirect("/admin/clusters?tab=battery-secrets");
-        }
-
-        var clusterId = BsonHelpers.GetString(passport, "clusterId");
-        var actor = AccessControlService.CurrentEmail(User);
-        var secretValue = await _externalApiRepository.UpsertBatterySecretAsync(
-            passportId,
-            clusterId,
-            string.IsNullOrWhiteSpace(actor) ? "admin" : actor,
-            active: true,
-            cancellationToken: cancellationToken);
-        TempData["StatusMessage"] = $"Battery secret for {passportId} regenerated.";
-        TempData["GeneratedCredential"] = secretValue;
-        return Redirect("/admin/clusters?tab=battery-secrets");
-    }
-
     [HttpPost("local-editable-fields/save")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveLocalEditableFields(CancellationToken cancellationToken)
@@ -1120,7 +1025,7 @@ public class AdminController : Controller
             "passports" => "passports",
             "clusters" => "clusters",
             "users" => "users",
-            "api-token-management" or "api-tokens" or "battery-secrets" => "api-token-management",
+            "api-token-management" or "api-tokens" => "api-token-management",
             "local-editable-fields" => "local-editable-fields",
             "products" => "products",
             _ => "passports"
@@ -1131,7 +1036,6 @@ public class AdminController : Controller
     {
         return value?.ToLowerInvariant() switch
         {
-            "battery-secrets" => "battery-secrets",
             _ => "api-tokens"
         };
     }
