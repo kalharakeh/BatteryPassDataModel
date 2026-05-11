@@ -66,7 +66,7 @@ public sealed class AdminHelpPageTests
         Assert.Contains("Public discovery", markup);
         Assert.Contains("published, signed, clean, and verifiable", markup);
         Assert.Contains("Draft, dirty, unsigned, or unpublished passports stay visible to admins", markup);
-        Assert.Contains("Product templates tab", markup);
+        Assert.Contains("Battery families tab", markup);
         Assert.Contains("required/optional switches", markup);
         Assert.Contains("saved product policy", markup);
         Assert.Contains("Trust &amp; conformance tab is visible only", markup);
@@ -78,7 +78,7 @@ public sealed class AdminHelpPageTests
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
 
-        Assert.Contains("Open product templates", markup);
+        Assert.Contains("Open battery families", markup);
         Assert.Contains("/admin/clusters?tab=products", markup);
         Assert.DoesNotContain("Parameter-by-parameter fill list", markup);
         Assert.DoesNotContain("bp-admin-help-parameter-grid", markup);
@@ -93,10 +93,10 @@ public sealed class AdminHelpPageTests
 
         Assert.Contains("First-time passport checklist", markup);
         Assert.Contains("Dirty recovery checklist", markup);
-        Assert.Contains("Product template push", markup);
+        Assert.Contains("Battery version push", markup);
         Assert.Contains("What public users can see", markup);
         Assert.Contains("What admins can see", markup);
-        Assert.Contains("Open product templates", markup);
+        Assert.Contains("Open battery families", markup);
         Assert.DoesNotContain("Parameter-by-parameter fill list", markup);
 
         Assert.Contains(".bp-admin-help-check-card", css);

@@ -17,14 +17,16 @@ public sealed class SigningWorkflowLayoutTests
     public void AdminController_ShouldExposeSignPublishAuditAndRevisionRoutes()
     {
         var source = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+        var workflow = File.ReadAllText(RepoFile("web", "Services", "PassportTrustWorkflowService.cs"));
 
         Assert.Contains("[HttpPost(\"passports/{passportId}/sign\")]", source);
         Assert.Contains("[HttpPost(\"passports/{passportId}/publish\")]", source);
         Assert.Contains("[HttpGet(\"passports/{passportId}/audit\")]", source);
         Assert.Contains("[HttpGet(\"passports/{passportId}/revisions\")]", source);
-        Assert.Contains("CreateSignedRevisionAsync", source);
-        Assert.Contains("UpdateTrustSignatureAsync", source);
-        Assert.Contains("AppendAuditEventAsync", source);
+        Assert.Contains("PassportTrustWorkflowService", source);
+        Assert.Contains("CreateSignedRevisionAsync", workflow);
+        Assert.Contains("UpdateTrustSignatureAsync", workflow);
+        Assert.Contains("AppendAuditEventAsync", workflow);
         Assert.Contains("PublishPassportAsync", source);
     }
 

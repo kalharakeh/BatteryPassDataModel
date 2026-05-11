@@ -14,11 +14,12 @@ public sealed class TrustDirtyStateTests
     }
 
     [Fact]
-    public void ExternalApiController_ShouldNotMarkPassportDirtyForHttpWrites()
+    public void ExternalApiController_ShouldOnlyMarkBatteryVersionChangesDirty()
     {
         var source = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
 
-        Assert.DoesNotContain("MarkCanonicalDirtyAsync", source);
+        Assert.Contains("UpdateBatteryVersion", source);
+        Assert.Contains("MarkCanonicalDirtyAsync(passportId, \"batteryVersionChanged\"", source);
         Assert.Contains("UpdateFieldsAsync(passportId, setValues, cancellationToken)", source);
     }
 
@@ -38,7 +39,9 @@ public sealed class TrustDirtyStateTests
         Assert.Contains("app.operations.latestTelemetry", controller);
         Assert.Contains("app.operations.locationOfUse", controller);
         Assert.Contains("app.operations.contactPerson", controller);
-        Assert.DoesNotContain("MarkCanonicalDirtyAsync", controller);
+        var batteryVersionEndpointIndex = controller.IndexOf("UpdateBatteryVersion", StringComparison.Ordinal);
+        var dirtyMarkerIndex = controller.IndexOf("MarkCanonicalDirtyAsync", StringComparison.Ordinal);
+        Assert.True(dirtyMarkerIndex > batteryVersionEndpointIndex, "Only the battery version API should mark signed data dirty; operations writes must remain telemetry-only.");
         Assert.DoesNotContain("trust.isDirty", controller);
     }
 

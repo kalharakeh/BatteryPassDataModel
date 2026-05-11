@@ -21,12 +21,13 @@ public sealed class ProductTemplateWorkflowLayoutTests
         Assert.Contains("ProductTemplateService", source);
         Assert.Contains("[HttpGet(\"products/{productId}\")]", source);
         Assert.Contains("[HttpPost(\"products/save\")]", source);
-        Assert.Contains("[HttpPost(\"products/{productId}/versions/{productVersion}/software/{softwareVersion}/push\")]", source);
+        Assert.Contains("[HttpPost(\"products/{productId}/versions/{productVersion}/push\")]", source);
         Assert.Contains("GetPolicyForPassportAsync", source);
         Assert.Contains("batteryProductTemplateVersions", service);
-        Assert.Contains("batteryProductTemplateSoftwareVersions", service);
+        Assert.DoesNotContain("batteryProductTemplateSoftwareVersions", service);
         Assert.Contains("productVersion", service);
-        Assert.Contains("PushTemplateAsync(string productId, string productVersion, string softwareVersion", service);
+        Assert.Contains("PushProductVersionTemplate", source);
+        Assert.DoesNotContain("PushTemplateAsync(string productId, string productVersion, string softwareVersion", service);
         Assert.Contains("GetProductVersionPolicyAsync", dataCompletionSource);
         Assert.DoesNotContain("[HttpPost(\"passports/{passportId}/complete-required-data\")]", source);
     }
@@ -39,12 +40,12 @@ public sealed class ProductTemplateWorkflowLayoutTests
         var help = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
 
         Assert.Contains("tab=products", clusters);
-        Assert.Contains("Product templates", clusters);
+        Assert.Contains("Battery families", clusters);
         Assert.Contains("name=\"productId\"", edit);
         Assert.Contains("name=\"softwareVersion\"", edit);
         Assert.Contains("data-product-template-select", edit);
         Assert.DoesNotContain("Complete required demo data", help);
-        Assert.Contains("Open product templates", help);
+        Assert.Contains("Open battery families", help);
     }
 
     [Fact]
@@ -99,7 +100,11 @@ public sealed class ProductTemplateWorkflowLayoutTests
         Assert.Contains("name=\"productVersionsJson\"", productView);
         Assert.Contains("data-base-product-select", productView);
         Assert.Contains("data-base-product-version-select", productView);
-        Assert.Contains("data-base-software-select", productView);
+        Assert.Contains("data-software-version-list", productView);
+        Assert.Contains("name=\"softwareVersion\"", productView);
+        Assert.Contains("name=\"softwareReleaseDate\"", productView);
+        Assert.Contains("name=\"softwareLatestUpdate\"", productView);
+        Assert.DoesNotContain("data-base-software-select", productView);
         Assert.Contains(".bp-product-version-sidebar .bp-product-section-heading", css);
         Assert.Contains(".bp-product-version-sidebar h2", css);
         Assert.Contains(".bp-product-version-tab.is-saved-version .bp-product-version-tab-input", css);
@@ -108,7 +113,7 @@ public sealed class ProductTemplateWorkflowLayoutTests
         Assert.DoesNotContain("Carbon lifecycle stages for <span", productView);
         Assert.DoesNotContain("Circularity for <span", productView);
         Assert.Contains("products/{productId}/versions/{productVersion}/push", adminController);
-        Assert.Contains("products/{productId}/versions/{productVersion}/software/{softwareVersion}/push", adminController);
+        Assert.DoesNotContain("products/{productId}/versions/{productVersion}/software/{softwareVersion}/push", adminController);
         Assert.Contains("ProductTemplateDocumentFormPayload", adminController);
         Assert.DoesNotContain("does not create three default software versions", productView);
     }
@@ -139,10 +144,12 @@ public sealed class ProductTemplateWorkflowLayoutTests
 
         Assert.Contains("data-product-template-catalog", edit);
         Assert.Contains("data-product-template-select", edit);
-        Assert.Contains("id=\"admin-software\"", edit);
+        Assert.DoesNotContain("id=\"admin-software\"", edit);
         Assert.Contains("name=\"productVersion\"", edit);
         Assert.Contains("data-product-version-select", edit);
-        Assert.Contains("data-product-software-select", edit);
+        Assert.Contains("data-product-software-version", edit);
+        Assert.Contains("data-product-software-release", edit);
+        Assert.Contains("data-product-software-update", edit);
         Assert.Contains("SelectedProductVersion", editModelSource);
         Assert.Contains("data-required-passport-validation", edit);
         Assert.Contains("data-field-key", edit);
@@ -152,8 +159,8 @@ public sealed class ProductTemplateWorkflowLayoutTests
         Assert.Contains("return Redirect(\"/admin/clusters?tab=passports", File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs")));
         Assert.Contains("applyProductTemplateSelection", edit);
         Assert.Contains("updateProductVersionOptions", edit);
-        Assert.Contains("updateSoftwareOptions(productVersion", edit);
-        Assert.Contains("updateSoftwareOptions", edit);
+        Assert.DoesNotContain("updateSoftwareOptions(productVersion", edit);
+        Assert.DoesNotContain("updateSoftwareOptions", edit);
         Assert.Contains("materialNickel", edit);
         Assert.Contains("ratedEnergy", edit);
         Assert.Contains("recycledNickelPre", edit);

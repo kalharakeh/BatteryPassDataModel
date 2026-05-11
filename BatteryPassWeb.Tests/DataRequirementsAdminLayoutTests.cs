@@ -29,7 +29,7 @@ public sealed class DataRequirementsAdminLayoutTests
         var model = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "AdminClusterViewModel.cs"));
         var adminClusterModel = model[..model.IndexOf("public sealed class ProductTemplateSummaryViewModel", StringComparison.Ordinal)];
 
-        Assert.Contains("Product templates", markup);
+        Assert.Contains("Battery families", markup);
         Assert.Contains("tab=products", markup);
         Assert.Contains("Required fields", markup);
         Assert.DoesNotContain("tab=data-requirements", markup);
@@ -48,7 +48,7 @@ public sealed class DataRequirementsAdminLayoutTests
         Assert.Contains("Template completion policy", markup);
         Assert.Contains("Required and optional parameters", markup);
         Assert.Contains("name=\"requiredFieldKeys\"", markup);
-        Assert.Contains("Product templates tab", File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml")));
+        Assert.Contains("Battery families tab", File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml")));
     }
 
     private static string RepoFile(params string[] parts)

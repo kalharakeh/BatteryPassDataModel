@@ -66,12 +66,15 @@ public sealed class ValidationPolicyLayoutTests
 
         Assert.Contains("PassportPublishPolicyService", registry);
         Assert.Contains("SearchDocumentsAsync", registry);
-        Assert.Contains("IsPubliclyVisible", registry);
+        Assert.Contains("CanOpenPassportDetailAsync", registry);
 
         Assert.Contains("PassportPublishPolicyService", passport);
-        Assert.Contains("IsPubliclyVisible", passport);
-        Assert.Contains("AccessControlService.IsAdmin(User)", passport);
+        Assert.Contains("CanOpenPassportSummaryAsync", passport);
+        Assert.Contains("CanOpenPassportDetailAsync", passport);
         Assert.Contains("return NotFound();", passport);
+
+        var access = File.ReadAllText(RepoFile("web", "Services", "AccessControlService.cs"));
+        Assert.Contains("IsPubliclyVisible", access);
     }
 
     [Fact]
