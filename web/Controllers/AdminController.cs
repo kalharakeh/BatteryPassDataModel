@@ -95,10 +95,13 @@ public class AdminController : Controller
         var draftPassportId = string.IsNullOrWhiteSpace(passportId)
             ? $"did:web:acme.battery.pass:{Guid.NewGuid():N}"
             : passportId.Trim();
+        var defaultProduct = BatteryProductTemplateCatalog.DefaultProduct;
+        var defaultProductVersion = defaultProduct.LatestProductVersion;
         var document = await BuildDraftPassportDocumentAsync(
             draftPassportId,
-            BatteryProductTemplateCatalog.DefaultProductId,
-            BatteryProductTemplateCatalog.DefaultSoftwareVersion,
+            defaultProduct.ProductId,
+            defaultProductVersion.Version,
+            defaultProductVersion.SoftwareVersions.FirstOrDefault()?.Version ?? BatteryProductTemplateCatalog.DefaultSoftwareVersion,
             cancellationToken);
         var model = await BuildEditPassportModelAsync(
             document,
@@ -143,6 +146,7 @@ public class AdminController : Controller
         var document = await BuildDraftPassportDocumentAsync(
             passportId,
             Text(form, "productId", BatteryProductTemplateCatalog.DefaultProductId),
+            Text(form, "productVersion", BatteryProductTemplateCatalog.DefaultProduct.LatestProductVersion.Version),
             Text(form, "softwareVersion", BatteryProductTemplateCatalog.DefaultSoftwareVersion),
             cancellationToken);
         var now = DateTime.UtcNow.ToString("O");
@@ -1172,9 +1176,14 @@ public class AdminController : Controller
             BatteryProductTemplateCatalog.DefaultProductId);
         var selectedProduct = products.FirstOrDefault(product => product.ProductId.Equals(selectedProductId, StringComparison.OrdinalIgnoreCase))
             ?? BatteryProductTemplateCatalog.DefaultProduct;
+        var selectedProductVersion = FirstNonEmpty(
+            BsonHelpers.GetString(document, "app", "product", "productVersion"),
+            selectedProduct.LatestProductVersion.Version);
+        var selectedVersion = selectedProduct.ProductVersions.FirstOrDefault(version => version.Version.Equals(selectedProductVersion, StringComparison.OrdinalIgnoreCase))
+            ?? selectedProduct.LatestProductVersion;
         var selectedSoftwareVersion = FirstNonEmpty(
             BsonHelpers.GetString(document, "app", "product", "softwareVersion"),
-            selectedProduct.SoftwareVersions.FirstOrDefault()?.Version ?? BatteryProductTemplateCatalog.DefaultSoftwareVersion);
+            selectedVersion.SoftwareVersions.FirstOrDefault()?.Version ?? BatteryProductTemplateCatalog.DefaultSoftwareVersion);
         var dataRequirements = await _dataCompletionPolicyService.GetPolicyForPassportAsync(document, cancellationToken);
 
         return new EditPassportViewModel
@@ -1184,7 +1193,7 @@ public class AdminController : Controller
             DataRequirements = dataRequirements,
             ProductTemplates = BuildProductTemplateSummaries(products),
             ProductTemplateCatalog = BuildProductTemplateFormCatalog(products),
-            ProductSoftwareVersions = selectedProduct.SoftwareVersions
+            ProductSoftwareVersions = selectedVersion.SoftwareVersions
                 .Select(software => new ProductSoftwareVersionViewModel
                 {
                     Version = software.Version,
@@ -1193,6 +1202,7 @@ public class AdminController : Controller
                 })
                 .ToList(),
             SelectedProductId = selectedProduct.ProductId,
+            SelectedProductVersion = selectedVersion.Version,
             SelectedSoftwareVersion = selectedSoftwareVersion,
             FieldRequirementByKey = BuildFieldRequirementDictionary(dataRequirements),
             StatusMessage = statusMessage,
@@ -1523,6 +1533,7 @@ public class AdminController : Controller
     private async Task<BsonDocument> BuildDraftPassportDocumentAsync(
         string passportId,
         string productId,
+        string productVersion,
         string softwareVersion,
         CancellationToken cancellationToken)
     {
@@ -1536,6 +1547,7 @@ public class AdminController : Controller
         return await _productTemplateService.BuildPassportFromTemplateAsync(
             passportId,
             FirstNonEmpty(productId, BatteryProductTemplateCatalog.DefaultProductId),
+            FirstNonEmpty(productVersion, BatteryProductTemplateCatalog.DefaultProduct.LatestProductVersion.Version),
             FirstNonEmpty(softwareVersion, BatteryProductTemplateCatalog.DefaultSoftwareVersion),
             new ProductTemplateBatteryIdentity
             {
@@ -1560,6 +1572,7 @@ public class AdminController : Controller
         var appCircularityNotes = EnsureDocument(appNotes, "circularity");
         var productNode = EnsureDocument(app, "product");
         productNode["productId"] = Text(form, "productId", productNode.GetValue("productId", BatteryProductTemplateCatalog.DefaultProductId).ToString());
+        productNode["productVersion"] = Text(form, "productVersion", productNode.GetValue("productVersion", BatteryProductTemplateCatalog.DefaultProduct.LatestProductVersion.Version).ToString());
         productNode["softwareVersion"] = Text(form, "softwareVersion", productNode.GetValue("softwareVersion", BatteryProductTemplateCatalog.DefaultSoftwareVersion).ToString());
 
         display["name"] = Text(form, "name", display.GetValue("name", string.Empty).ToString());
@@ -1772,6 +1785,7 @@ public class AdminController : Controller
         var app = EnsureDocument(document, "app");
         var productNode = EnsureDocument(app, "product");
         var productId = Text(form, "productId", BsonHelpers.GetString(productNode, "productId"));
+        var productVersion = Text(form, "productVersion", BsonHelpers.GetString(productNode, "productVersion"));
         var softwareVersion = Text(form, "softwareVersion", BsonHelpers.GetString(productNode, "softwareVersion"));
         var product = await _productTemplateService.GetProductAsync(productId, cancellationToken);
         if (product == null)
@@ -1779,9 +1793,13 @@ public class AdminController : Controller
             return;
         }
 
-        var software = product.SoftwareVersions.FirstOrDefault(version => version.Version.Equals(softwareVersion, StringComparison.OrdinalIgnoreCase))
-            ?? product.SoftwareVersions.FirstOrDefault();
+        var selectedProductVersion = product.ProductVersions.FirstOrDefault(version =>
+                version.Version.Equals(productVersion, StringComparison.OrdinalIgnoreCase))
+            ?? product.LatestProductVersion;
+        var software = selectedProductVersion.SoftwareVersions.FirstOrDefault(version => version.Version.Equals(softwareVersion, StringComparison.OrdinalIgnoreCase))
+            ?? selectedProductVersion.SoftwareVersions.FirstOrDefault();
         productNode["productId"] = product.ProductId;
+        productNode["productVersion"] = selectedProductVersion.Version;
         productNode["productName"] = product.ProductName;
         productNode["description"] = product.Description;
         productNode["moduleCount"] = product.ModuleCount;

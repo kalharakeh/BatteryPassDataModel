@@ -90,9 +90,12 @@ public class PassportController : Controller
             }
         }
 
-        if (string.Equals(access, "wrong-cluster", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(detailAccessNotice))
+        if (!canOpenDetail && string.Equals(access, "wrong-cluster", StringComparison.OrdinalIgnoreCase))
         {
-            detailAccessNotice = $"Sign in with a user connected to {passport.ClusterLabel} to open the detailed report.";
+            if (string.IsNullOrWhiteSpace(detailAccessNotice))
+            {
+                detailAccessNotice = $"Sign in with a user connected to {passport.ClusterLabel} to open the detailed report.";
+            }
         }
 
         return View(new PassportSummaryPageViewModel

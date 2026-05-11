@@ -84,11 +84,17 @@ public sealed class ProductTemplateWorkflowLayoutTests
     public void EditPassport_ShouldUpdateProductTemplateFieldsLiveFromCatalogData()
     {
         var edit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
+        var editModelSource = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "EditPassportViewModel.cs"));
 
         Assert.Contains("data-product-template-catalog", edit);
         Assert.Contains("data-product-template-select", edit);
+        Assert.Contains("name=\"productVersion\"", edit);
+        Assert.Contains("data-product-version-select", edit);
         Assert.Contains("data-product-software-select", edit);
+        Assert.Contains("SelectedProductVersion", editModelSource);
         Assert.Contains("applyProductTemplateSelection", edit);
+        Assert.Contains("updateProductVersionOptions", edit);
+        Assert.Contains("updateSoftwareOptions(productVersion", edit);
         Assert.Contains("updateSoftwareOptions", edit);
         Assert.Contains("materialNickel", edit);
         Assert.Contains("ratedEnergy", edit);

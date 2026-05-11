@@ -163,6 +163,15 @@ public sealed class DocumentAccessControlTests
         Assert.Contains("source\"] = \"productTemplate\"", productTemplateService);
     }
 
+    [Fact]
+    public void PassportSummary_ShouldOnlyShowWrongClusterNoticeWhenDetailAccessIsDenied()
+    {
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "PassportController.cs"));
+
+        Assert.Contains("if (!canOpenDetail && string.Equals(access, \"wrong-cluster\"", controller);
+        Assert.DoesNotContain("string.Equals(access, \"wrong-cluster\", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(detailAccessNotice)", controller);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

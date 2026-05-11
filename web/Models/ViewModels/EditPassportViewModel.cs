@@ -11,6 +11,7 @@ public sealed class EditPassportViewModel
     public IReadOnlyList<ProductTemplateFormCatalogItemViewModel> ProductTemplateCatalog { get; init; } = [];
     public IReadOnlyList<ProductSoftwareVersionViewModel> ProductSoftwareVersions { get; init; } = [];
     public string SelectedProductId { get; init; } = string.Empty;
+    public string SelectedProductVersion { get; init; } = string.Empty;
     public string SelectedSoftwareVersion { get; init; } = string.Empty;
     public IReadOnlyDictionary<string, DataRequirementField> FieldRequirementByKey { get; init; } =
         new Dictionary<string, DataRequirementField>(StringComparer.OrdinalIgnoreCase);

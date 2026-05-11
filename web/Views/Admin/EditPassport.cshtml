@@ -12,6 +12,8 @@
     var selectedBatteryImageUrl = BatteryPassWeb.Services.BatteryImageCatalog.NormalizeKnownImageUrl(passport.BatteryImageUrl, passport.PassportId);
     var selectedBatteryCategory = BatteryPassWeb.Services.BatteryImageCatalog.CategoryForImageUrl(selectedBatteryImageUrl);
     var productTemplateCatalogJson = JsonSerializer.Serialize(Model.ProductTemplateCatalog);
+    var selectedCatalogProduct = Model.ProductTemplateCatalog.FirstOrDefault(product => product.ProductId.Equals(Model.SelectedProductId, StringComparison.OrdinalIgnoreCase));
+    var selectedProductVersions = selectedCatalogProduct?.ProductVersions ?? Array.Empty<BatteryPassWeb.Models.ViewModels.ProductVersionEditViewModel>();
 
     double SegmentValue(string label, IReadOnlyList<BatteryPassWeb.Models.ViewModels.ChartSegmentViewModel> segments)
         => segments.FirstOrDefault(segment => segment.Label.Equals(label, StringComparison.OrdinalIgnoreCase))?.Value ?? 0;
@@ -146,6 +148,7 @@
                 <div class="bp-form-grid">
                     <label class="bp-field-shell"><span>Passport ID <em class="bp-field-marker">@RequirementLabel("general.passportId")</em></span>@if (isNew) { <input type="text" name="passportId" value="@passport.PassportId" required /> } else { <input type="text" name="passportId" value="@passport.PassportId" readonly /> }<small class="bp-field-help">@DirtySignedDataHelp("general.passportId", "Unique DID-style battery identifier.")</small></label>
                     <label class="bp-field-shell"><span>Product <em class="bp-field-marker">@RequirementLabel("general.product")</em></span><select name="productId" data-product-template-select>@foreach (var productTemplate in Model.ProductTemplates) { if (productTemplate.ProductId.Equals(Model.SelectedProductId, StringComparison.OrdinalIgnoreCase)) { <option value="@productTemplate.ProductId" selected>@productTemplate.ProductName</option> } else { <option value="@productTemplate.ProductId">@productTemplate.ProductName</option> } }</select><small class="bp-field-help">@DirtySignedDataHelp("general.product", "Product template copied into this battery.")</small></label>
+                    <label class="bp-field-shell"><span>Product/battery version <em class="bp-field-marker">@RequirementLabel("general.productVersion")</em></span><select name="productVersion" data-product-version-select>@foreach (var productVersion in selectedProductVersions) { if (productVersion.Version.Equals(Model.SelectedProductVersion, StringComparison.OrdinalIgnoreCase)) { <option value="@productVersion.Version" selected>@productVersion.Version</option> } else { <option value="@productVersion.Version">@productVersion.Version</option> } }</select><small class="bp-field-help">@DirtySignedDataHelp("general.productVersion", "Product/battery version copied into this battery.")</small></label>
                     <label class="bp-field-shell"><span>Software version <em class="bp-field-marker">@RequirementLabel("general.softwareVersion")</em></span><select name="softwareVersion" data-product-software-select>@foreach (var software in Model.ProductSoftwareVersions) { if (software.Version.Equals(Model.SelectedSoftwareVersion, StringComparison.OrdinalIgnoreCase)) { <option value="@software.Version" selected>@software.Version - updated @software.LatestUpdate</option> } else { <option value="@software.Version">@software.Version - updated @software.LatestUpdate</option> } }</select><small class="bp-field-help">@DirtySignedDataHelp("general.softwareVersion", "Software baseline copied from the selected product template.")</small></label>
                     <label class="bp-field-shell"><span>Name <em class="bp-field-marker">@RequirementLabel("general.name")</em></span><input type="text" name="name" value="@passport.DisplayName" /><small class="bp-field-help">@DirtySignedDataHelp("general.name", "Human-readable battery name.")</small></label>
                     <label class="bp-field-shell"><span>Model Number <em class="bp-field-marker">@RequirementLabel("general.modelNumber")</em></span><input type="text" name="modelNumber" value="@passport.ModelNumber" /><small class="bp-field-help">@DirtySignedDataHelp("general.modelNumber", "Model identifier shown on public reports.")</small></label>
@@ -323,6 +326,7 @@
             const batteryImageSelect = form.querySelector('[data-battery-image-select]');
             const categoryInput = form.querySelector('[data-image-category]');
             const productTemplateSelect = form.querySelector('[data-product-template-select]');
+            const productVersionSelect = form.querySelector('[data-product-version-select]');
             const productSoftwareSelect = form.querySelector('[data-product-software-select]');
             const productTemplateCatalogElement = document.querySelector('[data-product-template-catalog]');
             const productTemplateCatalog = parseProductTemplateCatalog(productTemplateCatalogElement?.textContent || '[]');
@@ -384,12 +388,41 @@
                     String(product.ProductId || '').toLowerCase() === String(productId || '').toLowerCase());
             }
 
-            function updateSoftwareOptions(product, preferredVersion) {
-                if (!productSoftwareSelect || !product) {
+            function findCatalogProductVersion(product, productVersion) {
+                const versions = Array.isArray(product?.ProductVersions) ? product.ProductVersions : [];
+                return versions.find((version) =>
+                    String(version.Version || '').toLowerCase() === String(productVersion || '').toLowerCase())
+                    || versions[0]
+                    || product;
+            }
+
+            function updateProductVersionOptions(product, preferredVersion) {
+                if (!productVersionSelect || !product) {
                     return;
                 }
 
-                const versions = Array.isArray(product.SoftwareVersions) ? product.SoftwareVersions : [];
+                const versions = Array.isArray(product.ProductVersions) ? product.ProductVersions : [];
+                productVersionSelect.innerHTML = '';
+                versions.forEach((productVersion) => {
+                    const option = document.createElement('option');
+                    option.value = productVersion.Version || '';
+                    option.textContent = productVersion.Version || '';
+                    productVersionSelect.appendChild(option);
+                });
+
+                const hasPreferred = versions.some((productVersion) =>
+                    String(productVersion.Version || '').toLowerCase() === String(preferredVersion || '').toLowerCase());
+                productVersionSelect.value = hasPreferred
+                    ? preferredVersion
+                    : versions[0]?.Version || '';
+            }
+
+            function updateSoftwareOptions(productVersion, preferredVersion) {
+                if (!productSoftwareSelect || !productVersion) {
+                    return;
+                }
+
+                const versions = Array.isArray(productVersion.SoftwareVersions) ? productVersion.SoftwareVersions : [];
                 productSoftwareSelect.innerHTML = '';
                 versions.forEach((software) => {
                     const option = document.createElement('option');
@@ -405,15 +438,21 @@
                     : versions[0]?.Version || '';
             }
 
-            function applyProductTemplateSelection(updateSoftwareList) {
+            function applyProductTemplateSelection(updateVersionList, updateSoftwareList) {
                 const product = findCatalogProduct(productTemplateSelect?.value || '');
                 if (!product) {
                     return;
                 }
 
+                const previousProductVersion = productVersionSelect?.value || '';
                 const previousSoftware = productSoftwareSelect?.value || '';
+                if (updateVersionList) {
+                    updateProductVersionOptions(product, previousProductVersion);
+                }
+
+                const productVersion = findCatalogProductVersion(product, productVersionSelect?.value || '');
                 if (updateSoftwareList) {
-                    updateSoftwareOptions(product, previousSoftware);
+                    updateSoftwareOptions(productVersion, previousSoftware);
                 }
 
                 const materialFieldMap = {
@@ -439,30 +478,31 @@
                     Lead: 'recycledLead'
                 };
 
+                const templateValues = productVersion || product;
                 setFieldValue('batteryImageUrl', product.ImageUrl || '');
-                setFieldValue('batteryMass', product.BatteryMassKg);
-                setFieldValue('ratedEnergy', product.RatedEnergyKwh);
-                setFieldValue('ratedCapacity', product.RatedCapacityAh);
-                setFieldValue('ratedMaximumPower', product.RatedMaximumPowerKw);
-                setFieldValue('nominalVoltage', product.NominalVoltageV);
-                setFieldValue('expectedLifetime', product.ExpectedLifetimeYears);
-                setFieldValue('expectedNumberOfCycles', product.ExpectedCycles);
-                setFieldValue('remainingEnergy', Math.round((Number(product.RatedEnergyKwh || 0) * 0.95) * 100) / 100);
-                setFieldValue('supplyChainIndex', product.SupplyChainIndex);
-                setFieldValue('carbonFootprint', product.CarbonFootprint);
-                setFieldValue('performanceClass', product.PerformanceClass || '');
+                setFieldValue('batteryMass', templateValues.BatteryMassKg);
+                setFieldValue('ratedEnergy', templateValues.RatedEnergyKwh);
+                setFieldValue('ratedCapacity', templateValues.RatedCapacityAh);
+                setFieldValue('ratedMaximumPower', templateValues.RatedMaximumPowerKw);
+                setFieldValue('nominalVoltage', templateValues.NominalVoltageV);
+                setFieldValue('expectedLifetime', templateValues.ExpectedLifetimeYears);
+                setFieldValue('expectedNumberOfCycles', templateValues.ExpectedCycles);
+                setFieldValue('remainingEnergy', Math.round((Number(templateValues.RatedEnergyKwh || 0) * 0.95) * 100) / 100);
+                setFieldValue('supplyChainIndex', templateValues.SupplyChainIndex);
+                setFieldValue('carbonFootprint', templateValues.CarbonFootprint);
+                setFieldValue('performanceClass', templateValues.PerformanceClass || '');
 
-                Object.entries(product.MaterialMassesKg || {}).forEach(([label, value]) => {
+                Object.entries(templateValues.MaterialMassesKg || {}).forEach(([label, value]) => {
                     if (materialFieldMap[label]) {
                         setFieldValue(materialFieldMap[label], value);
                     }
                 });
-                Object.entries(product.CarbonStages || {}).forEach(([label, value]) => {
+                Object.entries(templateValues.CarbonStages || {}).forEach(([label, value]) => {
                     if (carbonFieldMap[label]) {
                         setFieldValue(carbonFieldMap[label], value);
                     }
                 });
-                Object.entries(product.RecycledContent || {}).forEach(([label, value]) => {
+                Object.entries(templateValues.RecycledContent || {}).forEach(([label, value]) => {
                     const prefix = recycledFieldMap[label];
                     if (!prefix) {
                         return;
@@ -669,10 +709,13 @@
             batteryImageSelect?.addEventListener('change', syncCategoryFromImage);
             pristineFormState = serializeFormState(form);
             productTemplateSelect?.addEventListener('change', () => {
-                applyProductTemplateSelection(true);
+                applyProductTemplateSelection(true, true);
+            });
+            productVersionSelect?.addEventListener('change', () => {
+                applyProductTemplateSelection(false, true);
             });
             productSoftwareSelect?.addEventListener('change', () => {
-                applyProductTemplateSelection(false);
+                applyProductTemplateSelection(false, false);
             });
             uploadCards.forEach((card) => {
                 const button = card.querySelector('[data-document-upload]');
