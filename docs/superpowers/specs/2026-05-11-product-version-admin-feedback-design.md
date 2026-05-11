@@ -23,6 +23,7 @@ The largest design change is product versioning. Product templates currently mod
 - Fix passport summary access notice for users connected to the passport cluster.
 - Keep admin navigation on one row after the credential-page merge.
 - Move local-admin editable-field configuration to a separate global MongoDB-backed page.
+- Update user-facing and tester-facing documentation for the new product-version, credential, reset, and account workflows.
 
 ## Non-Goals
 
@@ -148,6 +149,30 @@ Help/admin help explains:
 - Battery secrets are per-battery shared credentials used by batteries or telemetry clients when writing battery-specific data.
 - Generated token/secret values are shown once and must be stored by the operator.
 
+## Documentation Updates
+
+The implementation updates all help and test guidance that references the old flat `Product -> Software versions` model, the old four-passport reset set, separate credential pages, or hard-coded local-admin editable fields.
+
+Update these files/views:
+
+- `web/Views/Help/Index.cshtml`
+- `web/Views/Admin/Help.cshtml`
+- `docs/end-user-testing-guide.md`
+- `docs/qa-test-pack.md`
+- `docs/sample-cluster-test-accounts.md`
+
+The updated documentation must explain:
+
+- products have product/battery versions, and product/battery versions contain software versions
+- new passports use cascading product, product version, and software version controls
+- new product templates can start empty or be based on an existing product/version/software combination
+- required/optional validation is product-version-specific
+- local-admin editable fields are configured globally on the separate admin page
+- `API Token Management` contains API tokens and battery secrets as internal tabs
+- token values are external API credentials, while battery secrets are per-battery write credentials used by battery/telemetry clients
+- reset creates one unassigned demonstrator plus six clustered customer batteries
+- current seeded test accounts and passwords, including the North customer user scenario
+
 ## Reset Seed Data
 
 Product template reset replaces existing clustered template passports with:
@@ -213,6 +238,7 @@ Add failing tests first for:
 - password reveal controls on admin and cluster-admin user forms
 - combined API Token Management navigation/page
 - current-version field sizing
+- help/admin help and tester documentation updates
 
 Run the existing .NET test suite after changes.
 
