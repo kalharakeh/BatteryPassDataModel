@@ -44,7 +44,7 @@
                         <li><code>201 Created</code>: New telemetry point(s) were accepted and stored.</li>
                         <li><code>400 Bad Request</code>: Invalid input (for example missing <code>path</code>, unsupported section, or invalid body format).</li>
                         <li><code>401 Unauthorized</code>: Missing or invalid API token.</li>
-                        <li><code>403 Forbidden</code>: Token scope/access is not allowed for this battery/operation, or battery secret is required/invalid.</li>
+                        <li><code>403 Forbidden</code>: Token scope/access is not allowed for this battery/operation, or Sign token is required/invalid.</li>
                         <li><code>404 Not Found</code>: Battery passport or requested section/path does not exist.</li>
                         <li><code>500 Server Error</code>: Unexpected server-side failure.</li>
                         <li><code>503 Service Unavailable</code>: Backend dependency (database) is unavailable.</li>
@@ -86,9 +86,11 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=aspects.circul
 
                 <article class="bp-help-doc-item">
                     <h3 class="h6 mb-2">Battery family and software parameters</h3>
-                    <p class="mb-1">Each passport is created from a MongoDB battery family baseline such as Compact 7M, Compact 13M, or Core. Battery families contain battery versions, and each battery version carries software version, released date, and latest update as parameters.</p>
+                    <p class="mb-1">Product Template is the internal implementation name for Battery Family. In the UI and tester workflows, Product Template and Battery Family mean the same stored template concept.</p>
+                    <p class="mb-1">Each passport is created from a MongoDB Battery Family baseline such as Compact 7M, Compact 13M, or Core. Battery families contain battery versions, and each battery version carries software version, released date, and latest update as parameters.</p>
                     <p class="mb-1">The selected battery version provides shared battery data, required/optional policy, evidence references, battery image, and software release metadata.</p>
-                    <p class="mb-0">The public summary and the detailed Software tab show the software version, released date, and latest update copied from the selected battery version.</p>
+                    <p class="mb-1">The public summary and the detailed General tab software parameters show the software version, released date, and latest update copied from the selected battery version.</p>
+                    <p class="mb-0">There is no software update endpoint. Battery version changes require validation and signing because the battery version is signed passport data.</p>
                 </article>
 
                 <article class="bp-help-doc-item">
@@ -153,6 +155,23 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
 }</code></pre>
                 </article>
 
+                <article class="bp-help-doc-item">
+                    <h3 class="h6 mb-2"><span class="bp-help-method">PATCH</span> @Model.BasePath/batteries/{passportId}/battery-version</h3>
+                    <p class="mb-1">Change only the Battery version inside the passport's existing Battery Family. Battery Family cannot be changed by API.</p>
+                    <p class="mb-1">The response states that validation and signing are required. Telemetry changes do not require signing.</p>
+                    <pre class="bp-help-pre mb-0"><code>{ "batteryVersion": "2.0" }</code></pre>
+                </article>
+
+                <article class="bp-help-doc-item">
+                    <h3 class="h6 mb-2"><span class="bp-help-method">POST</span> @Model.BasePath/batteries/{passportId}/validate</h3>
+                    <p class="mb-0">Validate with a Sign token. Sign tokens can validate and sign only for their scoped clusters.</p>
+                </article>
+
+                <article class="bp-help-doc-item">
+                    <h3 class="h6 mb-2"><span class="bp-help-method">POST</span> @Model.BasePath/batteries/{passportId}/sign</h3>
+                    <p class="mb-0">Sign with a Sign token. The first publication still requires explicit publish in the app; after a passport has been published once, later successful signs auto-publish the new revision.</p>
+                </article>
+
             </div>
         </section>
 
@@ -170,6 +189,9 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
                         <option value="readHistory24h">Read telemetry history 24h</option>
                         <option value="writeTelemetryPoint">Write telemetry point</option>
                         <option value="patchOperations">Patch operations metadata</option>
+                        <option value="patchBatteryVersion">Patch Battery version</option>
+                        <option value="validatePassport">Validate passport</option>
+                        <option value="signPassport">Sign passport</option>
                     </select>
                 </label>
                 <label>HTTP method
@@ -347,6 +369,26 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
                         }
                     }, null, 2),
                     tokenPreset: 'sample-read-write'
+                },
+                patchBatteryVersion: {
+                    method: 'PATCH',
+                    path: `${basePath}/batteries/${samplePassportId}/battery-version`,
+                    body: JSON.stringify({
+                        batteryVersion: '2.0'
+                    }, null, 2),
+                    tokenPreset: 'sample-read-write'
+                },
+                validatePassport: {
+                    method: 'POST',
+                    path: `${basePath}/batteries/${samplePassportId}/validate`,
+                    body: '',
+                    tokenPreset: 'custom'
+                },
+                signPassport: {
+                    method: 'POST',
+                    path: `${basePath}/batteries/${samplePassportId}/sign`,
+                    body: '',
+                    tokenPreset: 'custom'
                 }
             };
 

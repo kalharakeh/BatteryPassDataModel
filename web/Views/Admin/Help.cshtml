@@ -61,7 +61,7 @@
         <a class="bp-admin-help-task-card" href="/admin/passports/new"><span>Create</span><strong>New battery ID</strong><small>Start a draft passport.</small></a>
         <a class="bp-admin-help-task-card" href="/admin/clusters?tab=products"><span>Define</span><strong>Battery families</strong><small>Edit battery versions, software parameters, and required fields.</small></a>
         <a class="bp-admin-help-task-card" href="/admin/clusters?tab=local-editable-fields"><span>Delegate</span><strong>Local editable fields</strong><small>Choose what local admins can edit globally.</small></a>
-        <a class="bp-admin-help-task-card" href="/admin/clusters?tab=api-token-management"><span>Integrate</span><strong>API Token Management</strong><small>Manage API tokens and battery secrets.</small></a>
+        <a class="bp-admin-help-task-card" href="/admin/clusters?tab=api-token-management"><span>Integrate</span><strong>API Token Management</strong><small>Manage API tokens and sign tokens.</small></a>
         <a class="bp-admin-help-task-card" href="/admin/clusters?tab=passports"><span>Manage</span><strong>Passport workspace</strong><small>Open drafts, signed, dirty, and published records.</small></a>
         <a class="bp-admin-help-task-card" href="#workflow-steps"><span>Learn</span><strong>Step-by-step flow</strong><small>Validate, sign, publish, and recover clean state.</small></a>
     </section>
@@ -100,7 +100,7 @@
             <span class="bp-summary-title">Dirty state rule</span>
             <h2>What makes trust dirty?</h2>
             <p>Editing saved passport core data after signing makes the passport dirty because the signed hash no longer represents the current content.</p>
-            <p class="mb-0">HTTP telemetry does not make the passport dirty. API software updates also do not dirty the passport because live operational requests are outside the signed canonical passport core.</p>
+            <p class="mb-0">HTTP telemetry does not make the passport dirty. Battery version API changes require validation and signing because Battery version is signed passport data.</p>
         </article>
         <article class="bp-card bp-admin-help-callout">
             <span class="bp-summary-title">Public discovery</span>
@@ -174,14 +174,14 @@
                 </ol>
             </article>
             <article class="bp-admin-help-check-card">
-                <span class="bp-summary-title">Software display and API updates</span>
+                <span class="bp-summary-title">Software parameters</span>
                 <h4>Know where software data appears</h4>
                 <ol>
                     <li>New passports copy battery version plus software version, release date, and latest update values from the selected battery family.</li>
-                    <li>The public summary shows the current software version as a normal battery fact.</li>
-                    <li>The Detailed report Software tab shows product, product ID, software version, release date, and latest update.</li>
-                    <li>API software updates do not dirty the passport because they update current operational software in <code>app.operations</code>.</li>
-                    <li>If a current API software value exists, the summary and detail pages show it before the signed product baseline.</li>
+                    <li>The public summary shows the software version parameter as a normal battery fact.</li>
+                    <li>The Detailed report General tab software parameters shows product, product ID, software version, release date, and latest update.</li>
+                    <li>Battery version API changes require validation and signing the passport because they update the selected battery version and its software parameters under <code>app.product</code>.</li>
+                    <li>No separate software endpoint exists; telemetry remains operational and does not require signing.</li>
                 </ol>
             </article>
             <article class="bp-admin-help-check-card">

@@ -1,11 +1,13 @@
 # Battery Pass Demonstrator - End User Testing Guide
 
+Product Template is the internal implementation name for Battery Family. In the UI and tester workflows, Product Template and Battery Family mean the same stored template concept.
+
 
 
 ## 1. What this app is and how it is built
 
 - App type: ASP.NET Core MVC web app (`web/BatteryPassWeb.csproj`, target `net10.0`).
-- Backend storage: MongoDB collections for passports, product templates, product/battery versions, product-version software versions, users, clusters, memberships, API tokens, battery secrets, telemetry.
+- Backend storage: MongoDB collections for passports, Battery families, Battery versions, Battery version software parameters, users, clusters, memberships, API tokens, sign tokens, telemetry.
 - Authentication: Cookie login (`/login`) with roles.
 - Main code areas:
   - Controllers: `web/Controllers/*`
@@ -40,7 +42,7 @@
 - Admin:
   - `/admin` -> redirects to `/admin/clusters?tab=passports`
   - `/admin/clusters?tab=passports|battery|clusters|users|local-editable-fields|api-token-management|products`
-  - `/admin/products/{productId}` product template editor for shared product data, product/battery versions, nested software versions, and per-product-version required/optional parameters.
+  - `/admin/products/{productId}` Battery family editor for shared product data, Battery versions, software parameters, and per-product-version required/optional parameters.
 - Cluster admin:
   - `/cluster-admin/passports`
   - `/cluster-admin/users`
@@ -57,7 +59,7 @@
 - Can create and manage clusters.
 - Can assign batteries to clusters.
 - Can create users and assign memberships.
-- Can create/manage API tokens and battery secrets from API Token Management.
+- Can create/manage API tokens and sign tokens from API Token Management.
 - Can set Local editable fields globally for local admins.
 - Can open detailed report for any battery, including unassigned batteries.
 
@@ -73,7 +75,7 @@
   - Remaining energy
   - Full cycles
 - Can manage users and memberships within managed clusters.
-- Can manage battery secrets for batteries in managed clusters.
+- Can manage sign tokens for batteries in managed clusters.
 - Cannot modify global admin users from cluster user management.
 - Cannot perform global admin operations (full passport editing, global cluster management, global token management).
 
@@ -124,7 +126,7 @@
 
 See `docs/sample-cluster-test-accounts.md` for provided test users and their linked batteries/clusters.
 
-Product template reset restores one unassigned demonstrator plus six clustered customer batteries. The North customer test account is `customer_001_001@customer.org` with password `12345`.
+Battery family reset restores one unassigned demonstrator plus six clustered customer batteries. The North customer test account is `customer_001_001@customer.org` with password `12345`.
 
 ## 5. What the Battery Pass contains and where to find it
 
@@ -139,7 +141,7 @@ Detailed report tabs are in `/{passportId}` and grouped into:
 7. Circularity
 8. Carbon Footprint
 
-The public summary shows the current software version in the battery fact grid. It still hides internal validation, conformance, proof, and trust diagnostics from public users.
+The public summary shows the software version parameter in the battery fact grid. It still hides internal validation, conformance, proof, and trust diagnostics from public users.
 
 ### 5.1 General
 
@@ -155,17 +157,15 @@ The public summary shows the current software version in the battery fact grid. 
 - Shows current software information:
   - Product name
   - Product ID
-  - Product/battery version
-  - Current software version
+  - Battery version
+  - software version parameter
   - Release date
   - Latest update
 - Source paths:
-  - Product/battery version: `app.product.productVersion`
-  - Product-template baseline: `app.product.softwareVersion`, `app.product.softwareReleaseDate`, `app.product.softwareLatestUpdate`
-  - Current installed software from API updates: `app.operations.softwareVersion`, `app.operations.softwareReleaseDate`, `app.operations.softwareLatestUpdate`
-- Display rule:
-  - If current operational software exists, the summary and Software tab show it.
-  - Otherwise they fall back to the selected product-template baseline.
+  - Battery version: `app.product.productVersion`
+  - Battery Family baseline: `app.product.softwareVersion`, `app.product.softwareReleaseDate`, `app.product.softwareLatestUpdate`
+  - There is no software update endpoint.
+  - Display rule: summary and General tab software parameters show the selected Battery version values from the Battery Family baseline.
 
 ### 5.3 Material composition
 
@@ -257,13 +257,13 @@ Each request is checked in this order:
 
 1. API token in `Authorization` header
 2. Cluster scope check (token scope vs battery cluster)
-3. Battery secret check (only if active for that battery)
+3. Sign token check (only if active for that battery)
 
 Headers:
 
 - `Authorization: Basic <base64(token:)>`
 - Compatibility mode also accepted: `Authorization: Basic <token>`
-- Optional when active: `X-Battery-Secret: <secret>`
+- Required for validate/sign: `Authorization: Basic <sign-token>`
 
 ### 7.2 API tokens ("api keys")
 
@@ -285,7 +285,7 @@ Important:
 - The plain token value is shown only at create/regenerate time.
 - Passing token ID instead of token value is rejected.
 
-### 7.3 Battery secrets
+### 7.3 sign tokens
 
 Managed by:
 
@@ -295,7 +295,7 @@ Managed by:
 Behavior:
 
 - Secret is linked to a single `passportId` (and cluster metadata).
-- If secret is active, API requests for that battery require `X-Battery-Secret`.
+- Sign tokens are required for `/validate` and `/sign`; read/write tokens cannot sign.
 - If no secret exists or secret inactive, secret header is not required.
 
 ### 7.4 What can be done
@@ -312,16 +312,16 @@ Write (requires `readWrite` token):
 
 - `POST /batteries/{passportId}/telemetry`
 - `PATCH /batteries/{passportId}/operations`
-- `PATCH /batteries/{passportId}/software`
+- `PATCH /batteries/{passportId}/battery-version`
 
 Software update behavior:
 
-- Body: `{ "softwareVersion": "2.0" }`
-- The requested version must exist in the MongoDB software list for the battery's selected product/battery version.
+- Body: `{ "batteryVersion": "2.0" }`
+- The requested version must exist in the MongoDB Battery version list for the battery's current Battery Family.
 - If the version is not found, the API returns `400 Bad Request` and lists the allowed versions.
-- The API writes current installed software under `app.operations.*`, so it does not dirty the signed passport.
-- The product-template baseline stays under `app.product.*` and remains part of the signed passport core.
-- The public summary and detailed Software tab show the current software version, release date, and latest update from `app.operations.*` when present, otherwise from `app.product.*`.
+- The API writes the selected Battery version and its software parameters under `app.product.*`, then reports that validation and signing are required.
+- The Battery Family baseline stays under `app.product.*` and remains part of the signed passport core.
+- The public summary and detailed General tab show the software version parameter, release date, and latest update from `app.product.*`.
 
 ### 7.5 What cannot be done (external API)
 
@@ -329,9 +329,9 @@ Software update behavior:
 - Cannot edit full passport sections/aspects.
 - Cannot write telemetry with read-only token.
 - Cannot access batteries outside token cluster scope.
-- Cannot bypass active battery secret.
+- Cannot bypass active Sign token.
 - Cannot query telemetry history with `hours` outside `1..168`.
-- Cannot set software to a version that is not defined for the battery product/battery version.
+- Cannot set a Battery version that is not defined for the battery Battery Family.
 
 ### 7.6 Sections and value aliases
 
@@ -393,10 +393,10 @@ curl -X PATCH "http://localhost:5186/api/external/v1/batteries/did:web:acme.batt
   -d "{\"isActive\":true,\"locationOfUse\":{\"siteName\":\"Factory 4\",\"city\":\"Berlin\",\"country\":\"DE\"},\"contactPerson\":{\"name\":\"Anna Becker\",\"email\":\"anna@example.test\"}}"
 ```
 
-### 8.4 cURL - patch current software version
+### 8.4 cURL - patch software version parameter
 
 ```bash
-curl -X PATCH "http://localhost:5186/api/external/v1/batteries/did:web:acme.battery.pass:sample-customer-north-001/software" \
+curl -X PATCH "http://localhost:5186/api/external/v1/batteries/did:web:acme.battery.pass:sample-customer-north-001/battery-version" \
   -H "Authorization: Basic U0FNUExFQkFUVEVSWVBBU1NQT1JUV1JJVEVUT0swMDE6" \
   -H "Content-Type: application/json" \
   -d "{\"softwareVersion\":\"2.0\"}"
@@ -452,12 +452,12 @@ These are not the token-based external integration API; they use app login/cooki
 2. Create a new cluster, assign one battery, assign one local admin and one normal user.
 3. Log in as local admin and verify cluster-scoped limits, including that global admin users cannot be modified.
 4. Log in as normal user and verify `/registry` shows only own cluster batteries and detail access works only for own cluster battery.
-5. Open API Token Management, create an API token + battery secret, then call external API with and without secret.
+5. Open API Token Management, create read/write and Sign tokens, then call external API with the scoped token.
 6. Verify read token cannot write.
 7. Verify out-of-scope token gets `403`.
 8. Verify telemetry write appears in detail history charts.
-9. Patch the current software version through `/api/external/v1/batteries/{passportId}/software` and confirm the public summary shows the current software version.
-10. Open the detailed report and confirm the Software tab shows product, product ID, release date, and latest update.
+9. Patch Battery version through `/api/external/v1/batteries/{passportId}/battery-version` and confirm the response says validation and signing are required.
+10. Open the detailed report and confirm the General tab software parameters shows product, product ID, release date, and latest update.
 
 ## 11. Trust workflow hardening checklist
 
@@ -482,7 +482,7 @@ Use this checklist after Section 5 changes to verify the demonstrator is ready f
 4. Resolve any blocking errors shown by section and field path.
 5. Click `Sign passport` to create a new revision and proof hash.
 6. Click `Publish passport` again so the published state points to the latest signed revision.
-7. Send telemetry or a software-version update through the external API and confirm the passport does not become dirty.
+7. Send telemetry through the external API and confirm the passport does not become dirty. Change Battery version through the external API and confirm validation/signing is required.
 
 ### 11.3 Failure and access checks
 
@@ -508,22 +508,22 @@ Use this checklist after the guided readiness polish to confirm the conformance 
 4. Publish the passport.
    - Expected state: Published and trusted.
    - Expected public behavior: the summary is searchable and still does not show internal conformance diagnostics.
-   - Expected software behavior: the public summary shows the current software version and the detailed report has a Software tab.
+   - Expected software behavior: the public summary shows the software version parameter and the detailed report has a General tab software parameters.
 5. Edit a signed core field such as battery mass and save.
    - Expected next action: Sign passport after validation succeeds.
    - Expected state: Dirty: re-sign required.
 6. Confirm warnings and proof/hash diagnostics are available under advanced diagnostics, not as the first thing an admin must parse.
 
-### Product template baseline checklist
+### Battery Family baseline checklist
 
-Use this checklist after the product-template migration to prove the app can restore and operate from production-like shared product baselines.
+Use this checklist after the Battery Family migration to prove the app can restore and operate from production-like shared product baselines.
 
 1. Login as `admin@example.test`.
 2. Open `/admin/clusters?tab=products`.
-3. Confirm three product templates are listed: Compact 7M, Compact 13M, and Core.
-4. Open each product template and confirm product/battery versions are listed newest-first and each version has nested software versions.
-5. Confirm required and optional parameters are shown section by section and saved per product/battery version in MongoDB.
-6. Press **Reset product-template passports** from the product templates tab or admin help.
+3. Confirm three Battery families are listed: Compact 7M, Compact 13M, and Core.
+4. Open each Battery family and confirm Battery versions are listed newest-first and each version has software parameters.
+5. Confirm required and optional parameters are shown section by section and saved per Battery version in MongoDB.
+6. Press **Reset battery-family passports** from the Battery families tab or admin help.
 7. Confirm one unassigned demonstrator plus six clustered customer batteries are restored:
    - `did:web:acme.battery.pass:0226151e-949c-d067-8ef3-162431e28976`
    - `did:web:acme.battery.pass:sample-customer-north-001`
@@ -532,8 +532,8 @@ Use this checklist after the product-template migration to prove the app can res
    - `did:web:acme.battery.pass:sample-customer-south-002`
    - `did:web:acme.battery.pass:sample-end-user-fleet-001`
    - `did:web:acme.battery.pass:sample-end-user-fleet-002`
-8. Open `/admin/passports/new` and confirm Product, product/battery version, and Software version are chosen before the draft is created.
-9. Edit a product/battery version value, save it, then push that saved product/battery version to matching batteries. Edit software metadata separately and use the software push only for saved software versions.
+8. Open `/admin/passports/new` and confirm Product, Battery version, and Software version are chosen before the draft is created.
+9. Edit a Battery version value, save it, then push that saved Battery version to matching batteries. Software metadata is part of the saved Battery version; push the Battery version when shared parameters change.
 10. Confirm matching batteries preserve manual overrides, become dirty when template-owned signed data changes, and require validate, sign, and publish to return clean.
 
 ### Phase 6A end-to-end demo hardening checklist
@@ -542,8 +542,8 @@ Use this checklist after Phase 6A changes to prove the demo can be restored and 
 
 1. Login as `admin@example.test`.
 2. Open `/admin/clusters?tab=products`.
-3. Press **Reset product-template passports**.
-4. Confirm the success message says the product template passports were reset.
+3. Press **Reset battery-family passports**.
+4. Confirm the success message says the Battery family passports were reset.
 5. Open `/admin/passports/did%3Aweb%3Aacme.battery.pass%3Asample-customer-north-001/conformance`.
 6. Expected state: Published, signed, clean, public, QR-ready.
 7. Logout or use a public browser session.
@@ -558,8 +558,8 @@ Use this checklist after Phase 6A changes to prove the demo can be restored and 
 16. Expected result: the passport returns to published, signed, and clean.
 17. Use the external API workbench or curl to send a telemetry update to the same passport.
 18. Expected result: External HTTP telemetry update does not dirty the passport.
-19. Use the external API workbench or curl to patch software to an allowed version such as `2.0`.
-20. Expected result: the summary and detailed Software tab show the current software value, and the passport remains clean.
+19. Use the external API workbench or curl to Patch battery version to an allowed version such as `2.0`.
+20. Expected result: the summary and detailed General tab show the Battery version software parameters after validation and signing.
 21. Try restricted document access on a private evidence file.
 22. Expected result: Restricted document download returns 403 for unauthorized users and remains accessible only to authorized admin/cluster users when a linked file exists.
 

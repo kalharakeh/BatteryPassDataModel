@@ -23,7 +23,7 @@ public sealed class QaTesterPackDocumentationTests
         Assert.Contains("admin@example.test", docs);
         Assert.Contains("Password123!", docs);
         Assert.Contains("validate, sign, publish", docs, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Software tab", docs);
+        Assert.Contains("software parameters", docs, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("QR", docs);
         Assert.Contains("document evidence", docs, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Start the app", docs);

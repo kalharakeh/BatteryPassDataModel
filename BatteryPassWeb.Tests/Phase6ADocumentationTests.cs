@@ -20,7 +20,7 @@ public sealed class Phase6ADocumentationTests
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        Assert.Contains("Product template reset", markup);
+        Assert.Contains("Battery family reset", markup);
         Assert.Contains("/admin/product-templates/reset", markup);
         Assert.Contains("bp-admin-help-demo-reset", markup);
         Assert.Contains(".bp-admin-help-demo-reset", css);
@@ -31,7 +31,7 @@ public sealed class Phase6ADocumentationTests
     {
         var docs = File.ReadAllText(RepoFile("docs", "sample-cluster-test-accounts.md"));
 
-        Assert.Contains("Product Template Reset", docs);
+        Assert.Contains("Battery Family Reset", docs);
         Assert.Contains("Compact 7M", docs);
         Assert.Contains("Compact 13M", docs);
         Assert.Contains("Core", docs);
@@ -48,10 +48,10 @@ public sealed class Phase6ADocumentationTests
         var guide = File.ReadAllText(RepoFile("docs", "end-user-testing-guide.md"));
 
         Assert.Contains("Phase 6A end-to-end demo hardening checklist", guide);
-        Assert.Contains("Reset product-template passports", guide);
-        Assert.Contains("Product template baseline checklist", guide);
+        Assert.Contains("Reset battery-family passports", guide);
+        Assert.Contains("Battery Family baseline checklist", guide);
         Assert.Contains("Expected state: Published, signed, clean, public, QR-ready", guide);
-        Assert.Contains("Confirm three product templates are listed", guide);
+        Assert.Contains("Confirm three Battery families are listed", guide);
         Assert.Contains("Confirm matching batteries preserve manual overrides", guide);
         Assert.Contains("External HTTP telemetry update does not dirty the passport", guide);
         Assert.Contains("Restricted document download returns 403 for unauthorized users", guide);
@@ -82,21 +82,21 @@ public sealed class Phase6ADocumentationTests
         var adminHelp = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
         var guide = File.ReadAllText(RepoFile("docs", "end-user-testing-guide.md"));
 
-        Assert.Contains("current installed software", apiHelp);
-        Assert.Contains("product-template baseline", apiHelp);
-        Assert.Contains("public summary and the detailed Software tab", apiHelp);
-        Assert.Contains("does not dirty the signed passport", apiHelp);
+        Assert.Contains("software parameters", apiHelp);
+        Assert.Contains("Battery Family baseline", apiHelp);
+        Assert.Contains("no software update endpoint", apiHelp);
+        Assert.Contains("Battery version changes require validation and signing", apiHelp);
 
-        Assert.Contains("Software display and API updates", adminHelp);
-        Assert.Contains("Detailed report Software tab", adminHelp);
-        Assert.Contains("API software updates do not dirty", adminHelp);
+        Assert.Contains("Software parameters", adminHelp);
+        Assert.Contains("Detailed report General tab", adminHelp);
+        Assert.Contains("Battery version API changes require validation and signing", adminHelp);
         Assert.Contains("release date and latest update values", adminHelp);
 
-        Assert.Contains("Software", guide);
+        Assert.Contains("software parameters", guide);
         Assert.Contains("Detailed report tabs", guide);
-        Assert.Contains("current software version", guide);
-        Assert.Contains("Software tab", guide);
-        Assert.Contains("public summary shows the current software version", guide);
+        Assert.Contains("software version parameter", guide);
+        Assert.Contains("General tab", guide);
+        Assert.Contains("no software update endpoint", guide);
     }
 
     [Fact]
@@ -108,7 +108,7 @@ public sealed class Phase6ADocumentationTests
         var qa = File.ReadAllText(RepoFile("docs", "qa-test-pack.md"));
         var accounts = File.ReadAllText(RepoFile("docs", "sample-cluster-test-accounts.md"));
 
-        Assert.Contains("product/battery version", guide, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Battery version", guide, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("API Token Management", guide);
         Assert.Contains("one unassigned demonstrator plus six clustered customer batteries", guide);
         Assert.Contains("API Token Management", qa);
@@ -120,7 +120,8 @@ public sealed class Phase6ADocumentationTests
         Assert.Contains("CORE-FLEET-002", accounts);
         Assert.Contains("Local editable fields", adminHelp);
         Assert.Contains("Token Value", apiHelp);
-        Assert.Contains("Battery Secret", apiHelp);
+        Assert.Contains("Sign tokens", apiHelp);
+        Assert.DoesNotContain("Battery Secret", apiHelp);
     }
 
     private static string RepoFile(params string[] parts)

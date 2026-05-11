@@ -1,5 +1,7 @@
 # Sample Cluster Test Accounts
 
+Product Template is the internal implementation name for Battery Family. In the UI and tester workflows, Product Template and Battery Family mean the same stored template concept.
+
 Shared seeded password: `Password123!`
 
 North customer password exception: `customer_001_001@customer.org` uses `12345`.
@@ -8,7 +10,7 @@ North customer password exception: `customer_001_001@customer.org` uses `12345`.
 
 | Purpose | Email | Access |
 | --- | --- | --- |
-| General admin | `admin@example.test` | Full registry, full passport edits, product templates, Local editable fields, API Token Management, cluster assignment, user membership assignment |
+| General admin | `admin@example.test` | Full registry, full passport edits, Battery families, Local editable fields, API Token Management, cluster assignment, user membership assignment |
 
 ## Cluster Users
 
@@ -20,7 +22,7 @@ North customer password exception: `customer_001_001@customer.org` uses `12345`.
 
 ## Battery Access Matrix
 
-| Battery ID | Model | Product template | Product/battery version | Software | Cluster | Cluster ID | Connected normal user | Connected local admin | Password | General admin |
+| Battery ID | Model | Battery family | Battery version | Software | Cluster | Cluster ID | Connected normal user | Connected local admin | Password | General admin |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `did:web:acme.battery.pass:0226151e-949c-d067-8ef3-162431e28976` | `CP7M-DEMO-001` | Compact 7M | `1.0` | `2.0` | Unassigned demonstrator | None | None seeded | None seeded | `Password123!` | `admin@example.test` |
 | `did:web:acme.battery.pass:sample-customer-north-001` | `CP7M-NORTH-001` | Compact 7M | `1.0` | `2.0` | North Operations Cluster | `cluster-north-operations` | `customer_001_001@customer.org`, `north.user@example.test` | `north.admin@example.test` | `12345` for customer, otherwise `Password123!` | `admin@example.test` |
@@ -34,6 +36,6 @@ Normal users can open the detailed report for their own cluster battery only. Th
 
 Local admin users can open `/cluster-admin` and edit only the fields selected by the general admin under **Local editable fields**. The default editable set is Facility ID, Battery image, State of charge %, Remaining capacity %, Remaining energy kWh, and Full cycles.
 
-## Product Template Reset
+## Battery Family Reset
 
-Press **Reset product-template passports** on `/admin/clusters?tab=products` or `/admin/help` to recreate one unassigned demonstrator plus six clustered customer batteries from the MongoDB product templates. The reset removes older sample/demo passports so the acceptance test set stays small and predictable.
+Press **Reset battery-family passports** on `/admin/clusters?tab=products` or `/admin/help` to recreate one unassigned demonstrator plus six clustered customer batteries from the MongoDB Battery families. The reset removes older sample/demo passports so the acceptance test set stays small and predictable.

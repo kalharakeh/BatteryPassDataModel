@@ -35,9 +35,9 @@ public class ExternalApiController : ControllerBase
         ["currentChargeLevelPct"] = "app.operations.latestTelemetry.currentChargeLevelPct",
         ["currentVoltageV"] = "app.operations.latestTelemetry.currentVoltageV",
         ["currentCurrentA"] = "app.operations.latestTelemetry.currentCurrentA",
-        ["softwareVersion"] = "app.operations.softwareVersion",
-        ["softwareReleaseDate"] = "app.operations.softwareReleaseDate",
-        ["softwareLatestUpdate"] = "app.operations.softwareLatestUpdate",
+        ["softwareVersion"] = "app.product.softwareVersion",
+        ["softwareReleaseDate"] = "app.product.softwareReleaseDate",
+        ["softwareLatestUpdate"] = "app.product.softwareLatestUpdate",
         ["locationOfUse"] = "app.operations.locationOfUse",
         ["contactPerson"] = "app.operations.contactPerson",
         ["isActive"] = "app.operations.isActive"

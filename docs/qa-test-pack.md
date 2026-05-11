@@ -1,5 +1,7 @@
 # QA Tester Pack
 
+Product Template is the internal implementation name for Battery Family. In the UI and tester workflows, Product Template and Battery Family mean the same stored template concept.
+
 This is the starting point for someone testing the Battery Pass app without prior project context. Use it together with:
 
 - `docs/end-user-testing-guide.md` for detailed reference.
@@ -14,7 +16,7 @@ This is the starting point for someone testing the Battery Pass app without prio
    - Email: `admin@example.test`
    - Password: `Password123!`
 3. Open `/admin/clusters?tab=products`.
-4. Press **Reset product-template passports** to restore the known test data.
+4. Press **Reset battery-family passports** to restore the known test data.
 5. Open `/admin/clusters?tab=passports`.
 6. Use `did:web:acme.battery.pass:sample-customer-north-001` as the main happy-path test passport.
 7. Keep `/help`, `/admin/help`, and this file open while testing.
@@ -22,8 +24,8 @@ This is the starting point for someone testing the Battery Pass app without prio
 Expected baseline after reset:
 
 - Seven passport records exist: one unassigned demonstrator plus six clustered customer batteries.
-- Product templates exist for Compact 7M, Compact 13M, and Core.
-- Each product has product/battery versions, and each product/battery version has its own nested software versions.
+- Battery families exist for Compact 7M, Compact 13M, and Core.
+- Each Battery Family has Battery versions, and each Battery version has its own software parameters.
 - The known passports are published, signed, clean, and QR-ready unless a test intentionally changes them.
 
 ## Tester accounts
@@ -32,7 +34,7 @@ Shared seeded password: `Password123!`
 
 | Purpose | Account | What to verify |
 | --- | --- | --- |
-| General admin | `admin@example.test` | Full admin workflow, product templates, validation, signing, publishing, document evidence, API tokens, battery secrets. |
+| General admin | `admin@example.test` | Full admin workflow, Battery families, validation, signing, publishing, document evidence, API tokens, sign tokens. |
 | North customer | `customer_001_001@customer.org` / `12345` | Can open North Operations Cluster batteries such as CP7M-NORTH-001. |
 | North normal user | `north.user@example.test` | Can view North cluster battery details only. |
 | North local admin | `north.admin@example.test` | Can use cluster admin tools for North cluster and local battery fields. |
@@ -58,19 +60,19 @@ Main battery IDs:
 | Public search | Search for a published passport from `/`. | The public summary opens. |
 | Public unpublished search | Search for an unpublished or draft passport as a guest. | The public search should not expose it. |
 | QR | Click/download the QR from the summary and scan/upload it from `/`. | It resolves back to the summary. |
-| Summary page | Open `/{passportId}/summary`. | Shows battery facts, current software version, QR, charts, and no internal conformance/proof diagnostics. |
-| Detailed report | Open `/{passportId}` while logged in with access. | Shows General, Software tab, Material, Performance, Compliance, Supply chain, Circularity, Carbon Footprint, and admin-only Trust tab when allowed. |
-| Software tab | Patch software through `/help` workbench or cURL. | Summary and Software tab show the current installed software. Passport remains clean. |
-| Product templates | Edit a product/battery version, save it, then push that saved product/battery version to matching batteries. Edit software metadata separately and push the saved software version. | Template-owned fields update, manual overrides are preserved, and changed signed core data becomes dirty. |
-| Admin create | Create a new passport from `/admin/passports/new`. | Product, product/battery version, and software are selected first; battery-specific fields stay editable/blank for admin entry. |
-| API Token Management | Open `/admin/clusters?tab=api-token-management`. | API tokens and battery secrets are managed on one page with internal tabs. |
+| Summary page | Open `/{passportId}/summary`. | Shows battery facts, software version parameter, QR, charts, and no internal conformance/proof diagnostics. |
+| Detailed report | Open `/{passportId}` while logged in with access. | Shows General, General tab software parameters, Material, Performance, Compliance, Supply chain, Circularity, Carbon Footprint, and admin-only Trust tab when allowed. |
+| General tab software parameters | Patch Battery version through `/help` workbench or cURL. | API response says validation and signing are required; after signing, Summary and General tab show the Battery version software parameters. |
+| Battery families | Edit a Battery version, save it, then push that saved Battery version to matching batteries. Software metadata is part of the saved Battery version. | Template-owned fields update, manual overrides are preserved, and changed signed core data becomes dirty. |
+| Admin create | Create a new passport from `/admin/passports/new`. | Battery Family and Battery version are selected first; battery-specific fields stay editable/blank for admin entry. |
+| API Token Management | Open `/admin/clusters?tab=api-token-management`. | API tokens and sign tokens are managed on one page with internal tabs. |
 | Validate, sign, publish | Open conformance, validate, sign, publish. | Signing requires zero blockers; publishing requires a current valid proof. |
 | Dirty recovery | Edit signed core data such as weight, save, then validate, sign, publish again. | Passport becomes dirty after edit and clean after re-signing/publishing. |
 | Document evidence | Upload or replace required document evidence. | Hash is stored, evidence becomes part of validation/signature flow, changed evidence requires a new signature. |
 | Access control | Try restricted document download as the wrong user or guest. | Access is denied with 403. Authorized admins/cluster users can access permitted files. |
 | API auth | Call external API with read token, read-write token, bad token, and wrong cluster scope. | Correct responses: read succeeds, write requires read-write, bad token is 401, wrong scope is 403. |
 | API telemetry | Post telemetry. | Detail charts update and passport trust state does not become dirty. |
-| API software validation | Patch software to an unknown version. | API returns `400 Bad Request` with allowed versions. |
+| API software validation | Patch battery version to an unknown version. | API returns `400 Bad Request` with allowed versions. |
 
 ## Acceptance checklist
 
@@ -78,19 +80,19 @@ Mark each item pass/fail during a formal test run.
 
 | Check | Pass/Fail | Notes |
 | --- | --- | --- |
-| Reset product-template passports restores one unassigned demonstrator plus six clustered customer batteries. |  |  |
+| Reset battery-family passports restores one unassigned demonstrator plus six clustered customer batteries. |  |  |
 | Public search opens a published passport summary. |  |  |
-| Public summary shows current software version and no trust/conformance diagnostics. |  |  |
+| Public summary shows software version parameter and no trust/conformance diagnostics. |  |  |
 | QR download/scan opens the same summary. |  |  |
-| Detailed report Software tab shows product, product ID, version, release date, and latest update. |  |  |
+| Detailed report General tab software parameters shows product, product ID, version, release date, and latest update. |  |  |
 | General admin can validate, sign, and publish a passport. |  |  |
 | Editing signed core data makes the passport dirty. |  |  |
 | Re-validating, signing, and publishing returns the passport to clean. |  |  |
 | API telemetry update does not dirty the passport. |  |  |
-| API software update to an allowed version does not dirty the passport. |  |  |
-| API software update to an unknown version returns 400. |  |  |
-| Product template push preserves manual overrides. |  |  |
-| Required/optional fields are managed from product templates, not a global data requirements page. |  |  |
+| Battery version API change to an allowed version requires validation and signing. |  |  |
+| Battery version API change to an unknown version returns 400. |  |  |
+| Battery family push preserves manual overrides. |  |  |
+| Required/optional fields are managed from Battery families, not a global data requirements page. |  |  |
 | Required document evidence stores a SHA-256 hash. |  |  |
 | Replacing signed evidence requires validation/signing again. |  |  |
 | Restricted document access is denied to unauthorized users. |  |  |
@@ -105,17 +107,17 @@ Mark each item pass/fail during a formal test run.
 4. Verify admin trust workflow: validate, sign, publish.
 5. Verify dirty recovery after a core edit.
 6. Verify document evidence upload, hash, signature, and access control.
-7. Verify API reads, telemetry writes, operations patch, and software patch.
-8. Verify product template edit/push behavior.
+7. Verify API reads, telemetry writes, operations patch, and battery-version patch.
+8. Verify Battery family edit/push behavior.
 9. File bugs using the template below.
 
 ## Known limitations
 
 - This is still a demonstrator, not the final production deployment.
-- Product templates and seeded passports are realistic enough for testing but are not official production master data.
+- Battery families and seeded passports are realistic enough for testing but are not official production master data.
 - The reset action intentionally deletes older sample/demo passports and restores one unassigned demonstrator plus six clustered customer batteries.
-- External API writes are limited to telemetry, operations metadata, and current installed software version.
-- API telemetry and API software updates are operational data and should not dirty the signed passport.
+- External API writes are limited to telemetry, operations metadata, and Battery version changes.
+- API telemetry does not require signing; Battery version API changes require validation and signing.
 - Signing verifies the canonical passport core and referenced evidence hashes; it does not parse PDF contents.
 - Camera QR scanning depends on browser/device permissions. Image upload scanning is the fallback.
 - Some browser, OS, and camera permission failures are expected; manual DID search should still work.
