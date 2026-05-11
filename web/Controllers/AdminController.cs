@@ -634,6 +634,7 @@ public class AdminController : Controller
     public async Task<IActionResult> Clusters([FromQuery] string? tab, [FromQuery] string? q, CancellationToken cancellationToken)
     {
         var selectedTab = NormalizeTab(tab);
+        var selectedCredentialTab = NormalizeCredentialTab(tab);
         var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
         var clusterViewModels = clusters
             .Select(cluster => new ClusterViewModel
@@ -659,6 +660,7 @@ public class AdminController : Controller
         var model = new AdminClusterViewModel
         {
             SelectedTab = selectedTab,
+            SelectedCredentialTab = selectedCredentialTab,
             PassportsQuery = q ?? string.Empty,
             Clusters = clusterViewModels,
             Passports = passports
@@ -1092,11 +1094,19 @@ public class AdminController : Controller
             "passports" => "passports",
             "clusters" => "clusters",
             "users" => "users",
-            "api-tokens" => "api-tokens",
-            "battery-secrets" => "battery-secrets",
+            "api-token-management" or "api-tokens" or "battery-secrets" => "api-token-management",
             "local-editable-fields" => "local-editable-fields",
             "products" => "products",
             _ => "passports"
+        };
+    }
+
+    private static string NormalizeCredentialTab(string? value)
+    {
+        return value?.ToLowerInvariant() switch
+        {
+            "battery-secrets" => "battery-secrets",
+            _ => "api-tokens"
         };
     }
 

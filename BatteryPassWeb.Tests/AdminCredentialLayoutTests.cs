@@ -15,6 +15,24 @@ public sealed class AdminCredentialLayoutTests
     }
 
     [Fact]
+    public void AdminCredentials_ShouldUseSingleManagementTabAndPasswordRevealControls()
+    {
+        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var clusterUsers = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "Users.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("API Token Management", clusters);
+        Assert.Contains("data-credential-tab=\"api-tokens\"", clusters);
+        Assert.Contains("data-credential-tab=\"battery-secrets\"", clusters);
+        Assert.DoesNotContain(">API tokens</a>", clusters);
+        Assert.DoesNotContain(">Battery secrets</a>", clusters);
+        Assert.Contains("data-password-reveal", clusters);
+        Assert.Contains("data-password-reveal", clusterUsers);
+        Assert.Contains(".bp-tab-row", css);
+        Assert.Contains("flex-wrap: nowrap", css);
+    }
+
+    [Fact]
     public void ClusterSecretsPage_ShouldUseRoomyCredentialLayout()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "Secrets.cshtml"));

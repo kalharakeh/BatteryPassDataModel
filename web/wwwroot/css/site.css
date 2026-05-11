@@ -1107,7 +1107,8 @@ a:hover {
 
 .bp-tab-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
   gap: 8px;
 }
 
@@ -1124,6 +1125,38 @@ a:hover {
   border-color: #bacde8;
   background: #e8f1ff;
   color: var(--bp-scania-blue);
+}
+
+.bp-credential-tab-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.bp-password-field {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.bp-password-field input {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.bp-password-field-inline {
+  min-width: 260px;
+}
+
+.bp-password-reveal {
+  min-width: 58px;
+  border: 1px solid var(--bp-border);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 700;
+  padding: 6px 10px;
 }
 
 .bp-tag {
