@@ -500,6 +500,27 @@ a:hover {
   min-height: 96px;
 }
 
+.bp-fieldset {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.bp-fieldset legend {
+  float: none;
+  width: auto;
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.bp-check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
 .bp-search-form button,
 .bp-primary-button {
   display: inline-flex;

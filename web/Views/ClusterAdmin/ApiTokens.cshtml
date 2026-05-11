@@ -1,0 +1,125 @@
+@model BatteryPassWeb.Models.ViewModels.AdminClusterViewModel
+@{
+    ViewData["Title"] = "Cluster API tokens";
+}
+
+<main class="bp-page bp-admin-page">
+    <div class="d-flex justify-content-between flex-wrap gap-3 align-items-end">
+        <div>
+            <h1 class="mb-1">Cluster API tokens</h1>
+            <p class="text-secondary mb-0">Create and remove API tokens for clusters where you are a local admin.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="/cluster-admin/passports" class="bp-secondary-button">Managed passports</a>
+            <a href="/cluster-admin/users" class="bp-secondary-button">Manage users</a>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+    {
+        <div class="alert alert-success mt-3 mb-0">@Model.StatusMessage</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger mt-3 mb-0">@Model.ErrorMessage</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.GeneratedCredential))
+    {
+        <div class="alert alert-warning mt-3 mb-0">
+            <strong>Generated token (store now):</strong>
+            <code>@Model.GeneratedCredential</code>
+        </div>
+    }
+
+    <div class="bp-two-column mt-4">
+        <section class="bp-card">
+            <h2 class="h5 mb-3">Create API token</h2>
+            <form method="post" action="/cluster-admin/api-tokens/create" class="bp-stack-form">
+                @Html.AntiForgeryToken()
+                <label>
+                    Name
+                    <input type="text" name="name" placeholder="North cluster sign token" />
+                </label>
+                <label>
+                    Access mode
+                    <select name="accessMode">
+                        <option value="read">Read</option>
+                        <option value="readWrite">Read + write</option>
+                        <option value="sign">Validate + sign</option>
+                    </select>
+                </label>
+                <fieldset class="bp-fieldset">
+                    <legend>Clusters</legend>
+                    @foreach (var cluster in Model.Clusters)
+                    {
+                        <label class="bp-check-row">
+                            <input type="checkbox" name="clusterIds" value="@cluster.ClusterId" />
+                            <span>@cluster.Name (@cluster.ClusterId)</span>
+                        </label>
+                    }
+                </fieldset>
+                <button type="submit" class="bp-primary-button">Create token</button>
+            </form>
+        </section>
+
+        <section class="bp-card p-0 overflow-auto">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="px-3 py-3">Token</th>
+                        <th class="px-3 py-3">Access</th>
+                        <th class="px-3 py-3">Clusters</th>
+                        <th class="px-3 py-3">Updated</th>
+                        <th class="px-3 py-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.ApiTokens.Count == 0)
+                    {
+                        <tr>
+                            <td class="px-3 py-4 text-secondary" colspan="5">No API tokens are scoped to your administered clusters.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var token in Model.ApiTokens)
+                        {
+                            var accessLabel = token.AccessMode.Equals("sign", StringComparison.OrdinalIgnoreCase)
+                                ? "Validate + sign"
+                                : token.AccessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase)
+                                    ? "Read + write"
+                                    : "Read";
+                            <tr>
+                                <td class="px-3 py-3">
+                                    <p class="mb-1 fw-semibold">@token.Name</p>
+                                    <p class="mb-0 small text-secondary">@token.TokenId</p>
+                                    @if (!token.IsActive)
+                                    {
+                                        <span class="bp-role-tag">Deleted</span>
+                                    }
+                                </td>
+                                <td class="px-3 py-3">@accessLabel</td>
+                                <td class="px-3 py-3">@token.ClusterIdsLabel</td>
+                                <td class="px-3 py-3">@(string.IsNullOrWhiteSpace(token.UpdatedAt) ? "-" : token.UpdatedAt[..Math.Min(10, token.UpdatedAt.Length)])</td>
+                                <td class="px-3 py-3">
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <form method="post" action="/cluster-admin/api-tokens/regenerate">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="tokenId" value="@token.TokenId" />
+                                            <button type="submit" class="bp-secondary-button">Regenerate</button>
+                                        </form>
+                                        <form method="post" action="/cluster-admin/api-tokens/delete">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="tokenId" value="@token.TokenId" />
+                                            <button type="submit" class="bp-danger-button" onclick="return confirm('Delete API token @token.Name?');">Delete</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </section>
+    </div>
+</main>

@@ -174,6 +174,23 @@ public sealed class BatteryFamilyAccessApiRevisedTests
         Assert.Contains("@customerName / @customerRole", layout);
     }
 
+    [Fact]
+    public void LocalAdminApiTokenManagement_ShouldBeScopedToAdministeredClusters()
+    {
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
+        var view = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "ApiTokens.cshtml"));
+
+        Assert.Contains("[HttpGet(\"api-tokens\")]", controller);
+        Assert.Contains("CreateClusterApiToken", controller);
+        Assert.Contains("DeleteClusterApiToken", controller);
+        Assert.Contains("RegenerateClusterApiToken", controller);
+        Assert.Contains("ValidateClusterTokenScopeAsync", controller);
+        Assert.Contains("CanAdministerClusterAsync", controller);
+        Assert.Contains("/cluster-admin/api-tokens/create", view);
+        Assert.Contains("Validate + sign", view);
+        Assert.Contains("/cluster-admin/api-tokens/delete", view);
+    }
+
     private static BsonDocument MinimalPassport(string registryStatus, string trustState)
     {
         return new BsonDocument

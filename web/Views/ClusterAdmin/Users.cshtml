@@ -10,7 +10,10 @@
             <h1 class="mb-1">Cluster users</h1>
             <p class="text-secondary mb-0">Add, edit, or remove users in clusters where you are a local admin.</p>
         </div>
-        <a href="/cluster-admin/passports" class="bp-secondary-button">Managed passports</a>
+        <div class="d-flex gap-2">
+            <a href="/cluster-admin/passports" class="bp-secondary-button">Managed passports</a>
+            <a href="/cluster-admin/api-tokens" class="bp-secondary-button">API tokens</a>
+        </div>
     </div>
 
     @if (!string.IsNullOrWhiteSpace(errorMessage))

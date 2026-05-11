@@ -218,6 +218,112 @@ public class ClusterAdminController : Controller
         return Redirect("/cluster-admin/passports");
     }
 
+    [HttpGet("api-tokens")]
+    public async Task<IActionResult> ApiTokens(CancellationToken cancellationToken)
+    {
+        var managedClusterIds = await ManagedClusterIdsAsync(cancellationToken);
+        var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
+        var visibleClusters = clusters
+            .Where(cluster => managedClusterIds.Contains(BsonHelpers.GetString(cluster, "clusterId")))
+            .Select(cluster => new ClusterViewModel
+            {
+                ClusterId = BsonHelpers.GetString(cluster, "clusterId"),
+                Name = BsonHelpers.GetString(cluster, "name"),
+                CreatedAt = BsonHelpers.GetString(cluster, "createdAt"),
+                UpdatedAt = BsonHelpers.GetString(cluster, "updatedAt")
+            })
+            .OrderBy(cluster => cluster.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var clusterNamesById = visibleClusters.ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
+
+        var tokens = await _externalApiRepository.ListTokensAsync(cancellationToken);
+        var visibleTokens = tokens
+            .Where(token => TokenIsInManagedScope(token, managedClusterIds))
+            .Select(token => MapApiToken(token, clusterNamesById))
+            .OrderBy(token => token.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return View("ApiTokens", new AdminClusterViewModel
+        {
+            SelectedTab = "api-token-management",
+            Clusters = visibleClusters,
+            ApiTokens = visibleTokens,
+            StatusMessage = TempData["StatusMessage"]?.ToString() ?? string.Empty,
+            ErrorMessage = TempData["ErrorMessage"]?.ToString() ?? string.Empty,
+            GeneratedCredential = TempData["GeneratedCredential"]?.ToString() ?? string.Empty
+        });
+    }
+
+    [HttpPost("api-tokens/create")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateClusterApiToken(CancellationToken cancellationToken)
+    {
+        var clusterIds = Request.Form["clusterIds"]
+            .Select(value => value?.Trim() ?? string.Empty)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (clusterIds.Count == 0 || !await CanAdministerAllClustersAsync(clusterIds, cancellationToken))
+        {
+            TempData["ErrorMessage"] = "Choose at least one cluster you administer.";
+            return Redirect("/cluster-admin/api-tokens");
+        }
+
+        var name = Text(Request.Form, "name", "Cluster API token");
+        var accessMode = ParseTokenMode(Text(Request.Form, "accessMode", "read"));
+        var actor = AccessControlService.CurrentEmail(User);
+        var (_, tokenValue) = await _externalApiRepository.CreateTokenAsync(
+            name,
+            accessMode,
+            clusterIds,
+            allowUnassigned: false,
+            globalAccess: false,
+            actor: string.IsNullOrWhiteSpace(actor) ? "cluster-admin" : actor,
+            cancellationToken: cancellationToken);
+        TempData["GeneratedCredential"] = tokenValue;
+        TempData["StatusMessage"] = "API token created.";
+        return Redirect("/cluster-admin/api-tokens");
+    }
+
+    [HttpPost("api-tokens/delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteClusterApiToken(CancellationToken cancellationToken)
+    {
+        var tokenId = Text(Request.Form, "tokenId");
+        if (!await ValidateClusterTokenScopeAsync(tokenId, cancellationToken))
+        {
+            return NotFound();
+        }
+
+        await _externalApiRepository.SetTokenActiveAsync(tokenId, false, AccessControlService.CurrentEmail(User), cancellationToken);
+        TempData["StatusMessage"] = "API token deleted.";
+        return Redirect("/cluster-admin/api-tokens");
+    }
+
+    [HttpPost("api-tokens/regenerate")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RegenerateClusterApiToken(CancellationToken cancellationToken)
+    {
+        var tokenId = Text(Request.Form, "tokenId");
+        if (!await ValidateClusterTokenScopeAsync(tokenId, cancellationToken))
+        {
+            return NotFound();
+        }
+
+        var tokenValue = await _externalApiRepository.RegenerateTokenAsync(tokenId, AccessControlService.CurrentEmail(User), cancellationToken);
+        if (string.IsNullOrWhiteSpace(tokenValue))
+        {
+            TempData["ErrorMessage"] = "API token could not be regenerated.";
+        }
+        else
+        {
+            TempData["GeneratedCredential"] = tokenValue;
+            TempData["StatusMessage"] = "API token regenerated.";
+        }
+
+        return Redirect("/cluster-admin/api-tokens");
+    }
+
     [HttpPost("users/save")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveUser(CancellationToken cancellationToken)
@@ -298,6 +404,87 @@ public class ClusterAdminController : Controller
 
         await _clusterRepository.DeleteClusterMembershipAsync(email, clusterId, cancellationToken);
         return Redirect("/cluster-admin/users");
+    }
+
+    private async Task<bool> ValidateClusterTokenScopeAsync(string tokenId, CancellationToken cancellationToken)
+    {
+        var token = await _externalApiRepository.GetTokenByIdAsync(tokenId, cancellationToken);
+        if (token == null)
+        {
+            return false;
+        }
+
+        var managedClusterIds = await ManagedClusterIdsAsync(cancellationToken);
+        return TokenIsInManagedScope(token, managedClusterIds);
+    }
+
+    private async Task<bool> CanAdministerAllClustersAsync(IEnumerable<string> clusterIds, CancellationToken cancellationToken)
+    {
+        foreach (var clusterId in clusterIds)
+        {
+            if (!await _accessControlService.CanAdministerClusterAsync(User, clusterId, cancellationToken))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool TokenIsInManagedScope(BsonDocument token, IReadOnlySet<string> managedClusterIds)
+    {
+        if (AccessControlService.IsAdmin(User))
+        {
+            return true;
+        }
+
+        if (token.GetValue("globalAccess", false).ToBoolean()
+            || token.GetValue("allowUnassigned", false).ToBoolean())
+        {
+            return false;
+        }
+
+        var tokenClusterIds = token.GetValue("clusterIds", new BsonArray()) as BsonArray ?? new BsonArray();
+        var clusterIds = tokenClusterIds
+            .Select(entry => entry.ToString() ?? string.Empty)
+            .Where(clusterId => !string.IsNullOrWhiteSpace(clusterId))
+            .ToList();
+        return clusterIds.Count > 0
+            && clusterIds.All(clusterId => managedClusterIds.Contains(clusterId));
+    }
+
+    private static ApiTokenViewModel MapApiToken(BsonDocument token, IReadOnlyDictionary<string, string> clusterNamesById)
+    {
+        var tokenClusterIds = token.GetValue("clusterIds", new BsonArray()) as BsonArray ?? new BsonArray();
+        var clusterNames = tokenClusterIds
+            .Select(entry => entry.ToString() ?? string.Empty)
+            .Where(clusterId => !string.IsNullOrWhiteSpace(clusterId))
+            .Select(clusterId => clusterNamesById.TryGetValue(clusterId, out var clusterName) ? $"{clusterName} ({clusterId})" : clusterId)
+            .ToList();
+        return new ApiTokenViewModel
+        {
+            TokenId = BsonHelpers.GetString(token, "tokenId"),
+            Name = BsonHelpers.GetString(token, "name"),
+            AccessMode = BsonHelpers.GetString(token, "accessMode"),
+            GlobalAccess = token.GetValue("globalAccess", false).ToBoolean(),
+            AllowUnassigned = token.GetValue("allowUnassigned", false).ToBoolean(),
+            IsActive = token.GetValue("isActive", false).ToBoolean(),
+            IsSample = token.GetValue("isSample", false).ToBoolean(),
+            ClusterIdsLabel = clusterNames.Count == 0 ? "No clusters" : string.Join(", ", clusterNames),
+            CreatedAt = BsonHelpers.GetString(token, "createdAt"),
+            UpdatedAt = BsonHelpers.GetString(token, "updatedAt"),
+            LastUsedAt = BsonHelpers.GetString(token, "lastUsedAt")
+        };
+    }
+
+    private static ExternalTokenAccessMode ParseTokenMode(string value)
+    {
+        return value.ToLowerInvariant() switch
+        {
+            "sign" => ExternalTokenAccessMode.Sign,
+            "readwrite" => ExternalTokenAccessMode.ReadWrite,
+            _ => ExternalTokenAccessMode.Read
+        };
     }
 
     private async Task<HashSet<string>> ManagedClusterIdsAsync(CancellationToken cancellationToken)
