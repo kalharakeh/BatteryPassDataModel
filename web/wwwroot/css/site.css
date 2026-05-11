@@ -3750,6 +3750,20 @@ a:hover {
   gap: 20px;
 }
 
+.bp-product-editor-form {
+  display: block;
+}
+
+.bp-product-editor-workspace {
+  display: grid;
+  gap: 20px;
+  align-items: start;
+}
+
+.bp-product-editor-content {
+  min-width: 0;
+}
+
 .bp-product-editor-grid {
   align-items: start;
 }
@@ -3894,26 +3908,92 @@ a:hover {
 
 .bp-product-version-sidebar {
   align-self: stretch;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.bp-product-version-sidebar .bp-product-section-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.bp-product-version-sidebar h2 {
+  font-size: 1.55rem;
+  line-height: 1.18;
+  max-width: 12ch;
+}
+
+.bp-product-version-sidebar .bp-button-compact {
+  max-width: 92px;
+  min-height: 38px;
+  padding: 7px 10px;
+  line-height: 1.18;
+  white-space: normal;
 }
 
 .bp-product-version-tab-rail {
   display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.bp-product-version-current-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 10px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #dbe7ec;
+  border-radius: 12px;
+  background: #f8fbff;
+}
+
+.bp-product-version-current-pill span {
+  min-width: 0;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.bp-product-version-current-pill strong {
+  color: #06223b;
+  font-size: 1.02rem;
+  white-space: nowrap;
 }
 
 .bp-product-version-tab {
   display: grid;
   gap: 10px;
-  padding: 12px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 11px 12px;
   border: 1px solid #e0e9f1;
-  border-radius: 14px;
-  background: #fff;
+  border-left-width: 4px;
+  border-radius: 12px;
+  background: #fbfdff;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
 }
 
 .bp-product-version-tab.is-active {
   border-color: #8eb5d9;
-  background: #f8fbff;
-  box-shadow: inset 3px 0 0 var(--bp-primary);
+  border-left-color: var(--bp-primary);
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(8, 35, 63, 0.08);
+}
+
+.bp-product-version-tab:hover {
+  border-color: #b6ccde;
+  background: #fff;
 }
 
 .bp-product-version-tab-main {
@@ -3954,6 +4034,10 @@ a:hover {
   margin: 0;
 }
 
+.bp-product-version-tab.is-saved-version .bp-product-version-tab-input {
+  display: none;
+}
+
 .bp-product-version-tab-input input {
   width: 100%;
   min-width: 0;
@@ -3975,13 +4059,60 @@ a:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  justify-content: flex-end;
+  justify-content: flex-start;
   padding-top: 10px;
   border-top: 1px solid #eef3f7;
 }
 
 .bp-product-version-editor-shell {
   grid-column: 1 / -1;
+}
+
+.bp-template-document-list {
+  display: grid;
+  gap: 10px;
+}
+
+.bp-template-document-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(160px, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid #e3ebf2;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.bp-template-document-row div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.bp-template-document-row strong {
+  color: #0c253d;
+}
+
+.bp-template-document-row span {
+  color: #64748b;
+}
+
+.bp-template-document-row code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #334155;
+}
+
+.bp-template-document-visibility {
+  justify-self: end;
+  padding: 5px 9px;
+  border: 1px solid #dbe7ec;
+  border-radius: 999px;
+  background: #f8fafc;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: capitalize;
 }
 
 .bp-template-version-row {
@@ -4138,7 +4269,8 @@ a:hover {
   }
 
   .bp-product-template-card,
-  .bp-template-version-row {
+  .bp-template-version-row,
+  .bp-template-document-row {
     grid-template-columns: 1fr;
   }
 }
@@ -4152,8 +4284,13 @@ a:hover {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .bp-product-editor-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  .bp-product-editor-workspace {
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  }
+
+  .bp-product-version-sidebar {
+    position: sticky;
+    top: 18px;
   }
 
   .bp-product-identity-grid {

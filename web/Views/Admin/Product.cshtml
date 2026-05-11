@@ -65,9 +65,57 @@
     <script type="application/json" data-base-product-catalog>@Html.Raw(baseProductCatalogJson)</script>
     <script type="application/json" data-product-versions-json-source>@Html.Raw(productVersionsJson)</script>
 
-    <form method="post" action="/admin/products/save" class="bp-product-editor-grid mt-4">
+    <form method="post" action="/admin/products/save" class="bp-product-editor-form mt-4">
         @Html.AntiForgeryToken()
 
+        <div class="bp-product-editor-workspace">
+            <aside class="bp-card bp-product-editor-section bp-product-version-sidebar" data-product-version-manager>
+                <div class="bp-product-section-heading">
+                    <div>
+                        <h2>Product/battery versions</h2>
+                        <p class="bp-help-text mb-0">Select a tab to edit its software, parameters, documents, and completion policy.</p>
+                    </div>
+                    <button type="button" class="bp-secondary-button bp-button-compact" data-add-product-version>Add version</button>
+                </div>
+                <div class="bp-product-version-current-pill">
+                    <span>Currently editing</span>
+                    <strong data-selected-product-version-label>@(currentProductVersion?.Version ?? "1.0")</strong>
+                </div>
+                <input type="hidden" name="productVersion" value="@(currentProductVersion?.Version ?? "1.0")" data-current-product-version />
+                <input type="hidden" name="productVersionsJson" value="" data-product-versions-json />
+                <div class="bp-product-version-tab-rail" role="tablist" aria-label="Product/battery versions" data-product-version-list data-product-version-tab-rail>
+                    @foreach (var productVersion in Model.ProductVersions)
+                    {
+                        var isCurrentVersion = currentProductVersion?.Version.Equals(productVersion.Version, StringComparison.OrdinalIgnoreCase) == true;
+                        <article class="bp-product-version-tab is-saved-version @(isCurrentVersion ? "is-active" : string.Empty)" data-product-version-row data-product-version-tab data-version="@productVersion.Version">
+                            <button type="button" class="bp-product-version-tab-main" role="tab" aria-selected="@(isCurrentVersion ? "true" : "false")" title="Edit version @productVersion.Version" data-edit-product-version>
+                                <span>Edit version</span>
+                                <strong>@productVersion.Version</strong>
+                            </button>
+                            <label class="bp-product-version-tab-input">
+                                <span>Version number</span>
+                                <input type="text" value="@productVersion.Version" readonly data-product-version-input />
+                            </label>
+                            <div class="bp-product-version-tab-actions">
+                                @if (!isNew)
+                                {
+                                    <button
+                                        type="submit"
+                                        form="push-product-version-@Model.ProductId-@productVersion.Version"
+                                        class="bp-secondary-button bp-button-compact">
+                                        Push to batteries
+                                    </button>
+                                }
+                                <button type="button" class="bp-danger-button bp-button-compact" data-remove-product-version>Remove</button>
+                            </div>
+                        </article>
+                    }
+                </div>
+                <p class="bp-help-text mb-0">Save new product/battery versions before pushing. A new version normally matches zero batteries until passports are created with it.</p>
+            </aside>
+
+            <div class="bp-product-editor-content">
+                <div class="bp-product-editor-grid">
         @if (isNew)
         {
             <section class="bp-card bp-product-editor-section bp-span-all">
@@ -155,51 +203,9 @@
             </div>
         </section>
 
-        <section class="bp-card bp-product-editor-section bp-product-version-sidebar" data-product-version-manager>
-            <div class="bp-product-section-heading">
-                <div>
-                    <h2>Product/battery versions</h2>
-                    <p class="bp-help-text mb-0">Each tab owns the software and parameter values shown below.</p>
-                </div>
-                <button type="button" class="bp-secondary-button bp-button-compact" data-add-product-version>Add version</button>
-            </div>
-            <input type="hidden" name="productVersion" value="@(currentProductVersion?.Version ?? "1.0")" data-current-product-version />
-            <input type="hidden" name="productVersionsJson" value="" data-product-versions-json />
-            <div class="bp-product-version-tab-rail" role="tablist" aria-label="Product/battery versions" data-product-version-list data-product-version-tab-rail>
-                @foreach (var productVersion in Model.ProductVersions)
-                {
-                    var isCurrentVersion = currentProductVersion?.Version.Equals(productVersion.Version, StringComparison.OrdinalIgnoreCase) == true;
-                    <article class="bp-product-version-tab @(isCurrentVersion ? "is-active" : string.Empty)" data-product-version-row data-product-version-tab data-version="@productVersion.Version">
-                        <button type="button" class="bp-product-version-tab-main" role="tab" aria-selected="@(isCurrentVersion ? "true" : "false")" title="Edit version @productVersion.Version" data-edit-product-version>
-                            <span>Edit version</span>
-                            <strong>@productVersion.Version</strong>
-                        </button>
-                        <label class="bp-product-version-tab-input">
-                            <span>Version number</span>
-                            <input type="text" value="@productVersion.Version" readonly data-product-version-input />
-                        </label>
-                        <div class="bp-product-version-tab-actions">
-                            @if (!isNew)
-                            {
-                                <button
-                                    type="submit"
-                                    form="push-product-version-@Model.ProductId-@productVersion.Version"
-                                    class="bp-secondary-button bp-button-compact">
-                                    Push to batteries
-                                </button>
-                            }
-                            <button type="button" class="bp-danger-button bp-button-compact" data-remove-product-version>Remove</button>
-                        </div>
-                    </article>
-                }
-            </div>
-            <p class="bp-help-text mb-0">Save new product/battery versions before pushing. A new version normally matches zero batteries until passports are created with it.</p>
-        </section>
-
         <section class="bp-card bp-product-editor-section bp-product-version-editor-shell" data-version-scoped-section>
             <div class="bp-product-section-heading">
                 <div>
-                    <span class="bp-summary-title">Selected product/battery version: <strong data-selected-product-version-label>@(currentProductVersion?.Version ?? "1.0")</strong></span>
                     <h2>Software versions</h2>
                     <p class="bp-help-text mb-0">Each software version defines the version, release date, and latest update available for this product/battery version.</p>
                     <p class="bp-help-text mb-0">Saved software version numbers cannot be changed. Add a new software version instead.</p>
@@ -247,7 +253,7 @@
         </section>
 
         <section class="bp-card bp-product-editor-section bp-product-version-editor-shell" data-version-scoped-section>
-            <h2>Shared product values for <span data-selected-product-version-label>@(currentProductVersion?.Version ?? "1.0")</span></h2>
+            <h2>Shared product values</h2>
             <div class="bp-form-grid">
                 <label class="bp-field-shell"><span>Battery mass kg</span><input type="number" step="any" name="batteryMassKg" value="@Model.BatteryMassKg" /></label>
                 <label class="bp-field-shell"><span>Rated energy kWh</span><input type="number" step="any" name="ratedEnergyKwh" value="@Model.RatedEnergyKwh" /></label>
@@ -263,7 +269,7 @@
         </section>
 
         <section class="bp-card bp-product-editor-section bp-product-version-editor-shell" data-version-scoped-section>
-            <h2>Material composition for <span data-selected-product-version-label>@(currentProductVersion?.Version ?? "1.0")</span></h2>
+            <h2>Material composition</h2>
             <div class="bp-form-grid">
                 @foreach (var material in materialMasses)
                 {
@@ -277,7 +283,7 @@
         </section>
 
         <section class="bp-card bp-product-editor-section bp-product-version-editor-shell" data-version-scoped-section>
-            <h2>Carbon lifecycle stages for <span data-selected-product-version-label>@(currentProductVersion?.Version ?? "1.0")</span></h2>
+            <h2>Carbon lifecycle stages</h2>
             <div class="bp-form-grid">
                 @foreach (var stage in carbonStages)
                 {
@@ -291,7 +297,7 @@
         </section>
 
         <section class="bp-card bp-product-editor-section bp-product-version-editor-shell" data-version-scoped-section>
-            <h2>Circularity for <span data-selected-product-version-label>@(currentProductVersion?.Version ?? "1.0")</span></h2>
+            <h2>Circularity</h2>
             <p class="bp-help-text">Version-level recycled-content values copied to batteries using this product/battery version.</p>
             <div class="bp-form-grid">
                 @foreach (var recycled in recycledContent)
@@ -308,7 +314,29 @@
             </div>
         </section>
 
-        <section class="bp-card bp-product-editor-section bp-span-all">
+        <section class="bp-card bp-product-editor-section bp-product-version-editor-shell" data-version-scoped-section>
+            <div class="bp-product-section-heading">
+                <div>
+                    <h2>Template documents</h2>
+                    <p class="bp-help-text mb-0">Document references copied into batteries created from the selected product/battery version.</p>
+                </div>
+            </div>
+            <div class="bp-template-document-list" data-template-document-list>
+                @foreach (var document in currentProductVersion?.TemplateDocuments ?? [])
+                {
+                    <article class="bp-template-document-row">
+                        <div>
+                            <strong>@document.Label</strong>
+                            <span>@document.DocumentKey</span>
+                        </div>
+                        <code>@document.FileName</code>
+                        <span class="bp-template-document-visibility">@document.Visibility</span>
+                    </article>
+                }
+            </div>
+        </section>
+
+        <section class="bp-card bp-product-editor-section bp-span-all" data-version-scoped-section>
             @{
                 var dataRequirements = Model.DataRequirements;
                 var totalFields = dataRequirements.Sections.Sum(section => section.Fields.Count);
@@ -318,25 +346,25 @@
                 <div>
                     <span class="bp-summary-title">Template completion policy</span>
                     <h2>Required and optional parameters</h2>
-                    <p class="mb-0">These checkboxes are saved per product in MongoDB and used by validation, signing, publishing, and the conformance page for batteries linked to this product.</p>
+                    <p class="mb-0">These checkboxes are saved for the selected product/battery version in MongoDB and used by validation, signing, publishing, and the conformance page for batteries linked to that version.</p>
                 </div>
                 <div class="bp-requirement-stats">
-                    <div><span>Parameters</span><strong>@totalFields</strong></div>
-                    <div><span>Required</span><strong>@totalRequired</strong></div>
-                    <div><span>Optional</span><strong>@(totalFields - totalRequired)</strong></div>
+                    <div><span>Parameters</span><strong data-requirement-total>@totalFields</strong></div>
+                    <div><span>Required</span><strong data-requirement-required>@totalRequired</strong></div>
+                    <div><span>Optional</span><strong data-requirement-optional>@(totalFields - totalRequired)</strong></div>
                 </div>
             </div>
             <div class="bp-data-requirements-grid mt-3">
                 @foreach (var requirementSection in dataRequirements.Sections.OrderBy(section => section.SortOrder))
                 {
-                    <article class="bp-requirement-section-card">
+                    <article class="bp-requirement-section-card" data-requirement-section-card>
                         <div class="bp-requirement-section-header">
                             <div>
                                 <span>Section</span>
                                 <h3>@requirementSection.Label</h3>
                             </div>
                             <div class="bp-requirement-section-count">
-                                <strong>@requirementSection.RequiredCount</strong>
+                                <strong data-requirement-section-count>@requirementSection.RequiredCount</strong>
                                 <span>required</span>
                             </div>
                         </div>
@@ -366,6 +394,9 @@
             </div>
             <button type="submit" class="bp-primary-button">Save product template</button>
         </div>
+                </div>
+            </div>
+        </div>
     </form>
 
     @if (!isNew)
@@ -391,12 +422,16 @@
 @section Scripts {
     <script>
         (() => {
-            const form = document.querySelector('.bp-product-editor-grid');
+            const form = document.querySelector('.bp-product-editor-form');
             const softwareList = document.querySelector('[data-software-version-list]');
             const addSoftwareButton = document.querySelector('[data-add-software-version]');
             const productVersionList = document.querySelector('[data-product-version-list]');
             const addProductVersionButton = document.querySelector('[data-add-product-version]');
             const selectedProductVersionLabels = document.querySelectorAll('[data-selected-product-version-label]');
+            const templateDocumentList = document.querySelector('[data-template-document-list]');
+            const requiredFieldInputs = Array.from(document.querySelectorAll('[name="requiredFieldKeys"]'));
+            const requirementRequired = document.querySelector('[data-requirement-required]');
+            const requirementOptional = document.querySelector('[data-requirement-optional]');
             const productVersionsInput = document.querySelector('[data-product-versions-json]');
             const productVersionsSource = document.querySelector('[data-product-versions-json-source]');
             const currentProductVersionInput = document.querySelector('[data-current-product-version]');
@@ -406,15 +441,15 @@
             const baseSoftwareSelect = document.querySelector('[data-base-software-select]');
             const applyBaseButton = document.querySelector('[data-apply-base-template]');
             const baseCatalog = parseBaseCatalog(baseCatalogElement?.textContent || '[]');
-            const isNewProduct = @JsonSerializer.Serialize(isNew);
-            const productId = @JsonSerializer.Serialize(Model.ProductId);
+            const isNewProduct = @Html.Raw(JsonSerializer.Serialize(isNew));
+            const productId = @Html.Raw(JsonSerializer.Serialize(Model.ProductId));
             const savedProductVersionKeys = new Set(parseBaseCatalog(productVersionsSource?.textContent || '[]')
                 .map(version => normalizeVersionKey(version.Version))
                 .filter(Boolean));
             let productVersions = parseBaseCatalog(productVersionsSource?.textContent || '[]');
             let currentProductVersion = currentProductVersionInput?.value || productVersions[0]?.Version || '1.0';
 
-            if (!form || !softwareList || !addSoftwareButton || !productVersionList || !productVersionsInput || !currentProductVersionInput) {
+            if (!form || !softwareList || !addSoftwareButton || !productVersionList || !templateDocumentList || !productVersionsInput || !currentProductVersionInput) {
                 return;
             }
 
@@ -477,7 +512,40 @@
                     .filter(software => software.Version);
             }
 
+            function collectRequiredFieldKeys() {
+                return requiredFieldInputs
+                    .filter(input => input.checked)
+                    .map(input => input.value)
+                    .filter(Boolean);
+            }
+
+            function applyRequiredFieldKeys(keys) {
+                const requiredKeys = new Set((keys || []).map(key => String(key || '').toLowerCase()));
+                requiredFieldInputs.forEach(input => {
+                    input.checked = requiredKeys.has(String(input.value || '').toLowerCase());
+                });
+                updateRequirementStats();
+            }
+
+            function updateRequirementStats() {
+                const requiredCount = collectRequiredFieldKeys().length;
+                if (requirementRequired) {
+                    requirementRequired.textContent = requiredCount;
+                }
+                if (requirementOptional) {
+                    requirementOptional.textContent = Math.max(0, requiredFieldInputs.length - requiredCount);
+                }
+                document.querySelectorAll('[data-requirement-section-card]').forEach(card => {
+                    const sectionCount = card.querySelectorAll('[name="requiredFieldKeys"]:checked').length;
+                    const countLabel = card.querySelector('[data-requirement-section-count]');
+                    if (countLabel) {
+                        countLabel.textContent = sectionCount;
+                    }
+                });
+            }
+
             function collectCurrentProductVersion() {
+                const current = currentVersionModel();
                 return {
                     Version: currentProductVersion,
                     BatteryMassKg: numberField('batteryMassKg'),
@@ -493,7 +561,9 @@
                     MaterialMassesKg: collectNumberMap('materialName', 'materialMass'),
                     CarbonStages: collectNumberMap('carbonStage', 'carbonStageValue'),
                     RecycledContent: collectRecycledContent(),
-                    SoftwareVersions: collectSoftwareVersions()
+                    SoftwareVersions: collectSoftwareVersions(),
+                    TemplateDocuments: current?.TemplateDocuments || [],
+                    RequiredFieldKeys: collectRequiredFieldKeys()
                 };
             }
 
@@ -560,6 +630,31 @@
                 rows.forEach(software => softwareList.appendChild(createSoftwareRow(software)));
             }
 
+            function renderTemplateDocuments(documents) {
+                templateDocumentList.innerHTML = '';
+                const rows = documents?.length ? documents : [];
+                if (rows.length === 0) {
+                    const empty = document.createElement('p');
+                    empty.className = 'bp-help-text mb-0';
+                    empty.textContent = 'No template documents are configured for this product/battery version.';
+                    templateDocumentList.appendChild(empty);
+                    return;
+                }
+
+                rows.forEach(documentSeed => {
+                    const row = document.createElement('article');
+                    row.className = 'bp-template-document-row';
+                    row.innerHTML = `
+                        <div>
+                            <strong>${escapeHtml(documentSeed.Label || documentSeed.DocumentKey || '')}</strong>
+                            <span>${escapeHtml(documentSeed.DocumentKey || '')}</span>
+                        </div>
+                        <code>${escapeHtml(documentSeed.FileName || '')}</code>
+                        <span class="bp-template-document-visibility">${escapeHtml(documentSeed.Visibility || 'private')}</span>`;
+                    templateDocumentList.appendChild(row);
+                });
+            }
+
             function applyProductVersion(version) {
                 if (!version) {
                     return;
@@ -582,6 +677,8 @@
                 setNumberMap('carbonStage', 'carbonStageValue', version.CarbonStages || {});
                 setRecycledContent(version.RecycledContent || {});
                 renderSoftwareRows(version.SoftwareVersions || []);
+                renderTemplateDocuments(version.TemplateDocuments || []);
+                applyRequiredFieldKeys(version.RequiredFieldKeys || []);
                 renderProductVersionRows();
                 writeProductVersionsJson();
             }
@@ -593,7 +690,7 @@
                     const isSavedVersion = !isNewProduct && savedProductVersionKeys.has(versionKey);
                     const isActive = String(version.Version || '').toLowerCase() === String(currentProductVersion || '').toLowerCase();
                     const row = document.createElement('article');
-                    row.className = `bp-product-version-tab bp-product-version-row ${isActive ? 'is-active' : ''}`;
+                    row.className = `bp-product-version-tab bp-product-version-row ${isSavedVersion ? 'is-saved-version' : 'is-new-version'} ${isActive ? 'is-active' : ''}`;
                     row.dataset.productVersionRow = '';
                     row.dataset.productVersionTab = '';
                     row.dataset.version = version.Version || '';
@@ -620,11 +717,28 @@
 
             function bindProductVersionRow(row, version) {
                 const input = row.querySelector('[data-product-version-input]');
-                row.querySelector('[data-edit-product-version]')?.addEventListener('click', () => {
+                const selectProductVersion = targetVersion => {
+                    const targetVersionKey = normalizeVersionKey(targetVersion?.Version);
                     saveCurrentVersion();
-                    applyProductVersion(version);
+                    applyProductVersion(productVersions.find(candidate => normalizeVersionKey(candidate.Version) === targetVersionKey) || targetVersion);
+                };
+                row.addEventListener('click', event => {
+                    const versionInput = event.target.closest('[data-product-version-input]');
+                    if (versionInput && !versionInput.readOnly) {
+                        return;
+                    }
+                    if (event.target.closest('[data-remove-product-version], .bp-product-version-tab-actions')) {
+                        return;
+                    }
+                    selectProductVersion(version);
                 });
-                row.querySelector('[data-remove-product-version]')?.addEventListener('click', () => {
+                row.querySelector('[data-edit-product-version]')?.addEventListener('click', event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    selectProductVersion(version);
+                });
+                row.querySelector('[data-remove-product-version]')?.addEventListener('click', event => {
+                    event.stopPropagation();
                     if (productVersions.length <= 1) {
                         input?.focus();
                         return;
@@ -778,6 +892,8 @@
             }
 
             softwareList.querySelectorAll('[data-software-version-row]').forEach(bindRemoveButton);
+            requiredFieldInputs.forEach(input => input.addEventListener('change', updateRequirementStats));
+            updateRequirementStats();
             renderProductVersionRows();
             baseProductSelect?.addEventListener('change', updateBaseProductVersions);
             baseProductVersionSelect?.addEventListener('change', updateBaseSoftware);

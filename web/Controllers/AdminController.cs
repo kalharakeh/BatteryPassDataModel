@@ -1410,7 +1410,17 @@ public class AdminController : Controller
                         ReleaseDate = software.ReleaseDate,
                         LatestUpdate = software.LatestUpdate
                     })
-                    .ToList()
+                    .ToList(),
+                TemplateDocuments = version.TemplateDocuments
+                    .Select(document => new ProductTemplateDocumentViewModel
+                    {
+                        DocumentKey = document.DocumentKey,
+                        Label = document.Label,
+                        FileName = document.FileName,
+                        Visibility = document.Visibility
+                    })
+                    .ToList(),
+                RequiredFieldKeys = version.RequiredFieldKeys
             })
             .ToList();
     }
@@ -1446,7 +1456,7 @@ public class AdminController : Controller
             CarbonStages = latestProductVersion.CarbonStages,
             RecycledContent = latestProductVersion.RecycledContent,
             SoftwareVersions = latestProductVersion.SoftwareVersions,
-            RequiredFieldKeys = requiredFieldKeys,
+            RequiredFieldKeys = latestProductVersion.RequiredFieldKeys,
             ProductVersions = productVersions
         };
     }
@@ -1528,6 +1538,7 @@ public class AdminController : Controller
             .Select(group => group.First())
             .OrderBy(software => software.Version, VersionStringComparer.Descending)
             .ToList();
+        var templateDocuments = ToTemplateDocuments(payload.TemplateDocuments, fallback.TemplateDocuments);
 
         return new BatteryProductVersion(
             payload.Version?.Trim() ?? fallback.Version,
@@ -1545,8 +1556,35 @@ public class AdminController : Controller
             payload.CarbonStages?.Count > 0 ? payload.CarbonStages : fallback.CarbonStages,
             ToRecycledContent(payload.RecycledContent, fallback.RecycledContent),
             softwareVersions.Count == 0 ? fallback.SoftwareVersions : softwareVersions,
-            fallback.TemplateDocuments,
-            requiredFieldKeys);
+            templateDocuments,
+            payload.RequiredFieldKeys is null
+                ? requiredFieldKeys
+                : payload.RequiredFieldKeys
+                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                    .Select(value => value.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList());
+    }
+
+    private static IReadOnlyList<ProductTemplateDocumentSeed> ToTemplateDocuments(
+        List<ProductTemplateDocumentFormPayload>? payload,
+        IReadOnlyList<ProductTemplateDocumentSeed> fallback)
+    {
+        if (payload == null)
+        {
+            return fallback;
+        }
+
+        var documents = payload
+            .Where(document => !string.IsNullOrWhiteSpace(document.DocumentKey))
+            .Select(document => new ProductTemplateDocumentSeed(
+                document.DocumentKey?.Trim() ?? string.Empty,
+                document.Label?.Trim() ?? string.Empty,
+                document.FileName?.Trim() ?? string.Empty,
+                string.IsNullOrWhiteSpace(document.Visibility) ? "private" : document.Visibility.Trim()))
+            .ToList();
+
+        return documents.Count == 0 ? fallback : documents;
     }
 
     private static IReadOnlyDictionary<string, ProductTemplateRecycledContent> ToRecycledContent(
@@ -1707,6 +1745,8 @@ public class AdminController : Controller
         public Dictionary<string, double>? CarbonStages { get; init; }
         public Dictionary<string, ProductTemplateRecycledContentFormPayload>? RecycledContent { get; init; }
         public List<ProductSoftwareVersionFormPayload>? SoftwareVersions { get; init; }
+        public List<ProductTemplateDocumentFormPayload>? TemplateDocuments { get; init; }
+        public List<string>? RequiredFieldKeys { get; init; }
     }
 
     private sealed class ProductSoftwareVersionFormPayload
@@ -1720,6 +1760,14 @@ public class AdminController : Controller
     {
         public double PreConsumerShare { get; init; }
         public double PostConsumerShare { get; init; }
+    }
+
+    private sealed class ProductTemplateDocumentFormPayload
+    {
+        public string? DocumentKey { get; init; }
+        public string? Label { get; init; }
+        public string? FileName { get; init; }
+        public string? Visibility { get; init; }
     }
 
     private sealed class VersionStringComparer : IComparer<string>

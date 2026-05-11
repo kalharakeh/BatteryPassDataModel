@@ -70,23 +70,46 @@ public sealed class ProductTemplateWorkflowLayoutTests
     {
         var productView = File.ReadAllText(RepoFile("web", "Views", "Admin", "Product.cshtml"));
         var adminController = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.Contains("name=\"productVersion\"", productView);
         Assert.Contains("data-product-version-list", productView);
         Assert.Contains("data-product-version-row", productView);
         Assert.Contains("data-product-version-tab-rail", productView);
+        Assert.Contains("bp-product-editor-workspace", productView);
+        Assert.Contains("bp-product-editor-content", productView);
         Assert.Contains("data-product-version-tab", productView);
         Assert.Contains("data-selected-product-version-label", productView);
         Assert.Contains("data-version-scoped-section", productView);
+        Assert.Contains("data-template-document-list", productView);
+        Assert.Contains("TemplateDocuments", productView);
+        Assert.Contains("RequiredFieldKeys", productView);
+        Assert.Contains("collectRequiredFieldKeys", productView);
+        Assert.Contains("applyRequiredFieldKeys", productView);
         Assert.Contains("data-add-product-version", productView);
         Assert.Contains("data-edit-product-version", productView);
         Assert.Contains("data-remove-product-version", productView);
+        Assert.Contains("row.addEventListener('click'", productView);
+        Assert.Contains("const versionInput = event.target.closest('[data-product-version-input]');", productView);
+        Assert.Contains("if (versionInput && !versionInput.readOnly)", productView);
+        Assert.Contains("selectProductVersion(version)", productView);
+        Assert.Contains("const productId = @Html.Raw(JsonSerializer.Serialize(Model.ProductId));", productView);
+        Assert.Contains("const isNewProduct = @Html.Raw(JsonSerializer.Serialize(isNew));", productView);
+        Assert.DoesNotContain("const productId = @JsonSerializer.Serialize(Model.ProductId);", productView);
         Assert.Contains("name=\"productVersionsJson\"", productView);
         Assert.Contains("data-base-product-select", productView);
         Assert.Contains("data-base-product-version-select", productView);
         Assert.Contains("data-base-software-select", productView);
+        Assert.Contains(".bp-product-version-sidebar .bp-product-section-heading", css);
+        Assert.Contains(".bp-product-version-sidebar h2", css);
+        Assert.Contains(".bp-product-version-tab.is-saved-version .bp-product-version-tab-input", css);
+        Assert.Contains("overflow: hidden;", css);
+        Assert.DoesNotContain("Material composition for <span", productView);
+        Assert.DoesNotContain("Carbon lifecycle stages for <span", productView);
+        Assert.DoesNotContain("Circularity for <span", productView);
         Assert.Contains("products/{productId}/versions/{productVersion}/push", adminController);
         Assert.Contains("products/{productId}/versions/{productVersion}/software/{softwareVersion}/push", adminController);
+        Assert.Contains("ProductTemplateDocumentFormPayload", adminController);
         Assert.DoesNotContain("does not create three default software versions", productView);
     }
 

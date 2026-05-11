@@ -60,6 +60,16 @@ public sealed class ProductVersionEditViewModel
     public IReadOnlyDictionary<string, double> CarbonStages { get; init; } = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
     public IReadOnlyDictionary<string, ProductTemplateRecycledContentViewModel> RecycledContent { get; init; } = new Dictionary<string, ProductTemplateRecycledContentViewModel>(StringComparer.OrdinalIgnoreCase);
     public IReadOnlyList<ProductSoftwareVersionViewModel> SoftwareVersions { get; init; } = [];
+    public IReadOnlyList<ProductTemplateDocumentViewModel> TemplateDocuments { get; init; } = [];
+    public IReadOnlyList<string> RequiredFieldKeys { get; init; } = [];
+}
+
+public sealed class ProductTemplateDocumentViewModel
+{
+    public string DocumentKey { get; init; } = string.Empty;
+    public string Label { get; init; } = string.Empty;
+    public string FileName { get; init; } = string.Empty;
+    public string Visibility { get; init; } = string.Empty;
 }
 
 public sealed class ProductTemplateFormCatalogItemViewModel
