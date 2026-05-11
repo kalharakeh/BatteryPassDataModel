@@ -168,4 +168,52 @@ public sealed class ProductTemplateServiceTests
         Assert.Equal(330.0, BsonHelpers.GetValue(diff.UpdatedPassport, "aspects", "generalProductInformation", "payload", "batteryMass")!.ToDouble());
         Assert.Equal("Manually changed", BsonHelpers.GetString(diff.UpdatedPassport, "aspects", "generalProductInformation", "payload", "batteryStatus"));
     }
+
+    [Fact]
+    public void ComputeSafeTemplateUpdates_ShouldUpdateBetweenProductVersionsAndPreserveManualOverrides()
+    {
+        var product = BatteryProductTemplateCatalog.DefaultProducts.Single(item => item.ProductId == "compact-7m");
+        var oldVersion = product.ProductVersions.Single(item => item.Version == "1.0");
+        var newVersion = product.ProductVersions.Single(item => item.Version == "2.0");
+        var oldSoftware = oldVersion.SoftwareVersions.First();
+        var newSoftware = newVersion.SoftwareVersions.First();
+
+        var passport = ProductTemplatePassportBuilder.BuildPassportFromTemplate(
+            "did:web:acme.battery.pass:safe-version-push-001",
+            product,
+            oldVersion,
+            oldSoftware,
+            new ProductTemplateBatteryIdentity
+            {
+                ModelNumber = "CP7M-TEST-001",
+                SerialNumber = "SN-TEST-001",
+                DisplayName = "Safe push test",
+                FacilityId = "LINE-TEST"
+            },
+            "2026-05-11T10:00:00.0000000Z");
+        var oldTemplate = BsonHelpers.GetValue(passport, "app", "templateBaseline") as BsonDocument ?? new BsonDocument();
+        BsonHelpers.GetValue(passport, "aspects", "generalProductInformation", "payload")!.AsBsonDocument["batteryStatus"] = "Manually changed";
+
+        var fresh = ProductTemplatePassportBuilder.BuildPassportFromTemplate(
+            BsonHelpers.GetString(passport, "passportId"),
+            product,
+            newVersion,
+            newSoftware,
+            new ProductTemplateBatteryIdentity
+            {
+                ModelNumber = BsonHelpers.GetString(passport, "app", "display", "modelNumber"),
+                SerialNumber = BsonHelpers.GetString(passport, "app", "display", "serialNumber"),
+                DisplayName = BsonHelpers.GetString(passport, "app", "display", "name"),
+                FacilityId = BsonHelpers.GetString(passport, "app", "display", "facilityId")
+            },
+            "2026-05-11T11:00:00.0000000Z");
+        var newTemplate = ProductTemplatePassportBuilder.BuildTemplateBaseline(fresh);
+
+        var result = ProductTemplatePassportBuilder.ComputeSafeTemplateUpdates(passport, oldTemplate, newTemplate);
+
+        Assert.Contains("app.product.productVersion", result.UpdatedPaths);
+        Assert.Contains("aspects.generalProductInformation.payload.batteryStatus", result.SkippedOverridePaths);
+        Assert.Equal("2.0", BsonHelpers.GetString(result.UpdatedPassport, "app", "product", "productVersion"));
+        Assert.Equal("Manually changed", BsonHelpers.GetString(result.UpdatedPassport, "aspects", "generalProductInformation", "payload", "batteryStatus"));
+    }
 }

@@ -650,6 +650,46 @@ public static class ProductTemplatePassportBuilder
         };
     }
 
+    public static BsonDocument ToProductVersionDocument(
+        string productId,
+        BatteryProductVersion productVersion,
+        string updatedAt,
+        string updatedBy)
+    {
+        return new BsonDocument
+        {
+            ["productId"] = productId,
+            ["version"] = productVersion.Version,
+            ["batteryMassKg"] = productVersion.BatteryMassKg,
+            ["ratedEnergyKwh"] = productVersion.RatedEnergyKwh,
+            ["ratedCapacityAh"] = productVersion.RatedCapacityAh,
+            ["ratedMaximumPowerKw"] = productVersion.RatedMaximumPowerKw,
+            ["nominalVoltageV"] = productVersion.NominalVoltageV,
+            ["expectedLifetimeYears"] = productVersion.ExpectedLifetimeYears,
+            ["expectedCycles"] = productVersion.ExpectedCycles,
+            ["supplyChainIndex"] = productVersion.SupplyChainIndex,
+            ["carbonFootprint"] = productVersion.CarbonFootprint,
+            ["performanceClass"] = productVersion.PerformanceClass,
+            ["materialMassesKg"] = new BsonDocument(productVersion.MaterialMassesKg.Select(pair => new BsonElement(pair.Key, pair.Value))),
+            ["carbonStages"] = new BsonDocument(productVersion.CarbonStages.Select(pair => new BsonElement(pair.Key, pair.Value))),
+            ["recycledContent"] = new BsonDocument(productVersion.RecycledContent.Select(pair => new BsonElement(pair.Key, new BsonDocument
+            {
+                ["preConsumerShare"] = pair.Value.PreConsumerShare,
+                ["postConsumerShare"] = pair.Value.PostConsumerShare
+            }))),
+            ["requiredFieldKeys"] = new BsonArray(productVersion.RequiredFieldKeys),
+            ["templateDocuments"] = new BsonArray(productVersion.TemplateDocuments.Select(document => new BsonDocument
+            {
+                ["documentKey"] = document.DocumentKey,
+                ["label"] = document.Label,
+                ["fileName"] = document.FileName,
+                ["visibility"] = document.Visibility
+            })),
+            ["updatedAt"] = updatedAt,
+            ["updatedBy"] = updatedBy
+        };
+    }
+
     public static BsonDocument ToSoftwareDocument(string productId, BatteryProductSoftwareVersion software, string updatedAt, string updatedBy)
     {
         return new BsonDocument
@@ -661,6 +701,18 @@ public static class ProductTemplatePassportBuilder
             ["updatedAt"] = updatedAt,
             ["updatedBy"] = updatedBy
         };
+    }
+
+    public static BsonDocument ToSoftwareDocument(
+        string productId,
+        string productVersion,
+        BatteryProductSoftwareVersion software,
+        string updatedAt,
+        string updatedBy)
+    {
+        var document = ToSoftwareDocument(productId, software, updatedAt, updatedBy);
+        document["productVersion"] = productVersion;
+        return document;
     }
 
     public static BatteryProductTemplate FromProductDocument(BsonDocument product, IReadOnlyList<BatteryProductSoftwareVersion> softwareVersions)
@@ -698,6 +750,35 @@ public static class ProductTemplatePassportBuilder
             BsonHelpers.GetString(software, "version"),
             BsonHelpers.GetString(software, "releaseDate"),
             BsonHelpers.GetString(software, "latestUpdate"));
+    }
+
+    public static BatteryProductVersion FromProductVersionDocument(
+        BsonDocument productVersion,
+        BatteryProductTemplate fallback,
+        IReadOnlyList<BatteryProductSoftwareVersion> softwareVersions)
+    {
+        var defaults = fallback.ProductVersions.FirstOrDefault(version =>
+            version.Version.Equals(BsonHelpers.GetString(productVersion, "version"), StringComparison.OrdinalIgnoreCase))
+            ?? fallback.LatestProductVersion;
+        return defaults with
+        {
+            Version = FirstNonEmpty(BsonHelpers.GetString(productVersion, "version"), defaults.Version),
+            BatteryMassKg = ReadDouble(productVersion, "batteryMassKg", defaults.BatteryMassKg),
+            RatedEnergyKwh = ReadDouble(productVersion, "ratedEnergyKwh", defaults.RatedEnergyKwh),
+            RatedCapacityAh = ReadDouble(productVersion, "ratedCapacityAh", defaults.RatedCapacityAh),
+            RatedMaximumPowerKw = ReadDouble(productVersion, "ratedMaximumPowerKw", defaults.RatedMaximumPowerKw),
+            NominalVoltageV = ReadDouble(productVersion, "nominalVoltageV", defaults.NominalVoltageV),
+            ExpectedLifetimeYears = ReadDouble(productVersion, "expectedLifetimeYears", defaults.ExpectedLifetimeYears),
+            ExpectedCycles = ReadDouble(productVersion, "expectedCycles", defaults.ExpectedCycles),
+            SupplyChainIndex = ReadDouble(productVersion, "supplyChainIndex", defaults.SupplyChainIndex),
+            CarbonFootprint = ReadDouble(productVersion, "carbonFootprint", defaults.CarbonFootprint),
+            PerformanceClass = FirstNonEmpty(BsonHelpers.GetString(productVersion, "performanceClass"), defaults.PerformanceClass),
+            MaterialMassesKg = ReadNumberMap(productVersion, "materialMassesKg", defaults.MaterialMassesKg),
+            CarbonStages = ReadNumberMap(productVersion, "carbonStages", defaults.CarbonStages),
+            RecycledContent = ReadRecycledContentMap(productVersion, "recycledContent", defaults.RecycledContent),
+            SoftwareVersions = softwareVersions.Count == 0 ? defaults.SoftwareVersions : softwareVersions,
+            RequiredFieldKeys = ReadStringArray(productVersion, "requiredFieldKeys", defaults.RequiredFieldKeys)
+        };
     }
 
     private static void ApplyBatteryIdentity(

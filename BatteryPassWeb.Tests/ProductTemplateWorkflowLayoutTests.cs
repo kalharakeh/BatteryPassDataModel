@@ -15,12 +15,19 @@ public sealed class ProductTemplateWorkflowLayoutTests
     public void AdminController_ShouldExposeProductTemplateRoutesAndUseProductPolicies()
     {
         var source = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+        var service = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateService.cs"));
+        var dataCompletionSource = File.ReadAllText(RepoFile("web", "Services", "DataCompletionPolicyService.cs"));
 
         Assert.Contains("ProductTemplateService", source);
         Assert.Contains("[HttpGet(\"products/{productId}\")]", source);
         Assert.Contains("[HttpPost(\"products/save\")]", source);
         Assert.Contains("[HttpPost(\"products/{productId}/software/{softwareVersion}/push\")]", source);
         Assert.Contains("GetPolicyForPassportAsync", source);
+        Assert.Contains("batteryProductTemplateVersions", service);
+        Assert.Contains("batteryProductTemplateSoftwareVersions", service);
+        Assert.Contains("productVersion", service);
+        Assert.Contains("PushTemplateAsync(string productId, string productVersion, string softwareVersion", service);
+        Assert.Contains("GetProductVersionPolicyAsync", dataCompletionSource);
         Assert.DoesNotContain("[HttpPost(\"passports/{passportId}/complete-required-data\")]", source);
     }
 

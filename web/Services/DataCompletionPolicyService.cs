@@ -70,9 +70,35 @@ public sealed class DataCompletionPolicyService
     public async Task<DataCompletionPolicySnapshot> GetPolicyForPassportAsync(BsonDocument passport, CancellationToken cancellationToken = default)
     {
         var productId = BsonHelpers.GetString(passport, "app", "product", "productId");
+        var productVersion = BsonHelpers.GetString(passport, "app", "product", "productVersion");
+        if (!string.IsNullOrWhiteSpace(productId) && !string.IsNullOrWhiteSpace(productVersion))
+        {
+            return await GetProductVersionPolicyAsync(productId, productVersion, cancellationToken);
+        }
+
         return string.IsNullOrWhiteSpace(productId)
             ? await GetPolicyAsync(cancellationToken)
             : await GetProductPolicyAsync(productId, cancellationToken);
+    }
+
+    public async Task<DataCompletionPolicySnapshot> GetProductVersionPolicyAsync(
+        string productId,
+        string productVersion,
+        CancellationToken cancellationToken = default)
+    {
+        var collection = GetProductPolicyCollection();
+        if (collection == null || string.IsNullOrWhiteSpace(productId) || string.IsNullOrWhiteSpace(productVersion))
+        {
+            return await GetProductPolicyAsync(productId, cancellationToken);
+        }
+
+        var filter = Builders<BsonDocument>.Filter.And(
+            Builders<BsonDocument>.Filter.Eq("productId", productId.Trim()),
+            Builders<BsonDocument>.Filter.Eq("productVersion", productVersion.Trim()));
+        var document = await collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
+        return document == null
+            ? await GetProductPolicyAsync(productId, cancellationToken)
+            : FromBsonDocument(document);
     }
 
     public async Task<DataCompletionPolicySnapshot> GetProductPolicyAsync(string productId, CancellationToken cancellationToken = default)
@@ -105,6 +131,46 @@ public sealed class DataCompletionPolicyService
             .SelectMany(section => section.Fields)
             .ToDictionary(field => field.FieldKey, field => required.Contains(field.FieldKey), StringComparer.OrdinalIgnoreCase));
         await SaveProductPolicyAsync(productId, policy, actor, cancellationToken);
+    }
+
+    public async Task SaveProductVersionPolicyAsync(
+        string productId,
+        string productVersion,
+        IReadOnlyCollection<string> requiredFieldKeys,
+        string actor,
+        CancellationToken cancellationToken = default)
+    {
+        var required = requiredFieldKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var policy = CreateDefaultPolicy(DefaultSections
+            .SelectMany(section => section.Fields)
+            .ToDictionary(field => field.FieldKey, field => required.Contains(field.FieldKey), StringComparer.OrdinalIgnoreCase));
+        await SaveProductVersionPolicyAsync(productId, productVersion, policy, actor, cancellationToken);
+    }
+
+    public async Task SaveProductVersionPolicyAsync(
+        string productId,
+        string productVersion,
+        DataCompletionPolicySnapshot policy,
+        string actor,
+        CancellationToken cancellationToken = default)
+    {
+        var collection = GetProductPolicyCollection();
+        if (collection == null || string.IsNullOrWhiteSpace(productId) || string.IsNullOrWhiteSpace(productVersion))
+        {
+            return;
+        }
+
+        var normalizedProductId = productId.Trim();
+        var normalizedProductVersion = productVersion.Trim();
+        var now = DateTime.UtcNow.ToString("O");
+        var document = ToBsonDocument(policy, actor, now);
+        document["productId"] = normalizedProductId;
+        document["productVersion"] = normalizedProductVersion;
+        document["policyKey"] = $"{PolicyKey}:product:{normalizedProductId}:version:{normalizedProductVersion}";
+        var filter = Builders<BsonDocument>.Filter.And(
+            Builders<BsonDocument>.Filter.Eq("productId", normalizedProductId),
+            Builders<BsonDocument>.Filter.Eq("productVersion", normalizedProductVersion));
+        await collection.ReplaceOneAsync(filter, document, new ReplaceOptions { IsUpsert = true }, cancellationToken);
     }
 
     public async Task SaveProductPolicyAsync(string productId, DataCompletionPolicySnapshot policy, string actor, CancellationToken cancellationToken = default)
