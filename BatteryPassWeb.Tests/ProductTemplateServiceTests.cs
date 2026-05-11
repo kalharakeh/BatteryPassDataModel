@@ -22,6 +22,37 @@ public sealed class ProductTemplateServiceTests
     }
 
     [Fact]
+    public void ProductTemplateCatalog_ShouldNestSoftwareUnderProductVersionsNewestFirst()
+    {
+        var product = BatteryProductTemplateCatalog.DefaultProducts.Single(item => item.ProductId == "compact-7m");
+
+        Assert.Equal(["2.0", "1.0"], product.ProductVersions.Select(version => version.Version).ToArray());
+        Assert.All(product.ProductVersions, version => Assert.NotEmpty(version.SoftwareVersions));
+        Assert.Equal(["4.0", "3.0"], product.ProductVersions.First().SoftwareVersions.Select(version => version.Version).ToArray());
+    }
+
+    [Fact]
+    public void BuildPassportFromTemplate_ShouldStoreProductVersionAndSoftwareVersion()
+    {
+        var product = BatteryProductTemplateCatalog.DefaultProducts.Single(item => item.ProductId == "compact-7m");
+        var productVersion = product.ProductVersions.Single(item => item.Version == "2.0");
+        var software = productVersion.SoftwareVersions.Single(item => item.Version == "4.0");
+
+        var passport = ProductTemplatePassportBuilder.BuildPassportFromTemplate(
+            "did:web:acme.battery.pass:versioned-001",
+            product,
+            productVersion,
+            software,
+            new ProductTemplateBatteryIdentity(),
+            "2026-05-11T10:00:00.0000000Z");
+
+        Assert.Equal("compact-7m", BsonHelpers.GetString(passport, "app", "product", "productId"));
+        Assert.Equal("2.0", BsonHelpers.GetString(passport, "app", "product", "productVersion"));
+        Assert.Equal("4.0", BsonHelpers.GetString(passport, "app", "product", "softwareVersion"));
+        Assert.True((BsonHelpers.GetValue(passport, "app", "templateBaseline") as BsonDocument)?.ElementCount > 0);
+    }
+
+    [Fact]
     public void ProductTemplateCatalog_ShouldUseDistinctSharedValuesAcrossProducts()
     {
         var compact7 = BatteryProductTemplateCatalog.DefaultProducts.Single(product => product.ProductId == "compact-7m");

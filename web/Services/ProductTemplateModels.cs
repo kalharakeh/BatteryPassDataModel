@@ -26,6 +26,49 @@ public sealed record BatteryProductTemplate(
     IReadOnlyDictionary<string, ProductTemplateRecycledContent> RecycledContent,
     IReadOnlyList<BatteryProductSoftwareVersion> SoftwareVersions,
     IReadOnlyList<ProductTemplateDocumentSeed> TemplateDocuments,
+    IReadOnlyList<string> RequiredFieldKeys)
+{
+    public IReadOnlyList<BatteryProductVersion> ProductVersions { get; init; } = [];
+
+    public BatteryProductVersion LatestProductVersion =>
+        ProductVersions.FirstOrDefault()
+        ?? new BatteryProductVersion(
+            "1.0",
+            BatteryMassKg,
+            RatedEnergyKwh,
+            RatedCapacityAh,
+            RatedMaximumPowerKw,
+            NominalVoltageV,
+            ExpectedLifetimeYears,
+            ExpectedCycles,
+            SupplyChainIndex,
+            CarbonFootprint,
+            PerformanceClass,
+            MaterialMassesKg,
+            CarbonStages,
+            RecycledContent,
+            SoftwareVersions,
+            TemplateDocuments,
+            RequiredFieldKeys);
+}
+
+public sealed record BatteryProductVersion(
+    string Version,
+    double BatteryMassKg,
+    double RatedEnergyKwh,
+    double RatedCapacityAh,
+    double RatedMaximumPowerKw,
+    double NominalVoltageV,
+    double ExpectedLifetimeYears,
+    double ExpectedCycles,
+    double SupplyChainIndex,
+    double CarbonFootprint,
+    string PerformanceClass,
+    IReadOnlyDictionary<string, double> MaterialMassesKg,
+    IReadOnlyDictionary<string, double> CarbonStages,
+    IReadOnlyDictionary<string, ProductTemplateRecycledContent> RecycledContent,
+    IReadOnlyList<BatteryProductSoftwareVersion> SoftwareVersions,
+    IReadOnlyList<ProductTemplateDocumentSeed> TemplateDocuments,
     IReadOnlyList<string> RequiredFieldKeys);
 
 public sealed record BatteryProductSoftwareVersion(
@@ -245,6 +288,44 @@ public static class BatteryProductTemplateCatalog
                 stage => Math.Round(stage.DemoValue * carbonScale, 2),
                 StringComparer.OrdinalIgnoreCase);
 
+        var softwareVersions = BuildSoftwareVersions(productId);
+        var latestVersion = new BatteryProductVersion(
+            "2.0",
+            batteryMassKg,
+            ratedEnergyKwh,
+            ratedCapacityAh,
+            ratedMaximumPowerKw,
+            nominalVoltageV,
+            ExpectedLifetimeYears: 10,
+            expectedCycles,
+            supplyChainIndex,
+            carbonFootprint,
+            performanceClass,
+            materialMasses,
+            carbonStages,
+            BuildRecycledContent(recycledProfile),
+            BuildSoftwareVersions(productId, "2.0"),
+            DefaultDocuments,
+            DefaultRequiredFields);
+        var firstVersion = new BatteryProductVersion(
+            "1.0",
+            Math.Round(batteryMassKg * 0.96, 2),
+            Math.Round(ratedEnergyKwh * 0.95, 2),
+            Math.Round(ratedCapacityAh * 0.95, 2),
+            Math.Round(ratedMaximumPowerKw * 0.94, 2),
+            nominalVoltageV,
+            ExpectedLifetimeYears: 9,
+            Math.Round(expectedCycles * 0.9, 0),
+            Math.Max(0, supplyChainIndex - 3),
+            Math.Round(carbonFootprint * 1.04, 2),
+            performanceClass,
+            materialMasses.ToDictionary(pair => pair.Key, pair => Math.Round(pair.Value * 0.96, 2), StringComparer.OrdinalIgnoreCase),
+            carbonStages.ToDictionary(pair => pair.Key, pair => Math.Round(pair.Value * 1.04, 2), StringComparer.OrdinalIgnoreCase),
+            BuildRecycledContent(recycledProfile),
+            BuildSoftwareVersions(productId, "1.0"),
+            DefaultDocuments,
+            DefaultRequiredFields);
+
         return new BatteryProductTemplate(
             productId,
             productName,
@@ -264,9 +345,12 @@ public static class BatteryProductTemplateCatalog
             materialMasses,
             carbonStages,
             BuildRecycledContent(recycledProfile),
-            BuildSoftwareVersions(productId),
+            softwareVersions,
             DefaultDocuments,
-            DefaultRequiredFields);
+            DefaultRequiredFields)
+        {
+            ProductVersions = [latestVersion, firstVersion]
+        };
     }
 
     private static IReadOnlyDictionary<string, ProductTemplateRecycledContent> BuildRecycledContent(string profile)
@@ -326,6 +410,30 @@ public static class BatteryProductTemplateCatalog
             ]
         };
     }
+
+    private static IReadOnlyList<BatteryProductSoftwareVersion> BuildSoftwareVersions(string productId, string productVersion)
+    {
+        var prefix = productId switch
+        {
+            "compact-13m" => ("2026-01-10", "2026-04-20", "2026-05-03", "2026-05-09"),
+            "core" => ("2026-01-20", "2026-04-22", "2026-05-04", "2026-05-09"),
+            _ => ("2026-01-05", "2026-04-18", "2026-05-02", "2026-05-09")
+        };
+
+        return productVersion switch
+        {
+            "2.0" =>
+            [
+                new("4.0", prefix.Item3, prefix.Item4),
+                new("3.0", prefix.Item2, prefix.Item3)
+            ],
+            _ =>
+            [
+                new("2.0", prefix.Item1, prefix.Item2),
+                new("1.0", productId == "compact-13m" ? "2025-10-15" : productId == "core" ? "2025-11-10" : "2025-09-30", prefix.Item1)
+            ]
+        };
+    }
 }
 
 public static class ProductTemplatePassportBuilder
@@ -352,6 +460,20 @@ public static class ProductTemplatePassportBuilder
     public static BsonDocument BuildPassportFromTemplate(
         string passportId,
         BatteryProductTemplate product,
+        BatteryProductSoftwareVersion softwareVersion,
+        ProductTemplateBatteryIdentity identity,
+        string now)
+    {
+        var productVersion = product.ProductVersions
+            .FirstOrDefault(version => version.SoftwareVersions.Any(software => software.Version.Equals(softwareVersion.Version, StringComparison.OrdinalIgnoreCase)))
+            ?? product.LatestProductVersion;
+        return BuildPassportFromTemplate(passportId, product, productVersion, softwareVersion, identity, now);
+    }
+
+    public static BsonDocument BuildPassportFromTemplate(
+        string passportId,
+        BatteryProductTemplate product,
+        BatteryProductVersion productVersion,
         BatteryProductSoftwareVersion softwareVersion,
         ProductTemplateBatteryIdentity identity,
         string now)
@@ -402,7 +524,7 @@ public static class ProductTemplatePassportBuilder
         registryInfo["updatedAt"] = normalizedNow;
 
         ApplyBatteryIdentity(completed, product, identity, manufacturingDate);
-        ApplyProductTemplateValues(completed, product, softwareVersion, normalizedNow);
+        ApplyProductTemplateValues(completed, product, productVersion, softwareVersion, normalizedNow);
 
         var baseline = BuildTemplateBaseline(completed);
         EnsureDocument(EnsureDocument(completed, "app"), "templateBaseline").Clear();
@@ -610,6 +732,7 @@ public static class ProductTemplatePassportBuilder
     private static void ApplyProductTemplateValues(
         BsonDocument passport,
         BatteryProductTemplate product,
+        BatteryProductVersion productVersion,
         BatteryProductSoftwareVersion softwareVersion,
         string now)
     {
@@ -619,6 +742,7 @@ public static class ProductTemplatePassportBuilder
         productNode["productName"] = product.ProductName;
         productNode["description"] = product.Description;
         productNode["moduleCount"] = product.ModuleCount;
+        productNode["productVersion"] = productVersion.Version;
         productNode["softwareVersion"] = softwareVersion.Version;
         productNode["softwareReleaseDate"] = softwareVersion.ReleaseDate;
         productNode["softwareLatestUpdate"] = softwareVersion.LatestUpdate;
@@ -628,20 +752,20 @@ public static class ProductTemplatePassportBuilder
         media["batteryImageUrl"] = product.ImageUrl;
         media["batteryImageAlt"] = $"{product.ProductName} battery product";
 
-        ApplyDocuments(app, passport, product);
-        ApplyGeneral(passport, product);
-        ApplyMaterials(passport, product);
-        ApplyPerformance(passport, product, now);
-        ApplyCarbon(passport, product);
-        ApplySupplyChain(passport, product);
-        ApplyCircularity(passport, product);
+        ApplyDocuments(app, passport, product, productVersion);
+        ApplyGeneral(passport, productVersion);
+        ApplyMaterials(passport, product, productVersion);
+        ApplyPerformance(passport, productVersion, now);
+        ApplyCarbon(passport, productVersion);
+        ApplySupplyChain(passport, productVersion);
+        ApplyCircularity(passport, productVersion);
         productNode["templateHash"] = ComputeTemplateHash(BuildTemplateBaseline(passport));
     }
 
-    private static void ApplyDocuments(BsonDocument app, BsonDocument passport, BatteryProductTemplate product)
+    private static void ApplyDocuments(BsonDocument app, BsonDocument passport, BatteryProductTemplate product, BatteryProductVersion productVersion)
     {
         var documents = EnsureDocument(app, "documents");
-        foreach (var document in product.TemplateDocuments)
+        foreach (var document in productVersion.TemplateDocuments)
         {
             var key = document.DocumentKey;
             documents[key] = new BsonDocument
@@ -670,20 +794,20 @@ public static class ProductTemplatePassportBuilder
         carbonPayload["carbonFootprintStudy"] = BsonHelpers.GetString(documents, "co2StudyReference", "url");
     }
 
-    private static void ApplyGeneral(BsonDocument passport, BatteryProductTemplate product)
+    private static void ApplyGeneral(BsonDocument passport, BatteryProductVersion productVersion)
     {
         var generalPayload = EnsureDocument(EnsureDocument(EnsureDocument(passport, "aspects"), "generalProductInformation"), "payload");
         generalPayload["batteryCategory"] = "industrial";
         generalPayload["batteryStatus"] = "Original";
-        generalPayload["batteryMass"] = product.BatteryMassKg;
+        generalPayload["batteryMass"] = productVersion.BatteryMassKg;
         EnsureDocument(generalPayload, "manufacturerInformation")["contactName"] = "Scania Industrial Batteries";
         EnsureDocument(generalPayload, "operatorInformation")["contactName"] = "Scania Industrial Batteries";
     }
 
-    private static void ApplyMaterials(BsonDocument passport, BatteryProductTemplate product)
+    private static void ApplyMaterials(BsonDocument passport, BatteryProductTemplate product, BatteryProductVersion productVersion)
     {
         var payload = EnsureDocument(EnsureDocument(EnsureDocument(passport, "aspects"), "materialComposition"), "payload");
-        payload["batteryMaterials"] = new BsonArray(product.MaterialMassesKg.Select(pair =>
+        payload["batteryMaterials"] = new BsonArray(productVersion.MaterialMassesKg.Select(pair =>
         {
             var definition = BatteryPassCanonicalDataCatalog.MaterialByLabel(pair.Key);
             return new BsonDocument
@@ -701,50 +825,50 @@ public static class ProductTemplatePassportBuilder
         }));
     }
 
-    private static void ApplyPerformance(BsonDocument passport, BatteryProductTemplate product, string now)
+    private static void ApplyPerformance(BsonDocument passport, BatteryProductVersion productVersion, string now)
     {
         var payload = EnsureDocument(EnsureDocument(EnsureDocument(passport, "aspects"), "performanceAndDurability"), "payload");
         var technical = EnsureDocument(payload, "batteryTechicalProperties");
-        technical["ratedEnergy"] = product.RatedEnergyKwh;
-        technical["ratedCapacity"] = product.RatedCapacityAh;
-        technical["ratedMaximumPower"] = product.RatedMaximumPowerKw;
-        technical["nominalVoltage"] = product.NominalVoltageV;
-        technical["expectedLifetime"] = product.ExpectedLifetimeYears;
-        technical["expectedNumberOfCycles"] = product.ExpectedCycles;
+        technical["ratedEnergy"] = productVersion.RatedEnergyKwh;
+        technical["ratedCapacity"] = productVersion.RatedCapacityAh;
+        technical["ratedMaximumPower"] = productVersion.RatedMaximumPowerKw;
+        technical["nominalVoltage"] = productVersion.NominalVoltageV;
+        technical["expectedLifetime"] = productVersion.ExpectedLifetimeYears;
+        technical["expectedNumberOfCycles"] = productVersion.ExpectedCycles;
 
         var condition = EnsureDocument(payload, "batteryCondition");
         EnsureMetric(condition, "stateOfCharge", "stateOfChargeValue", 82.0, now);
         EnsureMetric(condition, "remainingCapacity", "remainingCapacityValue", 96.0, now);
-        EnsureMetric(condition, "remainingEnergy", "remainingEnergyValue", Math.Round(product.RatedEnergyKwh * 0.95, 2), now);
+        EnsureMetric(condition, "remainingEnergy", "remainingEnergyValue", Math.Round(productVersion.RatedEnergyKwh * 0.95, 2), now);
         EnsureMetric(condition, "numberOfFullCycles", "numberOfFullCyclesValue", 45, now);
     }
 
-    private static void ApplyCarbon(BsonDocument passport, BatteryProductTemplate product)
+    private static void ApplyCarbon(BsonDocument passport, BatteryProductVersion productVersion)
     {
         var payload = EnsureDocument(EnsureDocument(EnsureDocument(passport, "aspects"), "carbonFootprintForBatteries"), "payload");
-        payload["batteryCarbonFootprint"] = product.CarbonFootprint;
-        payload["absoluteCarbonFootprint"] = Math.Round(product.CarbonFootprint * product.RatedEnergyKwh, 2);
-        payload["carbonFootprintPerformanceClass"] = product.PerformanceClass;
-        payload["carbonFootprintPerLifecycleStage"] = new BsonArray(product.CarbonStages.Select(pair => new BsonDocument
+        payload["batteryCarbonFootprint"] = productVersion.CarbonFootprint;
+        payload["absoluteCarbonFootprint"] = Math.Round(productVersion.CarbonFootprint * productVersion.RatedEnergyKwh, 2);
+        payload["carbonFootprintPerformanceClass"] = productVersion.PerformanceClass;
+        payload["carbonFootprintPerLifecycleStage"] = new BsonArray(productVersion.CarbonStages.Select(pair => new BsonDocument
         {
             ["lifecycleStage"] = pair.Key,
             ["carbonFootprint"] = pair.Value
         }));
     }
 
-    private static void ApplySupplyChain(BsonDocument passport, BatteryProductTemplate product)
+    private static void ApplySupplyChain(BsonDocument passport, BatteryProductVersion productVersion)
     {
         var payload = EnsureDocument(EnsureDocument(EnsureDocument(passport, "aspects"), "supplyChainDueDiligence"), "payload");
-        payload["supplyChainIndicies"] = product.SupplyChainIndex;
+        payload["supplyChainIndicies"] = productVersion.SupplyChainIndex;
     }
 
-    private static void ApplyCircularity(BsonDocument passport, BatteryProductTemplate product)
+    private static void ApplyCircularity(BsonDocument passport, BatteryProductVersion productVersion)
     {
         var payload = EnsureDocument(EnsureDocument(EnsureDocument(passport, "aspects"), "circularity"), "payload");
         var endOfLife = EnsureDocument(payload, "endOfLifeInformation");
         endOfLife["separateCollection"] = "Return battery to an authorised Scania battery collection partner.";
         endOfLife["wastePrevention"] = "Reuse, remanufacture, or recycle according to Scania circularity handling instructions.";
-        payload["recycledContent"] = new BsonArray(product.RecycledContent.Select(row => new BsonDocument
+        payload["recycledContent"] = new BsonArray(productVersion.RecycledContent.Select(row => new BsonDocument
         {
             ["recycledMaterial"] = row.Key,
             ["preConsumerShare"] = row.Value.PreConsumerShare,
