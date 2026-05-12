@@ -72,20 +72,20 @@
             <section class="bp-card bp-product-version-console bp-console-form-card" data-product-version-manager>
                 <div class="bp-product-version-console-header">
                     <div>
-                        <h2>Battery versions</h2>
+                        <h2>Battery Models</h2>
                         <p class="bp-help-text mb-0">Select a tab to edit its software, parameters, documents, and completion policy.</p>
                     </div>
                     <button type="button" class="bp-secondary-button bp-button-compact" data-add-product-version>Add version</button>
                 </div>
                 <input type="hidden" name="productVersion" value="@(currentProductVersion?.Version ?? "1.0")" data-current-product-version />
                 <input type="hidden" name="productVersionsJson" value="" data-product-versions-json />
-                <div class="bp-product-version-tab-rail bp-product-version-chip-rail" role="tablist" aria-label="Battery versions" data-product-version-list data-product-version-tab-rail>
+                <div class="bp-product-version-tab-rail bp-product-version-chip-rail" role="tablist" aria-label="Battery Models" data-product-version-list data-product-version-tab-rail>
                     @foreach (var productVersion in Model.ProductVersions)
                     {
                         var isCurrentVersion = currentProductVersion?.Version.Equals(productVersion.Version, StringComparison.OrdinalIgnoreCase) == true;
                         <article class="bp-product-version-tab bp-product-version-chip is-saved-version @(isCurrentVersion ? "is-active" : string.Empty)" data-product-version-row data-product-version-tab data-version="@productVersion.Version">
                             <button type="button" class="bp-product-version-tab-main" role="tab" aria-selected="@(isCurrentVersion ? "true" : "false")" title="Edit version @productVersion.Version" data-edit-product-version>
-                                <span>Battery version</span>
+                                <span>Battery Model</span>
                                 <strong>@productVersion.Version</strong>
                             </button>
                             <label class="bp-product-version-tab-input">
@@ -93,7 +93,7 @@
                                 <input type="text" value="@productVersion.Version" readonly data-product-version-input />
                             </label>
                             <span class="bp-product-version-chip-pill">@(isCurrentVersion ? "Selected" : "Saved")</span>
-                            <small>@(isCurrentVersion ? "Currently editing this version" : "Saved battery version")</small>
+                            <small>@(isCurrentVersion ? "Currently editing this model" : "Saved Battery Model")</small>
                         </article>
                     }
                 </div>
@@ -111,7 +111,7 @@
                     </label>
                     <div class="bp-product-version-selected-meta">
                         <strong>Push is version-level</strong>
-                        <span>Push updates template-owned fields for batteries using this battery version. Manual battery overrides are preserved.</span>
+                        <span>Push updates template-owned fields for batteries using this Battery Model. Manual battery overrides are preserved.</span>
                     </div>
                     <div class="bp-product-version-selected-actions">
                         @if (!isNew && currentProductVersion != null)
@@ -141,7 +141,7 @@
                 <div class="bp-product-section-heading">
                     <div>
                         <h2>Base on existing template</h2>
-                        <p class="bp-help-text mb-0">Start empty, or choose an existing battery family and battery version to fill the editable fields.</p>
+                        <p class="bp-help-text mb-0">Start empty, or choose an existing battery family and Battery Model to fill the editable fields.</p>
                     </div>
                     <button type="button" class="bp-secondary-button bp-button-compact" data-apply-base-template>Use selected base</button>
                 </div>
@@ -157,7 +157,7 @@
                         </select>
                     </label>
                     <label class="bp-field-shell">
-                        <span>Base battery version</span>
+                        <span>Base Battery Model</span>
                         <select data-base-product-version-select>
                             <option value="">Select a battery family first</option>
                         </select>
@@ -220,7 +220,7 @@
             <div class="bp-product-section-heading">
                 <div>
                     <h2>Software parameters</h2>
-                    <p class="bp-help-text mb-0">Software version, release date, and latest update are parameters on the selected battery version.</p>
+                    <p class="bp-help-text mb-0">Software version, release date, and latest update are parameters on the selected Battery Model.</p>
                 </div>
             </div>
             <div class="bp-template-version-list" data-software-version-list>
@@ -288,7 +288,7 @@
 
         <section class="bp-card bp-product-editor-section bp-product-version-editor-shell" data-version-scoped-section>
             <h2>Circularity</h2>
-            <p class="bp-help-text">Version-level recycled-content values copied to batteries using this battery version.</p>
+            <p class="bp-help-text">Model-level recycled-content values copied to batteries using this Battery Model.</p>
             <div class="bp-form-grid">
                 @foreach (var recycled in recycledContent)
                 {
@@ -308,7 +308,7 @@
             <div class="bp-product-section-heading">
                 <div>
                     <h2>Template documents</h2>
-                    <p class="bp-help-text mb-0">Document references copied into batteries created from the selected battery version.</p>
+                    <p class="bp-help-text mb-0">Document references copied into batteries created from the selected Battery Model.</p>
                 </div>
             </div>
             <div class="bp-template-document-list" data-template-document-list>
@@ -336,7 +336,7 @@
                 <div>
                     <span class="bp-summary-title">Template completion policy</span>
                     <h2>Required and optional parameters</h2>
-                    <p class="mb-0">These checkboxes are saved for the selected battery version in MongoDB and used by validation, signing, publishing, and the conformance page for batteries linked to that version.</p>
+                    <p class="mb-0">These checkboxes are saved for the selected Battery Model in MongoDB and used by validation, signing, publishing, and the conformance page for batteries linked to that model.</p>
                 </div>
                 <div class="bp-requirement-stats">
                     <div><span>Parameters</span><strong data-requirement-total>@totalFields</strong></div>
@@ -380,7 +380,7 @@
         <div class="bp-product-editor-savebar bp-span-all">
             <div>
                 <strong>Save battery family to MongoDB</strong>
-                <span>Existing batteries stay unchanged until you push a saved battery version update.</span>
+                <span>Existing batteries stay unchanged until you push a saved Battery Model update.</span>
             </div>
             <button type="submit" class="bp-primary-button">Save battery family</button>
         </div>
@@ -653,7 +653,7 @@
                 if (rows.length === 0) {
                     const empty = document.createElement('p');
                     empty.className = 'bp-help-text mb-0';
-                    empty.textContent = 'No template documents are configured for this battery version.';
+                    empty.textContent = 'No template documents are configured for this Battery Model.';
                     templateDocumentList.appendChild(empty);
                     return;
                 }
@@ -714,7 +714,7 @@
                     const readonlyAttr = isSavedVersion ? 'readonly' : '';
                     row.innerHTML = `
                         <button type="button" class="bp-product-version-tab-main" role="tab" aria-selected="${isActive ? 'true' : 'false'}" title="Edit version ${escapeHtml(version.Version || '')}" data-edit-product-version>
-                            <span>Battery version</span>
+                            <span>Battery Model</span>
                             <strong>${escapeHtml(version.Version || '')}</strong>
                         </button>
                         <label class="bp-product-version-tab-input">
@@ -722,7 +722,7 @@
                             <input type="text" value="${escapeHtml(version.Version || '')}" data-product-version-input ${readonlyAttr} required />
                         </label>
                         <span class="bp-product-version-chip-pill">${isActive ? 'Selected' : isSavedVersion ? 'Saved' : 'New'}</span>
-                        <small>${isActive ? 'Currently editing this version' : isSavedVersion ? 'Saved battery version' : 'Save before pushing'}</small>`;
+                        <small>${isActive ? 'Currently editing this model' : isSavedVersion ? 'Saved Battery Model' : 'Save before pushing'}</small>`;
                     bindProductVersionRow(row, version);
                     productVersionList.appendChild(row);
                 });

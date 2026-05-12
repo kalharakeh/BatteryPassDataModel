@@ -94,7 +94,7 @@ public sealed class AdminHelpPageTests
 
         Assert.Contains("First-time passport checklist", markup);
         Assert.Contains("Dirty recovery checklist", markup);
-        Assert.Contains("Battery version push", markup);
+        Assert.Contains("Battery Model push", markup);
         Assert.Contains("What public users can see", markup);
         Assert.Contains("What admins can see", markup);
         Assert.Contains("Open battery families", markup);

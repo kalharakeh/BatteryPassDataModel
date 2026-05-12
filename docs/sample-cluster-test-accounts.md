@@ -22,7 +22,7 @@ North customer password exception: `customer_001_001@customer.org` uses `12345`.
 
 ## Battery Access Matrix
 
-| Battery ID | Model | Battery family | Battery version | Software | Cluster | Cluster ID | Connected normal user | Connected local admin | Password | General admin |
+| Battery ID | Model | Battery family | Battery Model | Software | Cluster | Cluster ID | Connected normal user | Connected local admin | Password | General admin |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `did:web:acme.battery.pass:0226151e-949c-d067-8ef3-162431e28976` | `CP7M-DEMO-001` | Compact 7M | `1.0` | `2.0` | Unassigned demonstrator | None | None seeded | None seeded | `Password123!` | `admin@example.test` |
 | `did:web:acme.battery.pass:sample-customer-north-001` | `CP7M-NORTH-001` | Compact 7M | `1.0` | `2.0` | North Operations Cluster | `cluster-north-operations` | `customer_001_001@customer.org`, `north.user@example.test` | `north.admin@example.test` | `12345` for customer, otherwise `Password123!` | `admin@example.test` |

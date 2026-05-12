@@ -55,6 +55,21 @@ public sealed class BatteryRouteAndRegistryTests
         Assert.DoesNotContain("@row.PassportId</span></td>", view);
     }
 
+    [Fact]
+    public void PassportReports_ShouldShowBatteryIdPassportIdAndHistoricalLatestState()
+    {
+        var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
+        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
+        var combined = summary + Environment.NewLine + detail;
+
+        Assert.Contains("Battery ID", combined);
+        Assert.Contains("Passport ID", combined);
+        Assert.Contains("Historical passport", combined);
+        Assert.Contains("Latest passport", combined);
+        Assert.Contains("Battery Model", combined);
+        Assert.DoesNotContain("Battery version", combined);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

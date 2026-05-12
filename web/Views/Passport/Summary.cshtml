@@ -28,9 +28,21 @@
     <section class="bp-card">
         <div class="bp-summary-grid">
             <div>
-                <p class="bp-passport-id">@passport.PassportId</p>
+                <p class="bp-passport-id">Passport ID: @passport.PassportId</p>
+                <p class="bp-passport-id">Battery ID: @(string.IsNullOrWhiteSpace(passport.BatteryId) ? "-" : passport.BatteryId)</p>
                 <h1>@(string.IsNullOrWhiteSpace(passport.BatteryFamily) ? passport.PassportId : passport.BatteryFamily)</h1>
                 <p class="text-secondary">Cluster: @passport.ClusterLabel</p>
+                <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
+                    @if (passport.IsHistoricalPassport)
+                    {
+                        <span class="bp-status-pill is-draft">Historical passport</span>
+                        <a href="@passport.LatestPassportUrl" class="bp-secondary-button">Open latest passport</a>
+                    }
+                    else
+                    {
+                        <span class="bp-status-pill is-published">Latest passport</span>
+                    }
+                </div>
                 @if (!string.IsNullOrWhiteSpace(Model.DetailAccessNotice))
                 {
                     <p class="bp-warning mt-3">@Model.DetailAccessNotice</p>
@@ -61,7 +73,7 @@
         <dl class="bp-field-grid">
             <div><dt>Battery Family</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatteryFamily) ? "-" : passport.BatteryFamily)</dd></div>
             <div><dt>Battery serial number</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatterySerialNumber) ? "-" : passport.BatterySerialNumber)</dd></div>
-            <div><dt>Battery version</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatteryVersion) ? "-" : passport.BatteryVersion)</dd></div>
+            <div><dt>Battery Model</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatteryModel) ? "-" : passport.BatteryModel)</dd></div>
             <div><dt>Software version</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareVersion) ? "-" : passport.SoftwareVersion)</dd></div>
             <div><dt>Category</dt><dd>@passport.Category</dd></div>
             <div><dt>Battery status</dt><dd>@passport.BatteryStatus</dd></div>

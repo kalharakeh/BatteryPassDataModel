@@ -7,7 +7,7 @@ Product Template is the internal implementation name for Battery Family. In the 
 ## 1. What this app is and how it is built
 
 - App type: ASP.NET Core MVC web app (`web/BatteryPassWeb.csproj`, target `net10.0`).
-- Backend storage: MongoDB collections for passports, Battery families, Battery versions, Battery version software parameters, users, clusters, memberships, API tokens, sign tokens, telemetry.
+- Backend storage: MongoDB collections for batteries, passport snapshots, Battery families, Battery Models, Battery Model software parameters, users, clusters, memberships, API tokens, sign tokens, telemetry.
 - Authentication: Cookie login (`/login`) with roles.
 - Main code areas:
   - Controllers: `web/Controllers/*`
@@ -42,7 +42,7 @@ Product Template is the internal implementation name for Battery Family. In the 
 - Admin:
   - `/admin` -> redirects to `/admin/clusters?tab=passports`
   - `/admin/clusters?tab=passports|battery|clusters|users|local-editable-fields|api-token-management|products`
-  - `/admin/products/{productId}` Battery family editor for shared product data, Battery versions, software parameters, and per-product-version required/optional parameters.
+  - `/admin/products/{productId}` Battery family editor for shared product data, Battery Models, software parameters, and per-product-version required/optional parameters.
 - Cluster admin:
   - `/cluster-admin/passports`
   - `/cluster-admin/users`
@@ -157,15 +157,15 @@ The public summary shows the software version parameter in the battery fact grid
 - Shows current software information:
   - Product name
   - Product ID
-  - Battery version
+  - Battery Model
   - software version parameter
   - Release date
   - Latest update
 - Source paths:
-  - Battery version: `app.product.productVersion`
+  - Battery Model: `app.product.productVersion`
   - Battery Family baseline: `app.product.softwareVersion`, `app.product.softwareReleaseDate`, `app.product.softwareLatestUpdate`
   - There is no software update endpoint.
-  - Display rule: summary and General tab software parameters show the selected Battery version values from the Battery Family baseline.
+  - Display rule: summary and General tab software parameters show the selected Battery Model values from the Battery Family baseline.
 
 ### 5.3 Material composition
 
@@ -312,14 +312,14 @@ Write (requires `readWrite` token):
 
 - `POST /batteries/{passportId}/telemetry`
 - `PATCH /batteries/{passportId}/operations`
-- `PATCH /batteries/{passportId}/battery-version`
+- `PATCH /batteries/{batteryId}/battery-model`
 
 Software update behavior:
 
-- Body: `{ "batteryVersion": "2.0" }`
-- The requested version must exist in the MongoDB Battery version list for the battery's current Battery Family.
-- If the version is not found, the API returns `400 Bad Request` and lists the allowed versions.
-- The API writes the selected Battery version and its software parameters under `app.product.*`, then reports that validation and signing are required.
+- Body: `{ "batteryModel": "2.0" }`
+- The requested model must exist in the MongoDB Battery Model list for the battery's current Battery Family.
+- If the model is not found, the API returns `400 Bad Request` and lists the allowed models.
+- The API writes the selected Battery Model and its software parameters to the battery record, then reports that a new passport snapshot, validation, signing, and publishing are required.
 - The Battery Family baseline stays under `app.product.*` and remains part of the signed passport core.
 - The public summary and detailed General tab show the software version parameter, release date, and latest update from `app.product.*`.
 
@@ -331,7 +331,7 @@ Software update behavior:
 - Cannot access batteries outside token cluster scope.
 - Cannot bypass active Sign token.
 - Cannot query telemetry history with `hours` outside `1..168`.
-- Cannot set a Battery version that is not defined for the battery Battery Family.
+- Cannot set a Battery Model that is not defined for the battery Battery Family.
 
 ### 7.6 Sections and value aliases
 
@@ -396,10 +396,10 @@ curl -X PATCH "http://localhost:5186/api/external/v1/batteries/did:web:acme.batt
 ### 8.4 cURL - patch software version parameter
 
 ```bash
-curl -X PATCH "http://localhost:5186/api/external/v1/batteries/did:web:acme.battery.pass:sample-customer-north-001/battery-version" \
+curl -X PATCH "http://localhost:5186/api/external/v1/batteries/{batteryId}/battery-model" \
   -H "Authorization: Basic U0FNUExFQkFUVEVSWVBBU1NQT1JUV1JJVEVUT0swMDE6" \
   -H "Content-Type: application/json" \
-  -d "{\"softwareVersion\":\"2.0\"}"
+  -d "{\"batteryModel\":\"2.0\"}"
 ```
 
 ### 8.5 JavaScript (fetch)
@@ -456,7 +456,7 @@ These are not the token-based external integration API; they use app login/cooki
 6. Verify read token cannot write.
 7. Verify out-of-scope token gets `403`.
 8. Verify telemetry write appears in detail history charts.
-9. Patch Battery version through `/api/external/v1/batteries/{passportId}/battery-version` and confirm the response says validation and signing are required.
+9. Patch Battery Model through `/api/external/v1/batteries/{batteryId}/battery-model` and confirm the response says a new passport, validation, signing, and publishing are required.
 10. Open the detailed report and confirm the General tab software parameters shows product, product ID, release date, and latest update.
 
 ## 11. Trust workflow hardening checklist
@@ -482,7 +482,7 @@ Use this checklist after Section 5 changes to verify the demonstrator is ready f
 4. Resolve any blocking errors shown by section and field path.
 5. Click `Sign passport` to create a new revision and proof hash.
 6. Click `Publish passport` again so the published state points to the latest signed revision.
-7. Send telemetry through the external API and confirm the passport does not become dirty. Change Battery version through the external API and confirm validation/signing is required.
+7. Send telemetry through the external API and confirm the passport does not become dirty. Change Battery Model through the external API and confirm a new passport plus validation/signing is required.
 
 ### 11.3 Failure and access checks
 
@@ -521,8 +521,8 @@ Use this checklist after the Battery Family migration to prove the app can resto
 1. Login as `admin@example.test`.
 2. Open `/admin/clusters?tab=products`.
 3. Confirm three Battery families are listed: Compact 7M, Compact 13M, and Core.
-4. Open each Battery family and confirm Battery versions are listed newest-first and each version has software parameters.
-5. Confirm required and optional parameters are shown section by section and saved per Battery version in MongoDB.
+4. Open each Battery family and confirm Battery Models are listed newest-first and each model has software parameters.
+5. Confirm required and optional parameters are shown section by section and saved per Battery Model in MongoDB.
 6. Press **Reset battery-family passports** from the Battery families tab or admin help.
 7. Confirm one unassigned demonstrator plus six clustered customer batteries are restored:
    - `did:web:acme.battery.pass:0226151e-949c-d067-8ef3-162431e28976`
@@ -532,8 +532,8 @@ Use this checklist after the Battery Family migration to prove the app can resto
    - `did:web:acme.battery.pass:sample-customer-south-002`
    - `did:web:acme.battery.pass:sample-end-user-fleet-001`
    - `did:web:acme.battery.pass:sample-end-user-fleet-002`
-8. Open `/admin/passports/new` and confirm Product, Battery version, and Software version are chosen before the draft is created.
-9. Edit a Battery version value, save it, then push that saved Battery version to matching batteries. Software metadata is part of the saved Battery version; push the Battery version when shared parameters change.
+8. Open `/admin/passports/new` and confirm Product, Battery Model, and Software version are chosen before the draft is created.
+9. Edit a Battery Model value, save it, then push that saved Battery Model to matching batteries. Software metadata is part of the saved Battery Model; push the Battery Model when shared parameters change.
 10. Confirm matching batteries preserve manual overrides, become dirty when template-owned signed data changes, and require validate, sign, and publish to return clean.
 
 ### Phase 6A end-to-end demo hardening checklist
@@ -558,8 +558,8 @@ Use this checklist after Phase 6A changes to prove the demo can be restored and 
 16. Expected result: the passport returns to published, signed, and clean.
 17. Use the external API workbench or curl to send a telemetry update to the same passport.
 18. Expected result: External HTTP telemetry update does not dirty the passport.
-19. Use the external API workbench or curl to Patch battery version to an allowed version such as `2.0`.
-20. Expected result: the summary and detailed General tab show the Battery version software parameters after validation and signing.
+19. Use the external API workbench or curl to patch Battery Model to an allowed model such as `2.0`.
+20. Expected result: the summary and detailed General tab show the Battery Model software parameters after creating, validating, signing, and publishing a new passport snapshot.
 21. Try restricted document access on a private evidence file.
 22. Expected result: Restricted document download returns 403 for unauthorized users and remains accessible only to authorized admin/cluster users when a linked file exists.
 

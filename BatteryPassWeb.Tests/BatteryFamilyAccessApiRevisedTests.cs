@@ -47,7 +47,7 @@ public sealed class BatteryFamilyAccessApiRevisedTests
         var text = string.Join(Environment.NewLine, files.Select(File.ReadAllText));
 
         Assert.Contains("Battery Family", text);
-        Assert.Contains("Battery version", text);
+        Assert.Contains("Battery Model", text);
         Assert.Contains("Battery serial number", text);
         Assert.Contains("Passport status", text);
         Assert.Contains("Battery status", text);

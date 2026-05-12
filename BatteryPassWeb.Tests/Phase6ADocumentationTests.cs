@@ -89,7 +89,7 @@ public sealed class Phase6ADocumentationTests
 
         Assert.Contains("Software parameters", adminHelp);
         Assert.Contains("Detailed report General tab", adminHelp);
-        Assert.Contains("Battery version API changes require validation and signing", adminHelp);
+        Assert.Contains("Battery Model API changes require a new passport", adminHelp);
         Assert.Contains("release date and latest update values", adminHelp);
 
         Assert.Contains("software parameters", guide);
@@ -108,7 +108,7 @@ public sealed class Phase6ADocumentationTests
         var qa = File.ReadAllText(RepoFile("docs", "qa-test-pack.md"));
         var accounts = File.ReadAllText(RepoFile("docs", "sample-cluster-test-accounts.md"));
 
-        Assert.Contains("Battery version", guide, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Battery Model", guide, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("API Token Management", guide);
         Assert.Contains("one unassigned demonstrator plus six clustered customer batteries", guide);
         Assert.Contains("API Token Management", qa);

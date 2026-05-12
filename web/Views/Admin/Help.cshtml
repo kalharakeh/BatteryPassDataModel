@@ -99,7 +99,7 @@
             <span class="bp-summary-title">Dirty state rule</span>
             <h2>What makes trust dirty?</h2>
             <p>Editing saved passport core data after signing makes the passport dirty because the signed hash no longer represents the current content.</p>
-            <p class="mb-0">HTTP telemetry does not make the passport dirty. Battery version API changes require validation and signing because Battery version is signed passport data.</p>
+            <p class="mb-0">HTTP telemetry does not make the passport dirty. Battery Model API changes require a new passport, validation, and signing because Battery Model is signed passport data.</p>
         </article>
         <article class="bp-card bp-admin-help-callout">
             <span class="bp-summary-title">Public discovery</span>
@@ -110,7 +110,7 @@
         <article class="bp-card bp-admin-help-callout bp-admin-help-policy-link">
             <span class="bp-summary-title">Completion policy</span>
             <h2>Who decides required data?</h2>
-            <p>The <strong>Battery families tab</strong> controls required/optional switches per battery version. The settings are saved in MongoDB and used by batteries linked to that battery version.</p>
+            <p>The <strong>Battery families tab</strong> controls required/optional switches per Battery Model. The settings are saved in MongoDB and used by batteries linked to that Battery Model.</p>
             <p class="mb-0">Validation, signing, publishing, edit guidance, and conformance checklists read the saved product policy and product-version policy.</p>
             <a href="/admin/clusters?tab=products" class="bp-secondary-button bp-button-compact mt-3">Open battery families</a>
         </article>
@@ -127,7 +127,7 @@
                 <span class="bp-summary-title">First-time passport checklist</span>
                 <h4>Create a trusted passport from scratch</h4>
                 <ol>
-                    <li>Create battery ID, choose Battery Family and Battery version, and save the draft.</li>
+                    <li>Create battery ID, choose Battery Family and Battery Model, and save the draft.</li>
                     <li>Review the copied battery family data and fill battery-specific information in every admin section.</li>
                     <li>Open <a href="/admin/clusters?tab=products">battery families</a> to confirm required and optional fields for that battery family.</li>
                     <li>Validate passport and resolve every blocking field.</li>
@@ -161,12 +161,12 @@
                 <p>External links can describe evidence, but uploaded files with document hash values are what the app can verify against a signed revision.</p>
             </article>
             <article class="bp-admin-help-check-card">
-                <span class="bp-summary-title">Battery version push</span>
+                <span class="bp-summary-title">Battery Model push</span>
                 <h4>Update matching batteries safely</h4>
                 <ol>
-                    <li>Open battery families and edit shared battery version data or software release date and latest update values.</li>
+                    <li>Open battery families and edit shared Battery Model data or software release date and latest update values.</li>
                     <li>Save the battery family to MongoDB.</li>
-                    <li>Use the battery version push when saved shared version data changes.</li>
+                    <li>Use the Battery Model push when saved shared model data changes.</li>
                     <li>The app updates fields that still match the previous template baseline.</li>
                     <li>Manual battery overrides are preserved and reported as skipped paths.</li>
                     <li>Updated batteries become dirty until validation, signing, and publishing are repeated.</li>
@@ -176,10 +176,10 @@
                 <span class="bp-summary-title">Software parameters</span>
                 <h4>Know where software data appears</h4>
                 <ol>
-                    <li>New passports copy battery version plus software version, release date, and latest update values from the selected battery family.</li>
+                    <li>New passports copy Battery Model plus software version, release date, and latest update values from the selected battery family.</li>
                     <li>The public summary shows the software version parameter as a normal battery fact.</li>
                     <li>The Detailed report General tab software parameters shows product, product ID, software version, release date, and latest update.</li>
-                    <li>Battery version API changes require validation and signing the passport because they update the selected battery version and its software parameters under <code>app.product</code>.</li>
+                    <li>Battery Model API changes update the battery record and require a new passport snapshot, validation, signing, and publishing.</li>
                     <li>No separate software endpoint exists; telemetry remains operational and does not require signing.</li>
                 </ol>
             </article>
@@ -216,7 +216,7 @@
             <div>
                 <h4>Required data</h4>
                 <ul>
-                    <li>Identity, manufacturer, Battery Family, Battery version, software version, mass, Battery status, Passport status, manufacturing date, and facility details.</li>
+                    <li>Identity, manufacturer, Battery Family, Battery Model, software version, mass, Battery status, Passport status, manufacturing date, and facility details.</li>
                     <li>Material composition, recycled-content, performance, durability, carbon footprint, labels, certificates, circularity, and due-diligence references marked required in policy.</li>
                 </ul>
             </div>
@@ -229,7 +229,7 @@
             </div>
         </div>
         <ol class="bp-admin-help-steps">
-            <li class="bp-admin-help-step-card"><div class="bp-admin-help-step-number">1</div><div class="bp-admin-help-step-copy"><h3>Create battery ID</h3><p>Create the DID, choose Battery Family and Battery version, and save the draft copied from the template.</p></div></li>
+            <li class="bp-admin-help-step-card"><div class="bp-admin-help-step-number">1</div><div class="bp-admin-help-step-copy"><h3>Create battery ID</h3><p>Create the DID, choose Battery Family and Battery Model, and save the draft copied from the template.</p></div></li>
             <li class="bp-admin-help-step-card"><div class="bp-admin-help-step-number">2</div><div class="bp-admin-help-step-copy"><h3>Fill battery information</h3><p>The edit form marks fields as Required or Optional from the product's saved MongoDB policy.</p></div></li>
             <li class="bp-admin-help-step-card"><div class="bp-admin-help-step-number">3</div><div class="bp-admin-help-step-copy"><h3>Validate passport</h3><p>Validation checks official schemas, business rules, and completion policy. Signing appears only when blockers are zero.</p></div></li>
             <li class="bp-admin-help-step-card"><div class="bp-admin-help-step-number">4</div><div class="bp-admin-help-step-copy"><h3>Sign passport</h3><p>Signing canonicalizes the passport core, creates a hash, stores proof metadata, and records an immutable signed revision.</p></div></li>
@@ -270,7 +270,7 @@
             <small>Restore one unassigned demonstrator plus six clustered customer batteries.</small>
         </summary>
         <div class="bp-admin-help-maintenance-body">
-            <p>This guarded reset recreates Compact 7M, Compact 13M, and Core battery families with battery versions, software parameters, evidence files, clusters, users, and exactly seven passport records.</p>
+            <p>This guarded reset recreates Compact 7M, Compact 13M, and Core battery families with Battery Models, software parameters, evidence files, clusters, users, and passport records.</p>
             <form method="post" action="/admin/product-templates/reset">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="bp-secondary-button bp-button-accent">Reset battery-family passports</button>

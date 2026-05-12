@@ -25,7 +25,7 @@ Expected baseline after reset:
 
 - Seven passport records exist: one unassigned demonstrator plus six clustered customer batteries.
 - Battery families exist for Compact 7M, Compact 13M, and Core.
-- Each Battery Family has Battery versions, and each Battery version has its own software parameters.
+- Each Battery Family has Battery Models, and each Battery Model has its own software parameters.
 - The known passports are published, signed, clean, and QR-ready unless a test intentionally changes them.
 
 ## Tester accounts
@@ -62,9 +62,9 @@ Main battery IDs:
 | QR | Click/download the QR from the summary and scan/upload it from `/`. | It resolves back to the summary. |
 | Summary page | Open `/{passportId}/summary`. | Shows battery facts, software version parameter, QR, charts, and no internal conformance/proof diagnostics. |
 | Detailed report | Open `/{passportId}` while logged in with access. | Shows General, General tab software parameters, Material, Performance, Compliance, Supply chain, Circularity, Carbon Footprint, and admin-only Trust tab when allowed. |
-| General tab software parameters | Patch Battery version through `/help` workbench or cURL. | API response says validation and signing are required; after signing, Summary and General tab show the Battery version software parameters. |
-| Battery families | Edit a Battery version, save it, then push that saved Battery version to matching batteries. Software metadata is part of the saved Battery version. | Template-owned fields update, manual overrides are preserved, and changed signed core data becomes dirty. |
-| Admin create | Create a new passport from `/admin/passports/new`. | Battery Family and Battery version are selected first; battery-specific fields stay editable/blank for admin entry. |
+| General tab software parameters | Patch Battery Model through `/help` workbench or cURL. | API response says a new passport, validation, signing, and publishing are required; after that workflow, Summary and General tab show the Battery Model software parameters. |
+| Battery families | Edit a Battery Model, save it, then push that saved Battery Model to matching batteries. Software metadata is part of the saved Battery Model. | Template-owned fields update, manual overrides are preserved, and changed signed core data requires a new signed passport snapshot. |
+| Admin create | Create a new passport from `/admin/passports/new`. | Battery Family and Battery Model are selected first; battery-specific fields stay editable/blank for admin entry. |
 | API Token Management | Open `/admin/clusters?tab=api-token-management`. | API tokens and sign tokens are managed on one page with internal tabs. |
 | Validate, sign, publish | Open conformance, validate, sign, publish. | Signing requires zero blockers; publishing requires a current valid proof. |
 | Dirty recovery | Edit signed core data such as weight, save, then validate, sign, publish again. | Passport becomes dirty after edit and clean after re-signing/publishing. |
@@ -72,7 +72,7 @@ Main battery IDs:
 | Access control | Try restricted document download as the wrong user or guest. | Access is denied with 403. Authorized admins/cluster users can access permitted files. |
 | API auth | Call external API with read token, read-write token, bad token, and wrong cluster scope. | Correct responses: read succeeds, write requires read-write, bad token is 401, wrong scope is 403. |
 | API telemetry | Post telemetry. | Detail charts update and passport trust state does not become dirty. |
-| API software validation | Patch battery version to an unknown version. | API returns `400 Bad Request` with allowed versions. |
+| API model validation | Patch Battery Model to an unknown model. | API returns `400 Bad Request` with allowed models. |
 
 ## Acceptance checklist
 
@@ -89,8 +89,8 @@ Mark each item pass/fail during a formal test run.
 | Editing signed core data makes the passport dirty. |  |  |
 | Re-validating, signing, and publishing returns the passport to clean. |  |  |
 | API telemetry update does not dirty the passport. |  |  |
-| Battery version API change to an allowed version requires validation and signing. |  |  |
-| Battery version API change to an unknown version returns 400. |  |  |
+| Battery Model API change to an allowed model requires a new passport, validation, signing, and publishing. |  |  |
+| Battery Model API change to an unknown model returns 400. |  |  |
 | Battery family push preserves manual overrides. |  |  |
 | Required/optional fields are managed from Battery families, not a global data requirements page. |  |  |
 | Required document evidence stores a SHA-256 hash. |  |  |
@@ -107,7 +107,7 @@ Mark each item pass/fail during a formal test run.
 4. Verify admin trust workflow: validate, sign, publish.
 5. Verify dirty recovery after a core edit.
 6. Verify document evidence upload, hash, signature, and access control.
-7. Verify API reads, telemetry writes, operations patch, and battery-version patch.
+7. Verify API reads, telemetry writes, operations patch, and battery-model patch.
 8. Verify Battery family edit/push behavior.
 9. File bugs using the template below.
 
@@ -116,8 +116,8 @@ Mark each item pass/fail during a formal test run.
 - This is still a demonstrator, not the final production deployment.
 - Battery families and seeded passports are realistic enough for testing but are not official production master data.
 - The reset action intentionally deletes older sample/demo passports and restores one unassigned demonstrator plus six clustered customer batteries.
-- External API writes are limited to telemetry, operations metadata, and Battery version changes.
-- API telemetry does not require signing; Battery version API changes require validation and signing.
+- External API writes are limited to telemetry, operations metadata, and Battery Model changes.
+- API telemetry does not require signing; Battery Model API changes require a new passport, validation, signing, and publishing.
 - Signing verifies the canonical passport core and referenced evidence hashes; it does not parse PDF contents.
 - Camera QR scanning depends on browser/device permissions. Image upload scanning is the fallback.
 - Some browser, OS, and camera permission failures are expected; manual DID search should still work.

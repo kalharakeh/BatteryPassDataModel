@@ -50,8 +50,8 @@ public sealed class PassportSoftwarePresentationTests
     {
         var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
 
-        Assert.Contains("Battery version", summary);
-        Assert.Contains("passport.BatteryVersion", summary);
+        Assert.Contains("Battery Model", summary);
+        Assert.Contains("passport.BatteryModel", summary);
         Assert.Contains("Software version", summary);
         Assert.Contains("passport.SoftwareVersion", summary);
     }
@@ -64,7 +64,7 @@ public sealed class PassportSoftwarePresentationTests
         Assert.DoesNotContain("data-bs-target=\"#tab-software\"", detail);
         Assert.DoesNotContain("id=\"tab-software\"", detail);
         Assert.Contains("passport.BatteryFamily", detail);
-        Assert.Contains("passport.BatteryVersion", detail);
+        Assert.Contains("passport.BatteryModel", detail);
         Assert.Contains("passport.SoftwareVersion", detail);
         Assert.Contains("passport.SoftwareReleaseDate", detail);
         Assert.Contains("passport.SoftwareLatestUpdate", detail);

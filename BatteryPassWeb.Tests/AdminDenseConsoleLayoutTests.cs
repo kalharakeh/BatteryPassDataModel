@@ -42,7 +42,7 @@ public sealed class AdminDenseConsoleLayoutTests
 
         Assert.Contains("Battery ID", passports);
         Assert.Contains("Battery Family", passports);
-        Assert.Contains("Battery version", passports);
+        Assert.Contains("Battery Model", passports);
         Assert.Contains("Battery serial number", passports);
         Assert.Contains("@row.BatteryFamily", passports);
         Assert.Contains("@row.BatteryVersion", passports);

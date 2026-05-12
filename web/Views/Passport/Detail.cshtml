@@ -28,10 +28,20 @@
     <section class="bp-card">
         <div class="bp-summary-grid">
             <div>
-                <p class="bp-passport-id">@passport.PassportId</p>
+                <p class="bp-passport-id">Passport ID: @passport.PassportId</p>
+                <p class="bp-passport-id">Battery ID: @(string.IsNullOrWhiteSpace(passport.BatteryId) ? "-" : passport.BatteryId)</p>
                 <h1>@(string.IsNullOrWhiteSpace(passport.BatteryFamily) ? passport.PassportId : passport.BatteryFamily)</h1>
                 <p class="text-secondary">Cluster: @passport.ClusterLabel</p>
                 <div class="d-flex flex-wrap gap-2 mt-3">
+                    @if (passport.IsHistoricalPassport)
+                    {
+                        <span class="bp-status-pill is-draft">Historical passport</span>
+                        <a href="@passport.LatestPassportUrl" class="bp-secondary-button">Open latest passport</a>
+                    }
+                    else
+                    {
+                        <span class="bp-status-pill is-published">Latest passport</span>
+                    }
                     <a href="/@Uri.EscapeDataString(passport.PassportId)/summary" class="bp-report-action" aria-label="Summary report" title="Summary report" data-tooltip="Summary report">
                         <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M6 3h9l3 3v15H6z" />
@@ -51,7 +61,7 @@
         <dl class="bp-field-grid">
             <div><dt>Battery Family</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatteryFamily) ? "-" : passport.BatteryFamily)</dd></div>
             <div><dt>Battery serial number</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatterySerialNumber) ? "-" : passport.BatterySerialNumber)</dd></div>
-            <div><dt>Battery version</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatteryVersion) ? "-" : passport.BatteryVersion)</dd></div>
+            <div><dt>Battery Model</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatteryModel) ? "-" : passport.BatteryModel)</dd></div>
             <div><dt>Software version</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareVersion) ? "-" : passport.SoftwareVersion)</dd></div>
             <div><dt>Category</dt><dd>@passport.Category</dd></div>
             <div><dt>Battery status</dt><dd>@passport.BatteryStatus</dd></div>
@@ -154,45 +164,55 @@
                     <div class="bp-metric"><p>Remaining energy</p><strong>@passport.Performance.RemainingEnergy.ToString("0.##") kWh</strong></div>
                     <div class="bp-metric"><p>Full cycles</p><strong>@passport.Performance.Cycles.ToString("0.##")</strong></div>
                 </div>
-                <h3 class="bp-subheading mt-4">Operational status</h3>
-                <div class="bp-metric-grid mt-2">
-                    <div class="bp-metric"><p>Active status</p><strong>@(passport.Operations.IsActive ? "Active" : "Not active")</strong></div>
-                    <div class="bp-metric"><p>Current consumption</p><strong>@(passport.Operations.CurrentConsumptionKwh?.ToString("0.##") ?? "-") kWh</strong></div>
-                    <div class="bp-metric"><p>Current charge level</p><strong>@(passport.Operations.CurrentChargeLevelPct?.ToString("0.##") ?? "-") %</strong></div>
-                    <div class="bp-metric"><p>Current voltage</p><strong>@(passport.Operations.CurrentVoltageV?.ToString("0.##") ?? "-") V</strong></div>
-                    <div class="bp-metric"><p>Current current</p><strong>@(passport.Operations.CurrentCurrentA?.ToString("0.##") ?? "-") A</strong></div>
-                    <div class="bp-metric"><p>Last telemetry timestamp</p><strong>@(string.IsNullOrWhiteSpace(passport.Operations.LatestMeasuredAt) ? "-" : passport.Operations.LatestMeasuredAt)</strong></div>
-                    <div class="bp-metric"><p>Location of use</p><strong>@passport.Operations.LocationSiteName</strong></div>
-                    <div class="bp-metric"><p>Contact person</p><strong>@passport.Operations.ContactName</strong></div>
-                </div>
-                <div class="bp-field-grid mt-2">
-                    <div><dt>Address</dt><dd>@passport.Operations.LocationAddress</dd></div>
-                    <div><dt>City</dt><dd>@passport.Operations.LocationCity</dd></div>
-                    <div><dt>Country</dt><dd>@passport.Operations.LocationCountry</dd></div>
-                    <div><dt>Contact email</dt><dd>@passport.Operations.ContactEmail</dd></div>
-                    <div><dt>Contact phone</dt><dd>@passport.Operations.ContactPhone</dd></div>
-                </div>
-                <h3 class="bp-subheading mt-4">Telemetry history (last week)</h3>
-                <div class="bp-two-column mt-3">
-                    <div class="bp-card">
-                        <p class="bp-help-text mb-2">Current consumption (kWh)</p>
-                        <canvas id="chart-consumption"></canvas>
+                @if (passport.IsHistoricalPassport)
+                {
+                    <div class="bp-warning mt-4">
+                        <strong>Telemetry</strong>
+                        <p class="mb-0">Live telemetry is available from the latest passport for this battery.</p>
                     </div>
-                    <div class="bp-card">
-                        <p class="bp-help-text mb-2">Current charge level (%)</p>
-                        <canvas id="chart-charge"></canvas>
+                }
+                else
+                {
+                    <h3 class="bp-subheading mt-4">Operational status</h3>
+                    <div class="bp-metric-grid mt-2">
+                        <div class="bp-metric"><p>Active status</p><strong>@(passport.Operations.IsActive ? "Active" : "Not active")</strong></div>
+                        <div class="bp-metric"><p>Current consumption</p><strong>@(passport.Operations.CurrentConsumptionKwh?.ToString("0.##") ?? "-") kWh</strong></div>
+                        <div class="bp-metric"><p>Current charge level</p><strong>@(passport.Operations.CurrentChargeLevelPct?.ToString("0.##") ?? "-") %</strong></div>
+                        <div class="bp-metric"><p>Current voltage</p><strong>@(passport.Operations.CurrentVoltageV?.ToString("0.##") ?? "-") V</strong></div>
+                        <div class="bp-metric"><p>Current current</p><strong>@(passport.Operations.CurrentCurrentA?.ToString("0.##") ?? "-") A</strong></div>
+                        <div class="bp-metric"><p>Last telemetry timestamp</p><strong>@(string.IsNullOrWhiteSpace(passport.Operations.LatestMeasuredAt) ? "-" : passport.Operations.LatestMeasuredAt)</strong></div>
+                        <div class="bp-metric"><p>Location of use</p><strong>@passport.Operations.LocationSiteName</strong></div>
+                        <div class="bp-metric"><p>Contact person</p><strong>@passport.Operations.ContactName</strong></div>
                     </div>
-                </div>
-                <div class="bp-two-column mt-3">
-                    <div class="bp-card">
-                        <p class="bp-help-text mb-2">Current voltage (V)</p>
-                        <canvas id="chart-voltage"></canvas>
+                    <div class="bp-field-grid mt-2">
+                        <div><dt>Address</dt><dd>@passport.Operations.LocationAddress</dd></div>
+                        <div><dt>City</dt><dd>@passport.Operations.LocationCity</dd></div>
+                        <div><dt>Country</dt><dd>@passport.Operations.LocationCountry</dd></div>
+                        <div><dt>Contact email</dt><dd>@passport.Operations.ContactEmail</dd></div>
+                        <div><dt>Contact phone</dt><dd>@passport.Operations.ContactPhone</dd></div>
                     </div>
-                    <div class="bp-card">
-                        <p class="bp-help-text mb-2">Current current (A)</p>
-                        <canvas id="chart-current"></canvas>
+                    <h3 class="bp-subheading mt-4">Telemetry history (last week)</h3>
+                    <div class="bp-two-column mt-3">
+                        <div class="bp-card">
+                            <p class="bp-help-text mb-2">Current consumption (kWh)</p>
+                            <canvas id="chart-consumption"></canvas>
+                        </div>
+                        <div class="bp-card">
+                            <p class="bp-help-text mb-2">Current charge level (%)</p>
+                            <canvas id="chart-charge"></canvas>
+                        </div>
                     </div>
-                </div>
+                    <div class="bp-two-column mt-3">
+                        <div class="bp-card">
+                            <p class="bp-help-text mb-2">Current voltage (V)</p>
+                            <canvas id="chart-voltage"></canvas>
+                        </div>
+                        <div class="bp-card">
+                            <p class="bp-help-text mb-2">Current current (A)</p>
+                            <canvas id="chart-current"></canvas>
+                        </div>
+                    </div>
+                }
             </div>
 
             <div class="tab-pane fade" id="tab-compliance" role="tabpanel">
