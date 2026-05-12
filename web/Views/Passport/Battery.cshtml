@@ -1,0 +1,52 @@
+@model BatteryPassWeb.Models.ViewModels.BatteryDetailViewModel
+@{
+    ViewData["Title"] = "Battery passports";
+    var battery = Model.Battery;
+}
+
+<main class="bp-page bp-admin-page bp-registry-page">
+    <header class="bp-console-header">
+        <div>
+            <p class="bp-passport-id">@battery.BatteryId</p>
+            <h1>@battery.BatteryFamily @battery.BatteryModel</h1>
+            <p class="text-secondary mb-0">Battery serial number: @battery.BatterySerialNumber</p>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(battery.LatestPassportId))
+        {
+            <a class="bp-primary-button" href="/@Uri.EscapeDataString(battery.BatteryId)/latest">Open latest passport</a>
+        }
+    </header>
+
+    <section class="bp-card bp-table-card">
+        <div class="bp-table-scroll">
+            <table class="table table-hover align-middle bp-console-table">
+                <thead>
+                    <tr>
+                        <th>Passport ID</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Marker</th>
+                        <th class="bp-action-cell">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in battery.Passports)
+                    {
+                        <tr>
+                            <td class="text-break">@row.PassportId</td>
+                            <td>@row.PassportStatus</td>
+                            <td>@(string.IsNullOrWhiteSpace(row.CreatedAt) ? "-" : row.CreatedAt[..Math.Min(10, row.CreatedAt.Length)])</td>
+                            <td>@(row.IsLatestForBattery ? "Latest" : "Historical")</td>
+                            <td class="bp-action-cell">
+                                <div class="bp-icon-action-row">
+                                    <a href="/@Uri.EscapeDataString(row.PassportId)/summary" class="bp-report-action" aria-label="Summary report" title="Summary report" data-tooltip="Summary report"></a>
+                                    <a href="/@Uri.EscapeDataString(row.PassportId)" class="bp-report-action" aria-label="Detailed report" title="Detailed report" data-tooltip="Detailed report"></a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>

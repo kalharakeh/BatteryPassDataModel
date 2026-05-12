@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "Passport Summary";
     var passport = Model.Passport;
+    var qrBatteryId = string.IsNullOrWhiteSpace(passport.BatteryId) ? passport.PassportId : passport.BatteryId;
 
     string BuildConicGradient(IEnumerable<BatteryPassWeb.Models.ViewModels.ChartSegmentViewModel> segments)
     {
@@ -50,9 +51,9 @@
                     </div>
                 </div>
                 <a class="bp-summary-qr-download"
-                   href="/qr/@Uri.EscapeDataString(passport.PassportId)/download"
-                   aria-label="Save passport code for @passport.PassportId">
-                    <img src="/qr/@Uri.EscapeDataString(passport.PassportId)/svg" alt="QR code for @passport.PassportId" />
+                   href="/qr/@Uri.EscapeDataString(qrBatteryId)/download"
+                   aria-label="Save battery code for @qrBatteryId">
+                    <img src="/qr/@Uri.EscapeDataString(qrBatteryId)/svg" alt="QR code for @qrBatteryId" />
                 </a>
             </div>
         </div>

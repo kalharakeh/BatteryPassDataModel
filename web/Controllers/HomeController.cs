@@ -1,4 +1,3 @@
-using BatteryPassWeb.Models.ViewModels;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,13 +7,11 @@ namespace BatteryPassWeb.Controllers;
 public class HomeController : Controller
 {
     private const string SamplePassportId = "did:web:acme.battery.pass:sample-customer-north-001";
-    private readonly PassportRepository _passportRepository;
-    private readonly PassportPublishPolicyService _passportPublishPolicyService;
+    private readonly BatteryRouteResolutionService _batteryRouteResolutionService;
 
-    public HomeController(PassportRepository passportRepository, PassportPublishPolicyService passportPublishPolicyService)
+    public HomeController(BatteryRouteResolutionService batteryRouteResolutionService)
     {
-        _passportRepository = passportRepository;
-        _passportPublishPolicyService = passportPublishPolicyService;
+        _batteryRouteResolutionService = batteryRouteResolutionService;
     }
 
     [HttpGet("")]
@@ -30,22 +27,16 @@ public class HomeController : Controller
     [HttpGet("search")]
     public async Task<IActionResult> Search([FromQuery] string? q, CancellationToken cancellationToken)
     {
-        var query = ExtractPassportIdFromQrPayload(q?.Trim() ?? string.Empty);
-        var isAdmin = AccessControlService.IsAdmin(User);
+        var query = ExtractIdFromQrPayload(q?.Trim() ?? string.Empty);
         if (query.Length == 0)
         {
             return RedirectToAction(nameof(Index));
         }
 
-        var documents = await _passportRepository.SearchDocumentsAsync(query, includeArchived: false, cancellationToken);
-        var matches = documents
-            .Where(document => isAdmin || _passportPublishPolicyService.IsPubliclyVisible(document))
-            .Select(_passportRepository.ToSummaryViewModel)
-            .ToList();
-        var exactMatch = matches.FirstOrDefault(match => string.Equals(match.PassportId, query, StringComparison.OrdinalIgnoreCase));
-        if (exactMatch != null)
+        var resolution = await _batteryRouteResolutionService.ResolveAsync(query, cancellationToken);
+        if (resolution.Kind is BatteryRouteTargetKind.Battery or BatteryRouteTargetKind.Passport)
         {
-            return Redirect($"/{Uri.EscapeDataString(exactMatch.PassportId)}/summary");
+            return Redirect($"/{Uri.EscapeDataString(query)}");
         }
 
         return RedirectToAction(nameof(Index), new
@@ -55,7 +46,7 @@ public class HomeController : Controller
         });
     }
 
-    private static string ExtractPassportIdFromQrPayload(string value)
+    private static string ExtractIdFromQrPayload(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -70,10 +61,10 @@ public class HomeController : Controller
         if (Uri.TryCreate(value, UriKind.Absolute, out var absoluteUri)
             || Uri.TryCreate($"https://local.test{(value.StartsWith('/') ? string.Empty : "/")}{value}", UriKind.Absolute, out absoluteUri))
         {
-            foreach (var key in new[] { "q", "passportId" })
+            foreach (var key in new[] { "q", "batteryId", "passportId", "id" })
             {
                 var candidate = ReadQueryValue(absoluteUri.Query, key);
-                if (!string.IsNullOrWhiteSpace(candidate) && candidate.StartsWith("did:web:", StringComparison.OrdinalIgnoreCase))
+                if (!string.IsNullOrWhiteSpace(candidate))
                 {
                     return candidate;
                 }
@@ -82,7 +73,7 @@ public class HomeController : Controller
             foreach (var segment in absoluteUri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries))
             {
                 var candidate = Uri.UnescapeDataString(segment);
-                if (candidate.StartsWith("did:web:", StringComparison.OrdinalIgnoreCase))
+                if (!IsRouteSuffix(candidate))
                 {
                     return candidate;
                 }
@@ -90,6 +81,12 @@ public class HomeController : Controller
         }
 
         return value;
+    }
+
+    private static bool IsRouteSuffix(string value)
+    {
+        return value.Equals("latest", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("summary", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string ReadQueryValue(string query, string key)

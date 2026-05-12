@@ -7,66 +7,73 @@ namespace BatteryPassWeb.Controllers;
 [Route("qr")]
 public sealed class QrController : Controller
 {
+    private readonly BatteryRepository _batteryRepository;
     private readonly PassportRepository _passportRepository;
     private readonly PassportPublishPolicyService _passportPublishPolicyService;
     private readonly AccessControlService _accessControlService;
     private readonly PassportQrCodeService _passportQrCodeService;
 
     public QrController(
+        BatteryRepository batteryRepository,
         PassportRepository passportRepository,
         PassportPublishPolicyService passportPublishPolicyService,
         AccessControlService accessControlService,
         PassportQrCodeService passportQrCodeService)
     {
+        _batteryRepository = batteryRepository;
         _passportRepository = passportRepository;
         _passportPublishPolicyService = passportPublishPolicyService;
         _accessControlService = accessControlService;
         _passportQrCodeService = passportQrCodeService;
     }
 
-    [HttpGet("{passportId}/svg")]
-    public async Task<IActionResult> QrCode(string passportId, CancellationToken cancellationToken)
+    [HttpGet("{batteryId}/svg")]
+    public async Task<IActionResult> QrCode(string batteryId, CancellationToken cancellationToken)
     {
-        var decodedPassportId = Uri.UnescapeDataString(passportId);
-        if (!await CanAccessQrAsync(decodedPassportId, cancellationToken))
+        var decodedBatteryId = Uri.UnescapeDataString(batteryId);
+        if (!await CanAccessQrAsync(decodedBatteryId, cancellationToken))
         {
             return NotFound();
         }
 
-        var payload = _passportQrCodeService.BuildPayloadUrl(Request, decodedPassportId);
+        var payload = _passportQrCodeService.BuildPayloadUrl(Request, decodedBatteryId);
         var svg = _passportQrCodeService.GenerateSvg(payload);
         return Content(svg, "image/svg+xml", Encoding.UTF8);
     }
 
-    [HttpGet("{passportId}/download")]
-    public async Task<IActionResult> Download(string passportId, CancellationToken cancellationToken)
+    [HttpGet("{batteryId}/download")]
+    public async Task<IActionResult> Download(string batteryId, CancellationToken cancellationToken)
     {
-        var decodedPassportId = Uri.UnescapeDataString(passportId);
-        if (!await CanAccessQrAsync(decodedPassportId, cancellationToken))
+        var decodedBatteryId = Uri.UnescapeDataString(batteryId);
+        if (!await CanAccessQrAsync(decodedBatteryId, cancellationToken))
         {
             return NotFound();
         }
 
-        var payload = _passportQrCodeService.BuildPayloadUrl(Request, decodedPassportId);
+        var payload = _passportQrCodeService.BuildPayloadUrl(Request, decodedBatteryId);
         var svg = _passportQrCodeService.GenerateSvg(payload);
-        var fileName = _passportQrCodeService.BuildFileName(decodedPassportId);
+        var fileName = _passportQrCodeService.BuildFileName(decodedBatteryId);
         return File(Encoding.UTF8.GetBytes(svg), "image/svg+xml", fileName);
     }
 
-    private async Task<bool> CanAccessQrAsync(string passportId, CancellationToken cancellationToken)
+    private async Task<bool> CanAccessQrAsync(string batteryId, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(passportId))
+        if (string.IsNullOrWhiteSpace(batteryId))
         {
             return false;
         }
 
-        var passport = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
-        if (passport == null)
+        var battery = await _batteryRepository.GetByBatteryIdAsync(batteryId, cancellationToken);
+        if (battery == null)
         {
             return false;
         }
 
-        if (_passportPublishPolicyService.IsPubliclyVisible(passport))
+        var latestPublicPassport = await _passportRepository.GetLatestPublicByBatteryIdAsync(
+            batteryId,
+            _passportPublishPolicyService,
+            cancellationToken);
+        if (latestPublicPassport != null)
         {
             return true;
         }
@@ -78,7 +85,7 @@ public sealed class QrController : Controller
 
         return await _accessControlService.CanOpenPassportDetailAsync(
             User,
-            BsonHelpers.GetString(passport, "clusterId"),
+            BsonHelpers.GetString(battery, "clusterId"),
             cancellationToken);
     }
 }

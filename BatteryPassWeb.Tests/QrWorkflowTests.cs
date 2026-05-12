@@ -20,10 +20,11 @@ public sealed class QrWorkflowTests
         var source = File.ReadAllText(RepoFile("web", "Controllers", "QrController.cs"));
 
         Assert.Contains("[Route(\"qr\")]", source);
-        Assert.Contains("[HttpGet(\"{passportId}/svg\")]", source);
-        Assert.Contains("[HttpGet(\"{passportId}/download\")]", source);
+        Assert.Contains("[HttpGet(\"{batteryId}/svg\")]", source);
+        Assert.Contains("[HttpGet(\"{batteryId}/download\")]", source);
         Assert.Contains("PassportQrCodeService", source);
         Assert.Contains("PassportPublishPolicyService", source);
+        Assert.Contains("BatteryRepository", source);
         Assert.Contains("CanOpenPassportDetailAsync", source);
         Assert.Contains("image/svg+xml", source);
         Assert.Contains("BuildPayloadUrl", source);
@@ -39,7 +40,7 @@ public sealed class QrWorkflowTests
         Assert.Contains("SvgQRCode", source);
         Assert.Contains("AddBatteryCellMark", source);
         Assert.Contains("bp-qr-battery-mark", source);
-        Assert.Contains("/summary", source);
+        Assert.Contains("/latest", source);
         Assert.Contains("BuildPayloadUrl", source);
         Assert.Contains("BuildFileName", source);
     }
@@ -65,6 +66,7 @@ public sealed class QrWorkflowTests
         Assert.Contains("bp-summary-qr-download", summary);
         Assert.Contains("bp-summary-image-frame", summary);
         Assert.Contains("/qr/", summary);
+        Assert.Contains("qrBatteryId", summary);
         Assert.Contains("/svg", summary);
         Assert.Contains("/download", summary);
         Assert.DoesNotContain("@passport.BatteryImageAlt</p>", summary);
@@ -137,9 +139,9 @@ public sealed class QrWorkflowTests
         var source = File.ReadAllText(RepoFile("web", "Services", "PassportQrCodeService.cs"));
         var controller = File.ReadAllText(RepoFile("web", "Controllers", "QrController.cs"));
 
-        Assert.Contains("/summary", source);
+        Assert.Contains("/latest", source);
         Assert.Contains("BuildPayloadUrl", source);
-        Assert.Contains("IsPubliclyVisible", controller);
+        Assert.Contains("GetLatestPublicByBatteryIdAsync", controller);
         Assert.Contains("CanOpenPassportDetailAsync", controller);
     }
 

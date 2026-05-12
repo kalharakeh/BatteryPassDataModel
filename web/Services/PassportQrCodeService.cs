@@ -4,10 +4,10 @@ namespace BatteryPassWeb.Services;
 
 public sealed class PassportQrCodeService
 {
-    public string BuildPayloadUrl(HttpRequest request, string passportId)
+    public string BuildPayloadUrl(HttpRequest request, string batteryId)
     {
-        var escapedPassportId = Uri.EscapeDataString(passportId);
-        return $"{request.Scheme}://{request.Host}/{escapedPassportId}/summary";
+        var escapedBatteryId = Uri.EscapeDataString(batteryId);
+        return $"{request.Scheme}://{request.Host}/{escapedBatteryId}/latest";
     }
 
     public string GenerateSvg(string payload)
@@ -18,9 +18,9 @@ public sealed class PassportQrCodeService
         return AddBatteryCellMark(qrCode.GetGraphic(10));
     }
 
-    public string BuildFileName(string passportId)
+    public string BuildFileName(string batteryId)
     {
-        var safeId = new string(passportId
+        var safeId = new string(batteryId
             .Select(character => char.IsLetterOrDigit(character) ? character : '-')
             .ToArray())
             .Trim('-');
