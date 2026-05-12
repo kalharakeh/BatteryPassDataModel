@@ -30,13 +30,19 @@
             <div>
                 <p class="bp-passport-id">Passport ID: @passport.PassportId</p>
                 <p class="bp-passport-id">Battery ID: @(string.IsNullOrWhiteSpace(passport.BatteryId) ? "-" : passport.BatteryId)</p>
-                <h1>@(string.IsNullOrWhiteSpace(passport.BatteryFamily) ? passport.PassportId : passport.BatteryFamily)</h1>
+                <h1>@(string.IsNullOrWhiteSpace(passport.BatterySerialNumber) ? passport.PassportId : passport.BatterySerialNumber)</h1>
                 <p class="text-secondary">Cluster: @passport.ClusterLabel</p>
                 <div class="d-flex flex-wrap gap-2 mt-3">
                     @if (passport.IsHistoricalPassport)
                     {
                         <span class="bp-status-pill is-draft">Historical passport</span>
-                        <a href="@passport.LatestPassportUrl" class="bp-secondary-button">Open latest passport</a>
+                        <a href="@passport.LatestPassportUrl" class="bp-report-action" aria-label="Open latest passport" title="Open latest passport" data-tooltip="Open latest passport">
+                            <svg class="bp-report-action-icon bp-latest-passport-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 5a7 7 0 1 1-6.32 4" />
+                                <path d="M5 5v4h4" />
+                                <path d="M12 8v4l3 2" />
+                            </svg>
+                        </a>
                     }
                     else
                     {

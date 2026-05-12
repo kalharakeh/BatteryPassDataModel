@@ -71,6 +71,20 @@ public sealed class BatteryRouteAndRegistryTests
     }
 
     [Fact]
+    public void PassportReports_ShouldUseSerialHeaderAndIconLatestAction()
+    {
+        var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
+        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
+        var combined = summary + detail;
+
+        Assert.Contains("passport.BatterySerialNumber", summary);
+        Assert.Contains("passport.BatterySerialNumber", detail);
+        Assert.DoesNotContain(">Open latest passport<", combined);
+        Assert.Contains("aria-label=\"Open latest passport\"", combined);
+        Assert.Contains("bp-latest-passport-action-icon", combined);
+    }
+
+    [Fact]
     public void BatteryLevelView_ShouldShowBatteryIdLabelAndIconActions()
     {
         var view = File.ReadAllText(RepoFile("web", "Views", "Passport", "Battery.cshtml"));
