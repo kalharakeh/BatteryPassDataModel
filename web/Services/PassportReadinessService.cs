@@ -36,26 +36,30 @@ public sealed class PassportReadinessService
                 isDirty,
                 hasCurrentProof,
                 isPublished,
-                canCompleteDemoData: true);
+                canValidate: true,
+                canCompleteDemoData: true,
+                canSign: false);
         }
 
         if (isDirty)
         {
             return Decision(
                 PassportReadinessState.DirtyNeedsResign,
-                "Dirty: re-sign required",
+                "Changed: validate required",
                 PassportReadinessSeverity.Warning,
-                PassportReadinessAction.Sign,
-                "Sign passport",
+                PassportReadinessAction.Validate,
+                "Validate passport",
                 "The passport changed after the latest signature.",
-                "Validate is clean, but the current core must be signed again before publishing is trusted.",
+                "Validate the current data before signing a new proof.",
                 publishDecision,
                 blockers,
                 warnings,
                 isDirty,
                 hasCurrentProof,
                 isPublished,
-                canCompleteDemoData: false);
+                canValidate: true,
+                canCompleteDemoData: false,
+                canSign: false);
         }
 
         if (verificationResult.State.Equals(TrustState.SignatureInvalid, StringComparison.OrdinalIgnoreCase)
@@ -75,6 +79,7 @@ public sealed class PassportReadinessService
                 isDirty,
                 hasCurrentProof,
                 isPublished,
+                canValidate: false,
                 canCompleteDemoData: false);
         }
 
@@ -94,7 +99,9 @@ public sealed class PassportReadinessService
                 isDirty,
                 hasCurrentProof,
                 isPublished,
-                canCompleteDemoData: false);
+                canValidate: false,
+                canCompleteDemoData: false,
+                canSign: false);
         }
 
         if (publishDecision.CanPublish && isPublished && verificationResult.IsValid)
@@ -113,6 +120,7 @@ public sealed class PassportReadinessService
                 isDirty,
                 hasCurrentProof,
                 isPublished,
+                canValidate: false,
                 canCompleteDemoData: false);
         }
 
@@ -132,6 +140,7 @@ public sealed class PassportReadinessService
                 isDirty,
                 hasCurrentProof,
                 isPublished,
+                canValidate: false,
                 canCompleteDemoData: false);
         }
 
@@ -151,6 +160,7 @@ public sealed class PassportReadinessService
                 isDirty,
                 hasCurrentProof,
                 isPublished,
+                canValidate: false,
                 canCompleteDemoData: false);
         }
 
@@ -168,7 +178,9 @@ public sealed class PassportReadinessService
             isDirty,
             hasCurrentProof,
             isPublished,
-            canCompleteDemoData: false);
+            canValidate: true,
+            canCompleteDemoData: false,
+            canSign: false);
     }
 
     private static PassportReadinessDecision Decision(
@@ -185,7 +197,9 @@ public sealed class PassportReadinessService
         bool isDirty,
         bool hasCurrentProof,
         bool isPublished,
-        bool canCompleteDemoData)
+        bool canValidate,
+        bool canCompleteDemoData,
+        bool? canSign = null)
     {
         return new PassportReadinessDecision
         {
@@ -196,9 +210,9 @@ public sealed class PassportReadinessService
             NextActionLabel = nextActionLabel,
             NextActionDescription = nextActionDescription,
             PrimaryReason = primaryReason,
-            CanValidate = true,
+            CanValidate = canValidate,
             CanCompleteDemoData = canCompleteDemoData,
-            CanSign = publishDecision.CanSign && blockers == 0,
+            CanSign = canSign ?? (publishDecision.CanSign && blockers == 0),
             CanPublish = publishDecision.CanPublish,
             BlockerCount = blockers,
             WarningCount = warnings,

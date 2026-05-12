@@ -7,6 +7,7 @@
     var summary = Model.ValidationSummary;
     var evidencePack = Model.EvidencePack;
     var isPublished = string.Equals(passport.RegistryStatus, "published", StringComparison.OrdinalIgnoreCase);
+    var showValidatePassport = readiness.CanValidate;
     var showSignPassport = readiness.NextActionKey == PassportReadinessAction.Sign && readiness.CanSign;
     var showPublishPassport = readiness.NextActionKey == PassportReadinessAction.Publish && readiness.CanPublish;
     var showWorkflowComplete = readiness.NextActionKey == PassportReadinessAction.None || (readiness.CanPublish && isPublished);
@@ -105,10 +106,13 @@
                     <p>What is stopping signing? Full-data requirements are grouped by section so the admin can jump straight to the field that needs work.</p>
                 </div>
                 <span class="bp-trust-step-status @(validationPassed ? "is-ready" : "is-blocked")">@(validationPassed ? "Clear" : $"{summary.BlockingErrorCount} blockers")</span>
-                <form method="post" action="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/validate" class="bp-action-control" onclick="event.stopPropagation()">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="bp-primary-button">Validate passport</button>
-                </form>
+                @if (showValidatePassport)
+                {
+                    <form method="post" action="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/validate" class="bp-action-control" onclick="event.stopPropagation()">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="bp-primary-button">Validate passport</button>
+                    </form>
+                }
             </summary>
             <div class="bp-trust-step-content">
                 <div class="bp-readiness-strip" aria-label="Validation metrics">

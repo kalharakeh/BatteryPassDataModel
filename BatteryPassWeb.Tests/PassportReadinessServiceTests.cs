@@ -37,6 +37,7 @@ public sealed class PassportReadinessServiceTests
 
         Assert.Equal(PassportReadinessState.ReadyToSign, readiness.StateKey);
         Assert.Equal(PassportReadinessAction.Sign, readiness.NextActionKey);
+        Assert.False(readiness.CanValidate);
         Assert.True(readiness.CanSign);
         Assert.False(readiness.CanPublish);
         Assert.Equal(1, readiness.WarningCount);
@@ -54,6 +55,7 @@ public sealed class PassportReadinessServiceTests
 
         Assert.Equal(PassportReadinessState.ReadyToPublish, readiness.StateKey);
         Assert.Equal(PassportReadinessAction.Publish, readiness.NextActionKey);
+        Assert.False(readiness.CanValidate);
         Assert.True(readiness.CanPublish);
         Assert.True(readiness.HasCurrentProof);
     }
@@ -71,11 +73,12 @@ public sealed class PassportReadinessServiceTests
         Assert.Equal(PassportReadinessState.PublishedTrusted, readiness.StateKey);
         Assert.Equal(PassportReadinessAction.None, readiness.NextActionKey);
         Assert.Equal(PassportReadinessSeverity.Trusted, readiness.Severity);
+        Assert.False(readiness.CanValidate);
         Assert.True(readiness.IsPublished);
     }
 
     [Fact]
-    public void Evaluate_ShouldMarkDirtyPublishedPassportAsNeedingResign()
+    public void Evaluate_ShouldMarkDirtyPublishedPassportAsNeedingValidationBeforeResign()
     {
         var passport = Passport(status: "published", trustState: TrustState.Dirty, isDirty: true, hasProof: true);
         var summary = Summary(TrustValidationSeverity.Warning);
@@ -85,7 +88,10 @@ public sealed class PassportReadinessServiceTests
         var readiness = new PassportReadinessService().Evaluate(passport, summary, decision, verification);
 
         Assert.Equal(PassportReadinessState.DirtyNeedsResign, readiness.StateKey);
-        Assert.Equal(PassportReadinessAction.Sign, readiness.NextActionKey);
+        Assert.Equal(PassportReadinessAction.Validate, readiness.NextActionKey);
+        Assert.Equal("Validate passport", readiness.NextActionLabel);
+        Assert.True(readiness.CanValidate);
+        Assert.False(readiness.CanSign);
         Assert.True(readiness.TrustIsDirty);
         Assert.False(readiness.CanPublish);
     }

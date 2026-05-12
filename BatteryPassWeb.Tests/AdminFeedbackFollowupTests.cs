@@ -51,22 +51,32 @@ public sealed class AdminFeedbackFollowupTests
     }
 
     [Fact]
-    public void ReportActions_ShouldBeVisiblyProminentWithoutChangingIcons()
+    public void ReportActions_ShouldLiveInHeaderActionRailWithoutVisibleTextLabels()
     {
         var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
         var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        Assert.Contains("bp-report-action-strip", summary);
-        Assert.Contains("bp-report-action-strip", detail);
-        Assert.Contains("bp-report-action-label", summary);
-        Assert.Contains("bp-report-action-label", detail);
+        Assert.Contains("bp-report-header-actions", summary);
+        Assert.Contains("bp-report-header-actions", detail);
+        Assert.Contains("bp-report-title-block", summary);
+        Assert.Contains("bp-report-title-block", detail);
+        Assert.DoesNotContain("bp-report-action-strip", summary);
+        Assert.DoesNotContain("bp-report-action-strip", detail);
+        Assert.DoesNotContain("bp-report-action-label", summary);
+        Assert.DoesNotContain("bp-report-action-label", detail);
+        Assert.DoesNotContain(">Latest</span>", summary);
+        Assert.DoesNotContain(">Latest</span>", detail);
+        Assert.DoesNotContain(">Detailed report</span>", summary);
+        Assert.DoesNotContain(">Summary report</span>", detail);
         Assert.Contains("bp-report-action-prominent", summary);
         Assert.Contains("bp-report-action-prominent", detail);
         Assert.Contains("bp-latest-passport-action-icon", summary);
         Assert.Contains("bp-latest-passport-action-icon", detail);
+        Assert.Contains(".bp-report-header-actions", css);
+        Assert.Contains(".bp-report-title-block", css);
         Assert.Contains(".bp-report-action-prominent", css);
-        Assert.Contains(".bp-report-action-label", css);
+        Assert.DoesNotContain(".bp-report-action-label", css);
     }
 
     [Fact]

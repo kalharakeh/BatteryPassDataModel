@@ -51,6 +51,14 @@ public sealed class PassportTrustWorkflowService
         }
 
         var summary = await ValidateDocumentAsync(passportId, document, cancellationToken);
+        var verification = _passportTrustService.Verify(document);
+        if (summary.BlockingErrorCount == 0
+            && verification.IsValid
+            && !GetBoolean(document, "trust", "isDirty"))
+        {
+            return new PassportTrustWorkflowResult(true, "Passport validation is already current.", summary, string.Empty, false);
+        }
+
         await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
         await _auditRevisionService.AppendAuditEventAsync(
             passportId,
@@ -69,6 +77,12 @@ public sealed class PassportTrustWorkflowService
             cancellationToken);
 
         return new PassportTrustWorkflowResult(true, "Passport validation completed.", summary, string.Empty, false);
+    }
+
+    private static bool GetBoolean(BsonDocument document, params string[] path)
+    {
+        var value = BsonHelpers.GetValue(document, path);
+        return value is { IsBoolean: true } && value.AsBoolean;
     }
 
     public async Task<PassportTrustWorkflowResult> SignAsync(

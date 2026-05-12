@@ -75,6 +75,7 @@ public sealed class ConformanceLayoutTests
         Assert.Contains("bp-issue-list", markup);
         Assert.Contains("bp-completion-checklist", markup);
         Assert.Contains("bp-completion-section", markup);
+        Assert.Contains("showValidatePassport", markup);
         Assert.Contains("bp-action-control", markup);
         Assert.DoesNotContain("showCompleteRequiredData", markup);
         Assert.Contains("showSignPassport", markup);
@@ -169,6 +170,27 @@ public sealed class ConformanceLayoutTests
         Assert.Contains(".bp-trust-step[open] > .bp-trust-step-header", css);
         Assert.Contains(".bp-evidence-step > summary", css);
         Assert.Contains(".bp-evidence-step[open] > .bp-evidence-step-header", css);
+    }
+
+    [Fact]
+    public void ConformanceView_ShouldOnlyRenderValidateActionWhenValidationIsNeeded()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Conformance.cshtml"));
+        var readiness = File.ReadAllText(RepoFile("web", "Services", "PassportReadinessService.cs"));
+        var workflow = File.ReadAllText(RepoFile("web", "Services", "PassportTrustWorkflowService.cs"));
+
+        Assert.Contains("var showValidatePassport = readiness.CanValidate;", markup);
+        Assert.Contains("@if (showValidatePassport)", markup);
+        Assert.True(
+            markup.IndexOf("@if (showValidatePassport)", StringComparison.Ordinal) <
+            markup.IndexOf("Validate passport</button>", StringComparison.Ordinal),
+            "Validate action should be guarded by readiness.CanValidate.");
+
+        Assert.Contains("CanValidate = canValidate", readiness);
+        Assert.Contains("Validate passport", readiness);
+        Assert.Contains("Passport validation is already current", workflow);
+        Assert.Contains("verification.IsValid", workflow);
+        Assert.Contains("!GetBoolean(document, \"trust\", \"isDirty\")", workflow);
     }
 
     [Fact]

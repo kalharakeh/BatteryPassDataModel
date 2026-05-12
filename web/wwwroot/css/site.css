@@ -1148,6 +1148,25 @@ a:hover {
   gap: 20px;
 }
 
+.bp-report-title-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+}
+
+.bp-report-title-block {
+  min-inline-size: 0;
+}
+
+.bp-report-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 2px;
+}
+
 .bp-badge-row {
   display: flex;
   align-items: center;
@@ -2683,6 +2702,15 @@ a:hover {
 }
 
 @media (max-width: 760px) {
+  .bp-report-title-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bp-report-header-actions {
+    justify-content: flex-start;
+    padding-top: 0;
+  }
+
   .bp-trust-step-header {
     grid-template-columns: 34px minmax(0, 1fr) 28px;
   }
@@ -5518,30 +5546,6 @@ a:hover {
   box-shadow: 0 8px 20px rgba(15, 35, 55, 0.13);
   transform: translateY(-1px);
   text-decoration: none;
-}
-
-.bp-report-action-strip {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  border: 1px solid #c3d5e2;
-  border-radius: 10px;
-  background: #f7fbfd;
-  box-shadow: 0 10px 24px rgba(15, 35, 55, 0.08);
-  padding: 7px 8px 7px 11px;
-}
-
-.bp-report-action-strip-inline {
-  padding: 5px 6px 5px 9px;
-  box-shadow: none;
-}
-
-.bp-report-action-label {
-  color: #24445c;
-  font-size: 0.78rem;
-  font-weight: 800;
-  line-height: 1;
-  white-space: nowrap;
 }
 
 .bp-report-action-prominent {

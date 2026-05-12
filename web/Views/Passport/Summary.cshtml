@@ -28,16 +28,24 @@
     <section class="bp-card">
         <div class="bp-summary-grid">
             <div>
-                <p class="bp-passport-id">Passport ID: @passport.PassportId</p>
-                <p class="bp-passport-id">Battery ID: @(string.IsNullOrWhiteSpace(passport.BatteryId) ? "-" : passport.BatteryId)</p>
-                <h1>@(string.IsNullOrWhiteSpace(passport.BatterySerialNumber) ? passport.PassportId : passport.BatterySerialNumber)</h1>
-                <p class="text-secondary">Cluster: @passport.ClusterLabel</p>
-                <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
-                    @if (passport.IsHistoricalPassport)
-                    {
-                        <span class="bp-status-pill is-draft">Historical passport</span>
-                        <span class="bp-report-action-strip bp-report-action-strip-inline">
-                            <span class="bp-report-action-label">Latest</span>
+                <div class="bp-report-title-row">
+                    <div class="bp-report-title-block">
+                        <p class="bp-passport-id">Passport ID: @passport.PassportId</p>
+                        <p class="bp-passport-id">Battery ID: @(string.IsNullOrWhiteSpace(passport.BatteryId) ? "-" : passport.BatteryId)</p>
+                        <h1>@(string.IsNullOrWhiteSpace(passport.BatterySerialNumber) ? passport.PassportId : passport.BatterySerialNumber)</h1>
+                        <p class="text-secondary">Cluster: @passport.ClusterLabel</p>
+                    </div>
+                    <div class="bp-report-header-actions" aria-label="Report actions">
+                        <a class="bp-report-action bp-report-action-prominent" href="/@Uri.EscapeDataString(passport.PassportId)" aria-label="Detailed report" title="Detailed report" data-tooltip="Detailed report" data-action-icon="detail">
+                            <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M6 3h9l3 3v15H6z" />
+                                <path d="M15 3v4h4" />
+                                <path d="M10 12a3 3 0 1 0 4.24 4.24" />
+                                <path d="m14 16 3 3" />
+                            </svg>
+                        </a>
+                        @if (passport.IsHistoricalPassport)
+                        {
                             <a href="@passport.LatestPassportUrl" class="bp-report-action bp-report-action-prominent" aria-label="Open latest passport" title="Open latest passport" data-tooltip="Open latest passport" data-action-icon="latest">
                                 <svg class="bp-report-action-icon bp-latest-passport-action-icon" viewBox="0 0 24 24" aria-hidden="true">
                                     <path d="M12 5a7 7 0 1 1-6.32 4" />
@@ -45,7 +53,13 @@
                                     <path d="M12 8v4l3 2" />
                                 </svg>
                             </a>
-                        </span>
+                        }
+                    </div>
+                </div>
+                <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
+                    @if (passport.IsHistoricalPassport)
+                    {
+                        <span class="bp-status-pill is-draft">Historical passport</span>
                     }
                     else
                     {
@@ -56,17 +70,6 @@
                 {
                     <p class="bp-warning mt-3">@Model.DetailAccessNotice</p>
                 }
-                <div class="bp-report-action-strip mt-3">
-                    <span class="bp-report-action-label">Detailed report</span>
-                    <a class="bp-report-action bp-report-action-prominent" href="/@Uri.EscapeDataString(passport.PassportId)" aria-label="Detailed report" title="Detailed report" data-tooltip="Detailed report" data-action-icon="detail">
-                        <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M6 3h9l3 3v15H6z" />
-                            <path d="M15 3v4h4" />
-                            <path d="M10 12a3 3 0 1 0 4.24 4.24" />
-                            <path d="m14 16 3 3" />
-                        </svg>
-                    </a>
-                </div>
             </div>
             <div class="bp-summary-media-panel">
                 <div class="bp-summary-image-frame">
