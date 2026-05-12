@@ -135,6 +135,7 @@ public sealed class BatteryFamilyAccessApiRevisedTests
     {
         var registry = File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml"));
         var adminClusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var batteryPassports = File.ReadAllText(RepoFile("web", "Views", "Admin", "BatteryPassports.cshtml"));
         var repository = File.ReadAllText(RepoFile("web", "Services", "PassportRepository.cs"));
         var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
 
@@ -142,12 +143,14 @@ public sealed class BatteryFamilyAccessApiRevisedTests
         Assert.Contains("title=\"Summary report\"", registry);
         Assert.Contains("aria-label=\"Detailed report\"", registry);
         Assert.Contains("title=\"Detailed report\"", registry);
-        Assert.Contains("title=\"Edit\"", adminClusters);
-        Assert.Contains("title=\"Conformance\"", adminClusters);
-        Assert.Contains("title=\"Archive\"", adminClusters);
-        Assert.Contains("title=\"Unarchive\"", adminClusters);
+        Assert.Contains("title=\"Edit battery\"", adminClusters);
+        Assert.Contains("title=\"Passport history\"", adminClusters);
+        Assert.Contains("title=\"Create passport\"", adminClusters);
+        Assert.Contains("title=\"Conformance\"", batteryPassports);
+        Assert.Contains("title=\"Archive\"", batteryPassports);
+        Assert.Contains("title=\"Unarchive\"", batteryPassports);
         Assert.Contains("bp-confirm-modal", adminClusters);
-        Assert.Contains("data-confirm-action", adminClusters);
+        Assert.Contains("data-confirm-action", batteryPassports);
         Assert.Contains("UnarchivePassportAsync", repository);
         Assert.Contains("[HttpPost(\"passports/unarchive\")]", controller);
     }
