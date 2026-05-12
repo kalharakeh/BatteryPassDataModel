@@ -1,5 +1,13 @@
 # Changelog
 All notable changes to the battery passport data model will be documented in this file.
+
+## Battery ID and passport snapshots
+
+- Added first-class Battery IDs and Passport IDs.
+- Moved management, registry, QR, telemetry, and external battery API routes to Battery ID.
+- Kept passports as immutable non-telemetry snapshots with historical/latest state.
+- Renamed user-facing Battery version to Battery Model.
+
 ## [1.2.0] - 2025-10-23
  - Lincense consistently updated to Creative Commons Attribution 4.0 International (CC-BY-4.0) license. See the [LICENSE](https://creativecommons.org/licenses/by/4.0/legalcode) file for more details. 
 
