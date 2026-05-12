@@ -93,13 +93,14 @@ public sealed class HelpWorkbenchLayoutTests
     }
 
     [Fact]
-    public void HelpController_ShouldResolveSamplePassportCompatibleWithSampleReadToken()
+    public void HelpController_ShouldResolveSampleBatteryCompatibleWithSampleReadToken()
     {
         var source = File.ReadAllText(RepoFile("web", "Controllers", "HelpController.cs"));
 
         Assert.Contains("PassportRepository", source);
-        Assert.Contains("ResolveSamplePassportIdAsync", source);
-        Assert.Contains("string.IsNullOrWhiteSpace(passport.ClusterId)", source);
+        Assert.Contains("ResolveSampleIdsAsync", source);
+        Assert.Contains("SampleBatteryId", source);
+        Assert.Contains("BsonHelpers.GetString(passport, \"batteryId\")", source);
         Assert.DoesNotContain("SamplePassportId = ExternalApiInitializer.SamplePassportId,", source);
     }
 

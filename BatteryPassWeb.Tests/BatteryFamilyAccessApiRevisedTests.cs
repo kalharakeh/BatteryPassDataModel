@@ -84,10 +84,13 @@ public sealed class BatteryFamilyAccessApiRevisedTests
         var initializer = File.ReadAllText(RepoFile("web", "Services", "ExternalApiInitializer.cs"));
 
         Assert.Contains("ExternalTokenAccessMode.Sign", repository);
-        Assert.Contains("ValidateTokenAsync(token, ExternalTokenRequirement.Sign", api);
-        Assert.Contains("[HttpPatch(\"batteries/{passportId}/battery-version\")]", api);
-        Assert.Contains("[HttpPost(\"batteries/{passportId}/validate\")]", api);
-        Assert.Contains("[HttpPost(\"batteries/{passportId}/sign\")]", api);
+        Assert.Contains("ExternalTokenRequirement.Sign", api);
+        Assert.Contains("ValidateTokenForRequirementAsync", api);
+        Assert.Contains("[HttpPatch(\"batteries/{batteryId}/battery-model\")]", api);
+        Assert.Contains("[HttpPost(\"batteries/{batteryId}/passports\")]", api);
+        Assert.Contains("[HttpPost(\"passports/{passportId}/validate\")]", api);
+        Assert.Contains("[HttpPost(\"passports/{passportId}/sign\")]", api);
+        Assert.Contains("[HttpPost(\"passports/{passportId}/publish\")]", api);
         Assert.DoesNotContain("X-Battery-Secret", api);
         Assert.DoesNotContain("ValidateBatterySecretAsync", api);
         Assert.DoesNotContain("UpsertBatterySecretAsync", repository);

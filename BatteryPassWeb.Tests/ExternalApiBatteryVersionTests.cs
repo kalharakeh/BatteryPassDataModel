@@ -7,12 +7,18 @@ public sealed class ExternalApiBatteryVersionTests
     {
         var source = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
 
-        Assert.Contains("ProductTemplateService", source);
-        Assert.Contains("[HttpPatch(\"batteries/{passportId}/battery-version\")]", source);
-        Assert.Contains("UpdateBatteryVersion", source);
-        Assert.Contains("batteryVersion", source);
+        Assert.Contains("BatteryRepository", source);
+        Assert.Contains("[HttpPatch(\"batteries/{batteryId}/battery-model\")]", source);
+        Assert.Contains("UpdateBatteryModel", source);
+        Assert.Contains("batteryModel", source);
         Assert.Contains("validationSigningRequired = true", source);
-        Assert.Contains("MarkCanonicalDirtyAsync", source);
+        Assert.Contains("newPassportRequired = true", source);
+        Assert.Contains("UpdateBatteryFieldsAsync", source);
+        Assert.Contains("[HttpPost(\"batteries/{batteryId}/passports\")]", source);
+        Assert.Contains("[HttpPost(\"passports/{passportId}/validate\")]", source);
+        Assert.Contains("[HttpPost(\"passports/{passportId}/sign\")]", source);
+        Assert.Contains("[HttpPost(\"passports/{passportId}/publish\")]", source);
+        Assert.DoesNotContain("[HttpPatch(\"batteries/{passportId}/battery-version\")]", source);
         Assert.DoesNotContain("[HttpPatch(\"batteries/{passportId}/software\")]", source);
         Assert.DoesNotContain("softwareVersion is required", source);
     }
@@ -37,7 +43,7 @@ public sealed class ExternalApiBatteryVersionTests
 
         Assert.DoesNotContain("/software", markup);
         Assert.DoesNotContain("patchSoftwareVersion", markup);
-        Assert.Contains("Battery family and software parameters", markup);
+        Assert.Contains("Battery ID, family, and software parameters", markup);
     }
 
     [Fact]

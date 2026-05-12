@@ -25,12 +25,13 @@ public class HelpController : Controller
     {
         var readTokenDocument = await _externalApiRepository.GetTokenByIdAsync(ExternalApiInitializer.SampleReadTokenId, cancellationToken);
         var readWriteTokenDocument = await _externalApiRepository.GetTokenByIdAsync(ExternalApiInitializer.SampleReadWriteTokenId, cancellationToken);
-        var samplePassportId = await ResolveSamplePassportIdAsync(cancellationToken);
+        var sampleIds = await ResolveSampleIdsAsync(cancellationToken);
 
         var model = new ExternalApiHelpViewModel
         {
             BasePath = "/api/external/v1",
-            SamplePassportId = samplePassportId,
+            SampleBatteryId = sampleIds.BatteryId,
+            SamplePassportId = sampleIds.PassportId,
             SampleReadToken = readTokenDocument != null
                 ? _externalApiRepository.RevealToken(readTokenDocument)
                 : ExternalApiInitializer.SampleReadTokenValue,
@@ -42,18 +43,25 @@ public class HelpController : Controller
         return View(model);
     }
 
-    private async Task<string> ResolveSamplePassportIdAsync(CancellationToken cancellationToken)
+    private async Task<(string BatteryId, string PassportId)> ResolveSampleIdsAsync(CancellationToken cancellationToken)
     {
-        var preferredPassport = await _passportRepository.GetSummaryAsync(PreferredSamplePassportId, cancellationToken);
-        if (preferredPassport != null && string.IsNullOrWhiteSpace(preferredPassport.ClusterId))
+        var preferredPassport = await _passportRepository.GetByPassportIdAsync(PreferredSamplePassportId, cancellationToken);
+        if (preferredPassport != null && string.IsNullOrWhiteSpace(BsonHelpers.GetString(preferredPassport, "clusterId")))
         {
-            return preferredPassport.PassportId;
+            return ToSampleIds(preferredPassport);
         }
 
-        var passports = await _passportRepository.SearchAsync(string.Empty, includeArchived: false, cancellationToken);
-        return passports
-            .FirstOrDefault(passport => string.IsNullOrWhiteSpace(passport.ClusterId))
-            ?.PassportId
-            ?? ExternalApiInitializer.SamplePassportId;
+        var passports = await _passportRepository.SearchDocumentsAsync(string.Empty, includeArchived: false, cancellationToken);
+        var passport = passports.FirstOrDefault(passport => string.IsNullOrWhiteSpace(BsonHelpers.GetString(passport, "clusterId")));
+        return passport != null
+            ? ToSampleIds(passport)
+            : (ExternalApiInitializer.SamplePassportId, ExternalApiInitializer.SamplePassportId);
+    }
+
+    private static (string BatteryId, string PassportId) ToSampleIds(MongoDB.Bson.BsonDocument passport)
+    {
+        var passportId = BsonHelpers.GetString(passport, "passportId");
+        var batteryId = BsonHelpers.GetString(passport, "batteryId");
+        return (string.IsNullOrWhiteSpace(batteryId) ? passportId : batteryId, passportId);
     }
 }

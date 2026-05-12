@@ -17,7 +17,11 @@
                 <code>@Model.BasePath</code>
             </div>
             <div>
-                <p class="mb-1 text-secondary small">Sample passport ID for these tokens</p>
+                <p class="mb-1 text-secondary small">Sample Battery ID for these tokens</p>
+                <code>@Model.SampleBatteryId</code>
+            </div>
+            <div>
+                <p class="mb-1 text-secondary small">Sample Passport ID for trust actions</p>
                 <code>@Model.SamplePassportId</code>
             </div>
             <div>
@@ -60,26 +64,26 @@
                 </article>
 
                 <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{passportId}</h3>
-                    <p class="mb-0">Read the full battery passport, including app metadata, aspects, registry data, schema versions, and validation details.</p>
+                    <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{batteryId}</h3>
+                    <p class="mb-0">Read the latest passport snapshot for a Battery ID, including app metadata, aspects, registry data, schema versions, and validation details.</p>
                 </article>
 
                 <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{passportId}/section/{sectionName}</h3>
+                    <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{batteryId}/section/{sectionName}</h3>
                     <p class="mb-1">Read one section only.</p>
                     <p class="mb-1">Supported section names: <code>general</code>, <code>materialComposition</code>, <code>performance</code>, <code>circularity</code>, <code>supplyChain</code>, <code>carbonFootprint</code>, <code>compliance</code>, <code>operations</code>, <code>display</code>, <code>full</code>.</p>
-                    <pre class="bp-help-pre mb-0"><code>GET @Model.BasePath/batteries/@Model.SamplePassportId/section/performance
-GET @Model.BasePath/batteries/@Model.SamplePassportId/section/circularity</code></pre>
+                    <pre class="bp-help-pre mb-0"><code>GET @Model.BasePath/batteries/@Model.SampleBatteryId/section/performance
+GET @Model.BasePath/batteries/@Model.SampleBatteryId/section/circularity</code></pre>
                 </article>
 
                 <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{passportId}/values?path=...</h3>
+                    <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{batteryId}/values?path=...</h3>
                     <p class="mb-1">Read one or more specific values by alias or exact document path.</p>
                     <p class="mb-1">Aliases: <code>ratedEnergy</code>, <code>ratedCapacity</code>, <code>ratedMaximumPower</code>, <code>nominalVoltage</code>, <code>nickelMass</code>, <code>currentConsumptionKwh</code>, <code>currentChargeLevelPct</code>, <code>currentVoltageV</code>, <code>currentCurrentA</code>, <code>softwareVersion</code>, <code>softwareReleaseDate</code>, <code>softwareLatestUpdate</code>, <code>locationOfUse</code>, <code>contactPerson</code>, <code>isActive</code>.</p>
-                    <p class="mb-1">Need the full set of readable values (not only aliases)? Open <a id="supported-values-link" href="@($"{Model.BasePath}/batteries/{Model.SamplePassportId}/paths?section=full")&amp;includeContainers=true" target="_blank" rel="noopener noreferrer"><code>@Model.BasePath/batteries/@Model.SamplePassportId/paths?section=full&amp;includeContainers=true</code></a> in a new tab.</p>
-                    <pre class="bp-help-pre mb-2"><code>GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=ratedEnergy&amp;path=ratedCapacity
-GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=nickelMass
-GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=aspects.circularity.payload</code></pre>
+                    <p class="mb-1">Need the full set of readable values (not only aliases)? Open <a id="supported-values-link" href="@($"{Model.BasePath}/batteries/{Model.SampleBatteryId}/paths?section=full")&amp;includeContainers=true" target="_blank" rel="noopener noreferrer"><code>@Model.BasePath/batteries/@Model.SampleBatteryId/paths?section=full&amp;includeContainers=true</code></a> in a new tab.</p>
+                    <pre class="bp-help-pre mb-2"><code>GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=ratedEnergy&amp;path=ratedCapacity
+GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=nickelMass
+GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=aspects.circularity.payload</code></pre>
                     <pre class="bp-help-pre mb-0"><code>{
   "message": "Values read successfully",
   "data": {
@@ -93,34 +97,34 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=aspects.circul
                 </article>
 
                 <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2">Battery family and software parameters</h3>
+                    <h3 class="h6 mb-2">Battery ID, family, and software parameters</h3>
                     <p class="mb-1">Product Template is the internal implementation name for Battery Family. In the UI and tester workflows, Product Template and Battery Family mean the same stored template concept.</p>
-                    <p class="mb-1">Each passport is created from a MongoDB Battery Family baseline such as Compact 7M, Compact 13M, or Core. Battery families contain battery versions, and each battery version carries software version, released date, and latest update as parameters.</p>
-                    <p class="mb-1">The selected battery version provides shared battery data, required/optional policy, evidence references, battery image, and software release metadata.</p>
-                    <p class="mb-1">The public summary and the detailed General tab software parameters show the software version, released date, and latest update copied from the selected battery version.</p>
-                    <p class="mb-0">There is no software update endpoint. Battery version changes require validation and signing because the battery version is signed passport data.</p>
+                    <p class="mb-1">Each passport is created from a MongoDB Battery Family baseline such as Compact 7M, Compact 13M, or Core. Battery families contain Battery Models, and each Battery Model carries software version, released date, and latest update as parameters.</p>
+                    <p class="mb-1">The selected Battery Model provides shared battery data, required/optional policy, evidence references, battery image, and software release metadata.</p>
+                    <p class="mb-1">The public summary and the detailed General tab software parameters show the software version, released date, and latest update copied from the selected Battery Model.</p>
+                    <p class="mb-0">There is no software update endpoint. Battery Model changes require validation and signing because the Battery Model is signed passport data.</p>
                 </article>
 
                 <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{passportId}/paths?section=full</h3>
+                    <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{batteryId}/paths?section=full</h3>
                     <p class="mb-1">Discover all readable paths for a battery, or for one section, then reuse those paths with <code>/values</code>.</p>
                     <p class="mb-1">Query options: <code>section</code> and <code>includeContainers=true</code>.</p>
-                    <pre class="bp-help-pre mb-2"><code>GET @Model.BasePath/batteries/@Model.SamplePassportId/paths
-GET @Model.BasePath/batteries/@Model.SamplePassportId/paths?section=performance
-GET @Model.BasePath/batteries/@Model.SamplePassportId/paths?section=materialComposition&amp;includeContainers=true</code></pre>
+                    <pre class="bp-help-pre mb-2"><code>GET @Model.BasePath/batteries/@Model.SampleBatteryId/paths
+GET @Model.BasePath/batteries/@Model.SampleBatteryId/paths?section=performance
+GET @Model.BasePath/batteries/@Model.SampleBatteryId/paths?section=materialComposition&amp;includeContainers=true</code></pre>
                     <p class="mb-1">Copy any item from the returned <code>paths</code> array and pass it as a repeated <code>path</code> query parameter to <code>/values</code>:</p>
                     <pre class="bp-help-pre mb-0"><code># Example: read values returned from /paths?section=performance
-GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=aspects.performanceAndDurability.payload.batteryTechicalProperties.ratedEnergy&amp;path=aspects.performanceAndDurability.payload.batteryTechicalProperties.ratedCapacity
+GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=aspects.performanceAndDurability.payload.batteryTechicalProperties.ratedEnergy&amp;path=aspects.performanceAndDurability.payload.batteryTechicalProperties.ratedCapacity
 
 # Example: read an indexed array value discovered by /paths
-GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=aspects.materialComposition.payload.batteryMaterials.0.batteryMaterialMass
+GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=aspects.materialComposition.payload.batteryMaterials.0.batteryMaterialMass
 
 # Example: read operations objects discovered by /paths?section=operations
-GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations.locationOfUse&amp;path=app.operations.contactPerson</code></pre>
+GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.locationOfUse&amp;path=app.operations.contactPerson</code></pre>
                 </article>
 
                 <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">POST</span> @Model.BasePath/batteries/{passportId}/telemetry</h3>
+                    <h3 class="h6 mb-2"><span class="bp-help-method">POST</span> @Model.BasePath/batteries/{batteryId}/telemetry</h3>
                     <p class="mb-1">Write telemetry point(s). Supports single object, array, or <code>{ "points": [...] }</code>.</p>
                     <p class="mb-1">Writable telemetry fields: <code>currentConsumptionKwh</code>, <code>currentChargeLevelPct</code>, <code>currentVoltageV</code>, <code>currentCurrentA</code>, optional <code>measuredAt</code>.</p>
                     <pre class="bp-help-pre mb-0"><code>{
@@ -137,12 +141,12 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
                 </article>
 
                 <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{passportId}/telemetry/history?hours=24</h3>
+                    <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{batteryId}/telemetry/history?hours=24</h3>
                     <p class="mb-0">Read telemetry history. <code>hours</code> must be in <code>1..168</code>.</p>
                 </article>
 
                 <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">PATCH</span> @Model.BasePath/batteries/{passportId}/operations</h3>
+                    <h3 class="h6 mb-2"><span class="bp-help-method">PATCH</span> @Model.BasePath/batteries/{batteryId}/operations</h3>
                     <p class="mb-1">Patch writable operations metadata.</p>
                     <p class="mb-1">Writable fields: <code>locationOfUse</code>, <code>contactPerson</code>, <code>isActive</code>.</p>
                     <pre class="bp-help-pre mb-0"><code>{
@@ -164,20 +168,30 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
                 </article>
 
                 <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">PATCH</span> @Model.BasePath/batteries/{passportId}/battery-version</h3>
-                    <p class="mb-1">Change only the Battery version inside the passport's existing Battery Family. Battery Family cannot be changed by API.</p>
-                    <p class="mb-1">The response states that validation and signing are required. Telemetry changes do not require signing.</p>
-                    <pre class="bp-help-pre mb-0"><code>{ "batteryVersion": "2.0" }</code></pre>
+                    <h3 class="h6 mb-2"><span class="bp-help-method">PATCH</span> @Model.BasePath/batteries/{batteryId}/battery-model</h3>
+                    <p class="mb-1">Change the Battery Model on the battery record. Create a new passport snapshot, then validate, sign, and publish it to expose the updated snapshot.</p>
+                    <p class="mb-1">The response states that validation, signing, and a new passport are required. Telemetry changes do not require signing.</p>
+                    <pre class="bp-help-pre mb-0"><code>{ "batteryModel": "2.0" }</code></pre>
                 </article>
 
                 <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">POST</span> @Model.BasePath/batteries/{passportId}/validate</h3>
+                    <h3 class="h6 mb-2"><span class="bp-help-method">POST</span> @Model.BasePath/batteries/{batteryId}/passports</h3>
+                    <p class="mb-0">Create a new passport snapshot for the Battery ID. The response returns the new Passport ID.</p>
+                </article>
+
+                <article class="bp-help-doc-item">
+                    <h3 class="h6 mb-2"><span class="bp-help-method">POST</span> @Model.BasePath/passports/{passportId}/validate</h3>
                     <p class="mb-0">Validate with a Sign token. Sign tokens can validate and sign only for their scoped clusters.</p>
                 </article>
 
                 <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">POST</span> @Model.BasePath/batteries/{passportId}/sign</h3>
+                    <h3 class="h6 mb-2"><span class="bp-help-method">POST</span> @Model.BasePath/passports/{passportId}/sign</h3>
                     <p class="mb-0">Sign with a Sign token. The first publication still requires explicit publish in the app; after a passport has been published once, later successful signs auto-publish the new revision.</p>
+                </article>
+
+                <article class="bp-help-doc-item">
+                    <h3 class="h6 mb-2"><span class="bp-help-method">POST</span> @Model.BasePath/passports/{passportId}/publish</h3>
+                    <p class="mb-0">Publish with a Sign token after validation and signing.</p>
                 </article>
 
             </div>
@@ -202,9 +216,10 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
                         <option value="readHistory24h">Read telemetry history 24h</option>
                         <option value="writeTelemetryPoint">Write telemetry point</option>
                         <option value="patchOperations">Patch operations metadata</option>
-                        <option value="patchBatteryVersion">Patch Battery version</option>
+                        <option value="patchBatteryModel">Patch Battery Model</option>
                         <option value="validatePassport">Validate passport</option>
                         <option value="signPassport">Sign passport</option>
+                        <option value="publishPassport">Publish passport</option>
                     </select>
                 </label>
                 <label>HTTP method
@@ -221,7 +236,7 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
                     </select>
                 </label>
                 <label class="bp-span-all">Path
-                    <input id="tester-path" value="@Model.BasePath/batteries/@Model.SamplePassportId" />
+                    <input id="tester-path" value="@Model.BasePath/batteries/@Model.SampleBatteryId" />
                 </label>
                 <label>Token preset
                     <select id="tester-token-preset">
@@ -271,6 +286,7 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
     <script>
         (() => {
             const basePath = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.BasePath));
+            const sampleBatteryId = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleBatteryId));
             const samplePassportId = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SamplePassportId));
             const sampleReadToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleReadToken));
             const sampleReadWriteToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleReadWriteToken));
@@ -317,43 +333,43 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
             const templates = {
                 readFull: {
                     method: 'GET',
-                    path: `${basePath}/batteries/${samplePassportId}`,
+                    path: `${basePath}/batteries/${sampleBatteryId}`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
                 readSectionPerformance: {
                     method: 'GET',
-                    path: `${basePath}/batteries/${samplePassportId}/section/performance`,
+                    path: `${basePath}/batteries/${sampleBatteryId}/section/performance`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
                 readSectionCircularity: {
                     method: 'GET',
-                    path: `${basePath}/batteries/${samplePassportId}/section/circularity`,
+                    path: `${basePath}/batteries/${sampleBatteryId}/section/circularity`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
                 readValuesAliases: {
                     method: 'GET',
-                    path: `${basePath}/batteries/${samplePassportId}/values?path=ratedEnergy&path=ratedCapacity&path=nickelMass`,
+                    path: `${basePath}/batteries/${sampleBatteryId}/values?path=ratedEnergy&path=ratedCapacity&path=nickelMass`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
                 readPathsAll: {
                     method: 'GET',
-                    path: `${basePath}/batteries/${samplePassportId}/paths?section=full`,
+                    path: `${basePath}/batteries/${sampleBatteryId}/paths?section=full`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
                 readHistory24h: {
                     method: 'GET',
-                    path: `${basePath}/batteries/${samplePassportId}/telemetry/history?hours=24`,
+                    path: `${basePath}/batteries/${sampleBatteryId}/telemetry/history?hours=24`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
                 writeTelemetryPoint: {
                     method: 'POST',
-                    path: `${basePath}/batteries/${samplePassportId}/telemetry`,
+                    path: `${basePath}/batteries/${sampleBatteryId}/telemetry`,
                     body: JSON.stringify({
                         points: [
                             {
@@ -368,7 +384,7 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
                 },
                 patchOperations: {
                     method: 'PATCH',
-                    path: `${basePath}/batteries/${samplePassportId}/operations`,
+                    path: `${basePath}/batteries/${sampleBatteryId}/operations`,
                     body: JSON.stringify({
                         isActive: true,
                         locationOfUse: {
@@ -383,23 +399,29 @@ GET @Model.BasePath/batteries/@Model.SamplePassportId/values?path=app.operations
                     }, null, 2),
                     tokenPreset: 'sample-read-write'
                 },
-                patchBatteryVersion: {
+                patchBatteryModel: {
                     method: 'PATCH',
-                    path: `${basePath}/batteries/${samplePassportId}/battery-version`,
+                    path: `${basePath}/batteries/${sampleBatteryId}/battery-model`,
                     body: JSON.stringify({
-                        batteryVersion: '2.0'
+                        batteryModel: '2.0'
                     }, null, 2),
                     tokenPreset: 'sample-read-write'
                 },
                 validatePassport: {
                     method: 'POST',
-                    path: `${basePath}/batteries/${samplePassportId}/validate`,
+                    path: `${basePath}/passports/${samplePassportId}/validate`,
                     body: '',
                     tokenPreset: 'custom'
                 },
                 signPassport: {
                     method: 'POST',
-                    path: `${basePath}/batteries/${samplePassportId}/sign`,
+                    path: `${basePath}/passports/${samplePassportId}/sign`,
+                    body: '',
+                    tokenPreset: 'custom'
+                },
+                publishPassport: {
+                    method: 'POST',
+                    path: `${basePath}/passports/${samplePassportId}/publish`,
                     body: '',
                     tokenPreset: 'custom'
                 }

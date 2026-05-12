@@ -85,7 +85,7 @@ public sealed class Phase6ADocumentationTests
         Assert.Contains("software parameters", apiHelp);
         Assert.Contains("Battery Family baseline", apiHelp);
         Assert.Contains("no software update endpoint", apiHelp);
-        Assert.Contains("Battery version changes require validation and signing", apiHelp);
+        Assert.Contains("Battery Model changes require validation and signing", apiHelp);
 
         Assert.Contains("Software parameters", adminHelp);
         Assert.Contains("Detailed report General tab", adminHelp);

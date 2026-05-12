@@ -40,6 +40,8 @@ public sealed class ExternalApiTokenContext
 
 public sealed class ExternalApiRepository
 {
+    public const string ValidateSignPublish = "validateSignPublish";
+
     private readonly MongoContext _mongoContext;
     private readonly ExternalApiSecurityService _securityService;
 
