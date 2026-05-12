@@ -560,7 +560,7 @@ public class AdminController : Controller
         try
         {
             var result = await _productTemplateService.ResetTemplateDemoAsync(CurrentActor(), cancellationToken);
-            TempData["StatusMessage"] = $"Product template demo reset completed: {result.PassportCount} passports restored from MongoDB product templates.";
+            TempData["StatusMessage"] = $"Product template demo reset completed: seeded {result.BatteryCount} batteries and {result.PassportCount} passport snapshots from MongoDB product templates.";
             return Redirect("/admin/clusters?tab=products");
         }
         catch (Exception exception) when (IsTrustPersistenceFailure(exception))

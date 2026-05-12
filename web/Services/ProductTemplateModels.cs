@@ -113,7 +113,11 @@ public sealed class ProductTemplatePushResult
 public sealed record ProductTemplateResetResult(
     int PassportCount,
     IReadOnlyList<string> PassportIds,
-    string ResetAt);
+    string ResetAt)
+{
+    public int BatteryCount { get; init; }
+    public IReadOnlyList<string> BatteryIds { get; init; } = [];
+}
 
 public static class BatteryProductTemplateCatalog
 {
@@ -506,6 +510,45 @@ public static class ProductTemplatePassportBuilder
         };
         completed.Remove("_id");
         return completed;
+    }
+
+    public static BsonDocument BuildBatteryFromTemplate(
+        string batteryId,
+        BatteryProductTemplate product,
+        BatteryProductVersion productVersion,
+        ProductTemplateBatteryIdentity identity,
+        string now)
+    {
+        var normalizedNow = string.IsNullOrWhiteSpace(now) ? DateTimeOffset.UtcNow.ToString("O") : now;
+        var battery = BuildPassportFromTemplate(batteryId, product, productVersion, identity, normalizedNow);
+        var display = EnsureDocument(EnsureDocument(battery, "app"), "display");
+        var productNode = EnsureDocument(EnsureDocument(battery, "app"), "product");
+
+        battery["batteryId"] = batteryId;
+        battery["clusterId"] = identity.ClusterId;
+        battery["identity"] = new BsonDocument
+        {
+            ["batteryFamily"] = product.ProductName,
+            ["batteryModel"] = productVersion.Version,
+            ["modelNumber"] = identity.ModelNumber,
+            ["serialNumber"] = BsonHelpers.GetString(display, "serialNumber"),
+            ["displayName"] = identity.DisplayName,
+            ["facilityId"] = identity.FacilityId,
+            ["productId"] = product.ProductId,
+            ["productVersion"] = productVersion.Version,
+            ["softwareVersion"] = productVersion.SoftwareVersion
+        };
+        battery["createdAt"] = normalizedNow;
+        battery["updatedAt"] = normalizedNow;
+        battery["updatedBy"] = "product-template-reset";
+        productNode["batteryModel"] = productVersion.Version;
+
+        battery.Remove("passportId");
+        battery.Remove("registryInfo");
+        battery.Remove("validation");
+        battery.Remove("trust");
+        battery.Remove("_id");
+        return battery;
     }
 
     public static BsonDocument BuildTemplateBaseline(BsonDocument passport)

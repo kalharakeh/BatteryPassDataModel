@@ -12,6 +12,7 @@ public sealed class ExternalApiInitializer
 
     private readonly ExternalApiRepository _externalApiRepository;
     private readonly PassportRepository _passportRepository;
+    private readonly BatteryRepository _batteryRepository;
     private readonly BatteryTelemetryRepository _batteryTelemetryRepository;
     private readonly ClusterRepository _clusterRepository;
     private readonly PassportDataNormalizationService _passportDataNormalizationService;
@@ -21,12 +22,14 @@ public sealed class ExternalApiInitializer
     public ExternalApiInitializer(
         ExternalApiRepository externalApiRepository,
         PassportRepository passportRepository,
+        BatteryRepository batteryRepository,
         BatteryTelemetryRepository batteryTelemetryRepository,
         ClusterRepository clusterRepository,
         PassportDataNormalizationService passportDataNormalizationService)
     {
         _externalApiRepository = externalApiRepository;
         _passportRepository = passportRepository;
+        _batteryRepository = batteryRepository;
         _batteryTelemetryRepository = batteryTelemetryRepository;
         _clusterRepository = clusterRepository;
         _passportDataNormalizationService = passportDataNormalizationService;
@@ -48,6 +51,7 @@ public sealed class ExternalApiInitializer
             }
 
             await _externalApiRepository.EnsureIndexesAsync(cancellationToken);
+            await _batteryRepository.EnsureIndexesAsync(cancellationToken);
             await _batteryTelemetryRepository.EnsureIndexesAsync(cancellationToken);
             await EnsureSamplePassportAsync(cancellationToken);
             await EnsureBatteryImagesAndCategoriesAsync(cancellationToken);

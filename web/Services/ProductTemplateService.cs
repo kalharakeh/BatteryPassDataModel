@@ -28,8 +28,22 @@ public sealed class ProductTemplateService
             ["cluster-fleet-operations"] = ("Fleet Operations Cluster", "fleet.user@example.test", "fleet.admin@example.test")
         };
 
+    private sealed record SeedBatteryDefinition(
+        string ProductId,
+        string ClusterId,
+        string ModelNumber,
+        string SerialNumber,
+        string DisplayName,
+        string FacilityId,
+        IReadOnlyList<SeedPassportSnapshot> Snapshots);
+
+    private sealed record SeedPassportSnapshot(string BatteryModel, int SnapshotOffsetDays);
+
     private readonly MongoContext _mongoContext;
     private readonly PassportRepository _passportRepository;
+    private readonly BatteryRepository _batteryRepository;
+    private readonly BatteryPassportSnapshotService _batteryPassportSnapshotService;
+    private readonly BatteryIdService _batteryIdService;
     private readonly ClusterRepository _clusterRepository;
     private readonly DataCompletionPolicyService _dataCompletionPolicyService;
     private readonly PassportValidationService _passportValidationService;
@@ -39,6 +53,9 @@ public sealed class ProductTemplateService
     public ProductTemplateService(
         MongoContext mongoContext,
         PassportRepository passportRepository,
+        BatteryRepository batteryRepository,
+        BatteryPassportSnapshotService batteryPassportSnapshotService,
+        BatteryIdService batteryIdService,
         ClusterRepository clusterRepository,
         DataCompletionPolicyService dataCompletionPolicyService,
         PassportValidationService passportValidationService,
@@ -47,6 +64,9 @@ public sealed class ProductTemplateService
     {
         _mongoContext = mongoContext;
         _passportRepository = passportRepository;
+        _batteryRepository = batteryRepository;
+        _batteryPassportSnapshotService = batteryPassportSnapshotService;
+        _batteryIdService = batteryIdService;
         _clusterRepository = clusterRepository;
         _dataCompletionPolicyService = dataCompletionPolicyService;
         _passportValidationService = passportValidationService;
@@ -287,13 +307,16 @@ public sealed class ProductTemplateService
         await EnsureDefaultTemplatesAsync(actor, cancellationToken, force: true);
         await EnsureFixedClustersAndUsersAsync(cancellationToken);
 
-        var collection = PassportCollection();
-        if (collection == null)
+        var passportCollection = PassportCollection();
+        var batteryCollection = BatteryCollection();
+        if (passportCollection == null || batteryCollection == null)
         {
             return new ProductTemplateResetResult(0, [], DateTimeOffset.UtcNow.ToString("O"));
         }
 
-        var existingIds = await collection
+        await _batteryRepository.EnsureIndexesAsync(cancellationToken);
+
+        var existingIds = await passportCollection
             .Find(Builders<BsonDocument>.Filter.Empty)
             .Project(Builders<BsonDocument>.Projection.Include("passportId").Exclude("_id"))
             .ToListAsync(cancellationToken);
@@ -302,81 +325,121 @@ public sealed class ProductTemplateService
             .Where(passportId => !string.IsNullOrWhiteSpace(passportId))
             .ToList();
         await _auditRevisionService.DeleteDemoLedgerAsync(allExistingIds.Concat(FixedPassportIds).ToArray(), cancellationToken);
-        await collection.DeleteManyAsync(Builders<BsonDocument>.Filter.Empty, cancellationToken);
+        await passportCollection.DeleteManyAsync(Builders<BsonDocument>.Filter.Empty, cancellationToken);
+        await batteryCollection.DeleteManyAsync(Builders<BsonDocument>.Filter.Empty, cancellationToken);
+        await _mongoContext.Database!.GetCollection<BsonDocument>("batteryTelemetry").DeleteManyAsync(Builders<BsonDocument>.Filter.Empty, cancellationToken);
 
-        var resetAt = DateTimeOffset.UtcNow.ToString("O");
-        var seeds = new[]
+        var resetInstant = DateTimeOffset.UtcNow;
+        var resetAt = resetInstant.ToString("O");
+
+        // Seeded batteries: the north customer seed intentionally creates multiple passports
+        // so historical/latest behavior is visible immediately after a reset.
+        var batterySeeds = new SeedBatteryDefinition[]
         {
-            (PassportId: "did:web:acme.battery.pass:0226151e-949c-d067-8ef3-162431e28976", ProductId: "compact-7m", ProductVersion: "1.0", SoftwareVersion: "2.0", ClusterId: string.Empty, ModelNumber: "CP7M-DEMO-001", SerialNumber: "SN-0226151E", DisplayName: "Compact 7M unassigned demonstrator battery", FacilityId: "DEFAULT-LINE-01"),
-            (PassportId: "did:web:acme.battery.pass:sample-customer-north-001", ProductId: "compact-7m", ProductVersion: "1.0", SoftwareVersion: "2.0", ClusterId: "cluster-north-operations", ModelNumber: "CP7M-NORTH-001", SerialNumber: "SN-NORTH-001", DisplayName: "North Compact 7M customer battery v1", FacilityId: "NORTH-LINE-01"),
-            (PassportId: "did:web:acme.battery.pass:sample-customer-north-002", ProductId: "compact-7m", ProductVersion: "2.0", SoftwareVersion: "4.0", ClusterId: "cluster-north-operations", ModelNumber: "CP7M-NORTH-002", SerialNumber: "SN-NORTH-002", DisplayName: "North Compact 7M customer battery v2", FacilityId: "NORTH-LINE-02"),
-            (PassportId: "did:web:acme.battery.pass:sample-customer-south-001", ProductId: "compact-13m", ProductVersion: "1.0", SoftwareVersion: "2.0", ClusterId: "cluster-south-operations", ModelNumber: "CP13M-SOUTH-001", SerialNumber: "SN-SOUTH-001", DisplayName: "South Compact 13M customer battery v1", FacilityId: "SOUTH-LINE-01"),
-            (PassportId: "did:web:acme.battery.pass:sample-customer-south-002", ProductId: "compact-13m", ProductVersion: "2.0", SoftwareVersion: "4.0", ClusterId: "cluster-south-operations", ModelNumber: "CP13M-SOUTH-002", SerialNumber: "SN-SOUTH-002", DisplayName: "South Compact 13M customer battery v2", FacilityId: "SOUTH-LINE-02"),
-            (PassportId: "did:web:acme.battery.pass:sample-end-user-fleet-001", ProductId: "core", ProductVersion: "1.0", SoftwareVersion: "2.0", ClusterId: "cluster-fleet-operations", ModelNumber: "CORE-FLEET-001", SerialNumber: "SN-FLEET-001", DisplayName: "Fleet Core customer battery v1", FacilityId: "FLEET-LINE-01"),
-            (PassportId: "did:web:acme.battery.pass:sample-end-user-fleet-002", ProductId: "core", ProductVersion: "2.0", SoftwareVersion: "4.0", ClusterId: "cluster-fleet-operations", ModelNumber: "CORE-FLEET-002", SerialNumber: "SN-FLEET-002", DisplayName: "Fleet Core customer battery v2", FacilityId: "FLEET-LINE-02")
+            new("compact-7m", string.Empty, "CP7M-DEMO-001", "SN-0226151E", "Compact 7M unassigned demonstrator battery", "DEFAULT-LINE-01", [new("1.0", -45)]),
+            new("compact-7m", "cluster-north-operations", "CP7M-NORTH-001", "SN-NORTH-001", "North Compact 7M customer battery", "NORTH-LINE-01", [new("1.0", -30), new("2.0", 0)]),
+            new("compact-7m", "cluster-north-operations", "CP7M-NORTH-002", "SN-NORTH-002", "North Compact 7M customer battery 2", "NORTH-LINE-02", [new("2.0", -4)]),
+            new("compact-13m", "cluster-south-operations", "CP13M-SOUTH-001", "SN-SOUTH-001", "South Compact 13M customer battery", "SOUTH-LINE-01", [new("1.0", -18)]),
+            new("compact-13m", "cluster-south-operations", "CP13M-SOUTH-002", "SN-SOUTH-002", "South Compact 13M customer battery 2", "SOUTH-LINE-02", [new("2.0", -2)]),
+            new("core", "cluster-fleet-operations", "CORE-FLEET-001", "SN-FLEET-001", "Fleet Core customer battery", "FLEET-LINE-01", [new("1.0", -12)]),
+            new("core", "cluster-fleet-operations", "CORE-FLEET-002", "SN-FLEET-002", "Fleet Core customer battery 2", "FLEET-LINE-02", [new("2.0", -1)])
         };
 
         var products = await ListProductsAsync(cancellationToken);
         var productsById = products.ToDictionary(product => product.ProductId, StringComparer.OrdinalIgnoreCase);
+        var batteryIds = new List<string>();
+        var passportIds = new List<string>();
 
-        foreach (var seed in seeds)
+        foreach (var seed in batterySeeds)
         {
             var product = productsById.TryGetValue(seed.ProductId, out var selectedProduct)
                 ? selectedProduct
                 : BatteryProductTemplateCatalog.DefaultProduct;
-            var productVersion = product.ProductVersions.FirstOrDefault(version => version.Version.Equals(seed.ProductVersion, StringComparison.OrdinalIgnoreCase))
-                ?? product.LatestProductVersion;
-            var document = ProductTemplatePassportBuilder.BuildPassportFromTemplate(
-                seed.PassportId,
-                product,
-                productVersion,
-                new ProductTemplateBatteryIdentity
-                {
-                    ClusterId = seed.ClusterId,
-                    ModelNumber = seed.ModelNumber,
-                    SerialNumber = seed.SerialNumber,
-                    DisplayName = seed.DisplayName,
-                    FacilityId = seed.FacilityId,
-                    ManufacturingDate = resetAt[..10]
-                },
-                resetAt);
-            ApplyTemplateDocumentReferences(document, await GetProductDocumentAsync(product.ProductId, cancellationToken));
-            document["app"]["templateBaseline"] = ProductTemplatePassportBuilder.BuildTemplateBaseline(document);
-            await _passportRepository.ReplaceAsync(seed.PassportId, document, cancellationToken);
+            var productDocument = await GetProductDocumentAsync(product.ProductId, cancellationToken);
+            var batteryId = _batteryIdService.CreateBatteryId(product.ProductName, seed.SerialNumber);
+            batteryIds.Add(batteryId);
 
-            var policy = await _dataCompletionPolicyService.GetPolicyForPassportAsync(document, cancellationToken);
-            var summary = _passportValidationService.Validate(document, policy);
-            var signature = _passportTrustService.Sign(document, actor);
-            var revision = await _auditRevisionService.CreateSignedRevisionAsync(
-                seed.PassportId,
-                signature.Snapshot,
-                signature.Hash,
-                signature.Proof,
-                actor,
-                signature.SignedAt,
-                cancellationToken);
-            var revisionId = BsonHelpers.GetString(revision, "revisionId");
-            await _passportRepository.UpdateTrustSignatureAsync(seed.PassportId, summary, signature.Hash, signature.Proof, revisionId, signature.SignedAt, cancellationToken);
-            await _passportRepository.PublishPassportAsync(seed.PassportId, revisionId, resetAt, $"sha256:{signature.Hash}", signature.Proof, cancellationToken);
-            await _auditRevisionService.MarkRevisionPublishedAsync(revisionId, resetAt, cancellationToken);
-            await _auditRevisionService.AppendAuditEventAsync(
-                seed.PassportId,
-                "passport.productTemplate.seeded",
-                actor,
-                "admin",
-                "product-template-reset",
-                "Passport seeded from product template.",
-                new BsonDocument
-                {
-                    ["productId"] = seed.ProductId,
-                    ["productVersion"] = seed.ProductVersion,
-                    ["softwareVersion"] = seed.SoftwareVersion,
-                    ["resetAt"] = resetAt
-                },
-                cancellationToken);
+            foreach (var snapshotSeed in seed.Snapshots.OrderBy(snapshot => snapshot.SnapshotOffsetDays))
+            {
+                var snapshotInstant = resetInstant.AddDays(snapshotSeed.SnapshotOffsetDays);
+                var snapshotAt = snapshotInstant.ToString("O");
+                var productVersion = product.ProductVersions.FirstOrDefault(version => version.Version.Equals(snapshotSeed.BatteryModel, StringComparison.OrdinalIgnoreCase))
+                    ?? product.LatestProductVersion;
+                var battery = ProductTemplatePassportBuilder.BuildBatteryFromTemplate(
+                    batteryId,
+                    product,
+                    productVersion,
+                    new ProductTemplateBatteryIdentity
+                    {
+                        ClusterId = seed.ClusterId,
+                        ModelNumber = seed.ModelNumber,
+                        SerialNumber = seed.SerialNumber,
+                        DisplayName = seed.DisplayName,
+                        FacilityId = seed.FacilityId,
+                        ManufacturingDate = snapshotAt[..10]
+                    },
+                    snapshotAt);
+                ApplyTemplateDocumentReferences(battery, productDocument);
+                battery["app"]["templateBaseline"] = ProductTemplatePassportBuilder.BuildTemplateBaseline(battery);
+                await _batteryRepository.ReplaceAsync(batteryId, battery, cancellationToken);
+
+                var passport = await _batteryPassportSnapshotService.CreatePassportSnapshotAsync(battery, actor, snapshotInstant, cancellationToken);
+                ApplyTemplateDocumentReferences(passport, productDocument);
+                passport["app"]["templateBaseline"] = ProductTemplatePassportBuilder.BuildTemplateBaseline(passport);
+                passport.Remove("_id");
+                var passportId = BsonHelpers.GetString(passport, "passportId");
+                await _passportRepository.ReplaceAsync(passportId, passport, cancellationToken);
+                await SignAndPublishSeedPassportAsync(passport, actor, resetAt, seed.Snapshots.Count > 1, cancellationToken);
+                passportIds.Add(passportId);
+            }
         }
 
-        return new ProductTemplateResetResult(seeds.Length, FixedPassportIds, resetAt);
+        return new ProductTemplateResetResult(passportIds.Count, passportIds, resetAt)
+        {
+            BatteryCount = batteryIds.Count,
+            BatteryIds = batteryIds
+        };
+    }
+
+    private async Task SignAndPublishSeedPassportAsync(
+        BsonDocument passport,
+        string actor,
+        string resetAt,
+        bool multiplePassports,
+        CancellationToken cancellationToken)
+    {
+        var passportId = BsonHelpers.GetString(passport, "passportId");
+        var policy = await _dataCompletionPolicyService.GetPolicyForPassportAsync(passport, cancellationToken);
+        var summary = _passportValidationService.Validate(passport, policy);
+        var signature = _passportTrustService.Sign(passport, actor);
+        var revision = await _auditRevisionService.CreateSignedRevisionAsync(
+            passportId,
+            signature.Snapshot,
+            signature.Hash,
+            signature.Proof,
+            actor,
+            signature.SignedAt,
+            cancellationToken);
+        var revisionId = BsonHelpers.GetString(revision, "revisionId");
+        await _passportRepository.UpdateTrustSignatureAsync(passportId, summary, signature.Hash, signature.Proof, revisionId, signature.SignedAt, cancellationToken);
+        await _passportRepository.PublishPassportAsync(passportId, revisionId, resetAt, $"sha256:{signature.Hash}", signature.Proof, cancellationToken);
+        await _auditRevisionService.MarkRevisionPublishedAsync(revisionId, resetAt, cancellationToken);
+        await _auditRevisionService.AppendAuditEventAsync(
+            passportId,
+            "passport.productTemplate.seeded",
+            actor,
+            "admin",
+            "product-template-reset",
+            "Seeded batteries and passport snapshots from product template reset.",
+            new BsonDocument
+            {
+                ["batteryId"] = BsonHelpers.GetString(passport, "batteryId"),
+                ["batteryFamily"] = BsonHelpers.GetString(passport, "snapshot", "batteryFamily"),
+                ["batteryModel"] = BsonHelpers.GetString(passport, "snapshot", "batteryModel"),
+                ["multiplePassports"] = multiplePassports,
+                ["resetAt"] = resetAt
+            },
+            cancellationToken);
     }
 
     public async Task<ProductTemplatePushResult> PushProductVersionAsync(
@@ -674,7 +737,13 @@ public sealed class ProductTemplateService
             return;
         }
 
-        var passportId = Uri.EscapeDataString(BsonHelpers.GetString(passport, "passportId"));
+        var documentOwnerId = BsonHelpers.GetString(passport, "passportId");
+        if (string.IsNullOrWhiteSpace(documentOwnerId))
+        {
+            documentOwnerId = BsonHelpers.GetString(passport, "batteryId");
+        }
+
+        var escapedDocumentOwnerId = Uri.EscapeDataString(documentOwnerId);
         var documents = EnsureDocument(EnsureDocument(passport, "app"), "documents");
         foreach (var reference in references.OfType<BsonDocument>())
         {
@@ -687,7 +756,7 @@ public sealed class ProductTemplateService
             var fileId = BsonHelpers.GetString(reference, "fileId");
             var url = string.IsNullOrWhiteSpace(fileId)
                 ? BsonHelpers.GetString(reference, "url")
-                : $"/api/files/{fileId}?passportId={passportId}";
+                : $"/api/files/{fileId}?passportId={escapedDocumentOwnerId}";
             documents[key] = new BsonDocument
             {
                 ["label"] = BsonHelpers.GetString(reference, "label"),
@@ -721,6 +790,9 @@ public sealed class ProductTemplateService
 
     private IMongoCollection<BsonDocument>? PassportCollection() =>
         _mongoContext.Database?.GetCollection<BsonDocument>("passports");
+
+    private IMongoCollection<BsonDocument>? BatteryCollection() =>
+        _mongoContext.Database?.GetCollection<BsonDocument>("batteries");
 
     private IMongoCollection<BsonDocument>? PushRunsCollection() =>
         _mongoContext.Database?.GetCollection<BsonDocument>("batteryProductTemplatePushRuns");

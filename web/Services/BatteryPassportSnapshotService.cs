@@ -95,6 +95,24 @@ public sealed class BatteryPassportSnapshotService
             }
         }
 
+        ApplyPassportSpecificFields(passport, passportId);
         return passport;
+    }
+
+    private static void ApplyPassportSpecificFields(BsonDocument passport, string passportId)
+    {
+        var generalPayload = EnsureDocument(EnsureDocument(EnsureDocument(passport, "aspects"), "generalProductInformation"), "payload");
+        generalPayload["batteryPassportIdentifier"] = passportId;
+    }
+
+    private static BsonDocument EnsureDocument(BsonDocument parent, string key)
+    {
+        if (!parent.TryGetValue(key, out var value) || value is not BsonDocument document)
+        {
+            document = new BsonDocument();
+            parent[key] = document;
+        }
+
+        return document;
     }
 }

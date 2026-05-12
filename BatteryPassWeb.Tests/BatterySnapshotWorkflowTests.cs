@@ -36,6 +36,7 @@ public sealed class BatterySnapshotWorkflowTests
         Assert.Contains("[\"snapshot\"]", source);
         Assert.Contains("isLatestForBattery", source);
         Assert.Contains("supersededByPassportId", source);
+        Assert.Contains("batteryPassportIdentifier", source);
     }
 
     [Fact]
@@ -49,6 +50,30 @@ public sealed class BatterySnapshotWorkflowTests
         Assert.Contains("MarkPreviousLatestSupersededAsync", source);
         Assert.Contains("isLatestForBattery", source);
         Assert.Contains("supersededAt", source);
+    }
+
+    [Fact]
+    public void ProductTemplateReset_ShouldResetBatteriesPassportsAndTelemetry()
+    {
+        var service = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateService.cs"));
+        var models = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateModels.cs"));
+
+        Assert.Contains("BatteryRepository", service);
+        Assert.Contains("BatteryPassportSnapshotService", service);
+        Assert.Contains("GetCollection<BsonDocument>(\"batteries\")", service);
+        Assert.Contains("GetCollection<BsonDocument>(\"batteryTelemetry\")", service);
+        Assert.Contains("Seeded batteries", service);
+        Assert.Contains("multiple passports", service);
+        Assert.Contains("BuildBatteryFromTemplate", models);
+    }
+
+    [Fact]
+    public void ExternalApiInitializer_ShouldEnsureBatteryIndexes()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Services", "ExternalApiInitializer.cs"));
+
+        Assert.Contains("BatteryRepository", source);
+        Assert.Contains("_batteryRepository.EnsureIndexesAsync", source);
     }
 
     private static string RepoFile(params string[] parts)
