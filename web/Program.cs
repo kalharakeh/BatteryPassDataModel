@@ -27,6 +27,9 @@ builder.Services.Configure<BatteryPassOptions>(options =>
     options.ExternalApiEncryptionKey = Environment.GetEnvironmentVariable("EXTERNAL_API_ENCRYPTION_KEY")
         ?? builder.Configuration["BatteryPass:ExternalApiEncryptionKey"]
         ?? string.Empty;
+    options.IdGenerationSecret = Environment.GetEnvironmentVariable("ID_GENERATION_SECRET")
+        ?? builder.Configuration["BatteryPass:IdGenerationSecret"]
+        ?? string.Empty;
 });
 
 builder.Services
@@ -69,6 +72,12 @@ builder.Services.AddSingleton<AuditRevisionService>();
 builder.Services.AddSingleton<PassportTrustWorkflowService>();
 builder.Services.AddSingleton<AccessControlService>();
 builder.Services.AddSingleton<PassportQrCodeService>();
+builder.Services.AddSingleton(provider =>
+{
+    var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<BatteryPassOptions>>().Value;
+    var environment = provider.GetRequiredService<IWebHostEnvironment>();
+    return new BatteryIdService(options.IdGenerationSecret, environment.IsDevelopment());
+});
 builder.Services.AddSingleton<AuthService>();
 builder.Services.AddSingleton<ExternalApiSecurityService>();
 builder.Services.AddSingleton<ExternalApiRepository>();
