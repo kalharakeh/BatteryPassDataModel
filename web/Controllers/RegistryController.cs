@@ -2,6 +2,7 @@ using BatteryPassWeb.Models.ViewModels;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MongoDB.Bson;
 
 namespace BatteryPassWeb.Controllers;
 
@@ -10,17 +11,20 @@ namespace BatteryPassWeb.Controllers;
 public class RegistryController : Controller
 {
     private readonly PassportRepository _passportRepository;
+    private readonly BatteryRepository _batteryRepository;
     private readonly ClusterRepository _clusterRepository;
     private readonly AccessControlService _accessControlService;
     private readonly PassportPublishPolicyService _passportPublishPolicyService;
 
     public RegistryController(
         PassportRepository passportRepository,
+        BatteryRepository batteryRepository,
         ClusterRepository clusterRepository,
         AccessControlService accessControlService,
         PassportPublishPolicyService passportPublishPolicyService)
     {
         _passportRepository = passportRepository;
+        _batteryRepository = batteryRepository;
         _clusterRepository = clusterRepository;
         _accessControlService = accessControlService;
         _passportPublishPolicyService = passportPublishPolicyService;
@@ -31,23 +35,6 @@ public class RegistryController : Controller
     {
         var query = q?.Trim() ?? string.Empty;
         var isAdmin = AccessControlService.IsAdmin(User);
-        var documents = await _passportRepository.SearchDocumentsAsync(query, includeArchived: isAdmin, cancellationToken);
-        if (!isAdmin)
-        {
-            var visibleDocuments = new List<MongoDB.Bson.BsonDocument>();
-            foreach (var document in documents)
-            {
-                if (await _accessControlService.CanOpenPassportDetailAsync(User, document, _passportPublishPolicyService, cancellationToken))
-                {
-                    visibleDocuments.Add(document);
-                }
-            }
-
-            documents = visibleDocuments;
-        }
-
-        var passports = documents.Select(_passportRepository.ToSummaryViewModel).ToList();
-
         var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
         var clusterNameById = clusters
             .Select(cluster => new
@@ -58,40 +45,66 @@ public class RegistryController : Controller
             .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
             .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
 
-        passports = passports.Select(passport => new PassportSummaryViewModel
+        var batteryDocuments = await _batteryRepository.SearchDocumentsAsync(query, includeArchived: isAdmin, cancellationToken);
+        var rows = new List<BatterySummaryViewModel>();
+        foreach (var battery in batteryDocuments)
         {
-            PassportId = passport.PassportId,
-            DisplayName = passport.DisplayName,
-                ModelNumber = passport.ModelNumber,
-                ManufacturerName = passport.ManufacturerName,
-                SerialNumber = passport.SerialNumber,
-                RegistryStatus = passport.RegistryStatus,
-                BatteryFamily = passport.BatteryFamily,
-                BatteryVersion = passport.BatteryVersion,
-                BatterySerialNumber = passport.BatterySerialNumber,
-                PassportStatus = passport.PassportStatus,
-                ClusterId = passport.ClusterId,
-            ClusterLabel = string.IsNullOrWhiteSpace(passport.ClusterId)
-                ? "No cluster assigned"
-                : clusterNameById.TryGetValue(passport.ClusterId, out var clusterName)
-                    ? clusterName
-                    : passport.ClusterId,
-            BatteryImageUrl = passport.BatteryImageUrl,
-            UpdatedDate = passport.UpdatedDate
-        }).ToList();
+            var batteryId = BsonHelpers.GetString(battery, "batteryId");
+            var passports = await _passportRepository.ListByBatteryIdAsync(batteryId, includeArchived: isAdmin, cancellationToken);
+            var visible = new List<BatteryPassportHistoryRowViewModel>();
+            foreach (var passport in passports)
+            {
+                if (await _accessControlService.CanOpenPassportSummaryAsync(User, passport, _passportPublishPolicyService, cancellationToken))
+                {
+                    visible.Add(ToHistoryRow(passport));
+                }
+            }
 
-        var exactMatch = passports.FirstOrDefault(passport => passport.PassportId.Equals(query, StringComparison.OrdinalIgnoreCase));
+            if (visible.Count > 0 || isAdmin)
+            {
+                rows.Add(_batteryRepository.ToSummary(battery, visible, ResolveClusterLabel(battery, clusterNameById)));
+            }
+        }
+
+        var exactMatch = rows.FirstOrDefault(row => row.BatteryId.Equals(query, StringComparison.OrdinalIgnoreCase));
         if (exactMatch != null)
         {
-            return Redirect($"/{Uri.EscapeDataString(exactMatch.PassportId)}/summary");
+            return Redirect($"/{Uri.EscapeDataString(exactMatch.BatteryId)}");
         }
 
         ViewData["RegistryScopeLabel"] = isAdmin
-            ? "Search and open all registered battery passports, including drafts and archived records."
-            : "Search and open signed or published battery passports available to your role.";
+            ? "Search and open all registered batteries, including drafts and archived passport records."
+            : "Search and open batteries with signed or published passports available to your role.";
         ViewData["RegistryEmptyLabel"] = isAdmin
             ? "No batteries are currently available in the registry."
             : "No signed or published batteries are currently available to your role.";
-        return View(passports);
+        return View(rows);
+    }
+
+    private BatteryPassportHistoryRowViewModel ToHistoryRow(BsonDocument passport)
+    {
+        var status = BsonHelpers.GetString(passport, "registryInfo", "status");
+        return new BatteryPassportHistoryRowViewModel
+        {
+            PassportId = BsonHelpers.GetString(passport, "passportId"),
+            BatteryId = BsonHelpers.GetString(passport, "batteryId"),
+            CreatedAt = BsonHelpers.GetString(passport, "snapshot", "createdAt"),
+            PassportStatus = string.IsNullOrWhiteSpace(status) ? "Draft" : char.ToUpperInvariant(status[0]) + status[1..],
+            IsLatestForBattery = passport.GetValue("isLatestForBattery", false).ToBoolean(),
+            IsPubliclyVisible = _passportPublishPolicyService.IsPubliclyVisible(passport)
+        };
+    }
+
+    private static string ResolveClusterLabel(BsonDocument battery, IReadOnlyDictionary<string, string> clusterNameById)
+    {
+        var clusterId = BsonHelpers.GetString(battery, "clusterId");
+        if (string.IsNullOrWhiteSpace(clusterId))
+        {
+            return "No cluster assigned";
+        }
+
+        return clusterNameById.TryGetValue(clusterId, out var clusterName) && !string.IsNullOrWhiteSpace(clusterName)
+            ? clusterName
+            : clusterId;
     }
 }

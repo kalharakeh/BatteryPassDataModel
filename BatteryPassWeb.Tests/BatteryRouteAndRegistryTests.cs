@@ -40,6 +40,21 @@ public sealed class BatteryRouteAndRegistryTests
         Assert.Contains("batteryId", controller);
     }
 
+    [Fact]
+    public void Registry_ShouldUseBatteryRowsAndPassportCounts()
+    {
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "RegistryController.cs"));
+        var view = File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml"));
+
+        Assert.Contains("BatteryRepository", controller);
+        Assert.Contains("BatterySummaryViewModel", controller);
+        Assert.Contains("PassportCount", view);
+        Assert.Contains("passports", view);
+        Assert.Contains("@row.BatteryId", view);
+        Assert.Contains("@row.BatteryModel", view);
+        Assert.DoesNotContain("@row.PassportId</span></td>", view);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

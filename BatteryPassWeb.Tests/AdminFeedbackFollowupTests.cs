@@ -81,10 +81,10 @@ public sealed class AdminFeedbackFollowupTests
     {
         var source = File.ReadAllText(RepoFile("web", "Controllers", "RegistryController.cs"));
 
-        Assert.Contains("BatteryFamily = passport.BatteryFamily", source);
-        Assert.Contains("BatteryVersion = passport.BatteryVersion", source);
-        Assert.Contains("BatterySerialNumber = passport.BatterySerialNumber", source);
-        Assert.Contains("PassportStatus = passport.PassportStatus", source);
+        Assert.Contains("BatterySummaryViewModel", source);
+        Assert.Contains("_batteryRepository.ToSummary", source);
+        Assert.Contains("BatteryPassportHistoryRowViewModel", source);
+        Assert.Contains("LatestPassportStatus", File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml")));
     }
 
     [Fact]

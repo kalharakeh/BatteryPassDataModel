@@ -67,7 +67,7 @@ public sealed class ValidationPolicyLayoutTests
 
         Assert.Contains("PassportPublishPolicyService", registry);
         Assert.Contains("SearchDocumentsAsync", registry);
-        Assert.Contains("CanOpenPassportDetailAsync", registry);
+        Assert.Contains("CanOpenPassportSummaryAsync", registry);
 
         Assert.Contains("PassportPublishPolicyService", passport);
         Assert.Contains("CanOpenPassportSummaryAsync", passport);
