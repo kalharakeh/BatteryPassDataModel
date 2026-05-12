@@ -160,6 +160,24 @@ public class AdminController : Controller
         return View("EditPassport", model);
     }
 
+    [HttpGet("batteries/id-preview")]
+    public async Task<IActionResult> PreviewBatteryId([FromQuery] string? productId, [FromQuery] string? serialNumber, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(serialNumber))
+        {
+            return BadRequest(new { message = "Battery serial number is required." });
+        }
+
+        var product = await _productTemplateService.GetProductAsync(productId ?? string.Empty, cancellationToken)
+            ?? BatteryProductTemplateCatalog.DefaultProduct;
+        var batteryId = _batteryIdService.CreateBatteryId(product.ProductName, serialNumber);
+        return Json(new
+        {
+            batteryId,
+            length = batteryId.Length
+        });
+    }
+
     [HttpPost("batteries/create")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateBattery(CancellationToken cancellationToken)
@@ -649,7 +667,7 @@ public class AdminController : Controller
             ?? (BatteryProductTemplateCatalog.DefaultProduct with { ProductId = productId });
         var product = BuildProductTemplateFromForm(form, existing);
         await _productTemplateService.SaveProductAsync(product, CurrentActor(), cancellationToken);
-        return Redirect($"/admin/products/{Uri.EscapeDataString(product.ProductId)}?status={Uri.EscapeDataString("Battery family saved. Push a battery version when you want matching batteries to receive safe template changes.")}");
+        return Redirect($"/admin/products/{Uri.EscapeDataString(product.ProductId)}?status={Uri.EscapeDataString("Battery family saved. Push a Battery Model when you want matching batteries to receive safe template changes.")}");
     }
 
     [HttpPost("products/{productId}/versions/{productVersion}/push")]
@@ -657,7 +675,7 @@ public class AdminController : Controller
     public async Task<IActionResult> PushProductVersionTemplate(string productId, string productVersion, CancellationToken cancellationToken)
     {
         var result = await _productTemplateService.PushProductVersionAsync(productId, productVersion, CurrentActor(), cancellationToken);
-        var message = $"Battery version push finished: {result.UpdatedBatteries} of {result.MatchedBatteries} matching batteries updated. Manual overrides were preserved.";
+        var message = $"Battery Model push finished: {result.UpdatedBatteries} of {result.MatchedBatteries} matching batteries updated. Manual overrides were preserved.";
         return Redirect($"/admin/products/{Uri.EscapeDataString(productId)}?status={Uri.EscapeDataString(message)}");
     }
 

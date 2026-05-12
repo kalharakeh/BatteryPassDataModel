@@ -178,6 +178,105 @@ public sealed class PassportTrustWorkflowService
             autoPublished);
     }
 
+    public async Task<PassportTrustWorkflowResult> PublishAsync(
+        string passportId,
+        string actor,
+        string source,
+        CancellationToken cancellationToken = default)
+    {
+        var document = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
+        if (document == null)
+        {
+            return new PassportTrustWorkflowResult(false, "Battery passport was not found.", null, string.Empty, false);
+        }
+
+        var summary = await ValidateDocumentAsync(passportId, document, cancellationToken);
+        if (!_passportPublishPolicyService.CanSign(summary))
+        {
+            await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
+            await _auditRevisionService.AppendAuditEventAsync(
+                passportId,
+                "passport.publish.blocked",
+                actor,
+                source,
+                source,
+                "Passport publishing blocked by validation errors.",
+                new BsonDocument
+                {
+                    ["blockingErrors"] = summary.BlockingErrorCount,
+                    ["warnings"] = summary.WarningCount
+                },
+                cancellationToken);
+
+            return new PassportTrustWorkflowResult(false, "Resolve blocking validation errors before publishing.", summary, string.Empty, false);
+        }
+
+        var verification = _passportTrustService.Verify(document);
+        if (!verification.IsValid)
+        {
+            await _auditRevisionService.AppendAuditEventAsync(
+                passportId,
+                "passport.publish.blocked",
+                actor,
+                source,
+                source,
+                "Passport publishing blocked by signature verification.",
+                new BsonDocument
+                {
+                    ["state"] = verification.State,
+                    ["message"] = verification.Message,
+                    ["currentHash"] = verification.CurrentHash,
+                    ["expectedHash"] = verification.ExpectedHash
+                },
+                cancellationToken);
+
+            return new PassportTrustWorkflowResult(false, verification.Message, summary, string.Empty, false);
+        }
+
+        var revisionId = BsonHelpers.GetString(document, "trust", "latestRevisionId");
+        if (string.IsNullOrWhiteSpace(revisionId))
+        {
+            return new PassportTrustWorkflowResult(false, "Publish requires a signed revision.", summary, string.Empty, false);
+        }
+
+        var publishedAt = DateTimeOffset.UtcNow.ToString("O");
+        var publishedProof = BsonHelpers.GetValue(document, "trust", "latestProof") as BsonDocument ?? new BsonDocument();
+        var published = await _passportRepository.PublishPassportAsync(
+            passportId,
+            revisionId,
+            publishedAt,
+            verification.CurrentHash,
+            publishedProof,
+            cancellationToken);
+        if (!published)
+        {
+            throw new InvalidOperationException("Publishing service could not persist the published trust state.");
+        }
+
+        var revisionMarked = await _auditRevisionService.MarkRevisionPublishedAsync(revisionId, publishedAt, cancellationToken);
+        if (!revisionMarked)
+        {
+            throw new InvalidOperationException("Publishing service could not mark the immutable revision as published.");
+        }
+
+        await _auditRevisionService.AppendAuditEventAsync(
+            passportId,
+            "passport.published",
+            actor,
+            source,
+            source,
+            "Passport published.",
+            new BsonDocument
+            {
+                ["revisionId"] = revisionId,
+                ["hash"] = verification.CurrentHash,
+                ["publishedAt"] = publishedAt
+            },
+            cancellationToken);
+
+        return new PassportTrustWorkflowResult(true, "Passport published.", summary, revisionId, false);
+    }
+
     private async Task<TrustValidationSummary> ValidateDocumentAsync(
         string passportId,
         BsonDocument document,

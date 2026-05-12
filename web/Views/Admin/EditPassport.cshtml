@@ -151,6 +151,14 @@
                     <label class="bp-field-shell" data-field-key="general.product"><span>Battery Family <em class="bp-field-marker">@RequirementLabel("general.product")</em></span><select name="productId" data-product-template-select>@foreach (var productTemplate in Model.ProductTemplates) { if (productTemplate.ProductId.Equals(Model.SelectedProductId, StringComparison.OrdinalIgnoreCase)) { <option value="@productTemplate.ProductId" selected>@productTemplate.ProductName</option> } else { <option value="@productTemplate.ProductId">@productTemplate.ProductName</option> } }</select><small class="bp-field-help">@(isNewBattery ? "Battery Family and serial number are locked because they define the Battery ID." : DirtySignedDataHelp("general.product", "Battery family copied into this battery."))</small></label>
                     <label class="bp-field-shell" data-field-key="general.productVersion"><span>Battery Model <em class="bp-field-marker">@RequirementLabel("general.productVersion")</em></span><select name="productVersion" data-product-version-select>@foreach (var productVersion in selectedProductVersions) { if (productVersion.Version.Equals(Model.SelectedProductVersion, StringComparison.OrdinalIgnoreCase)) { <option value="@productVersion.Version" selected>@productVersion.Version</option> } else { <option value="@productVersion.Version">@productVersion.Version</option> } }</select><small class="bp-field-help">@DirtySignedDataHelp("general.productVersion", "Battery Model copied into this battery.")</small></label>
                     <label class="bp-field-shell" data-field-key="general.serialNumber"><span>Battery serial number <em class="bp-field-marker">@RequirementLabel("general.serialNumber")</em></span><input type="text" name="serialNumber" value="@passport.BatterySerialNumber" /><small class="bp-field-help">@(isNewBattery ? "Battery Family and serial number are locked because they define the Battery ID." : DirtySignedDataHelp("general.serialNumber", "Manufacturer serial number."))</small></label>
+                    @if (isNewBattery)
+                    {
+                        <div class="bp-field-shell bp-span-all">
+                            <span>Battery ID preview</span>
+                            <code class="bp-battery-id-cell" data-battery-id-preview>-</code>
+                            <small class="bp-field-help">Updates from the selected Battery Family and serial number.</small>
+                        </div>
+                    }
                     <label class="bp-field-shell"><span>Official schema category <em class="bp-field-marker">@RequirementLabel("general.category")</em></span><input type="text" name="category" value="@selectedBatteryCategory" readonly data-image-category /><small class="bp-field-help">@DirtySignedDataHelp("general.category", "Battery Pass schema category. Product is managed separately above.")</small></label>
                     <label class="bp-field-shell"><span>Battery status <em class="bp-field-marker">@RequirementLabel("general.batteryStatus")</em></span><input type="text" name="batteryStatus" value="@passport.BatteryStatus" /><small class="bp-field-help">@DirtySignedDataHelp("general.batteryStatus", "Lifecycle/original status for the battery.")</small></label>
                     <label class="bp-field-shell"><span>Weight kg <em class="bp-field-marker">@RequirementLabel("general.batteryMass")</em></span><input type="number" step="any" name="batteryMass" value="@passport.Weight" /><small class="bp-field-help">@DirtySignedDataHelp("general.batteryMass", "Battery mass in kg.")</small></label>
@@ -336,6 +344,10 @@
             const productTemplateCatalog = parseProductTemplateCatalog(productTemplateCatalogElement?.textContent || '[]');
             const passportId = form.dataset.passportId ?? '';
             const uploadCards = Array.from(form.querySelectorAll('[data-document-upload-card]'));
+            const serialNumberInput = form.elements.serialNumber;
+            const batteryIdPreview = form.querySelector('[data-battery-id-preview]');
+            const batteryIdPreviewEndpoint = '/admin/batteries/id-preview';
+            let batteryIdPreviewAbortController = null;
 
             const sectionById = new Map(sections.map((section) => [section.id, section]));
             const defaultSectionId = navButtons
@@ -373,6 +385,45 @@
                     return Array.isArray(parsed) ? parsed : [];
                 } catch {
                     return [];
+                }
+            }
+
+            async function updateBatteryIdPreview() {
+                if (!batteryIdPreview || !productTemplateSelect || !serialNumberInput) {
+                    return;
+                }
+
+                const serialNumber = String(serialNumberInput.value || '').trim();
+                if (!serialNumber) {
+                    batteryIdPreview.textContent = '-';
+                    return;
+                }
+
+                batteryIdPreview.textContent = 'Generating...';
+                batteryIdPreviewAbortController?.abort();
+                batteryIdPreviewAbortController = new AbortController();
+
+                const query = new URLSearchParams({
+                    productId: productTemplateSelect.value || '',
+                    serialNumber
+                });
+
+                try {
+                    const response = await fetch(`${batteryIdPreviewEndpoint}?${query}`, {
+                        headers: { Accept: 'application/json' },
+                        signal: batteryIdPreviewAbortController.signal
+                    });
+                    if (!response.ok) {
+                        batteryIdPreview.textContent = '-';
+                        return;
+                    }
+
+                    const payload = await response.json();
+                    batteryIdPreview.textContent = payload.batteryId || '-';
+                } catch (error) {
+                    if (error.name !== 'AbortError') {
+                        batteryIdPreview.textContent = '-';
+                    }
                 }
             }
 
@@ -749,10 +800,13 @@
             pristineFormState = serializeFormState(form);
             productTemplateSelect?.addEventListener('change', () => {
                 applyProductTemplateSelection(true, true);
+                updateBatteryIdPreview();
             });
             productVersionSelect?.addEventListener('change', () => {
                 applyProductTemplateSelection(false, true);
             });
+            serialNumberInput?.addEventListener('input', updateBatteryIdPreview);
+            updateBatteryIdPreview();
             form.addEventListener('submit', (event) => {
                 if (form.dataset.requiredPassportValidation !== 'true') {
                     return;

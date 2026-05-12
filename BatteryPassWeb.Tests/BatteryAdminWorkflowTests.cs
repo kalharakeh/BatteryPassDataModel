@@ -17,6 +17,20 @@ public sealed class BatteryAdminWorkflowTests
     }
 
     [Fact]
+    public void BatteryCreatePage_ShouldPreviewGeneratedBatteryId()
+    {
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+        var view = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
+
+        Assert.Contains("[HttpGet(\"batteries/id-preview\")]", controller);
+        Assert.Contains("PreviewBatteryId", controller);
+        Assert.Contains("CreateBatteryId(product.ProductName, serialNumber)", controller);
+        Assert.Contains("Battery ID preview", view);
+        Assert.Contains("data-battery-id-preview", view);
+        Assert.Contains("/admin/batteries/id-preview", view);
+    }
+
+    [Fact]
     public void AdminClustersView_ShouldManageBatteriesWithEmbeddedPassportHistory()
     {
         var view = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));

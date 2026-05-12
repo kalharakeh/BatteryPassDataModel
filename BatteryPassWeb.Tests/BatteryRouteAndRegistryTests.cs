@@ -70,6 +70,20 @@ public sealed class BatteryRouteAndRegistryTests
         Assert.DoesNotContain("Battery version", combined);
     }
 
+    [Fact]
+    public void BatteryLevelView_ShouldShowBatteryIdLabelAndIconActions()
+    {
+        var view = File.ReadAllText(RepoFile("web", "Views", "Passport", "Battery.cshtml"));
+
+        Assert.Contains("Battery ID:", view);
+        Assert.Contains("Passport ID", view);
+        Assert.Contains("Latest", view);
+        Assert.Contains("Historical", view);
+        Assert.Contains("aria-label=\"Summary report\"", view);
+        Assert.Contains("aria-label=\"Detailed report\"", view);
+        Assert.Contains("bp-report-action-icon", view);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

@@ -20,11 +20,16 @@ public sealed class ExternalApiBatteryIdTests
     {
         var source = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
         var repository = File.ReadAllText(RepoFile("web", "Services", "ExternalApiRepository.cs"));
+        var workflow = File.ReadAllText(RepoFile("web", "Services", "PassportTrustWorkflowService.cs"));
 
         Assert.Contains("[HttpPost(\"passports/{passportId}/validate\")]", source);
         Assert.Contains("[HttpPost(\"passports/{passportId}/sign\")]", source);
         Assert.Contains("[HttpPost(\"passports/{passportId}/publish\")]", source);
+        Assert.Contains("PublishAsync", source);
+        Assert.Contains("PublishAsync", workflow);
+        Assert.Contains("Passport published.", workflow);
         Assert.Contains("ValidateSignPublish", repository);
+        Assert.DoesNotContain("external-api.publish\",\r\n            cancellationToken);", source);
     }
 
     [Fact]

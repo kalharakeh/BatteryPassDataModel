@@ -515,12 +515,12 @@ public class ExternalApiController : ControllerBase
             return auth.ErrorResult;
         }
 
-        var result = await _passportTrustWorkflowService.SignAsync(passportId, auth.TokenContext!.Name, "external-api-publish", cancellationToken);
+        var result = await _passportTrustWorkflowService.PublishAsync(passportId, auth.TokenContext!.Name, "external-api.publish", cancellationToken);
         return Envelope(result.Success ? StatusCodes.Status200OK : StatusCodes.Status400BadRequest, result.Message, new
         {
             passportId,
             revisionId = result.RevisionId,
-            passportStatus = result.AutoPublished ? "Published" : "Signed",
+            passportStatus = result.Success ? "Published" : "Signed",
             blockingErrors = result.ValidationSummary?.BlockingErrorCount ?? 0,
             warnings = result.ValidationSummary?.WarningCount ?? 0
         });

@@ -69,52 +69,44 @@ public sealed class ExternalApiInitializer
     private async Task EnsureSamplePassportAsync(CancellationToken cancellationToken)
     {
         var existing = await _passportRepository.GetByPassportIdAsync(SamplePassportId, cancellationToken);
-        if (existing != null)
+        if (existing == null)
         {
-            var operations = EnsureDocument(EnsureDocument(existing, "app"), "operations");
-            if (!operations.Contains("isActive"))
-            {
-                operations["isActive"] = true;
-            }
-            operations["lastUpdatedAt"] = DateTime.UtcNow.ToString("O");
-            await _passportRepository.ReplaceAsync(SamplePassportId, existing, cancellationToken);
             return;
         }
 
-        var candidates = await _passportRepository.SearchDocumentsAsync(string.Empty, includeArchived: true, cancellationToken);
-        var sample = candidates.FirstOrDefault()?.DeepClone().AsBsonDocument ?? BuildFallbackSampleDocument();
-        sample.Remove("_id");
-        sample["passportId"] = SamplePassportId;
-        sample.Remove("clusterId");
-
         var now = DateTime.UtcNow.ToString("O");
-        var registryInfo = EnsureDocument(sample, "registryInfo");
+        var registryInfo = EnsureDocument(existing, "registryInfo");
         registryInfo["status"] = "published";
-        registryInfo["createdAt"] = now;
         registryInfo["updatedAt"] = now;
         if (!registryInfo.Contains("registryId"))
         {
             registryInfo["registryId"] = Guid.NewGuid().ToString("N");
         }
 
-        var operationsDoc = EnsureDocument(EnsureDocument(sample, "app"), "operations");
+        var operationsDoc = EnsureDocument(EnsureDocument(existing, "app"), "operations");
         operationsDoc["isActive"] = true;
         operationsDoc["lastUpdatedAt"] = now;
-        operationsDoc["locationOfUse"] = new BsonDocument
+        if (!operationsDoc.Contains("locationOfUse"))
         {
-            ["siteName"] = "Sample Site",
-            ["address"] = "Example street 1",
-            ["city"] = "Sample City",
-            ["country"] = "DE"
-        };
-        operationsDoc["contactPerson"] = new BsonDocument
+            operationsDoc["locationOfUse"] = new BsonDocument
+            {
+                ["siteName"] = "Sample Site",
+                ["address"] = "Example street 1",
+                ["city"] = "Sample City",
+                ["country"] = "DE"
+            };
+        }
+        if (!operationsDoc.Contains("contactPerson"))
         {
-            ["name"] = "Sample Contact",
-            ["email"] = "sample@example.test",
-            ["phone"] = "+49 000 0000"
-        };
+            operationsDoc["contactPerson"] = new BsonDocument
+            {
+                ["name"] = "Sample Contact",
+                ["email"] = "sample@example.test",
+                ["phone"] = "+49 000 0000"
+            };
+        }
 
-        await _passportRepository.ReplaceAsync(SamplePassportId, sample, cancellationToken);
+        await _passportRepository.ReplaceAsync(SamplePassportId, existing, cancellationToken);
     }
 
     private async Task EnsureSampleTokensAsync(CancellationToken cancellationToken)
