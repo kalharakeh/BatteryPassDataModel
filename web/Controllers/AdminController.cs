@@ -89,7 +89,7 @@ public class AdminController : Controller
     [HttpGet("")]
     public IActionResult Index()
     {
-        return Redirect("/admin/clusters?tab=passports");
+        return Redirect(AdminBatteriesUrl());
     }
 
     [HttpGet("help")]
@@ -103,8 +103,7 @@ public class AdminController : Controller
     [HttpGet("passports")]
     public IActionResult Passports([FromQuery] string? q)
     {
-        var queryPart = string.IsNullOrWhiteSpace(q) ? string.Empty : $"&q={Uri.EscapeDataString(q)}";
-        return Redirect($"/admin/clusters?tab=passports{queryPart}");
+        return Redirect(AdminBatteriesUrl(q));
     }
 
     [HttpGet("passports/new")]
@@ -369,7 +368,7 @@ public class AdminController : Controller
             await _passportRepository.ArchivePassportAsync(passportId, cancellationToken);
         }
 
-        return Redirect("/admin/clusters?tab=passports");
+        return Redirect(AdminBatteriesUrl());
     }
 
     [HttpPost("passports/unarchive")]
@@ -382,7 +381,7 @@ public class AdminController : Controller
             await _passportRepository.UnarchivePassportAsync(passportId, cancellationToken);
         }
 
-        return Redirect("/admin/clusters?tab=passports");
+        return Redirect(AdminBatteriesUrl());
     }
 
     [HttpPost("passports/create")]
@@ -441,7 +440,7 @@ public class AdminController : Controller
         }
 
         TempData["StatusMessage"] = $"Passport {passportId} created.";
-        return Redirect("/admin/clusters?tab=passports");
+        return Redirect(AdminBatteriesUrl());
     }
 
     [HttpGet("passports/{passportId}/edit")]
@@ -476,7 +475,7 @@ public class AdminController : Controller
         var passportId = Text(form, "passportId");
         if (string.IsNullOrWhiteSpace(passportId))
         {
-            return Redirect("/admin/clusters?tab=passports");
+            return Redirect(AdminBatteriesUrl());
         }
 
         var document = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
@@ -517,11 +516,14 @@ public class AdminController : Controller
                 cancellationToken);
         }
 
+        TempData["StatusMessage"] = $"Passport {passportId} saved.";
         var blockedPublishMessage = BuildBlockedPublishMessage(requestedStatus, normalizedStatus);
-        var redirectUrl = $"/admin/passports/{Uri.EscapeDataString(passportId)}/edit?status=saved";
-        return string.IsNullOrWhiteSpace(blockedPublishMessage)
-            ? Redirect(redirectUrl)
-            : Redirect($"{redirectUrl}&error={Uri.EscapeDataString(blockedPublishMessage)}");
+        if (!string.IsNullOrWhiteSpace(blockedPublishMessage))
+        {
+            TempData["ErrorMessage"] = blockedPublishMessage;
+        }
+
+        return Redirect(AdminBatteriesUrl());
     }
 
     [HttpGet("passports/{passportId}/conformance")]
@@ -817,6 +819,11 @@ public class AdminController : Controller
     [HttpGet("clusters")]
     public async Task<IActionResult> Clusters([FromQuery] string? tab, [FromQuery] string? q, CancellationToken cancellationToken)
     {
+        if (tab?.Equals("passports", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return Redirect(AdminBatteriesUrl(q));
+        }
+
         var selectedTab = NormalizeTab(tab);
         var selectedCredentialTab = NormalizeCredentialTab(tab);
         var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
@@ -1269,6 +1276,12 @@ public class AdminController : Controller
             "products" => "products",
             _ => "batteries"
         };
+    }
+
+    private static string AdminBatteriesUrl(string? q = null)
+    {
+        var queryPart = string.IsNullOrWhiteSpace(q) ? string.Empty : $"&q={Uri.EscapeDataString(q)}";
+        return $"/admin/clusters?tab=batteries{queryPart}";
     }
 
     private static string NormalizeCredentialTab(string? value)

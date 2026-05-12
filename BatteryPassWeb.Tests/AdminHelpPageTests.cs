@@ -37,7 +37,7 @@ public sealed class AdminHelpPageTests
         Assert.Contains("bp-console-header", markup);
         Assert.Contains("Administration tabs", markup);
         Assert.Contains("bp-tab-active", markup);
-        Assert.Contains("href=\"/admin/clusters?tab=passports\"", markup);
+        Assert.Contains("href=\"/admin/clusters?tab=batteries\"", markup);
         Assert.Contains("href=\"/admin/clusters?tab=local-editable-fields\"", markup);
         Assert.Contains("href=\"/admin/help\"", markup);
         Assert.DoesNotContain("Back to main admin page", markup);

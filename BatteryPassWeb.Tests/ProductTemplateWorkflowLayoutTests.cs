@@ -175,7 +175,7 @@ public sealed class ProductTemplateWorkflowLayoutTests
         Assert.Contains("has-missing-fields", edit);
         Assert.Contains("markMissingRequiredFields", edit);
         Assert.Contains("puttingIntoService", File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs")));
-        Assert.Contains("return Redirect(\"/admin/clusters?tab=passports", File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs")));
+        Assert.Contains("return Redirect(AdminBatteriesUrl", File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs")));
         Assert.Contains("applyProductTemplateSelection", edit);
         Assert.Contains("updateProductVersionOptions", edit);
         Assert.DoesNotContain("updateSoftwareOptions(productVersion", edit);

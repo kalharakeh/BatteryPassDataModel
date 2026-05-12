@@ -99,7 +99,7 @@ public sealed class AdminDenseConsoleLayoutTests
         Assert.Contains("bp-tab-row", help);
         Assert.Contains("Administration tabs", help);
         Assert.Contains("bp-tab-active", help);
-        Assert.Contains("href=\"/admin/clusters?tab=passports\"", help);
+        Assert.Contains("href=\"/admin/clusters?tab=batteries\"", help);
         Assert.Contains("href=\"/admin/clusters?tab=api-token-management\"", help);
         Assert.Contains("bp-admin-help-start-panel", help);
         Assert.Contains("bp-admin-help-start-actions", help);

@@ -60,6 +60,23 @@ public sealed class BatteryAdminWorkflowTests
     }
 
     [Fact]
+    public void AdminBatteryList_ShouldUseBatteriesTabAsCanonicalDestination()
+    {
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+        var help = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
+        var conformance = File.ReadAllText(RepoFile("web", "Views", "Admin", "Conformance.cshtml"));
+
+        Assert.Contains("private static string AdminBatteriesUrl", controller);
+        Assert.Contains("return Redirect(AdminBatteriesUrl(q));", controller);
+        Assert.Contains("TempData[\"StatusMessage\"] = $\"Passport {passportId} saved.\";", controller);
+        Assert.Contains("return Redirect(AdminBatteriesUrl());", controller);
+        Assert.Contains("\"passports\" => \"batteries\"", controller);
+        Assert.DoesNotContain("href=\"/admin/clusters?tab=passports\"", help);
+        Assert.Contains("href=\"/admin/clusters?tab=batteries\"", help);
+        Assert.Contains("Back to battery list", conformance);
+    }
+
+    [Fact]
     public void BatteryCreate_ShouldDefaultModelToLatestFamilyModel()
     {
         var view = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));

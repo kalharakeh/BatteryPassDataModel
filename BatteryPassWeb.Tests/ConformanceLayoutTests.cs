@@ -51,8 +51,8 @@ public sealed class ConformanceLayoutTests
         Assert.Contains("Blocking errors", markup);
         Assert.Contains("Warnings", markup);
         Assert.Contains("Validate passport", markup);
-        Assert.Contains("Back to passport list", markup);
-        Assert.Contains("/admin/clusters?tab=passports", markup);
+        Assert.Contains("Back to battery list", markup);
+        Assert.Contains("/admin/clusters?tab=batteries", markup);
         Assert.Contains("bp-conformance-return-row", markup);
         Assert.Contains("bp-conformance-return-link", markup);
         Assert.True(
