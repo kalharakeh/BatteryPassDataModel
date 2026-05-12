@@ -41,7 +41,9 @@ public sealed class PassportRepository
             var regex = new BsonRegularExpression(query.Trim(), "i");
             filters.Add(builder.Or(
                 builder.Regex("passportId", regex),
+                builder.Regex("batteryId", regex),
                 builder.Regex("registryInfo.registryId", regex),
+                builder.Regex("snapshot.batteryModel", regex),
                 builder.Regex("app.display.name", regex),
                 builder.Regex("app.display.modelNumber", regex),
                 builder.Regex("app.display.serialNumber", regex),
@@ -75,6 +77,71 @@ public sealed class PassportRepository
         }
 
         return await collection.Find(Builders<BsonDocument>.Filter.Eq("passportId", passportId)).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<BsonDocument?> GetByBatteryIdAsync(string batteryId, CancellationToken cancellationToken = default)
+    {
+        var collection = GetCollection();
+        if (collection == null || string.IsNullOrWhiteSpace(batteryId))
+        {
+            return null;
+        }
+
+        return await collection.Find(Builders<BsonDocument>.Filter.Eq("batteryId", batteryId.Trim())).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<BsonDocument>> ListByBatteryIdAsync(string batteryId, bool includeArchived = false, CancellationToken cancellationToken = default)
+    {
+        var collection = GetCollection();
+        if (collection == null || string.IsNullOrWhiteSpace(batteryId))
+        {
+            return [];
+        }
+
+        var builder = Builders<BsonDocument>.Filter;
+        var filter = builder.Eq("batteryId", batteryId.Trim());
+        if (!includeArchived)
+        {
+            filter = builder.And(filter, builder.Ne("registryInfo.status", "archived"));
+        }
+
+        return await collection
+            .Find(filter)
+            .Sort(Builders<BsonDocument>.Sort.Descending("snapshot.createdAt").Descending("registryInfo.createdAt"))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<BsonDocument?> GetLatestPublicByBatteryIdAsync(
+        string batteryId,
+        PassportPublishPolicyService publishPolicy,
+        CancellationToken cancellationToken = default)
+    {
+        var passports = await ListByBatteryIdAsync(batteryId, includeArchived: false, cancellationToken);
+        return passports.FirstOrDefault(publishPolicy.IsPubliclyVisible);
+    }
+
+    public async Task MarkPreviousLatestSupersededAsync(
+        string batteryId,
+        string supersededByPassportId,
+        string supersededAt,
+        CancellationToken cancellationToken = default)
+    {
+        var collection = GetCollection();
+        if (collection == null || string.IsNullOrWhiteSpace(batteryId))
+        {
+            return;
+        }
+
+        await collection.UpdateManyAsync(
+            Builders<BsonDocument>.Filter.And(
+                Builders<BsonDocument>.Filter.Eq("batteryId", batteryId),
+                Builders<BsonDocument>.Filter.Eq("isLatestForBattery", true)),
+            Builders<BsonDocument>.Update
+                .Set("isLatestForBattery", false)
+                .Set("supersededAt", supersededAt)
+                .Set("supersededByPassportId", supersededByPassportId)
+                .Set("registryInfo.updatedAt", supersededAt),
+            cancellationToken: cancellationToken);
     }
 
     public async Task<PassportSummaryViewModel?> GetSummaryAsync(string passportId, CancellationToken cancellationToken = default)

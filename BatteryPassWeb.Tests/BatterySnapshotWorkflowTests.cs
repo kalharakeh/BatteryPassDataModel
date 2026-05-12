@@ -25,6 +25,32 @@ public sealed class BatterySnapshotWorkflowTests
         Assert.Contains("GetByBatteryIdAsync", source);
     }
 
+    [Fact]
+    public void SnapshotService_ShouldCreatePassportFromBatteryAndRecordSnapshotMetadata()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Services", "BatteryPassportSnapshotService.cs"));
+
+        Assert.Contains("CreatePassportSnapshotAsync", source);
+        Assert.Contains("CreatePassportId", source);
+        Assert.Contains("[\"batteryId\"]", source);
+        Assert.Contains("[\"snapshot\"]", source);
+        Assert.Contains("isLatestForBattery", source);
+        Assert.Contains("supersededByPassportId", source);
+    }
+
+    [Fact]
+    public void PassportRepository_ShouldListAndSupersedePassportsByBatteryId()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Services", "PassportRepository.cs"));
+
+        Assert.Contains("GetByBatteryIdAsync", source);
+        Assert.Contains("ListByBatteryIdAsync", source);
+        Assert.Contains("GetLatestPublicByBatteryIdAsync", source);
+        Assert.Contains("MarkPreviousLatestSupersededAsync", source);
+        Assert.Contains("isLatestForBattery", source);
+        Assert.Contains("supersededAt", source);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
