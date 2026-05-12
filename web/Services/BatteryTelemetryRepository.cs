@@ -33,22 +33,22 @@ public sealed class BatteryTelemetryRepository
         var telemetry = _mongoContext.Database.GetCollection<BsonDocument>("batteryTelemetry");
         var indexes = new[]
         {
-            new CreateIndexModel<BsonDocument>(Builders<BsonDocument>.IndexKeys.Ascending("passportId").Descending("measuredAt")),
+            new CreateIndexModel<BsonDocument>(Builders<BsonDocument>.IndexKeys.Ascending("batteryId").Descending("measuredAt")),
             new CreateIndexModel<BsonDocument>(Builders<BsonDocument>.IndexKeys.Ascending("expiresAt"), new CreateIndexOptions { ExpireAfter = TimeSpan.Zero })
         };
         await telemetry.Indexes.CreateManyAsync(indexes, cancellationToken);
     }
 
-    public async Task AppendTelemetryAsync(string passportId, IReadOnlyList<TelemetryWritePoint> points, CancellationToken cancellationToken = default)
+    public async Task AppendTelemetryAsync(string batteryId, IReadOnlyList<TelemetryWritePoint> points, CancellationToken cancellationToken = default)
     {
-        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(passportId) || points.Count == 0)
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(batteryId) || points.Count == 0)
         {
             return;
         }
 
         var documents = points.Select(point => new BsonDocument
         {
-            ["passportId"] = passportId.Trim(),
+            ["batteryId"] = batteryId.Trim(),
             ["measuredAt"] = point.MeasuredAtUtc.ToString("O"),
             ["currentConsumptionKwh"] = point.CurrentConsumptionKwh.HasValue ? BsonValue.Create(point.CurrentConsumptionKwh.Value) : BsonNull.Value,
             ["currentChargeLevelPct"] = point.CurrentChargeLevelPct.HasValue ? BsonValue.Create(point.CurrentChargeLevelPct.Value) : BsonNull.Value,
@@ -62,15 +62,15 @@ public sealed class BatteryTelemetryRepository
             .InsertManyAsync(documents, cancellationToken: cancellationToken);
     }
 
-    public async Task<IReadOnlyList<BsonDocument>> ReadHistoryAsync(string passportId, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<BsonDocument>> ReadHistoryAsync(string batteryId, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken = default)
     {
-        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(passportId))
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(batteryId))
         {
             return [];
         }
 
         var filter = Builders<BsonDocument>.Filter.And(
-            Builders<BsonDocument>.Filter.Eq("passportId", passportId.Trim()),
+            Builders<BsonDocument>.Filter.Eq("batteryId", batteryId.Trim()),
             Builders<BsonDocument>.Filter.Gte("measuredAt", fromUtc.ToString("O")),
             Builders<BsonDocument>.Filter.Lte("measuredAt", toUtc.ToString("O")));
 

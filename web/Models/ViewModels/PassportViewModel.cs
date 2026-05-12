@@ -3,6 +3,7 @@ namespace BatteryPassWeb.Models.ViewModels;
 public sealed class PassportViewModel
 {
     public string PassportId { get; init; } = string.Empty;
+    public string BatteryId { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
     public string ModelNumber { get; init; } = string.Empty;
     public string SerialNumber { get; init; } = string.Empty;
@@ -12,8 +13,13 @@ public sealed class PassportViewModel
     public string ClusterId { get; init; } = string.Empty;
     public string ClusterLabel { get; init; } = "No cluster assigned";
     public string BatteryFamily { get; init; } = string.Empty;
+    public string BatteryModel { get; init; } = string.Empty;
     public string BatteryVersion { get; init; } = string.Empty;
     public string BatterySerialNumber { get; init; } = string.Empty;
+    public bool IsLatestForBattery { get; init; }
+    public bool IsHistoricalPassport { get; init; }
+    public string LatestPassportUrl { get; init; } = string.Empty;
+    public int RelatedPassportCount { get; init; }
     public string PassportStatus { get; init; } = "Draft";
     public string ProductId { get; init; } = string.Empty;
     public string ProductName { get; init; } = string.Empty;

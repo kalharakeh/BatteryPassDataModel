@@ -76,6 +76,31 @@ public sealed class BatterySnapshotWorkflowTests
         Assert.Contains("_batteryRepository.EnsureIndexesAsync", source);
     }
 
+    [Fact]
+    public void TelemetryRepository_ShouldUseBatteryIdInsteadOfPassportId()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Services", "BatteryTelemetryRepository.cs"));
+
+        Assert.Contains("batteryId", source);
+        Assert.Contains("AppendTelemetryAsync(string batteryId", source);
+        Assert.Contains("ReadHistoryAsync(string batteryId", source);
+        Assert.DoesNotContain("Ascending(\"passportId\")", source);
+    }
+
+    [Fact]
+    public void PassportViewModel_ShouldExposeBatteryIdAndHistoricalState()
+    {
+        var model = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "PassportViewModel.cs"));
+        var factory = File.ReadAllText(RepoFile("web", "Services", "PassportViewModelFactory.cs"));
+
+        Assert.Contains("BatteryId", model);
+        Assert.Contains("BatteryModel", model);
+        Assert.Contains("IsLatestForBattery", model);
+        Assert.Contains("IsHistoricalPassport", model);
+        Assert.Contains("batteryId", factory);
+        Assert.Contains("isLatestForBattery", factory);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

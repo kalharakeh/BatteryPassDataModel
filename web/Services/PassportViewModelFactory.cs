@@ -22,6 +22,8 @@ public sealed class PassportViewModelFactory
         var appOperations = GetDocument(app.GetValue("operations", new BsonDocument()));
         var appProduct = GetDocument(app.GetValue("product", new BsonDocument()));
         var circularityNotes = GetDocument(appNotes.GetValue("circularity", new BsonDocument()));
+        var batteryId = BsonHelpers.GetString(document, "batteryId");
+        var isLatestForBattery = BoolAt(document, "isLatestForBattery");
 
         var aspects = GetDocument(BsonHelpers.GetValue(document, "aspects"));
         var generalPayload = GetPayload(aspects, "generalProductInformation");
@@ -53,6 +55,10 @@ public sealed class PassportViewModelFactory
             : clusterNamesById != null && clusterNamesById.TryGetValue(clusterId, out var clusterName) && !string.IsNullOrWhiteSpace(clusterName)
                 ? clusterName
                 : clusterId;
+        var batteryModel = FirstNonEmpty(
+            BsonHelpers.GetString(document, "snapshot", "batteryModel"),
+            BsonHelpers.GetString(appProduct, "batteryModel"),
+            BsonHelpers.GetString(appProduct, "productVersion"));
 
         var weight = NumberAt(generalPayload, "batteryMass");
         var batteryImageUrl = NormalizeAssetUrl(FirstNonEmpty(
@@ -155,6 +161,7 @@ public sealed class PassportViewModelFactory
         return new PassportViewModel
         {
             PassportId = passportId,
+            BatteryId = batteryId,
             DisplayName = displayName,
             ModelNumber = modelNumber,
             SerialNumber = serialNumber,
@@ -163,9 +170,18 @@ public sealed class PassportViewModelFactory
             RegistryStatus = BsonHelpers.GetString(document, "registryInfo", "status"),
             ClusterId = clusterId,
             ClusterLabel = clusterLabel,
-            BatteryFamily = BsonHelpers.GetString(appProduct, "productName"),
-            BatteryVersion = BsonHelpers.GetString(appProduct, "productVersion"),
-            BatterySerialNumber = serialNumber,
+            BatteryFamily = FirstNonEmpty(
+                BsonHelpers.GetString(document, "snapshot", "batteryFamily"),
+                BsonHelpers.GetString(appProduct, "productName")),
+            BatteryModel = batteryModel,
+            BatteryVersion = batteryModel,
+            BatterySerialNumber = FirstNonEmpty(
+                BsonHelpers.GetString(document, "snapshot", "batterySerialNumber"),
+                serialNumber),
+            IsLatestForBattery = isLatestForBattery,
+            IsHistoricalPassport = !string.IsNullOrWhiteSpace(batteryId) && !isLatestForBattery,
+            LatestPassportUrl = string.IsNullOrWhiteSpace(batteryId) ? string.Empty : $"/{Uri.EscapeDataString(batteryId)}/latest",
+            RelatedPassportCount = (int)NumberAt(document, "relatedPassportCount"),
             PassportStatus = BuildPassportStatus(document, trustState),
             ProductId = BsonHelpers.GetString(appProduct, "productId"),
             ProductName = BsonHelpers.GetString(appProduct, "productName"),
