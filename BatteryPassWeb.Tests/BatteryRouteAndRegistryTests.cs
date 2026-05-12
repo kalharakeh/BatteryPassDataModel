@@ -101,6 +101,24 @@ public sealed class BatteryRouteAndRegistryTests
         Assert.Contains("max-width: none", css);
     }
 
+    [Fact]
+    public void AdminBatteryPassportHistory_ShouldHaveDedicatedRouteAndIconActions()
+    {
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+        var view = File.ReadAllText(RepoFile("web", "Views", "Admin", "BatteryPassports.cshtml"));
+
+        Assert.Contains("[HttpGet(\"batteries/{batteryId}/passports\")]", controller);
+        Assert.Contains("BatteryPassports", controller);
+        Assert.Contains("Back to Batteries", view);
+        Assert.Contains("/admin/clusters?tab=batteries", view);
+        Assert.Contains("Summary report", view);
+        Assert.Contains("Detailed report", view);
+        Assert.Contains("Conformance", view);
+        Assert.Contains("Audit trail", view);
+        Assert.Contains("Archive", view);
+        Assert.Contains("Unarchive", view);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

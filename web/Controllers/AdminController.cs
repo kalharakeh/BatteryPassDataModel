@@ -246,6 +246,40 @@ public class AdminController : Controller
         return Redirect($"/admin/passports/{Uri.EscapeDataString(passportId)}/edit");
     }
 
+    [HttpGet("batteries/{batteryId}/passports")]
+    public async Task<IActionResult> BatteryPassports(string batteryId, CancellationToken cancellationToken)
+    {
+        var decodedBatteryId = Uri.UnescapeDataString(batteryId);
+        var battery = await _batteryRepository.GetByBatteryIdAsync(decodedBatteryId, cancellationToken);
+        if (battery == null)
+        {
+            return NotFound();
+        }
+
+        var clusterDocuments = await _clusterRepository.ListClustersAsync(cancellationToken);
+        var clusterNamesById = clusterDocuments
+            .Select(cluster => new
+            {
+                ClusterId = BsonHelpers.GetString(cluster, "clusterId"),
+                Name = BsonHelpers.GetString(cluster, "name")
+            })
+            .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
+            .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
+
+        var passports = await _passportRepository.ListByBatteryIdAsync(decodedBatteryId, includeArchived: true, cancellationToken);
+        var batterySummary = _batteryRepository.ToSummary(
+            battery,
+            passports.Select(ToAdminHistoryRow).ToList(),
+            ResolveClusterLabel(battery, clusterNamesById));
+
+        return View("BatteryPassports", new BatteryPassportHistoryPageViewModel
+        {
+            Battery = batterySummary,
+            StatusMessage = TempData["StatusMessage"]?.ToString() ?? string.Empty,
+            ErrorMessage = TempData["ErrorMessage"]?.ToString() ?? string.Empty
+        });
+    }
+
     [HttpPost("passports/archive")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ArchivePassport(CancellationToken cancellationToken)

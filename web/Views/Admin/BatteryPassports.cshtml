@@ -1,0 +1,102 @@
+@model BatteryPassWeb.Models.ViewModels.BatteryPassportHistoryPageViewModel
+@{
+    ViewData["Title"] = "Battery passport history";
+    var battery = Model.Battery;
+}
+
+<main class="bp-page bp-admin-page bp-registry-page">
+    <header class="bp-console-header">
+        <div>
+            <a href="/admin/clusters?tab=batteries" class="bp-secondary-button bp-button-compact mb-3">Back to Batteries</a>
+            <p class="bp-passport-id">Battery ID: @battery.BatteryId</p>
+            <h1>@battery.BatterySerialNumber</h1>
+            <p class="text-secondary mb-0">@battery.BatteryFamily - Battery Model @battery.BatteryModel - @battery.ClusterLabel</p>
+        </div>
+        <form method="post" action="/admin/batteries/@Uri.EscapeDataString(battery.BatteryId)/passports/create">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="bp-primary-button">Create passport</button>
+        </form>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+    {
+        <div class="alert alert-success mt-3 mb-0">@Model.StatusMessage</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger mt-3 mb-0">@Model.ErrorMessage</div>
+    }
+
+    <section class="bp-card p-0 overflow-auto">
+        <table class="table table-hover align-middle mb-0 bp-admin-history-table">
+            <thead>
+                <tr>
+                    <th class="px-4 py-3">Passport ID</th>
+                    <th class="px-4 py-3">State</th>
+                    <th class="px-4 py-3">Status</th>
+                    <th class="px-4 py-3">Created</th>
+                    <th class="px-4 py-3 bp-actions-column">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (battery.Passports.Count == 0)
+                {
+                    <tr>
+                        <td colspan="5" class="px-4 py-4 text-secondary">No passport snapshots have been created for this battery.</td>
+                    </tr>
+                }
+                @foreach (var passport in battery.Passports)
+                {
+                    var created = string.IsNullOrWhiteSpace(passport.CreatedAt)
+                        ? string.Empty
+                        : passport.CreatedAt.Length >= 10
+                            ? passport.CreatedAt.Substring(0, 10)
+                            : passport.CreatedAt;
+                    <tr>
+                        <td class="px-4 py-3"><span class="bp-battery-id-cell">@passport.PassportId</span></td>
+                        <td class="px-4 py-3">@(passport.IsLatestForBattery ? "Latest" : "Historical")</td>
+                        <td class="px-4 py-3">@passport.PassportStatus</td>
+                        <td class="px-4 py-3">@created</td>
+                        <td class="px-4 py-3">
+                            <div class="bp-icon-action-row">
+                                <a href="/@Uri.EscapeDataString(passport.PassportId)/summary" class="bp-report-action" aria-label="Summary report" title="Summary report" data-tooltip="Summary report">
+                                    <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M6 3h9l3 3v15H6z" />
+                                        <path d="M15 3v4h4" />
+                                        <path d="M9 11h6M9 15h6M9 19h4" />
+                                    </svg>
+                                </a>
+                                <a href="/@Uri.EscapeDataString(passport.PassportId)" class="bp-report-action" aria-label="Detailed report" title="Detailed report" data-tooltip="Detailed report">
+                                    <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M6 3h9l3 3v15H6z" />
+                                        <path d="M15 3v4h4" />
+                                        <path d="M10 12a3 3 0 1 0 4.24 4.24" />
+                                        <path d="m14 16 3 3" />
+                                    </svg>
+                                </a>
+                                <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/conformance" class="bp-icon-button" aria-label="Conformance" title="Conformance">&#10003;</a>
+                                <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/audit" class="bp-icon-button" aria-label="Audit trail" title="Audit trail">A</a>
+                                @if (passport.PassportStatus.Equals("Archived", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <form method="post" action="/admin/passports/unarchive">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="passportId" value="@passport.PassportId" />
+                                        <button type="submit" class="bp-icon-button" aria-label="Unarchive" title="Unarchive">U</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form method="post" action="/admin/passports/archive">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="passportId" value="@passport.PassportId" />
+                                        <button type="submit" class="bp-icon-button is-danger" aria-label="Archive" title="Archive" data-confirm-action data-confirm-title="Archive passport" data-confirm-message="Archive @passport.PassportId? You can unarchive it from Administration." data-confirm-submit="Archive">X</button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+</main>

@@ -31,3 +31,10 @@ public sealed class BatteryDetailViewModel
     public required BatterySummaryViewModel Battery { get; init; }
     public string AccessNotice { get; init; } = string.Empty;
 }
+
+public sealed class BatteryPassportHistoryPageViewModel
+{
+    public required BatterySummaryViewModel Battery { get; init; }
+    public string StatusMessage { get; init; } = string.Empty;
+    public string ErrorMessage { get; init; } = string.Empty;
+}
