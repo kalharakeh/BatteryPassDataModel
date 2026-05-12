@@ -59,8 +59,18 @@ public sealed class AdminFeedbackFollowupTests
 
         Assert.Contains("bp-report-header-actions", summary);
         Assert.Contains("bp-report-header-actions", detail);
+        Assert.Contains("bp-report-header", summary);
+        Assert.Contains("bp-report-header", detail);
         Assert.Contains("bp-report-title-block", summary);
         Assert.Contains("bp-report-title-block", detail);
+        Assert.True(
+            summary.IndexOf("bp-report-header-actions", StringComparison.Ordinal) <
+            summary.IndexOf("bp-report-title-block", StringComparison.Ordinal),
+            "Summary report actions should be pinned before the long identity text.");
+        Assert.True(
+            detail.IndexOf("bp-report-header-actions", StringComparison.Ordinal) <
+            detail.IndexOf("bp-report-title-block", StringComparison.Ordinal),
+            "Detailed report actions should be pinned before the long identity text.");
         Assert.DoesNotContain("bp-report-action-strip", summary);
         Assert.DoesNotContain("bp-report-action-strip", detail);
         Assert.DoesNotContain("bp-report-action-label", summary);
@@ -74,7 +84,9 @@ public sealed class AdminFeedbackFollowupTests
         Assert.Contains("bp-latest-passport-action-icon", summary);
         Assert.Contains("bp-latest-passport-action-icon", detail);
         Assert.Contains(".bp-report-header-actions", css);
+        Assert.Contains("position: absolute;", css);
         Assert.Contains(".bp-report-title-block", css);
+        Assert.Contains("padding-inline-end", css);
         Assert.Contains(".bp-report-action-prominent", css);
         Assert.DoesNotContain(".bp-report-action-label", css);
     }

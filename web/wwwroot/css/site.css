@@ -1148,23 +1148,24 @@ a:hover {
   gap: 20px;
 }
 
-.bp-report-title-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 14px;
-  align-items: start;
+.bp-report-header {
+  position: relative;
 }
 
 .bp-report-title-block {
   min-inline-size: 0;
+  padding-inline-end: 6.25rem;
 }
 
 .bp-report-header-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
-  padding-top: 2px;
 }
 
 .bp-badge-row {
@@ -2702,13 +2703,8 @@ a:hover {
 }
 
 @media (max-width: 760px) {
-  .bp-report-title-row {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .bp-report-header-actions {
-    justify-content: flex-start;
-    padding-top: 0;
+  .bp-report-title-block {
+    padding-inline-end: 5.5rem;
   }
 
   .bp-trust-step-header {
