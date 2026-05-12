@@ -140,6 +140,38 @@ public sealed class ConformanceLayoutTests
     }
 
     [Fact]
+    public void ConformanceWorkflowSteps_ShouldCollapseUnlessActionOrIssueNeedsAttention()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Conformance.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("var validateStepOpen", markup);
+        Assert.Contains("PassportReadinessAction.Validate", markup);
+        Assert.Contains("PassportReadinessAction.CompleteData", markup);
+        Assert.Contains("var signStepOpen", markup);
+        Assert.Contains("showSignPassport", markup);
+        Assert.Contains("PassportReadinessAction.ReviewDiagnostics", markup);
+        Assert.Contains("var publishStepOpen", markup);
+        Assert.Contains("showPublishPassport", markup);
+        Assert.Contains("var evidenceStepOpen", markup);
+        Assert.Contains("evidencePack.BlockingCount > 0", markup);
+        Assert.Contains("evidencePack.UploadedUnsignedCount > 0", markup);
+        Assert.Contains("evidencePack.ChangedSinceSigningCount > 0", markup);
+
+        Assert.Contains("<details class=\"bp-trust-step @validateStepClass\" open=\"@validateStepOpen\">", markup);
+        Assert.Contains("<details class=\"bp-trust-step @signStepClass\" open=\"@signStepOpen\">", markup);
+        Assert.Contains("<details class=\"bp-trust-step @publishStepClass\" open=\"@publishStepOpen\">", markup);
+        Assert.Contains("<summary class=\"bp-trust-step-header\">", markup);
+        Assert.Contains("<details class=\"bp-card bp-conformance-panel bp-evidence-panel bp-evidence-step\" open=\"@evidenceStepOpen\">", markup);
+        Assert.Contains("<summary class=\"bp-evidence-step-header\">", markup);
+
+        Assert.Contains(".bp-trust-step > summary", css);
+        Assert.Contains(".bp-trust-step[open] > .bp-trust-step-header", css);
+        Assert.Contains(".bp-evidence-step > summary", css);
+        Assert.Contains(".bp-evidence-step[open] > .bp-evidence-step-header", css);
+    }
+
+    [Fact]
     public void PassportViewModel_ShouldExposeTrustFields()
     {
         var source = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "PassportViewModel.cs"));

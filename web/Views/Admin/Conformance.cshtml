@@ -14,6 +14,19 @@
     var validateStepClass = validationPassed ? "is-complete" : "is-active is-blocked";
     var signStepClass = showSignPassport ? "is-active" : passport.TrustIsDirty ? "is-blocked" : readiness.CanSign ? "is-complete" : "is-locked";
     var publishStepClass = showPublishPassport ? "is-active" : showWorkflowComplete ? "is-complete" : "is-locked";
+    var validateStepOpen = !validationPassed
+        || readiness.NextActionKey == PassportReadinessAction.Validate
+        || readiness.NextActionKey == PassportReadinessAction.CompleteData;
+    var signStepOpen = showSignPassport
+        || passport.TrustIsDirty
+        || readiness.NextActionKey == PassportReadinessAction.Sign
+        || readiness.NextActionKey == PassportReadinessAction.ReviewDiagnostics;
+    var publishStepOpen = showPublishPassport
+        || readiness.NextActionKey == PassportReadinessAction.Publish
+        || (!readiness.CanPublish && validationPassed && !passport.TrustIsDirty && readiness.HasCurrentProof);
+    var evidenceStepOpen = evidencePack.BlockingCount > 0
+        || evidencePack.UploadedUnsignedCount > 0
+        || evidencePack.ChangedSinceSigningCount > 0;
 }
 
 <main class="bp-page bp-admin-page bp-conformance-page">
@@ -83,8 +96,8 @@
     }
 
     <section class="bp-conformance-step-workflow bp-conformance-shell bp-workflow-panel" aria-label="Validate sign and publish workflow">
-        <article class="bp-trust-step @validateStepClass">
-            <div class="bp-trust-step-header">
+        <details class="bp-trust-step @validateStepClass" open="@validateStepOpen">
+            <summary class="bp-trust-step-header">
                 <span class="bp-trust-step-number">1</span>
                 <div>
                     <span class="bp-summary-title">Completion checklist</span>
@@ -92,11 +105,11 @@
                     <p>What is stopping signing? Full-data requirements are grouped by section so the admin can jump straight to the field that needs work.</p>
                 </div>
                 <span class="bp-trust-step-status @(validationPassed ? "is-ready" : "is-blocked")">@(validationPassed ? "Clear" : $"{summary.BlockingErrorCount} blockers")</span>
-                <form method="post" action="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/validate" class="bp-action-control">
+                <form method="post" action="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/validate" class="bp-action-control" onclick="event.stopPropagation()">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="bp-primary-button">Validate passport</button>
                 </form>
-            </div>
+            </summary>
             <div class="bp-trust-step-content">
                 <div class="bp-readiness-strip" aria-label="Validation metrics">
                     <div class="bp-readiness-card is-muted">
@@ -177,10 +190,10 @@
                     }
                 </section>
             </div>
-        </article>
+        </details>
 
-        <article class="bp-trust-step @signStepClass">
-            <div class="bp-trust-step-header">
+        <details class="bp-trust-step @signStepClass" open="@signStepOpen">
+            <summary class="bp-trust-step-header">
                 <span class="bp-trust-step-number">2</span>
                 <div>
                     <span class="bp-summary-title">Signature proof</span>
@@ -190,12 +203,12 @@
                 <span class="bp-trust-step-status @(readiness.CanSign ? "is-ready" : "is-muted")">@(readiness.CanSign ? "Available" : "Waiting")</span>
                 @if (showSignPassport)
                 {
-                    <form method="post" action="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/sign" class="bp-action-control">
+                    <form method="post" action="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/sign" class="bp-action-control" onclick="event.stopPropagation()">
                         @Html.AntiForgeryToken()
                         <button type="submit" class="bp-primary-button">Sign passport</button>
                     </form>
                 }
-            </div>
+            </summary>
             <div class="bp-trust-step-content bp-trust-step-content-compact">
                 @if (isPublished && showSignPassport)
                 {
@@ -210,10 +223,10 @@
                     <div><dt>Current hash</dt><dd><code>@(string.IsNullOrWhiteSpace(Model.VerificationResult.CurrentHash) ? "-" : Model.VerificationResult.CurrentHash)</code></dd></div>
                 </dl>
             </div>
-        </article>
+        </details>
 
-        <article class="bp-trust-step @publishStepClass">
-            <div class="bp-trust-step-header">
+        <details class="bp-trust-step @publishStepClass" open="@publishStepOpen">
+            <summary class="bp-trust-step-header">
                 <span class="bp-trust-step-number">3</span>
                 <div>
                     <span class="bp-summary-title">Publish gate</span>
@@ -223,12 +236,12 @@
                 <span class="bp-trust-step-status @(readiness.CanPublish ? "is-ready" : "is-muted")">@(readiness.CanPublish ? "Ready" : "Locked")</span>
                 @if (showPublishPassport)
                 {
-                    <form method="post" action="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/publish" class="bp-action-control">
+                    <form method="post" action="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/publish" class="bp-action-control" onclick="event.stopPropagation()">
                         @Html.AntiForgeryToken()
                         <button type="submit" class="bp-primary-button">Publish passport</button>
                     </form>
                 }
-            </div>
+            </summary>
             <div class="bp-trust-step-content bp-trust-step-content-compact">
                 @if (showWorkflowComplete)
                 {
@@ -242,62 +255,66 @@
                     <div><dt>Current gate</dt><dd>@(string.IsNullOrWhiteSpace(Model.PublishBlockReason) ? readiness.PrimaryReason : Model.PublishBlockReason)</dd></div>
                 </dl>
             </div>
-        </article>
+        </details>
     </section>
 
-    <section class="bp-card bp-conformance-panel bp-evidence-panel">
-        <div class="bp-panel-heading">
-            <span class="bp-summary-title">Evidence readiness</span>
+    <details class="bp-card bp-conformance-panel bp-evidence-panel bp-evidence-step" open="@evidenceStepOpen">
+        <summary class="bp-evidence-step-header">
+            <div>
+                <span class="bp-summary-title">Evidence readiness</span>
+                <h2>Supporting document evidence</h2>
+                <p class="bp-help-text">Document hashes are checked against the latest signed revision. Replacing a file makes the passport dirty until it is signed again.</p>
+            </div>
             <span class="bp-count-pill @(evidencePack.BlockingCount == 0 ? "is-ready" : string.Empty)">@evidencePack.BlockingCount blockers</span>
-        </div>
-        <h2>Supporting document evidence</h2>
-        <p class="bp-help-text">Document hashes are checked against the latest signed revision. Replacing a file makes the passport dirty until it is signed again.</p>
+        </summary>
 
-        <div class="bp-evidence-metrics bp-evidence-grid" aria-label="Evidence metrics">
-            <div class="bp-readiness-card @(evidencePack.MissingRequiredCount == 0 ? "is-ready" : "is-blocked")">
-                <p>Missing required</p>
-                <strong>@evidencePack.MissingRequiredCount</strong>
-                <span>Required supporting files that still need an upload.</span>
+        <div class="bp-evidence-step-content">
+            <div class="bp-evidence-metrics bp-evidence-grid" aria-label="Evidence metrics">
+                <div class="bp-readiness-card @(evidencePack.MissingRequiredCount == 0 ? "is-ready" : "is-blocked")">
+                    <p>Missing required</p>
+                    <strong>@evidencePack.MissingRequiredCount</strong>
+                    <span>Required supporting files that still need an upload.</span>
+                </div>
+                <div class="bp-readiness-card @(evidencePack.ChangedSinceSigningCount == 0 ? "is-ready" : "is-warning")">
+                    <p>Changed since signing</p>
+                    <strong>@evidencePack.ChangedSinceSigningCount</strong>
+                    <span>Uploaded hashes that differ from the latest signed revision.</span>
+                </div>
+                <div class="bp-readiness-card @(evidencePack.UploadedUnsignedCount == 0 ? "is-muted" : "is-warning")">
+                    <p>Uploaded unsigned</p>
+                    <strong>@evidencePack.UploadedUnsignedCount</strong>
+                    <span>Uploaded files waiting for the next signature.</span>
+                </div>
+                <div class="bp-readiness-card @(evidencePack.VerifiedCount == evidencePack.RequiredCount && evidencePack.RequiredCount > 0 ? "is-ready" : "is-muted")">
+                    <p>Verified documents</p>
+                    <strong>@evidencePack.VerifiedCount</strong>
+                    <span>Current hashes found in the latest signed revision.</span>
+                </div>
             </div>
-            <div class="bp-readiness-card @(evidencePack.ChangedSinceSigningCount == 0 ? "is-ready" : "is-warning")">
-                <p>Changed since signing</p>
-                <strong>@evidencePack.ChangedSinceSigningCount</strong>
-                <span>Uploaded hashes that differ from the latest signed revision.</span>
-            </div>
-            <div class="bp-readiness-card @(evidencePack.UploadedUnsignedCount == 0 ? "is-muted" : "is-warning")">
-                <p>Uploaded unsigned</p>
-                <strong>@evidencePack.UploadedUnsignedCount</strong>
-                <span>Uploaded files waiting for the next signature.</span>
-            </div>
-            <div class="bp-readiness-card @(evidencePack.VerifiedCount == evidencePack.RequiredCount && evidencePack.RequiredCount > 0 ? "is-ready" : "is-muted")">
-                <p>Verified documents</p>
-                <strong>@evidencePack.VerifiedCount</strong>
-                <span>Current hashes found in the latest signed revision.</span>
-            </div>
-        </div>
 
-        <div class="bp-evidence-list">
-            @foreach (var item in evidencePack.Items)
-            {
-                <article class="bp-evidence-item bp-evidence-status-@item.Status">
-                    <div class="bp-evidence-item-header">
-                        <div>
-                            <span>@(item.IsRequired ? "Required evidence" : "Optional evidence")</span>
-                            <strong>@item.Label</strong>
+            <div class="bp-evidence-list">
+                @foreach (var item in evidencePack.Items)
+                {
+                    <article class="bp-evidence-item bp-evidence-status-@item.Status">
+                        <div class="bp-evidence-item-header">
+                            <div>
+                                <span>@(item.IsRequired ? "Required evidence" : "Optional evidence")</span>
+                                <strong>@item.Label</strong>
+                            </div>
+                            <span class="bp-evidence-status">@item.StatusLabel</span>
                         </div>
-                        <span class="bp-evidence-status">@item.StatusLabel</span>
-                    </div>
-                    <dl class="bp-evidence-details">
-                        <div><dt>Visibility</dt><dd>@(item.Visibility == "public" ? "Public" : "Private / privileged")</dd></div>
-                        <div><dt>Current hash</dt><dd><code>@(string.IsNullOrWhiteSpace(item.CurrentHash) ? "-" : item.CurrentHash)</code></dd></div>
-                        <div><dt>Signed hash</dt><dd><code>@(string.IsNullOrWhiteSpace(item.SignedHash) ? "-" : item.SignedHash)</code></dd></div>
-                        <div><dt>Next action</dt><dd>@item.RecommendedAction</dd></div>
-                    </dl>
-                    <a class="bp-secondary-button bp-button-compact" href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/edit#@EvidenceEditAnchor(item.DocumentKey)">Upload or replace</a>
-                </article>
-            }
+                        <dl class="bp-evidence-details">
+                            <div><dt>Visibility</dt><dd>@(item.Visibility == "public" ? "Public" : "Private / privileged")</dd></div>
+                            <div><dt>Current hash</dt><dd><code>@(string.IsNullOrWhiteSpace(item.CurrentHash) ? "-" : item.CurrentHash)</code></dd></div>
+                            <div><dt>Signed hash</dt><dd><code>@(string.IsNullOrWhiteSpace(item.SignedHash) ? "-" : item.SignedHash)</code></dd></div>
+                            <div><dt>Next action</dt><dd>@item.RecommendedAction</dd></div>
+                        </dl>
+                        <a class="bp-secondary-button bp-button-compact" href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/edit#@EvidenceEditAnchor(item.DocumentKey)">Upload or replace</a>
+                    </article>
+                }
+            </div>
         </div>
-    </section>
+    </details>
 
     <section class="bp-card bp-conformance-panel bp-advanced-diagnostics bp-validation-drawer">
         <details>
