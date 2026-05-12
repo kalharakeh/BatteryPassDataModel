@@ -110,7 +110,14 @@
 }
 <main class="bp-page bp-admin-page">
     <h1 class="mb-1">@(isNewBattery ? "Create battery" : isBatteryEdit ? "Edit battery" : isNew ? "Create passport" : "Edit passport snapshot")</h1>
-    <p class="bp-passport-id">@(isBatteryEdit ? $"Battery ID: {passport.BatteryId}" : passport.PassportId)</p>
+    @if (isBatteryEdit)
+    {
+        <p class="bp-passport-id">Battery ID: <span class="bp-id-copy-row"><span class="bp-id-value">@passport.BatteryId</span>@await Html.PartialAsync("_CopyIdButton", passport.BatteryId)</span></p>
+    }
+    else
+    {
+        <p class="bp-passport-id"><span class="bp-id-copy-row"><span class="bp-id-value">@passport.PassportId</span>@await Html.PartialAsync("_CopyIdButton", passport.PassportId)</span></p>
+    }
 
     <div class="bp-card mt-3">
         <div class="d-flex justify-content-between flex-wrap gap-3 align-items-center">

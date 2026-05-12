@@ -54,7 +54,7 @@
                                 ? "bp-status-pill is-signed"
                                 : "bp-status-pill is-draft";
                         <tr>
-                            <td><span class="bp-battery-id-cell">@row.BatteryId</span></td>
+                            <td><span class="bp-battery-id-cell bp-id-copy-row"><span class="bp-id-value">@row.BatteryId</span>@await Html.PartialAsync("_CopyIdButton", row.BatteryId)</span></td>
                             <td>@row.BatteryFamily</td>
                             <td>@row.BatteryModel</td>
                             <td>@row.BatterySerialNumber</td>

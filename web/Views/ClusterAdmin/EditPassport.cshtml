@@ -11,7 +11,7 @@
     <header class="bp-console-header">
         <div>
             <h1>Edit local passport fields</h1>
-            <p class="bp-passport-id mb-0">@passport.PassportId</p>
+            <p class="bp-passport-id mb-0"><span class="bp-id-copy-row"><span class="bp-id-value">@passport.PassportId</span>@await Html.PartialAsync("_CopyIdButton", passport.PassportId)</span></p>
         </div>
         <a href="/cluster-admin/passports" class="bp-secondary-button">Back to managed passports</a>
     </header>

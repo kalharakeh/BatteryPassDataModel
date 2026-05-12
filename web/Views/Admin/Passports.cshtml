@@ -32,7 +32,7 @@
                             ? row.UpdatedDate.Substring(0, 10)
                             : row.UpdatedDate;
                     <tr>
-                        <td class="px-4 py-3 text-break">@row.PassportId</td>
+                        <td class="px-4 py-3 text-break"><span class="bp-id-copy-row"><span class="bp-id-value">@row.PassportId</span>@await Html.PartialAsync("_CopyIdButton", row.PassportId)</span></td>
                         <td class="px-4 py-3">@row.ModelNumber</td>
                         <td class="px-4 py-3">@row.SerialNumber</td>
                         <td class="px-4 py-3">@row.RegistryStatus</td>

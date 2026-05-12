@@ -48,8 +48,8 @@
                     }
                 </div>
                 <div class="bp-report-title-block">
-                    <p class="bp-passport-id">Passport ID: @passport.PassportId</p>
-                    <p class="bp-passport-id">Battery ID: @(string.IsNullOrWhiteSpace(passport.BatteryId) ? "-" : passport.BatteryId)</p>
+                    <p class="bp-passport-id">Passport ID: <span class="bp-id-copy-row"><span class="bp-id-value">@passport.PassportId</span>@await Html.PartialAsync("_CopyIdButton", passport.PassportId)</span></p>
+                    <p class="bp-passport-id">Battery ID: <span class="bp-id-copy-row"><span class="bp-id-value">@(string.IsNullOrWhiteSpace(passport.BatteryId) ? "-" : passport.BatteryId)</span>@await Html.PartialAsync("_CopyIdButton", passport.BatteryId)</span></p>
                     <h1>@(string.IsNullOrWhiteSpace(passport.BatterySerialNumber) ? passport.PassportId : passport.BatterySerialNumber)</h1>
                     <p class="text-secondary">Cluster: @passport.ClusterLabel</p>
                 </div>

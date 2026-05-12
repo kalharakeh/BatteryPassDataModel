@@ -12,7 +12,7 @@
             <a href="/admin/clusters?tab=batteries" class="bp-secondary-button bp-button-compact mb-3">Back to batteries</a>
             <span class="bp-summary-title">Audit trail</span>
             <h1 class="mb-1">Who changed what, when, and where</h1>
-            <p class="bp-passport-id mb-0">@passport.PassportId</p>
+            <p class="bp-passport-id mb-0"><span class="bp-id-copy-row"><span class="bp-id-value">@passport.PassportId</span>@await Html.PartialAsync("_CopyIdButton", passport.PassportId)</span></p>
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/edit" class="bp-secondary-button">Edit passport</a>

@@ -39,8 +39,8 @@
         <div>
             <span class="bp-summary-title">Passport conformance</span>
             <h1>@(string.IsNullOrWhiteSpace(passport.BatterySerialNumber) ? "Passport Conformance" : $"{passport.BatterySerialNumber} conformance")</h1>
-            <p class="bp-passport-id">Passport ID: @passport.PassportId</p>
-            <p class="bp-passport-id">Battery ID: @(string.IsNullOrWhiteSpace(passport.BatteryId) ? "-" : passport.BatteryId)</p>
+            <p class="bp-passport-id">Passport ID: <span class="bp-id-copy-row"><span class="bp-id-value">@passport.PassportId</span>@await Html.PartialAsync("_CopyIdButton", passport.PassportId)</span></p>
+            <p class="bp-passport-id">Battery ID: <span class="bp-id-copy-row"><span class="bp-id-value">@(string.IsNullOrWhiteSpace(passport.BatteryId) ? "-" : passport.BatteryId)</span>@await Html.PartialAsync("_CopyIdButton", passport.BatteryId)</span></p>
             <p class="text-secondary mb-0">@readiness.PrimaryReason</p>
         </div>
         <div class="bp-icon-action-row bp-conformance-header-actions">

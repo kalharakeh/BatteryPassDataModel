@@ -18,11 +18,11 @@
             </div>
             <div>
                 <p class="mb-1 text-secondary small">Sample Battery ID for these tokens</p>
-                <code>@Model.SampleBatteryId</code>
+                <span class="bp-id-copy-row"><code class="bp-id-value">@Model.SampleBatteryId</code>@await Html.PartialAsync("_CopyIdButton", Model.SampleBatteryId)</span>
             </div>
             <div>
                 <p class="mb-1 text-secondary small">Sample Passport ID for trust actions</p>
-                <code>@Model.SamplePassportId</code>
+                <span class="bp-id-copy-row"><code class="bp-id-value">@Model.SamplePassportId</code>@await Html.PartialAsync("_CopyIdButton", Model.SamplePassportId)</span>
             </div>
             <div>
                 <p class="mb-1 text-secondary small">Sample read token</p>

@@ -7,7 +7,7 @@
 <main class="bp-page bp-admin-page bp-registry-page">
     <header class="bp-console-header">
         <div>
-            <p class="bp-passport-id">Battery ID: @battery.BatteryId</p>
+            <p class="bp-passport-id">Battery ID: <span class="bp-id-copy-row"><span class="bp-id-value">@battery.BatteryId</span>@await Html.PartialAsync("_CopyIdButton", battery.BatteryId)</span></p>
             <h1>@battery.BatteryFamily @battery.BatteryModel</h1>
             <p class="text-secondary mb-0">Battery serial number: @battery.BatterySerialNumber</p>
         </div>
@@ -33,7 +33,7 @@
                     @foreach (var row in battery.Passports)
                     {
                         <tr>
-                            <td class="text-break">@row.PassportId</td>
+                            <td class="text-break"><span class="bp-id-copy-row"><span class="bp-id-value">@row.PassportId</span>@await Html.PartialAsync("_CopyIdButton", row.PassportId)</span></td>
                             <td>@row.PassportStatus</td>
                             <td>@(string.IsNullOrWhiteSpace(row.CreatedAt) ? "-" : row.CreatedAt[..Math.Min(10, row.CreatedAt.Length)])</td>
                             <td>@(row.IsLatestForBattery ? "Latest" : "Historical")</td>

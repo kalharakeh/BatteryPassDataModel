@@ -8,7 +8,7 @@
     <header class="bp-console-header">
         <div>
             <a href="/admin/clusters?tab=batteries" class="bp-secondary-button bp-button-compact mb-3">Back to Batteries</a>
-            <p class="bp-passport-id">Battery ID: @battery.BatteryId</p>
+            <p class="bp-passport-id">Battery ID: <span class="bp-id-copy-row"><span class="bp-id-value">@battery.BatteryId</span>@await Html.PartialAsync("_CopyIdButton", battery.BatteryId)</span></p>
             <h1>@battery.BatterySerialNumber</h1>
             <p class="text-secondary mb-0">@battery.BatteryFamily - Battery Model @battery.BatteryModel - @battery.ClusterLabel</p>
         </div>
@@ -53,7 +53,7 @@
                             ? passport.CreatedAt.Substring(0, 10)
                             : passport.CreatedAt;
                     <tr>
-                        <td class="px-4 py-3"><span class="bp-battery-id-cell">@passport.PassportId</span></td>
+                        <td class="px-4 py-3"><span class="bp-battery-id-cell bp-id-copy-row"><span class="bp-id-value">@passport.PassportId</span>@await Html.PartialAsync("_CopyIdButton", passport.PassportId)</span></td>
                         <td class="px-4 py-3">@(passport.IsLatestForBattery ? "Latest" : "Historical")</td>
                         <td class="px-4 py-3">@passport.PassportStatus</td>
                         <td class="px-4 py-3">@created</td>
