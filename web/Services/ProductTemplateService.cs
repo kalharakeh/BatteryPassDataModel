@@ -45,6 +45,7 @@ public sealed class ProductTemplateService
     private readonly BatteryPassportSnapshotService _batteryPassportSnapshotService;
     private readonly BatteryIdService _batteryIdService;
     private readonly ClusterRepository _clusterRepository;
+    private readonly ExternalApiRepository _externalApiRepository;
     private readonly DataCompletionPolicyService _dataCompletionPolicyService;
     private readonly PassportValidationService _passportValidationService;
     private readonly PassportTrustService _passportTrustService;
@@ -57,6 +58,7 @@ public sealed class ProductTemplateService
         BatteryPassportSnapshotService batteryPassportSnapshotService,
         BatteryIdService batteryIdService,
         ClusterRepository clusterRepository,
+        ExternalApiRepository externalApiRepository,
         DataCompletionPolicyService dataCompletionPolicyService,
         PassportValidationService passportValidationService,
         PassportTrustService passportTrustService,
@@ -68,6 +70,7 @@ public sealed class ProductTemplateService
         _batteryPassportSnapshotService = batteryPassportSnapshotService;
         _batteryIdService = batteryIdService;
         _clusterRepository = clusterRepository;
+        _externalApiRepository = externalApiRepository;
         _dataCompletionPolicyService = dataCompletionPolicyService;
         _passportValidationService = passportValidationService;
         _passportTrustService = passportTrustService;
@@ -306,6 +309,7 @@ public sealed class ProductTemplateService
     {
         await EnsureDefaultTemplatesAsync(actor, cancellationToken, force: true);
         await EnsureFixedClustersAndUsersAsync(cancellationToken);
+        await EnsureFixedApiDemoTokensAsync(cancellationToken);
 
         var passportCollection = PassportCollection();
         var batteryCollection = BatteryCollection();
@@ -634,6 +638,50 @@ public sealed class ProductTemplateService
 
         await _clusterRepository.UpsertUserAsync(northCustomerEmail, "North Customer 001", ["viewer"], northCustomerPasswordHash, cancellationToken);
         await _clusterRepository.UpsertClusterMembershipAsync(northCustomerEmail, "cluster-north-operations", "member", cancellationToken);
+    }
+
+    private async Task EnsureFixedApiDemoTokensAsync(CancellationToken cancellationToken)
+    {
+        if (!_externalApiRepository.IsAvailable)
+        {
+            return;
+        }
+
+        await _externalApiRepository.UpsertFixedTokenAsync(
+            ExternalApiInitializer.SampleReadTokenId,
+            ExternalApiInitializer.SampleReadTokenValue,
+            "Sample token (read)",
+            ExternalTokenAccessMode.Read,
+            [ExternalApiInitializer.SampleApiClusterId],
+            allowUnassigned: false,
+            globalAccess: false,
+            actor: "system",
+            isSample: true,
+            cancellationToken);
+
+        await _externalApiRepository.UpsertFixedTokenAsync(
+            ExternalApiInitializer.SampleReadWriteTokenId,
+            ExternalApiInitializer.SampleReadWriteTokenValue,
+            "Sample token (read-write)",
+            ExternalTokenAccessMode.ReadWrite,
+            [ExternalApiInitializer.SampleApiClusterId],
+            allowUnassigned: false,
+            globalAccess: false,
+            actor: "system",
+            isSample: true,
+            cancellationToken);
+
+        await _externalApiRepository.UpsertFixedTokenAsync(
+            ExternalApiInitializer.SampleSignTokenId,
+            ExternalApiInitializer.SampleSignTokenValue,
+            "Sample token (validate, sign, publish)",
+            ExternalTokenAccessMode.Sign,
+            [ExternalApiInitializer.SampleApiClusterId],
+            allowUnassigned: false,
+            globalAccess: false,
+            actor: "system",
+            isSample: true,
+            cancellationToken);
     }
 
     private async Task<IReadOnlyList<BsonDocument>> BuildTemplateDocumentReferencesAsync(

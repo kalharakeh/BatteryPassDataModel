@@ -157,6 +157,62 @@ public sealed class ExternalApiRepository
         return (document, token);
     }
 
+    public async Task UpsertFixedTokenAsync(
+        string tokenId,
+        string token,
+        string name,
+        ExternalTokenAccessMode accessMode,
+        IEnumerable<string> clusterIds,
+        bool allowUnassigned,
+        bool globalAccess,
+        string actor,
+        bool isSample = false,
+        CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null)
+        {
+            throw new InvalidOperationException("Database is not connected.");
+        }
+
+        if (string.IsNullOrWhiteSpace(tokenId) || string.IsNullOrWhiteSpace(token))
+        {
+            throw new ArgumentException("Fixed token ID and value are required.");
+        }
+
+        var now = DateTime.UtcNow.ToString("O");
+        var normalizedTokenId = tokenId.Trim();
+        var normalizedToken = token.Trim();
+        var normalizedClusters = clusterIds
+            .Where(clusterId => !string.IsNullOrWhiteSpace(clusterId))
+            .Select(clusterId => clusterId.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var update = Builders<BsonDocument>.Update
+            .Set("name", string.IsNullOrWhiteSpace(name) ? normalizedTokenId : name.Trim())
+            .Set("accessMode", AccessModeValue(accessMode))
+            .Set("clusterIds", new BsonArray(normalizedClusters))
+            .Set("allowUnassigned", allowUnassigned)
+            .Set("globalAccess", globalAccess)
+            .Set("isActive", true)
+            .Set("tokenHash", _securityService.HashSecret(normalizedToken))
+            .Set("encryptedToken", _securityService.Encrypt(normalizedToken))
+            .Set("isSample", isSample)
+            .Set("updatedBy", actor)
+            .Set("updatedAt", now)
+            .Set("lastUsedAt", BsonNull.Value)
+            .SetOnInsert("tokenId", normalizedTokenId)
+            .SetOnInsert("createdBy", actor)
+            .SetOnInsert("createdAt", now);
+
+        await _mongoContext.Database.GetCollection<BsonDocument>("apiTokens")
+            .UpdateOneAsync(
+                Builders<BsonDocument>.Filter.Eq("tokenId", normalizedTokenId),
+                update,
+                new UpdateOptions { IsUpsert = true },
+                cancellationToken);
+    }
+
     public async Task<bool> SetTokenActiveAsync(string tokenId, bool isActive, string actor, CancellationToken cancellationToken = default)
     {
         if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(tokenId))

@@ -7,4 +7,5 @@ public sealed class ExternalApiHelpViewModel
     public string SamplePassportId { get; init; } = string.Empty;
     public string SampleReadToken { get; init; } = string.Empty;
     public string SampleReadWriteToken { get; init; } = string.Empty;
+    public string SampleSignToken { get; init; } = string.Empty;
 }

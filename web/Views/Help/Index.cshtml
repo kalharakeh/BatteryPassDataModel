@@ -32,6 +32,10 @@
                 <p class="mb-1 text-secondary small">Sample read-write token</p>
                 <code>@Model.SampleReadWriteToken</code>
             </div>
+            <div>
+                <p class="mb-1 text-secondary small">Sample validate/sign/publish token</p>
+                <code>@Model.SampleSignToken</code>
+            </div>
         </div>
     </section>
 
@@ -242,6 +246,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                     <select id="tester-token-preset">
                         <option value="sample-read">Sample read token</option>
                         <option value="sample-read-write">Sample read-write token</option>
+                        <option value="sample-sign">Sample validate/sign/publish token</option>
                         <option value="custom">Custom token</option>
                     </select>
                 </label>
@@ -290,6 +295,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
             const samplePassportId = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SamplePassportId));
             const sampleReadToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleReadToken));
             const sampleReadWriteToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleReadWriteToken));
+            const sampleSignToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleSignToken));
 
             const docSearch = document.getElementById('doc-search');
             const docItems = Array.from(document.querySelectorAll('.bp-help-doc-item'));
@@ -411,25 +417,26 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                     method: 'POST',
                     path: `${basePath}/passports/${samplePassportId}/validate`,
                     body: '',
-                    tokenPreset: 'custom'
+                    tokenPreset: 'sample-sign'
                 },
                 signPassport: {
                     method: 'POST',
                     path: `${basePath}/passports/${samplePassportId}/sign`,
                     body: '',
-                    tokenPreset: 'custom'
+                    tokenPreset: 'sample-sign'
                 },
                 publishPassport: {
                     method: 'POST',
                     path: `${basePath}/passports/${samplePassportId}/publish`,
                     body: '',
-                    tokenPreset: 'custom'
+                    tokenPreset: 'sample-sign'
                 }
             };
 
             const tokenByPreset = {
                 'sample-read': sampleReadToken,
-                'sample-read-write': sampleReadWriteToken
+                'sample-read-write': sampleReadWriteToken,
+                'sample-sign': sampleSignToken
             };
 
             const utf8ToBase64 = (value) => {

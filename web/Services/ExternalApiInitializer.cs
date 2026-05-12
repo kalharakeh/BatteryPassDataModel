@@ -5,10 +5,13 @@ namespace BatteryPassWeb.Services;
 public sealed class ExternalApiInitializer
 {
     public const string SamplePassportId = "did:web:acme.battery.pass:sample-customer-north-001";
+    public const string SampleApiClusterId = "cluster-north-operations";
     public const string SampleReadTokenId = "sample-read-token";
     public const string SampleReadWriteTokenId = "sample-read-write-token";
+    public const string SampleSignTokenId = "sample-sign-token";
     public const string SampleReadTokenValue = "SAMPLEBATTERYPASSPORTREADTOKN001";
     public const string SampleReadWriteTokenValue = "SAMPLEBATTERYPASSPORTWRITETOK001";
+    public const string SampleSignTokenValue = "SAMPLEBATTERYPASSPORTSIGNTOK001";
 
     private readonly ExternalApiRepository _externalApiRepository;
     private readonly PassportRepository _passportRepository;
@@ -111,37 +114,46 @@ public sealed class ExternalApiInitializer
 
     private async Task EnsureSampleTokensAsync(CancellationToken cancellationToken)
     {
-        var sampleRead = await _externalApiRepository.GetTokenByIdAsync(SampleReadTokenId, cancellationToken);
-        if (sampleRead == null)
-        {
-            await _externalApiRepository.CreateTokenAsync(
-                "Sample token (read)",
-                ExternalTokenAccessMode.Read,
-                [],
-                allowUnassigned: true,
-                globalAccess: false,
-                actor: "system",
-                isSample: true,
-                fixedToken: SampleReadTokenValue,
-                fixedTokenId: SampleReadTokenId,
-                cancellationToken: cancellationToken);
-        }
+        await EnsureFixedSampleTokenAsync(
+            SampleReadTokenId,
+            SampleReadTokenValue,
+            "Sample token (read)",
+            ExternalTokenAccessMode.Read,
+            cancellationToken);
 
-        var sampleReadWrite = await _externalApiRepository.GetTokenByIdAsync(SampleReadWriteTokenId, cancellationToken);
-        if (sampleReadWrite == null)
-        {
-            await _externalApiRepository.CreateTokenAsync(
-                "Sample token (read-write)",
-                ExternalTokenAccessMode.ReadWrite,
-                [],
-                allowUnassigned: true,
-                globalAccess: false,
-                actor: "system",
-                isSample: true,
-                fixedToken: SampleReadWriteTokenValue,
-                fixedTokenId: SampleReadWriteTokenId,
-                cancellationToken: cancellationToken);
-        }
+        await EnsureFixedSampleTokenAsync(
+            SampleReadWriteTokenId,
+            SampleReadWriteTokenValue,
+            "Sample token (read-write)",
+            ExternalTokenAccessMode.ReadWrite,
+            cancellationToken);
+
+        await EnsureFixedSampleTokenAsync(
+            SampleSignTokenId,
+            SampleSignTokenValue,
+            "Sample token (validate, sign, publish)",
+            ExternalTokenAccessMode.Sign,
+            cancellationToken);
+    }
+
+    private async Task EnsureFixedSampleTokenAsync(
+        string tokenId,
+        string tokenValue,
+        string name,
+        ExternalTokenAccessMode accessMode,
+        CancellationToken cancellationToken)
+    {
+        await _externalApiRepository.UpsertFixedTokenAsync(
+            tokenId,
+            tokenValue,
+            name,
+            accessMode,
+            [SampleApiClusterId],
+            allowUnassigned: false,
+            globalAccess: false,
+            actor: "system",
+            isSample: true,
+            cancellationToken);
     }
 
     private async Task NormalizeExistingPassportDataAsync(CancellationToken cancellationToken)

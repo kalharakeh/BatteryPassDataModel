@@ -25,6 +25,7 @@ public class HelpController : Controller
     {
         var readTokenDocument = await _externalApiRepository.GetTokenByIdAsync(ExternalApiInitializer.SampleReadTokenId, cancellationToken);
         var readWriteTokenDocument = await _externalApiRepository.GetTokenByIdAsync(ExternalApiInitializer.SampleReadWriteTokenId, cancellationToken);
+        var signTokenDocument = await _externalApiRepository.GetTokenByIdAsync(ExternalApiInitializer.SampleSignTokenId, cancellationToken);
         var sampleIds = await ResolveSampleIdsAsync(cancellationToken);
 
         var model = new ExternalApiHelpViewModel
@@ -37,7 +38,10 @@ public class HelpController : Controller
                 : ExternalApiInitializer.SampleReadTokenValue,
             SampleReadWriteToken = readWriteTokenDocument != null
                 ? _externalApiRepository.RevealToken(readWriteTokenDocument)
-                : ExternalApiInitializer.SampleReadWriteTokenValue
+                : ExternalApiInitializer.SampleReadWriteTokenValue,
+            SampleSignToken = signTokenDocument != null
+                ? _externalApiRepository.RevealToken(signTokenDocument)
+                : ExternalApiInitializer.SampleSignTokenValue
         };
 
         return View(model);
@@ -45,13 +49,23 @@ public class HelpController : Controller
 
     private async Task<(string BatteryId, string PassportId)> ResolveSampleIdsAsync(CancellationToken cancellationToken)
     {
+        var passports = await _passportRepository.SearchDocumentsAsync(string.Empty, includeArchived: false, cancellationToken);
+        var clusterPassport = passports
+            .Where(passport => BsonHelpers.GetString(passport, "clusterId").Equals(ExternalApiInitializer.SampleApiClusterId, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(passport => passport.GetValue("isLatestForBattery", false).ToBoolean())
+            .ThenByDescending(passport => BsonHelpers.GetString(passport, "registryInfo", "updatedAt"))
+            .FirstOrDefault();
+        if (clusterPassport != null)
+        {
+            return ToSampleIds(clusterPassport);
+        }
+
         var preferredPassport = await _passportRepository.GetByPassportIdAsync(PreferredSamplePassportId, cancellationToken);
         if (preferredPassport != null && string.IsNullOrWhiteSpace(BsonHelpers.GetString(preferredPassport, "clusterId")))
         {
             return ToSampleIds(preferredPassport);
         }
 
-        var passports = await _passportRepository.SearchDocumentsAsync(string.Empty, includeArchived: false, cancellationToken);
         var passport = passports.FirstOrDefault(passport => string.IsNullOrWhiteSpace(BsonHelpers.GetString(passport, "clusterId")));
         return passport != null
             ? ToSampleIds(passport)
