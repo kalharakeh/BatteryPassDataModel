@@ -32,29 +32,35 @@
                 <p class="bp-passport-id">Battery ID: @(string.IsNullOrWhiteSpace(passport.BatteryId) ? "-" : passport.BatteryId)</p>
                 <h1>@(string.IsNullOrWhiteSpace(passport.BatterySerialNumber) ? passport.PassportId : passport.BatterySerialNumber)</h1>
                 <p class="text-secondary">Cluster: @passport.ClusterLabel</p>
-                <div class="d-flex flex-wrap gap-2 mt-3">
+                <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
                     @if (passport.IsHistoricalPassport)
                     {
                         <span class="bp-status-pill is-draft">Historical passport</span>
-                        <a href="@passport.LatestPassportUrl" class="bp-report-action" aria-label="Open latest passport" title="Open latest passport" data-tooltip="Open latest passport">
-                            <svg class="bp-report-action-icon bp-latest-passport-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 5a7 7 0 1 1-6.32 4" />
-                                <path d="M5 5v4h4" />
-                                <path d="M12 8v4l3 2" />
-                            </svg>
-                        </a>
+                        <span class="bp-report-action-strip bp-report-action-strip-inline">
+                            <span class="bp-report-action-label">Latest</span>
+                            <a href="@passport.LatestPassportUrl" class="bp-report-action bp-report-action-prominent" aria-label="Open latest passport" title="Open latest passport" data-tooltip="Open latest passport" data-action-icon="latest">
+                                <svg class="bp-report-action-icon bp-latest-passport-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 5a7 7 0 1 1-6.32 4" />
+                                    <path d="M5 5v4h4" />
+                                    <path d="M12 8v4l3 2" />
+                                </svg>
+                            </a>
+                        </span>
                     }
                     else
                     {
                         <span class="bp-status-pill is-published">Latest passport</span>
                     }
-                    <a href="/@Uri.EscapeDataString(passport.PassportId)/summary" class="bp-report-action" aria-label="Summary report" title="Summary report" data-tooltip="Summary report">
-                        <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M6 3h9l3 3v15H6z" />
-                            <path d="M15 3v4h4" />
-                            <path d="M9 11h6M9 15h6M9 19h4" />
-                        </svg>
-                    </a>
+                    <span class="bp-report-action-strip bp-report-action-strip-inline">
+                        <span class="bp-report-action-label">Summary report</span>
+                        <a href="/@Uri.EscapeDataString(passport.PassportId)/summary" class="bp-report-action bp-report-action-prominent" aria-label="Summary report" title="Summary report" data-tooltip="Summary report" data-action-icon="summary">
+                            <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M6 3h9l3 3v15H6z" />
+                                <path d="M15 3v4h4" />
+                                <path d="M9 11h6M9 15h6M9 19h4" />
+                            </svg>
+                        </a>
+                    </span>
                 </div>
             </div>
             <div>

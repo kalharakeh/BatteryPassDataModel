@@ -164,13 +164,31 @@
                     Select a battery family and Battery Model below. Shared technical fields update from the template; identity fields stay battery-specific and editable.
                 </p>
                 <div class="bp-form-grid">
-                    <label class="bp-field-shell" data-field-key="general.passportId"><span>@(isBatteryEdit ? "Battery ID" : "Passport ID") <em class="bp-field-marker">@RequirementLabel("general.passportId")</em></span>@if (isBatteryEdit) { <input type="text" name="batteryId" value="@passport.BatteryId" readonly /> } else if (isNew) { <input type="text" name="passportId" value="@passport.PassportId" required /> } else { <input type="text" name="passportId" value="@passport.PassportId" readonly /> }<small class="bp-field-help">@(isBatteryEdit ? "Locked stable identity for this physical battery." : DirtySignedDataHelp("general.passportId", "Unique DID-style battery identifier."))</small></label>
+                    @if (!isNewBattery)
+                    {
+                        <label class="bp-field-shell" data-field-key="general.passportId">
+                            <span>@if (isBatteryEdit) { <text>Battery ID</text> } else { <text>Passport ID</text> } <em class="bp-field-marker">@RequirementLabel("general.passportId")</em></span>
+                            @if (isBatteryEdit)
+                            {
+                                <input type="text" name="batteryId" value="@passport.BatteryId" readonly />
+                            }
+                            else if (isNew)
+                            {
+                                <input type="text" name="passportId" value="@passport.PassportId" required />
+                            }
+                            else
+                            {
+                                <input type="text" name="passportId" value="@passport.PassportId" readonly />
+                            }
+                            <small class="bp-field-help">@(isBatteryEdit ? "Locked stable identity for this physical battery." : DirtySignedDataHelp("general.passportId", "Unique DID-style battery passport identifier."))</small>
+                        </label>
+                    }
                     <label class="bp-field-shell" data-field-key="general.product"><span>Battery Family <em class="bp-field-marker">@RequirementLabel("general.product")</em></span>@if (isBatteryEdit) { <input type="hidden" name="productId" value="@Model.SelectedProductId" /> }<select name="productId" data-product-template-select disabled="@isBatteryEdit">@foreach (var productTemplate in Model.ProductTemplates) { var latestVersion = latestVersionByProductId.TryGetValue(productTemplate.ProductId, out var latest) ? latest : string.Empty; if (productTemplate.ProductId.Equals(Model.SelectedProductId, StringComparison.OrdinalIgnoreCase)) { <option value="@productTemplate.ProductId" data-latest-product-version="@latestVersion" selected>@productTemplate.ProductName</option> } else { <option value="@productTemplate.ProductId" data-latest-product-version="@latestVersion">@productTemplate.ProductName</option> } }</select><small class="bp-field-help">@(isNewBattery || isBatteryEdit ? "Battery Family and serial number are locked because they define the Battery ID." : DirtySignedDataHelp("general.product", "Battery family copied into this battery."))</small></label>
                     <label class="bp-field-shell" data-field-key="general.productVersion"><span>Battery Model <em class="bp-field-marker">@RequirementLabel("general.productVersion")</em></span><select name="productVersion" data-product-version-select>@foreach (var productVersion in selectedProductVersions) { if (productVersion.Version.Equals(Model.SelectedProductVersion, StringComparison.OrdinalIgnoreCase)) { <option value="@productVersion.Version" selected>@productVersion.Version</option> } else { <option value="@productVersion.Version">@productVersion.Version</option> } }</select><small class="bp-field-help">@DirtySignedDataHelp("general.productVersion", "Battery Model copied into this battery.")</small></label>
                     <label class="bp-field-shell" data-field-key="general.serialNumber"><span>Battery serial number <em class="bp-field-marker">@RequirementLabel("general.serialNumber")</em></span><input type="text" name="serialNumber" value="@passport.BatterySerialNumber" readonly="@isBatteryEdit" /><small class="bp-field-help">@(isNewBattery || isBatteryEdit ? "Battery Family and serial number are locked because they define the Battery ID." : DirtySignedDataHelp("general.serialNumber", "Manufacturer serial number."))</small></label>
                     @if (isNewBattery)
                     {
-                        <div class="bp-field-shell bp-span-all">
+                        <div class="bp-field-shell bp-span-all" data-field-key="general.batteryIdPreview">
                             <span>Battery ID preview</span>
                             <code class="bp-battery-id-cell" data-battery-id-preview>-</code>
                             <small class="bp-field-help">Updates from the selected Battery Family and serial number.</small>

@@ -39,14 +39,14 @@
                             <td>@(row.IsLatestForBattery ? "Latest" : "Historical")</td>
                             <td class="bp-action-cell">
                                 <div class="bp-icon-action-row">
-                                    <a href="/@Uri.EscapeDataString(row.PassportId)/summary" class="bp-report-action" aria-label="Summary report" title="Summary report" data-tooltip="Summary report">
+                                    <a href="/@Uri.EscapeDataString(row.PassportId)/summary" class="bp-report-action" aria-label="Summary report" title="Summary report" data-tooltip="Summary report" data-action-icon="summary">
                                         <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">
                                             <path d="M6 3h9l3 3v15H6z" />
                                             <path d="M15 3v4h4" />
                                             <path d="M9 11h6M9 15h6M9 19h4" />
                                         </svg>
                                     </a>
-                                    <a href="/@Uri.EscapeDataString(row.PassportId)" class="bp-report-action" aria-label="Detailed report" title="Detailed report" data-tooltip="Detailed report">
+                                    <a href="/@Uri.EscapeDataString(row.PassportId)" class="bp-report-action" aria-label="Detailed report" title="Detailed report" data-tooltip="Detailed report" data-action-icon="detail">
                                         <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">
                                             <path d="M6 3h9l3 3v15H6z" />
                                             <path d="M15 3v4h4" />

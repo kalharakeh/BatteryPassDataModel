@@ -57,8 +57,8 @@ public sealed class ConformanceLayoutTests
         Assert.Contains("bp-conformance-return-link", markup);
         Assert.True(
             markup.IndexOf("bp-conformance-return-row", StringComparison.Ordinal) <
-            markup.IndexOf("bp-readiness-hero", StringComparison.Ordinal),
-            "Back navigation should sit outside and above the passport readiness container.");
+            markup.IndexOf("bp-conformance-step-workflow", StringComparison.Ordinal),
+            "Back navigation should sit outside and above the conformance workflow.");
         Assert.Contains(".bp-conformance-return-row", css);
         Assert.Contains(".bp-conformance-return-link", css);
         Assert.Contains("Latest validation", markup);
@@ -104,18 +104,39 @@ public sealed class ConformanceLayoutTests
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Conformance.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        Assert.Contains("bp-conformance-main-grid", markup);
+        Assert.Contains("bp-conformance-step-workflow", markup);
         Assert.Contains("bp-workflow-panel", markup);
-        Assert.Contains("bp-next-step-card", markup);
-        Assert.Contains("Next action", markup);
+        Assert.Contains("bp-trust-step", markup);
+        Assert.Contains("Validate passport data", markup);
+        Assert.Contains("Sign clean snapshot", markup);
+        Assert.Contains("Publish for registry and public access", markup);
         Assert.Contains("bp-evidence-grid", markup);
         Assert.Contains("bp-validation-drawer", markup);
 
-        Assert.Contains(".bp-conformance-main-grid", css);
+        Assert.Contains(".bp-conformance-step-workflow", css);
         Assert.Contains(".bp-workflow-panel", css);
-        Assert.Contains(".bp-next-step-card", css);
+        Assert.Contains(".bp-trust-step", css);
         Assert.Contains(".bp-evidence-grid", css);
         Assert.Contains(".bp-validation-drawer", css);
+    }
+
+    [Fact]
+    public void ConformanceView_ShouldUseStepBasedTrustWorkflow()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Conformance.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("bp-conformance-step-workflow", markup);
+        Assert.Contains("bp-trust-step", markup);
+        Assert.Contains("Validate passport data", markup);
+        Assert.Contains("Sign clean snapshot", markup);
+        Assert.Contains("Publish for registry and public access", markup);
+        Assert.Contains("bp-trust-step-content", markup);
+        Assert.Contains("bp-trust-step-status", markup);
+        Assert.Contains(".bp-conformance-step-workflow", css);
+        Assert.Contains(".bp-trust-step", css);
+        Assert.DoesNotContain("bp-readiness-hero", markup);
+        Assert.DoesNotContain("bp-conformance-main-grid", markup);
     }
 
     [Fact]
@@ -206,18 +227,19 @@ public sealed class ConformanceLayoutTests
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Conformance.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        Assert.Contains("bp-readiness-hero", markup);
-        Assert.Contains("Model.Readiness.StateLabel", markup);
-        Assert.Contains("Model.Readiness.NextActionLabel", markup);
-        Assert.Contains("bp-next-action-panel", markup);
+        Assert.Contains("bp-conformance-step-workflow", markup);
+        Assert.Contains("bp-trust-step", markup);
+        Assert.Contains("Validate passport data", markup);
+        Assert.Contains("Sign clean snapshot", markup);
+        Assert.Contains("Publish for registry and public access", markup);
         Assert.Contains("bp-blocker-groups", markup);
         Assert.Contains("bp-advanced-diagnostics", markup);
         Assert.Contains("<details", markup);
         Assert.DoesNotContain("Action blocked", markup);
         Assert.DoesNotContain("disabled=\"", markup);
 
-        Assert.Contains(".bp-readiness-hero", css);
-        Assert.Contains(".bp-next-action-panel", css);
+        Assert.Contains(".bp-conformance-step-workflow", css);
+        Assert.Contains(".bp-trust-step", css);
         Assert.Contains(".bp-blocker-groups", css);
         Assert.Contains(".bp-advanced-diagnostics", css);
     }

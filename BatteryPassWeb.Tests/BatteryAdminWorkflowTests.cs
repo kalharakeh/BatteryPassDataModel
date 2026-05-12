@@ -85,6 +85,41 @@ public sealed class BatteryAdminWorkflowTests
         Assert.Contains("selectLatestProductVersion", view);
     }
 
+    [Fact]
+    public void BatteryCreatePage_ShouldNotAskForPassportId()
+    {
+        var view = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
+
+        Assert.Contains("data-field-key=\"general.batteryIdPreview\"", view);
+        Assert.Contains("if (!isNewBattery)", view);
+        Assert.DoesNotContain("@(isBatteryEdit ? \"Battery ID\" : \"Passport ID\")", view);
+        Assert.DoesNotContain("else if (isNew) { <input type=\"text\" name=\"passportId\" value=\"@passport.PassportId\" required /> }", view);
+    }
+
+    [Fact]
+    public void AdminBatteryActions_ShouldUseUnifiedIconButtons()
+    {
+        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var history = File.ReadAllText(RepoFile("web", "Views", "Admin", "BatteryPassports.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("bp-action-button", css);
+        Assert.Contains("bp-action-icon", css);
+        Assert.Contains("data-action-icon=\"history\"", clusters);
+        Assert.Contains("data-action-icon=\"edit\"", clusters);
+        Assert.Contains("data-action-icon=\"conformance\"", clusters);
+        Assert.Contains("data-action-icon=\"create-passport\"", clusters);
+        Assert.Contains("data-action-icon=\"summary\"", history);
+        Assert.Contains("data-action-icon=\"detail\"", history);
+        Assert.Contains("data-action-icon=\"audit\"", history);
+        Assert.Contains("data-action-icon=\"archive\"", history);
+        Assert.DoesNotContain("&#9776;", clusters);
+        Assert.DoesNotContain("&#9998;", clusters);
+        Assert.DoesNotContain("&#10003;", clusters);
+        Assert.DoesNotContain(">A</a>", history);
+        Assert.DoesNotContain(">X</button>", history);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

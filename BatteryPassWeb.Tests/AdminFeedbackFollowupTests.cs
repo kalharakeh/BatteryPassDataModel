@@ -51,6 +51,25 @@ public sealed class AdminFeedbackFollowupTests
     }
 
     [Fact]
+    public void ReportActions_ShouldBeVisiblyProminentWithoutChangingIcons()
+    {
+        var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
+        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("bp-report-action-strip", summary);
+        Assert.Contains("bp-report-action-strip", detail);
+        Assert.Contains("bp-report-action-label", summary);
+        Assert.Contains("bp-report-action-label", detail);
+        Assert.Contains("bp-report-action-prominent", summary);
+        Assert.Contains("bp-report-action-prominent", detail);
+        Assert.Contains("bp-latest-passport-action-icon", summary);
+        Assert.Contains("bp-latest-passport-action-icon", detail);
+        Assert.Contains(".bp-report-action-prominent", css);
+        Assert.Contains(".bp-report-action-label", css);
+    }
+
+    [Fact]
     public void AdminManagementViews_ShouldUseDesignedConfirmationsAndStructuredLayouts()
     {
         var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));

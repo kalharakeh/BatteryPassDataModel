@@ -36,13 +36,16 @@
                     @if (passport.IsHistoricalPassport)
                     {
                         <span class="bp-status-pill is-draft">Historical passport</span>
-                        <a href="@passport.LatestPassportUrl" class="bp-report-action" aria-label="Open latest passport" title="Open latest passport" data-tooltip="Open latest passport">
-                            <svg class="bp-report-action-icon bp-latest-passport-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 5a7 7 0 1 1-6.32 4" />
-                                <path d="M5 5v4h4" />
-                                <path d="M12 8v4l3 2" />
-                            </svg>
-                        </a>
+                        <span class="bp-report-action-strip bp-report-action-strip-inline">
+                            <span class="bp-report-action-label">Latest</span>
+                            <a href="@passport.LatestPassportUrl" class="bp-report-action bp-report-action-prominent" aria-label="Open latest passport" title="Open latest passport" data-tooltip="Open latest passport" data-action-icon="latest">
+                                <svg class="bp-report-action-icon bp-latest-passport-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 5a7 7 0 1 1-6.32 4" />
+                                    <path d="M5 5v4h4" />
+                                    <path d="M12 8v4l3 2" />
+                                </svg>
+                            </a>
+                        </span>
                     }
                     else
                     {
@@ -53,14 +56,17 @@
                 {
                     <p class="bp-warning mt-3">@Model.DetailAccessNotice</p>
                 }
-                <a class="bp-report-action mt-3" href="/@Uri.EscapeDataString(passport.PassportId)" aria-label="Detailed report" title="Detailed report" data-tooltip="Detailed report">
-                    <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M6 3h9l3 3v15H6z" />
-                        <path d="M15 3v4h4" />
-                        <path d="M10 12a3 3 0 1 0 4.24 4.24" />
-                        <path d="m14 16 3 3" />
-                    </svg>
-                </a>
+                <div class="bp-report-action-strip mt-3">
+                    <span class="bp-report-action-label">Detailed report</span>
+                    <a class="bp-report-action bp-report-action-prominent" href="/@Uri.EscapeDataString(passport.PassportId)" aria-label="Detailed report" title="Detailed report" data-tooltip="Detailed report" data-action-icon="detail">
+                        <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6 3h9l3 3v15H6z" />
+                            <path d="M15 3v4h4" />
+                            <path d="M10 12a3 3 0 1 0 4.24 4.24" />
+                            <path d="m14 16 3 3" />
+                        </svg>
+                    </a>
+                </div>
             </div>
             <div class="bp-summary-media-panel">
                 <div class="bp-summary-image-frame">

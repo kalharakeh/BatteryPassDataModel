@@ -97,15 +97,40 @@
                                     {
                                         <span class="bp-status-pill is-draft" title="Create a new passport snapshot to expose saved battery changes.">New passport needed</span>
                                     }
-                                    <a href="/admin/batteries/@Uri.EscapeDataString(row.BatteryId)/passports" class="bp-icon-button" aria-label="Passport history" title="Passport history"><span aria-hidden="true">&#9776;</span></a>
-                                    <a href="/admin/batteries/@Uri.EscapeDataString(row.BatteryId)/edit" class="bp-icon-button" aria-label="Edit battery" title="Edit battery"><span aria-hidden="true">&#9998;</span></a>
+                                    <a href="/admin/batteries/@Uri.EscapeDataString(row.BatteryId)/passports" class="bp-action-button" aria-label="Passport history" title="Passport history" data-tooltip="Passport history" data-action-icon="history">
+                                        <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M4 6h11" />
+                                            <path d="M4 12h16" />
+                                            <path d="M4 18h9" />
+                                            <path d="M18 16v3h3" />
+                                            <path d="M21 19a4 4 0 1 1-1.1-2.76" />
+                                        </svg>
+                                    </a>
+                                    <a href="/admin/batteries/@Uri.EscapeDataString(row.BatteryId)/edit" class="bp-action-button" aria-label="Edit battery" title="Edit battery" data-tooltip="Edit battery" data-action-icon="edit">
+                                        <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M4 20h4l11-11a2.5 2.5 0 0 0-4-4L4 16z" />
+                                            <path d="M13.5 6.5l4 4" />
+                                        </svg>
+                                    </a>
                                     @if (!string.IsNullOrWhiteSpace(row.LatestPassportId))
                                     {
-                                        <a href="/admin/passports/@Uri.EscapeDataString(row.LatestPassportId)/conformance" class="bp-icon-button" aria-label="Conformance" title="Conformance"><span aria-hidden="true">&#10003;</span></a>
+                                        <a href="/admin/passports/@Uri.EscapeDataString(row.LatestPassportId)/conformance" class="bp-action-button" aria-label="Conformance" title="Conformance" data-tooltip="Conformance" data-action-icon="conformance">
+                                            <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path d="M12 3l7 3v5c0 4.4-2.8 8.4-7 10-4.2-1.6-7-5.6-7-10V6z" />
+                                                <path d="M8.5 12.5l2.2 2.2 4.8-5" />
+                                            </svg>
+                                        </a>
                                     }
                                     <form method="post" action="/admin/batteries/@Uri.EscapeDataString(row.BatteryId)/passports/create">
                                         @Html.AntiForgeryToken()
-                                        <button type="submit" class="bp-icon-button" aria-label="Create passport" title="Create passport">+</button>
+                                        <button type="submit" class="bp-action-button" aria-label="Create passport" title="Create passport" data-tooltip="Create passport" data-action-icon="create-passport">
+                                            <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path d="M6 3h8l4 4v14H6z" />
+                                                <path d="M14 3v5h5" />
+                                                <path d="M12 11v6" />
+                                                <path d="M9 14h6" />
+                                            </svg>
+                                        </button>
                                     </form>
                                 </div>
                             </td>
