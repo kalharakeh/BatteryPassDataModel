@@ -576,6 +576,10 @@ a:hover {
   white-space: nowrap;
 }
 
+.bp-admin-battery-table .bp-battery-id-cell {
+  max-width: none;
+}
+
 .bp-action-cell {
   width: 1%;
   text-align: right;

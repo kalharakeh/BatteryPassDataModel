@@ -62,7 +62,7 @@
         </section>
 
         <section class="bp-card p-0 overflow-auto">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 bp-admin-battery-table">
                 <thead>
                     <tr>
                         <th class="px-4 py-3">Battery ID</th>
@@ -84,59 +84,29 @@
                                 ? row.UpdatedDate.Substring(0, 10)
                                 : row.UpdatedDate;
                         <tr>
-                            <td class="px-4 py-3 text-break">@row.BatteryId</td>
+                            <td class="px-4 py-3"><span class="bp-battery-id-cell">@row.BatteryId</span></td>
                             <td class="px-4 py-3">@row.BatteryFamily</td>
                             <td class="px-4 py-3">@row.BatteryModel</td>
                             <td class="px-4 py-3">@row.BatterySerialNumber</td>
-                            <td class="px-4 py-3">@row.PassportCount passports</td>
+                            <td class="px-4 py-3">@row.PassportCount</td>
                             <td class="px-4 py-3">@row.LatestPassportStatus</td>
                             <td class="px-4 py-3">@updated</td>
                             <td class="px-4 py-3">
                                 <div class="bp-icon-action-row">
-                                    <a href="/@Uri.EscapeDataString(row.BatteryId)" class="bp-icon-button" aria-label="Passport history" title="Passport history"><span aria-hidden="true">&#9776;</span></a>
+                                    @if (row.NewPassportRequired)
+                                    {
+                                        <span class="bp-status-pill is-draft" title="Create a new passport snapshot to expose saved battery changes.">New passport needed</span>
+                                    }
+                                    <a href="/admin/batteries/@Uri.EscapeDataString(row.BatteryId)/passports" class="bp-icon-button" aria-label="Passport history" title="Passport history"><span aria-hidden="true">&#9776;</span></a>
+                                    <a href="/admin/batteries/@Uri.EscapeDataString(row.BatteryId)/edit" class="bp-icon-button" aria-label="Edit battery" title="Edit battery"><span aria-hidden="true">&#9998;</span></a>
                                     @if (!string.IsNullOrWhiteSpace(row.LatestPassportId))
                                     {
-                                        <a href="/admin/passports/@Uri.EscapeDataString(row.LatestPassportId)/edit" class="bp-icon-button" aria-label="Edit latest passport" title="Edit"><span aria-hidden="true">&#9998;</span></a>
                                         <a href="/admin/passports/@Uri.EscapeDataString(row.LatestPassportId)/conformance" class="bp-icon-button" aria-label="Conformance" title="Conformance"><span aria-hidden="true">&#10003;</span></a>
                                     }
                                     <form method="post" action="/admin/batteries/@Uri.EscapeDataString(row.BatteryId)/passports/create">
                                         @Html.AntiForgeryToken()
-                                        <button type="submit" class="bp-secondary-button">Create passport</button>
+                                        <button type="submit" class="bp-icon-button" aria-label="Create passport" title="Create passport">+</button>
                                     </form>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr class="bp-passport-history-row" data-battery-passport-history="@row.BatteryId">
-                            <td class="px-4 py-3" colspan="8">
-                                <strong>Passport history</strong>
-                                <div class="bp-embedded-history-list mt-2">
-                                    @foreach (var passport in row.Passports)
-                                    {
-                                        <div class="bp-embedded-history-item">
-                                            <span class="text-break">@passport.PassportId</span>
-                                            <span class="bp-history-marker">@(passport.IsLatestForBattery ? "Latest" : "Historical")</span>
-                                            <a href="/@Uri.EscapeDataString(passport.PassportId)/summary" class="bp-report-action" aria-label="Summary report" title="Summary report" data-tooltip="Summary report"></a>
-                                            <a href="/@Uri.EscapeDataString(passport.PassportId)" class="bp-report-action" aria-label="Detailed report" title="Detailed report" data-tooltip="Detailed report"></a>
-                                            <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/conformance" class="bp-icon-button" title="Conformance">✓</a>
-                                            <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/audit" class="bp-icon-button" title="Audit trail">A</a>
-                                            @if (passport.PassportStatus.Equals("Archived", StringComparison.OrdinalIgnoreCase))
-                                            {
-                                                <form method="post" action="/admin/passports/unarchive">
-                                                    @Html.AntiForgeryToken()
-                                                    <input type="hidden" name="passportId" value="@passport.PassportId" />
-                                                    <button type="submit" class="bp-icon-button" aria-label="Unarchive" title="Unarchive">↺</button>
-                                                </form>
-                                            }
-                                            else
-                                            {
-                                                <form method="post" action="/admin/passports/archive">
-                                                    @Html.AntiForgeryToken()
-                                                    <input type="hidden" name="passportId" value="@passport.PassportId" />
-                                                    <button type="submit" class="bp-icon-button is-danger" aria-label="Archive" title="Archive" data-confirm-action data-confirm-title="Archive passport" data-confirm-message="Archive @passport.PassportId? You can unarchive it from Administration." data-confirm-submit="Archive">□</button>
-                                                </form>
-                                            }
-                                        </div>
-                                    }
                                 </div>
                             </td>
                         </tr>

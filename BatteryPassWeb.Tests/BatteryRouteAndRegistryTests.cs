@@ -84,6 +84,23 @@ public sealed class BatteryRouteAndRegistryTests
         Assert.Contains("bp-report-action-icon", view);
     }
 
+    [Fact]
+    public void AdminBatteryList_ShouldUseCompactBatteryRowsWithoutEmbeddedHistory()
+    {
+        var view = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var model = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "BatteryViewModels.cs"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("@row.PassportCount</td>", view);
+        Assert.DoesNotContain("@row.PassportCount passports", view);
+        Assert.DoesNotContain("bp-passport-history-row", view);
+        Assert.DoesNotContain("data-battery-passport-history", view);
+        Assert.Contains("/admin/batteries/@Uri.EscapeDataString(row.BatteryId)/passports", view);
+        Assert.Contains("NewPassportRequired", model);
+        Assert.Contains(".bp-admin-battery-table .bp-battery-id-cell", css);
+        Assert.Contains("max-width: none", css);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

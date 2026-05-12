@@ -141,6 +141,8 @@ public sealed class BatteryRepository
             LatestPassportId = latest?.PassportId ?? string.Empty,
             LatestPassportStatus = latest?.PassportStatus ?? "Draft",
             UpdatedDate = BsonHelpers.GetString(battery, "updatedAt"),
+            NewPassportRequired = BsonHelpers.GetValue(battery, "app", "snapshot", "newPassportRequired") is { IsBoolean: true } newPassportRequired
+                && newPassportRequired.AsBoolean,
             Passports = passportRows
         };
     }
