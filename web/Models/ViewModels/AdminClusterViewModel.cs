@@ -87,6 +87,7 @@ public sealed class ProductTemplateFormCatalogItemViewModel
     public IReadOnlyDictionary<string, double> CarbonStages { get; init; } = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
     public IReadOnlyDictionary<string, ProductTemplateRecycledContentViewModel> RecycledContent { get; init; } = new Dictionary<string, ProductTemplateRecycledContentViewModel>(StringComparer.OrdinalIgnoreCase);
     public IReadOnlyList<ProductVersionEditViewModel> ProductVersions { get; init; } = [];
+    public string LatestProductVersion { get; init; } = string.Empty;
 }
 
 public sealed class ProductTemplateRecycledContentViewModel

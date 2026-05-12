@@ -3,18 +3,20 @@
 @model BatteryPassWeb.Models.ViewModels.EditPassportViewModel
 @{
     var isNewBattery = Model.Mode.Equals("new-battery", StringComparison.OrdinalIgnoreCase);
+    var isBatteryEdit = Model.Mode.Equals("battery-edit", StringComparison.OrdinalIgnoreCase);
     var isNew = Model.Mode.Equals("new", StringComparison.OrdinalIgnoreCase) || isNewBattery;
-    ViewData["Title"] = isNewBattery ? "Create battery" : isNew ? "Create passport" : "Edit passport snapshot";
+    ViewData["Title"] = isNewBattery ? "Create battery" : isBatteryEdit ? "Edit battery" : isNew ? "Create passport" : "Edit passport snapshot";
     var passport = Model.Passport;
-    var formAction = isNewBattery ? "/admin/batteries/create" : isNew ? "/admin/passports/create" : "/admin/passports/save";
-    var submitLabel = isNewBattery ? "Create battery" : isNew ? "Create passport" : "Save passport";
-    var cancelHref = "/admin/passports";
+    var formAction = isNewBattery ? "/admin/batteries/create" : isBatteryEdit ? $"/admin/batteries/{Uri.EscapeDataString(passport.BatteryId)}/save" : isNew ? "/admin/passports/create" : "/admin/passports/save";
+    var submitLabel = isNewBattery ? "Create battery" : isBatteryEdit ? "Save battery" : isNew ? "Create passport" : "Save passport";
+    var cancelHref = isNewBattery || isBatteryEdit ? "/admin/clusters?tab=batteries" : "/admin/passports";
     var batteryImageOptions = BatteryPassWeb.Services.BatteryImageCatalog.Options;
     var selectedBatteryImageUrl = BatteryPassWeb.Services.BatteryImageCatalog.NormalizeKnownImageUrl(passport.BatteryImageUrl, passport.PassportId);
     var selectedBatteryCategory = BatteryPassWeb.Services.BatteryImageCatalog.CategoryForImageUrl(selectedBatteryImageUrl);
     var productTemplateCatalogJson = JsonSerializer.Serialize(Model.ProductTemplateCatalog);
     var selectedCatalogProduct = Model.ProductTemplateCatalog.FirstOrDefault(product => product.ProductId.Equals(Model.SelectedProductId, StringComparison.OrdinalIgnoreCase));
     var selectedProductVersions = selectedCatalogProduct?.ProductVersions ?? Array.Empty<BatteryPassWeb.Models.ViewModels.ProductVersionEditViewModel>();
+    var latestVersionByProductId = Model.ProductTemplateCatalog.ToDictionary(product => product.ProductId, product => product.LatestProductVersion, StringComparer.OrdinalIgnoreCase);
 
     double SegmentValue(string label, IReadOnlyList<BatteryPassWeb.Models.ViewModels.ChartSegmentViewModel> segments)
         => segments.FirstOrDefault(segment => segment.Label.Equals(label, StringComparison.OrdinalIgnoreCase))?.Value ?? 0;
@@ -107,21 +109,36 @@
     };
 }
 <main class="bp-page bp-admin-page">
-    <h1 class="mb-1">@(isNewBattery ? "Create battery" : isNew ? "Create passport" : "Edit passport snapshot")</h1>
-    <p class="bp-passport-id">@passport.PassportId</p>
+    <h1 class="mb-1">@(isNewBattery ? "Create battery" : isBatteryEdit ? "Edit battery" : isNew ? "Create passport" : "Edit passport snapshot")</h1>
+    <p class="bp-passport-id">@(isBatteryEdit ? $"Battery ID: {passport.BatteryId}" : passport.PassportId)</p>
 
     <div class="bp-card mt-3">
         <div class="d-flex justify-content-between flex-wrap gap-3 align-items-center">
-            <div>
-                <span class="bp-summary-title">Trust state</span>
-                <p class="mb-0"><strong>@passport.TrustState</strong>@if (passport.TrustIsDirty) { <span class="bp-pill bp-pill-warn ms-2">Dirty</span> }</p>
-            </div>
-            <div class="d-flex flex-wrap gap-2">
-                <a href="/admin/help" class="bp-secondary-button">Admin help</a>
-                <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/conformance" class="bp-secondary-button">Open conformance</a>
-                <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/audit" class="bp-secondary-button">Audit trail</a>
-                <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/revisions" class="bp-secondary-button">Revision history</a>
-            </div>
+            @if (isBatteryEdit)
+            {
+                <div>
+                    <span class="bp-summary-title">Battery record</span>
+                    <p class="mb-0"><strong>New passport needed after save</strong></p>
+                    <p class="text-secondary mb-0">Saving battery data does not mutate existing passport snapshots.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="/admin/clusters?tab=batteries" class="bp-secondary-button">Back to Batteries</a>
+                    <a href="/admin/batteries/@Uri.EscapeDataString(passport.BatteryId)/passports" class="bp-secondary-button">Passport history</a>
+                </div>
+            }
+            else
+            {
+                <div>
+                    <span class="bp-summary-title">Trust state</span>
+                    <p class="mb-0"><strong>@passport.TrustState</strong>@if (passport.TrustIsDirty) { <span class="bp-pill bp-pill-warn ms-2">Dirty</span> }</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="/admin/help" class="bp-secondary-button">Admin help</a>
+                    <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/conformance" class="bp-secondary-button">Open conformance</a>
+                    <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/audit" class="bp-secondary-button">Audit trail</a>
+                    <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/revisions" class="bp-secondary-button">Revision history</a>
+                </div>
+            }
         </div>
     </div>
 
@@ -147,10 +164,10 @@
                     Select a battery family and Battery Model below. Shared technical fields update from the template; identity fields stay battery-specific and editable.
                 </p>
                 <div class="bp-form-grid">
-                    <label class="bp-field-shell" data-field-key="general.passportId"><span>Passport ID <em class="bp-field-marker">@RequirementLabel("general.passportId")</em></span>@if (isNew) { <input type="text" name="passportId" value="@passport.PassportId" required /> } else { <input type="text" name="passportId" value="@passport.PassportId" readonly /> }<small class="bp-field-help">@DirtySignedDataHelp("general.passportId", "Unique DID-style battery identifier.")</small></label>
-                    <label class="bp-field-shell" data-field-key="general.product"><span>Battery Family <em class="bp-field-marker">@RequirementLabel("general.product")</em></span><select name="productId" data-product-template-select>@foreach (var productTemplate in Model.ProductTemplates) { if (productTemplate.ProductId.Equals(Model.SelectedProductId, StringComparison.OrdinalIgnoreCase)) { <option value="@productTemplate.ProductId" selected>@productTemplate.ProductName</option> } else { <option value="@productTemplate.ProductId">@productTemplate.ProductName</option> } }</select><small class="bp-field-help">@(isNewBattery ? "Battery Family and serial number are locked because they define the Battery ID." : DirtySignedDataHelp("general.product", "Battery family copied into this battery."))</small></label>
+                    <label class="bp-field-shell" data-field-key="general.passportId"><span>@(isBatteryEdit ? "Battery ID" : "Passport ID") <em class="bp-field-marker">@RequirementLabel("general.passportId")</em></span>@if (isBatteryEdit) { <input type="text" name="batteryId" value="@passport.BatteryId" readonly /> } else if (isNew) { <input type="text" name="passportId" value="@passport.PassportId" required /> } else { <input type="text" name="passportId" value="@passport.PassportId" readonly /> }<small class="bp-field-help">@(isBatteryEdit ? "Locked stable identity for this physical battery." : DirtySignedDataHelp("general.passportId", "Unique DID-style battery identifier."))</small></label>
+                    <label class="bp-field-shell" data-field-key="general.product"><span>Battery Family <em class="bp-field-marker">@RequirementLabel("general.product")</em></span>@if (isBatteryEdit) { <input type="hidden" name="productId" value="@Model.SelectedProductId" /> }<select name="productId" data-product-template-select disabled="@isBatteryEdit">@foreach (var productTemplate in Model.ProductTemplates) { var latestVersion = latestVersionByProductId.TryGetValue(productTemplate.ProductId, out var latest) ? latest : string.Empty; if (productTemplate.ProductId.Equals(Model.SelectedProductId, StringComparison.OrdinalIgnoreCase)) { <option value="@productTemplate.ProductId" data-latest-product-version="@latestVersion" selected>@productTemplate.ProductName</option> } else { <option value="@productTemplate.ProductId" data-latest-product-version="@latestVersion">@productTemplate.ProductName</option> } }</select><small class="bp-field-help">@(isNewBattery || isBatteryEdit ? "Battery Family and serial number are locked because they define the Battery ID." : DirtySignedDataHelp("general.product", "Battery family copied into this battery."))</small></label>
                     <label class="bp-field-shell" data-field-key="general.productVersion"><span>Battery Model <em class="bp-field-marker">@RequirementLabel("general.productVersion")</em></span><select name="productVersion" data-product-version-select>@foreach (var productVersion in selectedProductVersions) { if (productVersion.Version.Equals(Model.SelectedProductVersion, StringComparison.OrdinalIgnoreCase)) { <option value="@productVersion.Version" selected>@productVersion.Version</option> } else { <option value="@productVersion.Version">@productVersion.Version</option> } }</select><small class="bp-field-help">@DirtySignedDataHelp("general.productVersion", "Battery Model copied into this battery.")</small></label>
-                    <label class="bp-field-shell" data-field-key="general.serialNumber"><span>Battery serial number <em class="bp-field-marker">@RequirementLabel("general.serialNumber")</em></span><input type="text" name="serialNumber" value="@passport.BatterySerialNumber" /><small class="bp-field-help">@(isNewBattery ? "Battery Family and serial number are locked because they define the Battery ID." : DirtySignedDataHelp("general.serialNumber", "Manufacturer serial number."))</small></label>
+                    <label class="bp-field-shell" data-field-key="general.serialNumber"><span>Battery serial number <em class="bp-field-marker">@RequirementLabel("general.serialNumber")</em></span><input type="text" name="serialNumber" value="@passport.BatterySerialNumber" readonly="@isBatteryEdit" /><small class="bp-field-help">@(isNewBattery || isBatteryEdit ? "Battery Family and serial number are locked because they define the Battery ID." : DirtySignedDataHelp("general.serialNumber", "Manufacturer serial number."))</small></label>
                     @if (isNewBattery)
                     {
                         <div class="bp-field-shell bp-span-all">
@@ -164,7 +181,7 @@
                     <label class="bp-field-shell"><span>Weight kg <em class="bp-field-marker">@RequirementLabel("general.batteryMass")</em></span><input type="number" step="any" name="batteryMass" value="@passport.Weight" /><small class="bp-field-help">@DirtySignedDataHelp("general.batteryMass", "Battery mass in kg.")</small></label>
                     <label class="bp-field-shell"><span>Manufactured date <em class="bp-field-marker">@RequirementLabel("general.manufacturingDate")</em></span><input type="date" name="manufacturingDate" value="@passport.ManufacturedDate" /><small class="bp-field-help">@DirtySignedDataHelp("general.manufacturingDate", "Manufacturing date.")</small></label>
                     <label class="bp-field-shell"><span>Facility ID <em class="bp-field-marker">@RequirementLabel("general.facilityId")</em></span><input type="text" name="facilityId" value="@passport.FacilityId" /><small class="bp-field-help">@DirtySignedDataHelp("general.facilityId", "Production or facility identifier.")</small></label>
-                    <label class="bp-field-shell"><span>Manufactured by <em class="bp-field-marker">@RequirementLabel("general.manufacturerName")</em></span><input type="text" name="manufacturerName" value="@passport.ManufacturerName" /><small class="bp-field-help">@DirtySignedDataHelp("general.manufacturerName", "Manufacturer legal/display name.")</small></label>
+                    <label class="bp-field-shell"><span>Manufactured by <em class="bp-field-marker">@RequirementLabel("general.manufacturerName")</em></span><input type="text" name="manufacturerName" value="@passport.ManufacturerName" readonly="@isBatteryEdit" /><small class="bp-field-help">@(isBatteryEdit ? "Locked after battery creation." : DirtySignedDataHelp("general.manufacturerName", "Manufacturer legal/display name."))</small></label>
                     <label class="bp-field-shell"><span>Passport status <em class="bp-field-marker">@RequirementLabel("general.registryStatus")</em></span><select name="status">@if (passport.RegistryStatus != "archived") { <option value="draft" selected>Draft</option> } else { <option value="draft">Draft</option> } @if (passport.RegistryStatus == "archived") { <option value="archived" selected>Archived</option> } else { <option value="archived">Archived</option> }</select><small class="bp-field-help">@DirtySignedDataHelp("general.registryStatus", "Publishing is handled from the trust workflow after validation and signing.")</small></label>
                     <label class="bp-field-shell"><span>Battery image <em class="bp-field-marker">@RequirementLabel("general.batteryImageUrl")</em></span><select name="batteryImageUrl" data-battery-image-select>@foreach (var imageOption in batteryImageOptions) { if (imageOption.Url.Equals(selectedBatteryImageUrl, StringComparison.OrdinalIgnoreCase)) { <option value="@imageOption.Url" data-image-category="@imageOption.Category" selected>@imageOption.Label (@imageOption.Category)</option> } else { <option value="@imageOption.Url" data-image-category="@imageOption.Category">@imageOption.Label (@imageOption.Category)</option> } }</select><small class="bp-field-help">@RequirementHelp("general.batteryImageUrl", "Display image for the report.")</small></label>
                     <label class="bp-field-shell" data-field-key="general.softwareVersion"><span>Software version <em class="bp-field-marker">@RequirementLabel("general.softwareVersion")</em></span><input type="text" name="softwareVersion" value="@passport.SoftwareVersion" readonly data-product-software-version /><small class="bp-field-help">@DirtySignedDataHelp("general.softwareVersion", "Software version parameter copied from the selected Battery Model.")</small></label>
@@ -451,7 +468,17 @@
                     || product;
             }
 
-            function updateProductVersionOptions(product, preferredVersion) {
+            function selectLatestProductVersion(product) {
+                const versions = Array.isArray(product?.ProductVersions) ? product.ProductVersions : [];
+                const selectedOption = productTemplateSelect?.selectedOptions?.[0];
+                return product?.LatestProductVersion
+                    || selectedOption?.dataset.latestProductVersion
+                    || versions[versions.length - 1]?.Version
+                    || versions[0]?.Version
+                    || '';
+            }
+
+            function updateProductVersionOptions(product, preferredVersion, preferLatest) {
                 if (!productVersionSelect || !product) {
                     return;
                 }
@@ -467,9 +494,11 @@
 
                 const hasPreferred = versions.some((productVersion) =>
                     String(productVersion.Version || '').toLowerCase() === String(preferredVersion || '').toLowerCase());
-                productVersionSelect.value = hasPreferred
-                    ? preferredVersion
-                    : versions[0]?.Version || '';
+                productVersionSelect.value = preferLatest
+                    ? selectLatestProductVersion(product)
+                    : hasPreferred
+                        ? preferredVersion
+                        : versions[0]?.Version || '';
             }
 
             function updateSoftwareParameters(productVersion) {
@@ -488,7 +517,7 @@
                 }
             }
 
-            function applyProductTemplateSelection(updateVersionList, updateSoftwareList) {
+            function applyProductTemplateSelection(updateVersionList, updateSoftwareList, preferLatestVersion = false) {
                 const product = findCatalogProduct(productTemplateSelect?.value || '');
                 if (!product) {
                     return;
@@ -496,7 +525,7 @@
 
                 const previousProductVersion = productVersionSelect?.value || '';
                 if (updateVersionList) {
-                    updateProductVersionOptions(product, previousProductVersion);
+                    updateProductVersionOptions(product, previousProductVersion, preferLatestVersion);
                 }
 
                 const productVersion = findCatalogProductVersion(product, productVersionSelect?.value || '');
@@ -799,7 +828,7 @@
             batteryImageSelect?.addEventListener('change', syncCategoryFromImage);
             pristineFormState = serializeFormState(form);
             productTemplateSelect?.addEventListener('change', () => {
-                applyProductTemplateSelection(true, true);
+                applyProductTemplateSelection(true, true, true);
                 updateBatteryIdPreview();
             });
             productVersionSelect?.addEventListener('change', () => {

@@ -28,6 +28,7 @@ public class AdminController : Controller
     private const string SamplePassportId = "did:web:acme.battery.pass:sample-customer-north-001";
     private const string TrustWorkflowServiceErrorMessage = "The trust workflow could not be completed because MongoDB/service persistence is unavailable. No signed or published trust state was claimed. Please retry after the service is healthy.";
     private const string BatteryIdentityLockedMessage = "Battery Family and serial number are locked because they define the Battery ID.";
+    private const string BatteryNewPassportRequiredPath = "app.snapshot.newPassportRequired";
 
     private readonly PassportRepository _passportRepository;
     private readonly BatteryRepository _batteryRepository;
@@ -160,6 +161,25 @@ public class AdminController : Controller
         return View("EditPassport", model);
     }
 
+    [HttpGet("batteries/{batteryId}/edit")]
+    public async Task<IActionResult> EditBattery(string batteryId, [FromQuery] string? status, [FromQuery] string? error, CancellationToken cancellationToken)
+    {
+        var battery = await _batteryRepository.GetByBatteryIdAsync(Uri.UnescapeDataString(batteryId), cancellationToken);
+        if (battery == null)
+        {
+            return NotFound();
+        }
+
+        var model = await BuildEditPassportModelAsync(
+            battery,
+            "battery-edit",
+            status ?? string.Empty,
+            error,
+            cancellationToken);
+
+        return View("EditPassport", model);
+    }
+
     [HttpGet("batteries/id-preview")]
     public async Task<IActionResult> PreviewBatteryId([FromQuery] string? productId, [FromQuery] string? serialNumber, CancellationToken cancellationToken)
     {
@@ -242,8 +262,67 @@ public class AdminController : Controller
             DateTimeOffset.UtcNow,
             cancellationToken);
         var passportId = BsonHelpers.GetString(passport, "passportId");
+        var now = DateTimeOffset.UtcNow.ToString("O");
+        var snapshot = EnsureDocument(EnsureDocument(battery, "app"), "snapshot");
+        snapshot["newPassportRequired"] = false;
+        snapshot["lastPassportCreatedAt"] = now;
+        snapshot["latestPassportId"] = passportId;
+        battery["updatedAt"] = now;
+        await _batteryRepository.ReplaceAsync(BsonHelpers.GetString(battery, "batteryId"), battery, cancellationToken);
         TempData["StatusMessage"] = $"Passport {passportId} created for battery {BsonHelpers.GetString(battery, "batteryId")}.";
         return Redirect($"/admin/passports/{Uri.EscapeDataString(passportId)}/edit");
+    }
+
+    [HttpPost("batteries/{batteryId}/save")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveBattery(string batteryId, CancellationToken cancellationToken)
+    {
+        var decodedBatteryId = Uri.UnescapeDataString(batteryId);
+        var battery = await _batteryRepository.GetByBatteryIdAsync(decodedBatteryId, cancellationToken);
+        if (battery == null)
+        {
+            return NotFound();
+        }
+
+        var productId = FirstNonEmpty(
+            BsonHelpers.GetString(battery, "identity", "productId"),
+            BsonHelpers.GetString(battery, "app", "product", "productId"),
+            BatteryProductTemplateCatalog.DefaultProductId);
+        var product = await _productTemplateService.GetProductAsync(productId, cancellationToken)
+            ?? BatteryProductTemplateCatalog.DefaultProduct;
+        var requestedBatteryModel = FirstNonEmpty(
+            Text(Request.Form, "batteryModel"),
+            Text(Request.Form, "productVersion"),
+            BsonHelpers.GetString(battery, "identity", "batteryModel"),
+            product.LatestProductVersion.Version);
+        var productVersion = product.ProductVersions.FirstOrDefault(version => version.Version.Equals(requestedBatteryModel, StringComparison.OrdinalIgnoreCase))
+            ?? product.LatestProductVersion;
+        var lockedSerialNumber = BsonHelpers.GetString(battery, "identity", "serialNumber");
+        var lockedManufacturerName = BsonHelpers.GetString(battery, "app", "display", "manufacturerName");
+        var now = DateTimeOffset.UtcNow.ToString("O");
+
+        ApplyPassportForm(battery, Request.Form, now);
+        var app = EnsureDocument(battery, "app");
+        var display = EnsureDocument(app, "display");
+        var productNode = EnsureDocument(app, "product");
+        display["serialNumber"] = lockedSerialNumber;
+        display["manufacturerName"] = lockedManufacturerName;
+        productNode["productId"] = product.ProductId;
+        productNode["productName"] = product.ProductName;
+        productNode["productVersion"] = productVersion.Version;
+        productNode["batteryModel"] = productVersion.Version;
+        productNode["softwareVersion"] = Text(Request.Form, "softwareVersion", productVersion.SoftwareVersion);
+        ApplyBatteryIdentityFromDocument(battery, product, productVersion, now);
+
+        var snapshot = EnsureDocument(app, "snapshot");
+        snapshot["newPassportRequired"] = true;
+        snapshot["requiredSince"] = now;
+        snapshot["reason"] = "battery-data-updated";
+        battery["updatedAt"] = now;
+
+        await _batteryRepository.ReplaceAsync(decodedBatteryId, battery, cancellationToken);
+        TempData["StatusMessage"] = "Battery data saved. Create a new passport snapshot to publish the updated battery data.";
+        return Redirect("/admin/clusters?tab=batteries");
     }
 
     [HttpGet("batteries/{batteryId}/passports")]
@@ -1654,7 +1733,8 @@ public class AdminController : Controller
                     StringComparer.OrdinalIgnoreCase),
                 ProductVersions = BuildProductVersionEditModels(product.ProductVersions.Count == 0
                     ? [product.LatestProductVersion]
-                    : product.ProductVersions)
+                    : product.ProductVersions),
+                LatestProductVersion = product.LatestProductVersion.Version
             })
             .ToList();
     }

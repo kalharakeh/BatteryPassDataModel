@@ -39,8 +39,33 @@ public sealed class BatteryAdminWorkflowTests
         Assert.Contains("Battery Model", view);
         Assert.Contains("Passport history", view);
         Assert.Contains("Create passport", view);
-        Assert.Contains("data-battery-passport-history", view);
+        Assert.DoesNotContain("data-battery-passport-history", view);
         Assert.DoesNotContain("Battery version", view);
+    }
+
+    [Fact]
+    public void AdminBatteryEdit_ShouldEditBatteryAndReturnToBatteryListWithPendingSnapshot()
+    {
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+        var view = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
+
+        Assert.Contains("[HttpGet(\"batteries/{batteryId}/edit\")]", controller);
+        Assert.Contains("[HttpPost(\"batteries/{batteryId}/save\")]", controller);
+        Assert.Contains("SaveBattery", controller);
+        Assert.Contains("app.snapshot.newPassportRequired", controller);
+        Assert.Contains("/admin/clusters?tab=batteries", controller);
+        Assert.Contains("battery-edit", view);
+        Assert.Contains("readonly", view);
+        Assert.Contains("New passport", view);
+    }
+
+    [Fact]
+    public void BatteryCreate_ShouldDefaultModelToLatestFamilyModel()
+    {
+        var view = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
+
+        Assert.Contains("data-latest-product-version", view);
+        Assert.Contains("selectLatestProductVersion", view);
     }
 
     private static string RepoFile(params string[] parts)
