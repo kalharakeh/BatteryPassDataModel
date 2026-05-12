@@ -56,6 +56,16 @@ public sealed class BatteryRouteAndRegistryTests
     }
 
     [Fact]
+    public void AccessControl_ShouldAllowClusterMembersToSeeSignedOrPublishedRegistryPassports()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Services", "AccessControlService.cs"));
+
+        Assert.Contains("registryStatus.Equals(\"published\"", source);
+        Assert.Contains("registryStatus.Equals(\"signed\"", source);
+        Assert.Contains("passportPublishPolicyService.HasCurrentValidSignature(passport)", source);
+    }
+
+    [Fact]
     public void PassportReports_ShouldShowBatteryIdPassportIdAndHistoricalLatestState()
     {
         var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));

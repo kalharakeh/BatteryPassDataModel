@@ -289,7 +289,9 @@ public sealed class AccessControlService
 
     private static bool IsSignedOrPublished(BsonDocument passport, PassportPublishPolicyService passportPublishPolicyService)
     {
-        return passportPublishPolicyService.IsPubliclyVisible(passport)
+        var registryStatus = BsonHelpers.GetString(passport, "registryInfo", "status");
+        return registryStatus.Equals("published", StringComparison.OrdinalIgnoreCase)
+            || registryStatus.Equals("signed", StringComparison.OrdinalIgnoreCase)
             || passportPublishPolicyService.HasCurrentValidSignature(passport);
     }
 }
