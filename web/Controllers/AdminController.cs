@@ -27,8 +27,12 @@ public class AdminController : Controller
 
     private const string SamplePassportId = "did:web:acme.battery.pass:sample-customer-north-001";
     private const string TrustWorkflowServiceErrorMessage = "The trust workflow could not be completed because MongoDB/service persistence is unavailable. No signed or published trust state was claimed. Please retry after the service is healthy.";
+    private const string BatteryIdentityLockedMessage = "Battery Family and serial number are locked because they define the Battery ID.";
 
     private readonly PassportRepository _passportRepository;
+    private readonly BatteryRepository _batteryRepository;
+    private readonly BatteryIdService _batteryIdService;
+    private readonly BatteryPassportSnapshotService _batteryPassportSnapshotService;
     private readonly ClusterRepository _clusterRepository;
     private readonly PassportViewModelFactory _viewModelFactory;
     private readonly ExternalApiRepository _externalApiRepository;
@@ -45,6 +49,9 @@ public class AdminController : Controller
 
     public AdminController(
         PassportRepository passportRepository,
+        BatteryRepository batteryRepository,
+        BatteryIdService batteryIdService,
+        BatteryPassportSnapshotService batteryPassportSnapshotService,
         ClusterRepository clusterRepository,
         PassportViewModelFactory viewModelFactory,
         ExternalApiRepository externalApiRepository,
@@ -60,6 +67,9 @@ public class AdminController : Controller
         PassportTrustWorkflowService passportTrustWorkflowService)
     {
         _passportRepository = passportRepository;
+        _batteryRepository = batteryRepository;
+        _batteryIdService = batteryIdService;
+        _batteryPassportSnapshotService = batteryPassportSnapshotService;
         _clusterRepository = clusterRepository;
         _viewModelFactory = viewModelFactory;
         _externalApiRepository = externalApiRepository;
@@ -118,6 +128,104 @@ public class AdminController : Controller
             cancellationToken);
 
         return View("EditPassport", model);
+    }
+
+    [HttpGet("batteries/new")]
+    public async Task<IActionResult> NewBattery([FromQuery] string? error, CancellationToken cancellationToken)
+    {
+        var product = BatteryProductTemplateCatalog.DefaultProduct;
+        var productVersion = product.LatestProductVersion;
+        var now = DateTimeOffset.UtcNow.ToString("O");
+        var document = ProductTemplatePassportBuilder.BuildPassportFromTemplate(
+            "new-battery",
+            product,
+            productVersion,
+            new ProductTemplateBatteryIdentity
+            {
+                ModelNumber = string.Empty,
+                SerialNumber = string.Empty,
+                DisplayName = string.Empty,
+                FacilityId = string.Empty,
+                ClusterId = string.Empty,
+                ManufacturingDate = now[..10]
+            },
+            now);
+        var model = await BuildEditPassportModelAsync(
+            document,
+            "new-battery",
+            string.Empty,
+            error,
+            cancellationToken);
+
+        return View("EditPassport", model);
+    }
+
+    [HttpPost("batteries/create")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateBattery(CancellationToken cancellationToken)
+    {
+        var form = Request.Form;
+        var productId = Text(form, "productId", BatteryProductTemplateCatalog.DefaultProductId);
+        var serialNumber = Text(form, "serialNumber");
+        if (string.IsNullOrWhiteSpace(serialNumber))
+        {
+            return Redirect($"/admin/batteries/new?error={Uri.EscapeDataString("Battery serial number is required.")}");
+        }
+
+        var product = await _productTemplateService.GetProductAsync(productId, cancellationToken) ?? BatteryProductTemplateCatalog.DefaultProduct;
+        var batteryId = _batteryIdService.CreateBatteryId(product.ProductName, serialNumber);
+        if (await _batteryRepository.GetByBatteryIdAsync(batteryId, cancellationToken) != null)
+        {
+            return Redirect($"/admin/batteries/new?error={Uri.EscapeDataString("Battery already exists for this family and serial number.")}");
+        }
+
+        var requestedBatteryModel = FirstNonEmpty(
+            Text(form, "batteryModel"),
+            Text(form, "productVersion"),
+            product.LatestProductVersion.Version);
+        var productVersion = product.ProductVersions.FirstOrDefault(version => version.Version.Equals(requestedBatteryModel, StringComparison.OrdinalIgnoreCase))
+            ?? product.LatestProductVersion;
+        var now = DateTimeOffset.UtcNow.ToString("O");
+        var battery = ProductTemplatePassportBuilder.BuildBatteryFromTemplate(
+            batteryId,
+            product,
+            productVersion,
+            new ProductTemplateBatteryIdentity
+            {
+                ModelNumber = Text(form, "modelNumber", $"{product.ProductId}-{serialNumber}"),
+                SerialNumber = serialNumber,
+                DisplayName = Text(form, "name", $"{product.ProductName} {serialNumber}"),
+                FacilityId = Text(form, "facilityId"),
+                ClusterId = Text(form, "clusterId"),
+                ManufacturingDate = Text(form, "manufacturingDate", now[..10])
+            },
+            now);
+        ApplyPassportForm(battery, form, now);
+        ApplyBatteryIdentityFromDocument(battery, product, productVersion, now);
+        battery["updatedAt"] = now;
+        await _batteryRepository.CreateBatteryAsync(battery, cancellationToken);
+        TempData["StatusMessage"] = $"Battery {batteryId} created. Create the first passport when the data is ready.";
+        return Redirect("/admin/clusters?tab=batteries");
+    }
+
+    [HttpPost("batteries/{batteryId}/passports/create")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateBatteryPassport(string batteryId, CancellationToken cancellationToken)
+    {
+        var battery = await _batteryRepository.GetByBatteryIdAsync(Uri.UnescapeDataString(batteryId), cancellationToken);
+        if (battery == null)
+        {
+            return NotFound();
+        }
+
+        var passport = await _batteryPassportSnapshotService.CreatePassportSnapshotAsync(
+            battery,
+            CurrentActor(),
+            DateTimeOffset.UtcNow,
+            cancellationToken);
+        var passportId = BsonHelpers.GetString(passport, "passportId");
+        TempData["StatusMessage"] = $"Passport {passportId} created for battery {BsonHelpers.GetString(battery, "batteryId")}.";
+        return Redirect($"/admin/passports/{Uri.EscapeDataString(passportId)}/edit");
     }
 
     [HttpPost("passports/archive")]
@@ -594,7 +702,8 @@ public class AdminController : Controller
             .ToList();
 
         var clusterNamesById = clusterViewModels.ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
-        var needsPassports = selectedTab is "passports" or "battery" or "api-token-management";
+        var needsBatteries = selectedTab == "batteries";
+        var needsPassports = selectedTab is "battery" or "api-token-management";
         var needsUsers = selectedTab == "users";
         var needsCredentials = selectedTab == "api-token-management";
         var needsProducts = selectedTab == "products";
@@ -603,6 +712,9 @@ public class AdminController : Controller
         IReadOnlyList<PassportSummaryViewModel> passports = needsPassports
             ? await _passportRepository.SearchAsync(q ?? string.Empty, includeArchived: true, cancellationToken)
             : Array.Empty<PassportSummaryViewModel>();
+        IReadOnlyList<BsonDocument> batteryDocuments = needsBatteries
+            ? await _batteryRepository.SearchDocumentsAsync(q ?? string.Empty, includeArchived: true, cancellationToken)
+            : Array.Empty<BsonDocument>();
         IReadOnlyList<BsonDocument> users = needsUsers
             ? await _clusterRepository.ListUsersAsync(cancellationToken)
             : Array.Empty<BsonDocument>();
@@ -625,6 +737,7 @@ public class AdminController : Controller
             SelectedCredentialTab = selectedCredentialTab,
             PassportsQuery = q ?? string.Empty,
             Clusters = clusterViewModels,
+            Batteries = await BuildAdminBatteryRowsAsync(batteryDocuments, clusterNamesById, cancellationToken),
             Passports = passports
                 .Select(passport => new PassportSummaryViewModel
                 {
@@ -701,6 +814,53 @@ public class AdminController : Controller
         };
 
         return View(model);
+    }
+
+    private async Task<IReadOnlyList<BatterySummaryViewModel>> BuildAdminBatteryRowsAsync(
+        IReadOnlyList<BsonDocument> batteryDocuments,
+        IReadOnlyDictionary<string, string> clusterNamesById,
+        CancellationToken cancellationToken)
+    {
+        var rows = new List<BatterySummaryViewModel>();
+        foreach (var battery in batteryDocuments)
+        {
+            var batteryId = BsonHelpers.GetString(battery, "batteryId");
+            var passports = await _passportRepository.ListByBatteryIdAsync(batteryId, includeArchived: true, cancellationToken);
+            var history = passports.Select(ToAdminHistoryRow).ToList();
+            rows.Add(_batteryRepository.ToSummary(battery, history, ResolveClusterLabel(battery, clusterNamesById)));
+        }
+
+        return rows
+            .OrderBy(row => row.BatteryFamily, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(row => row.BatterySerialNumber, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private BatteryPassportHistoryRowViewModel ToAdminHistoryRow(BsonDocument passport)
+    {
+        var status = BsonHelpers.GetString(passport, "registryInfo", "status");
+        return new BatteryPassportHistoryRowViewModel
+        {
+            PassportId = BsonHelpers.GetString(passport, "passportId"),
+            BatteryId = BsonHelpers.GetString(passport, "batteryId"),
+            CreatedAt = BsonHelpers.GetString(passport, "snapshot", "createdAt"),
+            PassportStatus = string.IsNullOrWhiteSpace(status) ? "Draft" : char.ToUpperInvariant(status[0]) + status[1..],
+            IsLatestForBattery = passport.GetValue("isLatestForBattery", false).ToBoolean(),
+            IsPubliclyVisible = _passportPublishPolicyService.IsPubliclyVisible(passport)
+        };
+    }
+
+    private static string ResolveClusterLabel(BsonDocument battery, IReadOnlyDictionary<string, string> clusterNamesById)
+    {
+        var clusterId = BsonHelpers.GetString(battery, "clusterId");
+        if (string.IsNullOrWhiteSpace(clusterId))
+        {
+            return "No cluster assigned";
+        }
+
+        return clusterNamesById.TryGetValue(clusterId, out var clusterName) && !string.IsNullOrWhiteSpace(clusterName)
+            ? clusterName
+            : clusterId;
     }
 
     [HttpPost("clusters/create")]
@@ -968,14 +1128,15 @@ public class AdminController : Controller
     {
         return value?.ToLowerInvariant() switch
         {
+            "batteries" => "batteries",
             "battery" => "battery",
-            "passports" => "passports",
+            "passports" => "batteries",
             "clusters" => "clusters",
             "users" => "users",
             "api-token-management" or "api-tokens" => "api-token-management",
             "local-editable-fields" => "local-editable-fields",
             "products" => "products",
-            _ => "passports"
+            _ => "batteries"
         };
     }
 
@@ -1628,6 +1789,29 @@ public class AdminController : Controller
             },
             CurrentActor(),
             cancellationToken);
+    }
+
+    private static void ApplyBatteryIdentityFromDocument(
+        BsonDocument battery,
+        BatteryProductTemplate product,
+        BatteryProductVersion productVersion,
+        string now)
+    {
+        var app = EnsureDocument(battery, "app");
+        var display = EnsureDocument(app, "display");
+        var productNode = EnsureDocument(app, "product");
+        var identity = EnsureDocument(battery, "identity");
+        productNode["batteryModel"] = productVersion.Version;
+        identity["batteryFamily"] = product.ProductName;
+        identity["batteryModel"] = productVersion.Version;
+        identity["modelNumber"] = BsonHelpers.GetString(display, "modelNumber");
+        identity["serialNumber"] = BsonHelpers.GetString(display, "serialNumber");
+        identity["displayName"] = BsonHelpers.GetString(display, "name");
+        identity["facilityId"] = BsonHelpers.GetString(display, "facilityId");
+        identity["productId"] = product.ProductId;
+        identity["productVersion"] = productVersion.Version;
+        identity["softwareVersion"] = BsonHelpers.GetString(productNode, "softwareVersion");
+        battery["updatedAt"] = now;
     }
 
     private static void ApplyPassportForm(BsonDocument document, IFormCollection form, string now)

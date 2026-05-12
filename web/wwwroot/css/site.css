@@ -5654,3 +5654,26 @@ a:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.bp-passport-history-row {
+  background: color-mix(in srgb, var(--bp-surface) 92%, var(--bp-border));
+}
+
+.bp-history-marker {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.bp-embedded-history-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.bp-embedded-history-item {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1fr) auto repeat(4, auto);
+  gap: 0.5rem;
+  align-items: center;
+}

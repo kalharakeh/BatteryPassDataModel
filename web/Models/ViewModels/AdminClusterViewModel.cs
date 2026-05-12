@@ -9,6 +9,7 @@ public sealed class AdminClusterViewModel
     public string SelectedCredentialTab { get; init; } = "api-tokens";
     public string PassportsQuery { get; init; } = string.Empty;
     public IReadOnlyList<ClusterViewModel> Clusters { get; init; } = [];
+    public IReadOnlyList<BatterySummaryViewModel> Batteries { get; init; } = [];
     public IReadOnlyList<PassportSummaryViewModel> Passports { get; init; } = [];
     public IReadOnlyList<UserViewModel> Users { get; init; } = [];
     public IReadOnlyList<ClusterMembershipViewModel> Memberships { get; init; } = [];

@@ -12,11 +12,11 @@
 <main class="bp-page bp-admin-page">
     <div>
         <h1 class="mb-1">Administration</h1>
-        <p class="text-secondary mb-0">Manage passports, battery families, battery cluster assignments, registered clusters, and user memberships from one page.</p>
+        <p class="text-secondary mb-0">Manage batteries, passport snapshots, battery families, cluster assignments, registered clusters, and user memberships from one page.</p>
     </div>
 
     <nav class="bp-tab-row mt-4" aria-label="Administration tabs">
-        <a class="@TabClass("passports")" href="/admin/clusters?tab=passports@querySuffix">Passports</a>
+        <a class="@TabClass("batteries")" href="/admin/clusters?tab=batteries@querySuffix">Batteries</a>
         <a class="@TabClass("battery")" href="/admin/clusters?tab=battery">Battery cluster assignments</a>
         <a class="@TabClass("clusters")" href="/admin/clusters?tab=clusters">Registered clusters</a>
         <a class="@TabClass("users")" href="/admin/clusters?tab=users">Users</a>
@@ -42,12 +42,12 @@
         </div>
     }
 
-    @if (selectedTab == "passports")
+    @if (selectedTab == "batteries")
     {
         <section class="bp-card mt-4">
             <div class="d-flex justify-content-between flex-wrap gap-3 align-items-end">
                 <form action="/admin/clusters" class="bp-search-form mb-0">
-                    <input type="hidden" name="tab" value="passports" />
+                    <input type="hidden" name="tab" value="batteries" />
                     <input
                         name="q"
                         value="@Model.PassportsQuery"
@@ -56,7 +56,7 @@
                 </form>
                 <div class="d-flex flex-wrap gap-2">
                     <a href="/admin/help" class="bp-secondary-button">Help</a>
-                    <a href="/admin/passports/new" class="bp-primary-button">New passport</a>
+                    <a href="/admin/batteries/new" class="bp-primary-button">Create battery</a>
                 </div>
             </div>
         </section>
@@ -67,15 +67,16 @@
                     <tr>
                         <th class="px-4 py-3">Battery ID</th>
                         <th class="px-4 py-3">Battery Family</th>
-                        <th class="px-4 py-3">Battery version</th>
+                        <th class="px-4 py-3">Battery Model</th>
                         <th class="px-4 py-3">Battery serial number</th>
-                        <th class="px-4 py-3">Passport status</th>
+                        <th class="px-4 py-3">Passports</th>
+                        <th class="px-4 py-3">Latest passport status</th>
                         <th class="px-4 py-3">Updated</th>
                         <th class="px-4 py-3 bp-actions-column">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var row in Model.Passports)
+                    @foreach (var row in Model.Batteries)
                     {
                         var updated = string.IsNullOrWhiteSpace(row.UpdatedDate)
                             ? string.Empty
@@ -83,31 +84,58 @@
                                 ? row.UpdatedDate.Substring(0, 10)
                                 : row.UpdatedDate;
                         <tr>
-                            <td class="px-4 py-3 text-break">@row.PassportId</td>
+                            <td class="px-4 py-3 text-break">@row.BatteryId</td>
                             <td class="px-4 py-3">@row.BatteryFamily</td>
-                            <td class="px-4 py-3">@row.BatteryVersion</td>
+                            <td class="px-4 py-3">@row.BatteryModel</td>
                             <td class="px-4 py-3">@row.BatterySerialNumber</td>
-                            <td class="px-4 py-3">@row.PassportStatus</td>
+                            <td class="px-4 py-3">@row.PassportCount passports</td>
+                            <td class="px-4 py-3">@row.LatestPassportStatus</td>
                             <td class="px-4 py-3">@updated</td>
                             <td class="px-4 py-3">
                                 <div class="bp-icon-action-row">
-                                    <a href="/admin/passports/@Uri.EscapeDataString(row.PassportId)/edit" class="bp-icon-button" aria-label="Edit" title="Edit"><span aria-hidden="true">&#9998;</span></a>
-                                    <a href="/admin/passports/@Uri.EscapeDataString(row.PassportId)/conformance" class="bp-icon-button" aria-label="Conformance" title="Conformance"><span aria-hidden="true">&#10003;</span></a>
-                                    @if (row.RegistryStatus.Equals("archived", StringComparison.OrdinalIgnoreCase))
+                                    <a href="/@Uri.EscapeDataString(row.BatteryId)" class="bp-icon-button" aria-label="Passport history" title="Passport history"><span aria-hidden="true">&#9776;</span></a>
+                                    @if (!string.IsNullOrWhiteSpace(row.LatestPassportId))
                                     {
-                                        <form method="post" action="/admin/passports/unarchive">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="passportId" value="@row.PassportId" />
-                                            <button type="submit" class="bp-icon-button" aria-label="Unarchive" title="Unarchive"><span aria-hidden="true">&#8634;</span></button>
-                                        </form>
+                                        <a href="/admin/passports/@Uri.EscapeDataString(row.LatestPassportId)/edit" class="bp-icon-button" aria-label="Edit latest passport" title="Edit"><span aria-hidden="true">&#9998;</span></a>
+                                        <a href="/admin/passports/@Uri.EscapeDataString(row.LatestPassportId)/conformance" class="bp-icon-button" aria-label="Conformance" title="Conformance"><span aria-hidden="true">&#10003;</span></a>
                                     }
-                                    else
+                                    <form method="post" action="/admin/batteries/@Uri.EscapeDataString(row.BatteryId)/passports/create">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="bp-secondary-button">Create passport</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="bp-passport-history-row" data-battery-passport-history="@row.BatteryId">
+                            <td class="px-4 py-3" colspan="8">
+                                <strong>Passport history</strong>
+                                <div class="bp-embedded-history-list mt-2">
+                                    @foreach (var passport in row.Passports)
                                     {
-                                        <form method="post" action="/admin/passports/archive">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="passportId" value="@row.PassportId" />
-                                            <button type="submit" class="bp-icon-button is-danger" aria-label="Archive" title="Archive" data-confirm-action data-confirm-title="Archive passport" data-confirm-message="Archive @row.PassportId? You can unarchive it from Administration." data-confirm-submit="Archive"><span aria-hidden="true">&#9635;</span></button>
-                                        </form>
+                                        <div class="bp-embedded-history-item">
+                                            <span class="text-break">@passport.PassportId</span>
+                                            <span class="bp-history-marker">@(passport.IsLatestForBattery ? "Latest" : "Historical")</span>
+                                            <a href="/@Uri.EscapeDataString(passport.PassportId)/summary" class="bp-report-action" aria-label="Summary report" title="Summary report" data-tooltip="Summary report"></a>
+                                            <a href="/@Uri.EscapeDataString(passport.PassportId)" class="bp-report-action" aria-label="Detailed report" title="Detailed report" data-tooltip="Detailed report"></a>
+                                            <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/conformance" class="bp-icon-button" title="Conformance">✓</a>
+                                            <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/audit" class="bp-icon-button" title="Audit trail">A</a>
+                                            @if (passport.PassportStatus.Equals("Archived", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <form method="post" action="/admin/passports/unarchive">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="passportId" value="@passport.PassportId" />
+                                                    <button type="submit" class="bp-icon-button" aria-label="Unarchive" title="Unarchive">↺</button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <form method="post" action="/admin/passports/archive">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="passportId" value="@passport.PassportId" />
+                                                    <button type="submit" class="bp-icon-button is-danger" aria-label="Archive" title="Archive" data-confirm-action data-confirm-title="Archive passport" data-confirm-message="Archive @passport.PassportId? You can unarchive it from Administration." data-confirm-submit="Archive">□</button>
+                                                </form>
+                                            }
+                                        </div>
                                     }
                                 </div>
                             </td>
@@ -579,7 +607,7 @@
                         <p>@product.Description</p>
                         <dl class="bp-product-template-meta">
                             <div><dt>Modules</dt><dd>@product.ModuleCount</dd></div>
-                            <div><dt>Battery versions</dt><dd>@product.BatteryVersionCount</dd></div>
+                            <div><dt>Battery Models</dt><dd>@product.BatteryVersionCount</dd></div>
                             <div><dt>Required fields</dt><dd>@product.RequiredFieldCount</dd></div>
                             <div><dt>Template documents</dt><dd>@product.DocumentCount</dd></div>
                         </dl>
