@@ -7,7 +7,7 @@ This is the starting point for someone testing the Battery Pass app without prio
 - `docs/end-user-testing-guide.md` for detailed reference.
 - `docs/sample-cluster-test-accounts.md` for seeded accounts and battery/passport access.
 - `/help` inside the running app for the current generated API demo Battery ID, latest Passport ID, fixed tokens, examples, and request workbench.
-- `/admin/help` inside the running app for the admin workflow.
+- `/admin/help` inside the running app for the admin workflow dense reference console.
 
 ## Quick start
 
@@ -51,9 +51,9 @@ Main battery IDs:
 | --- | --- |
 | Main happy path | Copy the sample Battery ID from `/help` after reset. |
 | Latest passport for API signing/publishing tests | Copy the sample latest Passport ID from `/help` after reset. |
-| Historical passport check | Open the Demo API battery history from `/admin/clusters?tab=passports`; it should show one historical passport and one latest passport. |
+| Historical passport check | Open the Demo API battery history from `/admin/clusters?tab=batteries`; it should show one historical passport and one latest passport. |
 | Legacy alias check | Search `did:web:acme.battery.pass:sample-customer-north-001`; it should resolve to the generated Demo API battery. |
-| North, South, Fleet access checks | Copy generated Battery IDs from `/admin/clusters?tab=passports` and use the cluster/user mapping in `docs/sample-cluster-test-accounts.md`. |
+| North, South, Fleet access checks | Copy generated Battery IDs from `/admin/clusters?tab=batteries` and use the cluster/user mapping in `docs/sample-cluster-test-accounts.md`. |
 
 ## Scenario matrix
 
@@ -71,7 +71,11 @@ Main battery IDs:
 | Battery families | Edit a Battery Model, save it, then push that saved Battery Model to matching batteries. Software metadata is part of the saved Battery Model. | Template-owned fields update, manual overrides are preserved, and changed signed core data requires a new signed passport snapshot. |
 | Admin create battery | Create a new battery from the batteries admin page. | Battery ID is generated from Battery Family and serial number; Passport ID is not entered during battery creation. |
 | Admin create passport | Create a passport for an existing battery. | A new snapshot Passport ID is generated from Battery ID, Battery Model, and timestamp. |
-| API Token Management | Open `/admin/clusters?tab=api-token-management`. | API tokens and sign tokens are managed on one page with internal tabs. |
+| Admin dense tables | Open `/admin/clusters?tab=batteries`, `/admin/clusters?tab=battery`, `/admin/clusters?tab=clusters`, `/admin/clusters?tab=users`, `/admin/clusters?tab=local-editable-fields`, and `/admin/clusters?tab=api-token-management`. | Pages use compact dense table layouts, separated columns, and inline icon actions. Local editable field sections are collapsed by default. |
+| Battery cluster assignments | Open `/admin/clusters?tab=battery` and change one battery cluster assignment. | One row per battery is shown, Battery ID and Battery Family are separate columns, and only assignment controls appear inline. |
+| User multi-cluster memberships | Open `/admin/clusters?tab=users`, expand a user action drawer, and add a second cluster membership with a different role. | The table row still shows one user, Username and Email are separate, Cluster memberships shows the membership count, and the drawer handles multiple cluster memberships plus password confirmation/reveal. |
+| API Token Management | Open `/admin/clusters?tab=api-token-management`. | API tokens and sign tokens are managed on one dense page. Token ID has its own copy column, Token Value is still the secret used for API calls, Scope shows a scope count with cluster-name details, and unused generated tokens can be cleaned up. |
+| API help and admin help | Open `/help` and `/admin/help`, then expand a row detail. | The detail panel opens as an inline row directly under the selected endpoint or workflow row, not at the bottom of the table. |
 | Validate, sign, publish | Open conformance, validate, sign, publish. | Signing requires zero blockers; publishing requires a current valid proof. |
 | Dirty recovery | Edit signed battery data such as weight, save, then create a new passport, validate, sign, and publish again. | Old passport remains historical; the new latest passport exposes the changed battery snapshot. |
 | Document evidence | Upload or replace required document evidence. | Hash is stored, evidence becomes part of validation/signature flow, changed evidence requires a new signature. |
@@ -102,6 +106,13 @@ Mark each item pass/fail during a formal test run.
 | Battery Model API change to an unknown model returns 400. |  |  |
 | Battery family push preserves manual overrides. |  |  |
 | Required/optional fields are managed from Battery families, not a global data requirements page. |  |  |
+| Admin dense table pages use separated columns, inline icon actions, and no card-heavy layout. |  |  |
+| Battery cluster assignments page shows one row per battery with assignment-only controls. |  |  |
+| Users page shows Username and Email separately, a membership count, and supports multiple cluster memberships from the inline drawer. |  |  |
+| User password change requires confirmation and includes a reveal icon. |  |  |
+| Local editable fields sections are collapsed by default. |  |  |
+| API Token Management has a separate Token ID copy column and Scope count/details without cluster IDs in the visible table scope text. |  |  |
+| `/help` and `/admin/help` detail controls open inline row panels under the selected row. |  |  |
 | Required document evidence stores a SHA-256 hash. |  |  |
 | Replacing signed evidence requires validation/signing again. |  |  |
 | Restricted document access is denied to unauthorized users. |  |  |
@@ -112,14 +123,15 @@ Mark each item pass/fail during a formal test run.
 
 1. Reset data from `/admin/clusters?tab=products`.
 2. Verify `/help` sample IDs, fixed tokens, API request workbench, and Demo API battery history.
-3. Verify public summary, QR, Battery ID search, Passport ID search, and detailed report tabs.
-4. Verify role-based access with normal users and local admins.
-5. Verify admin trust workflow: validate, sign, publish.
-6. Verify dirty recovery after a battery data edit and new passport snapshot.
-7. Verify document evidence upload, hash, signature, and access control.
-8. Verify API reads, telemetry writes, operations patch, passport creation, and battery-model patch.
-9. Verify Battery family edit/push behavior.
-10. File bugs using the template below.
+3. Verify admin dense tables, user multi-cluster membership behavior, API Token Management scope display, and inline row help details.
+4. Verify public summary, QR, Battery ID search, Passport ID search, and detailed report tabs.
+5. Verify role-based access with normal users and local admins.
+6. Verify admin trust workflow: validate, sign, publish.
+7. Verify dirty recovery after a battery data edit and new passport snapshot.
+8. Verify document evidence upload, hash, signature, and access control.
+9. Verify API reads, telemetry writes, operations patch, passport creation, and battery-model patch.
+10. Verify Battery family edit/push behavior.
+11. File bugs using the template below.
 
 ## Known limitations
 

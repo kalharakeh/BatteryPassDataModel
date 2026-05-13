@@ -42,15 +42,22 @@ Product Template is the internal implementation name for Battery Family. In the 
   - `/login`
   - `/login/logout` (POST)
 - Admin:
-  - `/admin` -> redirects to `/admin/clusters?tab=passports`
-  - `/admin/clusters?tab=passports|batteries|clusters|users|local-editable-fields|api-token-management|products`
+  - `/admin` -> redirects to `/admin/clusters?tab=batteries`
+  - `/admin/clusters?tab=batteries` Batteries dense table with generated Battery IDs, Battery Family, Battery Model, passport status, and inline actions.
+  - `/admin/clusters?tab=battery` Battery cluster assignments dense table with one row per battery and assignment-only inline actions.
+  - `/admin/clusters?tab=clusters` Registered clusters dense table.
+  - `/admin/clusters?tab=users` Users dense table with separate Username and Email columns, cluster membership count, and inline user action drawer.
+  - `/admin/clusters?tab=local-editable-fields` Local editable fields dense policy table. Sections are collapsed by default.
+  - `/admin/clusters?tab=api-token-management` API Token Management dense console.
+  - `/admin/clusters?tab=products` Battery families.
   - `/admin/products/{productId}` Battery family editor for shared product data, Battery Models, software parameters, and per-product-version required/optional parameters.
+  - `/admin/help` admin workflow help dense reference console.
 - Cluster admin:
   - `/cluster-admin/passports`
   - `/cluster-admin/users`
   - `/cluster-admin/secrets`
 - Help:
-  - `/help` (external API docs + request workbench)
+  - `/help` (external API dense endpoint reference + request workbench)
 
 ## 3. Roles, permissions, and who can do what
 
@@ -59,8 +66,8 @@ Product Template is the internal implementation name for Battery Family. In the 
 - Can access all admin pages (`/admin/*`).
 - Can create, edit, publish/archive all passports.
 - Can create and manage clusters.
-- Can assign batteries to clusters.
-- Can create users and assign memberships.
+- Can assign batteries to clusters from the Battery cluster assignments dense table.
+- Can create users and assign multiple cluster memberships, with a separate role per membership.
 - Can create/manage API tokens and sign tokens from API Token Management.
 - Can set Local editable fields globally for local admins.
 - Can open detailed report for any battery, including unassigned batteries.
@@ -94,7 +101,8 @@ Product Template is the internal implementation name for Battery Family. In the 
 
 - Each battery has `clusterId`. Passport snapshots inherit the battery cluster at creation time.
 - Cluster assignment is managed by general admin in:
-  - `/admin/clusters?tab=passports`
+  - `/admin/clusters?tab=battery`
+- The Battery cluster assignments page uses one row per battery. Battery ID, Battery Family, Battery Model, serial, and assignment state are separated into readable columns, and the only inline action is the assignment save/change control needed by that page.
 - If `clusterId` is missing:
   - It is "unassigned"
   - Regular cluster users cannot open detailed report
@@ -107,6 +115,7 @@ Product Template is the internal implementation name for Battery Family. In the 
 
 - Global cluster list and create/update/delete:
   - `/admin/clusters?tab=clusters`
+- The Registered clusters page uses a compact dense table so cluster ID, display name, access status, linked batteries, linked users, and inline icon actions can be scanned without opening separate cards.
 
 ### 4.3 Where users are managed
 
@@ -114,6 +123,8 @@ Product Template is the internal implementation name for Battery Family. In the 
   - `/admin/clusters?tab=users`
 - Local cluster-scoped user management:
   - `/cluster-admin/users`
+- The global users page shows one row per user with separate Username and Email columns. The Cluster memberships column shows the membership count only.
+- User profile, password change, global access, and multiple cluster memberships are handled from the inline action drawer. Password changes require typing the password twice and include a reveal icon. Account email is read-only in that drawer.
 
 ### 4.4 User data model
 
@@ -123,12 +134,20 @@ Product Template is the internal implementation name for Battery Family. In the 
   - System role `admin` gives global admin rights.
   - Membership role `clusterAdmin` gives local admin rights per cluster.
   - Membership role `member` gives read/detail access per cluster.
+- A user can have multiple cluster memberships. Cluster membership roles can differ by cluster, so the users dense table does not show one global "System role" column for cluster access.
 
 ### 4.5 Seeded demo accounts and sample matrix
 
 See `docs/sample-cluster-test-accounts.md` for provided test users and their linked batteries/clusters.
 
 Battery family reset restores eight batteries and nine passport snapshots: one unassigned demonstrator, one Demo API battery with one historical passport and one latest passport, and six clustered customer/fleet batteries. The `/help` page shows the current generated Demo API Battery ID, latest Passport ID, and fixed QA tokens. The North customer test account is `customer_001_001@customer.org` with password `12345`.
+
+### 4.6 Admin dense table layout checks
+
+- Batteries, Battery cluster assignments, Registered clusters, Users, Local editable fields, API Token Management, `/help`, and `/admin/help` use the same compact dense table design language.
+- The users table keeps the row compact by showing only the membership count. Open the inline row drawer to view, remove, or add multiple cluster memberships.
+- Local editable fields sections are collapsed by default. Expand only the section being tested.
+- API help and admin help detail controls open an inline row panel directly under the selected endpoint or workflow row, not at the bottom of the table.
 
 ## 5. What the Battery Pass contains and where to find it
 
@@ -287,6 +306,12 @@ Important:
 - The app stores hash/encrypted values.
 - The plain token value is shown only at create/regenerate time.
 - Passing token ID instead of token value is rejected.
+- The Token ID column is a copyable record identifier for admins. It is not the secret credential used in `Authorization`.
+- API calls must use the Token Value shown at creation/regeneration time or one of the fixed QA Token Values from `/help`.
+- The token table keeps Token, Token ID, Permission, Scope, Status, Last used, and inline action buttons in separate columns.
+- The Scope column shows a scope count. Opening the scope details lists cluster names only; cluster IDs are not repeated in the table display.
+- The create-token linked cluster selector shows cluster names only. Cluster IDs remain part of stored token scope data for admin/audit behavior.
+- Use the cleanup action in API Token Management to remove generated unused demo tokens when the table becomes noisy.
 
 ### 7.3 sign tokens
 
@@ -385,6 +410,8 @@ After reset, open `/help` and copy the current generated sample Battery ID and l
 - Read token: `SAMPLEBATTERYPASSPORTREADTOKN001`
 - Read-write token: `SAMPLEBATTERYPASSPORTWRITETOK001`
 - Validate/sign/publish token: `SAMPLEBATTERYPASSPORTSIGNTOK001`
+
+The `/help` API help page uses a dense endpoint table. Open an endpoint detail with the row control; the detail panel appears inline under the row being inspected while the request workbench stays available for live calls.
 
 The examples below use shell variables so the generated IDs can change safely after reset.
 
@@ -494,16 +521,17 @@ These are not the token-based external integration API; they use app login/cooki
 
 ## 10. Practical test checklist
 
-1. Log in as global admin and verify all admin tabs.
-2. Create a new cluster, assign one battery, assign one local admin and one normal user.
+1. Log in as global admin and verify all admin dense table tabs, including Batteries, Battery cluster assignments, Registered clusters, Users, Local editable fields collapsed by default, API Token Management, Battery families, and Help.
+2. Create a new cluster, assign one battery from `/admin/clusters?tab=battery`, assign one local admin, and assign one normal user with multiple cluster memberships.
 3. Log in as local admin and verify cluster-scoped limits, including that global admin users cannot be modified.
 4. Log in as normal user and verify `/registry` shows only own cluster batteries and detail access works only for own cluster battery.
-5. Open API Token Management, create read/write and Sign tokens, then call external API with the scoped token.
+5. Open API Token Management, create read/write and Sign tokens, confirm Token ID and Token Value are distinct, confirm the scope count opens cluster-name details, then call external API with the scoped Token Value.
 6. Verify read token cannot write.
 7. Verify out-of-scope token gets `403`.
 8. Verify telemetry write appears in detail history charts.
 9. Patch Battery Model through `/api/external/v1/batteries/{batteryId}/battery-model` and confirm the response says a new passport, validation, signing, and publishing are required.
-10. Open the detailed report and confirm the General tab software parameters shows product, product ID, release date, and latest update.
+10. Open `/help` and `/admin/help`, expand a detail row, and confirm the inline row panel opens directly under the selected row.
+11. Open the detailed report and confirm the General tab software parameters shows product, product ID, release date, and latest update.
 
 ## 11. Trust workflow hardening checklist
 
@@ -618,8 +646,8 @@ Use this checklist after Phase 6A changes to prove the demo can be restored and 
 
 Use an admin account and a passport from the demo catalog.
 
-1. Open `/admin/clusters?tab=passports`.
-2. Open the passport edit page.
+1. Open `/admin/clusters?tab=batteries`.
+2. Open the battery row action/history, then open the passport edit page for a demo passport.
 3. Upload or replace one required supporting document.
 4. Open the passport conformance page.
 5. Confirm the Evidence readiness panel shows the file as uploaded unsigned or Changed since signing.

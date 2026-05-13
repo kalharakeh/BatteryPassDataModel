@@ -32,6 +32,28 @@ public sealed class QaTesterPackDocumentationTests
         Assert.DoesNotContain("MongoDB", docs);
     }
 
+    [Fact]
+    public void TestAccountDocs_ShouldMatchDenseAdminWorkflow()
+    {
+        var guide = File.ReadAllText(RepoFile("docs", "end-user-testing-guide.md"));
+        var qa = File.ReadAllText(RepoFile("docs", "qa-test-pack.md"));
+        var accounts = File.ReadAllText(RepoFile("docs", "sample-cluster-test-accounts.md"));
+        var combined = string.Join(Environment.NewLine, guide, qa, accounts);
+
+        Assert.DoesNotContain("/admin/clusters?tab=passports", combined);
+        Assert.Contains("/admin/clusters?tab=batteries", combined);
+        Assert.Contains("/admin/clusters?tab=battery", combined);
+        Assert.Contains("Battery cluster assignments", combined);
+        Assert.Contains("dense table", combined, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("membership count", combined, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("multiple cluster memberships", combined, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Token ID", combined);
+        Assert.Contains("Token Value", combined);
+        Assert.Contains("scope count", combined, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("inline row", combined, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("collapsed by default", combined, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
