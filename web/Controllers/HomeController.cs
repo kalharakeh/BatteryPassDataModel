@@ -6,18 +6,21 @@ namespace BatteryPassWeb.Controllers;
 [Route("")]
 public class HomeController : Controller
 {
-    private const string SamplePassportId = "did:web:acme.battery.pass:sample-customer-north-001";
     private readonly BatteryRouteResolutionService _batteryRouteResolutionService;
+    private readonly BatteryIdService _batteryIdService;
 
-    public HomeController(BatteryRouteResolutionService batteryRouteResolutionService)
+    public HomeController(
+        BatteryRouteResolutionService batteryRouteResolutionService,
+        BatteryIdService batteryIdService)
     {
         _batteryRouteResolutionService = batteryRouteResolutionService;
+        _batteryIdService = batteryIdService;
     }
 
     [HttpGet("")]
     public IActionResult Index([FromQuery] string? q, [FromQuery] string? notFound)
     {
-        ViewData["SamplePassportId"] = SamplePassportId;
+        ViewData["SamplePassportId"] = ExternalApiInitializer.CreateSampleBatteryId(_batteryIdService);
         ViewData["SearchQuery"] = q?.Trim() ?? string.Empty;
         ViewData["SearchNotFound"] = string.Equals(notFound, "1", StringComparison.OrdinalIgnoreCase);
         ViewData["IsAdminSearch"] = AccessControlService.IsAdmin(User);

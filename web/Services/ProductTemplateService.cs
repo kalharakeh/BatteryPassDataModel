@@ -23,6 +23,7 @@ public sealed class ProductTemplateService
         new Dictionary<string, (string, string, string)>(StringComparer.OrdinalIgnoreCase)
         {
             ["cluster-default-demonstrator"] = ("Default Demonstrator Cluster", string.Empty, string.Empty),
+            ["demo-cluster"] = ("Demo API Cluster", "demo.user@example.test", "demo.admin@example.test"),
             ["cluster-north-operations"] = ("North Operations Cluster", "north.user@example.test", "north.admin@example.test"),
             ["cluster-south-operations"] = ("South Operations Cluster", "south.user@example.test", "south.admin@example.test"),
             ["cluster-fleet-operations"] = ("Fleet Operations Cluster", "fleet.user@example.test", "fleet.admin@example.test")
@@ -336,12 +337,13 @@ public sealed class ProductTemplateService
         var resetInstant = DateTimeOffset.UtcNow;
         var resetAt = resetInstant.ToString("O");
 
-        // Seeded batteries: the north customer seed intentionally creates multiple passports
+        // Seeded batteries: the API demo seed intentionally creates multiple passports
         // so historical/latest behavior is visible immediately after a reset.
         var batterySeeds = new SeedBatteryDefinition[]
         {
             new("compact-7m", string.Empty, "CP7M-DEMO-001", "SN-0226151E", "Compact 7M unassigned demonstrator battery", "DEFAULT-LINE-01", [new("1.0", -45)]),
-            new("compact-7m", "cluster-north-operations", "CP7M-NORTH-001", "SN-NORTH-001", "North Compact 7M customer battery", "NORTH-LINE-01", [new("1.0", -30), new("2.0", 0)]),
+            new("compact-7m", "demo-cluster", "CP7M-DEMO-API-001", ExternalApiInitializer.SampleBatterySerialNumber, "Demo API Compact 7M battery", "DEMO-API-LINE-01", [new("1.0", -30), new("2.0", 0)]),
+            new("compact-7m", "cluster-north-operations", "CP7M-NORTH-001", "SN-NORTH-001", "North Compact 7M customer battery", "NORTH-LINE-01", [new("2.0", 0)]),
             new("compact-7m", "cluster-north-operations", "CP7M-NORTH-002", "SN-NORTH-002", "North Compact 7M customer battery 2", "NORTH-LINE-02", [new("2.0", -4)]),
             new("compact-13m", "cluster-south-operations", "CP13M-SOUTH-001", "SN-SOUTH-001", "South Compact 13M customer battery", "SOUTH-LINE-01", [new("1.0", -18)]),
             new("compact-13m", "cluster-south-operations", "CP13M-SOUTH-002", "SN-SOUTH-002", "South Compact 13M customer battery 2", "SOUTH-LINE-02", [new("2.0", -2)]),

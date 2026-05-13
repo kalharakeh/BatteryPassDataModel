@@ -46,7 +46,24 @@
                     Password
                     <span class="bp-password-field">
                         <input type="password" name="password" placeholder="Required for new users; optional to reset existing users" />
-                        <button type="button" class="bp-password-reveal" data-password-reveal aria-label="Show password">Show</button>
+                        <button type="button" class="bp-password-reveal" data-password-reveal aria-label="Show password" title="Show password">
+                            <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+                                <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                            </svg>
+                        </button>
+                    </span>
+                </label>
+                <label>
+                    Confirm password
+                    <span class="bp-password-field">
+                        <input type="password" name="passwordConfirmation" placeholder="Type password again" />
+                        <button type="button" class="bp-password-reveal" data-password-reveal aria-label="Show password" title="Show password">
+                            <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+                                <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                            </svg>
+                        </button>
                     </span>
                 </label>
                 <label>
@@ -134,7 +151,24 @@
                                 New password
                                 <span class="bp-password-field bp-password-field-inline">
                                     <input class="form-control form-control-sm" type="password" name="password" placeholder="Leave blank to keep current password" />
-                                    <button type="button" class="bp-password-reveal" data-password-reveal aria-label="Show password">Show</button>
+                                    <button type="button" class="bp-password-reveal" data-password-reveal aria-label="Show password" title="Show password">
+                                        <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+                                            <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                                        </svg>
+                                    </button>
+                                </span>
+                            </label>
+                            <label>
+                                Confirm password
+                                <span class="bp-password-field bp-password-field-inline">
+                                    <input class="form-control form-control-sm" type="password" name="passwordConfirmation" placeholder="Type password again" />
+                                    <button type="button" class="bp-password-reveal" data-password-reveal aria-label="Show password" title="Show password">
+                                        <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+                                            <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                                        </svg>
+                                    </button>
                                 </span>
                             </label>
                             <label>
@@ -174,8 +208,8 @@
 
                     const reveal = input.type === 'password';
                     input.type = reveal ? 'text' : 'password';
-                    button.textContent = reveal ? 'Hide' : 'Show';
                     button.setAttribute('aria-label', reveal ? 'Hide password' : 'Show password');
+                    button.setAttribute('title', reveal ? 'Hide password' : 'Show password');
                 });
             });
         })();

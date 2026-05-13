@@ -62,17 +62,22 @@ public sealed class QrWorkflowTests
         var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
         var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
 
-        Assert.Contains("bp-summary-media-panel", summary);
-        Assert.Contains("bp-summary-qr-download", summary);
-        Assert.Contains("bp-summary-image-frame", summary);
+        Assert.Contains("bp-report-hero-qr", summary);
+        Assert.Contains("bp-report-hero-qr", detail);
+        Assert.Contains("bp-report-hero-media", summary);
+        Assert.Contains("bp-report-hero-media", detail);
         Assert.Contains("/qr/", summary);
+        Assert.Contains("/qr/", detail);
         Assert.Contains("qrBatteryId", summary);
+        Assert.Contains("qrBatteryId", detail);
         Assert.Contains("/svg", summary);
+        Assert.Contains("/svg", detail);
         Assert.Contains("/download", summary);
+        Assert.Contains("/download", detail);
         Assert.DoesNotContain("@passport.BatteryImageAlt</p>", summary);
         Assert.DoesNotContain("Download QR", summary);
-        Assert.Contains("position: absolute", File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css")));
-        Assert.Contains("left: -", File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css")));
+        Assert.DoesNotContain("QR code for battery ID", summary);
+        Assert.Contains(".bp-report-hero-qr", File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css")));
         Assert.DoesNotContain("QR access", detail);
         Assert.DoesNotContain("Download QR", detail);
     }

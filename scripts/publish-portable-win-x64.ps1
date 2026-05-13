@@ -39,6 +39,16 @@ if (Test-Path $envExampleSource) {
     Copy-Item -Path $envExampleSource -Destination $envExampleTarget -Force
 }
 
+$batteryPassSource = Join-Path $repoRoot "BatteryPass"
+$batteryPassTarget = Join-Path $publishDir "BatteryPass"
+if (Test-Path $batteryPassSource) {
+    if (Test-Path $batteryPassTarget) {
+        Remove-Item -Path $batteryPassTarget -Recurse -Force
+    }
+
+    Copy-Item -Path $batteryPassSource -Destination $batteryPassTarget -Recurse -Force
+}
+
 $readmePath = Join-Path $publishDir "README-PORTABLE.txt"
 @"
 BatteryPass portable package (Windows x64)
@@ -49,10 +59,12 @@ BatteryPass portable package (Windows x64)
    - MONGODB_DB
    - SESSION_SECRET
    - EXTERNAL_API_ENCRYPTION_KEY
+   - ID_GENERATION_SECRET
    - (optional) DEMO_ADMIN_EMAIL, DEMO_ADMIN_PASSWORD
    - Note: app startup requires a reachable MongoDB database
-3. Run: run-batterypass.cmd
-4. Open: http://localhost:5186
+3. Keep the BatteryPass folder next to BatteryPassWeb.exe; reset uses those schema/demo payload files.
+4. Run: run-batterypass.cmd
+5. Open: http://localhost:5186
 "@ | Set-Content -Path $readmePath -Encoding ascii
 
 if (-not $SkipZip) {
@@ -67,7 +79,8 @@ if (-not $SkipZip) {
         Remove-Item $zipPath -Force
     }
 
-    Compress-Archive -Path (Join-Path $publishDir "*") -DestinationPath $zipPath -CompressionLevel Optimal
+    $releaseItems = Get-ChildItem -Path $publishDir -Force | Where-Object { $_.Name -ne ".env.local" }
+    Compress-Archive -Path $releaseItems.FullName -DestinationPath $zipPath -CompressionLevel Optimal
     Write-Host "Created zip: $zipPath"
 }
 

@@ -65,6 +65,7 @@ public class ClusterAdminController : Controller
             .Select(passport => new PassportSummaryViewModel
             {
                 PassportId = passport.PassportId,
+                BatteryId = string.IsNullOrWhiteSpace(passport.BatteryId) ? passport.PassportId : passport.BatteryId,
                 DisplayName = passport.DisplayName,
                 ModelNumber = passport.ModelNumber,
                 ManufacturerName = passport.ManufacturerName,
@@ -366,6 +367,12 @@ public class ClusterAdminController : Controller
         }
 
         var password = Text(Request.Form, "password");
+        var passwordConfirmation = Text(Request.Form, "passwordConfirmation");
+        if (!string.IsNullOrWhiteSpace(password) && !password.Equals(passwordConfirmation, StringComparison.Ordinal))
+        {
+            return Redirect($"/cluster-admin/users?error={Uri.EscapeDataString("Passwords do not match.")}");
+        }
+
         if (existingUser == null && string.IsNullOrWhiteSpace(password))
         {
             return Redirect($"/cluster-admin/users?error={Uri.EscapeDataString("Password is required for new users.")}");
@@ -463,7 +470,7 @@ public class ClusterAdminController : Controller
         var clusterNames = tokenClusterIds
             .Select(entry => entry.ToString() ?? string.Empty)
             .Where(clusterId => !string.IsNullOrWhiteSpace(clusterId))
-            .Select(clusterId => clusterNamesById.TryGetValue(clusterId, out var clusterName) ? $"{clusterName} ({clusterId})" : clusterId)
+            .Select(clusterId => ClusterTokenScopeLabel(clusterId, clusterNamesById))
             .ToList();
         return new ApiTokenViewModel
         {
@@ -475,10 +482,18 @@ public class ClusterAdminController : Controller
             IsActive = token.GetValue("isActive", false).ToBoolean(),
             IsSample = token.GetValue("isSample", false).ToBoolean(),
             ClusterIdsLabel = clusterNames.Count == 0 ? "No clusters" : string.Join(", ", clusterNames),
+            ClusterScopeNames = clusterNames,
             CreatedAt = BsonHelpers.GetString(token, "createdAt"),
             UpdatedAt = BsonHelpers.GetString(token, "updatedAt"),
             LastUsedAt = BsonHelpers.GetString(token, "lastUsedAt")
         };
+    }
+
+    private static string ClusterTokenScopeLabel(string clusterId, IReadOnlyDictionary<string, string> clusterNamesById)
+    {
+        return clusterNamesById.TryGetValue(clusterId, out var clusterName) && !string.IsNullOrWhiteSpace(clusterName)
+            ? clusterName
+            : clusterId;
     }
 
     private static ExternalTokenAccessMode ParseTokenMode(string value)

@@ -1,0 +1,914 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dense help page redesign options</title>
+  <style>
+    :root {
+      --page: #f4f7fb;
+      --surface: #ffffff;
+      --surface-soft: #f8fbfd;
+      --line: #d8e0ea;
+      --line-strong: #b8c7d8;
+      --ink: #10233f;
+      --muted: #607286;
+      --blue: #2a6ecf;
+      --blue-dark: #124f9f;
+      --blue-soft: #eef6ff;
+      --green: #147a64;
+      --green-soft: #ecfdf3;
+      --amber: #a16207;
+      --amber-soft: #fff7e6;
+      --red: #b42318;
+      --shadow: 0 18px 40px rgba(8, 32, 54, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .page {
+      width: min(1780px, calc(100vw - 48px));
+      margin: 0 auto;
+      padding: 28px 0 52px;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      margin-bottom: 4px;
+      font-size: 2rem;
+      letter-spacing: 0;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .tabs,
+    .option-tabs,
+    .toolbar,
+    .summary-row,
+    .icon-row,
+    .pill-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tabs {
+      margin-top: 24px;
+    }
+
+    .tab,
+    .option-button,
+    .primary,
+    .secondary,
+    .icon-button,
+    .scope-pill,
+    .method-pill,
+    .state-pill {
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: #fff;
+      color: #183a5a;
+      font-weight: 700;
+      line-height: 1;
+      text-decoration: none;
+    }
+
+    .tab,
+    .option-button,
+    .primary,
+    .secondary {
+      min-height: 38px;
+      padding: 0 14px;
+    }
+
+    .option-button,
+    .icon-button {
+      cursor: pointer;
+    }
+
+    .tab.active,
+    .option-button.active {
+      border-color: #94b8d8;
+      background: var(--blue-soft);
+      color: var(--blue-dark);
+    }
+
+    .primary {
+      border-color: var(--blue);
+      background: var(--blue);
+      color: #fff;
+      white-space: nowrap;
+    }
+
+    .icon-button {
+      inline-size: 2.25rem;
+      block-size: 2.25rem;
+      display: inline-grid;
+      place-items: center;
+      padding: 0;
+    }
+
+    .icon-button svg {
+      width: 1.1rem;
+      height: 1.1rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.9;
+    }
+
+    .preview-frame {
+      margin-top: 24px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .preview-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: end;
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfdff;
+    }
+
+    .preview-header h2 {
+      margin-bottom: 3px;
+      font-size: 1.08rem;
+    }
+
+    .eyebrow {
+      display: block;
+      margin-bottom: 4px;
+      color: #66758a;
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .option-panel {
+      display: none;
+      padding: 18px;
+    }
+
+    .option-panel.active {
+      display: block;
+    }
+
+    .option-note {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 14px;
+      border: 1px solid #cfe1f5;
+      border-radius: 8px;
+      background: #f4f9ff;
+      padding: 12px 14px;
+    }
+
+    .option-note strong {
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    .mockup-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .console {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .console-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: start;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .console-header h3 {
+      margin-bottom: 3px;
+      font-size: 1.18rem;
+    }
+
+    .summary-row {
+      justify-content: flex-end;
+    }
+
+    .metric,
+    .scope-pill,
+    .method-pill,
+    .state-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 0 10px;
+      white-space: nowrap;
+      font-size: 0.82rem;
+    }
+
+    .metric {
+      border: 1px solid #d6e1ec;
+      background: #f8fafc;
+      color: #334155;
+      font-weight: 650;
+    }
+
+    .metric strong {
+      color: #0f2d4a;
+      font-size: 0.96rem;
+    }
+
+    .method-pill.get,
+    .state-pill.clean {
+      border-color: #b7dfc9;
+      background: var(--green-soft);
+      color: #166534;
+    }
+
+    .method-pill.post {
+      border-color: #bfdbfe;
+      background: #eff6ff;
+      color: #1e40af;
+    }
+
+    .method-pill.patch,
+    .state-pill.dirty {
+      border-color: #f3d38c;
+      background: var(--amber-soft);
+      color: var(--amber);
+    }
+
+    .scope-pill.sign {
+      border-color: #ccd5ee;
+      background: #f3f6ff;
+      color: #303f7a;
+    }
+
+    .toolbar {
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-soft);
+      padding: 12px 14px;
+    }
+
+    .toolbar label {
+      display: grid;
+      gap: 5px;
+      min-width: 240px;
+      color: #405367;
+      font-size: 0.78rem;
+      font-weight: 750;
+      text-transform: uppercase;
+    }
+
+    input,
+    select {
+      width: 100%;
+      min-height: 36px;
+      border: 1px solid #cfd9e4;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      padding: 8px 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid #e6edf5;
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f8fafc;
+      color: var(--muted);
+      font-size: 0.73rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    td {
+      color: #243b53;
+      font-size: 0.9rem;
+    }
+
+    td code,
+    .code-block {
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 0.82rem;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+    }
+
+    .dense-table {
+      min-width: 860px;
+    }
+
+    .endpoint-table col:nth-child(1) {
+      width: 9%;
+    }
+
+    .endpoint-table col:nth-child(2) {
+      width: 39%;
+    }
+
+    .endpoint-table col:nth-child(3) {
+      width: 16%;
+    }
+
+    .endpoint-table col:nth-child(4) {
+      width: 20%;
+    }
+
+    .endpoint-table col:nth-child(5) {
+      width: 16%;
+    }
+
+    .admin-table col:nth-child(1) {
+      width: 22%;
+    }
+
+    .admin-table col:nth-child(2) {
+      width: 24%;
+    }
+
+    .admin-table col:nth-child(3) {
+      width: 20%;
+    }
+
+    .admin-table col:nth-child(4) {
+      width: 20%;
+    }
+
+    .admin-table col:nth-child(5) {
+      width: 14%;
+    }
+
+    .row-title {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .row-title strong {
+      color: var(--ink);
+      font-weight: 750;
+      overflow-wrap: anywhere;
+    }
+
+    .row-title small {
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.25;
+    }
+
+    .details-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid #cbdcec;
+      border-radius: 999px;
+      background: #f8fafc;
+      color: #183a5a;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 750;
+      min-height: 30px;
+      padding: 0 10px;
+    }
+
+    .details-button svg {
+      width: 0.9rem;
+      height: 0.9rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 2;
+    }
+
+    .inline-panel {
+      border-top: 1px solid var(--line);
+      background: #fbfdff;
+      padding: 12px 14px;
+    }
+
+    .inline-panel h4 {
+      margin: 0 0 8px;
+      font-size: 0.95rem;
+    }
+
+    .code-block {
+      display: block;
+      overflow-x: auto;
+      border: 1px solid #d9e3ee;
+      border-radius: 8px;
+      background: #0f1f33;
+      color: #d7e7ff;
+      padding: 10px 12px;
+      white-space: pre;
+    }
+
+    .split-shell {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      min-height: 620px;
+    }
+
+    .side-nav {
+      border-right: 1px solid var(--line);
+      background: #fbfdff;
+      padding: 12px;
+    }
+
+    .side-nav a {
+      display: grid;
+      gap: 2px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: #233f5c;
+      padding: 9px 10px;
+      text-decoration: none;
+    }
+
+    .side-nav a.active {
+      border-color: #c9d9ea;
+      background: #fff;
+      color: var(--blue-dark);
+      font-weight: 750;
+    }
+
+    .side-nav small {
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 500;
+    }
+
+    .split-content {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+      padding: 14px;
+    }
+
+    .quick-matrix {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .mini-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 12px;
+    }
+
+    .mini-card h4 {
+      margin-bottom: 4px;
+      font-size: 0.95rem;
+    }
+
+    .accordion-list {
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+    }
+
+    details.row-accordion {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    details.row-accordion summary {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      cursor: pointer;
+      list-style: none;
+      padding: 10px 12px;
+    }
+
+    details.row-accordion summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details.row-accordion[open] summary {
+      border-bottom: 1px solid var(--line);
+      background: #f8fbfd;
+    }
+
+    .drawer-body {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 12px;
+    }
+
+    @media (max-width: 1220px) {
+      .mockup-grid,
+      .two-col,
+      .quick-matrix,
+      .split-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .side-nav {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1>Help Pages Dense Redesign</h1>
+    <p class="muted">Previewing API help and Admin help with the same compact operational language used on the admin tables.</p>
+
+    <nav class="tabs" aria-label="Administration tabs">
+      <a class="tab" href="#">Batteries</a>
+      <a class="tab" href="#">Registered clusters</a>
+      <a class="tab" href="#">API Token Management</a>
+      <a class="tab active" href="#">Help</a>
+    </nav>
+
+    <section class="preview-frame">
+      <header class="preview-header">
+        <div>
+          <span class="eyebrow">Design options</span>
+          <h2>Choose the help-page pattern</h2>
+          <p class="muted">Each option shows the API help and Admin help page side by side.</p>
+        </div>
+        <div class="option-tabs" role="tablist" aria-label="Design options">
+          <button class="option-button active" type="button" data-option="a">Option A</button>
+          <button class="option-button" type="button" data-option="b">Option B</button>
+          <button class="option-button" type="button" data-option="c">Option C</button>
+        </div>
+      </header>
+
+      <section class="option-panel active" data-panel="a">
+        <div class="option-note">
+          <div>
+            <strong>Option A: Dense reference console, recommended</strong>
+            <span class="muted">API endpoints and admin workflows become scan-first tables, with one selected row opening a compact detail panel below.</span>
+          </div>
+          <span class="metric"><strong>Best</strong> match</span>
+        </div>
+        <div class="mockup-grid">
+          <article class="console">
+            <header class="console-header">
+              <div>
+                <span class="eyebrow">External API</span>
+                <h3>API help</h3>
+                <p class="muted">Find an endpoint, check required token access, and copy a working example.</p>
+              </div>
+              <div class="summary-row">
+                <span class="metric"><strong>12</strong> endpoints</span>
+                <span class="metric"><strong>3</strong> token presets</span>
+              </div>
+            </header>
+            <div class="toolbar">
+              <div class="pill-row">
+                <span class="scope-pill">Base path /external-api</span>
+                <span class="scope-pill sign">Token value required</span>
+              </div>
+              <label>Search
+                <input value="" placeholder="Endpoint, action, access">
+              </label>
+            </div>
+            <div class="table-scroll">
+              <table class="dense-table endpoint-table">
+                <colgroup><col><col><col><col><col></colgroup>
+                <thead><tr><th>Method</th><th>Endpoint</th><th>Access</th><th>Use when</th><th>Actions</th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td><span class="method-pill get">GET</span></td>
+                    <td><span class="row-title"><strong>/batteries/{batteryId}</strong><small>Latest passport snapshot</small></span></td>
+                    <td><span class="scope-pill">Read</span></td>
+                    <td>Inspect full battery passport data.</td>
+                    <td><button class="details-button" type="button">Details <svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></button></td>
+                  </tr>
+                  <tr>
+                    <td><span class="method-pill get">GET</span></td>
+                    <td><span class="row-title"><strong>/batteries/{batteryId}/values</strong><small>Alias or exact path lookup</small></span></td>
+                    <td><span class="scope-pill">Read</span></td>
+                    <td>Read a few values without downloading the whole passport.</td>
+                    <td><button class="details-button" type="button">Details <svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></button></td>
+                  </tr>
+                  <tr>
+                    <td><span class="method-pill post">POST</span></td>
+                    <td><span class="row-title"><strong>/batteries/{batteryId}/telemetry</strong><small>Operational data write</small></span></td>
+                    <td><span class="scope-pill">Read + write</span></td>
+                    <td>Append current consumption, voltage, current, or charge.</td>
+                    <td><button class="details-button" type="button">Details <svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></button></td>
+                  </tr>
+                  <tr>
+                    <td><span class="method-pill patch">PATCH</span></td>
+                    <td><span class="row-title"><strong>/batteries/{batteryId}/battery-model</strong><small>Signed-data change</small></span></td>
+                    <td><span class="scope-pill">Read + write</span></td>
+                    <td>Change model and trigger new passport workflow.</td>
+                    <td><button class="details-button" type="button">Details <svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></button></td>
+                  </tr>
+                  <tr>
+                    <td><span class="method-pill post">POST</span></td>
+                    <td><span class="row-title"><strong>/passports/{passportId}/sign</strong><small>Trust action</small></span></td>
+                    <td><span class="scope-pill sign">Sign</span></td>
+                    <td>Sign the current clean passport core.</td>
+                    <td><button class="details-button" type="button">Details <svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="inline-panel">
+              <h4>Selected endpoint example</h4>
+              <pre class="code-block">GET /external-api/batteries/sample-customer-north-001/values?path=ratedEnergy&amp;path=ratedCapacity
+Authorization: Basic &lt;base64(token:)&gt;</pre>
+            </div>
+          </article>
+
+          <article class="console">
+            <header class="console-header">
+              <div>
+                <span class="eyebrow">Administration</span>
+                <h3>Admin help</h3>
+                <p class="muted">Operational map for creating, validating, signing, publishing, and recovering passports.</p>
+              </div>
+              <div class="summary-row">
+                <span class="metric"><strong>7</strong> steps</span>
+                <span class="metric"><strong>6</strong> states</span>
+              </div>
+            </header>
+            <div class="toolbar">
+              <div class="pill-row">
+                <span class="state-pill clean">Clean target</span>
+                <span class="state-pill dirty">Dirty recovery</span>
+              </div>
+              <label>Filter
+                <input placeholder="Workflow, status, admin surface">
+              </label>
+            </div>
+            <div class="table-scroll">
+              <table class="dense-table admin-table">
+                <colgroup><col><col><col><col><col></colgroup>
+                <thead><tr><th>Workflow</th><th>When to use</th><th>Admin surface</th><th>Success signal</th><th>Actions</th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td><span class="row-title"><strong>Create battery ID</strong><small>Draft start</small></span></td>
+                    <td>New battery enters the system.</td>
+                    <td>New battery form</td>
+                    <td>Draft saved</td>
+                    <td><button class="details-button" type="button">Open</button></td>
+                  </tr>
+                  <tr>
+                    <td><span class="row-title"><strong>Validate passport</strong><small>Before signing</small></span></td>
+                    <td>Required data is filled.</td>
+                    <td>Trust &amp; conformance</td>
+                    <td>Zero blockers</td>
+                    <td><button class="details-button" type="button">Open</button></td>
+                  </tr>
+                  <tr>
+                    <td><span class="row-title"><strong>Sign passport</strong><small>Proof creation</small></span></td>
+                    <td>Validation is clean.</td>
+                    <td>Trust &amp; conformance</td>
+                    <td>Current proof hash</td>
+                    <td><button class="details-button" type="button">Open</button></td>
+                  </tr>
+                  <tr>
+                    <td><span class="row-title"><strong>Dirty recovery</strong><small>After signed data edits</small></span></td>
+                    <td>Saved core data changed.</td>
+                    <td>Conformance + edit pages</td>
+                    <td>Clean and publishable</td>
+                    <td><button class="details-button" type="button">Open</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="inline-panel">
+              <h4>Selected workflow checklist</h4>
+              <div class="quick-matrix">
+                <div class="mini-card"><h4>1. Validate</h4><p class="muted">Run schema, business, and completion policy checks.</p></div>
+                <div class="mini-card"><h4>2. Fix</h4><p class="muted">Resolve every blocking issue before signing.</p></div>
+                <div class="mini-card"><h4>3. Sign</h4><p class="muted">Create a new proof for the current passport core.</p></div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="option-panel" data-panel="b">
+        <div class="option-note">
+          <div>
+            <strong>Option B: Expandable row manual</strong>
+            <span class="muted">Every help topic is a compact row. Opening a row reveals examples, caveats, and action links without leaving the page.</span>
+          </div>
+          <span class="metric">Most compact</span>
+        </div>
+        <div class="mockup-grid">
+          <article class="console">
+            <header class="console-header">
+              <div><span class="eyebrow">External API</span><h3>API help</h3><p class="muted">Endpoint catalog with drawers.</p></div>
+              <span class="metric"><strong>12</strong> rows</span>
+            </header>
+            <div class="accordion-list">
+              <details class="row-accordion" open>
+                <summary><span class="method-pill get">GET</span><span class="row-title"><strong>/batteries/{batteryId}/values</strong><small>Read selected aliases or paths</small></span><span class="scope-pill">Read</span></summary>
+                <div class="drawer-body">
+                  <div class="two-col">
+                    <div><h4>Use when</h4><p class="muted">A system only needs a few values such as rated energy, nickel mass, or current charge.</p></div>
+                    <pre class="code-block">GET /external-api/batteries/{batteryId}/values?path=ratedEnergy</pre>
+                  </div>
+                </div>
+              </details>
+              <details class="row-accordion">
+                <summary><span class="method-pill post">POST</span><span class="row-title"><strong>/batteries/{batteryId}/telemetry</strong><small>Append operational readings</small></span><span class="scope-pill">Read + write</span></summary>
+                <div class="drawer-body"><pre class="code-block">{ "currentChargeLevelPct": 82.1 }</pre></div>
+              </details>
+              <details class="row-accordion">
+                <summary><span class="method-pill post">POST</span><span class="row-title"><strong>/passports/{passportId}/publish</strong><small>Trust action</small></span><span class="scope-pill sign">Sign</span></summary>
+                <div class="drawer-body"><p class="muted">Requires validation and a current clean signature proof.</p></div>
+              </details>
+            </div>
+          </article>
+
+          <article class="console">
+            <header class="console-header">
+              <div><span class="eyebrow">Administration</span><h3>Admin help</h3><p class="muted">Workflow manual with drawers.</p></div>
+              <span class="metric"><strong>9</strong> topics</span>
+            </header>
+            <div class="accordion-list">
+              <details class="row-accordion" open>
+                <summary><span class="state-pill clean">Clean</span><span class="row-title"><strong>Ready to publish</strong><small>Validated, signed, clean, public</small></span><button class="details-button" type="button">Open</button></summary>
+                <div class="drawer-body">
+                  <div class="quick-matrix">
+                    <div class="mini-card"><h4>Validated</h4><p class="muted">Zero blockers.</p></div>
+                    <div class="mini-card"><h4>Signed</h4><p class="muted">Current proof exists.</p></div>
+                    <div class="mini-card"><h4>Published</h4><p class="muted">Public registry status.</p></div>
+                  </div>
+                </div>
+              </details>
+              <details class="row-accordion">
+                <summary><span class="state-pill dirty">Dirty</span><span class="row-title"><strong>Recover after edits</strong><small>Validate, fix, sign again</small></span><button class="details-button" type="button">Open</button></summary>
+                <div class="drawer-body"><p class="muted">Core data changes after signing require a new validation and proof.</p></div>
+              </details>
+              <details class="row-accordion">
+                <summary><span class="scope-pill">Policy</span><span class="row-title"><strong>Required fields</strong><small>Battery family policy</small></span><button class="details-button" type="button">Open</button></summary>
+                <div class="drawer-body"><p class="muted">The Battery families tab controls required/optional settings.</p></div>
+              </details>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="option-panel" data-panel="c">
+        <div class="option-note">
+          <div>
+            <strong>Option C: Split navigator</strong>
+            <span class="muted">A persistent left navigation chooses the topic; the right pane uses dense tables and focused panels. Best when the pages keep growing.</span>
+          </div>
+          <span class="metric">Best for long docs</span>
+        </div>
+        <div class="mockup-grid">
+          <article class="console">
+            <header class="console-header">
+              <div><span class="eyebrow">External API</span><h3>API help</h3><p class="muted">Left navigation plus endpoint matrix.</p></div>
+              <span class="metric"><strong>Workbench</strong> docked</span>
+            </header>
+            <div class="split-shell">
+              <nav class="side-nav" aria-label="API topics">
+                <a class="active" href="#"><strong>Endpoints</strong><small>Read, write, trust actions</small></a>
+                <a href="#"><strong>Authentication</strong><small>Token value vs token ID</small></a>
+                <a href="#"><strong>Path aliases</strong><small>Readable values</small></a>
+                <a href="#"><strong>Workbench</strong><small>Try requests</small></a>
+              </nav>
+              <div class="split-content">
+                <div class="toolbar"><span class="scope-pill">Showing endpoints</span><label>Search<input placeholder="Endpoint or access"></label></div>
+                <div class="table-scroll">
+                  <table class="dense-table endpoint-table">
+                    <colgroup><col><col><col><col><col></colgroup>
+                    <thead><tr><th>Method</th><th>Endpoint</th><th>Access</th><th>Result</th><th>Action</th></tr></thead>
+                    <tbody>
+                      <tr><td><span class="method-pill get">GET</span></td><td>/paths?section=full</td><td>Read</td><td>Readable path catalog</td><td><button class="icon-button"><svg viewBox="0 0 24 24"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button></td></tr>
+                      <tr><td><span class="method-pill patch">PATCH</span></td><td>/operations</td><td>Read + write</td><td>Operational metadata</td><td><button class="icon-button"><svg viewBox="0 0 24 24"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button></td></tr>
+                      <tr><td><span class="method-pill post">POST</span></td><td>/passports/{id}/sign</td><td>Sign</td><td>New proof</td><td><button class="icon-button"><svg viewBox="0 0 24 24"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <pre class="code-block">curl -H "Authorization: Basic &lt;base64(token:)&gt;" /external-api/batteries/{batteryId}/paths</pre>
+              </div>
+            </div>
+          </article>
+
+          <article class="console">
+            <header class="console-header">
+              <div><span class="eyebrow">Administration</span><h3>Admin help</h3><p class="muted">Left navigation plus workflow panels.</p></div>
+              <span class="metric"><strong>Status</strong> dictionary</span>
+            </header>
+            <div class="split-shell">
+              <nav class="side-nav" aria-label="Admin topics">
+                <a class="active" href="#"><strong>Workflow</strong><small>Create to publish</small></a>
+                <a href="#"><strong>Dirty recovery</strong><small>Return to clean</small></a>
+                <a href="#"><strong>Policies</strong><small>Required fields</small></a>
+                <a href="#"><strong>Maintenance</strong><small>Demo reset</small></a>
+              </nav>
+              <div class="split-content">
+                <div class="quick-matrix">
+                  <div class="mini-card"><h4>Draft</h4><p class="muted">Incomplete but safe.</p></div>
+                  <div class="mini-card"><h4>Validated</h4><p class="muted">No blockers.</p></div>
+                  <div class="mini-card"><h4>Signed</h4><p class="muted">Current hash proof.</p></div>
+                </div>
+                <div class="table-scroll">
+                  <table class="dense-table admin-table">
+                    <colgroup><col><col><col><col><col></colgroup>
+                    <thead><tr><th>Step</th><th>Surface</th><th>Input</th><th>Output</th><th>Action</th></tr></thead>
+                    <tbody>
+                      <tr><td>Create battery ID</td><td>New battery form</td><td>Family + model</td><td>Draft</td><td><button class="details-button">Open</button></td></tr>
+                      <tr><td>Validate</td><td>Conformance</td><td>Saved draft</td><td>Blockers</td><td><button class="details-button">Open</button></td></tr>
+                      <tr><td>Sign</td><td>Conformance</td><td>Clean validation</td><td>Proof</td><td><button class="details-button">Open</button></td></tr>
+                      <tr><td>Publish</td><td>Conformance</td><td>Current proof</td><td>Public passport</td><td><button class="details-button">Open</button></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    document.querySelectorAll('[data-option]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const selected = button.dataset.option;
+        document.querySelectorAll('[data-option]').forEach((candidate) => {
+          candidate.classList.toggle('active', candidate.dataset.option === selected);
+        });
+        document.querySelectorAll('[data-panel]').forEach((panel) => {
+          panel.classList.toggle('active', panel.dataset.panel === selected);
+        });
+      });
+    });
+  </script>
+</body>
+</html>

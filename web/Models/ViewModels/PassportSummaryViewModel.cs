@@ -3,6 +3,7 @@ namespace BatteryPassWeb.Models.ViewModels;
 public sealed class PassportSummaryViewModel
 {
     public string PassportId { get; init; } = string.Empty;
+    public string BatteryId { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
     public string ModelNumber { get; init; } = string.Empty;
     public string ManufacturerName { get; init; } = string.Empty;

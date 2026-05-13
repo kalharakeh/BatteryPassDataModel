@@ -539,6 +539,7 @@ public sealed class PassportRepository
         return new PassportSummaryViewModel
         {
             PassportId = passportId,
+            BatteryId = BsonHelpers.GetString(document, "batteryId"),
             DisplayName = string.IsNullOrWhiteSpace(name) ? modelNumber : name,
             ModelNumber = modelNumber,
             ManufacturerName = manufacturer,

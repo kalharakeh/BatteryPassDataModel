@@ -27,11 +27,26 @@ public sealed class HelpWorkbenchLayoutTests
         Assert.Contains("bp-api-help-meta-strip", markup);
         Assert.Contains("bp-api-help-section-card", markup);
         Assert.Contains("bp-api-help-doc-heading", markup);
+        Assert.Contains("bp-api-help-reference-console", markup);
+        Assert.Contains("bp-api-help-endpoint-table", markup);
+        Assert.Contains("<th>Method</th>", markup);
+        Assert.Contains("<th>Endpoint</th>", markup);
+        Assert.Contains("<th>Access</th>", markup);
+        Assert.Contains("<th>Use when</th>", markup);
+        Assert.Contains("bp-api-help-detail-row", markup);
+        Assert.Contains("data-api-help-detail-row", markup);
+        Assert.Contains("data-api-help-detail-target", markup);
+        Assert.Contains("tabindex=\"-1\"", markup);
+        Assert.Contains("parentNode.insertBefore", markup);
+        Assert.DoesNotContain("scrollIntoView", markup);
 
         Assert.Contains(".bp-api-help-page", css);
         Assert.Contains(".bp-api-help-meta-strip", css);
         Assert.Contains(".bp-api-help-section-card", css);
         Assert.Contains(".bp-api-help-doc-heading", css);
+        Assert.Contains(".bp-api-help-reference-console", css);
+        Assert.Contains(".bp-api-help-endpoint-table", css);
+        Assert.Contains(".bp-api-help-detail-row", css);
     }
 
     [Fact]

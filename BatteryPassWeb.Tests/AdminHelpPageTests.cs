@@ -45,8 +45,8 @@ public sealed class AdminHelpPageTests
         Assert.DoesNotContain("bp-page-return-link", markup);
         Assert.True(
             markup.IndexOf("bp-tab-row", StringComparison.Ordinal) <
-            markup.IndexOf("bp-admin-help-start-panel", StringComparison.Ordinal),
-            "The admin help tab navigation should stay above the readable start panel.");
+            markup.IndexOf("bp-admin-help-reference-console", StringComparison.Ordinal),
+            "The admin help tab navigation should stay above the dense reference console.");
     }
 
     [Fact]
@@ -100,8 +100,8 @@ public sealed class AdminHelpPageTests
         Assert.Contains("Open battery families", markup);
         Assert.DoesNotContain("Parameter-by-parameter fill list", markup);
 
-        Assert.Contains(".bp-admin-help-check-card", css);
-        Assert.Contains(".bp-admin-help-split-checklists", css);
+        Assert.Contains(".bp-admin-help-detail-card", css);
+        Assert.Contains(".bp-admin-help-detail-grid", css);
     }
 
     [Fact]
@@ -110,25 +110,36 @@ public sealed class AdminHelpPageTests
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        Assert.Contains("bp-admin-help-overview", markup);
-        Assert.Contains("bp-admin-help-navigation-panel", markup);
-        Assert.Contains("bp-admin-help-link-list", markup);
+        Assert.Contains("bp-admin-help-reference-console", markup);
+        Assert.Contains("bp-admin-help-reference-toolbar", markup);
+        Assert.Contains("bp-admin-help-workflow-table", markup);
+        Assert.Contains("bp-admin-help-detail-row", markup);
+        Assert.Contains("bp-admin-help-detail-panel", markup);
+        Assert.Contains("data-admin-help-detail-row", markup);
+        Assert.Contains("data-admin-help-detail-target", markup);
+        Assert.Contains("tabindex=\"-1\"", markup);
+        Assert.Contains("parentNode.insertBefore", markup);
+        Assert.DoesNotContain("scrollIntoView", markup);
         Assert.Contains("bp-admin-help-anchor-tabs", markup);
-        Assert.Contains("bp-admin-help-lifecycle-guide", markup);
-        Assert.Contains("bp-admin-help-lifecycle-list", markup);
+        Assert.Contains("<th>Workflow</th>", markup);
+        Assert.Contains("<th>Admin surface</th>", markup);
+        Assert.Contains("<th>Success signal</th>", markup);
+        Assert.Contains("<th class=\"bp-action-cell\">Details</th>", markup);
         Assert.Contains("href=\"#workflow-steps\"", markup);
         Assert.Contains("id=\"target-state\"", markup);
         Assert.Contains("id=\"workflow-steps\"", markup);
         Assert.Contains("id=\"status-dictionary\"", markup);
         Assert.Contains("id=\"ready-checklist\"", markup);
+        Assert.DoesNotContain("bp-admin-help-overview", markup);
+        Assert.DoesNotContain("bp-admin-help-navigation-panel", markup);
         Assert.DoesNotContain("bp-admin-help-quicknav", markup);
 
-        Assert.Contains(".bp-admin-help-overview", css);
-        Assert.Contains(".bp-admin-help-navigation-panel", css);
-        Assert.Contains(".bp-admin-help-link-list", css);
+        Assert.Contains(".bp-admin-help-reference-console", css);
+        Assert.Contains(".bp-admin-help-reference-toolbar", css);
+        Assert.Contains(".bp-admin-help-workflow-table", css);
+        Assert.Contains(".bp-admin-help-detail-row", css);
+        Assert.Contains(".bp-admin-help-detail-panel", css);
         Assert.Contains(".bp-admin-help-anchor-tabs", css);
-        Assert.Contains(".bp-admin-help-lifecycle-guide", css);
-        Assert.Contains(".bp-admin-help-lifecycle-list", css);
     }
 
     [Fact]
@@ -137,11 +148,13 @@ public sealed class AdminHelpPageTests
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        Assert.Contains("bp-admin-help-start-panel", markup);
-        Assert.Contains("bp-admin-help-start-copy", markup);
-        Assert.Contains("bp-admin-help-start-actions", markup);
-        Assert.Contains("bp-admin-help-step-card", markup);
-        Assert.Contains("bp-admin-help-step-copy", markup);
+        Assert.Contains("bp-admin-help-reference-console", markup);
+        Assert.Contains("bp-admin-help-reference-toolbar", markup);
+        Assert.Contains("bp-admin-help-workflow-table", markup);
+        Assert.Contains("bp-admin-help-detail-panel", markup);
+        Assert.Contains("bp-admin-help-detail-row", markup);
+        Assert.Contains("bp-admin-help-status-table", markup);
+        Assert.DoesNotContain("bp-admin-help-start-panel", markup);
         Assert.DoesNotContain("bp-admin-help-hero-panel", markup);
         Assert.DoesNotContain("bp-admin-help-workflow-card", markup);
         Assert.DoesNotContain("bp-admin-help-task-card", markup);
@@ -150,11 +163,12 @@ public sealed class AdminHelpPageTests
         Assert.DoesNotContain("bp-admin-help-action-pills", markup);
         Assert.DoesNotContain("Need to act now?", markup);
 
-        Assert.Contains(".bp-admin-help-start-panel", css);
-        Assert.Contains(".bp-admin-help-start-copy", css);
-        Assert.Contains(".bp-admin-help-start-actions", css);
-        Assert.Contains(".bp-admin-help-step-card", css);
-        Assert.Contains(".bp-admin-help-step-copy", css);
+        Assert.Contains(".bp-admin-help-reference-console", css);
+        Assert.Contains(".bp-admin-help-reference-toolbar", css);
+        Assert.Contains(".bp-admin-help-workflow-table", css);
+        Assert.Contains(".bp-admin-help-detail-row", css);
+        Assert.Contains(".bp-admin-help-detail-panel", css);
+        Assert.Contains(".bp-admin-help-status-table", css);
     }
 
     [Fact]
@@ -194,10 +208,10 @@ public sealed class AdminHelpPageTests
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.Contains(".bp-admin-help-page", css);
-        Assert.Contains(".bp-admin-help-steps", css);
-        Assert.Contains(".bp-admin-help-state-grid", css);
-        Assert.Contains(".bp-admin-help-callout", css);
-        Assert.Contains(".bp-admin-help-policy-link", css);
+        Assert.Contains(".bp-admin-help-workflow-table", css);
+        Assert.Contains(".bp-admin-help-detail-grid", css);
+        Assert.Contains(".bp-admin-help-status-table", css);
+        Assert.Contains(".bp-admin-help-policy-note", css);
     }
 
     private static string RepoFile(params string[] parts)

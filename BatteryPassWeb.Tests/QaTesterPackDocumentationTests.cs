@@ -19,7 +19,9 @@ public sealed class QaTesterPackDocumentationTests
         Assert.Contains("docs/sample-cluster-test-accounts.md", docs);
         Assert.Contains("/help", docs);
         Assert.Contains("/admin/help", docs);
-        Assert.Contains("did:web:acme.battery.pass:sample-customer-north-001", docs);
+        Assert.Contains("sample-customer-north-001", docs);
+        Assert.Contains("Demo API battery", docs);
+        Assert.Contains("sample Battery ID", docs, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("admin@example.test", docs);
         Assert.Contains("Password123!", docs);
         Assert.Contains("validate, sign, publish", docs, StringComparison.OrdinalIgnoreCase);

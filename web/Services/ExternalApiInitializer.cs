@@ -4,14 +4,22 @@ namespace BatteryPassWeb.Services;
 
 public sealed class ExternalApiInitializer
 {
-    public const string SamplePassportId = "did:web:acme.battery.pass:sample-customer-north-001";
-    public const string SampleApiClusterId = "cluster-north-operations";
+    public const string SamplePassportId = "did:web:acme.battery.pass:sample-demo-passport";
+    public const string LegacySampleBatteryId = "did:web:acme.battery.pass:sample-customer-north-001";
+    public const string SampleApiClusterId = "demo-cluster";
+    public const string SampleBatteryFamily = "Compact 7M";
+    public const string SampleBatterySerialNumber = "SN-DEMO-API-001";
     public const string SampleReadTokenId = "sample-read-token";
     public const string SampleReadWriteTokenId = "sample-read-write-token";
     public const string SampleSignTokenId = "sample-sign-token";
     public const string SampleReadTokenValue = "SAMPLEBATTERYPASSPORTREADTOKN001";
     public const string SampleReadWriteTokenValue = "SAMPLEBATTERYPASSPORTWRITETOK001";
     public const string SampleSignTokenValue = "SAMPLEBATTERYPASSPORTSIGNTOK001";
+
+    public static string CreateSampleBatteryId(BatteryIdService batteryIdService)
+    {
+        return batteryIdService.CreateBatteryId(SampleBatteryFamily, SampleBatterySerialNumber);
+    }
 
     private readonly ExternalApiRepository _externalApiRepository;
     private readonly PassportRepository _passportRepository;

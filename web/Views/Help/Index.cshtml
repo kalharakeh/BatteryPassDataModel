@@ -40,7 +40,7 @@
     </section>
 
     <div class="bp-help-stack">
-        <section class="bp-card bp-api-help-section-card">
+        <section class="bp-card bp-api-help-section-card bp-api-help-reference-console">
             <div class="bp-api-help-doc-heading">
                 <div>
                     <span class="bp-summary-title">Reference</span>
@@ -49,46 +49,208 @@
                 <input id="doc-search" class="form-control bp-api-help-search" placeholder="Search endpoint, field, alias, section" />
             </div>
 
-            <div class="bp-help-doc-list" id="doc-list">
-                <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2">Authentication</h3>
-                    <p class="mb-1">Required header: <code>Authorization: Basic &lt;base64(token:)&gt;</code> or <code>Authorization: Basic &lt;token&gt;</code>.</p>
-                    <p class="mb-1"><strong>Token Value</strong> is the generated API credential shown only when an admin creates or regenerates a token in API Token Management. Use the token value in the Authorization header; the token ID shown in tables is not the secret credential.</p>
-                    <p class="mb-1">HTTP codes: <code>200</code>, <code>201</code>, <code>400</code>, <code>401</code>, <code>403</code>, <code>404</code>, <code>500</code>, <code>503</code>.</p>
-                    <ul class="mb-0">
-                        <li><code>200 OK</code>: Request succeeded (read/patch operations completed).</li>
-                        <li><code>201 Created</code>: New telemetry point(s) were accepted and stored.</li>
-                        <li><code>400 Bad Request</code>: Invalid input (for example missing <code>path</code>, unsupported section, or invalid body format).</li>
-                        <li><code>401 Unauthorized</code>: Missing or invalid API token.</li>
-                        <li><code>403 Forbidden</code>: Token scope/access is not allowed for this battery/operation, or Sign token is required/invalid.</li>
-                        <li><code>404 Not Found</code>: Battery passport or requested section/path does not exist.</li>
-                        <li><code>500 Server Error</code>: Unexpected server-side failure.</li>
-                        <li><code>503 Service Unavailable</code>: Backend dependency (database) is unavailable.</li>
-                    </ul>
+            <div class="bp-table-scroll bp-api-help-table-shell">
+                <table class="table bp-console-table bp-api-help-endpoint-table">
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>Endpoint</th>
+                            <th>Access</th>
+                            <th>Use when</th>
+                            <th class="bp-action-cell">Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="doc-list">
+                        <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">AUTH</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>Authorization header</code><small>Basic token credential, not token ID</small></span></td>
+                            <td><span class="bp-help-access-pill">All tokens</span></td>
+                            <td>Call any external API endpoint.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-auth" aria-expanded="false" aria-controls="api-detail-auth" aria-label="Show authentication details" title="Show authentication details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">GET</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}</code><small>Latest passport snapshot</small></span></td>
+                            <td><span class="bp-help-access-pill">Read</span></td>
+                            <td>Read the complete battery passport response.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-battery" aria-expanded="false" aria-controls="api-detail-battery" aria-label="Show full battery endpoint details" title="Show full battery endpoint details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">GET</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/section/{sectionName}</code><small>One named section</small></span></td>
+                            <td><span class="bp-help-access-pill">Read</span></td>
+                            <td>Keep responses focused on one passport area.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-section" aria-expanded="false" aria-controls="api-detail-section" aria-label="Show section endpoint details" title="Show section endpoint details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">GET</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/values?path=...</code><small>Alias or exact document paths</small></span></td>
+                            <td><span class="bp-help-access-pill">Read</span></td>
+                            <td>Pull a small set of named values.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-values" aria-expanded="false" aria-controls="api-detail-values" aria-label="Show values endpoint details" title="Show values endpoint details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">GET</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/paths?section=full</code><small>Discover readable path names</small></span></td>
+                            <td><span class="bp-help-access-pill">Read</span></td>
+                            <td>Find reusable paths before calling values.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-paths" aria-expanded="false" aria-controls="api-detail-paths" aria-label="Show readable paths endpoint details" title="Show readable paths endpoint details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">POST</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/telemetry</code><small>Write operational points</small></span></td>
+                            <td><span class="bp-help-access-pill">Read-write</span></td>
+                            <td>Append current consumption, charge, voltage, or current.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-telemetry" aria-expanded="false" aria-controls="api-detail-telemetry" aria-label="Show telemetry endpoint details" title="Show telemetry endpoint details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">GET</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/telemetry/history?hours=24</code><small>Recent operational history</small></span></td>
+                            <td><span class="bp-help-access-pill">Read</span></td>
+                            <td>Review telemetry history for 1 to 168 hours.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-history" aria-expanded="false" aria-controls="api-detail-history" aria-label="Show telemetry history endpoint details" title="Show telemetry history endpoint details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">PATCH</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/operations</code><small>Writable operations metadata</small></span></td>
+                            <td><span class="bp-help-access-pill">Read-write</span></td>
+                            <td>Patch site, contact, or active-state metadata.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-operations" aria-expanded="false" aria-controls="api-detail-operations" aria-label="Show operations endpoint details" title="Show operations endpoint details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">PATCH</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/battery-model</code><small>New passport required</small></span></td>
+                            <td><span class="bp-help-access-pill">Read-write</span></td>
+                            <td>Move a battery to another saved Battery Model.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-model" aria-expanded="false" aria-controls="api-detail-model" aria-label="Show battery model endpoint details" title="Show battery model endpoint details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">POST</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/passports</code><small>Create a passport snapshot</small></span></td>
+                            <td><span class="bp-help-access-pill">Read-write</span></td>
+                            <td>Create the next passport revision for a Battery ID.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-passports" aria-expanded="false" aria-controls="api-detail-passports" aria-label="Show passport creation endpoint details" title="Show passport creation endpoint details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">POST</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/passports/{passportId}/validate</code><small>Validation gate</small></span></td>
+                            <td><span class="bp-help-access-pill">Sign</span></td>
+                            <td>Run trust validation before signing.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-validate" aria-expanded="false" aria-controls="api-detail-validate" aria-label="Show validate endpoint details" title="Show validate endpoint details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">POST</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/passports/{passportId}/sign</code><small>Proof creation</small></span></td>
+                            <td><span class="bp-help-access-pill">Sign</span></td>
+                            <td>Create the signed proof for the current passport core.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-sign" aria-expanded="false" aria-controls="api-detail-sign" aria-label="Show sign endpoint details" title="Show sign endpoint details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">POST</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/passports/{passportId}/publish</code><small>Public registry gate</small></span></td>
+                            <td><span class="bp-help-access-pill">Sign</span></td>
+                            <td>Publish only after validation and signing are current.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-publish" aria-expanded="false" aria-controls="api-detail-publish" aria-label="Show publish endpoint details" title="Show publish endpoint details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-api-help-detail-row" data-api-help-detail-row hidden>
+                            <td colspan="5">
+                                <div class="bp-api-help-selected-panel" aria-live="polite" tabindex="-1" hidden>
+                <article id="api-detail-auth" class="bp-help-detail-panel" data-api-help-detail-panel>
+                    <div>
+                        <span class="bp-summary-title">Authentication</span>
+                        <h3>Use the generated Token Value in the Authorization header.</h3>
+                        <p>Required header: <code>Authorization: Basic &lt;base64(token:)&gt;</code> or <code>Authorization: Basic &lt;token&gt;</code>. Token Value is the generated API credential shown only when an admin creates or regenerates a token in API Token Management. The token ID shown in tables is not the secret credential.</p>
+                    </div>
+                    <div class="bp-help-code-grid">
+                        <pre class="bp-help-pre"><code>Authorization: Basic &lt;base64(token:)&gt;</code></pre>
+                        <ul>
+                            <li><code>200 OK</code>: Request succeeded.</li>
+                            <li><code>201 Created</code>: Telemetry point(s) were stored.</li>
+                            <li><code>400 Bad Request</code>: Invalid input.</li>
+                            <li><code>401 Unauthorized</code>: Missing or invalid API token.</li>
+                            <li><code>403 Forbidden</code>: Token scope/access is not allowed, or Sign token is required/invalid.</li>
+                            <li><code>404 Not Found</code>: Battery passport or requested section/path does not exist.</li>
+                            <li><code>500 Server Error</code>: Unexpected server-side failure.</li>
+                            <li><code>503 Service Unavailable</code>: Backend dependency is unavailable.</li>
+                        </ul>
+                    </div>
                 </article>
 
-                <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{batteryId}</h3>
-                    <p class="mb-0">Read the latest passport snapshot for a Battery ID, including app metadata, aspects, registry data, schema versions, and validation details.</p>
+                <article id="api-detail-battery" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
+                    <div><span class="bp-summary-title">Full battery</span><h3>Read the latest passport snapshot.</h3><p>Returns app metadata, aspects, registry data, schema versions, and validation details for the requested Battery ID.</p></div>
+                    <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/@Model.SampleBatteryId</code></pre>
                 </article>
 
-                <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{batteryId}/section/{sectionName}</h3>
-                    <p class="mb-1">Read one section only.</p>
-                    <p class="mb-1">Supported section names: <code>general</code>, <code>materialComposition</code>, <code>performance</code>, <code>circularity</code>, <code>supplyChain</code>, <code>carbonFootprint</code>, <code>compliance</code>, <code>operations</code>, <code>display</code>, <code>full</code>.</p>
-                    <pre class="bp-help-pre mb-0"><code>GET @Model.BasePath/batteries/@Model.SampleBatteryId/section/performance
+                <article id="api-detail-section" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
+                    <div><span class="bp-summary-title">Sections</span><h3>Read one passport section only.</h3><p>Supported section names: <code>general</code>, <code>materialComposition</code>, <code>performance</code>, <code>circularity</code>, <code>supplyChain</code>, <code>carbonFootprint</code>, <code>compliance</code>, <code>operations</code>, <code>display</code>, <code>full</code>.</p></div>
+                    <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/@Model.SampleBatteryId/section/performance
 GET @Model.BasePath/batteries/@Model.SampleBatteryId/section/circularity</code></pre>
                 </article>
 
-                <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{batteryId}/values?path=...</h3>
-                    <p class="mb-1">Read one or more specific values by alias or exact document path.</p>
-                    <p class="mb-1">Aliases: <code>ratedEnergy</code>, <code>ratedCapacity</code>, <code>ratedMaximumPower</code>, <code>nominalVoltage</code>, <code>nickelMass</code>, <code>currentConsumptionKwh</code>, <code>currentChargeLevelPct</code>, <code>currentVoltageV</code>, <code>currentCurrentA</code>, <code>softwareVersion</code>, <code>softwareReleaseDate</code>, <code>softwareLatestUpdate</code>, <code>locationOfUse</code>, <code>contactPerson</code>, <code>isActive</code>.</p>
-                    <p class="mb-1">Need the full set of readable values (not only aliases)? Open <a id="supported-values-link" href="@($"{Model.BasePath}/batteries/{Model.SampleBatteryId}/paths?section=full")&amp;includeContainers=true" target="_blank" rel="noopener noreferrer"><code>@Model.BasePath/batteries/@Model.SampleBatteryId/paths?section=full&amp;includeContainers=true</code></a> in a new tab.</p>
-                    <pre class="bp-help-pre mb-2"><code>GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=ratedEnergy&amp;path=ratedCapacity
+                <article id="api-detail-values" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
+                    <div>
+                        <span class="bp-summary-title">Values</span>
+                        <h3>Read one or more specific values.</h3>
+                        <p>Aliases include <code>ratedEnergy</code>, <code>ratedCapacity</code>, <code>ratedMaximumPower</code>, <code>nominalVoltage</code>, <code>nickelMass</code>, <code>currentConsumptionKwh</code>, <code>currentChargeLevelPct</code>, <code>currentVoltageV</code>, <code>currentCurrentA</code>, <code>softwareVersion</code>, <code>softwareReleaseDate</code>, <code>softwareLatestUpdate</code>, <code>locationOfUse</code>, <code>contactPerson</code>, and <code>isActive</code>.</p>
+                        <p>Need the full set of readable values? Open <a id="supported-values-link" href="@($"{Model.BasePath}/batteries/{Model.SampleBatteryId}/paths?section=full")&amp;includeContainers=true" target="_blank" rel="noopener noreferrer"><code>@Model.BasePath/batteries/@Model.SampleBatteryId/paths?section=full&amp;includeContainers=true</code></a> in a new tab.</p>
+                    </div>
+                    <div class="bp-help-code-grid">
+                        <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=ratedEnergy&amp;path=ratedCapacity
 GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=nickelMass
 GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=aspects.circularity.payload</code></pre>
-                    <pre class="bp-help-pre mb-0"><code>{
+                        <pre class="bp-help-pre"><code>{
   "message": "Values read successfully",
   "data": {
     "values": [
@@ -98,26 +260,16 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=aspects.circula
     ]
   }
 }</code></pre>
+                    </div>
                 </article>
 
-                <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2">Battery ID, family, and software parameters</h3>
-                    <p class="mb-1">Product Template is the internal implementation name for Battery Family. In the UI and tester workflows, Product Template and Battery Family mean the same stored template concept.</p>
-                    <p class="mb-1">Each passport is created from a MongoDB Battery Family baseline such as Compact 7M, Compact 13M, or Core. Battery families contain Battery Models, and each Battery Model carries software version, released date, and latest update as parameters.</p>
-                    <p class="mb-1">The selected Battery Model provides shared battery data, required/optional policy, evidence references, battery image, and software release metadata.</p>
-                    <p class="mb-1">The public summary and the detailed General tab software parameters show the software version, released date, and latest update copied from the selected Battery Model.</p>
-                    <p class="mb-0">There is no software update endpoint. Battery Model changes require validation and signing because the Battery Model is signed passport data.</p>
-                </article>
-
-                <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{batteryId}/paths?section=full</h3>
-                    <p class="mb-1">Discover all readable paths for a battery, or for one section, then reuse those paths with <code>/values</code>.</p>
-                    <p class="mb-1">Query options: <code>section</code> and <code>includeContainers=true</code>.</p>
-                    <pre class="bp-help-pre mb-2"><code>GET @Model.BasePath/batteries/@Model.SampleBatteryId/paths
+                <article id="api-detail-paths" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
+                    <div><span class="bp-summary-title">Readable paths</span><h3>Discover paths, then reuse them with values.</h3><p>Query options: <code>section</code> and <code>includeContainers=true</code>. Copy any item from the returned <code>paths</code> array and pass it as a repeated <code>path</code> query parameter to <code>/values</code>.</p></div>
+                    <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/@Model.SampleBatteryId/paths
 GET @Model.BasePath/batteries/@Model.SampleBatteryId/paths?section=performance
-GET @Model.BasePath/batteries/@Model.SampleBatteryId/paths?section=materialComposition&amp;includeContainers=true</code></pre>
-                    <p class="mb-1">Copy any item from the returned <code>paths</code> array and pass it as a repeated <code>path</code> query parameter to <code>/values</code>:</p>
-                    <pre class="bp-help-pre mb-0"><code># Example: read values returned from /paths?section=performance
+GET @Model.BasePath/batteries/@Model.SampleBatteryId/paths?section=materialComposition&amp;includeContainers=true
+
+# Example: read values returned from /paths?section=performance
 GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=aspects.performanceAndDurability.payload.batteryTechicalProperties.ratedEnergy&amp;path=aspects.performanceAndDurability.payload.batteryTechicalProperties.ratedCapacity
 
 # Example: read an indexed array value discovered by /paths
@@ -127,11 +279,9 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=aspects.materia
 GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.locationOfUse&amp;path=app.operations.contactPerson</code></pre>
                 </article>
 
-                <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">POST</span> @Model.BasePath/batteries/{batteryId}/telemetry</h3>
-                    <p class="mb-1">Write telemetry point(s). Supports single object, array, or <code>{ "points": [...] }</code>.</p>
-                    <p class="mb-1">Writable telemetry fields: <code>currentConsumptionKwh</code>, <code>currentChargeLevelPct</code>, <code>currentVoltageV</code>, <code>currentCurrentA</code>, optional <code>measuredAt</code>.</p>
-                    <pre class="bp-help-pre mb-0"><code>{
+                <article id="api-detail-telemetry" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
+                    <div><span class="bp-summary-title">Telemetry write</span><h3>Append one or more operational points.</h3><p>Supports a single object, an array, or <code>{ "points": [...] }</code>. Writable telemetry fields: <code>currentConsumptionKwh</code>, <code>currentChargeLevelPct</code>, <code>currentVoltageV</code>, <code>currentCurrentA</code>, optional <code>measuredAt</code>.</p></div>
+                    <pre class="bp-help-pre"><code>{
   "points": [
     {
       "currentConsumptionKwh": 154.6,
@@ -144,16 +294,14 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
 }</code></pre>
                 </article>
 
-                <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">GET</span> @Model.BasePath/batteries/{batteryId}/telemetry/history?hours=24</h3>
-                    <p class="mb-0">Read telemetry history. <code>hours</code> must be in <code>1..168</code>.</p>
+                <article id="api-detail-history" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
+                    <div><span class="bp-summary-title">Telemetry history</span><h3>Read recent telemetry history.</h3><p>The <code>hours</code> value must be in <code>1..168</code>.</p></div>
+                    <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/@Model.SampleBatteryId/telemetry/history?hours=24</code></pre>
                 </article>
 
-                <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">PATCH</span> @Model.BasePath/batteries/{batteryId}/operations</h3>
-                    <p class="mb-1">Patch writable operations metadata.</p>
-                    <p class="mb-1">Writable fields: <code>locationOfUse</code>, <code>contactPerson</code>, <code>isActive</code>.</p>
-                    <pre class="bp-help-pre mb-0"><code>{
+                <article id="api-detail-operations" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
+                    <div><span class="bp-summary-title">Operations patch</span><h3>Patch writable operations metadata.</h3><p>Writable fields are <code>locationOfUse</code>, <code>contactPerson</code>, and <code>isActive</code>.</p></div>
+                    <pre class="bp-help-pre"><code>{
   "isActive": true,
   "locationOfUse": {
     "siteName": "Factory 4",
@@ -171,33 +319,41 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
 }</code></pre>
                 </article>
 
-                <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">PATCH</span> @Model.BasePath/batteries/{batteryId}/battery-model</h3>
-                    <p class="mb-1">Change the Battery Model on the battery record. Create a new passport snapshot, then validate, sign, and publish it to expose the updated snapshot.</p>
-                    <p class="mb-1">The response states that validation, signing, and a new passport are required. Telemetry changes do not require signing.</p>
-                    <pre class="bp-help-pre mb-0"><code>{ "batteryModel": "2.0" }</code></pre>
+                <article id="api-detail-model" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
+                    <div>
+                        <span class="bp-summary-title">Battery Model</span>
+                        <h3>Battery ID, family, and software parameters</h3>
+                        <p>Product Template is the internal implementation name for Battery Family. In the UI and tester workflows, Product Template and Battery Family mean the same stored template concept.</p>
+                        <p>Each passport is created from a MongoDB Battery Family baseline. Battery families contain Battery Models, and each Battery Model carries software parameters such as software version, released date, and latest update values.</p>
+                        <p>There is no software update endpoint. Battery Model changes require validation and signing because the Battery Model is signed passport data. Create a new passport snapshot, then validate, sign, and publish it to expose the updated snapshot.</p>
+                    </div>
+                    <pre class="bp-help-pre"><code>{ "batteryModel": "2.0" }</code></pre>
                 </article>
 
-                <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">POST</span> @Model.BasePath/batteries/{batteryId}/passports</h3>
-                    <p class="mb-0">Create a new passport snapshot for the Battery ID. The response returns the new Passport ID.</p>
+                <article id="api-detail-passports" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
+                    <div><span class="bp-summary-title">Passport snapshot</span><h3>Create a new passport snapshot.</h3><p>Create a new passport snapshot for the Battery ID. The response returns the new Passport ID.</p></div>
+                    <pre class="bp-help-pre"><code>POST @Model.BasePath/batteries/@Model.SampleBatteryId/passports</code></pre>
                 </article>
 
-                <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">POST</span> @Model.BasePath/passports/{passportId}/validate</h3>
-                    <p class="mb-0">Validate with a Sign token. Sign tokens can validate and sign only for their scoped clusters.</p>
+                <article id="api-detail-validate" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
+                    <div><span class="bp-summary-title">Validate</span><h3>Validate with a Sign token.</h3><p>Sign tokens can validate and sign only for their scoped clusters.</p></div>
+                    <pre class="bp-help-pre"><code>POST @Model.BasePath/passports/@Model.SamplePassportId/validate</code></pre>
                 </article>
 
-                <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">POST</span> @Model.BasePath/passports/{passportId}/sign</h3>
-                    <p class="mb-0">Sign with a Sign token. The first publication still requires explicit publish in the app; after a passport has been published once, later successful signs auto-publish the new revision.</p>
+                <article id="api-detail-sign" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
+                    <div><span class="bp-summary-title">Sign</span><h3>Sign the current passport core.</h3><p>The first publication still requires explicit publish in the app. After a passport has been published once, later successful signs auto-publish the new revision.</p></div>
+                    <pre class="bp-help-pre"><code>POST @Model.BasePath/passports/@Model.SamplePassportId/sign</code></pre>
                 </article>
 
-                <article class="bp-help-doc-item">
-                    <h3 class="h6 mb-2"><span class="bp-help-method">POST</span> @Model.BasePath/passports/{passportId}/publish</h3>
-                    <p class="mb-0">Publish with a Sign token after validation and signing.</p>
+                <article id="api-detail-publish" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
+                    <div><span class="bp-summary-title">Publish</span><h3>Publish after validation and signing.</h3><p>Publish with a Sign token after validation and signing are current.</p></div>
+                    <pre class="bp-help-pre"><code>POST @Model.BasePath/passports/@Model.SamplePassportId/publish</code></pre>
                 </article>
-
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </section>
 
@@ -304,6 +460,45 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 docItems.forEach(item => {
                     const text = (item.innerText || '').toLowerCase();
                     item.style.display = text.includes(query) ? '' : 'none';
+                });
+            });
+
+            const apiDetailButtons = Array.from(document.querySelectorAll('[data-api-help-detail-target]'));
+            const apiDetailPanels = Array.from(document.querySelectorAll('[data-api-help-detail-panel]'));
+            const apiDetailRegion = document.querySelector('.bp-api-help-selected-panel');
+            const apiDetailRow = document.querySelector('[data-api-help-detail-row]');
+            const activateApiDetail = (targetId, shouldOpen) => {
+                apiDetailPanels.forEach(panel => {
+                    panel.hidden = panel.id !== targetId || !shouldOpen;
+                });
+                apiDetailButtons.forEach(button => {
+                    const isActive = shouldOpen && button.getAttribute('data-api-help-detail-target') === targetId;
+                    button.classList.toggle('is-active', isActive);
+                    button.setAttribute('aria-expanded', isActive ? 'true' : 'false');
+                });
+                if (apiDetailRegion) {
+                    apiDetailRegion.hidden = !shouldOpen;
+                }
+                if (apiDetailRow) {
+                    apiDetailRow.hidden = !shouldOpen;
+                }
+            };
+
+            apiDetailButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetId = button.getAttribute('data-api-help-detail-target');
+                    const targetPanel = targetId ? document.getElementById(targetId) : null;
+                    const hostRow = button.closest('tr');
+                    const isSameVisible = Boolean(targetPanel && apiDetailRow && !targetPanel.hidden && !apiDetailRow.hidden);
+                    if (targetId) {
+                        if (hostRow && apiDetailRow && hostRow.parentNode) {
+                            hostRow.parentNode.insertBefore(apiDetailRow, hostRow.nextSibling);
+                        }
+                        activateApiDetail(targetId, !isSameVisible);
+                        if (!isSameVisible && apiDetailRegion) {
+                            apiDetailRegion.focus({ preventScroll: true });
+                        }
+                    }
                 });
             });
 

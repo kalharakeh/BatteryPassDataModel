@@ -29,6 +29,7 @@ In `artifacts/publish/portable-win-x64`:
 
 - `BatteryPassWeb.exe` (self-contained runtime included)
 - web/static content and config files
+- `BatteryPass` schema/demo payload folder used by reset
 - `.env.local.example`
 - `run-batterypass.cmd`
 - `README-PORTABLE.txt`
@@ -47,6 +48,7 @@ Also in `artifacts/releases`:
    - `MONGODB_DB`
    - `SESSION_SECRET`
    - `EXTERNAL_API_ENCRYPTION_KEY`
+   - `ID_GENERATION_SECRET`
 5. Run `run-batterypass.cmd`.
 6. Open `http://localhost:5186`.
 
@@ -54,3 +56,5 @@ Also in `artifacts/releases`:
 
 - No .NET runtime installation is required on the target PC.
 - MongoDB must still be reachable by the app (local or remote URI).
+- Copy or extract the whole package. Do not copy only `BatteryPassWeb.exe`; reset requires the `BatteryPass` folder next to the executable.
+- For the current QA/demo data to generate the same IDs as development, use `ID_GENERATION_SECRET=battery-pass-local-development-id-secret`.

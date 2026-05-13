@@ -58,6 +58,128 @@ public sealed class AdminDenseConsoleLayoutTests
     }
 
     [Fact]
+    public void AdminBatteryClusterAssignments_ShouldUseDenseBatteryIdentityRowsAndAssignmentOnlyControls()
+    {
+        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+        var batteryTabStart = clusters.IndexOf("selectedTab == \"battery\"", StringComparison.Ordinal);
+        var clusterTabStart = clusters.IndexOf("selectedTab == \"clusters\"", StringComparison.Ordinal);
+        var batteryTab = clusters.Substring(batteryTabStart, clusterTabStart - batteryTabStart);
+
+        Assert.True(batteryTabStart >= 0);
+        Assert.True(clusterTabStart > batteryTabStart);
+        Assert.Contains("bp-admin-cluster-assignment-table", batteryTab);
+        Assert.Contains("bp-console-table", batteryTab);
+        Assert.Contains("Battery ID", batteryTab);
+        Assert.Contains("Battery Family", batteryTab);
+        Assert.Contains("Battery Model", batteryTab);
+        Assert.Contains("Battery serial number", batteryTab);
+        Assert.Contains("@passport.BatteryId", batteryTab);
+        Assert.Contains("@passport.BatteryFamily", batteryTab);
+        Assert.Contains("bp-battery-id-cell", batteryTab);
+        Assert.Contains("bp-cluster-assignment-form", batteryTab);
+        Assert.Contains("aria-label=\"Save cluster assignment\"", batteryTab);
+        Assert.Contains("title=\"Save cluster assignment\"", batteryTab);
+        Assert.DoesNotContain("<th class=\"bp-action-cell\">Actions</th>", batteryTab);
+        Assert.DoesNotContain("aria-label=\"Summary report\"", batteryTab);
+        Assert.DoesNotContain("aria-label=\"Detailed report\"", batteryTab);
+        Assert.DoesNotContain("aria-label=\"Edit passport snapshot\"", batteryTab);
+        Assert.DoesNotContain("<th class=\"px-3 py-3\">Battery</th>", batteryTab);
+        Assert.DoesNotContain("class=\"bp-secondary-button\">Save</button>", batteryTab);
+        Assert.Contains(".bp-cluster-assignment-form", css);
+        Assert.Contains(".bp-admin-cluster-assignment-table", css);
+    }
+
+    [Fact]
+    public void AdminRegisteredClusters_ShouldUseDenseProductionTableWithoutMockupTabStyles()
+    {
+        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+        var clusterTabStart = clusters.IndexOf("selectedTab == \"clusters\"", StringComparison.Ordinal);
+        var usersTabStart = clusters.IndexOf("selectedTab == \"users\"", StringComparison.Ordinal);
+        var clusterTab = clusters.Substring(clusterTabStart, usersTabStart - clusterTabStart);
+
+        Assert.True(clusterTabStart >= 0);
+        Assert.True(usersTabStart > clusterTabStart);
+        Assert.Contains("bp-cluster-create-strip", clusterTab);
+        Assert.Contains("bp-cluster-management-table", clusterTab);
+        Assert.Contains("bp-console-table", clusterTab);
+        Assert.Contains("<th>Cluster</th>", clusterTab);
+        Assert.Contains("<th>Cluster ID</th>", clusterTab);
+        Assert.Contains("<th>Rename</th>", clusterTab);
+        Assert.Contains("<th>Delete</th>", clusterTab);
+        Assert.Contains("<th>Force delete</th>", clusterTab);
+        Assert.Contains("aria-label=\"Save cluster name\"", clusterTab);
+        Assert.Contains("aria-label=\"Delete cluster\"", clusterTab);
+        Assert.Contains("aria-label=\"Force delete cluster\"", clusterTab);
+        Assert.DoesNotContain("bp-management-card", clusterTab);
+        Assert.DoesNotContain("bp-management-danger-zone", clusterTab);
+        Assert.DoesNotContain("option-button", clusterTab);
+        Assert.DoesNotContain("mockup-shell", clusterTab);
+        Assert.Contains(".bp-cluster-create-strip", css);
+        Assert.Contains(".bp-cluster-management-table", css);
+        Assert.Contains(".bp-cluster-danger-form", css);
+    }
+
+    [Fact]
+    public void AdminUsers_ShouldUseDenseMoreMenuTableForMultiClusterAssignments()
+    {
+        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+        var usersTabStart = clusters.IndexOf("selectedTab == \"users\"", StringComparison.Ordinal);
+        var nextTabStart = clusters.IndexOf("selectedTab == \"local-editable-fields\"", StringComparison.Ordinal);
+        var usersTab = clusters.Substring(usersTabStart, nextTabStart - usersTabStart);
+
+        Assert.True(usersTabStart >= 0);
+        Assert.True(nextTabStart > usersTabStart);
+        Assert.Contains("bp-user-create-strip", usersTab);
+        Assert.Contains("bp-user-management-table", usersTab);
+        Assert.Contains("bp-console-table", usersTab);
+        Assert.Contains("<th>Username</th>", usersTab);
+        Assert.Contains("<th>Email</th>", usersTab);
+        Assert.Contains("<th>Cluster memberships</th>", usersTab);
+        Assert.Contains("<th class=\"bp-action-cell\">Actions</th>", usersTab);
+        Assert.Contains("memberships.Count", usersTab);
+        Assert.Contains("data-user-drawer-toggle", usersTab);
+        Assert.Contains("bp-user-drawer-row", usersTab);
+        Assert.Contains("bp-user-drawer-grid", usersTab);
+        Assert.Contains("Account email (read-only)", usersTab);
+        Assert.Contains("readonly", usersTab);
+        Assert.Contains("bp-user-membership-add-row", usersTab);
+        Assert.Contains("Global access is app-wide", usersTab);
+        Assert.DoesNotContain("<th>System role</th>", usersTab);
+        Assert.DoesNotContain("Quick add membership", usersTab);
+        Assert.DoesNotContain("bp-user-management-list", usersTab);
+        Assert.DoesNotContain("bp-user-card", usersTab);
+        Assert.Contains(".bp-user-create-strip", css);
+        Assert.Contains(".bp-user-management-table", css);
+        Assert.Contains(".bp-user-drawer-grid", css);
+        Assert.Contains(".bp-user-membership-add-row", css);
+    }
+
+    [Fact]
+    public void UserPasswordChanges_ShouldRequireConfirmationAndUseIconRevealButtons()
+    {
+        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var account = File.ReadAllText(RepoFile("web", "Views", "Account", "Index.cshtml"));
+        var adminController = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+        var accountController = File.ReadAllText(RepoFile("web", "Controllers", "AccountController.cs"));
+
+        Assert.Contains("name=\"passwordConfirmation\"", clusters);
+        Assert.Contains("Confirm password", clusters);
+        Assert.Contains("data-password-reveal", clusters);
+        Assert.Contains("<svg class=\"bp-action-icon\"", clusters);
+        Assert.Contains("name=\"passwordConfirmation\"", account);
+        Assert.Contains("Confirm password", account);
+        Assert.Contains("data-password-reveal", account);
+        Assert.Contains("<svg class=\"bp-action-icon\"", account);
+        Assert.Contains("passwordConfirmation", adminController);
+        Assert.Contains("Passwords do not match.", adminController);
+        Assert.Contains("passwordConfirmation", accountController);
+        Assert.Contains("Passwords do not match.", accountController);
+    }
+
+    [Fact]
     public void LocalAdminEditAndUsers_ShouldShareDenseConsoleStructure()
     {
         var edit = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "EditPassport.cshtml"));
@@ -82,12 +204,38 @@ public sealed class AdminDenseConsoleLayoutTests
     {
         var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+        var localEditableStart = clusters.IndexOf("selectedTab == \"local-editable-fields\"", StringComparison.Ordinal);
+        var apiTokenStart = clusters.IndexOf("selectedTab == \"api-token-management\"", StringComparison.Ordinal);
+        var localEditableTab = clusters.Substring(localEditableStart, apiTokenStart - localEditableStart);
 
+        Assert.True(localEditableStart >= 0);
+        Assert.True(apiTokenStart > localEditableStart);
         Assert.Contains("bp-policy-console", clusters);
-        Assert.Contains("bp-policy-section-grid", clusters);
+        Assert.Contains("bp-local-editable-policy-table", localEditableTab);
+        Assert.Contains("bp-console-table", localEditableTab);
+        Assert.Contains("<th>Section</th>", localEditableTab);
+        Assert.Contains("<th>Total fields</th>", localEditableTab);
+        Assert.Contains("<th>Editable</th>", localEditableTab);
+        Assert.Contains("<th>Examples</th>", localEditableTab);
+        Assert.Contains("bp-local-editable-drawer-row", localEditableTab);
+        Assert.Contains("data-local-editable-drawer-toggle", localEditableTab);
+        Assert.Contains("aria-expanded=\"false\"", localEditableTab);
+        Assert.Contains("class=\"bp-local-editable-drawer-row\" hidden", localEditableTab);
+        Assert.DoesNotContain("sectionIndex == 0 ? \"true\" : \"false\"", localEditableTab);
+        Assert.DoesNotContain("hidden=\"@(sectionIndex != 0)\"", localEditableTab);
+        Assert.Contains("policySection.Fields.Count", localEditableTab);
+        Assert.Contains("sectionEditableCount", localEditableTab);
+        Assert.Contains("bp-local-editable-field-toggle", localEditableTab);
+        Assert.Contains("name=\"editableFieldKeys\"", localEditableTab);
+        Assert.Contains("/admin/local-editable-fields/save", localEditableTab);
+        Assert.DoesNotContain("bp-policy-section-grid", localEditableTab);
+        Assert.DoesNotContain("bp-requirement-grid", localEditableTab);
         Assert.Contains("bp-policy-meta", clusters);
         Assert.Contains(".bp-policy-console", css);
-        Assert.Contains(".bp-policy-section-grid", css);
+        Assert.Contains(".bp-local-editable-policy-table", css);
+        Assert.Contains(".bp-local-editable-drawer-row", css);
+        Assert.Contains(".bp-local-editable-field-grid", css);
+        Assert.Contains(".bp-local-editable-field-toggle", css);
     }
 
     [Fact]
@@ -101,15 +249,22 @@ public sealed class AdminDenseConsoleLayoutTests
         Assert.Contains("bp-tab-active", help);
         Assert.Contains("href=\"/admin/clusters?tab=batteries\"", help);
         Assert.Contains("href=\"/admin/clusters?tab=api-token-management\"", help);
-        Assert.Contains("bp-admin-help-start-panel", help);
-        Assert.Contains("bp-admin-help-start-actions", help);
-        Assert.Contains("bp-admin-help-navigation-panel", help);
+        Assert.Contains("bp-admin-help-reference-console", help);
+        Assert.Contains("bp-admin-help-reference-toolbar", help);
+        Assert.Contains("bp-admin-help-workflow-table", help);
+        Assert.Contains("bp-admin-help-detail-row", help);
+        Assert.Contains("bp-admin-help-detail-panel", help);
+        Assert.Contains("data-admin-help-detail-target", help);
+        Assert.Contains("parentNode.insertBefore", help);
+        Assert.DoesNotContain("scrollIntoView", help);
         Assert.DoesNotContain("bp-admin-help-hero-panel", help);
         Assert.DoesNotContain("bp-admin-help-workflow-card", help);
         Assert.DoesNotContain("bp-admin-help-workflow-chip-row", help);
-        Assert.Contains(".bp-admin-help-start-panel", css);
-        Assert.Contains(".bp-admin-help-start-actions", css);
-        Assert.Contains(".bp-admin-help-navigation-panel", css);
+        Assert.Contains(".bp-admin-help-reference-console", css);
+        Assert.Contains(".bp-admin-help-reference-toolbar", css);
+        Assert.Contains(".bp-admin-help-workflow-table", css);
+        Assert.Contains(".bp-admin-help-detail-row", css);
+        Assert.Contains(".bp-admin-help-detail-panel", css);
     }
 
     [Fact]

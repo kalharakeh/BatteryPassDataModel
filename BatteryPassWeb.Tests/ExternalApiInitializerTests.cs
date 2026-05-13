@@ -42,12 +42,18 @@ public sealed class ExternalApiInitializerTests
         var helpModel = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "ExternalApiHelpViewModel.cs"));
         var helpView = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
 
-        Assert.Contains("SampleApiClusterId = \"cluster-north-operations\"", initializer);
+        Assert.Contains("SampleApiClusterId = \"demo-cluster\"", initializer);
+        Assert.Contains("SampleBatteryFamily", initializer);
+        Assert.Contains("SampleBatterySerialNumber", initializer);
         Assert.Contains("SampleSignTokenId", initializer);
         Assert.Contains("SampleSignTokenValue", initializer);
         Assert.Contains("ExternalTokenAccessMode.Sign", initializer);
         Assert.Contains("UpsertFixedTokenAsync", repository);
         Assert.Contains("EnsureFixedApiDemoTokensAsync(cancellationToken);", productTemplateService);
+        Assert.Contains("[\"demo-cluster\"]", productTemplateService);
+        Assert.Contains("\"demo.user@example.test\"", productTemplateService);
+        Assert.Contains("ExternalApiInitializer.SampleBatterySerialNumber", productTemplateService);
+        Assert.Contains("[new(\"1.0\", -30), new(\"2.0\", 0)]", productTemplateService);
         Assert.Contains("ExternalApiInitializer.SampleApiClusterId", helpController);
         Assert.Contains("SampleSignTokenId", helpController);
         Assert.Contains("SampleSignToken", helpModel);
@@ -55,6 +61,28 @@ public sealed class ExternalApiInitializerTests
         Assert.Contains("const sampleSignToken", helpView);
         Assert.Contains("'sample-sign': sampleSignToken", helpView);
         Assert.Contains("tokenPreset: 'sample-sign'", helpView);
+    }
+
+    [Fact]
+    public void LandingSearchSample_ShouldUseGeneratedDemoBatteryIdInsteadOfLegacyDid()
+    {
+        var homeController = File.ReadAllText(RepoFile("web", "Controllers", "HomeController.cs"));
+        var landing = File.ReadAllText(RepoFile("web", "Views", "Home", "Index.cshtml"));
+
+        Assert.Contains("BatteryIdService", homeController);
+        Assert.Contains("ExternalApiInitializer.CreateSampleBatteryId", homeController);
+        Assert.DoesNotContain("sample-customer-north-001", homeController);
+        Assert.Contains("sample battery ID", landing);
+    }
+
+    [Fact]
+    public void LegacySampleDid_ShouldResolveToGeneratedDemoBattery()
+    {
+        var resolver = File.ReadAllText(RepoFile("web", "Services", "BatteryRouteResolutionService.cs"));
+
+        Assert.Contains("LegacySampleBatteryId", resolver);
+        Assert.Contains("CreateSampleBatteryId", resolver);
+        Assert.Contains("BatteryIdService", resolver);
     }
 
     private static string RepoFile(params string[] parts)

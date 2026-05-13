@@ -35,10 +35,11 @@ public sealed class Phase6ADocumentationTests
         Assert.Contains("Compact 7M", docs);
         Assert.Contains("Compact 13M", docs);
         Assert.Contains("Core", docs);
-        Assert.Contains("did:web:acme.battery.pass:0226151e-949c-d067-8ef3-162431e28976", docs);
-        Assert.Contains("did:web:acme.battery.pass:sample-customer-north-001", docs);
-        Assert.Contains("did:web:acme.battery.pass:sample-customer-south-001", docs);
-        Assert.Contains("did:web:acme.battery.pass:sample-end-user-fleet-001", docs);
+        Assert.Contains("Demo API Cluster", docs);
+        Assert.Contains("demo-cluster", docs);
+        Assert.Contains("CP7M-DEMO-API-001", docs);
+        Assert.Contains("SAMPLEBATTERYPASSPORTREADTOKN001", docs);
+        Assert.Contains("sample-customer-north-001", docs);
         Assert.DoesNotContain("sample-end-user-storage-001", docs);
     }
 
@@ -110,10 +111,11 @@ public sealed class Phase6ADocumentationTests
 
         Assert.Contains("Battery Model", guide, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("API Token Management", guide);
-        Assert.Contains("one unassigned demonstrator plus six clustered customer batteries", guide);
+        Assert.Contains("eight batteries and nine passport snapshots", guide);
         Assert.Contains("API Token Management", qa);
-        Assert.Contains("one unassigned demonstrator plus six clustered customer batteries", qa);
+        Assert.Contains("eight batteries and nine passport snapshots", qa);
         Assert.Contains("customer_001_001@customer.org", accounts);
+        Assert.Contains("demo.user@example.test", accounts);
         Assert.Contains("12345", accounts);
         Assert.Contains("CP7M-NORTH-002", accounts);
         Assert.Contains("CP13M-SOUTH-002", accounts);

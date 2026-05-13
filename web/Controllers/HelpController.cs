@@ -9,15 +9,18 @@ namespace BatteryPassWeb.Controllers;
 [Route("help")]
 public class HelpController : Controller
 {
-    private const string PreferredSamplePassportId = "did:web:acme.battery.pass:cba0c455d7bc4a8cb5ffc1ff6c60dd6f";
-
     private readonly ExternalApiRepository _externalApiRepository;
     private readonly PassportRepository _passportRepository;
+    private readonly BatteryIdService _batteryIdService;
 
-    public HelpController(ExternalApiRepository externalApiRepository, PassportRepository passportRepository)
+    public HelpController(
+        ExternalApiRepository externalApiRepository,
+        PassportRepository passportRepository,
+        BatteryIdService batteryIdService)
     {
         _externalApiRepository = externalApiRepository;
         _passportRepository = passportRepository;
+        _batteryIdService = batteryIdService;
     }
 
     [HttpGet("")]
@@ -60,16 +63,10 @@ public class HelpController : Controller
             return ToSampleIds(clusterPassport);
         }
 
-        var preferredPassport = await _passportRepository.GetByPassportIdAsync(PreferredSamplePassportId, cancellationToken);
-        if (preferredPassport != null && string.IsNullOrWhiteSpace(BsonHelpers.GetString(preferredPassport, "clusterId")))
-        {
-            return ToSampleIds(preferredPassport);
-        }
-
         var passport = passports.FirstOrDefault(passport => string.IsNullOrWhiteSpace(BsonHelpers.GetString(passport, "clusterId")));
         return passport != null
             ? ToSampleIds(passport)
-            : (ExternalApiInitializer.SamplePassportId, ExternalApiInitializer.SamplePassportId);
+            : (ExternalApiInitializer.CreateSampleBatteryId(_batteryIdService), ExternalApiInitializer.SamplePassportId);
     }
 
     private static (string BatteryId, string PassportId) ToSampleIds(MongoDB.Bson.BsonDocument passport)

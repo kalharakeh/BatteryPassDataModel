@@ -1,6 +1,6 @@
 @{
     ViewData["Title"] = "Scania Battery Passport Viewer";
-    var samplePassportId = ViewData["SamplePassportId"] as string ?? "did:web:acme.battery.pass:sample-customer-north-001";
+    var samplePassportId = ViewData["SamplePassportId"] as string ?? string.Empty;
     var searchQuery = ViewData["SearchQuery"] as string ?? string.Empty;
     var searchWasNotFound = ViewData["SearchNotFound"] is true;
     var isAdminSearch = ViewData["IsAdminSearch"] is true;
@@ -9,7 +9,7 @@
     <div class="bp-landing-content">
         <div>
             <h1>Scania Battery Passport Viewer</h1>
-            <p>Enter a battery passport DID to open the public demonstrator view.</p>
+            <p>Enter a battery ID or passport ID to open the public demonstrator view. The placeholder is a sample battery ID.</p>
         </div>
         @if (searchWasNotFound && !string.IsNullOrWhiteSpace(searchQuery))
         {
@@ -39,7 +39,7 @@
                 <button type="submit">Search</button>
             </div>
             <p id="bpLandingSearchMessage" class="bp-search-inline-message" data-empty-search-message hidden>
-                Enter a battery passport DID or use the QR icon inside the field before searching.
+                Enter a battery ID, passport ID, or use the QR icon inside the field before searching.
             </p>
         </form>
         <div class="bp-landing-links">

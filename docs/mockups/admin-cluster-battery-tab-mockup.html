@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin battery cluster assignment mockup</title>
+  <style>
+    :root {
+      --bp-border: #d8e0ea;
+      --bp-muted: #5f6f82;
+      --bp-text: #10233f;
+      --bp-surface: #fff;
+      --bp-page: #f4f7fb;
+      --bp-accent: #0b5f78;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bp-page);
+      color: var(--bp-text);
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+
+    .bp-page {
+      width: min(1760px, calc(100vw - 48px));
+      margin: 0 auto;
+      padding: 32px 0;
+    }
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: 2rem;
+      letter-spacing: 0;
+    }
+
+    .text-secondary {
+      color: var(--bp-muted);
+    }
+
+    .bp-tab-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 24px;
+    }
+
+    .bp-tab {
+      display: inline-flex;
+      align-items: center;
+      min-height: 38px;
+      border: 1px solid var(--bp-border);
+      border-radius: 8px;
+      background: #fff;
+      color: #24415f;
+      font-size: 0.9rem;
+      font-weight: 700;
+      padding: 0 14px;
+      text-decoration: none;
+    }
+
+    .bp-tab-active {
+      border-color: #8eb5c4;
+      background: #e9f5f8;
+      color: var(--bp-accent);
+    }
+
+    .bp-card {
+      margin-top: 24px;
+      border: 1px solid var(--bp-border);
+      border-radius: 8px;
+      background: var(--bp-surface);
+      box-shadow: 0 18px 40px rgba(8, 32, 54, 0.08);
+    }
+
+    .bp-table-card {
+      overflow: hidden;
+      padding: 0;
+    }
+
+    .bp-table-scroll {
+      overflow-x: auto;
+    }
+
+    .bp-console-table {
+      width: 100%;
+      min-width: 1080px;
+      border-collapse: collapse;
+      margin: 0;
+    }
+
+    .bp-console-table thead th {
+      border-bottom: 1px solid var(--bp-border);
+      background: #f8fafc;
+      color: var(--bp-muted);
+      font-size: 0.74rem;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-align: left;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .bp-console-table th,
+    .bp-console-table td {
+      border-bottom: 1px solid #e8eef5;
+      padding: 13px 14px;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    .bp-console-table tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .bp-battery-id-cell {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #334155;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 0.78rem;
+      white-space: nowrap;
+    }
+
+    .bp-copy-button {
+      display: inline-grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      border: 1px solid #c7d2df;
+      border-radius: 7px;
+      background: #fff;
+      color: #38556f;
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+
+    .bp-cluster-assignment-form,
+    .bp-icon-action-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      white-space: nowrap;
+    }
+
+    .form-select {
+      min-width: 230px;
+      max-width: 280px;
+      height: 36px;
+      border: 1px solid #b4c0cf;
+      border-radius: 8px;
+      background: #fff;
+      color: #18324d;
+      padding: 0 36px 0 12px;
+    }
+
+    .bp-action-button {
+      position: relative;
+      inline-size: 2.35rem;
+      block-size: 2.35rem;
+      min-inline-size: 2.35rem;
+      min-block-size: 2.35rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #9fb1c5;
+      border-radius: 8px;
+      background: #fff;
+      color: #163b5c;
+      padding: 0;
+      box-shadow: 0 4px 13px rgba(15, 35, 55, 0.08);
+    }
+
+    .bp-action-icon {
+      inline-size: 1.22rem;
+      block-size: 1.22rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.9;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    .small {
+      display: block;
+      margin-top: 3px;
+      font-size: 0.78rem;
+    }
+  </style>
+</head>
+<body>
+  <main class="bp-page">
+    <header>
+      <h1>Administration</h1>
+      <p class="text-secondary">Manage batteries, passport snapshots, battery families, cluster assignments, registered clusters, and user memberships from one page.</p>
+    </header>
+
+    <nav class="bp-tab-row" aria-label="Administration tabs">
+      <a class="bp-tab" href="#">Batteries</a>
+      <a class="bp-tab bp-tab-active" href="#">Battery cluster assignments</a>
+      <a class="bp-tab" href="#">Registered clusters</a>
+      <a class="bp-tab" href="#">Users</a>
+      <a class="bp-tab" href="#">Local editable fields</a>
+      <a class="bp-tab" href="#">API Token Management</a>
+      <a class="bp-tab" href="#">Battery families</a>
+    </nav>
+
+    <section class="bp-card bp-table-card">
+      <div class="bp-table-scroll">
+        <table class="bp-console-table bp-admin-cluster-assignment-table">
+          <thead>
+            <tr>
+              <th>Battery ID</th>
+              <th>Battery Family</th>
+              <th>Battery Model</th>
+              <th>Battery serial number</th>
+              <th>Current cluster</th>
+              <th>Assign</th>
+              <th>Updated</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="bp-battery-id-cell">AQ7f4Wq6N2u9XvL8pMh3cTzYbRk5...<span class="bp-copy-button">ID</span></span></td>
+              <td>Compact 7M</td>
+              <td>2.0</td>
+              <td>SN-001</td>
+              <td><p>North Operations</p><span class="small text-secondary">cluster-north-operations</span></td>
+              <td>
+                <form class="bp-cluster-assignment-form">
+                  <select class="form-select" aria-label="Cluster for AQ7f4Wq6N2u9XvL8pMh3cTzYbRk5">
+                    <option>North Operations</option>
+                  </select>
+                  <button type="button" class="bp-action-button" aria-label="Save cluster assignment" title="Save cluster assignment">
+                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+                  </button>
+                </form>
+              </td>
+              <td>2026-05-13</td>
+            </tr>
+            <tr>
+              <td><span class="bp-battery-id-cell">BR1n8Hp2S5aQw0jNc6TfYeKzLm9...<span class="bp-copy-button">ID</span></span></td>
+              <td>Core</td>
+              <td>1.4</td>
+              <td>SN-118</td>
+              <td><p>No cluster assigned</p></td>
+              <td>
+                <form class="bp-cluster-assignment-form">
+                  <select class="form-select" aria-label="Cluster for BR1n8Hp2S5aQw0jNc6TfYeKzLm9">
+                    <option>North Operations</option>
+                  </select>
+                  <button type="button" class="bp-action-button" aria-label="Save cluster assignment" title="Save cluster assignment">
+                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+                  </button>
+                </form>
+              </td>
+              <td>2026-05-12</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

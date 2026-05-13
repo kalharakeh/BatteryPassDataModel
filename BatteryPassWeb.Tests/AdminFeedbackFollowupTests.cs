@@ -41,8 +41,8 @@ public sealed class AdminFeedbackFollowupTests
         Assert.Contains("bp-report-action", combined);
         Assert.Contains("data-tooltip=\"Summary report\"", registry);
         Assert.Contains("data-tooltip=\"Detailed report\"", registry);
-        Assert.Contains("data-tooltip=\"Detailed report\"", summary);
-        Assert.Contains("data-tooltip=\"Summary report\"", detail);
+        Assert.Contains("View more about this passport", summary);
+        Assert.Contains("Back to summary", detail);
         Assert.Contains("bp-report-action-icon", combined);
         Assert.DoesNotContain("<span aria-hidden=\"true\">S</span>", registry);
         Assert.DoesNotContain("<span aria-hidden=\"true\">D</span>", registry);
@@ -51,26 +51,22 @@ public sealed class AdminFeedbackFollowupTests
     }
 
     [Fact]
-    public void ReportActions_ShouldLiveInHeaderActionRailWithoutVisibleTextLabels()
+    public void ReportActions_ShouldUseHeroCtaWithoutOldHeaderRailLabels()
     {
         var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
         var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        Assert.Contains("bp-report-header-actions", summary);
-        Assert.Contains("bp-report-header-actions", detail);
         Assert.Contains("bp-report-header", summary);
         Assert.Contains("bp-report-header", detail);
         Assert.Contains("bp-report-title-block", summary);
         Assert.Contains("bp-report-title-block", detail);
-        Assert.True(
-            summary.IndexOf("bp-report-header-actions", StringComparison.Ordinal) <
-            summary.IndexOf("bp-report-title-block", StringComparison.Ordinal),
-            "Summary report actions should be pinned before the long identity text.");
-        Assert.True(
-            detail.IndexOf("bp-report-header-actions", StringComparison.Ordinal) <
-            detail.IndexOf("bp-report-title-block", StringComparison.Ordinal),
-            "Detailed report actions should be pinned before the long identity text.");
+        Assert.Contains("bp-report-hero-cta", summary);
+        Assert.Contains("bp-report-hero-cta", detail);
+        Assert.Contains("View more about this passport", summary);
+        Assert.Contains("Back to summary", detail);
+        Assert.DoesNotContain("bp-report-header-actions", summary);
+        Assert.DoesNotContain("bp-report-header-actions", detail);
         Assert.DoesNotContain("bp-report-action-strip", summary);
         Assert.DoesNotContain("bp-report-action-strip", detail);
         Assert.DoesNotContain("bp-report-action-label", summary);
@@ -79,16 +75,42 @@ public sealed class AdminFeedbackFollowupTests
         Assert.DoesNotContain(">Latest</span>", detail);
         Assert.DoesNotContain(">Detailed report</span>", summary);
         Assert.DoesNotContain(">Summary report</span>", detail);
-        Assert.Contains("bp-report-action-prominent", summary);
-        Assert.Contains("bp-report-action-prominent", detail);
         Assert.Contains("bp-latest-passport-action-icon", summary);
         Assert.Contains("bp-latest-passport-action-icon", detail);
-        Assert.Contains(".bp-report-header-actions", css);
-        Assert.Contains("position: absolute;", css);
         Assert.Contains(".bp-report-title-block", css);
-        Assert.Contains("padding-inline-end", css);
-        Assert.Contains(".bp-report-action-prominent", css);
+        Assert.Contains(".bp-report-hero-cta", css);
+        Assert.Contains("font-weight: 400;", css);
         Assert.DoesNotContain(".bp-report-action-label", css);
+    }
+
+    [Fact]
+    public void PassportReportHero_ShouldUseApprovedSplitHeaderDesign()
+    {
+        var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
+        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("bp-report-hero-card", summary);
+        Assert.Contains("bp-report-hero-card", detail);
+        Assert.Contains("bp-report-wide-section", summary);
+        Assert.Contains("bp-report-wide-section", detail);
+        Assert.Contains("bp-report-hero-layout", summary);
+        Assert.Contains("bp-report-hero-layout", detail);
+        Assert.Contains("bp-report-hero-media", summary);
+        Assert.Contains("bp-report-hero-media", detail);
+        Assert.Contains("View more about this passport", summary);
+        Assert.Contains("Back to summary", detail);
+        Assert.Contains("bp-report-hero-qr", summary);
+        Assert.Contains("bp-report-hero-qr", detail);
+        Assert.DoesNotContain("QR code for battery ID", summary);
+        Assert.Contains(".bp-report-hero-card", css);
+        Assert.Contains(".bp-report-wide-section", css);
+        Assert.Contains("width: min(1860px, calc(100vw - 96px));", css);
+        Assert.Contains("grid-template-columns: repeat(4, minmax(120px, 1fr));", css);
+        Assert.Contains(".bp-report-hero-media .bp-image-wrap", css);
+        Assert.Contains("background: transparent;", css);
+        Assert.Contains(".bp-report-hero-cta", css);
+        Assert.Contains("font-weight: 400;", css);
     }
 
     [Fact]
@@ -105,16 +127,16 @@ public sealed class AdminFeedbackFollowupTests
         Assert.Contains("bp-confirm-modal", clusterTokens);
         Assert.Contains("data-confirm-action", clusters);
         Assert.Contains("data-confirm-action", clusterTokens);
-        Assert.Contains("bp-cluster-management-list", clusters);
-        Assert.Contains("bp-user-management-list", clusters);
+        Assert.Contains("bp-cluster-management-table", clusters);
+        Assert.Contains("bp-user-management-table", clusters);
         Assert.Contains("bp-user-management-list", clusterUsers);
         Assert.DoesNotContain("class=\"bp-tag\"", clusters);
         Assert.DoesNotContain("class=\"bp-tag\"", clusterUsers);
         Assert.Contains("bp-token-console", clusters);
-        Assert.Contains("bp-cluster-picker", clusters);
+        Assert.Contains("bp-token-cluster-chip-picker", clusters);
         Assert.Contains("bp-cluster-picker", clusterTokens);
         Assert.Contains(".bp-confirm-modal", css);
-        Assert.Contains(".bp-cluster-picker", css);
+        Assert.Contains(".bp-token-cluster-chip-picker", css);
     }
 
     [Fact]

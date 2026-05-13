@@ -880,6 +880,7 @@ public class AdminController : Controller
                 .Select(passport => new PassportSummaryViewModel
                 {
                     PassportId = passport.PassportId,
+                    BatteryId = string.IsNullOrWhiteSpace(passport.BatteryId) ? passport.PassportId : passport.BatteryId,
                     DisplayName = passport.DisplayName,
                     ModelNumber = passport.ModelNumber,
                     ManufacturerName = passport.ManufacturerName,
@@ -924,7 +925,7 @@ public class AdminController : Controller
                 var clusterNames = tokenClusterIds
                     .Select(entry => entry.ToString() ?? string.Empty)
                     .Where(clusterId => !string.IsNullOrWhiteSpace(clusterId))
-                    .Select(clusterId => clusterNamesById.TryGetValue(clusterId, out var clusterName) ? $"{clusterName} ({clusterId})" : clusterId)
+                    .Select(clusterId => ClusterTokenScopeLabel(clusterId, clusterNamesById))
                     .ToList();
                 return new ApiTokenViewModel
                 {
@@ -936,6 +937,7 @@ public class AdminController : Controller
                     IsActive = token.GetValue("isActive", false).ToBoolean(),
                     IsSample = token.GetValue("isSample", false).ToBoolean(),
                     ClusterIdsLabel = clusterNames.Count == 0 ? "No clusters" : string.Join(", ", clusterNames),
+                    ClusterScopeNames = clusterNames,
                     CreatedAt = BsonHelpers.GetString(token, "createdAt"),
                     UpdatedAt = BsonHelpers.GetString(token, "updatedAt"),
                     LastUsedAt = BsonHelpers.GetString(token, "lastUsedAt")
@@ -1098,6 +1100,7 @@ public class AdminController : Controller
 
         var displayName = Text(Request.Form, "name", email);
         var password = Text(Request.Form, "password");
+        var passwordConfirmation = Text(Request.Form, "passwordConfirmation");
         var requestedSystemRole = Text(Request.Form, "systemRole", "member");
         var existingUser = await _clusterRepository.GetUserByEmailAsync(email, cancellationToken);
 
@@ -1106,8 +1109,15 @@ public class AdminController : Controller
             NormalizeSystemRole(requestedSystemRole)
         };
 
+        if (!string.IsNullOrWhiteSpace(password) && !password.Equals(passwordConfirmation, StringComparison.Ordinal))
+        {
+            TempData["ErrorMessage"] = "Passwords do not match.";
+            return Redirect("/admin/clusters?tab=users");
+        }
+
         if (existingUser == null && string.IsNullOrWhiteSpace(password))
         {
+            TempData["ErrorMessage"] = "Password is required for new users.";
             return Redirect("/admin/clusters?tab=users");
         }
 
@@ -1172,6 +1182,40 @@ public class AdminController : Controller
         return Redirect("/admin/clusters?tab=api-tokens");
     }
 
+    [HttpPost("api/tokens/delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteApiToken(CancellationToken cancellationToken)
+    {
+        var tokenId = Text(Request.Form, "tokenId");
+        var success = await _externalApiRepository.DeleteTokenAsync(tokenId, cancellationToken);
+        TempData[success ? "StatusMessage" : "ErrorMessage"] = success
+            ? $"Token {tokenId} deleted."
+            : $"Token {tokenId} was not found.";
+        return Redirect("/admin/clusters?tab=api-token-management");
+    }
+
+    [HttpPost("api/tokens/cleanup-generated")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CleanupGeneratedApiTokens(CancellationToken cancellationToken)
+    {
+        var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
+        var clusterNamesById = clusters
+            .Select(cluster => new
+            {
+                ClusterId = BsonHelpers.GetString(cluster, "clusterId"),
+                Name = BsonHelpers.GetString(cluster, "name")
+            })
+            .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
+            .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
+        var tokens = await _externalApiRepository.ListTokensAsync(cancellationToken);
+        var duplicateTokenIds = GeneratedClusterDuplicateTokenIds(tokens, clusterNamesById);
+        var deletedCount = await _externalApiRepository.DeleteTokensAsync(duplicateTokenIds, cancellationToken);
+        TempData[deletedCount > 0 ? "StatusMessage" : "ErrorMessage"] = deletedCount > 0
+            ? $"Cleaned up {deletedCount} unused generated token{(deletedCount == 1 ? string.Empty : "s")}."
+            : "No unused generated token duplicates were found.";
+        return Redirect("/admin/clusters?tab=api-token-management");
+    }
+
     [HttpPost("api/tokens/set-active")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetApiTokenActive(CancellationToken cancellationToken)
@@ -1211,9 +1255,11 @@ public class AdminController : Controller
     public async Task<IActionResult> GenerateClusterTokens(CancellationToken cancellationToken)
     {
         var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
+        var existingTokens = await _externalApiRepository.ListTokensAsync(cancellationToken);
         var actor = AccessControlService.CurrentEmail(User);
         var actorValue = string.IsNullOrWhiteSpace(actor) ? "admin" : actor;
         var generatedCount = 0;
+        var skippedCount = 0;
 
         foreach (var cluster in clusters)
         {
@@ -1224,27 +1270,47 @@ public class AdminController : Controller
                 continue;
             }
 
-            await _externalApiRepository.CreateTokenAsync(
-                $"{clusterName} - read",
-                ExternalTokenAccessMode.Read,
-                [clusterId],
-                allowUnassigned: false,
-                globalAccess: false,
-                actor: actorValue,
-                cancellationToken: cancellationToken);
-            await _externalApiRepository.CreateTokenAsync(
-                $"{clusterName} - readwrite",
-                ExternalTokenAccessMode.ReadWrite,
-                [clusterId],
-                allowUnassigned: false,
-                globalAccess: false,
-                actor: actorValue,
-                cancellationToken: cancellationToken);
-            generatedCount += 2;
+            if (ExistingGeneratedClusterTokenExists(existingTokens, clusterId, clusterName, "read"))
+            {
+                skippedCount++;
+            }
+            else
+            {
+                await _externalApiRepository.CreateTokenAsync(
+                    $"{clusterName} - read",
+                    ExternalTokenAccessMode.Read,
+                    [clusterId],
+                    allowUnassigned: false,
+                    globalAccess: false,
+                    actor: actorValue,
+                    autoClusterId: clusterId,
+                    cancellationToken: cancellationToken);
+                generatedCount++;
+            }
+
+            if (ExistingGeneratedClusterTokenExists(existingTokens, clusterId, clusterName, "readWrite"))
+            {
+                skippedCount++;
+            }
+            else
+            {
+                await _externalApiRepository.CreateTokenAsync(
+                    $"{clusterName} - readwrite",
+                    ExternalTokenAccessMode.ReadWrite,
+                    [clusterId],
+                    allowUnassigned: false,
+                    globalAccess: false,
+                    actor: actorValue,
+                    autoClusterId: clusterId,
+                    cancellationToken: cancellationToken);
+                generatedCount++;
+            }
         }
 
-        TempData["StatusMessage"] = $"Generated {generatedCount} cluster tokens.";
-        return Redirect("/admin/clusters?tab=api-tokens");
+        TempData["StatusMessage"] = generatedCount == 0
+            ? $"Per-cluster tokens already exist. Skipped {skippedCount} existing token{(skippedCount == 1 ? string.Empty : "s")}."
+            : $"Generated {generatedCount} cluster token{(generatedCount == 1 ? string.Empty : "s")} and skipped {skippedCount} existing token{(skippedCount == 1 ? string.Empty : "s")}.";
+        return Redirect("/admin/clusters?tab=api-token-management");
     }
 
     [HttpPost("local-editable-fields/save")]
@@ -1276,6 +1342,149 @@ public class AdminController : Controller
             "products" => "products",
             _ => "batteries"
         };
+    }
+
+    private sealed record GeneratedClusterTokenCandidate(
+        string TokenId,
+        string ClusterId,
+        string AccessMode,
+        bool HasUsage,
+        bool HasAutoClusterId,
+        string UpdatedAt);
+
+    private static string ClusterTokenScopeLabel(string clusterId, IReadOnlyDictionary<string, string> clusterNamesById)
+    {
+        return clusterNamesById.TryGetValue(clusterId, out var clusterName) && !string.IsNullOrWhiteSpace(clusterName)
+            ? clusterName
+            : clusterId;
+    }
+
+    private static bool ExistingGeneratedClusterTokenExists(
+        IReadOnlyList<BsonDocument> existingTokens,
+        string clusterId,
+        string clusterName,
+        string accessMode)
+    {
+        return existingTokens.Any(token => IsExistingGeneratedClusterToken(token, clusterId, clusterName, accessMode));
+    }
+
+    private static bool IsExistingGeneratedClusterToken(
+        BsonDocument token,
+        string clusterId,
+        string clusterName,
+        string accessMode)
+    {
+        if (!token.GetValue("isActive", false).ToBoolean())
+        {
+            return false;
+        }
+
+        var tokenAccessMode = BsonHelpers.GetString(token, "accessMode");
+        if (!tokenAccessMode.Equals(accessMode, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var tokenClusterIds = token.GetValue("clusterIds", new BsonArray()) as BsonArray ?? new BsonArray();
+        var clusterIds = tokenClusterIds
+            .Select(entry => entry.ToString() ?? string.Empty)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .ToList();
+        if (clusterIds.Count != 1 || !clusterIds[0].Equals(clusterId, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var autoClusterId = BsonHelpers.GetString(token, "autoClusterId");
+        var tokenName = BsonHelpers.GetString(token, "name");
+        return autoClusterId.Equals(clusterId, StringComparison.OrdinalIgnoreCase)
+            || GeneratedClusterTokenNameMatches(tokenName, clusterName, accessMode);
+    }
+
+    private static IReadOnlyList<string> GeneratedClusterDuplicateTokenIds(
+        IReadOnlyList<BsonDocument> tokens,
+        IReadOnlyDictionary<string, string> clusterNamesById)
+    {
+        var candidates = tokens
+            .Select(token => ToGeneratedClusterTokenCandidate(token, clusterNamesById))
+            .Where(candidate => candidate != null)
+            .Select(candidate => candidate!)
+            .ToList();
+
+        return candidates
+            .GroupBy(candidate => $"{candidate.ClusterId}\u001f{candidate.AccessMode}", StringComparer.OrdinalIgnoreCase)
+            .SelectMany(group =>
+            {
+                var ordered = group
+                    .OrderByDescending(candidate => candidate.HasUsage)
+                    .ThenByDescending(candidate => candidate.HasAutoClusterId)
+                    .ThenByDescending(candidate => candidate.UpdatedAt, StringComparer.Ordinal)
+                    .ToList();
+                return ordered
+                    .Skip(1)
+                    .Where(candidate => !candidate.HasUsage)
+                    .Select(candidate => candidate.TokenId);
+            })
+            .ToList();
+    }
+
+    private static GeneratedClusterTokenCandidate? ToGeneratedClusterTokenCandidate(
+        BsonDocument token,
+        IReadOnlyDictionary<string, string> clusterNamesById)
+    {
+        if (token.GetValue("isSample", false).ToBoolean()
+            || token.GetValue("globalAccess", false).ToBoolean()
+            || token.GetValue("allowUnassigned", false).ToBoolean())
+        {
+            return null;
+        }
+
+        var accessMode = BsonHelpers.GetString(token, "accessMode");
+        if (!accessMode.Equals("read", StringComparison.OrdinalIgnoreCase)
+            && !accessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var tokenClusterIds = token.GetValue("clusterIds", new BsonArray()) as BsonArray ?? new BsonArray();
+        var clusterIds = tokenClusterIds
+            .Select(entry => entry.ToString() ?? string.Empty)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .ToList();
+        if (clusterIds.Count != 1)
+        {
+            return null;
+        }
+
+        var clusterId = clusterIds[0];
+        var autoClusterId = BsonHelpers.GetString(token, "autoClusterId");
+        var clusterName = ClusterTokenScopeLabel(clusterId, clusterNamesById);
+        var tokenName = BsonHelpers.GetString(token, "name");
+        if (!autoClusterId.Equals(clusterId, StringComparison.OrdinalIgnoreCase)
+            && !GeneratedClusterTokenNameMatches(tokenName, clusterName, accessMode))
+        {
+            return null;
+        }
+
+        var tokenId = BsonHelpers.GetString(token, "tokenId");
+        if (string.IsNullOrWhiteSpace(tokenId))
+        {
+            return null;
+        }
+
+        return new GeneratedClusterTokenCandidate(
+            tokenId,
+            clusterId,
+            accessMode,
+            HasUsage: !string.IsNullOrWhiteSpace(BsonHelpers.GetString(token, "lastUsedAt")),
+            HasAutoClusterId: autoClusterId.Equals(clusterId, StringComparison.OrdinalIgnoreCase),
+            UpdatedAt: BsonHelpers.GetString(token, "updatedAt"));
+    }
+
+    private static bool GeneratedClusterTokenNameMatches(string tokenName, string clusterName, string accessMode)
+    {
+        var expectedSuffix = accessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase) ? "readwrite" : "read";
+        return tokenName.Equals($"{clusterName} - {expectedSuffix}", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string AdminBatteriesUrl(string? q = null)

@@ -30,8 +30,10 @@ Product Template is the internal implementation name for Battery Family. In the 
 
 - Public/entry:
   - `/` home page
-  - `/search?q=<passportId or text>`
-  - `/{passportId}/summary` summary report
+  - `/search?q=<batteryId, passportId, or text>`
+  - `/{batteryId}` battery-level passport history
+  - `/{batteryId}/latest` latest passport for a battery
+  - `/{passportId}/summary` summary report for a specific passport snapshot
 - Authenticated detail:
   - `/{passportId}` detailed report (requires cluster access)
 - Authenticated registry:
@@ -41,7 +43,7 @@ Product Template is the internal implementation name for Battery Family. In the 
   - `/login/logout` (POST)
 - Admin:
   - `/admin` -> redirects to `/admin/clusters?tab=passports`
-  - `/admin/clusters?tab=passports|battery|clusters|users|local-editable-fields|api-token-management|products`
+  - `/admin/clusters?tab=passports|batteries|clusters|users|local-editable-fields|api-token-management|products`
   - `/admin/products/{productId}` Battery family editor for shared product data, Battery Models, software parameters, and per-product-version required/optional parameters.
 - Cluster admin:
   - `/cluster-admin/passports`
@@ -90,9 +92,9 @@ Product Template is the internal implementation name for Battery Family. In the 
 
 ### 4.1 How batteries are grouped
 
-- Each battery passport can have `clusterId`.
+- Each battery has `clusterId`. Passport snapshots inherit the battery cluster at creation time.
 - Cluster assignment is managed by general admin in:
-  - `/admin/clusters?tab=battery`
+  - `/admin/clusters?tab=passports`
 - If `clusterId` is missing:
   - It is "unassigned"
   - Regular cluster users cannot open detailed report
@@ -126,7 +128,7 @@ Product Template is the internal implementation name for Battery Family. In the 
 
 See `docs/sample-cluster-test-accounts.md` for provided test users and their linked batteries/clusters.
 
-Battery family reset restores one unassigned demonstrator plus six clustered customer batteries. The North customer test account is `customer_001_001@customer.org` with password `12345`.
+Battery family reset restores eight batteries and nine passport snapshots: one unassigned demonstrator, one Demo API battery with one historical passport and one latest passport, and six clustered customer/fleet batteries. The `/help` page shows the current generated Demo API Battery ID, latest Passport ID, and fixed QA tokens. The North customer test account is `customer_001_001@customer.org` with password `12345`.
 
 ## 5. What the Battery Pass contains and where to find it
 
@@ -233,12 +235,13 @@ The public summary shows the software version parameter in the battery fact grid
 
 ## 6. Edit scope by role (important for testing)
 
-### 6.1 General admin full edit form
+### 6.1 General admin full edit flow
 
-- Route: `/admin/passports/{passportId}/edit`
+- Battery edit route: `/admin/batteries/{batteryId}/edit`
 - Can edit all major sections:
   - General, material composition, performance, compliance, supply chain, circularity, carbon footprint
-- Can create new passport at `/admin/passports/new`
+- Can create new batteries from the batteries admin page.
+- Can create a new passport snapshot for an existing battery after battery data changes. Existing passport snapshots are not mutated.
 
 ### 6.2 Cluster admin local edit form
 
@@ -294,7 +297,7 @@ Managed by:
 
 Behavior:
 
-- Secret is linked to a single `passportId` (and cluster metadata).
+- Secret is linked to cluster-scoped trust actions for passport IDs.
 - Sign tokens are required for `/validate` and `/sign`; read/write tokens cannot sign.
 - If no secret exists or secret inactive, secret header is not required.
 
@@ -302,17 +305,24 @@ Behavior:
 
 Read:
 
-- `GET /batteries/{passportId}`
-- `GET /batteries/{passportId}/section/{sectionName}`
-- `GET /batteries/{passportId}/values?path=...`
-- `GET /batteries/{passportId}/paths?section=...&includeContainers=true|false`
-- `GET /batteries/{passportId}/telemetry/history?hours=1..168`
+- `GET /batteries/{batteryId}`
+- `GET /batteries/{batteryId}/section/{sectionName}`
+- `GET /batteries/{batteryId}/values?path=...`
+- `GET /batteries/{batteryId}/paths?section=...&includeContainers=true|false`
+- `GET /batteries/{batteryId}/telemetry/history?hours=1..168`
 
 Write (requires `readWrite` token):
 
-- `POST /batteries/{passportId}/telemetry`
-- `PATCH /batteries/{passportId}/operations`
+- `POST /batteries/{batteryId}/telemetry`
+- `PATCH /batteries/{batteryId}/operations`
 - `PATCH /batteries/{batteryId}/battery-model`
+
+Trust actions (requires sign token):
+
+- `POST /batteries/{batteryId}/passports`
+- `POST /passports/{passportId}/validate`
+- `POST /passports/{passportId}/sign`
+- `POST /passports/{passportId}/publish`
 
 Software update behavior:
 
@@ -325,7 +335,9 @@ Software update behavior:
 
 ### 7.5 What cannot be done (external API)
 
-- Cannot create or delete passports.
+- Cannot create new batteries.
+- Cannot delete passports.
+- Can create a new passport snapshot only for an existing battery with a valid sign token.
 - Cannot edit full passport sections/aspects.
 - Cannot write telemetry with read-only token.
 - Cannot access batteries outside token cluster scope.
@@ -368,18 +380,34 @@ Useful aliases for `/values`:
 
 ## 8. External API examples
 
+After reset, open `/help` and copy the current generated sample Battery ID and latest Passport ID. The fixed demo tokens are:
+
+- Read token: `SAMPLEBATTERYPASSPORTREADTOKN001`
+- Read-write token: `SAMPLEBATTERYPASSPORTWRITETOK001`
+- Validate/sign/publish token: `SAMPLEBATTERYPASSPORTSIGNTOK001`
+
+The examples below use shell variables so the generated IDs can change safely after reset.
+
+```bash
+sampleBatteryId="<copy the Sample Battery ID from /help>"
+samplePassportId="<copy the Sample latest Passport ID from /help>"
+readToken="SAMPLEBATTERYPASSPORTREADTOKN001"
+writeToken="SAMPLEBATTERYPASSPORTWRITETOK001"
+signToken="SAMPLEBATTERYPASSPORTSIGNTOK001"
+```
+
 ### 8.1 cURL - read full battery
 
 ```bash
-curl -X GET "http://localhost:5186/api/external/v1/batteries/did:web:acme.battery.pass:sample-customer-north-001" \
-  -H "Authorization: Basic U0FNUExFQkFUVEVSWVBBU1NQT1JUUkVBRFRPS04wMDE6"
+curl -X GET "http://localhost:5186/api/external/v1/batteries/$sampleBatteryId" \
+  -H "Authorization: Basic $readToken"
 ```
 
 ### 8.2 cURL - write telemetry
 
 ```bash
-curl -X POST "http://localhost:5186/api/external/v1/batteries/did:web:acme.battery.pass:sample-customer-north-001/telemetry" \
-  -H "Authorization: Basic U0FNUExFQkFUVEVSWVBBU1NQT1JUV1JJVEVUT0swMDE6" \
+curl -X POST "http://localhost:5186/api/external/v1/batteries/$sampleBatteryId/telemetry" \
+  -H "Authorization: Basic $writeToken" \
   -H "Content-Type: application/json" \
   -d "{\"points\":[{\"currentConsumptionKwh\":154.6,\"currentChargeLevelPct\":82.1,\"currentVoltageV\":401.7,\"currentCurrentA\":49.2}]}"
 ```
@@ -387,8 +415,8 @@ curl -X POST "http://localhost:5186/api/external/v1/batteries/did:web:acme.batte
 ### 8.3 cURL - patch operations
 
 ```bash
-curl -X PATCH "http://localhost:5186/api/external/v1/batteries/did:web:acme.battery.pass:sample-customer-north-001/operations" \
-  -H "Authorization: Basic U0FNUExFQkFUVEVSWVBBU1NQT1JUV1JJVEVUT0swMDE6" \
+curl -X PATCH "http://localhost:5186/api/external/v1/batteries/$sampleBatteryId/operations" \
+  -H "Authorization: Basic $writeToken" \
   -H "Content-Type: application/json" \
   -d "{\"isActive\":true,\"locationOfUse\":{\"siteName\":\"Factory 4\",\"city\":\"Berlin\",\"country\":\"DE\"},\"contactPerson\":{\"name\":\"Anna Becker\",\"email\":\"anna@example.test\"}}"
 ```
@@ -396,20 +424,37 @@ curl -X PATCH "http://localhost:5186/api/external/v1/batteries/did:web:acme.batt
 ### 8.4 cURL - patch software version parameter
 
 ```bash
-curl -X PATCH "http://localhost:5186/api/external/v1/batteries/{batteryId}/battery-model" \
-  -H "Authorization: Basic U0FNUExFQkFUVEVSWVBBU1NQT1JUV1JJVEVUT0swMDE6" \
+curl -X PATCH "http://localhost:5186/api/external/v1/batteries/$sampleBatteryId/battery-model" \
+  -H "Authorization: Basic $writeToken" \
   -H "Content-Type: application/json" \
   -d "{\"batteryModel\":\"2.0\"}"
 ```
 
-### 8.5 JavaScript (fetch)
+### 8.5 cURL - create, validate, sign, and publish a new passport
+
+```bash
+curl -X POST "http://localhost:5186/api/external/v1/batteries/$sampleBatteryId/passports" \
+  -H "Authorization: Basic $signToken"
+
+curl -X POST "http://localhost:5186/api/external/v1/passports/$samplePassportId/validate" \
+  -H "Authorization: Basic $signToken"
+
+curl -X POST "http://localhost:5186/api/external/v1/passports/$samplePassportId/sign" \
+  -H "Authorization: Basic $signToken"
+
+curl -X POST "http://localhost:5186/api/external/v1/passports/$samplePassportId/publish" \
+  -H "Authorization: Basic $signToken"
+```
+
+### 8.6 JavaScript (fetch)
 
 ```js
 const token = "YOUR_TOKEN_VALUE";
+const sampleBatteryId = "COPY_SAMPLE_BATTERY_ID_FROM_HELP";
 const auth = "Basic " + btoa(token + ":");
 
 const response = await fetch(
-  "http://localhost:5186/api/external/v1/batteries/did:web:acme.battery.pass:sample-customer-north-001/values?path=ratedEnergy&path=nickelMass",
+  `http://localhost:5186/api/external/v1/batteries/${sampleBatteryId}/values?path=ratedEnergy&path=nickelMass`,
   {
     method: "GET",
     headers: {
@@ -423,16 +468,17 @@ const data = await response.json();
 console.log(data);
 ```
 
-### 8.6 Python (requests)
+### 8.7 Python (requests)
 
 ```python
 import base64
 import requests
 
 token = "YOUR_TOKEN_VALUE"
+sample_battery_id = "COPY_SAMPLE_BATTERY_ID_FROM_HELP"
 auth = "Basic " + base64.b64encode(f"{token}:".encode("utf-8")).decode("utf-8")
 
-url = "http://localhost:5186/api/external/v1/batteries/did:web:acme.battery.pass:sample-customer-north-001/telemetry/history?hours=24"
+url = f"http://localhost:5186/api/external/v1/batteries/{sample_battery_id}/telemetry/history?hours=24"
 resp = requests.get(url, headers={"Authorization": auth, "Accept": "application/json"}, timeout=30)
 print(resp.status_code)
 print(resp.json())
@@ -524,17 +570,17 @@ Use this checklist after the Battery Family migration to prove the app can resto
 4. Open each Battery family and confirm Battery Models are listed newest-first and each model has software parameters.
 5. Confirm required and optional parameters are shown section by section and saved per Battery Model in MongoDB.
 6. Press **Reset battery-family passports** from the Battery families tab or admin help.
-7. Confirm one unassigned demonstrator plus six clustered customer batteries are restored:
-   - `did:web:acme.battery.pass:0226151e-949c-d067-8ef3-162431e28976`
-   - `did:web:acme.battery.pass:sample-customer-north-001`
-   - `did:web:acme.battery.pass:sample-customer-north-002`
-   - `did:web:acme.battery.pass:sample-customer-south-001`
-   - `did:web:acme.battery.pass:sample-customer-south-002`
-   - `did:web:acme.battery.pass:sample-end-user-fleet-001`
-   - `did:web:acme.battery.pass:sample-end-user-fleet-002`
-8. Open `/admin/passports/new` and confirm Product, Battery Model, and Software version are chosen before the draft is created.
-9. Edit a Battery Model value, save it, then push that saved Battery Model to matching batteries. Software metadata is part of the saved Battery Model; push the Battery Model when shared parameters change.
-10. Confirm matching batteries preserve manual overrides, become dirty when template-owned signed data changes, and require validate, sign, and publish to return clean.
+7. Confirm eight batteries and nine passport snapshots are restored:
+   - one unassigned Compact 7M demonstrator
+   - one Demo API Compact 7M battery in `demo-cluster` with two passports, one historical and one latest
+   - two North Operations Compact 7M batteries
+   - two South Operations Compact 13M batteries
+   - two Fleet Operations Core batteries
+8. Open `/help` and confirm it shows the generated Demo API Battery ID, the latest Demo API Passport ID, and the fixed read, read-write, and sign tokens.
+9. Create a battery from the batteries admin page and confirm the Battery ID is generated from Battery Family and serial number; Passport ID is not entered during battery creation.
+10. Create a passport for that battery and confirm the Passport ID is generated from Battery ID, Battery Model, and timestamp.
+11. Edit a Battery Model value, save it, then push that saved Battery Model to matching batteries. Software metadata is part of the saved Battery Model; push the Battery Model when shared parameters change.
+12. Confirm matching batteries preserve manual overrides, and changed signed battery data requires a new passport snapshot followed by validate, sign, and publish to expose the updated snapshot.
 
 ### Phase 6A end-to-end demo hardening checklist
 
@@ -544,24 +590,29 @@ Use this checklist after Phase 6A changes to prove the demo can be restored and 
 2. Open `/admin/clusters?tab=products`.
 3. Press **Reset battery-family passports**.
 4. Confirm the success message says the Battery family passports were reset.
-5. Open `/admin/passports/did%3Aweb%3Aacme.battery.pass%3Asample-customer-north-001/conformance`.
-6. Expected state: Published, signed, clean, public, QR-ready.
-7. Logout or use a public browser session.
-8. Search for `did:web:acme.battery.pass:sample-customer-north-001` from `/`.
-9. Expected result: the public summary opens.
-10. Download or click the QR code from the summary page.
-11. Expected result: the QR resolves back to the public summary URL.
-12. Login again as `admin@example.test`.
-13. Edit `did:web:acme.battery.pass:sample-customer-north-001`, change one signed core field such as weight, and save.
-14. Open conformance and confirm the passport is dirty or requires a fresh signature.
-15. Validate, sign, and publish the passport again.
-16. Expected result: the passport returns to published, signed, and clean.
-17. Use the external API workbench or curl to send a telemetry update to the same passport.
-18. Expected result: External HTTP telemetry update does not dirty the passport.
-19. Use the external API workbench or curl to patch Battery Model to an allowed model such as `2.0`.
-20. Expected result: the summary and detailed General tab show the Battery Model software parameters after creating, validating, signing, and publishing a new passport snapshot.
-21. Try restricted document access on a private evidence file.
-22. Expected result: Restricted document download returns 403 for unauthorized users and remains accessible only to authorized admin/cluster users when a linked file exists.
+5. Open `/help` and copy the generated sample Battery ID and sample latest Passport ID.
+6. Open `/admin/passports/{sampleLatestPassportId}/conformance`.
+7. Expected state: Published, signed, clean, public, QR-ready.
+8. Logout or use a public browser session.
+9. Search for the generated sample Battery ID from `/`.
+10. Expected result: the battery-level passport history opens and shows one historical passport and one latest passport.
+11. Open `/{sampleBatteryId}/latest`.
+12. Expected result: the public summary for the latest passport opens.
+13. Search for `did:web:acme.battery.pass:sample-customer-north-001` from `/`.
+14. Expected result: the compatibility alias resolves to the generated Demo API battery/latest passport.
+15. Download or click the QR code from the summary page.
+16. Expected result: the QR resolves back to the latest passport for the same Battery ID.
+17. Login again as `admin@example.test`.
+18. Edit the Demo API battery, change one signed core field such as weight, and save.
+19. Expected result: the battery list shows that a new passport should be created.
+20. Create a new passport snapshot for that battery, then validate, sign, and publish it.
+21. Expected result: the new passport becomes latest, and the old latest passport becomes historical.
+22. Use the external API workbench or curl to send a telemetry update to the same Battery ID.
+23. Expected result: External HTTP telemetry update does not dirty the passport.
+24. Use the external API workbench or curl to patch Battery Model to an allowed model such as `2.0`.
+25. Expected result: the API says a new passport snapshot, validation, signing, and publishing are required.
+26. Try restricted document access on a private evidence file.
+27. Expected result: Restricted document download returns 403 for unauthorized users and remains accessible only to authorized admin/cluster users when a linked file exists.
 
 ### Phase 6B Evidence Readiness Check
 

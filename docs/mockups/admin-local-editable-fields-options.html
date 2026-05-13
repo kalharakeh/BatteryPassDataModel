@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin local editable fields options</title>
+  <style>
+    :root {
+      --page: #f4f7fb;
+      --surface: #ffffff;
+      --line: #d8e0ea;
+      --line-strong: #b8c7d8;
+      --ink: #10233f;
+      --muted: #607286;
+      --blue: #0b5f78;
+      --blue-soft: #e9f5f8;
+      --green: #117a65;
+      --green-soft: #edf8f5;
+      --red: #b42318;
+      --shadow: 0 18px 40px rgba(8, 32, 54, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .page {
+      width: min(1760px, calc(100vw - 48px));
+      margin: 0 auto;
+      padding: 32px 0 48px;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      margin-bottom: 4px;
+      font-size: 2rem;
+      letter-spacing: 0;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .tabs,
+    .option-tabs,
+    .summary-strip,
+    .toolbar,
+    .row-actions,
+    .chip-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tabs {
+      margin-top: 24px;
+    }
+
+    .tab,
+    .option-button,
+    .primary,
+    .secondary,
+    .icon-button {
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: #fff;
+      color: #183a5a;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .tab,
+    .option-button,
+    .primary,
+    .secondary {
+      min-height: 38px;
+      padding: 0 14px;
+    }
+
+    .tab.active,
+    .option-button.active {
+      border-color: #8eb5c4;
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+
+    .primary {
+      border-color: #0d695d;
+      background: var(--green);
+      color: #fff;
+    }
+
+    .icon-button {
+      inline-size: 2.35rem;
+      block-size: 2.35rem;
+      display: inline-grid;
+      place-items: center;
+      padding: 0;
+    }
+
+    .icon-button svg {
+      width: 1.14rem;
+      height: 1.14rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.9;
+    }
+
+    .mockup-shell {
+      margin-top: 24px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .mockup-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: end;
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfdff;
+    }
+
+    .mockup-header h2 {
+      margin-bottom: 3px;
+      font-size: 1.08rem;
+    }
+
+    .option-panel {
+      display: none;
+      padding: 18px;
+    }
+
+    .option-panel.active {
+      display: block;
+    }
+
+    .policy-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .policy-topbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfdff;
+    }
+
+    .policy-title {
+      margin: 0 0 3px;
+      font-size: 1rem;
+    }
+
+    .summary-strip {
+      margin-top: 8px;
+    }
+
+    .summary-pill,
+    .count-pill,
+    .section-pill,
+    .state-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      border: 1px solid #d6e1ec;
+      border-radius: 999px;
+      background: #f8fafc;
+      color: #334155;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0 10px;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .state-pill.on {
+      border-color: #b7dfc9;
+      background: #ecfdf3;
+      color: #166534;
+    }
+
+    .toolbar {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+      justify-content: space-between;
+    }
+
+    .search {
+      min-width: 320px;
+      min-height: 38px;
+      border: 1px solid #c8d2df;
+      border-radius: 8px;
+      padding: 0 12px;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 1120px;
+      border-collapse: collapse;
+    }
+
+    th {
+      border-bottom: 1px solid var(--line);
+      background: #f8fafc;
+      color: var(--muted);
+      font-size: 0.74rem;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-align: left;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    td,
+    th {
+      padding: 12px 14px;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    tbody tr + tr td {
+      border-top: 1px solid #e8eef5;
+    }
+
+    .section-name strong,
+    .field-name strong {
+      display: block;
+      color: var(--ink);
+      font-weight: 650;
+    }
+
+    .section-name span,
+    .field-name span,
+    .code {
+      color: #526477;
+      font-size: 0.82rem;
+    }
+
+    .code {
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-weight: 400;
+    }
+
+    .toggle {
+      inline-size: 42px;
+      block-size: 24px;
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid #b9c8d8;
+      border-radius: 999px;
+      background: #edf2f7;
+      padding: 2px;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .toggle::before {
+      content: "";
+      inline-size: 18px;
+      block-size: 18px;
+      border-radius: 999px;
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(15, 23, 42, 0.18);
+      transition: transform 0.15s ease;
+    }
+
+    .toggle[aria-pressed="true"] {
+      border-color: #12906f;
+      background: #16826c;
+    }
+
+    .toggle[aria-pressed="true"]::before {
+      transform: translateX(18px);
+    }
+
+    .drawer-row[hidden],
+    .option-panel[hidden] {
+      display: none;
+    }
+
+    .drawer-row td {
+      background: #fbfdff;
+      white-space: normal;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(280px, 1fr));
+      gap: 10px;
+    }
+
+    .field-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid #d7e0ea;
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px;
+    }
+
+    .field-card p {
+      margin: 2px 0 0;
+      color: #526477;
+      font-size: 0.84rem;
+    }
+
+    .section-toggle[aria-expanded="true"] svg {
+      transform: rotate(180deg);
+    }
+
+    .matrix-table {
+      min-width: 1280px;
+    }
+
+    .matrix-table td:nth-child(4),
+    .matrix-table th:nth-child(4) {
+      text-align: center;
+    }
+
+    .navigator-layout {
+      display: grid;
+      grid-template-columns: minmax(260px, 310px) minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .section-nav {
+      display: grid;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px;
+    }
+
+    .section-nav button {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--ink);
+      padding: 10px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .section-nav button.active {
+      border-color: #bdd7e3;
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+
+    .section-detail {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .detail-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfdff;
+    }
+
+    .field-list {
+      display: grid;
+      gap: 0;
+    }
+
+    .list-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+    }
+
+    .list-row + .list-row {
+      border-top: 1px solid #e8eef5;
+    }
+
+    .choice-note {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .choice-note article {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 12px;
+    }
+
+    .choice-note h3 {
+      margin-bottom: 5px;
+      font-size: 0.95rem;
+    }
+
+    @media (max-width: 1050px) {
+      .mockup-header,
+      .policy-topbar,
+      .navigator-layout,
+      .detail-header,
+      .choice-note {
+        grid-template-columns: 1fr;
+      }
+
+      .field-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .search {
+        min-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <h1>Administration</h1>
+      <p class="muted">Mockup options for a denser Local editable fields tab.</p>
+    </header>
+
+    <nav class="tabs" aria-label="Administration tabs">
+      <a class="tab" href="#">Batteries</a>
+      <a class="tab" href="#">Battery cluster assignments</a>
+      <a class="tab" href="#">Registered clusters</a>
+      <a class="tab" href="#">Users</a>
+      <a class="tab active" href="#">Local editable fields</a>
+      <a class="tab" href="#">API Token Management</a>
+      <a class="tab" href="#">Battery families</a>
+    </nav>
+
+    <section class="mockup-shell">
+      <div class="mockup-header">
+        <div>
+          <h2 data-option-title>Option A: Section Rows With Field Drawer</h2>
+          <p class="muted" data-option-copy>Recommended: compact overview by section, with editable field toggles opened only when needed.</p>
+        </div>
+        <div class="option-tabs" role="tablist" aria-label="Layout options">
+          <button class="option-button active" data-option="sections" type="button">A Section rows</button>
+          <button class="option-button" data-option="table" type="button">B Field table</button>
+          <button class="option-button" data-option="navigator" type="button">C Section navigator</button>
+        </div>
+      </div>
+
+      <section class="option-panel active" data-panel="sections">
+        <div class="policy-card">
+          <div class="policy-topbar">
+            <div>
+              <h3 class="policy-title">Local editable fields</h3>
+              <p class="muted">Choose which passport fields local admins can update globally across all batteries.</p>
+              <div class="summary-strip">
+                <span class="summary-pill">7 sections</span>
+                <span class="summary-pill">18 editable</span>
+                <span class="summary-pill">Updated 2026-05-13 by admin@example.test</span>
+              </div>
+            </div>
+            <button class="primary" type="button">Save local editable fields</button>
+          </div>
+          <div class="toolbar">
+            <input class="search" placeholder="Filter by section or field">
+            <div class="row-actions">
+              <button class="secondary" type="button">Select defaults</button>
+              <button class="secondary" type="button">Clear optional</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Section</th>
+                  <th>Total fields</th>
+                  <th>Editable</th>
+                  <th>Examples</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="section-name"><strong>General</strong><span>Identity and visible passport basics</span></td>
+                  <td><span class="count-pill">13 fields</span></td>
+                  <td><span class="state-pill on">8 editable</span></td>
+                  <td><span class="code">Serial Number</span>, <span class="code">Battery image</span></td>
+                  <td><button class="icon-button section-toggle" type="button" aria-expanded="true" data-section-toggle="general-fields" aria-label="Open General fields"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></svg></button></td>
+                </tr>
+                <tr class="drawer-row" id="general-fields">
+                  <td colspan="5">
+                    <div class="field-grid">
+                      <label class="field-card"><span class="field-name"><strong>Serial Number</strong><p>Manufacturer serial number.</p></span><button class="toggle" type="button" aria-pressed="true" aria-label="Serial Number editable"></button></label>
+                      <label class="field-card"><span class="field-name"><strong>Battery image</strong><p>Display image for the report.</p></span><button class="toggle" type="button" aria-pressed="true" aria-label="Battery image editable"></button></label>
+                      <label class="field-card"><span class="field-name"><strong>Manufactured by</strong><p>Manufacturer legal/display name.</p></span><button class="toggle" type="button" aria-pressed="false" aria-label="Manufactured by editable"></button></label>
+                      <label class="field-card"><span class="field-name"><strong>Facility ID</strong><p>Production or facility identifier.</p></span><button class="toggle" type="button" aria-pressed="true" aria-label="Facility ID editable"></button></label>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="section-name"><strong>Material composition</strong><span>Material mass values</span></td>
+                  <td><span class="count-pill">8 fields</span></td>
+                  <td><span class="state-pill on">4 editable</span></td>
+                  <td><span class="code">Nickel kg</span>, <span class="code">Lithium kg</span></td>
+                  <td><button class="icon-button section-toggle" type="button" aria-expanded="false" data-section-toggle="material-fields" aria-label="Open Material fields"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></svg></button></td>
+                </tr>
+                <tr class="drawer-row" id="material-fields" hidden>
+                  <td colspan="5">
+                    <div class="field-grid">
+                      <label class="field-card"><span class="field-name"><strong>Nickel kg</strong><p>Nickel material mass.</p></span><button class="toggle" type="button" aria-pressed="true" aria-label="Nickel kg editable"></button></label>
+                      <label class="field-card"><span class="field-name"><strong>Cobalt kg</strong><p>Cobalt material mass.</p></span><button class="toggle" type="button" aria-pressed="false" aria-label="Cobalt kg editable"></button></label>
+                      <label class="field-card"><span class="field-name"><strong>Lithium kg</strong><p>Lithium material mass.</p></span><button class="toggle" type="button" aria-pressed="true" aria-label="Lithium kg editable"></button></label>
+                      <label class="field-card"><span class="field-name"><strong>Graphite kg</strong><p>Graphite material mass.</p></span><button class="toggle" type="button" aria-pressed="false" aria-label="Graphite kg editable"></button></label>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="section-name"><strong>Performance</strong><span>Capacity, state, and durability values</span></td>
+                  <td><span class="count-pill">10 fields</span></td>
+                  <td><span class="state-pill on">3 editable</span></td>
+                  <td><span class="code">State of charge %</span>, <span class="code">Full cycles</span></td>
+                  <td><button class="icon-button section-toggle" type="button" aria-expanded="false" data-section-toggle="performance-fields" aria-label="Open Performance fields"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></svg></button></td>
+                </tr>
+                <tr>
+                  <td class="section-name"><strong>Carbon Footprint</strong><span>Carbon amount, class, and lifecycle split</span></td>
+                  <td><span class="count-pill">7 fields</span></td>
+                  <td><span class="state-pill">0 editable</span></td>
+                  <td><span class="code">Amount gCO2e/kWh</span></td>
+                  <td><button class="icon-button section-toggle" type="button" aria-expanded="false" data-section-toggle="carbon-fields" aria-label="Open Carbon fields"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></svg></button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="option-panel" data-panel="table">
+        <div class="policy-card">
+          <div class="policy-topbar">
+            <div>
+              <h3 class="policy-title">All editable fields</h3>
+              <p class="muted">Best when admins need to audit every field quickly in one dense table.</p>
+              <div class="summary-strip">
+                <span class="summary-pill">45 total fields</span>
+                <span class="summary-pill">18 editable</span>
+                <span class="summary-pill">Last saved by admin@example.test</span>
+              </div>
+            </div>
+            <button class="primary" type="button">Save local editable fields</button>
+          </div>
+          <div class="toolbar">
+            <input class="search" placeholder="Search fields, paths, or sections">
+            <div class="row-actions">
+              <button class="secondary" type="button">Editable only</button>
+              <button class="secondary" type="button">Required fields</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="matrix-table">
+              <thead>
+                <tr>
+                  <th>Section</th>
+                  <th>Field</th>
+                  <th>Data path</th>
+                  <th>Editable</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="section-pill">General</span></td>
+                  <td class="field-name"><strong>Serial Number</strong><span>Manufacturer serial number.</span></td>
+                  <td><span class="code">app.display.serialNumber</span></td>
+                  <td><button class="toggle" type="button" aria-pressed="true" aria-label="Serial Number editable"></button></td>
+                  <td><span class="state-pill on">Editable</span></td>
+                </tr>
+                <tr>
+                  <td><span class="section-pill">General</span></td>
+                  <td class="field-name"><strong>Battery Family</strong><span>Selected product family.</span></td>
+                  <td><span class="code">app.product.productId</span></td>
+                  <td><button class="toggle" type="button" aria-pressed="false" aria-label="Battery Family editable"></button></td>
+                  <td><span class="state-pill">Locked</span></td>
+                </tr>
+                <tr>
+                  <td><span class="section-pill">Performance</span></td>
+                  <td class="field-name"><strong>State of charge %</strong><span>Current state of charge.</span></td>
+                  <td><span class="code">batteryCondition.stateOfCharge</span></td>
+                  <td><button class="toggle" type="button" aria-pressed="true" aria-label="State of charge editable"></button></td>
+                  <td><span class="state-pill on">Editable</span></td>
+                </tr>
+                <tr>
+                  <td><span class="section-pill">Circularity</span></td>
+                  <td class="field-name"><strong>Recycled content share verification</strong><span>Verification state shown by the admin form.</span></td>
+                  <td><span class="code">app.notes.circularity...</span></td>
+                  <td><button class="toggle" type="button" aria-pressed="true" aria-label="Recycled verification editable"></button></td>
+                  <td><span class="state-pill on">Editable</span></td>
+                </tr>
+                <tr>
+                  <td><span class="section-pill">Carbon Footprint</span></td>
+                  <td class="field-name"><strong>CO2 study reference</strong><span>Reference URL for the carbon footprint study.</span></td>
+                  <td><span class="code">carbonFootprintStudy</span></td>
+                  <td><button class="toggle" type="button" aria-pressed="false" aria-label="CO2 study reference editable"></button></td>
+                  <td><span class="state-pill">Locked</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="option-panel" data-panel="navigator">
+        <div class="navigator-layout">
+          <aside class="section-nav" aria-label="Sections">
+            <button class="active" type="button"><span>General</span><span class="count-pill">8/13</span></button>
+            <button type="button"><span>Material composition</span><span class="count-pill">4/8</span></button>
+            <button type="button"><span>Performance</span><span class="count-pill">3/10</span></button>
+            <button type="button"><span>Compliance</span><span class="count-pill">1/2</span></button>
+            <button type="button"><span>Circularity</span><span class="count-pill">2/15</span></button>
+            <button type="button"><span>Carbon Footprint</span><span class="count-pill">0/7</span></button>
+          </aside>
+
+          <section class="section-detail">
+            <div class="detail-header">
+              <div>
+                <h3 class="policy-title">General</h3>
+                <p class="muted">Identity and visible passport basics. Toggle only the fields local admins should be allowed to update.</p>
+              </div>
+              <button class="primary" type="button">Save local editable fields</button>
+            </div>
+            <div class="field-list">
+              <div class="list-row">
+                <span class="field-name"><strong>Passport ID</strong><span class="code">passportId</span></span>
+                <button class="toggle" type="button" aria-pressed="false" aria-label="Passport ID editable"></button>
+              </div>
+              <div class="list-row">
+                <span class="field-name"><strong>Serial Number</strong><span class="code">app.display.serialNumber</span></span>
+                <button class="toggle" type="button" aria-pressed="true" aria-label="Serial Number editable"></button>
+              </div>
+              <div class="list-row">
+                <span class="field-name"><strong>Battery image</strong><span class="code">app.media.batteryImageUrl</span></span>
+                <button class="toggle" type="button" aria-pressed="true" aria-label="Battery image editable"></button>
+              </div>
+              <div class="list-row">
+                <span class="field-name"><strong>Manufacturer</strong><span class="code">app.display.manufacturerName</span></span>
+                <button class="toggle" type="button" aria-pressed="false" aria-label="Manufacturer editable"></button>
+              </div>
+              <div class="list-row">
+                <span class="field-name"><strong>Facility ID</strong><span class="code">app.display.facilityId</span></span>
+                <button class="toggle" type="button" aria-pressed="true" aria-label="Facility ID editable"></button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </section>
+
+    <section class="choice-note" aria-label="Recommendation notes">
+      <article>
+        <h3>Recommended: A</h3>
+        <p class="muted">Compact like the Users table: one row per policy section, details only when expanded.</p>
+      </article>
+      <article>
+        <h3>Fast audit: B</h3>
+        <p class="muted">Best when someone wants to scan or search every field in one table.</p>
+      </article>
+      <article>
+        <h3>Focused editing: C</h3>
+        <p class="muted">Good for long sections, but it hides the whole-policy picture more than A.</p>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const titles = {
+      sections: ["Option A: Section Rows With Field Drawer", "Recommended: compact overview by section, with editable field toggles opened only when needed."],
+      table: ["Option B: All Fields Dense Table", "Every field gets one row; strong for search and audit, but the table can get long."],
+      navigator: ["Option C: Section Navigator", "A left section rail keeps editing focused while the detail panel stays readable."]
+    };
+
+    document.querySelectorAll("[data-option]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const option = button.dataset.option;
+        document.querySelectorAll("[data-option]").forEach((candidate) => candidate.classList.toggle("active", candidate === button));
+        document.querySelectorAll("[data-panel]").forEach((panel) => panel.classList.toggle("active", panel.dataset.panel === option));
+        document.querySelector("[data-option-title]").textContent = titles[option][0];
+        document.querySelector("[data-option-copy]").textContent = titles[option][1];
+      });
+    });
+
+    document.querySelectorAll("[data-section-toggle]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const target = document.getElementById(button.dataset.sectionToggle);
+        if (!target) return;
+        const expanded = button.getAttribute("aria-expanded") === "true";
+        button.setAttribute("aria-expanded", expanded ? "false" : "true");
+        target.hidden = expanded;
+      });
+    });
+
+    document.querySelectorAll(".toggle").forEach((button) => {
+      button.addEventListener("click", () => {
+        const pressed = button.getAttribute("aria-pressed") === "true";
+        button.setAttribute("aria-pressed", pressed ? "false" : "true");
+      });
+    });
+  </script>
+</body>
+</html>

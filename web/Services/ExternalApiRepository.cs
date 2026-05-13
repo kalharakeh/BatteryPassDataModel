@@ -230,6 +230,40 @@ public sealed class ExternalApiRepository
         return result.MatchedCount > 0;
     }
 
+    public async Task<bool> DeleteTokenAsync(string tokenId, CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(tokenId))
+        {
+            return false;
+        }
+
+        var result = await _mongoContext.Database.GetCollection<BsonDocument>("apiTokens")
+            .DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("tokenId", tokenId.Trim()), cancellationToken);
+        return result.DeletedCount > 0;
+    }
+
+    public async Task<long> DeleteTokensAsync(IEnumerable<string> tokenIds, CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null)
+        {
+            return 0;
+        }
+
+        var normalizedTokenIds = tokenIds
+            .Where(tokenId => !string.IsNullOrWhiteSpace(tokenId))
+            .Select(tokenId => tokenId.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (normalizedTokenIds.Count == 0)
+        {
+            return 0;
+        }
+
+        var result = await _mongoContext.Database.GetCollection<BsonDocument>("apiTokens")
+            .DeleteManyAsync(Builders<BsonDocument>.Filter.In("tokenId", normalizedTokenIds), cancellationToken);
+        return result.DeletedCount;
+    }
+
     public async Task<string?> RegenerateTokenAsync(string tokenId, string actor, CancellationToken cancellationToken = default)
     {
         if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(tokenId))

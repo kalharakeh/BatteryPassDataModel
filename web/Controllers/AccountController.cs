@@ -35,6 +35,7 @@ public sealed class AccountController : Controller
         var newEmail = Text(Request.Form, "email").Trim().ToLowerInvariant();
         var name = Text(Request.Form, "name", currentEmail);
         var password = Text(Request.Form, "password");
+        var passwordConfirmation = Text(Request.Form, "passwordConfirmation");
 
         if (string.IsNullOrWhiteSpace(newEmail))
         {
@@ -45,6 +46,18 @@ public sealed class AccountController : Controller
                 Name = model.Name,
                 RoleLabel = model.RoleLabel,
                 ErrorMessage = "Email is required."
+            });
+        }
+
+        if (!string.IsNullOrWhiteSpace(password) && !password.Equals(passwordConfirmation, StringComparison.Ordinal))
+        {
+            var model = await BuildModelAsync(cancellationToken);
+            return View("Index", new AccountProfileViewModel
+            {
+                Email = model.Email,
+                Name = name,
+                RoleLabel = model.RoleLabel,
+                ErrorMessage = "Passwords do not match."
             });
         }
 

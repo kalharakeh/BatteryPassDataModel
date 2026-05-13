@@ -157,6 +157,7 @@ public sealed class ApiTokenViewModel
     public bool IsActive { get; init; } = true;
     public bool IsSample { get; init; }
     public string ClusterIdsLabel { get; init; } = string.Empty;
+    public IReadOnlyList<string> ClusterScopeNames { get; init; } = [];
     public string CreatedAt { get; init; } = string.Empty;
     public string UpdatedAt { get; init; } = string.Empty;
     public string LastUsedAt { get; init; } = string.Empty;

@@ -8,6 +8,51 @@
     var query = Model.PassportsQuery ?? string.Empty;
     var querySuffix = string.IsNullOrWhiteSpace(query) ? string.Empty : $"&q={Uri.EscapeDataString(query)}";
     var localEditableKeys = Model.LocalEditableFieldPolicy.EditableFieldKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+    var globalAccessOptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["member"] = "No global admin",
+        ["notifiedBody"] = "Notified Body",
+        ["marketSurveillanceAuthority"] = "Market Surveillance Authorities",
+        ["commission"] = "Commission",
+        ["legitimateInterest"] = "Person with Legitimate Interest",
+        ["admin"] = "Global Admin"
+    };
+    string MembershipRoleLabel(string role) => role.Equals("clusterAdmin", StringComparison.OrdinalIgnoreCase) ? "Local Admin" : "Normal User";
+    string MembershipCountLabel(int count) => $"{count} {(count == 1 ? "membership" : "memberships")}";
+    string TokenClusterPickerName(string name) => name.StartsWith("Default ", StringComparison.OrdinalIgnoreCase) ? name["Default ".Length..] : name;
+    string TokenDisplayName(BatteryPassWeb.Models.ViewModels.ApiTokenViewModel token)
+    {
+        var suffixes = token.AccessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase)
+            ? new[] { " - readwrite", "-readwrite" }
+            : token.AccessMode.Equals("read", StringComparison.OrdinalIgnoreCase)
+                ? new[] { " - read", "-read" }
+                : [];
+        var suffix = suffixes.FirstOrDefault(candidate => token.Name.EndsWith(candidate, StringComparison.OrdinalIgnoreCase));
+        return string.IsNullOrWhiteSpace(suffix) ? token.Name : token.Name[..^suffix.Length];
+    }
+    string ScopeSummary(BatteryPassWeb.Models.ViewModels.ApiTokenViewModel token)
+    {
+        if (token.GlobalAccess)
+        {
+            return "Global";
+        }
+
+        var count = token.ClusterScopeNames.Count;
+        return $"{count} {(count == 1 ? "cluster" : "clusters")}";
+    }
+    string GlobalAccessValue(IReadOnlyList<string> roles)
+    {
+        var role = roles.FirstOrDefault() ?? string.Empty;
+        return role switch
+        {
+            "Global Admin" => "admin",
+            "Notified Body" => "notifiedBody",
+            "Market Surveillance Authorities" => "marketSurveillanceAuthority",
+            "Commission" => "commission",
+            "Person with Legitimate Interest" => "legitimateInterest",
+            _ => "member"
+        };
+    }
 }
 <main class="bp-page bp-admin-page">
     <div>
@@ -143,67 +188,93 @@
 
     @if (selectedTab == "battery")
     {
-        <section class="bp-card mt-4 p-0 overflow-auto">
-            <table class="table table-hover align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th class="px-3 py-3">Battery</th>
-                        <th class="px-3 py-3">Current cluster</th>
-                        <th class="px-3 py-3">Assign</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var passport in Model.Passports)
-                    {
+        <section class="bp-card bp-table-card mt-4">
+            <div class="bp-table-scroll">
+                <table class="table table-hover align-middle bp-console-table bp-admin-cluster-assignment-table">
+                    <thead>
                         <tr>
-                            <td class="px-3 py-3">
-                                <p class="mb-1 fw-semibold">@passport.BatteryFamily</p>
-                                <p class="mb-0 small text-break text-secondary"><span class="bp-id-copy-row"><span class="bp-id-value">@passport.PassportId</span>@await Html.PartialAsync("_CopyIdButton", passport.PassportId)</span></p>
-                            </td>
-                            <td class="px-3 py-3">
-                                <p class="mb-0">@passport.ClusterLabel</p>
-                                @if (!string.IsNullOrWhiteSpace(passport.ClusterId))
-                                {
-                                    <p class="mb-0 small text-secondary">@passport.ClusterId</p>
-                                }
-                            </td>
-                            <td class="px-3 py-3">
-                                <form method="post" action="/admin/clusters/assign-passport" class="d-flex flex-wrap gap-2">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="passportId" value="@passport.PassportId" />
-                                    <select name="clusterId" class="form-select form-select-sm" style="min-width: 260px;">
-                                        @foreach (var cluster in Model.Clusters)
-                                        {
-                                            if (passport.ClusterId == cluster.ClusterId)
-                                            {
-                                                <option value="@cluster.ClusterId" selected>@cluster.Name</option>
-                                            }
-                                            else
-                                            {
-                                                <option value="@cluster.ClusterId">@cluster.Name</option>
-                                            }
-                                        }
-                                    </select>
-                                    <button type="submit" class="bp-secondary-button">Save</button>
-                                </form>
-                            </td>
+                            <th>Battery ID</th>
+                            <th>Battery Family</th>
+                            <th>Battery Model</th>
+                            <th>Battery serial number</th>
+                            <th>Current cluster</th>
+                            <th>Assign</th>
+                            <th>Updated</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @if (Model.Passports.Count == 0)
+                        {
+                            <tr>
+                                <td class="text-secondary" colspan="7">No battery cluster assignments found.</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @for (var assignmentIndex = 0; assignmentIndex < Model.Passports.Count; assignmentIndex++)
+                            {
+                                var passport = Model.Passports[assignmentIndex];
+                                var updated = string.IsNullOrWhiteSpace(passport.UpdatedDate)
+                                    ? string.Empty
+                                    : passport.UpdatedDate.Length >= 10
+                                        ? passport.UpdatedDate.Substring(0, 10)
+                                        : passport.UpdatedDate;
+                                <tr>
+                                    <td><span class="bp-battery-id-cell bp-id-copy-row"><span class="bp-id-value">@passport.BatteryId</span>@await Html.PartialAsync("_CopyIdButton", passport.BatteryId)</span></td>
+                                    <td>@passport.BatteryFamily</td>
+                                    <td>@passport.BatteryVersion</td>
+                                    <td>@passport.BatterySerialNumber</td>
+                                    <td>
+                                        <p class="mb-0">@passport.ClusterLabel</p>
+                                        @if (!string.IsNullOrWhiteSpace(passport.ClusterId))
+                                        {
+                                            <p class="mb-0 small text-secondary">@passport.ClusterId</p>
+                                        }
+                                    </td>
+                                    <td>
+                                        <form method="post" action="/admin/clusters/assign-passport" class="bp-cluster-assignment-form">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="passportId" value="@passport.PassportId" />
+                                            <select name="clusterId" class="form-select form-select-sm" aria-label="Cluster for @passport.BatteryId">
+                                                @foreach (var cluster in Model.Clusters)
+                                                {
+                                                    if (passport.ClusterId == cluster.ClusterId)
+                                                    {
+                                                        <option value="@cluster.ClusterId" selected>@cluster.Name</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@cluster.ClusterId">@cluster.Name</option>
+                                                    }
+                                                }
+                                            </select>
+                                            <button type="submit" class="bp-action-button" aria-label="Save cluster assignment" title="Save cluster assignment" data-tooltip="Save cluster assignment" data-action-icon="save-assignment">
+                                                <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                    <path d="M20 6 9 17l-5-5" />
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    </td>
+                                    <td>@updated</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
         </section>
     }
 
     @if (selectedTab == "clusters")
     {
-        <div class="bp-management-shell mt-4">
-            <section class="bp-card bp-management-create-card bp-console-form-card">
+        <div class="bp-management-shell bp-cluster-management-shell mt-4">
+            <section class="bp-card bp-cluster-create-strip bp-console-form-card">
                 <div>
                     <span class="bp-summary-title">Cluster setup</span>
                     <h2 class="h5 mb-2">Add cluster</h2>
                     <p class="text-secondary mb-0">Create a cluster first, then assign batteries and users from the nearby tabs.</p>
                 </div>
-                <form method="post" action="/admin/clusters/create" class="bp-inline-form-grid">
+                <form method="post" action="/admin/clusters/create" class="bp-cluster-create-form">
                     @Html.AntiForgeryToken()
                     <label>
                         Cluster name
@@ -216,180 +287,322 @@
                     <button type="submit" class="bp-primary-button">Save cluster</button>
                 </form>
             </section>
-            <section class="bp-cluster-management-list">
-                @foreach (var cluster in Model.Clusters)
-                {
-                    <article class="bp-management-card bp-console-form-card">
-                        <div class="bp-management-card-main">
-                            <div class="bp-management-card-title">
-                                <h3>@cluster.Name</h3>
-                                <code>@cluster.ClusterId</code>
-                            </div>
-                            <form method="post" action="/admin/clusters/update" class="bp-inline-form-grid bp-management-edit-form">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
-                                <label>
-                                    Display name
-                                    <input class="form-control form-control-sm" name="name" value="@cluster.Name" required />
-                                </label>
-                                <button type="submit" class="bp-secondary-button">Save name</button>
-                            </form>
-                        </div>
-                        <div class="bp-management-danger-zone">
-                            <form method="post" action="/admin/clusters/delete">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
-                                <button type="submit" class="bp-danger-button" data-confirm-action data-confirm-title="Delete cluster" data-confirm-message="Delete @cluster.ClusterId? This only succeeds when no batteries or users are linked." data-confirm-submit="Delete">Delete</button>
-                            </form>
-                            <form method="post" action="/admin/clusters/force-delete" class="bp-force-delete-form">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
-                                <label>
-                                    Force delete confirmation
-                                    <input class="form-control form-control-sm" name="confirmation" placeholder="I understand this deletes linked cluster data" />
-                                </label>
-                                <button type="submit" class="bp-danger-button" data-confirm-action data-confirm-title="Force delete cluster" data-confirm-message="Force delete @cluster.ClusterId and remove linked cluster data from passports and memberships?" data-confirm-submit="Force delete">Force delete</button>
-                            </form>
-                        </div>
-                    </article>
-                }
+            <section class="bp-card bp-table-card">
+                <div class="bp-table-scroll">
+                    <table class="table table-hover align-middle bp-console-table bp-cluster-management-table">
+                        <thead>
+                            <tr>
+                                <th>Cluster</th>
+                                <th>Cluster ID</th>
+                                <th>Rename</th>
+                                <th>Delete</th>
+                                <th>Force delete</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Clusters.Count == 0)
+                            {
+                                <tr>
+                                    <td class="text-secondary" colspan="5">No clusters have been registered.</td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var cluster in Model.Clusters)
+                                {
+                                    <tr>
+                                        <td>
+                                            <p class="bp-cluster-name">@cluster.Name</p>
+                                            <p class="mb-0 small text-secondary">Registered cluster</p>
+                                        </td>
+                                        <td><code class="bp-code-wrap">@cluster.ClusterId</code></td>
+                                        <td>
+                                            <form method="post" action="/admin/clusters/update" class="bp-cluster-rename-form">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
+                                                <input class="form-control form-control-sm" name="name" value="@cluster.Name" aria-label="Display name for @cluster.Name" required />
+                                                <button type="submit" class="bp-action-button" aria-label="Save cluster name" title="Save cluster name" data-tooltip="Save cluster name" data-action-icon="save-cluster-name">
+                                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                        <path d="M20 6 9 17l-5-5" />
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        </td>
+                                        <td>
+                                            <form method="post" action="/admin/clusters/delete" class="bp-cluster-delete-form">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
+                                                <button type="submit" class="bp-action-button is-danger" aria-label="Delete cluster" title="Delete cluster" data-tooltip="Delete cluster" data-action-icon="delete-cluster" data-confirm-action data-confirm-title="Delete cluster" data-confirm-message="Delete @cluster.ClusterId? This only succeeds when no batteries or users are linked." data-confirm-submit="Delete">
+                                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                        <path d="M3 6h18" />
+                                                        <path d="M8 6V4h8v2" />
+                                                        <path d="M6 6l1 15h10l1-15" />
+                                                        <path d="M10 11v6" />
+                                                        <path d="M14 11v6" />
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        </td>
+                                        <td>
+                                            <form method="post" action="/admin/clusters/force-delete" class="bp-cluster-danger-form">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
+                                                <input class="form-control form-control-sm" name="confirmation" placeholder="I understand this deletes linked cluster data" aria-label="Force delete confirmation for @cluster.Name" />
+                                                <button type="submit" class="bp-action-button is-danger" aria-label="Force delete cluster" title="Force delete cluster" data-tooltip="Force delete cluster" data-action-icon="force-delete-cluster" data-confirm-action data-confirm-title="Force delete cluster" data-confirm-message="Force delete @cluster.ClusterId and remove linked cluster data from passports and memberships?" data-confirm-submit="Force delete">
+                                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                        <path d="M12 9v4" />
+                                                        <path d="M12 17h.01" />
+                                                        <path d="M10.3 4.3 2.8 17.2A2 2 0 0 0 4.5 20h15a2 2 0 0 0 1.7-2.8L13.7 4.3a2 2 0 0 0-3.4 0Z" />
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
             </section>
         </div>
     }
 
     @if (selectedTab == "users")
     {
+        var userRowIndex = 0;
         <div class="bp-management-shell mt-4">
             <section class="bp-card bp-management-create-card bp-console-form-card">
                 <div>
                     <span class="bp-summary-title">User setup</span>
                     <h2 class="h5 mb-2">Add or update user</h2>
-                    <p class="text-secondary mb-0">Set the global role separately from cluster membership so the access model is easier to scan.</p>
+                    <p class="text-secondary mb-0">Create the account first, then manage cluster memberships from each user's action menu.</p>
                 </div>
-                <form method="post" action="/admin/clusters/save-user" class="bp-user-form-grid">
+                <form method="post" action="/admin/clusters/save-user" class="bp-user-create-strip">
                     @Html.AntiForgeryToken()
+                    <label>
+                        Username
+                        <input type="text" name="name" placeholder="Display name" />
+                    </label>
                     <label>
                         Email
                         <input type="email" name="email" placeholder="user@example.test" required />
                     </label>
                     <label>
-                        Name
-                        <input type="text" name="name" placeholder="Display name" />
-                    </label>
-                    <label>
                         Password
                         <span class="bp-password-field">
-                            <input type="password" name="password" placeholder="Required for new users; optional to reset existing users" />
-                            <button type="button" class="bp-password-reveal" data-password-reveal aria-label="Show password">Show</button>
+                            <input type="password" name="password" placeholder="Required for new users" />
+                            <button type="button" class="bp-password-reveal" data-password-reveal aria-label="Show password" title="Show password">
+                                <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+                                    <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                                </svg>
+                            </button>
                         </span>
                     </label>
                     <label>
-                        System role
+                        Confirm password
+                        <span class="bp-password-field">
+                            <input type="password" name="passwordConfirmation" placeholder="Type password again" />
+                            <button type="button" class="bp-password-reveal" data-password-reveal aria-label="Show password" title="Show password">
+                                <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+                                    <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                                </svg>
+                            </button>
+                        </span>
+                    </label>
+                    <label>
+                        Global access
                         <select name="systemRole">
-                            <option value="member">Normal User</option>
-                            <option value="notifiedBody">Notified Body</option>
-                            <option value="marketSurveillanceAuthority">Market Surveillance Authorities</option>
-                            <option value="commission">Commission</option>
-                            <option value="legitimateInterest">Person with Legitimate Interest</option>
-                            <option value="admin">Global Admin</option>
-                        </select>
-                    </label>
-                    <label>
-                        Cluster membership (optional)
-                        <select name="clusterId">
-                            <option value="">No cluster membership</option>
-                            @foreach (var cluster in Model.Clusters)
+                            @foreach (var option in globalAccessOptions)
                             {
-                                <option value="@cluster.ClusterId">@cluster.Name</option>
+                                <option value="@option.Key">@option.Value</option>
                             }
-                        </select>
-                    </label>
-                    <label>
-                        Membership role
-                        <select name="role">
-                            <option value="member">Normal User</option>
-                            <option value="clusterAdmin">Local Admin</option>
                         </select>
                     </label>
                     <button type="submit" class="bp-primary-button">Save user</button>
                 </form>
             </section>
 
-            <section class="bp-user-management-list">
-                @foreach (var user in Model.Users.OrderBy(user => user.Email, StringComparer.OrdinalIgnoreCase))
-                {
-                    var memberships = Model.Memberships
-                        .Where(membership => membership.Email.Equals(user.Email, StringComparison.OrdinalIgnoreCase))
-                        .OrderBy(membership => membership.ClusterId, StringComparer.OrdinalIgnoreCase)
-                        .ToList();
+            <section class="bp-card bp-table-card p-0">
+                <div class="bp-table-scroll">
+                    <table class="table align-middle mb-0 bp-console-table bp-user-management-table">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Cluster memberships</th>
+                                <th class="bp-action-cell">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Users.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-secondary">No users have been created yet.</td>
+                                </tr>
+                            }
+                            @foreach (var user in Model.Users.OrderBy(user => user.Email, StringComparer.OrdinalIgnoreCase))
+                            {
+                                var memberships = Model.Memberships
+                                    .Where(membership => membership.Email.Equals(user.Email, StringComparison.OrdinalIgnoreCase))
+                                    .OrderBy(membership => membership.ClusterId, StringComparer.OrdinalIgnoreCase)
+                                    .ToList();
+                                var displayName = string.IsNullOrWhiteSpace(user.Name) ? user.Email : user.Name;
+                                var selectedGlobalAccess = GlobalAccessValue(user.Roles);
+                                var drawerId = $"admin-user-drawer-{userRowIndex++}";
 
-                    <article class="bp-management-card bp-user-card bp-console-form-card">
-                        <div class="bp-user-card-identity">
-                            <h3>@(string.IsNullOrWhiteSpace(user.Name) ? user.Email : user.Name)</h3>
-                            <p>@user.Email</p>
-                            <dl class="bp-user-role-summary">
-                                <div>
-                                    <dt>System role</dt>
-                                    <dd>@(user.Roles.Count == 0 ? "Normal User" : string.Join(", ", user.Roles))</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="bp-membership-panel">
-                            <h4>Cluster memberships</h4>
-                            @if (memberships.Count == 0)
-                            {
-                                <p class="text-secondary mb-0">No cluster membership</p>
+                                <tr>
+                                    <td class="bp-user-name-cell">
+                                        <strong>@displayName</strong>
+                                    </td>
+                                    <td>
+                                        <code>@user.Email</code>
+                                    </td>
+                                    <td>
+                                        <span class="bp-user-count-pill">@MembershipCountLabel(memberships.Count)</span>
+                                    </td>
+                                    <td class="bp-action-cell">
+                                        <button type="button" class="bp-action-button bp-user-drawer-toggle" data-user-drawer-toggle aria-expanded="false" aria-controls="@drawerId" aria-label="Open user actions" title="Open user actions" data-tooltip="Open user actions">
+                                            <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path d="m6 9 6 6 6-6" />
+                                            </svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr id="@drawerId" class="bp-user-drawer-row" hidden>
+                                    <td colspan="4">
+                                        <div class="bp-user-drawer-grid bp-console-form-card">
+                                            <section class="bp-user-drawer-panel">
+                                                <h3>Edit name and access</h3>
+                                                <form method="post" action="/admin/clusters/save-user" class="bp-user-profile-form">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="email" value="@user.Email" />
+                                                    <label>
+                                                        Username
+                                                        <input type="text" name="name" value="@displayName" />
+                                                    </label>
+                                                    <label>
+                                                        Account email (read-only)
+                                                        <input type="email" value="@user.Email" readonly />
+                                                    </label>
+                                                    <label>
+                                                        Global access
+                                                        <select name="systemRole">
+                                                            @foreach (var option in globalAccessOptions)
+                                                            {
+                                                                <option value="@option.Key" selected="@(option.Key.Equals(selectedGlobalAccess, StringComparison.OrdinalIgnoreCase))">@option.Value</option>
+                                                            }
+                                                        </select>
+                                                    </label>
+                                                    <p class="bp-user-access-note">Global access is app-wide. Cluster roles can differ from one cluster membership to another.</p>
+                                                    <div class="bp-user-drawer-actions">
+                                                        <button type="submit" class="bp-primary-button">Save profile</button>
+                                                    </div>
+                                                </form>
+                                            </section>
+
+                                            <section class="bp-user-drawer-panel">
+                                                <h3>Cluster memberships</h3>
+                                                @if (memberships.Count == 0)
+                                                {
+                                                    <p class="text-secondary mb-0">No cluster membership</p>
+                                                }
+                                                else
+                                                {
+                                                    <div class="bp-user-membership-list">
+                                                        @foreach (var membership in memberships)
+                                                        {
+                                                            var clusterName = clustersById.TryGetValue(membership.ClusterId, out var cluster) ? cluster.Name : membership.ClusterId;
+                                                            <form method="post" action="/admin/clusters/delete-user" class="bp-user-membership-row">
+                                                                @Html.AntiForgeryToken()
+                                                                <input type="hidden" name="email" value="@membership.Email" />
+                                                                <input type="hidden" name="clusterId" value="@membership.ClusterId" />
+                                                                <span class="bp-user-membership-name">@clusterName</span>
+                                                                <span class="bp-user-membership-role">@MembershipRoleLabel(membership.Role)</span>
+                                                                <button type="submit" class="bp-icon-button is-danger" aria-label="Remove membership">
+                                                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                                        <path d="M18 6 6 18" />
+                                                                        <path d="m6 6 12 12" />
+                                                                    </svg>
+                                                                </button>
+                                                            </form>
+                                                        }
+                                                    </div>
+                                                }
+                                                <form method="post" action="/admin/clusters/assign-user" class="bp-user-membership-add-row">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="email" value="@user.Email" />
+                                                    <label>
+                                                        Add cluster
+                                                        <select name="clusterId" class="form-select form-select-sm">
+                                                            @foreach (var cluster in Model.Clusters)
+                                                            {
+                                                                <option value="@cluster.ClusterId">@cluster.Name</option>
+                                                            }
+                                                        </select>
+                                                    </label>
+                                                    <label>
+                                                        Membership role
+                                                        <select name="role" class="form-select form-select-sm">
+                                                            <option value="member">Normal User</option>
+                                                            <option value="clusterAdmin">Local Admin</option>
+                                                        </select>
+                                                    </label>
+                                                    <button type="submit" class="bp-primary-button bp-button-compact" aria-label="Save membership">Save</button>
+                                                </form>
+                                            </section>
+
+                                            <section class="bp-user-drawer-panel">
+                                                <h3>Change password</h3>
+                                                <form method="post" action="/admin/clusters/save-user" class="bp-user-password-form">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="email" value="@user.Email" />
+                                                    <input type="hidden" name="name" value="@displayName" />
+                                                    <input type="hidden" name="systemRole" value="@selectedGlobalAccess" />
+                                                    <label>
+                                                        New password
+                                                        <span class="bp-password-field">
+                                                            <input type="password" name="password" placeholder="New password" />
+                                                            <button type="button" class="bp-password-reveal" data-password-reveal aria-label="Show password" title="Show password">
+                                                                <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                                    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+                                                                    <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                                                                </svg>
+                                                            </button>
+                                                        </span>
+                                                    </label>
+                                                    <label>
+                                                        Confirm password
+                                                        <span class="bp-password-field">
+                                                            <input type="password" name="passwordConfirmation" placeholder="Type password again" />
+                                                            <button type="button" class="bp-password-reveal" data-password-reveal aria-label="Show password" title="Show password">
+                                                                <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                                    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+                                                                    <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                                                                </svg>
+                                                            </button>
+                                                        </span>
+                                                    </label>
+                                                    <div class="bp-user-drawer-actions">
+                                                        <button type="submit" class="bp-primary-button">Save password</button>
+                                                    </div>
+                                                </form>
+                                            </section>
+                                        </div>
+                                    </td>
+                                </tr>
                             }
-                            else
-                            {
-                                <div class="bp-membership-list">
-                                    @foreach (var membership in memberships)
-                                    {
-                                        var clusterName = clustersById.TryGetValue(membership.ClusterId, out var cluster) ? cluster.Name : membership.ClusterId;
-                                        <form method="post" action="/admin/clusters/delete-user" class="bp-membership-row">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="email" value="@membership.Email" />
-                                            <input type="hidden" name="clusterId" value="@membership.ClusterId" />
-                                            <div>
-                                                <strong>@clusterName</strong>
-                                                <span>@membership.ClusterId</span>
-                                            </div>
-                                            <span>@(membership.Role == "clusterAdmin" ? "Local Admin" : "Normal User")</span>
-                                            <button type="submit" class="bp-icon-button" aria-label="Remove membership">x</button>
-                                        </form>
-                                    }
-                                </div>
-                            }
-                        </div>
-                        <form method="post" action="/admin/clusters/assign-user" class="bp-membership-edit-form">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="email" value="@user.Email" />
-                            <label>
-                                Cluster
-                                <select name="clusterId" class="form-select form-select-sm">
-                                    @foreach (var cluster in Model.Clusters)
-                                    {
-                                        <option value="@cluster.ClusterId">@cluster.Name</option>
-                                    }
-                                </select>
-                            </label>
-                            <label>
-                                Membership role
-                                <select name="role" class="form-select form-select-sm">
-                                    <option value="member">Normal User</option>
-                                    <option value="clusterAdmin">Local Admin</option>
-                                </select>
-                            </label>
-                            <button type="submit" class="bp-secondary-button">Save membership</button>
-                        </form>
-                    </article>
-                }
+                        </tbody>
+                    </table>
+                </div>
             </section>
         </div>
     }
 
     @if (selectedTab == "local-editable-fields")
     {
+        var localEditableSectionIndex = 0;
         <section class="bp-card bp-policy-console mt-4">
             <div class="d-flex justify-content-between flex-wrap gap-3 align-items-start">
                 <div>
@@ -401,55 +614,111 @@
                     <p class="bp-policy-meta mb-0">Updated @Model.LocalEditableFieldPolicy.UpdatedAt by @Model.LocalEditableFieldPolicy.UpdatedBy</p>
                 }
             </div>
-            <form method="post" action="/admin/local-editable-fields/save" class="bp-stack-form mt-3">
+            <form method="post" action="/admin/local-editable-fields/save" class="bp-local-editable-policy-form mt-3">
                 @Html.AntiForgeryToken()
-                <div class="bp-policy-section-grid">
-                    @foreach (var policySection in Model.LocalEditableFieldPolicy.Sections.OrderBy(policySection => policySection.SortOrder))
-                    {
-                        <fieldset class="bp-policy-section">
-                            <legend>@policySection.Label</legend>
-                            <div class="bp-requirement-grid">
-                                @foreach (var field in policySection.Fields.OrderBy(field => field.SortOrder))
-                                {
-                                    <label class="bp-checkbox-option">
-                                        <input type="checkbox" name="editableFieldKeys" value="@field.FieldKey" checked="@localEditableKeys.Contains(field.FieldKey)" />
-                                        <span>@field.Label</span>
-                                    </label>
-                                }
-                            </div>
-                        </fieldset>
-                    }
+                <div class="bp-local-editable-policy-summary">
+                    <span class="bp-user-count-pill">@Model.LocalEditableFieldPolicy.Sections.Count sections</span>
+                    <span class="bp-user-count-pill">@Model.LocalEditableFieldPolicy.EditableFieldKeys.Count editable fields</span>
                 </div>
-                <button type="submit" class="bp-primary-button">Save local editable fields</button>
+                <div class="bp-table-card p-0">
+                    <div class="bp-table-scroll">
+                        <table class="table align-middle mb-0 bp-console-table bp-local-editable-policy-table">
+                            <thead>
+                                <tr>
+                                    <th>Section</th>
+                                    <th>Total fields</th>
+                                    <th>Editable</th>
+                                    <th>Examples</th>
+                                    <th class="bp-action-cell">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var policySection in Model.LocalEditableFieldPolicy.Sections.OrderBy(policySection => policySection.SortOrder))
+                                {
+                                    var sectionIndex = localEditableSectionIndex++;
+                                    var drawerId = $"local-editable-section-{sectionIndex}";
+                                    var orderedFields = policySection.Fields.OrderBy(field => field.SortOrder).ToList();
+                                    var sectionEditableCount = orderedFields.Count(field => localEditableKeys.Contains(field.FieldKey));
+                                    var examples = string.Join(", ", orderedFields.Take(2).Select(field => field.Label));
+                                    <tr>
+                                        <td class="bp-local-editable-section-cell">
+                                            <strong>@policySection.Label</strong>
+                                            <span>@policySection.SectionKey</span>
+                                        </td>
+                                        <td><span class="bp-user-count-pill">@policySection.Fields.Count fields</span></td>
+                                        <td><span class="bp-local-editable-state-pill @(sectionEditableCount > 0 ? "is-on" : string.Empty)">@sectionEditableCount editable</span></td>
+                                        <td><span class="bp-local-editable-examples">@examples</span></td>
+                                        <td class="bp-action-cell">
+                                            <button type="button" class="bp-action-button bp-local-editable-drawer-toggle" data-local-editable-drawer-toggle aria-expanded="false" aria-controls="@drawerId" aria-label="Open @policySection.Label fields" title="Open @policySection.Label fields" data-tooltip="Open fields">
+                                                <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                    <path d="m6 9 6 6 6-6" />
+                                                </svg>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr id="@drawerId" class="bp-local-editable-drawer-row" hidden>
+                                        <td colspan="5">
+                                            <div class="bp-local-editable-field-grid">
+                                                @foreach (var field in orderedFields)
+                                                {
+                                                    var isEditable = localEditableKeys.Contains(field.FieldKey);
+                                                    <label class="bp-local-editable-field-card">
+                                                        <span class="bp-local-editable-field-copy">
+                                                            <strong>@field.Label</strong>
+                                                            <span>@field.Guidance</span>
+                                                            <code>@field.FieldKey</code>
+                                                        </span>
+                                                        <span class="bp-local-editable-toggle-wrap">
+                                                            <input class="bp-local-editable-field-toggle" type="checkbox" name="editableFieldKeys" value="@field.FieldKey" checked="@isEditable" aria-label="@field.Label editable by local admins" />
+                                                            <span class="bp-local-editable-toggle-shell" aria-hidden="true"></span>
+                                                        </span>
+                                                    </label>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="bp-local-editable-policy-actions">
+                    <button type="submit" class="bp-primary-button">Save local editable fields</button>
+                </div>
             </form>
         </section>
     }
 
     @if (selectedTab == "api-token-management")
     {
+        var activeTokenCount = Model.ApiTokens.Count(token => token.IsActive);
+        var globalTokenCount = Model.ApiTokens.Count(token => token.GlobalAccess);
+
         <section class="bp-card mt-4 bp-credential-management bp-token-console" data-credential-management>
             <div class="bp-token-console-header">
                 <div>
                     <span class="bp-summary-title">External integrations</span>
                     <h2 class="h5 mb-1">API Token Management</h2>
-                    <p class="text-secondary mb-0">Create scoped API tokens. Select one or several clusters to make the token usable for batteries in those clusters.</p>
+                    <p class="text-secondary mb-0">Create scoped API tokens for external integrations and keep active, inactive, and global tokens easy to scan.</p>
+                </div>
+                <div class="bp-token-console-summary" aria-label="API token summary">
+                    <span><strong>@Model.ApiTokens.Count</strong> tokens</span>
+                    <span><strong>@activeTokenCount</strong> active</span>
+                    <span><strong>@globalTokenCount</strong> global</span>
                 </div>
                 <form method="post" action="/admin/api/tokens/generate-per-cluster">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="bp-secondary-button">Generate per-cluster tokens</button>
+                    <button type="submit" class="bp-secondary-button bp-button-compact">Generate per-cluster tokens</button>
+                </form>
+                <form method="post" action="/admin/api/tokens/cleanup-generated">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="bp-secondary-button bp-button-compact" data-confirm-action data-confirm-title="Clean up unused generated tokens" data-confirm-message="Delete unused duplicate tokens created by per-cluster generation? Custom tokens and used tokens are kept." data-confirm-submit="Clean up">Clean up unused generated tokens</button>
                 </form>
             </div>
-        </section>
-        <div class="bp-credential-stack mt-4" data-credential-panel="api-tokens">
-            <section class="bp-card bp-credential-panel bp-console-form-card">
-                <div class="bp-credential-panel-header">
-                    <div>
-                        <span class="bp-summary-title">New token</span>
-                        <h2 class="h5 mb-0">Create API token</h2>
-                    </div>
-                </div>
-                <form method="post" action="/admin/api/tokens/create" class="bp-token-create-grid">
-                    @Html.AntiForgeryToken()
+
+            <form method="post" action="/admin/api/tokens/create" class="bp-token-create-strip bp-console-form-card">
+                @Html.AntiForgeryToken()
+                <div class="bp-token-create-topline">
                     <label>
                         Label
                         <input type="text" name="name" placeholder="e.g. North telemetry integration" required />
@@ -462,43 +731,63 @@
                             <option value="sign">Validate + sign</option>
                         </select>
                     </label>
-                    <fieldset class="bp-cluster-picker">
-                        <legend>Linked clusters</legend>
-                        <p>Select multiple clusters when one integration should serve several customer clusters.</p>
-                        <div class="bp-cluster-picker-grid">
-                            @foreach (var cluster in Model.Clusters)
-                            {
-                                <label>
-                                    <input type="checkbox" name="clusterIds" value="@cluster.ClusterId" />
-                                    <span>
-                                        <strong>@cluster.Name</strong>
-                                        <small>@cluster.ClusterId</small>
-                                    </span>
-                                </label>
-                            }
-                        </div>
-                    </fieldset>
-                    <div class="bp-token-scope-options">
+                    <fieldset class="bp-token-scope-select">
+                        <legend>Scope options</legend>
                         <label class="bp-checkbox-option">
                             <input type="checkbox" name="allowUnassigned" />
-                            <span>Allow access to unassigned batteries</span>
+                            <span>Include unassigned batteries</span>
                         </label>
                         <label class="bp-checkbox-option">
                             <input type="checkbox" name="globalAccess" />
-                            <span>Global access to all clusters and unassigned batteries</span>
+                            <span>Global access</span>
                         </label>
+                    </fieldset>
+                    <button type="submit" class="bp-primary-button">Create token</button>
+                </div>
+                <fieldset class="bp-token-cluster-chip-picker">
+                    <div class="bp-token-cluster-section-header">
+                        <legend>Linked clusters</legend>
+                        <span class="bp-token-cluster-count">@Model.Clusters.Count available</span>
                     </div>
-                    <div class="bp-credential-actions">
-                        <button type="submit" class="bp-primary-button">Create token</button>
+                    <div class="bp-token-cluster-chip-grid">
+                        @foreach (var cluster in Model.Clusters)
+                        {
+                            <label>
+                                <input type="checkbox" name="clusterIds" value="@cluster.ClusterId" />
+                                <span>@TokenClusterPickerName(cluster.Name)</span>
+                            </label>
+                        }
                     </div>
-                </form>
-            </section>
-            <section class="bp-card bp-table-card">
+                </fieldset>
+            </form>
+        </section>
+
+        <section class="bp-card bp-table-card mt-4" data-credential-panel="api-tokens">
+            <div class="bp-token-filter-toolbar">
+                <div>
+                    <span class="bp-summary-title">Issued tokens</span>
+                    <p class="mb-0 text-secondary">Search and manage integration tokens from one dense list.</p>
+                </div>
+                <label class="bp-token-search-field">
+                    <span>Search</span>
+                    <input type="search" placeholder="Token, scope, or access" data-token-search />
+                </label>
+            </div>
                 <div class="bp-table-scroll">
-                    <table class="table table-hover align-middle bp-credential-table">
+                    <table class="table align-middle bp-console-table bp-credential-table bp-token-management-table">
+                        <colgroup>
+                            <col class="bp-token-name-column" />
+                            <col class="bp-token-id-column" />
+                            <col class="bp-token-access-column" />
+                            <col class="bp-token-scope-column" />
+                            <col class="bp-token-status-column" />
+                            <col class="bp-token-last-used-column" />
+                            <col class="bp-token-actions-column" />
+                        </colgroup>
                         <thead>
                             <tr>
                                 <th>Token</th>
+                                <th>Token ID</th>
                                 <th>Access</th>
                                 <th>Scope</th>
                                 <th>Status</th>
@@ -510,7 +799,13 @@
                             @if (Model.ApiTokens.Count == 0)
                             {
                                 <tr>
-                                    <td colspan="6" class="bp-table-empty">No API tokens have been created.</td>
+                                    <td colspan="7" class="bp-table-empty">No API tokens have been created.</td>
+                                </tr>
+                            }
+                            else
+                            {
+                                <tr data-token-no-results hidden>
+                                    <td colspan="7" class="bp-table-empty">No tokens match the current search.</td>
                                 </tr>
                             }
                             @foreach (var token in Model.ApiTokens)
@@ -520,41 +815,102 @@
                                     : token.AccessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase)
                                         ? "Read + write"
                                         : "Read";
+                                var tokenDisplayName = TokenDisplayName(token);
                                 var statusClass = token.IsActive ? "bp-status-pill is-active" : "bp-status-pill is-inactive";
-                                <tr>
+                                var searchText = $"{token.Name} {token.TokenId} {accessLabel} {token.ClusterIdsLabel} {(token.GlobalAccess ? "Global scope" : string.Empty)} {(token.IsActive ? "Active" : "Inactive")}";
+                                <tr data-token-row data-token-search-value="@searchText">
                                     <td>
-                                        <p class="bp-credential-name">@token.Name</p>
-                                        <p class="mb-0 small text-secondary"><code class="bp-code-wrap">@token.TokenId</code>@(token.IsSample ? " (sample)" : string.Empty)</p>
+                                        <p class="bp-credential-name">@tokenDisplayName</p>
+                                        @if (token.IsSample)
+                                        {
+                                            <p class="mb-0 small text-secondary">Sample token</p>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="bp-token-id-cell bp-id-copy-row">
+                                            <code class="bp-id-value">@token.TokenId</code>
+                                            @await Html.PartialAsync("_CopyIdButton", token.TokenId)
+                                        </span>
                                     </td>
                                     <td><span class="bp-access-pill">@accessLabel</span></td>
-                                    <td>
-                                        @if (token.GlobalAccess)
-                                        {
-                                            <p class="mb-0">Global scope</p>
-                                        }
-                                        else
-                                        {
-                                            <p class="mb-0">@token.ClusterIdsLabel</p>
-                                        }
-                                        @if (token.AllowUnassigned && !token.GlobalAccess)
-                                        {
-                                            <p class="mb-0 small text-secondary">Also includes unassigned batteries</p>
-                                        }
+                                    <td class="bp-token-scope-cell">
+                                        <details class="bp-token-scope-details">
+                                            <summary class="bp-token-scope-summary">@ScopeSummary(token)</summary>
+                                            <div class="bp-token-scope-list">
+                                                @if (token.GlobalAccess)
+                                                {
+                                                    <p>Global scope</p>
+                                                }
+                                                else if (token.ClusterScopeNames.Count == 0)
+                                                {
+                                                    <p>No clusters</p>
+                                                }
+                                                else
+                                                {
+                                                    <ul>
+                                                        @foreach (var clusterName in token.ClusterScopeNames)
+                                                        {
+                                                            <li>@clusterName</li>
+                                                        }
+                                                    </ul>
+                                                }
+                                                @if (token.AllowUnassigned && !token.GlobalAccess)
+                                                {
+                                                    <p class="bp-token-scope-note">Includes unassigned batteries</p>
+                                                }
+                                            </div>
+                                        </details>
                                     </td>
                                     <td><span class="@statusClass">@(token.IsActive ? "Active" : "Inactive")</span></td>
                                     <td>@(string.IsNullOrWhiteSpace(token.LastUsedAt) ? "-" : token.LastUsedAt)</td>
                                     <td>
-                                        <div class="bp-action-row">
+                                        <div class="bp-icon-action-row">
                                             <form method="post" action="/admin/api/tokens/regenerate">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="tokenId" value="@token.TokenId" />
-                                                <button type="submit" class="bp-secondary-button">Regenerate</button>
+                                                <button type="submit" class="bp-action-button" aria-label="Regenerate token @token.Name" title="Regenerate token" data-tooltip="Regenerate">
+                                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                        <path d="M21 12a9 9 0 0 1-15.4 6.4" />
+                                                        <path d="M3 12a9 9 0 0 1 15.4-6.4" />
+                                                        <path d="M7 18H3v4" />
+                                                        <path d="M17 6h4V2" />
+                                                    </svg>
+                                                </button>
                                             </form>
                                             <form method="post" action="/admin/api/tokens/set-active">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="tokenId" value="@token.TokenId" />
                                                 <input type="hidden" name="isActive" value="@(token.IsActive ? "false" : "true")" />
-                                                <button type="submit" class="bp-danger-button">@(token.IsActive ? "Deactivate" : "Activate")</button>
+                                                @if (token.IsActive)
+                                                {
+                                                    <button type="submit" class="bp-action-button is-danger" aria-label="Deactivate token @token.Name" title="Deactivate token" data-tooltip="Deactivate">
+                                                        <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                            <path d="M18 6 6 18" />
+                                                            <path d="m6 6 12 12" />
+                                                        </svg>
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <button type="submit" class="bp-action-button" aria-label="Activate token @token.Name" title="Activate token" data-tooltip="Activate">
+                                                        <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                            <path d="M20 6 9 17l-5-5" />
+                                                        </svg>
+                                                    </button>
+                                                }
+                                            </form>
+                                            <form method="post" action="/admin/api/tokens/delete">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="tokenId" value="@token.TokenId" />
+                                                <button type="submit" class="bp-action-button is-danger" aria-label="Delete token @token.Name" title="Delete token" data-tooltip="Delete" data-confirm-action data-confirm-title="Delete API token" data-confirm-message="Delete @token.Name? Existing integrations using this token will stop working." data-confirm-submit="Delete">
+                                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                        <path d="M3 6h18" />
+                                                        <path d="M8 6V4h8v2" />
+                                                        <path d="M6 6l1 15h10l1-15" />
+                                                        <path d="M10 11v6" />
+                                                        <path d="M14 11v6" />
+                                                    </svg>
+                                                </button>
                                             </form>
                                         </div>
                                     </td>
@@ -563,8 +919,7 @@
                         </tbody>
                     </table>
                 </div>
-            </section>
-        </div>
+        </section>
 
     }
 
@@ -639,9 +994,54 @@
 
                     const reveal = input.type === 'password';
                     input.type = reveal ? 'text' : 'password';
-                    button.textContent = reveal ? 'Hide' : 'Show';
                     button.setAttribute('aria-label', reveal ? 'Hide password' : 'Show password');
+                    button.setAttribute('title', reveal ? 'Hide password' : 'Show password');
                 });
+            });
+
+            document.querySelectorAll('[data-user-drawer-toggle]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const drawerId = button.getAttribute('aria-controls');
+                    const drawer = drawerId ? document.getElementById(drawerId) : null;
+                    if (!drawer) {
+                        return;
+                    }
+
+                    const expanded = button.getAttribute('aria-expanded') === 'true';
+                    button.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+                    drawer.hidden = expanded;
+                });
+            });
+
+            document.querySelectorAll('[data-local-editable-drawer-toggle]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const drawerId = button.getAttribute('aria-controls');
+                    const drawer = drawerId ? document.getElementById(drawerId) : null;
+                    if (!drawer) {
+                        return;
+                    }
+
+                    const expanded = button.getAttribute('aria-expanded') === 'true';
+                    button.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+                    drawer.hidden = expanded;
+                });
+            });
+
+            const tokenSearch = document.querySelector('[data-token-search]');
+            const tokenRows = Array.from(document.querySelectorAll('[data-token-row]'));
+            const tokenNoResults = document.querySelector('[data-token-no-results]');
+            tokenSearch?.addEventListener('input', () => {
+                const query = tokenSearch.value.trim().toLowerCase();
+                let visibleCount = 0;
+                tokenRows.forEach((row) => {
+                    const value = (row.dataset.tokenSearchValue || '').toLowerCase();
+                    const visible = query.length === 0 || value.includes(query);
+                    row.hidden = !visible;
+                    visibleCount += visible ? 1 : 0;
+                });
+                if (tokenNoResults) {
+                    tokenNoResults.hidden = query.length === 0 || visibleCount > 0;
+                }
             });
 
             const credentialTabs = Array.from(document.querySelectorAll('[data-credential-tab]'));

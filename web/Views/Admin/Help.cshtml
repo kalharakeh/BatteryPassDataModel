@@ -32,228 +32,223 @@
         <div class="bp-alert bp-alert-danger">@errorMessage</div>
     }
 
-    <section class="bp-card bp-admin-help-start-panel" aria-label="Admin workflow help">
-        <div class="bp-admin-help-start-copy">
-            <span class="bp-summary-title">Admin workflow help</span>
-            <h2>Guide the passport from draft to public proof.</h2>
-            <p>Start with the battery ID, complete the required data, validate, sign, and publish. If signed data changes later, use the recovery flow to return to clean trust state.</p>
-        </div>
-        <nav class="bp-admin-help-start-actions" aria-label="Primary admin actions">
-            <a href="/admin/passports/new" class="bp-primary-button">Create battery ID</a>
-            <a href="/admin/clusters?tab=products" class="bp-secondary-button">Open battery families</a>
-            <a href="/admin/clusters?tab=batteries" class="bp-secondary-button">Open batteries</a>
-        </nav>
-    </section>
-
-    <section class="bp-admin-help-overview" aria-label="Admin workflow map">
-        <section class="bp-card bp-admin-help-navigation-panel" aria-label="Admin shortcuts and page map">
-            <div class="bp-admin-help-navigation-copy">
-                <span class="bp-summary-title">Admin surfaces</span>
-                <h2>Choose where to work</h2>
-                <p>Use the first row for actions in the app. Use the help links below when you want the explanation instead.</p>
+    <section class="bp-card bp-admin-help-reference-console" aria-label="Admin workflow help">
+        <div class="bp-admin-help-reference-toolbar">
+            <div class="bp-admin-help-reference-copy">
+                <span class="bp-summary-title">Admin workflow help</span>
+                <h2>Guide each battery from draft to public proof.</h2>
+                <p>Use the table as the operating map. Each row has one detail action so the page stays compact while still covering multi-step trust work.</p>
             </div>
-            <nav class="bp-admin-help-link-list" aria-label="Admin action shortcuts">
-                <a href="/admin/passports/new"><strong>New battery ID</strong><small>Create a draft passport.</small></a>
-                <a href="/admin/clusters?tab=products"><strong>Battery families</strong><small>Versions, software parameters, and policy.</small></a>
-                <a href="/admin/clusters?tab=local-editable-fields"><strong>Local fields</strong><small>What cluster admins may edit.</small></a>
-                <a href="/admin/clusters?tab=api-token-management"><strong>API tokens</strong><small>External access and signing.</small></a>
-                <a href="/admin/clusters?tab=batteries"><strong>Batteries</strong><small>Battery records, latest passport status, and history.</small></a>
-            </nav>
             <nav class="bp-admin-help-anchor-tabs" aria-label="Admin help sections">
                 <a href="#target-state">Target state</a>
                 <a href="#workflow-steps">Workflow steps</a>
                 <a href="#status-dictionary">Status dictionary</a>
                 <a href="#ready-checklist">Ready checklist</a>
             </nav>
-        </section>
+            <nav class="bp-admin-help-primary-actions" aria-label="Primary admin actions">
+                <a href="/admin/passports/new" class="bp-primary-button">Create battery ID</a>
+                <a href="/admin/clusters?tab=products" class="bp-secondary-button">Open battery families</a>
+                <a href="/admin/clusters?tab=batteries" class="bp-secondary-button">Open batteries</a>
+            </nav>
+        </div>
 
-        <section class="bp-card bp-admin-help-lifecycle-guide" aria-label="Battery passport lifecycle">
-            <div class="bp-admin-help-lifecycle-copy">
-                <span class="bp-summary-title">Lifecycle</span>
-                <h2>Five states, one path</h2>
-                <p>These are the checkpoints that matter. Drafts are safe to save, published passports need a current proof, and edited signed data must be recovered.</p>
-            </div>
-            <ol class="bp-admin-help-lifecycle-list">
-                <li><span>01</span><div><strong>Draft</strong><small>Create the DID and save incomplete admin data safely.</small></div></li>
-                <li><span>02</span><div><strong>Validate</strong><small>Run schema, business-rule, and completion-policy checks.</small></div></li>
-                <li><span>03</span><div><strong>Sign</strong><small>Hash and sign the canonical passport core.</small></div></li>
-                <li><span>04</span><div><strong>Publish</strong><small>Expose only a clean passport with a current proof.</small></div></li>
-                <li><span>05</span><div><strong>Recover</strong><small>After edits, validate and sign again to leave dirty state.</small></div></li>
-            </ol>
-        </section>
+        <div class="bp-table-scroll">
+            <table id="workflow-steps" class="table bp-console-table bp-admin-help-workflow-table">
+                <thead>
+                    <tr>
+                        <th>Workflow</th>
+                        <th>When to use</th>
+                        <th>Admin surface</th>
+                        <th>Success signal</th>
+                        <th class="bp-action-cell">Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="bp-admin-help-workflow-name"><strong>Create battery ID</strong><small>Start a draft passport.</small></span></td>
+                        <td>New battery or new demonstrator record.</td>
+                        <td><a href="/admin/passports/new">New battery ID</a></td>
+                        <td>Draft saved with Battery Family and Battery Model.</td>
+                        <td class="bp-action-cell"><button type="button" class="bp-action-button bp-admin-help-detail-toggle" data-admin-help-detail-target="admin-detail-create" aria-expanded="false" aria-controls="admin-detail-create" aria-label="Show create battery ID details" title="Show create battery ID details" data-tooltip="Details"><svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></button></td>
+                    </tr>
+                    <tr>
+                        <td><span class="bp-admin-help-workflow-name"><strong>Fill battery information</strong><small>Complete required passport data.</small></span></td>
+                        <td>Draft exists and needs battery-specific values.</td>
+                        <td><a href="/admin/clusters?tab=batteries">Batteries</a></td>
+                        <td>Required fields are complete for the saved product policy.</td>
+                        <td class="bp-action-cell"><button type="button" class="bp-action-button bp-admin-help-detail-toggle" data-admin-help-detail-target="admin-detail-fill" aria-expanded="false" aria-controls="admin-detail-fill" aria-label="Show fill battery information details" title="Show fill battery information details" data-tooltip="Details"><svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></button></td>
+                    </tr>
+                    <tr>
+                        <td><span class="bp-admin-help-workflow-name"><strong>Validate passport</strong><small>Run schema and policy checks.</small></span></td>
+                        <td>Before signing, after edits, or after evidence changes.</td>
+                        <td>Trust &amp; conformance</td>
+                        <td>Zero blocking validation errors.</td>
+                        <td class="bp-action-cell"><button type="button" class="bp-action-button bp-admin-help-detail-toggle" data-admin-help-detail-target="admin-detail-validate" aria-expanded="false" aria-controls="admin-detail-validate" aria-label="Show validate passport details" title="Show validate passport details" data-tooltip="Details"><svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></button></td>
+                    </tr>
+                    <tr>
+                        <td><span class="bp-admin-help-workflow-name"><strong>Sign passport</strong><small>Create the current proof.</small></span></td>
+                        <td>Validation has no blockers.</td>
+                        <td>Trust &amp; conformance</td>
+                        <td>Canonical passport core has a signature proof.</td>
+                        <td class="bp-action-cell"><button type="button" class="bp-action-button bp-admin-help-detail-toggle" data-admin-help-detail-target="admin-detail-sign" aria-expanded="false" aria-controls="admin-detail-sign" aria-label="Show sign passport details" title="Show sign passport details" data-tooltip="Details"><svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></button></td>
+                    </tr>
+                    <tr>
+                        <td><span class="bp-admin-help-workflow-name"><strong>Publish passport</strong><small>Expose the trusted passport.</small></span></td>
+                        <td>Proof is current and clean.</td>
+                        <td>Trust &amp; conformance</td>
+                        <td>Public registry shows a published, signed, clean, and verifiable passport.</td>
+                        <td class="bp-action-cell"><button type="button" class="bp-action-button bp-admin-help-detail-toggle" data-admin-help-detail-target="admin-detail-publish" aria-expanded="false" aria-controls="admin-detail-publish" aria-label="Show publish passport details" title="Show publish passport details" data-tooltip="Details"><svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></button></td>
+                    </tr>
+                    <tr>
+                        <td><span class="bp-admin-help-workflow-name"><strong>Edit after publishing</strong><small>Signed core data changed.</small></span></td>
+                        <td>A signed passport was edited or evidence changed.</td>
+                        <td>Edit passport and Trust &amp; conformance</td>
+                        <td>Dirty state is understood and recovery starts.</td>
+                        <td class="bp-action-cell"><button type="button" class="bp-action-button bp-admin-help-detail-toggle" data-admin-help-detail-target="admin-detail-dirty" aria-expanded="false" aria-controls="admin-detail-dirty" aria-label="Show edit after publishing details" title="Show edit after publishing details" data-tooltip="Details"><svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></button></td>
+                    </tr>
+                    <tr>
+                        <td><span class="bp-admin-help-workflow-name"><strong>Move from dirty back to clean</strong><small>Recover trust after edits.</small></span></td>
+                        <td>Passport is Dirty, unsigned for current data, or not publishable.</td>
+                        <td>Trust &amp; conformance</td>
+                        <td>Validate, fix blockers, sign again, and publish the newest signed revision.</td>
+                        <td class="bp-action-cell"><button type="button" class="bp-action-button bp-admin-help-detail-toggle" data-admin-help-detail-target="admin-detail-recover" aria-expanded="false" aria-controls="admin-detail-recover" aria-label="Show dirty recovery details" title="Show dirty recovery details" data-tooltip="Details"><svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></button></td>
+                    </tr>
+                    <tr>
+                        <td><span class="bp-admin-help-workflow-name"><strong>Battery Model push</strong><small>Apply shared model updates.</small></span></td>
+                        <td>Battery Family model data or software parameters changed.</td>
+                        <td><a href="/admin/clusters?tab=products">Battery families</a></td>
+                        <td>Matching batteries update, overrides are preserved, changed passports become dirty.</td>
+                        <td class="bp-action-cell"><button type="button" class="bp-action-button bp-admin-help-detail-toggle" data-admin-help-detail-target="admin-detail-model-push" aria-expanded="false" aria-controls="admin-detail-model-push" aria-label="Show Battery Model push details" title="Show Battery Model push details" data-tooltip="Details"><svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></button></td>
+                    </tr>
+                    <tr>
+                        <td><span class="bp-admin-help-workflow-name"><strong>API Token Management</strong><small>External credentials and signing.</small></span></td>
+                        <td>An integration needs read, write, validate, sign, or publish access.</td>
+                        <td><a href="/admin/clusters?tab=api-token-management">API Token Management</a></td>
+                        <td>Token Value is captured by the external system and scope is correct.</td>
+                        <td class="bp-action-cell"><button type="button" class="bp-action-button bp-admin-help-detail-toggle" data-admin-help-detail-target="admin-detail-tokens" aria-expanded="false" aria-controls="admin-detail-tokens" aria-label="Show API token management details" title="Show API token management details" data-tooltip="Details"><svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></button></td>
+                    </tr>
+                    <tr>
+                        <td><span class="bp-admin-help-workflow-name"><strong>Local editable fields</strong><small>Global local-admin policy.</small></span></td>
+                        <td>Cluster admins need a controlled edit surface.</td>
+                        <td><a href="/admin/clusters?tab=local-editable-fields">Local editable fields</a></td>
+                        <td>MongoDB policy controls what local admins can render and save.</td>
+                        <td class="bp-action-cell"><button type="button" class="bp-action-button bp-admin-help-detail-toggle" data-admin-help-detail-target="admin-detail-local-fields" aria-expanded="false" aria-controls="admin-detail-local-fields" aria-label="Show local editable fields details" title="Show local editable fields details" data-tooltip="Details"><svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></button></td>
+                    </tr>
+                    <tr class="bp-admin-help-detail-row" data-admin-help-detail-row hidden>
+                        <td colspan="5">
+                            <div class="bp-admin-help-selected-panel" aria-live="polite" tabindex="-1" hidden>
+            <article id="admin-detail-create" class="bp-admin-help-detail-panel" data-admin-help-detail-panel>
+                <div class="bp-admin-help-detail-copy"><span class="bp-summary-title">First-time passport checklist</span><h3>Create a trusted passport from scratch</h3><p>Create battery ID, choose Battery Family and Battery Model, and save the draft copied from the template.</p></div>
+                <ol class="bp-admin-help-detail-list">
+                    <li>Review copied battery family data and fill battery-specific information in every admin section.</li>
+                    <li>Open <a href="/admin/clusters?tab=products">battery families</a> to confirm required and optional fields for that battery family.</li>
+                    <li>Validate passport, resolve every blocker, sign when blockers are zero, then publish when the gate says publishing is ready.</li>
+                </ol>
+            </article>
+            <article id="admin-detail-fill" class="bp-admin-help-detail-panel" data-admin-help-detail-panel hidden>
+                <div class="bp-admin-help-detail-copy"><span class="bp-summary-title">Required data</span><h3>Fill the fields policy expects.</h3><p>The edit form marks fields as Required or Optional from the product's saved MongoDB policy.</p></div>
+                <div class="bp-admin-help-detail-grid">
+                    <section class="bp-admin-help-detail-card"><h4>Required data</h4><p>Identity, manufacturer, Battery Family, Battery Model, software version, mass, Battery status, Passport status, manufacturing date, facility details, material composition, performance, labels, certificates, circularity, and due-diligence references marked required in policy.</p></section>
+                    <section class="bp-admin-help-detail-card"><h4>Optional data</h4><p>Any parameter switched off in the battery family required/optional policy, optional documents, display image, and live operational HTTP request data unless policy says otherwise.</p></section>
+                </div>
+            </article>
+            <article id="admin-detail-validate" class="bp-admin-help-detail-panel" data-admin-help-detail-panel hidden>
+                <div class="bp-admin-help-detail-copy"><span class="bp-summary-title">Validation</span><h3>Run the gate before signing.</h3><p>Validation checks official schemas, business rules, completion policy, and evidence readiness. Signing appears only when blockers are zero.</p></div>
+                <div class="bp-admin-help-detail-grid">
+                    <section class="bp-admin-help-detail-card">
+                        <h4>Validation steps</h4>
+                        <ol class="bp-admin-help-detail-list"><li>Open Trust &amp; conformance.</li><li>Run validation.</li><li>Fix every blocking issue before signing.</li></ol>
+                    </section>
+                    <section class="bp-admin-help-detail-card">
+                        <h4>Document evidence</h4>
+                        <p>Upload or replace supporting files from the passport edit page. The app stores the document hash and marks signed evidence as changed, so the Evidence readiness check must pass before you sign again.</p>
+                    </section>
+                </div>
+            </article>
+            <article id="admin-detail-sign" class="bp-admin-help-detail-panel" data-admin-help-detail-panel hidden>
+                <div class="bp-admin-help-detail-copy"><span class="bp-summary-title">Signing</span><h3>Create the current proof.</h3><p>Signing canonicalizes the passport core, creates a hash, stores proof metadata, and records an immutable signed revision.</p></div>
+            </article>
+            <article id="admin-detail-publish" class="bp-admin-help-detail-panel" data-admin-help-detail-panel hidden>
+                <div class="bp-admin-help-detail-copy"><span class="bp-summary-title">Publishing</span><h3>Make the clean proof public.</h3><p>Publishing requires a current valid signature proof and makes the passport publicly searchable. The <strong>Trust &amp; conformance tab is visible only</strong> to general admins or local cluster admins for the battery's cluster.</p></div>
+            </article>
+            <article id="admin-detail-dirty" class="bp-admin-help-detail-panel" data-admin-help-detail-panel hidden>
+                <div class="bp-admin-help-detail-copy"><span class="bp-summary-title">Dirty state rule</span><h3>Know what changed trust.</h3><p>Editing saved passport core data after signing makes the passport Dirty because the signed hash no longer represents the current content. HTTP telemetry does not make the passport dirty.</p></div>
+            </article>
+            <article id="admin-detail-recover" class="bp-admin-help-detail-panel" data-admin-help-detail-panel hidden>
+                <div class="bp-admin-help-detail-copy"><span class="bp-summary-title">Dirty recovery checklist</span><h3>Return edited data to clean trust</h3><p>Use this after any signed core data changes.</p></div>
+                <ol class="bp-admin-help-detail-list"><li>Save the admin edit. Draft save is always allowed.</li><li>Open conformance and confirm the passport is dirty or not publishable.</li><li>Validate passport again, fix blockers, sign again, then publish again when the latest proof is current.</li></ol>
+            </article>
+            <article id="admin-detail-model-push" class="bp-admin-help-detail-panel" data-admin-help-detail-panel hidden>
+                <div class="bp-admin-help-detail-copy"><span class="bp-summary-title">Battery Model push</span><h3>Update matching batteries safely</h3><p>Open battery families and edit shared Battery Model data or software release date and latest update values. The app updates fields that still match the previous template baseline while preserving manual battery overrides.</p></div>
+                <div class="bp-admin-help-detail-grid">
+                    <section class="bp-admin-help-detail-card"><h4>Software parameters</h4><p>New passports copy Battery Model plus software version, release date, and latest update values from the selected battery family. The public summary and Detailed report General tab show these software parameters.</p></section>
+                    <section class="bp-admin-help-detail-card"><h4>Battery Model API changes</h4><p>Battery Model API changes require a new passport snapshot, validation, signing, and publishing. No separate software endpoint exists; telemetry remains operational and does not require signing.</p></section>
+                </div>
+            </article>
+            <article id="admin-detail-tokens" class="bp-admin-help-detail-panel" data-admin-help-detail-panel hidden>
+                <div class="bp-admin-help-detail-copy"><span class="bp-summary-title">External systems</span><h3>Use scoped credentials.</h3><p>Open API Token Management to create or regenerate external API tokens. The generated Token Value is the secret credential used in the Authorization header and is shown only at create/regenerate time.</p></div>
+                <p>Cluster scope on each token controls which batteries the external system can read, write, validate, sign, or publish.</p>
+            </article>
+            <article id="admin-detail-local-fields" class="bp-admin-help-detail-panel" data-admin-help-detail-panel hidden>
+                <div class="bp-admin-help-detail-copy"><span class="bp-summary-title">Local editable fields</span><h3>Keep local edit access narrow.</h3><p>Select the passport fields local admins may edit across all batteries. The saved MongoDB policy controls both what the cluster-admin edit form renders and what its save action accepts.</p></div>
+            </article>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </section>
 
-    <section id="target-state" class="bp-admin-help-grid">
-        <article class="bp-card bp-admin-help-callout">
+    <section id="target-state" class="bp-card bp-admin-help-status-console">
+        <div class="bp-admin-help-section-heading">
             <span class="bp-summary-title">The target state</span>
             <h2>How the battery needs to be</h2>
             <p>A battery passport is ready when it is validated, signed, clean, and published with the current passport core still matching its proof.</p>
-            <ul>
-                <li><strong>Validated:</strong> the latest validation has zero blocking validation errors.</li>
-                <li><strong>Signed:</strong> the current canonical passport core has a signature proof.</li>
-                <li><strong>Clean:</strong> the current data still matches the latest signed hash.</li>
-                <li><strong>Published:</strong> the registry status is public and publish uses a current valid signature proof.</li>
-            </ul>
-        </article>
-        <article class="bp-card bp-admin-help-callout is-warning">
-            <span class="bp-summary-title">Dirty state rule</span>
-            <h2>What makes trust dirty?</h2>
-            <p>Editing saved passport core data after signing makes the passport dirty because the signed hash no longer represents the current content.</p>
-            <p class="mb-0">HTTP telemetry does not make the passport dirty. Battery Model API changes require a new passport, validation, and signing because Battery Model is signed passport data.</p>
-        </article>
-        <article class="bp-card bp-admin-help-callout">
-            <span class="bp-summary-title">Public discovery</span>
-            <h2>What users can find</h2>
-            <p>Public search, registry discovery, and direct public passport URLs expose only passports that are published, signed, clean, and verifiable.</p>
-            <p class="mb-0">Draft, dirty, unsigned, or unpublished passports stay visible to admins so they can finish the workflow.</p>
-        </article>
-        <article class="bp-card bp-admin-help-callout bp-admin-help-policy-link">
-            <span class="bp-summary-title">Completion policy</span>
-            <h2>Who decides required data?</h2>
-            <p>The <strong>Battery families tab</strong> controls required/optional switches per Battery Model. The settings are saved in MongoDB and used by batteries linked to that Battery Model.</p>
-            <p class="mb-0">Validation, signing, publishing, edit guidance, and conformance checklists read the saved product policy and product-version policy.</p>
-            <a href="/admin/clusters?tab=products" class="bp-secondary-button bp-button-compact mt-3">Open battery families</a>
-        </article>
+        </div>
+        <div class="bp-admin-help-policy-note">
+            <strong>Completion policy</strong>
+            <span>The <strong>Battery families tab</strong> controls required/optional switches per Battery Model. Validation, signing, publishing, edit guidance, and conformance checklists read the saved product policy and product-version policy.</span>
+            <a href="/admin/clusters?tab=products" class="bp-secondary-button bp-button-compact">Open battery families</a>
+        </div>
+        <section id="status-dictionary" aria-label="Status dictionary">
+            <div class="bp-table-scroll">
+                <table class="table bp-console-table bp-admin-help-status-table">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Meaning</th>
+                            <th>Admin action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>Draft</strong></td><td>Editable admin data. Draft can be incomplete and unsigned.</td><td>Fill required data.</td></tr>
+                        <tr><td><strong>Validated</strong></td><td>The latest validation completed with zero blocking validation errors. Validation alone is not a signature.</td><td>Sign next.</td></tr>
+                        <tr><td><strong>Signed</strong></td><td>The canonical passport core has a hash and proof metadata.</td><td>Publish if proof is current.</td></tr>
+                        <tr><td><strong>Clean</strong></td><td>The current passport core still matches the latest signed hash.</td><td>Keep or publish.</td></tr>
+                        <tr><td><strong>Dirty</strong></td><td>The passport core changed after signing. Validate and sign again.</td><td>Use dirty recovery.</td></tr>
+                        <tr><td><strong>Published</strong></td><td>The passport is public and should have a current valid signature proof.</td><td>Monitor edits.</td></tr>
+                        <tr><td><strong>Public discovery</strong></td><td>Public search, registry discovery, and direct public passport URLs expose only passports that are published, signed, clean, and verifiable.</td><td>Keep proof current.</td></tr>
+                        <tr><td><strong>Admin discovery</strong></td><td>Draft, dirty, unsigned, or unpublished passports stay visible to admins so they can finish the workflow.</td><td>Finish trust workflow.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
     </section>
 
-    <section id="workflow-steps" class="bp-card">
-        <div class="bp-admin-help-section-heading">
-            <span class="bp-summary-title">Main workflow</span>
-            <h2>Step by step</h2>
-            <p>Follow the first checklist for a new passport. Use dirty recovery after any signed core data changes.</p>
-        </div>
-        <div class="bp-admin-help-split-checklists">
-            <article class="bp-admin-help-check-card">
-                <span class="bp-summary-title">First-time passport checklist</span>
-                <h4>Create a trusted passport from scratch</h4>
-                <ol>
-                    <li>Create battery ID, choose Battery Family and Battery Model, and save the draft.</li>
-                    <li>Review the copied battery family data and fill battery-specific information in every admin section.</li>
-                    <li>Open <a href="/admin/clusters?tab=products">battery families</a> to confirm required and optional fields for that battery family.</li>
-                    <li>Validate passport and resolve every blocking field.</li>
-                    <li>Sign passport when blockers are zero.</li>
-                    <li>Publish passport when the page says publishing is ready.</li>
-                </ol>
-            </article>
-            <article class="bp-admin-help-check-card">
-                <span class="bp-summary-title">Dirty recovery checklist</span>
-                <h4>Return edited data to clean trust</h4>
-                <ol>
-                    <li>Save the admin edit. Draft save is always allowed.</li>
-                    <li>Open conformance and confirm the passport is dirty or not publishable.</li>
-                    <li>Validate passport again.</li>
-                    <li>Fix every blocking issue.</li>
-                    <li>Sign passport again so the latest core has a new proof.</li>
-                    <li>Publish passport again when the latest proof is current.</li>
-                </ol>
-            </article>
-            <article class="bp-admin-help-check-card">
-                <span class="bp-summary-title">Document evidence</span>
-                <h4>How supporting files become trusted</h4>
-                <ol>
-                    <li>Open the passport edit page and upload or replace the required supporting document.</li>
-                    <li>The app stores the document hash and marks the passport dirty because the signed evidence changed.</li>
-                    <li>Open Trust &amp; conformance and review Evidence readiness.</li>
-                    <li>Validate the passport. Missing required evidence must be fixed before signing.</li>
-                    <li>Sign again so the current document hash is captured in a new immutable revision.</li>
-                    <li>Publish after the signature is clean and current.</li>
-                </ol>
-                <p>External links can describe evidence, but uploaded files with document hash values are what the app can verify against a signed revision.</p>
-            </article>
-            <article class="bp-admin-help-check-card">
-                <span class="bp-summary-title">Battery Model push</span>
-                <h4>Update matching batteries safely</h4>
-                <ol>
-                    <li>Open battery families and edit shared Battery Model data or software release date and latest update values.</li>
-                    <li>Save the battery family to MongoDB.</li>
-                    <li>Use the Battery Model push when saved shared model data changes.</li>
-                    <li>The app updates fields that still match the previous template baseline.</li>
-                    <li>Manual battery overrides are preserved and reported as skipped paths.</li>
-                    <li>Updated batteries become dirty until validation, signing, and publishing are repeated.</li>
-                </ol>
-            </article>
-            <article class="bp-admin-help-check-card">
-                <span class="bp-summary-title">Software parameters</span>
-                <h4>Know where software data appears</h4>
-                <ol>
-                    <li>New passports copy Battery Model plus software version, release date, and latest update values from the selected battery family.</li>
-                    <li>The public summary shows the software version parameter as a normal battery fact.</li>
-                    <li>The Detailed report General tab software parameters shows product, product ID, software version, release date, and latest update.</li>
-                    <li>Battery Model API changes update the battery record and require a new passport snapshot, validation, signing, and publishing.</li>
-                    <li>No separate software endpoint exists; telemetry remains operational and does not require signing.</li>
-                </ol>
-            </article>
-            <article class="bp-admin-help-check-card">
-                <span class="bp-summary-title">API Token Management</span>
-                <h4>Credentials for external systems</h4>
-                <ol>
-                    <li>Open API Token Management to create or regenerate external API tokens.</li>
-                    <li>The generated Token Value is the secret credential used in the Authorization header and is shown only at create/regenerate time.</li>
-                    <li>Cluster scope on each token controls which batteries the external system can read, write, validate, or sign.</li>
-                </ol>
-            </article>
-            <article class="bp-admin-help-check-card">
-                <span class="bp-summary-title">Local editable fields</span>
-                <h4>Global local-admin edit policy</h4>
-                <ol>
-                    <li>Open Local editable fields from the admin tabs.</li>
-                    <li>Select the passport fields local admins may edit across all batteries.</li>
-                    <li>The saved MongoDB policy controls both what the cluster-admin edit form renders and what its save action accepts.</li>
-                </ol>
-            </article>
-        </div>
-        <div class="bp-admin-help-split-checklists">
-            <article class="bp-admin-help-check-card">
+    <section id="ready-checklist" class="bp-card bp-admin-help-ready-console">
+        <div class="bp-admin-help-section-heading"><span class="bp-summary-title">Quick checklist</span><h2>Before you say this battery is ready</h2></div>
+        <div class="bp-admin-help-detail-grid">
+            <section class="bp-admin-help-detail-card">
                 <span class="bp-summary-title">What public users can see</span>
                 <p>Public search and QR lookup show published passports. The summary page stays focused on battery facts and does not expose internal validation or conformance diagnostics.</p>
-            </article>
-            <article class="bp-admin-help-check-card">
+            </section>
+            <section class="bp-admin-help-detail-card">
                 <span class="bp-summary-title">What admins can see</span>
                 <p>General admins and local cluster admins for the battery's cluster can open privileged Trust &amp; conformance evidence, audit history, revision history, proof hashes, and blocker diagnostics.</p>
-            </article>
+            </section>
         </div>
-        <div class="bp-admin-help-required-grid">
-            <div>
-                <h4>Required data</h4>
-                <ul>
-                    <li>Identity, manufacturer, Battery Family, Battery Model, software version, mass, Battery status, Passport status, manufacturing date, and facility details.</li>
-                    <li>Material composition, recycled-content, performance, durability, carbon footprint, labels, certificates, circularity, and due-diligence references marked required in policy.</li>
-                </ul>
-            </div>
-            <div>
-                <h4>Optional data</h4>
-                <ul>
-                    <li>Any parameter switched off in the battery family required/optional policy.</li>
-                    <li>Display image, optional documents, and live operational HTTP request data unless policy says otherwise.</li>
-                </ul>
-            </div>
-        </div>
-        <ol class="bp-admin-help-steps">
-            <li class="bp-admin-help-step-card"><div class="bp-admin-help-step-number">1</div><div class="bp-admin-help-step-copy"><h3>Create battery ID</h3><p>Create the DID, choose Battery Family and Battery Model, and save the draft copied from the template.</p></div></li>
-            <li class="bp-admin-help-step-card"><div class="bp-admin-help-step-number">2</div><div class="bp-admin-help-step-copy"><h3>Fill battery information</h3><p>The edit form marks fields as Required or Optional from the product's saved MongoDB policy.</p></div></li>
-            <li class="bp-admin-help-step-card"><div class="bp-admin-help-step-number">3</div><div class="bp-admin-help-step-copy"><h3>Validate passport</h3><p>Validation checks official schemas, business rules, and completion policy. Signing appears only when blockers are zero.</p></div></li>
-            <li class="bp-admin-help-step-card"><div class="bp-admin-help-step-number">4</div><div class="bp-admin-help-step-copy"><h3>Sign passport</h3><p>Signing canonicalizes the passport core, creates a hash, stores proof metadata, and records an immutable signed revision.</p></div></li>
-            <li class="bp-admin-help-step-card"><div class="bp-admin-help-step-number">5</div><div class="bp-admin-help-step-copy"><h3>Publish passport</h3><p>Publishing requires a current valid signature proof and makes the passport publicly searchable.</p><p>The <strong>Trust &amp; conformance tab is visible only</strong> to general admins or local cluster admins for the battery's cluster.</p></div></li>
-            <li class="bp-admin-help-step-card"><div class="bp-admin-help-step-number">6</div><div class="bp-admin-help-step-copy"><h3>Edit after publishing</h3><p>Editing signed core data makes the passport Dirty until it is validated and signed again.</p></div></li>
-            <li class="bp-admin-help-step-card"><div class="bp-admin-help-step-number">7</div><div class="bp-admin-help-step-copy"><h3>Move from dirty back to clean</h3><p>Validate, fix blockers, sign again, and publish the newest signed revision.</p></div></li>
-        </ol>
-    </section>
-
-    <section id="status-dictionary" class="bp-card">
-        <div class="bp-admin-help-section-heading"><span class="bp-summary-title">Status dictionary</span><h2>What each state means</h2><p>Use these terms when deciding whether a battery is ready for a customer or regulator to inspect.</p></div>
-        <div class="bp-admin-help-state-grid">
-            <article><h3>Draft</h3><p>Editable admin data. Draft can be incomplete and unsigned.</p></article>
-            <article><h3>Validated</h3><p>The latest validation completed with zero blockers. Validation alone is not a signature.</p></article>
-            <article><h3>Signed</h3><p>The canonical passport core has a hash and proof metadata.</p></article>
-            <article><h3>Clean</h3><p>The current passport core still matches the latest signed hash.</p></article>
-            <article><h3>Dirty</h3><p>The passport core changed after signing. Validate and sign again.</p></article>
-            <article><h3>Published</h3><p>The passport is public and should have a current valid signature proof.</p></article>
-        </div>
-    </section>
-
-    <section id="ready-checklist" class="bp-card bp-admin-help-checklist">
-        <div><span class="bp-summary-title">Quick checklist</span><h2>Before you say this battery is ready</h2></div>
-        <ul>
+        <ul class="bp-admin-help-ready-list">
             <li>The admin form required fields are complete.</li>
             <li>The conformance page shows zero blocking validation errors.</li>
             <li>The passport has been signed after the latest data change.</li>
@@ -278,3 +273,48 @@
         </div>
     </details>
 </main>
+
+@section Scripts {
+    <script>
+        (() => {
+            const buttons = Array.from(document.querySelectorAll('[data-admin-help-detail-target]'));
+            const panels = Array.from(document.querySelectorAll('[data-admin-help-detail-panel]'));
+            const detailRegion = document.querySelector('.bp-admin-help-selected-panel');
+            const detailRow = document.querySelector('[data-admin-help-detail-row]');
+            const activatePanel = (targetId, shouldOpen) => {
+                panels.forEach(panel => {
+                    panel.hidden = panel.id !== targetId || !shouldOpen;
+                });
+                buttons.forEach(button => {
+                    const isActive = shouldOpen && button.getAttribute('data-admin-help-detail-target') === targetId;
+                    button.classList.toggle('is-active', isActive);
+                    button.setAttribute('aria-expanded', isActive ? 'true' : 'false');
+                });
+                if (detailRegion) {
+                    detailRegion.hidden = !shouldOpen;
+                }
+                if (detailRow) {
+                    detailRow.hidden = !shouldOpen;
+                }
+            };
+
+            buttons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetId = button.getAttribute('data-admin-help-detail-target');
+                    const targetPanel = targetId ? document.getElementById(targetId) : null;
+                    const hostRow = button.closest('tr');
+                    const isSameVisible = Boolean(targetPanel && detailRow && !targetPanel.hidden && !detailRow.hidden);
+                    if (targetId) {
+                        if (hostRow && detailRow && hostRow.parentNode) {
+                            hostRow.parentNode.insertBefore(detailRow, hostRow.nextSibling);
+                        }
+                        activatePanel(targetId, !isSameVisible);
+                        if (!isSameVisible && detailRegion) {
+                            detailRegion.focus({ preventScroll: true });
+                        }
+                    }
+                });
+            });
+        })();
+    </script>
+}
