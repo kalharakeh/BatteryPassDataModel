@@ -7,7 +7,18 @@
     string TabClass(string tab) => selectedTab == tab ? "bp-tab bp-tab-active" : "bp-tab";
     var query = Model.PassportsQuery ?? string.Empty;
     var querySuffix = string.IsNullOrWhiteSpace(query) ? string.Empty : $"&q={Uri.EscapeDataString(query)}";
-    var localEditableKeys = Model.LocalEditableFieldPolicy.EditableFieldKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+    var editableAtCreationKeys = Model.LocalEditableFieldPolicy.PermissionByKey.Values
+        .Where(permission => permission.EditableAtCreation)
+        .Select(permission => permission.FieldKey)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    var editableAfterCreationKeys = Model.LocalEditableFieldPolicy.PermissionByKey.Values
+        .Where(permission => permission.EditableAfterCreation)
+        .Select(permission => permission.FieldKey)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    var editableByLocalAdminKeys = Model.LocalEditableFieldPolicy.PermissionByKey.Values
+        .Where(permission => permission.EditableByLocalAdmin)
+        .Select(permission => permission.FieldKey)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
     var globalAccessOptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         ["member"] = "No global admin",
@@ -65,7 +76,7 @@
         <a class="@TabClass("battery")" href="/admin/clusters?tab=battery">Battery cluster assignments</a>
         <a class="@TabClass("clusters")" href="/admin/clusters?tab=clusters">Registered clusters</a>
         <a class="@TabClass("users")" href="/admin/clusters?tab=users">Users</a>
-        <a class="@TabClass("local-editable-fields")" href="/admin/clusters?tab=local-editable-fields">Local editable fields</a>
+        <a class="@TabClass("local-editable-fields")" href="/admin/clusters?tab=local-editable-fields">Editable fields</a>
         <a class="@TabClass("api-token-management")" href="/admin/clusters?tab=api-token-management">API Token Management</a>
         <a class="@TabClass("products")" href="/admin/clusters?tab=products">Battery families</a>
         <a class="bp-tab" href="/admin/help">Help</a>
@@ -606,8 +617,8 @@
         <section class="bp-card bp-policy-console mt-4">
             <div class="d-flex justify-content-between flex-wrap gap-3 align-items-start">
                 <div>
-                    <h2 class="h5 mb-1">Local editable fields</h2>
-                    <p class="text-secondary mb-0">Choose which passport fields local admins can update globally across all batteries.</p>
+                    <h2 class="h5 mb-1">Editable fields</h2>
+                    <p class="text-secondary mb-0">Choose which battery parameters can be edited at creation, after creation, and by cluster admins.</p>
                 </div>
                 @if (!string.IsNullOrWhiteSpace(Model.LocalEditableFieldPolicy.UpdatedAt))
                 {
@@ -618,7 +629,9 @@
                 @Html.AntiForgeryToken()
                 <div class="bp-local-editable-policy-summary">
                     <span class="bp-user-count-pill">@Model.LocalEditableFieldPolicy.Sections.Count sections</span>
-                    <span class="bp-user-count-pill">@Model.LocalEditableFieldPolicy.EditableFieldKeys.Count editable fields</span>
+                    <span class="bp-user-count-pill">@Model.LocalEditableFieldPolicy.EditableAtCreationCount creation</span>
+                    <span class="bp-user-count-pill">@Model.LocalEditableFieldPolicy.EditableAfterCreationCount after creation</span>
+                    <span class="bp-user-count-pill">@Model.LocalEditableFieldPolicy.EditableByLocalAdminCount cluster admin</span>
                 </div>
                 <div class="bp-table-card p-0">
                     <div class="bp-table-scroll">
@@ -628,6 +641,8 @@
                                     <th>Section</th>
                                     <th>Total fields</th>
                                     <th>Editable</th>
+                                    <th>After creation</th>
+                                    <th>Cluster admin</th>
                                     <th>Examples</th>
                                     <th class="bp-action-cell">Actions</th>
                                 </tr>
@@ -638,7 +653,9 @@
                                     var sectionIndex = localEditableSectionIndex++;
                                     var drawerId = $"local-editable-section-{sectionIndex}";
                                     var orderedFields = policySection.Fields.OrderBy(field => field.SortOrder).ToList();
-                                    var sectionEditableCount = orderedFields.Count(field => localEditableKeys.Contains(field.FieldKey));
+                                    var sectionCreationCount = orderedFields.Count(field => editableAtCreationKeys.Contains(field.FieldKey));
+                                    var sectionAfterCreationCount = orderedFields.Count(field => editableAfterCreationKeys.Contains(field.FieldKey));
+                                    var sectionLocalAdminCount = orderedFields.Count(field => editableByLocalAdminKeys.Contains(field.FieldKey));
                                     var examples = string.Join(", ", orderedFields.Take(2).Select(field => field.Label));
                                     <tr>
                                         <td class="bp-local-editable-section-cell">
@@ -646,7 +663,9 @@
                                             <span>@policySection.SectionKey</span>
                                         </td>
                                         <td><span class="bp-user-count-pill">@policySection.Fields.Count fields</span></td>
-                                        <td><span class="bp-local-editable-state-pill @(sectionEditableCount > 0 ? "is-on" : string.Empty)">@sectionEditableCount editable</span></td>
+                                        <td><span class="bp-local-editable-state-pill @(sectionCreationCount > 0 ? "is-on" : string.Empty)">@sectionCreationCount creation</span></td>
+                                        <td><span class="bp-local-editable-state-pill @(sectionAfterCreationCount > 0 ? "is-on" : string.Empty)">@sectionAfterCreationCount after</span></td>
+                                        <td><span class="bp-local-editable-state-pill @(sectionLocalAdminCount > 0 ? "is-on" : string.Empty)">@sectionLocalAdminCount cluster admin</span></td>
                                         <td><span class="bp-local-editable-examples">@examples</span></td>
                                         <td class="bp-action-cell">
                                             <button type="button" class="bp-action-button bp-local-editable-drawer-toggle" data-local-editable-drawer-toggle aria-expanded="false" aria-controls="@drawerId" aria-label="Open @policySection.Label fields" title="Open @policySection.Label fields" data-tooltip="Open fields">
@@ -657,20 +676,35 @@
                                         </td>
                                     </tr>
                                     <tr id="@drawerId" class="bp-local-editable-drawer-row" hidden>
-                                        <td colspan="5">
+                                        <td colspan="7">
                                             <div class="bp-local-editable-field-grid">
                                                 @foreach (var field in orderedFields)
                                                 {
-                                                    var isEditable = localEditableKeys.Contains(field.FieldKey);
+                                                    var isEditableAtCreation = editableAtCreationKeys.Contains(field.FieldKey);
+                                                    var isEditableAfterCreation = editableAfterCreationKeys.Contains(field.FieldKey);
+                                                    var isEditableByLocalAdmin = editableByLocalAdminKeys.Contains(field.FieldKey);
                                                     <label class="bp-local-editable-field-card">
                                                         <span class="bp-local-editable-field-copy">
                                                             <strong>@field.Label</strong>
                                                             <span>@field.Guidance</span>
                                                             <code>@field.FieldKey</code>
                                                         </span>
-                                                        <span class="bp-local-editable-toggle-wrap">
-                                                            <input class="bp-local-editable-field-toggle" type="checkbox" name="editableFieldKeys" value="@field.FieldKey" checked="@isEditable" aria-label="@field.Label editable by local admins" />
-                                                            <span class="bp-local-editable-toggle-shell" aria-hidden="true"></span>
+                                                        <span class="bp-local-editable-toggle-group" data-editable-policy-row>
+                                                            <span class="bp-local-editable-toggle-wrap">
+                                                                <span class="bp-local-editable-toggle-label">Creation</span>
+                                                                <input class="bp-local-editable-field-toggle" type="checkbox" name="editableAtCreationFieldKeys" value="@field.FieldKey" checked="@isEditableAtCreation" aria-label="@field.Label editable at creation" data-editable-policy-creation />
+                                                                <span class="bp-local-editable-toggle-shell" aria-hidden="true"></span>
+                                                            </span>
+                                                            <span class="bp-local-editable-toggle-wrap">
+                                                                <span class="bp-local-editable-toggle-label">After</span>
+                                                                <input class="bp-local-editable-field-toggle" type="checkbox" name="editableAfterCreationFieldKeys" value="@field.FieldKey" checked="@isEditableAfterCreation" aria-label="@field.Label editable after creation" data-editable-policy-after />
+                                                                <span class="bp-local-editable-toggle-shell" aria-hidden="true"></span>
+                                                            </span>
+                                                            <span class="bp-local-editable-toggle-wrap">
+                                                                <span class="bp-local-editable-toggle-label">Cluster admin</span>
+                                                                <input class="bp-local-editable-field-toggle" type="checkbox" name="editableByLocalAdminFieldKeys" value="@field.FieldKey" checked="@isEditableByLocalAdmin" aria-label="@field.Label editable by cluster admins" data-editable-policy-local />
+                                                                <span class="bp-local-editable-toggle-shell" aria-hidden="true"></span>
+                                                            </span>
                                                         </span>
                                                     </label>
                                                 }
@@ -683,7 +717,7 @@
                     </div>
                 </div>
                 <div class="bp-local-editable-policy-actions">
-                    <button type="submit" class="bp-primary-button">Save local editable fields</button>
+                    <button type="submit" class="bp-primary-button">Save editable fields</button>
                 </div>
             </form>
         </section>
@@ -1024,6 +1058,35 @@
                     const expanded = button.getAttribute('aria-expanded') === 'true';
                     button.setAttribute('aria-expanded', expanded ? 'false' : 'true');
                     drawer.hidden = expanded;
+                });
+            });
+
+            document.querySelectorAll('[data-editable-policy-row]').forEach((row) => {
+                const creation = row.querySelector('[data-editable-policy-creation]');
+                const afterCreation = row.querySelector('[data-editable-policy-after]');
+                const localAdmin = row.querySelector('[data-editable-policy-local]');
+                if (!creation || !afterCreation || !localAdmin) {
+                    return;
+                }
+
+                creation.addEventListener('change', () => {
+                    if (!creation.checked) {
+                        afterCreation.checked = false;
+                        localAdmin.checked = false;
+                    }
+                });
+                afterCreation.addEventListener('change', () => {
+                    if (afterCreation.checked) {
+                        creation.checked = true;
+                    } else {
+                        localAdmin.checked = false;
+                    }
+                });
+                localAdmin.addEventListener('change', () => {
+                    if (localAdmin.checked) {
+                        creation.checked = true;
+                        afterCreation.checked = true;
+                    }
                 });
             });
 

@@ -751,7 +751,7 @@ a:hover {
 
 .bp-local-editable-field-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, auto);
   gap: 12px;
   align-items: center;
   border: 1px solid #d7e0ea;
@@ -788,16 +788,35 @@ a:hover {
   white-space: normal;
 }
 
+.bp-local-editable-toggle-group {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(68px, auto));
+  gap: 10px;
+  align-items: end;
+}
+
 .bp-local-editable-toggle-wrap {
   position: relative;
   inline-size: 42px;
-  block-size: 24px;
+  block-size: 42px;
   flex: 0 0 auto;
+}
+
+.bp-local-editable-toggle-label {
+  display: block;
+  margin-bottom: 4px;
+  color: #526477;
+  font-size: 0.68rem;
+  font-weight: 650;
+  line-height: 1;
+  text-align: center;
 }
 
 .bp-local-editable-field-toggle {
   position: absolute;
-  inset: 0;
+  inset: auto 0 0;
+  inline-size: 42px;
+  block-size: 24px;
   z-index: 1;
   opacity: 0;
   cursor: pointer;
@@ -805,7 +824,8 @@ a:hover {
 
 .bp-local-editable-toggle-shell {
   position: absolute;
-  inset: 0;
+  inset: auto 0 0;
+  block-size: 24px;
   border: 1px solid #b9c8d8;
   border-radius: 999px;
   background: #edf2f7;
@@ -847,6 +867,14 @@ a:hover {
 @media (max-width: 900px) {
   .bp-local-editable-field-grid {
     grid-template-columns: 1fr;
+  }
+
+  .bp-local-editable-field-card {
+    grid-template-columns: 1fr;
+  }
+
+  .bp-local-editable-toggle-group {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

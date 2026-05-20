@@ -550,13 +550,13 @@ public sealed class PassportRepository
             BatteryFamily = BsonHelpers.GetString(document, "app", "product", "productName"),
             BatteryVersion = BsonHelpers.GetString(document, "app", "product", "productVersion"),
             BatterySerialNumber = serialNumber,
-            PassportStatus = BuildPassportStatus(document),
+            PassportStatus = BuildPassportStatusLabel(document),
             BatteryImageUrl = normalizedImageUrl,
             UpdatedDate = BsonHelpers.GetString(document, "registryInfo", "updatedAt")
         };
     }
 
-    private static string BuildPassportStatus(BsonDocument document)
+    public static string BuildPassportStatusLabel(BsonDocument document)
     {
         var registryStatus = BsonHelpers.GetString(document, "registryInfo", "status");
         if (registryStatus.Equals("archived", StringComparison.OrdinalIgnoreCase))
@@ -564,12 +564,19 @@ public sealed class PassportRepository
             return "Archived";
         }
 
+        var trustState = BsonHelpers.GetString(document, "trust", "state");
+        var isDirty = document.GetValue("trust", BsonNull.Value) is BsonDocument trust
+            && trust.GetValue("isDirty", false).ToBoolean();
+        if (trustState.Equals(TrustState.Dirty, StringComparison.OrdinalIgnoreCase) || isDirty)
+        {
+            return "Awaiting sign-off";
+        }
+
         if (registryStatus.Equals("published", StringComparison.OrdinalIgnoreCase))
         {
             return "Published";
         }
 
-        var trustState = BsonHelpers.GetString(document, "trust", "state");
         return trustState.Equals(TrustState.Signed, StringComparison.OrdinalIgnoreCase)
             ? "Signed"
             : "Draft";

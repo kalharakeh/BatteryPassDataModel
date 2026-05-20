@@ -64,6 +64,7 @@ builder.Services.AddSingleton<PassportPublishPolicyService>();
 builder.Services.AddSingleton<PassportReadinessService>();
 builder.Services.AddSingleton<PassportEvidenceService>();
 builder.Services.AddSingleton<DataCompletionPolicyService>();
+builder.Services.AddSingleton<EditableFieldPolicyService>();
 builder.Services.AddSingleton<LocalAdminEditableFieldPolicyService>();
 builder.Services.AddSingleton<ProductTemplateService>();
 builder.Services.AddSingleton<DemoRequiredDataCompletionService>();

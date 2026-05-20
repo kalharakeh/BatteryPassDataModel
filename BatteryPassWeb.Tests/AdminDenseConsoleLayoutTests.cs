@@ -210,12 +210,19 @@ public sealed class AdminDenseConsoleLayoutTests
 
         Assert.True(localEditableStart >= 0);
         Assert.True(apiTokenStart > localEditableStart);
+        Assert.Contains("Editable fields", localEditableTab);
+        Assert.Contains("name=\"editableAtCreationFieldKeys\"", localEditableTab);
+        Assert.Contains("name=\"editableAfterCreationFieldKeys\"", localEditableTab);
+        Assert.Contains("name=\"editableByLocalAdminFieldKeys\"", localEditableTab);
+        Assert.DoesNotContain("Local editable fields", localEditableTab);
         Assert.Contains("bp-policy-console", clusters);
         Assert.Contains("bp-local-editable-policy-table", localEditableTab);
         Assert.Contains("bp-console-table", localEditableTab);
         Assert.Contains("<th>Section</th>", localEditableTab);
         Assert.Contains("<th>Total fields</th>", localEditableTab);
         Assert.Contains("<th>Editable</th>", localEditableTab);
+        Assert.Contains("<th>After creation</th>", localEditableTab);
+        Assert.Contains("<th>Cluster admin</th>", localEditableTab);
         Assert.Contains("<th>Examples</th>", localEditableTab);
         Assert.Contains("bp-local-editable-drawer-row", localEditableTab);
         Assert.Contains("data-local-editable-drawer-toggle", localEditableTab);
@@ -224,9 +231,11 @@ public sealed class AdminDenseConsoleLayoutTests
         Assert.DoesNotContain("sectionIndex == 0 ? \"true\" : \"false\"", localEditableTab);
         Assert.DoesNotContain("hidden=\"@(sectionIndex != 0)\"", localEditableTab);
         Assert.Contains("policySection.Fields.Count", localEditableTab);
-        Assert.Contains("sectionEditableCount", localEditableTab);
+        Assert.Contains("sectionCreationCount", localEditableTab);
+        Assert.Contains("sectionAfterCreationCount", localEditableTab);
+        Assert.Contains("sectionLocalAdminCount", localEditableTab);
         Assert.Contains("bp-local-editable-field-toggle", localEditableTab);
-        Assert.Contains("name=\"editableFieldKeys\"", localEditableTab);
+        Assert.DoesNotContain("name=\"editableFieldKeys\"", localEditableTab);
         Assert.Contains("/admin/local-editable-fields/save", localEditableTab);
         Assert.DoesNotContain("bp-policy-section-grid", localEditableTab);
         Assert.DoesNotContain("bp-requirement-grid", localEditableTab);

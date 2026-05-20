@@ -15,7 +15,7 @@ public sealed class AdminClusterViewModel
     public IReadOnlyList<ClusterMembershipViewModel> Memberships { get; init; } = [];
     public IReadOnlyList<ApiTokenViewModel> ApiTokens { get; init; } = [];
     public IReadOnlyList<ProductTemplateSummaryViewModel> ProductTemplates { get; init; } = [];
-    public LocalAdminEditableFieldPolicySnapshot LocalEditableFieldPolicy { get; init; } = LocalAdminEditableFieldPolicyService.CreateDefaultPolicy();
+    public EditableFieldPolicySnapshot LocalEditableFieldPolicy { get; init; } = EditableFieldPolicyService.CreateDefaultPolicy();
     public string SamplePassportId { get; init; } = string.Empty;
     public string SampleReadToken { get; init; } = string.Empty;
     public string SampleReadWriteToken { get; init; } = string.Empty;

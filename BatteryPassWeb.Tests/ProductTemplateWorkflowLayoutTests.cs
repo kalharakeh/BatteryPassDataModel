@@ -138,7 +138,7 @@ public sealed class ProductTemplateWorkflowLayoutTests
     }
 
     [Fact]
-    public void AdminAndClusterAdmin_ShouldExposeLocalEditableFieldPolicy()
+    public void AdminAndClusterAdmin_ShouldExposeEditableFieldPolicy()
     {
         var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
         var clusterEdit = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "EditPassport.cshtml"));
@@ -147,11 +147,16 @@ public sealed class ProductTemplateWorkflowLayoutTests
         var program = File.ReadAllText(RepoFile("web", "Program.cs"));
 
         Assert.Contains("tab=local-editable-fields", clusters);
-        Assert.Contains("Local editable fields", clusters);
+        Assert.Contains("Editable fields", clusters);
+        Assert.Contains("editableAtCreationFieldKeys", clusters);
+        Assert.Contains("editableAfterCreationFieldKeys", clusters);
+        Assert.Contains("editableByLocalAdminFieldKeys", clusters);
         Assert.Contains("/admin/local-editable-fields/save", clusters);
         Assert.Contains("FieldEditableByKey", clusterEdit);
+        Assert.Contains("EditableFieldPolicyService", adminController);
         Assert.Contains("LocalAdminEditableFieldPolicyService", adminController);
         Assert.Contains("LocalAdminEditableFieldPolicyService", clusterAdminController);
+        Assert.Contains("AddSingleton<EditableFieldPolicyService>", program);
         Assert.Contains("AddSingleton<LocalAdminEditableFieldPolicyService>", program);
     }
 

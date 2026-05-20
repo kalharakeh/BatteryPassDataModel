@@ -42,6 +42,7 @@ public class AdminController : Controller
     private readonly PassportReadinessService _passportReadinessService;
     private readonly PassportEvidenceService _passportEvidenceService;
     private readonly DataCompletionPolicyService _dataCompletionPolicyService;
+    private readonly EditableFieldPolicyService _editableFieldPolicyService;
     private readonly LocalAdminEditableFieldPolicyService _localAdminEditableFieldPolicyService;
     private readonly ProductTemplateService _productTemplateService;
     private readonly PassportTrustService _passportTrustService;
@@ -61,6 +62,7 @@ public class AdminController : Controller
         PassportReadinessService passportReadinessService,
         PassportEvidenceService passportEvidenceService,
         DataCompletionPolicyService dataCompletionPolicyService,
+        EditableFieldPolicyService editableFieldPolicyService,
         LocalAdminEditableFieldPolicyService localAdminEditableFieldPolicyService,
         ProductTemplateService productTemplateService,
         PassportTrustService passportTrustService,
@@ -79,6 +81,7 @@ public class AdminController : Controller
         _passportReadinessService = passportReadinessService;
         _passportEvidenceService = passportEvidenceService;
         _dataCompletionPolicyService = dataCompletionPolicyService;
+        _editableFieldPolicyService = editableFieldPolicyService;
         _localAdminEditableFieldPolicyService = localAdminEditableFieldPolicyService;
         _productTemplateService = productTemplateService;
         _passportTrustService = passportTrustService;
@@ -866,8 +869,8 @@ public class AdminController : Controller
             ? await _productTemplateService.ListProductsAsync(cancellationToken)
             : Array.Empty<BatteryProductTemplate>();
         var localEditableFieldPolicy = needsLocalEditablePolicy
-            ? await _localAdminEditableFieldPolicyService.GetPolicyAsync(cancellationToken)
-            : LocalAdminEditableFieldPolicyService.CreateDefaultPolicy();
+            ? await _editableFieldPolicyService.GetPolicyAsync(cancellationToken)
+            : EditableFieldPolicyService.CreateDefaultPolicy();
 
         var model = new AdminClusterViewModel
         {
@@ -1317,16 +1320,31 @@ public class AdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveLocalEditableFields(CancellationToken cancellationToken)
     {
-        var editableFieldKeys = Request.Form["editableFieldKeys"]
-            .Select(value => value?.Trim() ?? string.Empty)
-            .Where(value => !string.IsNullOrWhiteSpace(value))
+        var creationKeys = FormKeys("editableAtCreationFieldKeys");
+        var afterCreationKeys = FormKeys("editableAfterCreationFieldKeys");
+        var localAdminKeys = FormKeys("editableByLocalAdminFieldKeys");
+        var allKeys = creationKeys
+            .Concat(afterCreationKeys)
+            .Concat(localAdminKeys)
             .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(fieldKey => new EditableFieldPermission(
+                fieldKey,
+                creationKeys.Contains(fieldKey),
+                afterCreationKeys.Contains(fieldKey),
+                localAdminKeys.Contains(fieldKey)))
             .ToList();
 
-        await _localAdminEditableFieldPolicyService.SavePolicyAsync(editableFieldKeys, CurrentActor(), cancellationToken);
-        TempData["StatusMessage"] = "Local editable fields updated.";
+        await _editableFieldPolicyService.SavePolicyAsync(allKeys, CurrentActor(), cancellationToken);
+        await _localAdminEditableFieldPolicyService.SavePolicyAsync(localAdminKeys.ToList(), CurrentActor(), cancellationToken);
+        TempData["StatusMessage"] = "Editable fields updated.";
         return Redirect("/admin/clusters?tab=local-editable-fields");
     }
+
+    private HashSet<string> FormKeys(string name) =>
+        Request.Form[name]
+            .Select(value => value?.Trim() ?? string.Empty)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     private static string NormalizeTab(string? value)
     {
