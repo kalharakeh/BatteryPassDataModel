@@ -51,6 +51,7 @@ public sealed class ProductTemplateService
     private readonly PassportValidationService _passportValidationService;
     private readonly PassportTrustService _passportTrustService;
     private readonly AuditRevisionService _auditRevisionService;
+    private readonly BatteryPassportDeltaService _batteryPassportDeltaService;
 
     public ProductTemplateService(
         MongoContext mongoContext,
@@ -63,7 +64,8 @@ public sealed class ProductTemplateService
         DataCompletionPolicyService dataCompletionPolicyService,
         PassportValidationService passportValidationService,
         PassportTrustService passportTrustService,
-        AuditRevisionService auditRevisionService)
+        AuditRevisionService auditRevisionService,
+        BatteryPassportDeltaService batteryPassportDeltaService)
     {
         _mongoContext = mongoContext;
         _passportRepository = passportRepository;
@@ -76,6 +78,7 @@ public sealed class ProductTemplateService
         _passportValidationService = passportValidationService;
         _passportTrustService = passportTrustService;
         _auditRevisionService = auditRevisionService;
+        _batteryPassportDeltaService = batteryPassportDeltaService;
     }
 
     public async Task<IReadOnlyList<BatteryProductTemplate>> ListProductsAsync(CancellationToken cancellationToken = default)
@@ -462,7 +465,7 @@ public sealed class ProductTemplateService
 
         var selectedProductVersion = product.ProductVersions.FirstOrDefault(version => version.Version.Equals(productVersion, StringComparison.OrdinalIgnoreCase))
             ?? product.LatestProductVersion;
-        var collection = PassportCollection();
+        var collection = BatteryCollection();
         if (collection == null)
         {
             return new ProductTemplatePushResult();
@@ -471,53 +474,42 @@ public sealed class ProductTemplateService
         var filter = Builders<BsonDocument>.Filter.And(
             Builders<BsonDocument>.Filter.Eq("app.product.productId", product.ProductId),
             Builders<BsonDocument>.Filter.Eq("app.product.productVersion", selectedProductVersion.Version));
-        var passports = await collection.Find(filter).ToListAsync(cancellationToken);
-        var productDocument = await GetProductDocumentAsync(product.ProductId, cancellationToken);
-        var updatedPassportIds = new List<string>();
+        var batteries = await collection.Find(filter).ToListAsync(cancellationToken);
+        var changedBatteryIds = new List<string>();
         var skippedPaths = new List<string>();
         var now = DateTimeOffset.UtcNow.ToString("O");
 
-        foreach (var passport in passports)
+        foreach (var battery in batteries)
         {
-            var result = BuildSafeTemplatePushUpdate(passport, product, selectedProductVersion, productDocument, now);
+            var before = battery.DeepClone().AsBsonDocument;
+            var oldTemplate = BsonHelpers.GetValue(before, "app", "templateBaseline") as BsonDocument
+                ?? ProductTemplatePassportBuilder.BuildTemplateBaseline(before);
+            ProductTemplatePassportBuilder.ApplyProductVersionToBattery(battery, product, selectedProductVersion, now);
+            var newTemplate = ProductTemplatePassportBuilder.BuildTemplateBaseline(battery);
+            var result = ProductTemplatePassportBuilder.ComputeSafeTemplateUpdates(before, oldTemplate, newTemplate);
             if (result.UpdatedPaths.Count == 0)
             {
                 skippedPaths.AddRange(result.SkippedOverridePaths);
                 continue;
             }
 
-            var passportId = BsonHelpers.GetString(passport, "passportId");
-            result.UpdatedPassport.Remove("_id");
-            await _passportRepository.ReplaceAsync(passportId, result.UpdatedPassport, cancellationToken);
-            await _passportRepository.MarkCanonicalDirtyAsync(passportId, "productVersionTemplatePushed", cancellationToken);
-            updatedPassportIds.Add(passportId);
+            var batteryId = BsonHelpers.GetString(result.UpdatedPassport, "batteryId");
+            result.UpdatedPassport["updatedAt"] = now;
+            await _batteryRepository.ReplaceAsync(batteryId, result.UpdatedPassport, cancellationToken);
+            await _batteryPassportDeltaService.UpdateNewPassportRequiredAsync(result.UpdatedPassport, cancellationToken);
+            changedBatteryIds.Add(batteryId);
             skippedPaths.AddRange(result.SkippedOverridePaths);
-            await _auditRevisionService.AppendAuditEventAsync(
-                passportId,
-                "passport.productVersionTemplate.pushed",
-                actor,
-                "admin",
-                "product-version-template-push",
-                "Battery Model template changes pushed to passport.",
-                new BsonDocument
-                {
-                    ["productId"] = product.ProductId,
-                    ["productVersion"] = selectedProductVersion.Version,
-                    ["softwareVersion"] = selectedProductVersion.SoftwareVersion,
-                    ["updatedPaths"] = new BsonArray(result.UpdatedPaths),
-                    ["skippedOverridePaths"] = new BsonArray(result.SkippedOverridePaths)
-                },
-                cancellationToken);
         }
 
-        await RecordPushRunAsync(product.ProductId, selectedProductVersion.Version, string.Empty, actor, now, passports.Count, updatedPassportIds.Count, skippedPaths, cancellationToken);
+        await RecordPushRunAsync(product.ProductId, selectedProductVersion.Version, string.Empty, actor, now, batteries.Count, changedBatteryIds.Count, skippedPaths, cancellationToken);
 
         return new ProductTemplatePushResult
         {
-            MatchedBatteries = passports.Count,
-            UpdatedBatteries = updatedPassportIds.Count,
-            SkippedBatteries = passports.Count - updatedPassportIds.Count,
-            UpdatedPassportIds = updatedPassportIds,
+            MatchedBatteries = batteries.Count,
+            UpdatedBatteries = changedBatteryIds.Count,
+            SkippedBatteries = batteries.Count - changedBatteryIds.Count,
+            UpdatedBatteryIds = changedBatteryIds,
+            UpdatedPassportIds = changedBatteryIds,
             SkippedOverridePaths = skippedPaths.Distinct(StringComparer.OrdinalIgnoreCase).ToList()
         };
     }

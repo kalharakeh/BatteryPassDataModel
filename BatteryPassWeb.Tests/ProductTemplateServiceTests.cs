@@ -227,9 +227,21 @@ public sealed class ProductTemplateServiceTests
 
         Assert.Contains("PushProductVersionAsync", source);
         Assert.Contains("Eq(\"app.product.productVersion\", selectedProductVersion.Version)", source);
-        Assert.Contains("BuildSafeTemplatePushUpdate(passport, product, selectedProductVersion", source);
+        Assert.Contains("ApplyProductVersionToBattery", source);
         Assert.DoesNotContain("PushTemplateAsync", source);
         Assert.DoesNotContain("SoftwareCollection", source);
+    }
+
+    [Fact]
+    public void ProductTemplatePush_ShouldTargetBatteryRecordsAndOnlyFlagChangedBatteries()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateService.cs"));
+
+        Assert.Contains("BatteryCollection()", source);
+        Assert.Contains("UpdateNewPassportRequiredAsync", source);
+        Assert.Contains("changedBatteryIds", source);
+        Assert.Contains("if (result.UpdatedPaths.Count == 0)", source);
+        Assert.DoesNotContain("MarkCanonicalDirtyAsync(passportId, \"productVersionTemplatePushed\"", source);
     }
 
     [Fact]

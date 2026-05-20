@@ -106,6 +106,7 @@ public sealed class ProductTemplatePushResult
     public int MatchedBatteries { get; init; }
     public int UpdatedBatteries { get; init; }
     public int SkippedBatteries { get; init; }
+    public IReadOnlyList<string> UpdatedBatteryIds { get; init; } = [];
     public IReadOnlyList<string> UpdatedPassportIds { get; init; } = [];
     public IReadOnlyList<string> SkippedOverridePaths { get; init; } = [];
 }
