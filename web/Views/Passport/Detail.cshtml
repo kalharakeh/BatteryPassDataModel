@@ -287,7 +287,18 @@
                             <div class="bp-donut" style="background:@donutBackground;">
                                 <div class="bp-donut-hole"></div>
                             </div>
-                            <p class="bp-help-text mt-2 mb-0">Pre @chart.PreConsumerShare.ToString("0.#")% / Post @chart.PostConsumerShare.ToString("0.#")%</p>
+                            <table class="bp-chart-value-legend mt-2" aria-label="Recycled content values for @chart.Material">
+                                <tbody>
+                                    <tr>
+                                        <td><span class="bp-dot" style="background:#08a348"></span>Pre-consumer</td>
+                                        <td>@chart.PreConsumerShare.ToString("0.#")%</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="bp-dot" style="background:#df6b3b"></span>Post-consumer</td>
+                                        <td>@chart.PostConsumerShare.ToString("0.#")%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     }
                 </div>
@@ -299,15 +310,17 @@
                 <div class="bp-two-column mt-4">
                     <div class="bp-pie-row">
                         <div class="bp-pie" style="background:@BuildConicGradient(passport.CarbonFootprintSegments);"></div>
-                        <ul class="bp-legend">
-                            @foreach (var segment in passport.CarbonFootprintSegments)
-                            {
-                                <li>
-                                    <span class="bp-dot" style="background:@(string.IsNullOrWhiteSpace(segment.Color) ? "#4f6f7d" : segment.Color);"></span>
-                                    <span>@segment.Label: @segment.Value.ToString("0.#") @(segment.Unit)</span>
-                                </li>
-                            }
-                        </ul>
+                        <table class="bp-chart-value-legend" aria-label="Carbon footprint values">
+                            <tbody>
+                                @foreach (var segment in passport.CarbonFootprintSegments)
+                                {
+                                    <tr>
+                                        <td><span class="bp-dot" style="background:@(string.IsNullOrWhiteSpace(segment.Color) ? "#4f6f7d" : segment.Color);"></span>@segment.Label</td>
+                                        <td>@segment.Value.ToString("0.#") @(segment.Unit)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
                     </div>
                     <div>
                         <dl class="bp-field-grid">
@@ -353,13 +366,16 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script>
         (() => {
-            const rows = @Html.Raw(telemetryJson);
+            const telemetryRows = @Html.Raw(telemetryJson);
+            const rows = (Array.isArray(telemetryRows) ? telemetryRows : [])
+                .filter(row => Number.isFinite(Date.parse(row?.MeasuredAt ?? '')))
+                .sort((left, right) => Date.parse(left.MeasuredAt) - Date.parse(right.MeasuredAt));
             if (!Array.isArray(rows) || rows.length === 0 || !window.Chart) {
                 return;
             }
 
             const labels = rows.map(row => row.MeasuredAt ? row.MeasuredAt.substring(5, 16).replace('T', ' ') : '');
-            const values = (field) => rows.map(row => row[field]);
+            const values = (field) => rows.map(row => Number.isFinite(Number(row[field])) ? Number(row[field]) : null);
             const commonOptions = {
                 responsive: true,
                 maintainAspectRatio: false,

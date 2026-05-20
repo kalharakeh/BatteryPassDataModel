@@ -83,6 +83,21 @@ public sealed class QrWorkflowTests
     }
 
     [Fact]
+    public void SummaryReport_ShouldUseThreeColumnHeaderAndImageQrDownload()
+    {
+        var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
+        var qrController = File.ReadAllText(RepoFile("web", "Controllers", "QrController.cs"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("bp-summary-identity-grid", summary);
+        Assert.Contains("bp-summary-id-panel", summary);
+        Assert.Contains("bp-summary-qr-panel", summary);
+        Assert.Contains("image/png", qrController);
+        Assert.Contains(".bp-summary-identity-grid", css);
+        Assert.Contains("@media (max-width: 900px)", css);
+    }
+
+    [Fact]
     public void LandingPage_ShouldOpenQrScannerFromInlineSearchIcon()
     {
         var landing = File.ReadAllText(RepoFile("web", "Views", "Home", "Index.cshtml"));

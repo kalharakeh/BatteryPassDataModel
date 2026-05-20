@@ -51,9 +51,9 @@ public sealed class QrController : Controller
         }
 
         var payload = _passportQrCodeService.BuildPayloadUrl(Request, decodedBatteryId);
-        var svg = _passportQrCodeService.GenerateSvg(payload);
         var fileName = _passportQrCodeService.BuildFileName(decodedBatteryId);
-        return File(Encoding.UTF8.GetBytes(svg), "image/svg+xml", fileName);
+        var png = _passportQrCodeService.GeneratePng(payload);
+        return File(png, "image/png", Path.ChangeExtension(fileName, ".png"));
     }
 
     private async Task<bool> CanAccessQrAsync(string batteryId, CancellationToken cancellationToken)

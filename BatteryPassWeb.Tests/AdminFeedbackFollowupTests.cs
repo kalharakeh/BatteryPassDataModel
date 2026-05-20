@@ -202,6 +202,18 @@ public sealed class AdminFeedbackFollowupTests
         Assert.DoesNotContain("No published, verified battery passport ID was found", search);
     }
 
+    [Fact]
+    public void ReportCharts_ShouldUseTableLegendsAndOriginalPowerHeading()
+    {
+        var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
+        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
+
+        Assert.Contains("<h3 class=\"bp-subheading\">Original Power</h3>", summary);
+        Assert.Contains("bp-chart-value-legend", summary);
+        Assert.Contains("bp-chart-value-legend", detail);
+        Assert.Contains("filter(row => Number.isFinite", detail);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

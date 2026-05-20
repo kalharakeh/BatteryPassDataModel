@@ -18,6 +18,14 @@ public sealed class PassportQrCodeService
         return AddBatteryCellMark(qrCode.GetGraphic(10));
     }
 
+    public byte[] GeneratePng(string payload)
+    {
+        using var generator = new QRCodeGenerator();
+        using var data = generator.CreateQrCode(payload, QRCodeGenerator.ECCLevel.Q);
+        var qrCode = new PngByteQRCode(data);
+        return qrCode.GetGraphic(12);
+    }
+
     public string BuildFileName(string batteryId)
     {
         var safeId = new string(batteryId
