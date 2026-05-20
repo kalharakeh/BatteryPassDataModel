@@ -47,6 +47,7 @@ public sealed class PassportRepository
                 builder.Regex("app.display.name", regex),
                 builder.Regex("app.display.modelNumber", regex),
                 builder.Regex("app.display.serialNumber", regex),
+                builder.Regex("identity.serialNumber", regex),
                 builder.Regex("app.display.manufacturerName", regex),
                 builder.Regex("clusterId", regex),
                 builder.Regex("aspects.generalProductInformation.payload.productIdentifier", regex),

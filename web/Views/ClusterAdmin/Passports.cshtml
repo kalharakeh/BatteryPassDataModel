@@ -34,11 +34,13 @@
         <table class="table table-hover align-middle bp-console-table">
             <thead>
                 <tr>
+                    <th>Passport ID</th>
                     <th>Battery ID</th>
                     <th>Battery Family</th>
                     <th>Battery Model</th>
                     <th>Battery serial number</th>
                     <th>Cluster</th>
+                    <th>Status</th>
                     <th>Updated</th>
                     <th class="bp-action-cell">Actions</th>
                 </tr>
@@ -47,7 +49,7 @@
                 @if (Model.Count == 0)
                 {
                     <tr>
-                        <td class="text-secondary" colspan="7">No managed passports found for this account.</td>
+                        <td class="text-secondary" colspan="9">No managed passports found for this account.</td>
                     </tr>
                 }
                 else
@@ -59,12 +61,19 @@
                             : row.UpdatedDate.Length >= 10
                                 ? row.UpdatedDate.Substring(0, 10)
                                 : row.UpdatedDate;
+                        var passportStatusClass = row.PassportStatus.Equals("Published", StringComparison.OrdinalIgnoreCase)
+                            ? "bp-status-pill is-published"
+                            : row.PassportStatus.Equals("Signed", StringComparison.OrdinalIgnoreCase)
+                                ? "bp-status-pill is-signed"
+                                : "bp-status-pill is-draft";
                         <tr>
                             <td><span class="bp-battery-id-cell bp-id-copy-row"><span class="bp-id-value">@row.PassportId</span>@await Html.PartialAsync("_CopyIdButton", row.PassportId)</span></td>
+                            <td>@row.BatteryId</td>
                             <td>@row.BatteryFamily</td>
                             <td>@row.BatteryVersion</td>
                             <td>@row.BatterySerialNumber</td>
                             <td>@row.ClusterLabel</td>
+                            <td><span class="@passportStatusClass">@row.PassportStatus</span></td>
                             <td>@updated</td>
                             <td class="bp-action-cell">
                                 <div class="bp-icon-action-row">

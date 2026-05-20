@@ -41,9 +41,12 @@ public sealed class AdminDenseConsoleLayoutTests
         var controller = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
 
         Assert.Contains("Battery ID", passports);
+        Assert.Contains("<th>Passport ID</th>", passports);
+        Assert.Contains("<th>Status</th>", passports);
         Assert.Contains("Battery Family", passports);
         Assert.Contains("Battery Model", passports);
         Assert.Contains("Battery serial number", passports);
+        Assert.Contains("PassportStatus", passports);
         Assert.Contains("@row.BatteryFamily", passports);
         Assert.Contains("@row.BatteryVersion", passports);
         Assert.Contains("@row.BatterySerialNumber", passports);
@@ -55,6 +58,7 @@ public sealed class AdminDenseConsoleLayoutTests
         Assert.Contains("BatteryFamily = passport.BatteryFamily", controller);
         Assert.Contains("BatteryVersion = passport.BatteryVersion", controller);
         Assert.Contains("BatterySerialNumber = passport.BatterySerialNumber", controller);
+        Assert.Contains("serial", controller, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

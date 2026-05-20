@@ -3,6 +3,9 @@
     ViewData["Title"] = "Scania Passport Registry";
     var registryScopeLabel = ViewData["RegistryScopeLabel"] as string ?? "Search and open battery passports linked to your account.";
     var registryEmptyLabel = ViewData["RegistryEmptyLabel"] as string ?? "No batteries are currently linked to your account.";
+    var registryAccessMessage = ViewData["RegistryAccessMessage"] as string ?? string.Empty;
+    var isGlobalAdmin = User.IsInRole(BatteryPassWeb.Services.AccessControlService.RoleAdmin);
+    var isClusterAdmin = User.IsInRole(BatteryPassWeb.Services.AccessControlService.RoleClusterAdmin) || isGlobalAdmin;
 }
 <main class="bp-page bp-admin-page bp-registry-page">
     <header class="bp-console-header">
@@ -17,10 +20,17 @@
             <input
                 name="q"
                 value="@Context.Request.Query["q"]"
-                placeholder="Search by battery ID, battery family, serial, or manufacturer" />
+                placeholder="Search by battery ID, passport ID, serial, or cluster" />
             <button type="submit">Search</button>
         </form>
     </section>
+
+    @if (!string.IsNullOrWhiteSpace(registryAccessMessage))
+    {
+        <div class="bp-card bp-alert-card">
+            Cluster search requires global admin access.
+        </div>
+    }
 
     @if (Model.Count == 0)
     {
@@ -53,6 +63,12 @@
                             : row.LatestPassportStatus.Equals("signed", StringComparison.OrdinalIgnoreCase)
                                 ? "bp-status-pill is-signed"
                                 : "bp-status-pill is-draft";
+                        var escapedBatteryId = Uri.EscapeDataString(row.BatteryId);
+                        var batteryOpenHref = isGlobalAdmin
+                            ? $"/admin/batteries/{escapedBatteryId}/passports"
+                            : isClusterAdmin
+                                ? $"/{escapedBatteryId}"
+                                : $"/{escapedBatteryId}/latest";
                         <tr>
                             <td><span class="bp-battery-id-cell bp-id-copy-row"><span class="bp-id-value">@row.BatteryId</span>@await Html.PartialAsync("_CopyIdButton", row.BatteryId)</span></td>
                             <td>@row.BatteryFamily</td>
@@ -81,7 +97,7 @@
                                         </svg>
                                     </a>
                                     }
-                                    <a href="/@Uri.EscapeDataString(row.BatteryId)" class="bp-report-action" aria-label="Passport history" title="Passport history" data-tooltip="Passport history" data-action-icon="history">
+                                    <a href="@batteryOpenHref" class="bp-report-action" aria-label="Passport history" title="Passport history" data-tooltip="Passport history" data-action-icon="history">
                                         <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">
                                             <path d="M6 3h9l3 3v15H6z" />
                                             <path d="M15 3v4h4" />

@@ -79,6 +79,22 @@ public sealed class BatteryRepository
         return await collection.Find(filter).SortByDescending(row => row["updatedAt"]).Limit(500).ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<BsonDocument>> SearchByClusterAsync(string query, CancellationToken cancellationToken = default)
+    {
+        var collection = GetCollection();
+        if (collection == null || string.IsNullOrWhiteSpace(query))
+        {
+            return [];
+        }
+
+        var regex = new BsonRegularExpression(query.Trim(), "i");
+        return await collection
+            .Find(Builders<BsonDocument>.Filter.Regex("clusterId", regex))
+            .SortByDescending(row => row["updatedAt"])
+            .Limit(500)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task CreateBatteryAsync(BsonDocument battery, CancellationToken cancellationToken = default)
     {
         var collection = GetCollection();
