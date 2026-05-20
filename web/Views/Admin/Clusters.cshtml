@@ -21,12 +21,12 @@
         .ToHashSet(StringComparer.OrdinalIgnoreCase);
     var globalAccessOptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
-        ["member"] = "No global admin",
+        ["member"] = "Global admin: No",
         ["notifiedBody"] = "Notified Body",
         ["marketSurveillanceAuthority"] = "Market Surveillance Authorities",
         ["commission"] = "Commission",
         ["legitimateInterest"] = "Person with Legitimate Interest",
-        ["admin"] = "Global Admin"
+        ["admin"] = "Global admin: Yes"
     };
     string MembershipRoleLabel(string role) => role.Equals("clusterAdmin", StringComparison.OrdinalIgnoreCase) ? "Local Admin" : "Normal User";
     string MembershipCountLabel(int count) => $"{count} {(count == 1 ? "membership" : "memberships")}";
@@ -246,19 +246,21 @@
                                         <form method="post" action="/admin/clusters/assign-passport" class="bp-cluster-assignment-form">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="passportId" value="@passport.PassportId" />
-                                            <select name="clusterId" class="form-select form-select-sm" aria-label="Cluster for @passport.BatteryId">
-                                                @foreach (var cluster in Model.Clusters)
-                                                {
-                                                    if (passport.ClusterId == cluster.ClusterId)
+                                            <span class="bp-select-shell">
+                                                <select name="clusterId" class="form-select form-select-sm" aria-label="Cluster for @passport.BatteryId">
+                                                    @foreach (var cluster in Model.Clusters)
                                                     {
-                                                        <option value="@cluster.ClusterId" selected>@cluster.Name</option>
+                                                        if (passport.ClusterId == cluster.ClusterId)
+                                                        {
+                                                            <option value="@cluster.ClusterId" selected>@cluster.Name</option>
+                                                        }
+                                                        else
+                                                        {
+                                                            <option value="@cluster.ClusterId">@cluster.Name</option>
+                                                        }
                                                     }
-                                                    else
-                                                    {
-                                                        <option value="@cluster.ClusterId">@cluster.Name</option>
-                                                    }
-                                                }
-                                            </select>
+                                                </select>
+                                            </span>
                                             <button type="submit" class="bp-action-button" aria-label="Save cluster assignment" title="Save cluster assignment" data-tooltip="Save cluster assignment" data-action-icon="save-assignment">
                                                 <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
                                                     <path d="M20 6 9 17l-5-5" />
@@ -282,7 +284,7 @@
             <section class="bp-card bp-cluster-create-strip bp-console-form-card">
                 <div>
                     <span class="bp-summary-title">Cluster setup</span>
-                    <h2 class="h5 mb-2">Add cluster</h2>
+                    <h2 class="h5 mb-2">Create Cluster</h2>
                     <p class="text-secondary mb-0">Create a cluster first, then assign batteries and users from the nearby tabs.</p>
                 </div>
                 <form method="post" action="/admin/clusters/create" class="bp-cluster-create-form">
@@ -295,7 +297,7 @@
                         Cluster ID
                         <input type="text" name="clusterId" placeholder="cluster-north-operations (optional)" />
                     </label>
-                    <button type="submit" class="bp-primary-button">Save cluster</button>
+                    <button type="submit" class="bp-primary-button">Create Cluster</button>
                 </form>
             </section>
             <section class="bp-card bp-table-card">
@@ -424,12 +426,14 @@
                     </label>
                     <label>
                         Global access
-                        <select name="systemRole">
-                            @foreach (var option in globalAccessOptions)
-                            {
-                                <option value="@option.Key">@option.Value</option>
-                            }
-                        </select>
+                        <span class="bp-select-shell">
+                            <select name="systemRole">
+                                @foreach (var option in globalAccessOptions)
+                                {
+                                    <option value="@option.Key">@option.Value</option>
+                                }
+                            </select>
+                        </span>
                     </label>
                     <button type="submit" class="bp-primary-button">Save user</button>
                 </form>
@@ -499,12 +503,14 @@
                                                     </label>
                                                     <label>
                                                         Global access
-                                                        <select name="systemRole">
-                                                            @foreach (var option in globalAccessOptions)
-                                                            {
-                                                                <option value="@option.Key" selected="@(option.Key.Equals(selectedGlobalAccess, StringComparison.OrdinalIgnoreCase))">@option.Value</option>
-                                                            }
-                                                        </select>
+                                                        <span class="bp-select-shell">
+                                                            <select name="systemRole">
+                                                                @foreach (var option in globalAccessOptions)
+                                                                {
+                                                                    <option value="@option.Key" selected="@(option.Key.Equals(selectedGlobalAccess, StringComparison.OrdinalIgnoreCase))">@option.Value</option>
+                                                                }
+                                                            </select>
+                                                        </span>
                                                     </label>
                                                     <p class="bp-user-access-note">Global access is app-wide. Cluster roles can differ from one cluster membership to another.</p>
                                                     <div class="bp-user-drawer-actions">
@@ -546,19 +552,23 @@
                                                     <input type="hidden" name="email" value="@user.Email" />
                                                     <label>
                                                         Add cluster
-                                                        <select name="clusterId" class="form-select form-select-sm">
-                                                            @foreach (var cluster in Model.Clusters)
-                                                            {
-                                                                <option value="@cluster.ClusterId">@cluster.Name</option>
-                                                            }
-                                                        </select>
+                                                        <span class="bp-select-shell">
+                                                            <select name="clusterId" class="form-select form-select-sm">
+                                                                @foreach (var cluster in Model.Clusters)
+                                                                {
+                                                                    <option value="@cluster.ClusterId">@cluster.Name</option>
+                                                                }
+                                                            </select>
+                                                        </span>
                                                     </label>
                                                     <label>
                                                         Membership role
-                                                        <select name="role" class="form-select form-select-sm">
-                                                            <option value="member">Normal User</option>
-                                                            <option value="clusterAdmin">Local Admin</option>
-                                                        </select>
+                                                        <span class="bp-select-shell">
+                                                            <select name="role" class="form-select form-select-sm">
+                                                                <option value="member">Normal User</option>
+                                                                <option value="clusterAdmin">Local Admin</option>
+                                                            </select>
+                                                        </span>
                                                     </label>
                                                     <button type="submit" class="bp-primary-button bp-button-compact" aria-label="Save membership">Save</button>
                                                 </form>
@@ -759,11 +769,13 @@
                     </label>
                     <label>
                         Permission
-                        <select name="accessMode">
-                            <option value="read">Read</option>
-                            <option value="readWrite">Read + write</option>
-                            <option value="sign">Validate + sign</option>
-                        </select>
+                        <span class="bp-select-shell">
+                            <select name="accessMode">
+                                <option value="read">Read</option>
+                                <option value="readWrite">Read + write</option>
+                                <option value="sign">Create, validate, sign and publish passport</option>
+                            </select>
+                        </span>
                     </label>
                     <fieldset class="bp-token-scope-select">
                         <legend>Scope options</legend>
@@ -845,7 +857,7 @@
                             @foreach (var token in Model.ApiTokens)
                             {
                                 var accessLabel = token.AccessMode.Equals("sign", StringComparison.OrdinalIgnoreCase)
-                                    ? "Validate + sign"
+                                    ? "Create, validate, sign and publish passport"
                                     : token.AccessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase)
                                         ? "Read + write"
                                         : "Read";

@@ -54,6 +54,18 @@ public class LoginController : Controller
         return Redirect("/");
     }
 
+    [HttpPost("forgot-password")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ForgotPassword([FromForm] string email, CancellationToken cancellationToken)
+    {
+        await _authService.StorePasswordResetRequestAsync(
+            email,
+            HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
+            cancellationToken);
+        TempData["ForgotPasswordMessage"] = "If an account exists, reset instructions will be sent when email delivery is configured.";
+        return Redirect("/login");
+    }
+
     [HttpPost("logout")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()

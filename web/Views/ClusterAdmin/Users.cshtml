@@ -3,6 +3,9 @@
     ViewData["Title"] = "Cluster users";
     var errorMessage = ViewData["ErrorMessage"] as string ?? string.Empty;
     var clustersById = Model.Clusters.ToDictionary(cluster => cluster.ClusterId, cluster => cluster, StringComparer.OrdinalIgnoreCase);
+    var userRowIndex = 0;
+    string MembershipRoleLabel(string role) => role.Equals("clusterAdmin", StringComparison.OrdinalIgnoreCase) ? "Local Admin" : "Normal User";
+    string MembershipCountLabel(int count) => $"{count} {(count == 1 ? "membership" : "memberships")}";
 }
 <main class="bp-page bp-admin-page">
     <header class="bp-console-header">
@@ -25,27 +28,27 @@
         <div class="alert alert-danger mt-2 mb-0">@errorMessage</div>
     }
 
-    <div class="bp-management-shell bp-console-split">
+    <div class="bp-management-shell mt-4">
         <section class="bp-card bp-management-create-card bp-console-form-card">
             <div>
-                <span class="bp-summary-title">Cluster user setup</span>
-                <h2 class="h5 mb-2">Add or update user</h2>
-                <p class="text-secondary mb-0">Manage memberships only for clusters where you are a local admin.</p>
+                <span class="bp-summary-title">User setup</span>
+                <h2 class="h5 mb-2">Create User</h2>
+                <p class="text-secondary mb-0">Create users and assign memberships only for clusters you administer.</p>
             </div>
-            <form method="post" action="/cluster-admin/users/save" class="bp-user-form-grid">
+            <form method="post" action="/cluster-admin/users/save" class="bp-user-create-strip">
                 @Html.AntiForgeryToken()
+                <label>
+                    Username
+                    <input type="text" name="name" placeholder="Display name" />
+                </label>
                 <label>
                     Email
                     <input type="email" name="email" placeholder="user@example.test" required />
                 </label>
                 <label>
-                    Name
-                    <input type="text" name="name" placeholder="Display name" />
-                </label>
-                <label>
                     Password
                     <span class="bp-password-field">
-                        <input type="password" name="password" placeholder="Required for new users; optional to reset existing users" />
+                        <input type="password" name="password" placeholder="Required for new users" />
                         <button type="button" class="bp-password-reveal" data-password-reveal aria-label="Show password" title="Show password">
                             <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
@@ -67,131 +70,191 @@
                     </span>
                 </label>
                 <label>
-                    Cluster
-                    <select name="clusterId" required>
-                        @foreach (var cluster in Model.Clusters)
-                        {
-                            <option value="@cluster.ClusterId">@cluster.Name</option>
-                        }
-                    </select>
+                    Add cluster
+                    <span class="bp-select-shell">
+                        <select name="clusterId" required>
+                            @foreach (var cluster in Model.Clusters)
+                            {
+                                <option value="@cluster.ClusterId">@cluster.Name</option>
+                            }
+                        </select>
+                    </span>
                 </label>
                 <label>
-                    Membership role
-                    <select name="role">
-                        <option value="member">Normal User</option>
-                        <option value="clusterAdmin">Local Admin</option>
-                    </select>
+                    Membership Role
+                    <span class="bp-select-shell">
+                        <select name="role">
+                            <option value="member">Normal User</option>
+                            <option value="clusterAdmin">Local Admin</option>
+                        </select>
+                    </span>
                 </label>
-                <button type="submit" class="bp-primary-button">Save user</button>
+                <button type="submit" class="bp-primary-button">Create User</button>
             </form>
         </section>
 
-        <section class="bp-user-management-list">
-            @if (Model.Users.Count == 0)
-            {
-                <article class="bp-management-card bp-console-form-card">
-                    <p class="text-secondary mb-0">No users are connected to your managed clusters yet.</p>
-                </article>
-            }
-            else
-            {
-                @foreach (var user in Model.Users.OrderBy(user => user.Email, StringComparer.OrdinalIgnoreCase))
-                {
-                    var memberships = Model.Memberships
-                        .Where(membership => membership.Email.Equals(user.Email, StringComparison.OrdinalIgnoreCase))
-                        .OrderBy(membership => membership.ClusterId, StringComparer.OrdinalIgnoreCase)
-                        .ToList();
+        <section class="bp-card bp-table-card p-0">
+            <div class="bp-table-scroll">
+                <table class="table align-middle mb-0 bp-console-table bp-user-management-table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Global admin</th>
+                            <th>Cluster memberships</th>
+                            <th class="bp-action-cell">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Users.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="5" class="text-secondary">No users are connected to your managed clusters yet.</td>
+                            </tr>
+                        }
+                        @foreach (var user in Model.Users.OrderBy(user => user.Email, StringComparer.OrdinalIgnoreCase))
+                        {
+                            var memberships = Model.Memberships
+                                .Where(membership => membership.Email.Equals(user.Email, StringComparison.OrdinalIgnoreCase))
+                                .OrderBy(membership => membership.ClusterId, StringComparer.OrdinalIgnoreCase)
+                                .ToList();
+                            var displayName = string.IsNullOrWhiteSpace(user.Name) ? user.Email : user.Name;
+                            var isGlobalAdmin = user.Roles.Contains("Global Admin", StringComparer.OrdinalIgnoreCase);
+                            var drawerId = $"cluster-user-drawer-{userRowIndex++}";
 
-                    <article class="bp-management-card bp-user-card bp-console-form-card">
-                        <div class="bp-user-card-identity">
-                            <h3>@(string.IsNullOrWhiteSpace(user.Name) ? user.Email : user.Name)</h3>
-                            <p>@user.Email</p>
-                            @if (user.Roles.Count > 0)
-                            {
-                                <dl class="bp-user-role-summary">
-                                    <div><dt>System role</dt><dd>@string.Join(", ", user.Roles)</dd></div>
-                                </dl>
-                            }
-                        </div>
-                        <div class="bp-membership-panel">
-                            <h4>Managed cluster memberships</h4>
-                            @if (memberships.Count == 0)
-                            {
-                                <p class="text-secondary mb-0">No cluster membership</p>
-                            }
-                            else
-                            {
-                                <div class="bp-membership-list">
-                                    @foreach (var membership in memberships)
-                                    {
-                                        var clusterName = clustersById.TryGetValue(membership.ClusterId, out var cluster) ? cluster.Name : membership.ClusterId;
-                                        <form method="post" action="/cluster-admin/users/delete-membership" class="bp-membership-row">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="email" value="@membership.Email" />
-                                            <input type="hidden" name="clusterId" value="@membership.ClusterId" />
-                                            <div>
-                                                <strong>@clusterName</strong>
-                                                <span>@membership.ClusterId</span>
-                                            </div>
-                                            <span>@(membership.Role == "clusterAdmin" ? "Local Admin" : "Normal User")</span>
-                                            <button type="submit" class="bp-icon-button" aria-label="Remove membership">x</button>
-                                        </form>
-                                    }
-                                </div>
-                            }
-                        </div>
-                        <form method="post" action="/cluster-admin/users/save" class="bp-membership-edit-form">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="email" value="@user.Email" />
-                            <label>
-                                Display name
-                                <input class="form-control form-control-sm" name="name" value="@user.Name" placeholder="Display name" />
-                            </label>
-                            <label>
-                                New password
-                                <span class="bp-password-field bp-password-field-inline">
-                                    <input class="form-control form-control-sm" type="password" name="password" placeholder="Leave blank to keep current password" />
-                                    <button type="button" class="bp-password-reveal" data-password-reveal aria-label="Show password" title="Show password">
+                            <tr>
+                                <td class="bp-user-name-cell"><strong>@displayName</strong></td>
+                                <td><code>@user.Email</code></td>
+                                <td><span>Global admin: @(isGlobalAdmin ? "Yes" : "No")</span></td>
+                                <td><span class="bp-user-count-pill">@MembershipCountLabel(memberships.Count)</span></td>
+                                <td class="bp-action-cell">
+                                    <button type="button" class="bp-action-button bp-user-drawer-toggle" data-user-drawer-toggle aria-expanded="false" aria-controls="@drawerId" aria-label="Open user actions" title="Open user actions" data-tooltip="Open user actions">
                                         <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                            <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
-                                            <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                                            <path d="m6 9 6 6 6-6" />
                                         </svg>
                                     </button>
-                                </span>
-                            </label>
-                            <label>
-                                Confirm password
-                                <span class="bp-password-field bp-password-field-inline">
-                                    <input class="form-control form-control-sm" type="password" name="passwordConfirmation" placeholder="Type password again" />
-                                    <button type="button" class="bp-password-reveal" data-password-reveal aria-label="Show password" title="Show password">
-                                        <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                            <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
-                                            <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
-                                        </svg>
-                                    </button>
-                                </span>
-                            </label>
-                            <label>
-                                Cluster
-                                <select name="clusterId" class="form-select form-select-sm">
-                                    @foreach (var cluster in Model.Clusters)
-                                    {
-                                        <option value="@cluster.ClusterId">@cluster.Name</option>
-                                    }
-                                </select>
-                            </label>
-                            <label>
-                                Membership role
-                                <select name="role" class="form-select form-select-sm">
-                                    <option value="member">Normal User</option>
-                                    <option value="clusterAdmin">Local Admin</option>
-                                </select>
-                            </label>
-                            <button type="submit" class="bp-secondary-button">Save membership</button>
-                        </form>
-                    </article>
-                }
-            }
+                                </td>
+                            </tr>
+                            <tr id="@drawerId" class="bp-user-drawer-row" hidden>
+                                <td colspan="5">
+                                    <div class="bp-user-drawer-grid bp-console-form-card">
+                                        <section class="bp-user-drawer-panel">
+                                            <h3>Edit profile</h3>
+                                            <form method="post" action="/cluster-admin/users/save" class="bp-user-profile-form">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="email" value="@user.Email" />
+                                                <label>
+                                                    Username
+                                                    <input type="text" name="name" value="@displayName" />
+                                                </label>
+                                                <label>
+                                                    Account email (read-only)
+                                                    <input type="email" value="@user.Email" readonly />
+                                                </label>
+                                                <p class="bp-user-access-note">Global admin: @(isGlobalAdmin ? "Yes" : "No"). Cluster admins can manage memberships only inside their assigned clusters.</p>
+                                                <div class="bp-user-drawer-actions">
+                                                    <button type="submit" class="bp-primary-button">Save profile</button>
+                                                </div>
+                                            </form>
+                                        </section>
+
+                                        <section class="bp-user-drawer-panel">
+                                            <h3>Cluster memberships</h3>
+                                            @if (memberships.Count == 0)
+                                            {
+                                                <p class="text-secondary mb-0">No cluster membership</p>
+                                            }
+                                            else
+                                            {
+                                                <div class="bp-user-membership-list">
+                                                    @foreach (var membership in memberships)
+                                                    {
+                                                        var clusterName = clustersById.TryGetValue(membership.ClusterId, out var cluster) ? cluster.Name : membership.ClusterId;
+                                                        <form method="post" action="/cluster-admin/users/delete-membership" class="bp-user-membership-row">
+                                                            @Html.AntiForgeryToken()
+                                                            <input type="hidden" name="email" value="@membership.Email" />
+                                                            <input type="hidden" name="clusterId" value="@membership.ClusterId" />
+                                                            <span class="bp-user-membership-name">@clusterName</span>
+                                                            <span class="bp-user-membership-role">@MembershipRoleLabel(membership.Role)</span>
+                                                            <button type="submit" class="bp-icon-button is-danger" aria-label="Remove membership">
+                                                                <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                                    <path d="M18 6 6 18" />
+                                                                    <path d="m6 6 12 12" />
+                                                                </svg>
+                                                            </button>
+                                                        </form>
+                                                    }
+                                                </div>
+                                            }
+                                            <form method="post" action="/cluster-admin/users/save" class="bp-user-membership-add-row">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="email" value="@user.Email" />
+                                                <label>
+                                                    Add cluster
+                                                    <span class="bp-select-shell">
+                                                        <select name="clusterId" class="form-select form-select-sm">
+                                                            @foreach (var cluster in Model.Clusters)
+                                                            {
+                                                                <option value="@cluster.ClusterId">@cluster.Name</option>
+                                                            }
+                                                        </select>
+                                                    </span>
+                                                </label>
+                                                <label>
+                                                    Membership Role
+                                                    <span class="bp-select-shell">
+                                                        <select name="role" class="form-select form-select-sm">
+                                                            <option value="member">Normal User</option>
+                                                            <option value="clusterAdmin">Local Admin</option>
+                                                        </select>
+                                                    </span>
+                                                </label>
+                                                <button type="submit" class="bp-primary-button bp-button-compact" aria-label="Save membership">Save</button>
+                                            </form>
+                                        </section>
+
+                                        <section class="bp-user-drawer-panel">
+                                            <h3>Change password</h3>
+                                            <form method="post" action="/cluster-admin/users/save" class="bp-user-password-form">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="email" value="@user.Email" />
+                                                <input type="hidden" name="name" value="@displayName" />
+                                                <label>
+                                                    New password
+                                                    <span class="bp-password-field">
+                                                        <input type="password" name="password" placeholder="New password" />
+                                                        <button type="button" class="bp-password-reveal" data-password-reveal aria-label="Show password" title="Show password">
+                                                            <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+                                                                <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                                                            </svg>
+                                                        </button>
+                                                    </span>
+                                                </label>
+                                                <label>
+                                                    Confirm password
+                                                    <span class="bp-password-field">
+                                                        <input type="password" name="passwordConfirmation" placeholder="Type password again" />
+                                                        <button type="button" class="bp-password-reveal" data-password-reveal aria-label="Show password" title="Show password">
+                                                            <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+                                                                <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                                                            </svg>
+                                                        </button>
+                                                    </span>
+                                                </label>
+                                                <div class="bp-user-drawer-actions">
+                                                    <button type="submit" class="bp-primary-button">Save password</button>
+                                                </div>
+                                            </form>
+                                        </section>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
         </section>
     </div>
 </main>
@@ -199,6 +262,19 @@
 @section Scripts {
     <script>
         (function () {
+            document.querySelectorAll('[data-user-drawer-toggle]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const row = document.getElementById(button.getAttribute('aria-controls'));
+                    if (!row) {
+                        return;
+                    }
+
+                    const expanded = button.getAttribute('aria-expanded') === 'true';
+                    button.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+                    row.hidden = expanded;
+                });
+            });
+
             document.querySelectorAll('[data-password-reveal]').forEach((button) => {
                 button.addEventListener('click', () => {
                     const input = button.closest('.bp-password-field')?.querySelector('input');

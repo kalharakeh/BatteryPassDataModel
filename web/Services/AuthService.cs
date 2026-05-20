@@ -116,6 +116,22 @@ public sealed class AuthService
         return null;
     }
 
+    public async Task StorePasswordResetRequestAsync(string email, string remoteIp, CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email))
+        {
+            return;
+        }
+
+        await _mongoContext.Database.GetCollection<BsonDocument>("passwordResetRequests").InsertOneAsync(new BsonDocument
+        {
+            ["email"] = email.Trim().ToLowerInvariant(),
+            ["remoteIp"] = remoteIp,
+            ["requestedAt"] = DateTimeOffset.UtcNow.ToString("O"),
+            ["status"] = "email-not-configured"
+        }, cancellationToken: cancellationToken);
+    }
+
     private static ClaimsPrincipal BuildPrincipal(string email, string name, IReadOnlyList<string> roles)
     {
         var claims = new List<Claim>

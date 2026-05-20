@@ -11,6 +11,10 @@
                 {
                     <div class="alert alert-danger">@Model.ErrorMessage</div>
                 }
+                @if (TempData["ForgotPasswordMessage"] is string forgotMessage && !string.IsNullOrWhiteSpace(forgotMessage))
+                {
+                    <div class="alert alert-info">@forgotMessage</div>
+                }
                 <form method="post" action="/login">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
@@ -23,6 +27,15 @@
                         <input class="form-control" type="password" id="Password" name="Password" required />
                     </div>
                     <button type="submit" class="btn btn-success w-100">Sign in</button>
+                </form>
+                <form method="post" action="/login/forgot-password" class="mt-3">
+                    @Html.AntiForgeryToken()
+                    <label class="form-label" for="ForgotEmail">Forgot password?</label>
+                    <div class="input-group">
+                        <input class="form-control" type="email" id="ForgotEmail" name="email" aria-label="Email" required />
+                        <button class="btn btn-outline-secondary" type="submit">Request reset</button>
+                    </div>
+                    <p class="small text-secondary mt-2 mb-0">If an account exists, reset instructions will be sent when email delivery is configured.</p>
                 </form>
             </div>
         </div>

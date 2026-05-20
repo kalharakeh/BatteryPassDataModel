@@ -95,6 +95,26 @@ public sealed class AdminDenseConsoleLayoutTests
     }
 
     [Fact]
+    public void AdminUxPolish_ShouldUseExplicitRolesDuplicateClusterValidationAndStandardSelects()
+    {
+        var admin = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var clusterUsers = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "Users.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("Create Cluster", clusters);
+        Assert.Contains("Cluster ID already exists.", admin);
+        Assert.Contains("Global admin: Yes", clusters);
+        Assert.Contains("Global admin: No", clusters);
+        Assert.DoesNotContain("No global admin", clusters);
+        Assert.Contains("bp-select-shell", clusters);
+        Assert.Contains("bp-select-shell", clusterUsers);
+        Assert.Contains(".bp-select-shell::after", css);
+        Assert.Contains("bp-user-management-table", clusterUsers);
+        Assert.DoesNotContain("bp-console-split", clusterUsers);
+    }
+
+    [Fact]
     public void AdminRegisteredClusters_ShouldUseDenseProductionTableWithoutMockupTabStyles()
     {
         var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
@@ -194,7 +214,8 @@ public sealed class AdminDenseConsoleLayoutTests
         Assert.Contains("bp-local-admin-nav", users);
         Assert.Contains("bp-local-admin-nav", edit);
         Assert.Contains("bp-local-admin-nav", tokens);
-        Assert.Contains("bp-console-split", users);
+        Assert.Contains("bp-user-management-table", users);
+        Assert.DoesNotContain("bp-console-split", users);
         Assert.Contains("bp-local-edit-grid", edit);
         Assert.Contains("bp-field-shell", edit);
         Assert.Contains("bp-console-table", tokens);

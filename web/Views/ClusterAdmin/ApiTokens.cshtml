@@ -46,11 +46,13 @@
                 </label>
                 <label>
                     Access mode
-                    <select name="accessMode">
-                        <option value="read">Read</option>
-                        <option value="readWrite">Read + write</option>
-                        <option value="sign">Validate + sign</option>
-                    </select>
+                    <span class="bp-select-shell">
+                        <select name="accessMode">
+                            <option value="read">Read</option>
+                            <option value="readWrite">Read + write</option>
+                            <option value="sign">Create, validate, sign and publish passport</option>
+                        </select>
+                    </span>
                 </label>
                 <fieldset class="bp-cluster-picker">
                     <legend>Clusters</legend>
@@ -96,7 +98,7 @@
                         @foreach (var token in Model.ApiTokens)
                         {
                             var accessLabel = token.AccessMode.Equals("sign", StringComparison.OrdinalIgnoreCase)
-                                ? "Validate + sign"
+                                ? "Create, validate, sign and publish passport"
                                 : token.AccessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase)
                                     ? "Read + write"
                                     : "Read";

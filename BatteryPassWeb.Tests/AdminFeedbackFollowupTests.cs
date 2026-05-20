@@ -129,7 +129,7 @@ public sealed class AdminFeedbackFollowupTests
         Assert.Contains("data-confirm-action", clusterTokens);
         Assert.Contains("bp-cluster-management-table", clusters);
         Assert.Contains("bp-user-management-table", clusters);
-        Assert.Contains("bp-user-management-list", clusterUsers);
+        Assert.Contains("bp-user-management-table", clusterUsers);
         Assert.DoesNotContain("class=\"bp-tag\"", clusters);
         Assert.DoesNotContain("class=\"bp-tag\"", clusterUsers);
         Assert.Contains("bp-token-console", clusters);

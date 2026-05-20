@@ -502,6 +502,29 @@ a:hover {
   color: #56687b;
 }
 
+.bp-select-shell {
+  position: relative;
+  display: block;
+}
+
+.bp-select-shell select {
+  appearance: none;
+  padding-right: 2.2rem !important;
+}
+
+.bp-select-shell::after {
+  position: absolute;
+  right: 0.85rem;
+  top: 50%;
+  width: 0.48rem;
+  height: 0.48rem;
+  border-right: 1.8px solid #405367;
+  border-bottom: 1.8px solid #405367;
+  content: "";
+  pointer-events: none;
+  transform: translateY(-65%) rotate(45deg);
+}
+
 .bp-console-actions {
   display: flex;
   gap: 8px;

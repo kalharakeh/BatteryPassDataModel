@@ -25,6 +25,18 @@ public sealed class ClusterRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<BsonDocument?> GetClusterByIdAsync(string clusterId, CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(clusterId))
+        {
+            return null;
+        }
+
+        return await _mongoContext.Database.GetCollection<BsonDocument>("clusters")
+            .Find(Builders<BsonDocument>.Filter.Eq("clusterId", clusterId.Trim()))
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<BsonDocument>> ListClusterMembershipsAsync(CancellationToken cancellationToken = default)
     {
         if (_mongoContext.Database == null)

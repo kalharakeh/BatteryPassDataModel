@@ -1037,6 +1037,11 @@ public class AdminController : Controller
             clusterId = $"cluster-{Guid.NewGuid():N}";
         }
 
+        if (await _clusterRepository.GetClusterByIdAsync(clusterId, cancellationToken) != null)
+        {
+            return Redirect($"/admin/clusters?tab=clusters&error={Uri.EscapeDataString("Cluster ID already exists.")}");
+        }
+
         await _clusterRepository.UpsertClusterAsync(clusterId, name, cancellationToken);
         return Redirect("/admin/clusters?tab=clusters");
     }
