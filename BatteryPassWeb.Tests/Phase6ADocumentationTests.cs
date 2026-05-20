@@ -122,7 +122,7 @@ public sealed class Phase6ADocumentationTests
         Assert.Contains("CORE-FLEET-002", accounts);
         Assert.Contains("Local editable fields", adminHelp);
         Assert.Contains("Token Value", apiHelp);
-        Assert.Contains("Sign tokens", apiHelp);
+        Assert.Contains("create, validate, sign and publish passport token", apiHelp);
         Assert.DoesNotContain("Battery Secret", apiHelp);
     }
 

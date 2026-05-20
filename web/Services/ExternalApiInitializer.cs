@@ -139,7 +139,7 @@ public sealed class ExternalApiInitializer
         await EnsureFixedSampleTokenAsync(
             SampleSignTokenId,
             SampleSignTokenValue,
-            "Sample token (validate, sign, publish)",
+            "Sample token (create, validate, sign and publish passport)",
             ExternalTokenAccessMode.Sign,
             cancellationToken);
     }

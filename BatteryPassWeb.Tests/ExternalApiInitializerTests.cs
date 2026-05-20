@@ -57,7 +57,7 @@ public sealed class ExternalApiInitializerTests
         Assert.Contains("ExternalApiInitializer.SampleApiClusterId", helpController);
         Assert.Contains("SampleSignTokenId", helpController);
         Assert.Contains("SampleSignToken", helpModel);
-        Assert.Contains("Sample validate/sign/publish token", helpView);
+        Assert.Contains("Sample create, validate, sign and publish passport token", helpView);
         Assert.Contains("const sampleSignToken", helpView);
         Assert.Contains("'sample-sign': sampleSignToken", helpView);
         Assert.Contains("tokenPreset: 'sample-sign'", helpView);

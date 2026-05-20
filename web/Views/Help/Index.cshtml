@@ -33,7 +33,7 @@
                 <code>@Model.SampleReadWriteToken</code>
             </div>
             <div>
-                <p class="mb-1 text-secondary small">Sample validate/sign/publish token</p>
+                <p class="mb-1 text-secondary small">Sample create, validate, sign and publish passport token</p>
                 <code>@Model.SampleSignToken</code>
             </div>
         </div>
@@ -174,7 +174,7 @@
                         <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">POST</span></td>
                             <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/passports</code><small>Create a passport snapshot</small></span></td>
-                            <td><span class="bp-help-access-pill">Read-write</span></td>
+                            <td><span class="bp-help-access-pill">Create, validate, sign and publish passport</span></td>
                             <td>Create the next passport revision for a Battery ID.</td>
                             <td class="bp-action-cell">
                                 <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-passports" aria-expanded="false" aria-controls="api-detail-passports" aria-label="Show passport creation endpoint details" title="Show passport creation endpoint details" data-tooltip="Details">
@@ -183,9 +183,20 @@
                             </td>
                         </tr>
                         <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">GET</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/passports</code><small>Passport history</small></span></td>
+                            <td><span class="bp-help-access-pill">Read</span></td>
+                            <td>List non-archived passport snapshots for a Battery ID.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-passport-list" aria-expanded="false" aria-controls="api-detail-passport-list" aria-label="Show passport list endpoint details" title="Show passport list endpoint details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">POST</span></td>
                             <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/passports/{passportId}/validate</code><small>Validation gate</small></span></td>
-                            <td><span class="bp-help-access-pill">Sign</span></td>
+                            <td><span class="bp-help-access-pill">Create, validate, sign and publish passport</span></td>
                             <td>Run trust validation before signing.</td>
                             <td class="bp-action-cell">
                                 <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-validate" aria-expanded="false" aria-controls="api-detail-validate" aria-label="Show validate endpoint details" title="Show validate endpoint details" data-tooltip="Details">
@@ -196,7 +207,7 @@
                         <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">POST</span></td>
                             <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/passports/{passportId}/sign</code><small>Proof creation</small></span></td>
-                            <td><span class="bp-help-access-pill">Sign</span></td>
+                            <td><span class="bp-help-access-pill">Create, validate, sign and publish passport</span></td>
                             <td>Create the signed proof for the current passport core.</td>
                             <td class="bp-action-cell">
                                 <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-sign" aria-expanded="false" aria-controls="api-detail-sign" aria-label="Show sign endpoint details" title="Show sign endpoint details" data-tooltip="Details">
@@ -207,7 +218,7 @@
                         <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">POST</span></td>
                             <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/passports/{passportId}/publish</code><small>Public registry gate</small></span></td>
-                            <td><span class="bp-help-access-pill">Sign</span></td>
+                            <td><span class="bp-help-access-pill">Create, validate, sign and publish passport</span></td>
                             <td>Publish only after validation and signing are current.</td>
                             <td class="bp-action-cell">
                                 <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-publish" aria-expanded="false" aria-controls="api-detail-publish" aria-label="Show publish endpoint details" title="Show publish endpoint details" data-tooltip="Details">
@@ -291,7 +302,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 </article>
 
                 <article id="api-detail-telemetry" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Telemetry write</span><h3>Append one or more operational points.</h3><p>Supports a single object, an array, or <code>{ "points": [...] }</code>. Writable telemetry fields: <code>currentConsumptionKwh</code>, <code>currentChargeLevelPct</code>, <code>currentVoltageV</code>, <code>currentCurrentA</code>, optional <code>measuredAt</code>.</p></div>
+                    <div><span class="bp-summary-title">Telemetry write</span><h3>Append one or more operational points.</h3><p>Supports a single object, an array, <code>{ "points": [...] }</code>, or a <code>series</code> object for one or more variables. Series points are sorted by timestamp; malformed points are ignored and reported without breaking the request when at least one valid point remains.</p></div>
                     <pre class="bp-help-pre"><code>{
   "points": [
     {
@@ -302,6 +313,19 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
       "measuredAt": "2026-05-05T10:15:00Z"
     }
   ]
+}
+
+{
+  "series": {
+    "currentConsumptionKwh": [
+      { "measuredAt": "2026-05-20T09:00:00Z", "value": 163.4 },
+      { "measuredAt": "2026-05-20T09:05:00Z", "value": 164.1 }
+    ],
+    "currentVoltageV": [
+      { "measuredAt": "2026-05-20T09:00:00Z", "value": 398.4 },
+      { "measuredAt": "2026-05-20T09:05:00Z", "value": 399.1 }
+    ]
+  }
 }</code></pre>
                 </article>
 
@@ -343,12 +367,17 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 </article>
 
                 <article id="api-detail-passports" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Passport snapshot</span><h3>Create a new passport snapshot.</h3><p>Create a new passport snapshot for the Battery ID. The response returns the new Passport ID.</p></div>
+                    <div><span class="bp-summary-title">Passport snapshot</span><h3>Create a new passport snapshot.</h3><p>Create a new passport snapshot for the Battery ID. This requires the create, validate, sign and publish passport token. The response returns the new Passport ID.</p></div>
                     <pre class="bp-help-pre"><code>POST @Model.BasePath/batteries/@Model.SampleBatteryId/passports</code></pre>
                 </article>
 
+                <article id="api-detail-passport-list" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
+                    <div><span class="bp-summary-title">Passport list</span><h3>List battery passport snapshots.</h3><p>Returns non-archived passports for the Battery ID with Passport ID, status, created date, and latest marker.</p></div>
+                    <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/@Model.SampleBatteryId/passports</code></pre>
+                </article>
+
                 <article id="api-detail-validate" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Validate</span><h3>Validate with a Sign token.</h3><p>Sign tokens can validate and sign only for their scoped clusters.</p></div>
+                    <div><span class="bp-summary-title">Validate</span><h3>Validate with the create, validate, sign and publish passport token.</h3><p>These tokens can create, validate, sign and publish passports only for their scoped clusters.</p></div>
                     <pre class="bp-help-pre"><code>POST @Model.BasePath/passports/@Model.SamplePassportId/validate</code></pre>
                 </article>
 
@@ -385,8 +414,10 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                         <option value="readSectionCircularity">Read section: Circularity</option>
                         <option value="readValuesAliases">Read values: ratedEnergy, ratedCapacity, nickelMass</option>
                         <option value="readPathsAll">List readable paths (full)</option>
+                        <option value="readBatteryPassports">List battery passports</option>
                         <option value="readHistory24h">Read telemetry history 24h</option>
                         <option value="writeTelemetryPoint">Write telemetry point</option>
+                        <option value="writeTelemetrySeries">Write telemetry series</option>
                         <option value="patchOperations">Patch operations metadata</option>
                         <option value="patchBatteryModel">Patch Battery Model</option>
                         <option value="patchSoftwareVersion">Patch Software Version</option>
@@ -415,7 +446,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                     <select id="tester-token-preset">
                         <option value="sample-read">Sample read token</option>
                         <option value="sample-read-write">Sample read-write token</option>
-                        <option value="sample-sign">Sample validate/sign/publish token</option>
+                        <option value="sample-sign">Sample create, validate, sign and publish passport token</option>
                         <option value="custom">Custom token</option>
                     </select>
                 </label>
@@ -575,6 +606,12 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                     body: '',
                     tokenPreset: 'sample-read'
                 },
+                readBatteryPassports: {
+                    method: 'GET',
+                    path: `${basePath}/batteries/${sampleBatteryId}/passports`,
+                    body: '',
+                    tokenPreset: 'sample-read'
+                },
                 readHistory24h: {
                     method: 'GET',
                     path: `${basePath}/batteries/${sampleBatteryId}/telemetry/history?hours=24`,
@@ -593,6 +630,26 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                                 currentCurrentA: 52.3
                             }
                         ]
+                    }, null, 2),
+                    tokenPreset: 'sample-read-write'
+                },
+                writeTelemetrySeries: {
+                    method: 'POST',
+                    path: `${basePath}/batteries/${sampleBatteryId}/telemetry`,
+                    body: JSON.stringify({
+                        series: {
+                            currentConsumptionKwh: [
+                                { measuredAt: '2026-05-20T09:00:00Z', value: 163.4 },
+                                { measuredAt: '2026-05-20T09:05:00Z', value: 164.1 }
+                            ],
+                            currentChargeLevelPct: [
+                                { measuredAt: '2026-05-20T09:00:00Z', value: 79.8 }
+                            ],
+                            currentVoltageV: [
+                                { measuredAt: '2026-05-20T09:00:00Z', value: 398.4 },
+                                { measuredAt: '2026-05-20T09:05:00Z', value: 399.1 }
+                            ]
+                        }
                     }, null, 2),
                     tokenPreset: 'sample-read-write'
                 },

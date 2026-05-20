@@ -94,6 +94,29 @@ public class ExternalApiController : ControllerBase
         });
     }
 
+    [HttpGet("batteries/{batteryId}/passports")]
+    public async Task<IActionResult> ListBatteryPassports(string batteryId, CancellationToken cancellationToken)
+    {
+        var auth = await AuthorizeBatteryAsync(batteryId, ExternalTokenRequirement.Read, cancellationToken);
+        if (auth.ErrorResult != null)
+        {
+            return auth.ErrorResult;
+        }
+
+        var passports = await _passportRepository.ListByBatteryIdAsync(batteryId, includeArchived: false, cancellationToken);
+        return Envelope(StatusCodes.Status200OK, "Battery passports read successfully.", new
+        {
+            batteryId,
+            passports = passports.Select(passport => new
+            {
+                passportId = BsonHelpers.GetString(passport, "passportId"),
+                status = PassportRepository.BuildPassportStatusLabel(passport),
+                createdAt = BsonHelpers.GetString(passport, "snapshot", "createdAt"),
+                isLatestForBattery = passport.GetValue("isLatestForBattery", false).ToBoolean()
+            }).ToList()
+        });
+    }
+
     [HttpGet("batteries/{batteryId}/section/{sectionName}")]
     public async Task<IActionResult> GetBatterySection(string batteryId, string sectionName, CancellationToken cancellationToken)
     {
@@ -265,6 +288,7 @@ public class ExternalApiController : ControllerBase
             return Envelope(StatusCodes.Status400BadRequest, telemetryError);
         }
 
+        points = points.OrderBy(point => point.MeasuredAtUtc).ToList();
         await _batteryTelemetryRepository.AppendTelemetryAsync(batteryId, points, cancellationToken);
 
         var latestPoint = points.OrderByDescending(point => point.MeasuredAtUtc).First();
@@ -303,7 +327,8 @@ public class ExternalApiController : ControllerBase
             batteryId,
             passportId = latestPassportId,
             pointsAccepted = points.Count,
-            latestMeasuredAt = latestPoint.MeasuredAtUtc.ToString("O")
+            latestMeasuredAt = latestPoint.MeasuredAtUtc.ToString("O"),
+            warnings = string.IsNullOrWhiteSpace(telemetryError) ? Array.Empty<string>() : new[] { telemetryError }
         });
     }
 
@@ -905,8 +930,16 @@ public class ExternalApiController : ControllerBase
     {
         points = [];
         error = string.Empty;
+        var ignoredMalformedPoints = 0;
 
-        if (payload.ValueKind == JsonValueKind.Object && TryGetPropertyIgnoreCase(payload, "points", out var pointsElement))
+        if (payload.ValueKind == JsonValueKind.Object && TryGetPropertyIgnoreCase(payload, "series", out var seriesElement))
+        {
+            if (!TryParseTelemetrySeries(seriesElement, points, ref ignoredMalformedPoints, out error))
+            {
+                return false;
+            }
+        }
+        else if (payload.ValueKind == JsonValueKind.Object && TryGetPropertyIgnoreCase(payload, "points", out var pointsElement))
         {
             if (pointsElement.ValueKind != JsonValueKind.Array)
             {
@@ -916,34 +949,19 @@ public class ExternalApiController : ControllerBase
 
             foreach (var item in pointsElement.EnumerateArray())
             {
-                if (!TryParseTelemetryPoint(item, out var point, out error))
-                {
-                    return false;
-                }
-
-                points.Add(point);
+                AddParsedTelemetryPoint(item, points, ref ignoredMalformedPoints);
             }
         }
         else if (payload.ValueKind == JsonValueKind.Array)
         {
             foreach (var item in payload.EnumerateArray())
             {
-                if (!TryParseTelemetryPoint(item, out var point, out error))
-                {
-                    return false;
-                }
-
-                points.Add(point);
+                AddParsedTelemetryPoint(item, points, ref ignoredMalformedPoints);
             }
         }
         else if (payload.ValueKind == JsonValueKind.Object)
         {
-            if (!TryParseTelemetryPoint(payload, out var point, out error))
-            {
-                return false;
-            }
-
-            points.Add(point);
+            AddParsedTelemetryPoint(payload, points, ref ignoredMalformedPoints);
         }
         else
         {
@@ -953,11 +971,123 @@ public class ExternalApiController : ControllerBase
 
         if (points.Count == 0)
         {
-            error = "At least one telemetry point is required.";
+            error = ignoredMalformedPoints > 0
+                ? $"At least one valid telemetry point is required; ignored {ignoredMalformedPoints} malformed telemetry point(s)."
+                : "At least one telemetry point is required.";
             return false;
         }
 
+        points = points.OrderBy(point => point.MeasuredAtUtc).ToList();
+        if (ignoredMalformedPoints > 0)
+        {
+            error = $"Ignored {ignoredMalformedPoints} malformed telemetry point(s).";
+        }
+
         return true;
+    }
+
+    private static void AddParsedTelemetryPoint(JsonElement item, List<TelemetryWritePoint> points, ref int ignoredMalformedPoints)
+    {
+        if (TryParseTelemetryPoint(item, out var point, out _))
+        {
+            points.Add(point);
+            return;
+        }
+
+        ignoredMalformedPoints++;
+    }
+
+    private static bool TryParseTelemetrySeries(
+        JsonElement seriesElement,
+        List<TelemetryWritePoint> points,
+        ref int ignoredMalformedPoints,
+        out string error)
+    {
+        error = string.Empty;
+        if (seriesElement.ValueKind != JsonValueKind.Object)
+        {
+            error = "series must be an object whose properties are telemetry field names.";
+            return false;
+        }
+
+        foreach (var series in seriesElement.EnumerateObject())
+        {
+            if (series.Value.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in series.Value.EnumerateArray())
+                {
+                    AddParsedTelemetrySeriesPoint(series.Name, item, points, ref ignoredMalformedPoints);
+                }
+
+                continue;
+            }
+
+            AddParsedTelemetrySeriesPoint(series.Name, series.Value, points, ref ignoredMalformedPoints);
+        }
+
+        return true;
+    }
+
+    private static void AddParsedTelemetrySeriesPoint(
+        string fieldName,
+        JsonElement item,
+        List<TelemetryWritePoint> points,
+        ref int ignoredMalformedPoints)
+    {
+        if (TryParseTelemetrySeriesPoint(fieldName, item, out var point))
+        {
+            points.Add(point);
+            return;
+        }
+
+        ignoredMalformedPoints++;
+    }
+
+    private static bool TryParseTelemetrySeriesPoint(string fieldName, JsonElement element, out TelemetryWritePoint point)
+    {
+        point = new TelemetryWritePoint
+        {
+            MeasuredAtUtc = DateTime.UtcNow
+        };
+
+        if (element.ValueKind != JsonValueKind.Object
+            || !TryGetPropertyIgnoreCase(element, "value", out var valueElement)
+            || valueElement.ValueKind != JsonValueKind.Number
+            || !valueElement.TryGetDouble(out var value)
+            || (!TryGetPropertyIgnoreCase(element, "measuredAt", out var measuredAtElement)
+                && !TryGetPropertyIgnoreCase(element, "timestamp", out measuredAtElement))
+            || measuredAtElement.ValueKind != JsonValueKind.String
+            || !DateTime.TryParse(measuredAtElement.GetString(), out var measuredAtUtc))
+        {
+            return false;
+        }
+
+        measuredAtUtc = measuredAtUtc.ToUniversalTime();
+        if (fieldName.Equals("currentConsumptionKwh", StringComparison.OrdinalIgnoreCase))
+        {
+            point = new TelemetryWritePoint { CurrentConsumptionKwh = value, MeasuredAtUtc = measuredAtUtc };
+            return true;
+        }
+
+        if (fieldName.Equals("currentChargeLevelPct", StringComparison.OrdinalIgnoreCase))
+        {
+            point = new TelemetryWritePoint { CurrentChargeLevelPct = value, MeasuredAtUtc = measuredAtUtc };
+            return true;
+        }
+
+        if (fieldName.Equals("currentVoltageV", StringComparison.OrdinalIgnoreCase))
+        {
+            point = new TelemetryWritePoint { CurrentVoltageV = value, MeasuredAtUtc = measuredAtUtc };
+            return true;
+        }
+
+        if (fieldName.Equals("currentCurrentA", StringComparison.OrdinalIgnoreCase))
+        {
+            point = new TelemetryWritePoint { CurrentCurrentA = value, MeasuredAtUtc = measuredAtUtc };
+            return true;
+        }
+
+        return false;
     }
 
     private static bool TryParseTelemetryPoint(JsonElement element, out TelemetryWritePoint point, out string error)

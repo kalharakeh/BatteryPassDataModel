@@ -45,6 +45,19 @@ public sealed class ExternalApiBatteryIdTests
         Assert.DoesNotContain("/battery-version", help);
     }
 
+    [Fact]
+    public void ExternalApi_ShouldListBatteryPassportsAndUseCreateValidateSignPublishLabel()
+    {
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
+        var help = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
+        var seed = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateService.cs"));
+
+        Assert.Contains("[HttpGet(\"batteries/{batteryId}/passports\")]", controller);
+        Assert.Contains("ListBatteryPassports", controller);
+        Assert.Contains("create, validate, sign and publish passport", help);
+        Assert.Contains("Sample token (create, validate, sign and publish passport)", seed);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

@@ -668,7 +668,7 @@ public sealed class ProductTemplateService
         await _externalApiRepository.UpsertFixedTokenAsync(
             ExternalApiInitializer.SampleSignTokenId,
             ExternalApiInitializer.SampleSignTokenValue,
-            "Sample token (validate, sign, publish)",
+            "Sample token (create, validate, sign and publish passport)",
             ExternalTokenAccessMode.Sign,
             [ExternalApiInitializer.SampleApiClusterId],
             allowUnassigned: false,
