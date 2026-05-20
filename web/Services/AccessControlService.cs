@@ -229,6 +229,30 @@ public sealed class AccessControlService
         return managedClusterIds.Contains(clusterId, StringComparer.OrdinalIgnoreCase);
     }
 
+    public async Task<bool> CanViewBatteryHistoryAsync(ClaimsPrincipal user, string clusterId, CancellationToken cancellationToken = default)
+    {
+        if (IsAdmin(user))
+        {
+            return true;
+        }
+
+        return await CanAdministerClusterAsync(user, clusterId, cancellationToken);
+    }
+
+    public async Task<bool> CanEditLatestBatteryPassportAsync(
+        ClaimsPrincipal user,
+        BsonDocument passport,
+        CancellationToken cancellationToken = default)
+    {
+        if (IsAdmin(user))
+        {
+            return true;
+        }
+
+        return passport.GetValue("isLatestForBattery", false).ToBoolean()
+            && await CanAdministerClusterAsync(user, BsonHelpers.GetString(passport, "clusterId"), cancellationToken);
+    }
+
     public async Task<bool> CanDownloadPassportDocumentAsync(
         ClaimsPrincipal user,
         string clusterId,

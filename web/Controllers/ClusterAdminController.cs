@@ -17,6 +17,7 @@ public class ClusterAdminController : Controller
     private readonly AccessControlService _accessControlService;
     private readonly ExternalApiRepository _externalApiRepository;
     private readonly LocalAdminEditableFieldPolicyService _localAdminEditableFieldPolicyService;
+    private readonly PassportTrustWorkflowService _passportTrustWorkflowService;
 
     public ClusterAdminController(
         PassportRepository passportRepository,
@@ -24,7 +25,8 @@ public class ClusterAdminController : Controller
         PassportViewModelFactory viewModelFactory,
         AccessControlService accessControlService,
         ExternalApiRepository externalApiRepository,
-        LocalAdminEditableFieldPolicyService localAdminEditableFieldPolicyService)
+        LocalAdminEditableFieldPolicyService localAdminEditableFieldPolicyService,
+        PassportTrustWorkflowService passportTrustWorkflowService)
     {
         _passportRepository = passportRepository;
         _clusterRepository = clusterRepository;
@@ -32,6 +34,7 @@ public class ClusterAdminController : Controller
         _accessControlService = accessControlService;
         _externalApiRepository = externalApiRepository;
         _localAdminEditableFieldPolicyService = localAdminEditableFieldPolicyService;
+        _passportTrustWorkflowService = passportTrustWorkflowService;
     }
 
     [HttpGet("")]
@@ -105,6 +108,14 @@ public class ClusterAdminController : Controller
         {
             return NotFound();
         }
+        if (!AccessControlService.IsAdmin(User) && !IsLatestForBattery(document))
+        {
+            return Forbid();
+        }
+        if (!await _accessControlService.CanEditLatestBatteryPassportAsync(User, document, cancellationToken))
+        {
+            return Forbid();
+        }
 
         var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
         var clusterNamesById = clusters
@@ -150,11 +161,89 @@ public class ClusterAdminController : Controller
         {
             return NotFound();
         }
+        if (!AccessControlService.IsAdmin(User) && !IsLatestForBattery(document))
+        {
+            return Forbid();
+        }
+        if (!await _accessControlService.CanEditLatestBatteryPassportAsync(User, document, cancellationToken))
+        {
+            return Forbid();
+        }
 
         var editablePolicy = await _localAdminEditableFieldPolicyService.GetPolicyAsync(cancellationToken);
         ApplyLocalPassportForm(document, Request.Form, DateTime.UtcNow.ToString("O"), editablePolicy.EditableFieldKeys.ToHashSet(StringComparer.OrdinalIgnoreCase));
         await _passportRepository.ReplaceAsync(passportId, document, cancellationToken);
         return Redirect($"/cluster-admin/passports/{Uri.EscapeDataString(passportId)}/edit?status=saved");
+    }
+
+    [HttpPost("passports/{passportId}/validate")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ValidatePassport(string passportId, CancellationToken cancellationToken)
+    {
+        var document = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
+        if (document == null)
+        {
+            return NotFound();
+        }
+
+        if (!await _accessControlService.CanEditLatestBatteryPassportAsync(User, document, cancellationToken))
+        {
+            return Forbid();
+        }
+
+        var result = await _passportTrustWorkflowService.ValidateAsync(
+            passportId,
+            CurrentActor(),
+            "cluster-admin-ui",
+            cancellationToken);
+        return Redirect(ClusterPassportEditRedirect(passportId, result.Success ? "validated" : string.Empty, result.Success ? string.Empty : result.Message));
+    }
+
+    [HttpPost("passports/{passportId}/sign")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SignPassport(string passportId, CancellationToken cancellationToken)
+    {
+        var document = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
+        if (document == null)
+        {
+            return NotFound();
+        }
+
+        if (!await _accessControlService.CanEditLatestBatteryPassportAsync(User, document, cancellationToken))
+        {
+            return Forbid();
+        }
+
+        var result = await _passportTrustWorkflowService.SignAsync(
+            passportId,
+            CurrentActor(),
+            "cluster-admin-ui",
+            cancellationToken);
+        var status = result.Success ? result.AutoPublished ? "published" : "signed" : string.Empty;
+        return Redirect(ClusterPassportEditRedirect(passportId, status, result.Success ? string.Empty : result.Message));
+    }
+
+    [HttpPost("passports/{passportId}/publish")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PublishPassport(string passportId, CancellationToken cancellationToken)
+    {
+        var document = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
+        if (document == null)
+        {
+            return NotFound();
+        }
+
+        if (!await _accessControlService.CanEditLatestBatteryPassportAsync(User, document, cancellationToken))
+        {
+            return Forbid();
+        }
+
+        var result = await _passportTrustWorkflowService.PublishAsync(
+            passportId,
+            CurrentActor(),
+            "cluster-admin-ui",
+            cancellationToken);
+        return Redirect(ClusterPassportEditRedirect(passportId, result.Success ? "published" : string.Empty, result.Success ? string.Empty : result.Message));
     }
 
     [HttpGet("users")]
@@ -622,6 +711,31 @@ public class ClusterAdminController : Controller
     {
         var value = form[key].FirstOrDefault()?.Trim();
         return string.IsNullOrWhiteSpace(value) ? fallback ?? string.Empty : value;
+    }
+
+    private static bool IsLatestForBattery(BsonDocument passport) =>
+        passport.GetValue("isLatestForBattery", false).ToBoolean();
+
+    private static string ClusterPassportEditRedirect(string passportId, string status = "", string error = "")
+    {
+        var url = $"/cluster-admin/passports/{Uri.EscapeDataString(passportId)}/edit";
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            return $"{url}?status={Uri.EscapeDataString(status)}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            return $"{url}?error={Uri.EscapeDataString(error)}";
+        }
+
+        return url;
+    }
+
+    private string CurrentActor()
+    {
+        var email = AccessControlService.CurrentEmail(User);
+        return string.IsNullOrWhiteSpace(email) ? "cluster-admin" : email;
     }
 
     private static double Number(IFormCollection form, string key, double fallback)

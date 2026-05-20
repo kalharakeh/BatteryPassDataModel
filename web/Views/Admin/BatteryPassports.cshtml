@@ -11,6 +11,7 @@
             <p class="bp-passport-id">Battery ID: <span class="bp-id-copy-row"><span class="bp-id-value">@battery.BatteryId</span>@await Html.PartialAsync("_CopyIdButton", battery.BatteryId)</span></p>
             <h1>@battery.BatterySerialNumber</h1>
             <p class="text-secondary mb-0">@battery.BatteryFamily - Battery Model @battery.BatteryModel - @battery.ClusterLabel</p>
+            <p class="text-secondary mb-0">Cluster-admin passport history is readonly history; only global admins can edit historical passports.</p>
         </div>
         <form method="post" action="/admin/batteries/@Uri.EscapeDataString(battery.BatteryId)/passports/create">
             @Html.AntiForgeryToken()

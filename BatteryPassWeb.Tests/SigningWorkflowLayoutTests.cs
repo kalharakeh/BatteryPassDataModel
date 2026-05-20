@@ -177,6 +177,19 @@ public sealed class SigningWorkflowLayoutTests
         Assert.Contains(".bp-revision-card", css);
     }
 
+    [Fact]
+    public void LocalAdmins_ShouldViewHistoryReadOnlyAndOnlyEditLatestCurrentPassport()
+    {
+        var access = File.ReadAllText(RepoFile("web", "Services", "AccessControlService.cs"));
+        var clusterController = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
+        var adminHistory = File.ReadAllText(RepoFile("web", "Views", "Admin", "BatteryPassports.cshtml"));
+
+        Assert.Contains("CanViewBatteryHistoryAsync", access);
+        Assert.Contains("CanEditLatestBatteryPassportAsync", access);
+        Assert.Contains("isLatestForBattery", clusterController);
+        Assert.Contains("readonly history", adminHistory, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
