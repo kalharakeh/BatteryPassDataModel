@@ -10,6 +10,8 @@ namespace BatteryPassWeb.Controllers;
 [Route("api/external/v1")]
 public class ExternalApiController : ControllerBase
 {
+    private const string UnknownBatteryModelMessage = "Unknown Battery Model.";
+
     private static readonly IReadOnlyDictionary<string, string> SectionPathByName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         ["general"] = "aspects.generalProductInformation.payload",
@@ -48,6 +50,7 @@ public class ExternalApiController : ControllerBase
     private readonly ExternalApiRepository _externalApiRepository;
     private readonly BatteryTelemetryRepository _batteryTelemetryRepository;
     private readonly BatteryPassportSnapshotService _batteryPassportSnapshotService;
+    private readonly BatteryTemplateUpdateService _batteryTemplateUpdateService;
     private readonly PassportTrustWorkflowService _passportTrustWorkflowService;
 
     public ExternalApiController(
@@ -56,6 +59,7 @@ public class ExternalApiController : ControllerBase
         ExternalApiRepository externalApiRepository,
         BatteryTelemetryRepository batteryTelemetryRepository,
         BatteryPassportSnapshotService batteryPassportSnapshotService,
+        BatteryTemplateUpdateService batteryTemplateUpdateService,
         PassportTrustWorkflowService passportTrustWorkflowService)
     {
         _passportRepository = passportRepository;
@@ -63,6 +67,7 @@ public class ExternalApiController : ControllerBase
         _externalApiRepository = externalApiRepository;
         _batteryTelemetryRepository = batteryTelemetryRepository;
         _batteryPassportSnapshotService = batteryPassportSnapshotService;
+        _batteryTemplateUpdateService = batteryTemplateUpdateService;
         _passportTrustWorkflowService = passportTrustWorkflowService;
     }
 
@@ -426,24 +431,49 @@ public class ExternalApiController : ControllerBase
         }
 
         var requestedBatteryModel = batteryModelElement.GetString()!.Trim();
-        await _batteryRepository.UpdateBatteryFieldsAsync(
-            batteryId,
-            new Dictionary<string, BsonValue>
-            {
-                ["identity.batteryModel"] = requestedBatteryModel,
-                ["app.product.productVersion"] = requestedBatteryModel,
-                ["app.product.batteryModel"] = requestedBatteryModel,
-                ["updatedAt"] = DateTime.UtcNow.ToString("O")
-            },
-            cancellationToken);
+        var result = await _batteryTemplateUpdateService.ApplyBatteryModelAsync(auth.Battery!, requestedBatteryModel, cancellationToken);
+        if (!result.Success)
+        {
+            return Envelope(StatusCodes.Status400BadRequest, UnknownBatteryModelMessage);
+        }
 
         return Envelope(StatusCodes.Status200OK, "Battery Model updated on the battery record. Create, validate, sign, and publish a new passport to expose the updated snapshot.", new
         {
             batteryId,
             batteryModel = requestedBatteryModel,
-            validationSigningRequired = true,
-            newPassportRequired = true
+            newPassportRequired = BatteryRequiresNewPassport(result.Battery)
         });
+    }
+
+    [HttpPatch("batteries/{batteryId}/software-version")]
+    public async Task<IActionResult> UpdateSoftwareVersion(string batteryId, [FromBody] JsonElement payload, CancellationToken cancellationToken)
+    {
+        var auth = await AuthorizeBatteryAsync(batteryId, ExternalTokenRequirement.Write, cancellationToken);
+        if (auth.ErrorResult != null)
+        {
+            return auth.ErrorResult;
+        }
+
+        if (payload.ValueKind != JsonValueKind.Object
+            || !TryGetPropertyIgnoreCase(payload, "softwareVersion", out var softwareVersionElement)
+            || softwareVersionElement.ValueKind != JsonValueKind.String
+            || string.IsNullOrWhiteSpace(softwareVersionElement.GetString()))
+        {
+            return Envelope(StatusCodes.Status400BadRequest, "softwareVersion is required and must be a string.");
+        }
+
+        var result = await _batteryTemplateUpdateService.ApplySoftwareVersionAsync(
+            auth.Battery!,
+            softwareVersionElement.GetString()!,
+            cancellationToken);
+        return Envelope(
+            result.Success ? StatusCodes.Status200OK : StatusCodes.Status400BadRequest,
+            result.Message,
+            new
+            {
+                batteryId,
+                newPassportRequired = BatteryRequiresNewPassport(result.Battery)
+            });
     }
 
     [HttpPost("batteries/{batteryId}/passports")]
@@ -1072,6 +1102,9 @@ public class ExternalApiController : ControllerBase
         propertyValue = default;
         return false;
     }
+
+    private static bool BatteryRequiresNewPassport(BsonDocument battery) =>
+        BsonHelpers.GetValue(battery, "app", "snapshot", "newPassportRequired") is { IsBoolean: true } value && value.AsBoolean;
 
     private sealed class ExternalAuthResult
     {

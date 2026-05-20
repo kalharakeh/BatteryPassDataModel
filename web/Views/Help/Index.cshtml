@@ -161,6 +161,17 @@
                             </td>
                         </tr>
                         <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">PATCH</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/software-version</code><small>New passport may be required</small></span></td>
+                            <td><span class="bp-help-access-pill">Read-write</span></td>
+                            <td>Move a battery to a software version defined for its Battery Model.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-model" aria-expanded="false" aria-controls="api-detail-model" aria-label="Show software version endpoint details" title="Show software version endpoint details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">POST</span></td>
                             <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/passports</code><small>Create a passport snapshot</small></span></td>
                             <td><span class="bp-help-access-pill">Read-write</span></td>
@@ -325,9 +336,10 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                         <h3>Battery ID, family, and software parameters</h3>
                         <p>Product Template is the internal implementation name for Battery Family. In the UI and tester workflows, Product Template and Battery Family mean the same stored template concept.</p>
                         <p>Each passport is created from a MongoDB Battery Family baseline. Battery families contain Battery Models, and each Battery Model carries software parameters such as software version, released date, and latest update values.</p>
-                        <p>There is no software update endpoint. Battery Model changes require validation and signing because the Battery Model is signed passport data. Create a new passport snapshot, then validate, sign, and publish it to expose the updated snapshot.</p>
+                        <p>The software-version endpoint accepts only a software version defined for the battery's current Battery Model and copies its release date and latest update metadata. Battery Model and software changes may require a new passport when they differ from the latest passport snapshot.</p>
                     </div>
-                    <pre class="bp-help-pre"><code>{ "batteryModel": "2.0" }</code></pre>
+                    <pre class="bp-help-pre"><code>{ "batteryModel": "2.0" }
+{ "softwareVersion": "4.0" }</code></pre>
                 </article>
 
                 <article id="api-detail-passports" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
@@ -377,6 +389,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                         <option value="writeTelemetryPoint">Write telemetry point</option>
                         <option value="patchOperations">Patch operations metadata</option>
                         <option value="patchBatteryModel">Patch Battery Model</option>
+                        <option value="patchSoftwareVersion">Patch Software Version</option>
                         <option value="validatePassport">Validate passport</option>
                         <option value="signPassport">Sign passport</option>
                         <option value="publishPassport">Publish passport</option>
@@ -605,6 +618,14 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                     path: `${basePath}/batteries/${sampleBatteryId}/battery-model`,
                     body: JSON.stringify({
                         batteryModel: '2.0'
+                    }, null, 2),
+                    tokenPreset: 'sample-read-write'
+                },
+                patchSoftwareVersion: {
+                    method: 'PATCH',
+                    path: `${basePath}/batteries/${sampleBatteryId}/software-version`,
+                    body: JSON.stringify({
+                        softwareVersion: '4.0'
                     }, null, 2),
                     tokenPreset: 'sample-read-write'
                 },

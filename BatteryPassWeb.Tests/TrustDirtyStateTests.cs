@@ -19,8 +19,9 @@ public sealed class TrustDirtyStateTests
         var source = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
 
         Assert.Contains("UpdateBatteryModel", source);
-        Assert.Contains("UpdateBatteryFieldsAsync(batteryId, setValues, cancellationToken)", source);
-        Assert.Contains("newPassportRequired = true", source);
+        Assert.Contains("BatteryTemplateUpdateService", source);
+        Assert.Contains("ApplyBatteryModelAsync", source);
+        Assert.Contains("newPassportRequired =", source);
         Assert.Contains("CreateBatteryPassport", source);
     }
 

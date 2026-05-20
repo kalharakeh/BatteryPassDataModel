@@ -185,7 +185,7 @@ The public summary shows the software version parameter in the battery fact grid
 - Source paths:
   - Battery Model: `app.product.productVersion`
   - Battery Family baseline: `app.product.softwareVersion`, `app.product.softwareReleaseDate`, `app.product.softwareLatestUpdate`
-  - There is no software update endpoint.
+  - The software-version endpoint updates only software versions defined on the selected Battery Model and copies release date/latest update metadata from the Battery Family baseline.
   - Display rule: summary and General tab software parameters show the selected Battery Model values from the Battery Family baseline.
 
 ### 5.3 Material composition

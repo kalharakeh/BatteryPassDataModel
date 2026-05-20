@@ -11,16 +11,38 @@ public sealed class ExternalApiBatteryVersionTests
         Assert.Contains("[HttpPatch(\"batteries/{batteryId}/battery-model\")]", source);
         Assert.Contains("UpdateBatteryModel", source);
         Assert.Contains("batteryModel", source);
-        Assert.Contains("validationSigningRequired = true", source);
-        Assert.Contains("newPassportRequired = true", source);
-        Assert.Contains("UpdateBatteryFieldsAsync", source);
+        Assert.Contains("newPassportRequired =", source);
+        Assert.Contains("BatteryTemplateUpdateService", source);
         Assert.Contains("[HttpPost(\"batteries/{batteryId}/passports\")]", source);
         Assert.Contains("[HttpPost(\"passports/{passportId}/validate\")]", source);
         Assert.Contains("[HttpPost(\"passports/{passportId}/sign\")]", source);
         Assert.Contains("[HttpPost(\"passports/{passportId}/publish\")]", source);
         Assert.DoesNotContain("[HttpPatch(\"batteries/{passportId}/battery-version\")]", source);
-        Assert.DoesNotContain("[HttpPatch(\"batteries/{passportId}/software\")]", source);
-        Assert.DoesNotContain("softwareVersion is required", source);
+        Assert.Contains("[HttpPatch(\"batteries/{batteryId}/software-version\")]", source);
+        Assert.Contains("softwareVersion is required", source);
+    }
+
+    [Fact]
+    public void ExternalApi_ShouldRejectUndefinedBatteryModelAndExposeSoftwareVersionEndpoint()
+    {
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
+        var updateService = File.ReadAllText(RepoFile("web", "Services", "BatteryTemplateUpdateService.cs"));
+
+        Assert.Contains("UpdateBatteryModel", controller);
+        Assert.Contains("Unknown Battery Model", controller);
+        Assert.Contains("[HttpPatch(\"batteries/{batteryId}/software-version\")]", controller);
+        Assert.Contains("ApplyBatteryModelAsync", updateService);
+        Assert.Contains("ApplySoftwareVersionAsync", updateService);
+    }
+
+    [Fact]
+    public void BatteryTemplateUpdateService_ShouldCopySoftwareReleaseMetadata()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Services", "BatteryTemplateUpdateService.cs"));
+
+        Assert.Contains("[\"app.product.softwareReleaseDate\"]", source);
+        Assert.Contains("[\"app.product.softwareLatestUpdate\"]", source);
+        Assert.Contains("Unknown Software Version", source);
     }
 
     [Fact]
@@ -41,8 +63,7 @@ public sealed class ExternalApiBatteryVersionTests
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
 
-        Assert.DoesNotContain("/software", markup);
-        Assert.DoesNotContain("patchSoftwareVersion", markup);
+        Assert.Contains("/software-version", markup);
         Assert.Contains("Battery ID, family, and software parameters", markup);
     }
 

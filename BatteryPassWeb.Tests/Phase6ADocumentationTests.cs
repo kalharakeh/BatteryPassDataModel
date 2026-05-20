@@ -85,19 +85,19 @@ public sealed class Phase6ADocumentationTests
 
         Assert.Contains("software parameters", apiHelp);
         Assert.Contains("Battery Family baseline", apiHelp);
-        Assert.Contains("no software update endpoint", apiHelp);
-        Assert.Contains("Battery Model changes require validation and signing", apiHelp);
+        Assert.Contains("software-version endpoint", apiHelp);
+        Assert.Contains("Battery Model and software changes may require a new passport", apiHelp);
 
         Assert.Contains("Software parameters", adminHelp);
         Assert.Contains("Detailed report General tab", adminHelp);
-        Assert.Contains("Battery Model API changes require a new passport", adminHelp);
+        Assert.Contains("Battery Model and software API changes require a new passport", adminHelp);
         Assert.Contains("release date and latest update values", adminHelp);
 
         Assert.Contains("software parameters", guide);
         Assert.Contains("Detailed report tabs", guide);
         Assert.Contains("software version parameter", guide);
         Assert.Contains("General tab", guide);
-        Assert.Contains("no software update endpoint", guide);
+        Assert.Contains("software-version endpoint", guide);
     }
 
     [Fact]

@@ -35,6 +35,7 @@ public class AdminController : Controller
     private readonly BatteryIdService _batteryIdService;
     private readonly BatteryPassportSnapshotService _batteryPassportSnapshotService;
     private readonly BatteryPassportDeltaService _batteryPassportDeltaService;
+    private readonly BatteryTemplateUpdateService _batteryTemplateUpdateService;
     private readonly ClusterRepository _clusterRepository;
     private readonly PassportViewModelFactory _viewModelFactory;
     private readonly ExternalApiRepository _externalApiRepository;
@@ -56,6 +57,7 @@ public class AdminController : Controller
         BatteryIdService batteryIdService,
         BatteryPassportSnapshotService batteryPassportSnapshotService,
         BatteryPassportDeltaService batteryPassportDeltaService,
+        BatteryTemplateUpdateService batteryTemplateUpdateService,
         ClusterRepository clusterRepository,
         PassportViewModelFactory viewModelFactory,
         ExternalApiRepository externalApiRepository,
@@ -76,6 +78,7 @@ public class AdminController : Controller
         _batteryIdService = batteryIdService;
         _batteryPassportSnapshotService = batteryPassportSnapshotService;
         _batteryPassportDeltaService = batteryPassportDeltaService;
+        _batteryTemplateUpdateService = batteryTemplateUpdateService;
         _clusterRepository = clusterRepository;
         _viewModelFactory = viewModelFactory;
         _externalApiRepository = externalApiRepository;
@@ -316,10 +319,21 @@ public class AdminController : Controller
         display["manufacturerName"] = lockedManufacturerName;
         productNode["productId"] = product.ProductId;
         productNode["productName"] = product.ProductName;
-        productNode["productVersion"] = productVersion.Version;
-        productNode["batteryModel"] = productVersion.Version;
-        productNode["softwareVersion"] = Text(Request.Form, "softwareVersion", productVersion.SoftwareVersion);
-        ApplyBatteryIdentityFromDocument(battery, product, productVersion, now);
+        var modelResult = await _batteryTemplateUpdateService.ApplyBatteryModelAsync(battery, requestedBatteryModel, cancellationToken);
+        if (!modelResult.Success)
+        {
+            return Redirect($"/admin/batteries/{Uri.EscapeDataString(decodedBatteryId)}/edit?error={Uri.EscapeDataString(modelResult.Message)}");
+        }
+
+        var softwareVersion = Text(Request.Form, "softwareVersion");
+        if (!string.IsNullOrWhiteSpace(softwareVersion))
+        {
+            var softwareResult = await _batteryTemplateUpdateService.ApplySoftwareVersionAsync(battery, softwareVersion, cancellationToken);
+            if (!softwareResult.Success)
+            {
+                return Redirect($"/admin/batteries/{Uri.EscapeDataString(decodedBatteryId)}/edit?error={Uri.EscapeDataString(softwareResult.Message)}");
+            }
+        }
 
         battery["updatedAt"] = now;
 

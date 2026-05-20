@@ -551,6 +551,36 @@ public static class ProductTemplatePassportBuilder
         return battery;
     }
 
+    public static void ApplyProductVersionToBattery(
+        BsonDocument battery,
+        BatteryProductTemplate product,
+        BatteryProductVersion productVersion,
+        string now)
+    {
+        var batteryId = BsonHelpers.GetString(battery, "batteryId");
+        var manufacturerName = BsonHelpers.GetString(battery, "app", "display", "manufacturerName");
+        var identity = new ProductTemplateBatteryIdentity
+        {
+            ClusterId = BsonHelpers.GetString(battery, "clusterId"),
+            ModelNumber = BsonHelpers.GetString(battery, "app", "display", "modelNumber"),
+            SerialNumber = BsonHelpers.GetString(battery, "identity", "serialNumber"),
+            DisplayName = BsonHelpers.GetString(battery, "app", "display", "name"),
+            FacilityId = BsonHelpers.GetString(battery, "app", "display", "facilityId"),
+            ManufacturingDate = BsonHelpers.GetString(battery, "aspects", "generalProductInformation", "payload", "manufacturingDate")
+        };
+        var fresh = BuildBatteryFromTemplate(batteryId, product, productVersion, identity, now);
+        if (!string.IsNullOrWhiteSpace(manufacturerName))
+        {
+            EnsureDocument(EnsureDocument(fresh, "app"), "display")["manufacturerName"] = manufacturerName;
+        }
+
+        battery.Clear();
+        foreach (var element in fresh)
+        {
+            battery[element.Name] = element.Value.DeepClone();
+        }
+    }
+
     public static BsonDocument BuildTemplateBaseline(BsonDocument passport)
     {
         var baseline = new BsonDocument();
