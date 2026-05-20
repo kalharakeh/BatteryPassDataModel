@@ -27,6 +27,7 @@ public sealed class ExternalApiInitializer
     private readonly BatteryTelemetryRepository _batteryTelemetryRepository;
     private readonly ClusterRepository _clusterRepository;
     private readonly PassportDataNormalizationService _passportDataNormalizationService;
+    private readonly BatteryIdService _batteryIdService;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private bool _initialized;
 
@@ -36,7 +37,8 @@ public sealed class ExternalApiInitializer
         BatteryRepository batteryRepository,
         BatteryTelemetryRepository batteryTelemetryRepository,
         ClusterRepository clusterRepository,
-        PassportDataNormalizationService passportDataNormalizationService)
+        PassportDataNormalizationService passportDataNormalizationService,
+        BatteryIdService batteryIdService)
     {
         _externalApiRepository = externalApiRepository;
         _passportRepository = passportRepository;
@@ -44,6 +46,7 @@ public sealed class ExternalApiInitializer
         _batteryTelemetryRepository = batteryTelemetryRepository;
         _clusterRepository = clusterRepository;
         _passportDataNormalizationService = passportDataNormalizationService;
+        _batteryIdService = batteryIdService;
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -79,22 +82,119 @@ public sealed class ExternalApiInitializer
 
     private async Task EnsureSamplePassportAsync(CancellationToken cancellationToken)
     {
-        var existing = await _passportRepository.GetByPassportIdAsync(SamplePassportId, cancellationToken);
-        if (existing == null)
+        var sampleBatteryId = CreateSampleBatteryId(_batteryIdService);
+        var now = DateTime.UtcNow.ToString("O");
+        await _clusterRepository.UpsertClusterAsync(SampleApiClusterId, "Demo API Cluster", cancellationToken);
+
+        var existingBattery = await _batteryRepository.GetByBatteryIdAsync(sampleBatteryId, cancellationToken);
+        if (existingBattery == null)
         {
+            await _batteryRepository.ReplaceAsync(sampleBatteryId, BuildFallbackSampleBattery(sampleBatteryId), cancellationToken);
+        }
+
+        var sampleBatteryPassports = await _passportRepository.ListByBatteryIdAsync(sampleBatteryId, includeArchived: true, cancellationToken);
+        var latestSampleBatteryPassport = sampleBatteryPassports
+            .FirstOrDefault(passport => passport.GetValue("isLatestForBattery", false).ToBoolean())
+            ?? sampleBatteryPassports.FirstOrDefault();
+        if (latestSampleBatteryPassport != null)
+        {
+            await EnsureSamplePassportPublicAsync(latestSampleBatteryPassport, sampleBatteryId, now, cancellationToken);
             return;
         }
 
-        var now = DateTime.UtcNow.ToString("O");
-        var registryInfo = EnsureDocument(existing, "registryInfo");
+        var existing = await _passportRepository.GetByPassportIdAsync(SamplePassportId, cancellationToken)
+            ?? BuildFallbackSampleDocument(sampleBatteryId);
+        EnsureSamplePassportShape(existing, sampleBatteryId, now);
+        await _passportRepository.ReplaceAsync(BsonHelpers.GetString(existing, "passportId"), existing, cancellationToken);
+    }
+
+    private async Task EnsureSamplePassportPublicAsync(
+        BsonDocument passport,
+        string sampleBatteryId,
+        string now,
+        CancellationToken cancellationToken)
+    {
+        EnsureSamplePassportShape(passport, sampleBatteryId, now);
+
+        var passportId = BsonHelpers.GetString(passport, "passportId");
+        if (!string.IsNullOrWhiteSpace(passportId))
+        {
+            passport.Remove("_id");
+            await _passportRepository.ReplaceAsync(passportId, passport, cancellationToken);
+        }
+    }
+
+    private static void EnsureSamplePassportShape(BsonDocument passport, string sampleBatteryId, string now)
+    {
+        if (string.IsNullOrWhiteSpace(BsonHelpers.GetString(passport, "passportId")))
+        {
+            passport["passportId"] = SamplePassportId;
+        }
+
+        passport["batteryId"] = sampleBatteryId;
+        if (string.IsNullOrWhiteSpace(BsonHelpers.GetString(passport, "clusterId")))
+        {
+            passport["clusterId"] = SampleApiClusterId;
+        }
+
+        passport["isLatestForBattery"] = true;
+        var registryInfo = EnsureDocument(passport, "registryInfo");
         registryInfo["status"] = "published";
         registryInfo["updatedAt"] = now;
+        registryInfo["hasBeenPublished"] = true;
+        if (!registryInfo.Contains("createdAt"))
+        {
+            registryInfo["createdAt"] = now;
+        }
         if (!registryInfo.Contains("registryId"))
         {
             registryInfo["registryId"] = Guid.NewGuid().ToString("N");
         }
 
-        var operationsDoc = EnsureDocument(EnsureDocument(existing, "app"), "operations");
+        var snapshot = EnsureDocument(passport, "snapshot");
+        if (string.IsNullOrWhiteSpace(BsonHelpers.GetString(snapshot, "batteryFamily")))
+        {
+            snapshot["batteryFamily"] = SampleBatteryFamily;
+        }
+        if (string.IsNullOrWhiteSpace(BsonHelpers.GetString(snapshot, "batteryModel")))
+        {
+            snapshot["batteryModel"] = "1.0";
+        }
+        if (string.IsNullOrWhiteSpace(BsonHelpers.GetString(snapshot, "batterySerialNumber")))
+        {
+            snapshot["batterySerialNumber"] = SampleBatterySerialNumber;
+        }
+        if (string.IsNullOrWhiteSpace(BsonHelpers.GetString(snapshot, "createdAt")))
+        {
+            snapshot["createdAt"] = now;
+        }
+
+        var app = EnsureDocument(passport, "app");
+        var display = EnsureDocument(app, "display");
+        if (string.IsNullOrWhiteSpace(BsonHelpers.GetString(display, "name")))
+        {
+            display["name"] = "Demo API Compact 7M battery";
+        }
+        if (string.IsNullOrWhiteSpace(BsonHelpers.GetString(display, "modelNumber")))
+        {
+            display["modelNumber"] = "CP7M-DEMO-API-001";
+        }
+        if (string.IsNullOrWhiteSpace(BsonHelpers.GetString(display, "serialNumber")))
+        {
+            display["serialNumber"] = SampleBatterySerialNumber;
+        }
+        if (string.IsNullOrWhiteSpace(BsonHelpers.GetString(display, "manufacturerName")))
+        {
+            display["manufacturerName"] = "Scania Industrial Batteries";
+        }
+
+        var media = EnsureDocument(app, "media");
+        if (string.IsNullOrWhiteSpace(BsonHelpers.GetString(media, "batteryImageUrl")))
+        {
+            media["batteryImageUrl"] = BatteryImageCatalog.DefaultImageUrl;
+        }
+
+        var operationsDoc = EnsureDocument(app, "operations");
         operationsDoc["isActive"] = true;
         operationsDoc["lastUpdatedAt"] = now;
         if (!operationsDoc.Contains("locationOfUse"))
@@ -117,7 +217,50 @@ public sealed class ExternalApiInitializer
             };
         }
 
-        await _passportRepository.ReplaceAsync(SamplePassportId, existing, cancellationToken);
+        EnsurePublicTrustEnvelope(passport, now);
+    }
+
+    private static void EnsurePublicTrustEnvelope(BsonDocument passport, string now)
+    {
+        var hash = BsonHelpers.GetString(passport, "validation", "hash");
+        if (string.IsNullOrWhiteSpace(hash))
+        {
+            hash = "sample-demo-public-hash";
+        }
+
+        var proof = BsonHelpers.GetValue(passport, "trust", "latestProof") as BsonDocument ?? new BsonDocument();
+        if (string.IsNullOrWhiteSpace(BsonHelpers.GetString(proof, "proofValue")))
+        {
+            proof["type"] = "DataIntegrityProof";
+            proof["cryptosuite"] = "ecdsa-rdfc-2019";
+            proof["created"] = now;
+            proof["issuer"] = "Scania Demo";
+            proof["verificationMethod"] = "did:web:demo.scania.test#sample-key";
+            proof["proofPurpose"] = "assertionMethod";
+            proof["proofValue"] = "sample-demo-public-proof";
+        }
+
+        var validation = EnsureDocument(passport, "validation");
+        validation["isValid"] = true;
+        validation["signedAt"] = proof.GetValue("created", now);
+        validation["hash"] = hash;
+        validation["signature"] = proof.GetValue("proofValue", "sample-demo-public-proof");
+        validation["proof"] = proof.DeepClone();
+
+        var validationSummary = new BsonDocument
+        {
+            ["blockingErrorCount"] = 0,
+            ["warningCount"] = 0,
+            ["validatedAt"] = now
+        };
+
+        var trust = EnsureDocument(passport, "trust");
+        trust["state"] = "signed";
+        trust["isDirty"] = false;
+        trust["latestHash"] = hash;
+        trust["latestProof"] = proof;
+        trust["lastSignedAt"] = proof.GetValue("created", now);
+        trust["validationSummary"] = validationSummary;
     }
 
     private async Task EnsureSampleTokensAsync(CancellationToken cancellationToken)
@@ -298,31 +441,69 @@ public sealed class ExternalApiInitializer
         }
     }
 
-    private static BsonDocument BuildFallbackSampleDocument()
+    private static BsonDocument BuildFallbackSampleDocument(string sampleBatteryId)
     {
         var now = DateTime.UtcNow.ToString("O");
-        return new BsonDocument
+        var document = new BsonDocument
         {
             ["passportId"] = SamplePassportId,
+            ["batteryId"] = sampleBatteryId,
+            ["clusterId"] = SampleApiClusterId,
+            ["isLatestForBattery"] = true,
+            ["snapshot"] = new BsonDocument
+            {
+                ["batteryFamily"] = SampleBatteryFamily,
+                ["batteryModel"] = "1.0",
+                ["batterySerialNumber"] = SampleBatterySerialNumber,
+                ["createdAt"] = now
+            },
             ["registryInfo"] = new BsonDocument
             {
                 ["registryId"] = Guid.NewGuid().ToString("N"),
                 ["status"] = "published",
                 ["createdAt"] = now,
-                ["updatedAt"] = now
+                ["updatedAt"] = now,
+                ["hasBeenPublished"] = true
             },
             ["app"] = new BsonDocument
             {
                 ["display"] = new BsonDocument
                 {
-                    ["name"] = "Sample Battery",
-                    ["modelNumber"] = "SAMPLE-001",
-                    ["serialNumber"] = "SN-SAMPLE-001",
+                    ["name"] = "Demo API Compact 7M battery",
+                    ["modelNumber"] = "CP7M-DEMO-API-001",
+                    ["serialNumber"] = SampleBatterySerialNumber,
+                    ["facilityId"] = "DEMO-API-LINE-01",
                     ["manufacturerName"] = "Scania Industrial Batteries"
                 },
                 ["media"] = new BsonDocument
                 {
                     ["batteryImageUrl"] = BatteryImageCatalog.DefaultImageUrl
+                },
+                ["product"] = new BsonDocument
+                {
+                    ["productName"] = SampleBatteryFamily,
+                    ["productVersion"] = "1.0",
+                    ["softwareVersion"] = "2.0",
+                    ["softwareReleaseDate"] = now[..10],
+                    ["softwareLatestUpdate"] = now[..10]
+                },
+                ["operations"] = new BsonDocument
+                {
+                    ["isActive"] = true,
+                    ["lastUpdatedAt"] = now,
+                    ["locationOfUse"] = new BsonDocument
+                    {
+                        ["siteName"] = "Sample Site",
+                        ["address"] = "Example street 1",
+                        ["city"] = "Sample City",
+                        ["country"] = "DE"
+                    },
+                    ["contactPerson"] = new BsonDocument
+                    {
+                        ["name"] = "Sample Contact",
+                        ["email"] = "sample@example.test",
+                        ["phone"] = "+49 000 0000"
+                    }
                 }
             },
             ["aspects"] = new BsonDocument
@@ -331,8 +512,122 @@ public sealed class ExternalApiInitializer
                 {
                     ["payload"] = new BsonDocument
                     {
-                        ["batteryCategory"] = BatteryPassCanonicalDataCatalog.DemoBatteryCategory
+                        ["batteryCategory"] = BatteryPassCanonicalDataCatalog.DemoBatteryCategory,
+                        ["batteryStatus"] = "original",
+                        ["batteryMass"] = 420,
+                        ["manufacturingDate"] = now[..10],
+                        ["productIdentifier"] = "CP7M-DEMO-API-001",
+                        ["batteryPassportIdentifier"] = BatteryPassCanonicalDataCatalog.DemoBatteryPassportIdentifier,
+                        ["manufacturerInformation"] = new BsonDocument
+                        {
+                            ["contactName"] = "Scania Industrial Batteries"
+                        },
+                        ["manufacturingPlace"] = new BsonDocument
+                        {
+                            ["streetAddress"] = "DEMO-API-LINE-01"
+                        }
                     }
+                },
+                ["materialComposition"] = new BsonDocument
+                {
+                    ["payload"] = new BsonDocument
+                    {
+                        ["batteryMaterials"] = new BsonArray(BatteryPassCanonicalDataCatalog.Materials.Take(4).Select(material => new BsonDocument
+                        {
+                            ["batteryMaterialName"] = material.Label,
+                            ["batteryMaterialMass"] = material.DemoMassKg,
+                            ["isCriticalRawMaterial"] = material.IsCriticalRawMaterial,
+                            ["batteryMaterialLocation"] = new BsonDocument
+                            {
+                                ["componentName"] = "Battery pack"
+                            }
+                        }))
+                    }
+                },
+                ["performanceAndDurability"] = new BsonDocument
+                {
+                    ["payload"] = new BsonDocument
+                    {
+                        ["batteryTechicalProperties"] = new BsonDocument
+                        {
+                            ["ratedEnergy"] = 72,
+                            ["ratedCapacity"] = 180,
+                            ["ratedMaximumPower"] = 120,
+                            ["nominalVoltage"] = 400,
+                            ["expectedLifetime"] = 8,
+                            ["expectedNumberOfCycles"] = 3000
+                        }
+                    }
+                },
+                ["carbonFootprintForBatteries"] = new BsonDocument
+                {
+                    ["payload"] = new BsonDocument
+                    {
+                        ["batteryCarbonFootprint"] = BatteryPassCanonicalDataCatalog.DemoCarbonFootprint,
+                        ["carbonFootprintPerformanceClass"] = BatteryPassCanonicalDataCatalog.DemoPerformanceClass,
+                        ["carbonFootprintPerLifecycleStage"] = new BsonArray(BatteryPassCanonicalDataCatalog.CarbonStages.Select(stage => new BsonDocument
+                        {
+                            ["lifecycleStage"] = stage.Stage,
+                            ["carbonFootprint"] = stage.DemoValue
+                        }))
+                    }
+                },
+                ["circularity"] = new BsonDocument
+                {
+                    ["payload"] = new BsonDocument
+                    {
+                        ["recycledContent"] = new BsonArray
+                        {
+                            new BsonDocument
+                            {
+                                ["recycledMaterial"] = "Nickel",
+                                ["preConsumerShare"] = 12,
+                                ["postConsumerShare"] = 8
+                            },
+                            new BsonDocument
+                            {
+                                ["recycledMaterial"] = "Copper",
+                                ["preConsumerShare"] = 10,
+                                ["postConsumerShare"] = 7
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        EnsurePublicTrustEnvelope(document, now);
+        return document;
+    }
+
+    private static BsonDocument BuildFallbackSampleBattery(string sampleBatteryId)
+    {
+        var now = DateTime.UtcNow.ToString("O");
+        return new BsonDocument
+        {
+            ["batteryId"] = sampleBatteryId,
+            ["clusterId"] = SampleApiClusterId,
+            ["createdAt"] = now,
+            ["updatedAt"] = now,
+            ["identity"] = new BsonDocument
+            {
+                ["batteryFamily"] = SampleBatteryFamily,
+                ["batteryModel"] = "1.0",
+                ["serialNumber"] = SampleBatterySerialNumber
+            },
+            ["app"] = new BsonDocument
+            {
+                ["display"] = new BsonDocument
+                {
+                    ["name"] = "Demo API Compact 7M battery",
+                    ["modelNumber"] = "CP7M-DEMO-API-001",
+                    ["serialNumber"] = SampleBatterySerialNumber,
+                    ["facilityId"] = "DEMO-API-LINE-01",
+                    ["manufacturerName"] = "Scania Industrial Batteries"
+                },
+                ["snapshot"] = new BsonDocument
+                {
+                    ["newPassportRequired"] = false
                 }
             }
         };

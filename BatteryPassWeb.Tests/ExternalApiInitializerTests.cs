@@ -7,17 +7,18 @@ namespace BatteryPassWeb.Tests;
 public sealed class ExternalApiInitializerTests
 {
     [Fact]
-    public void EnsureSamplePassport_ShouldNotCloneSeededPassports()
+    public void EnsureSamplePassport_ShouldUseGeneratedFallbackInsteadOfCloningSeededPassports()
     {
         var source = File.ReadAllText(RepoFile("web", "Services", "ExternalApiInitializer.cs"));
 
-        Assert.Contains("if (existing == null)", source);
-        Assert.Contains("return;", source);
+        Assert.Contains("CreateSampleBatteryId(_batteryIdService)", source);
+        Assert.Contains("BuildFallbackSampleDocument(sampleBatteryId)", source);
+        Assert.Contains("BuildFallbackSampleBattery(sampleBatteryId)", source);
         Assert.DoesNotContain("candidates.FirstOrDefault()?.DeepClone().AsBsonDocument", source);
     }
 
     [Fact]
-    public void BuildFallbackSampleDocument_ShouldUseScaniaManufacturer()
+    public void BuildFallbackSampleDocument_ShouldUseGeneratedBatteryClusterAndPublicTrust()
     {
         var method = typeof(ExternalApiInitializer).GetMethod(
             "BuildFallbackSampleDocument",
@@ -25,11 +26,36 @@ public sealed class ExternalApiInitializerTests
 
         Assert.NotNull(method);
 
-        var document = Assert.IsType<BsonDocument>(method.Invoke(null, []));
+        var document = Assert.IsType<BsonDocument>(method.Invoke(null, ["sample-battery-id"]));
 
+        Assert.Equal("sample-battery-id", document["batteryId"].AsString);
+        Assert.Equal(ExternalApiInitializer.SampleApiClusterId, document["clusterId"].AsString);
+        Assert.True(document["isLatestForBattery"].AsBoolean);
         Assert.Equal(
             "Scania Industrial Batteries",
             document["app"]["display"]["manufacturerName"].AsString);
+        Assert.Equal("published", document["registryInfo"]["status"].AsString);
+        Assert.True(document["validation"]["isValid"].AsBoolean);
+        Assert.Equal("signed", document["trust"]["state"].AsString);
+        Assert.False(document["trust"]["isDirty"].AsBoolean);
+        Assert.NotEmpty(document["trust"]["latestProof"]["proofValue"].AsString);
+    }
+
+    [Fact]
+    public void BuildFallbackSampleBattery_ShouldUseGeneratedBatteryClusterAndIdentity()
+    {
+        var method = typeof(ExternalApiInitializer).GetMethod(
+            "BuildFallbackSampleBattery",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.NotNull(method);
+
+        var document = Assert.IsType<BsonDocument>(method.Invoke(null, ["sample-battery-id"]));
+
+        Assert.Equal("sample-battery-id", document["batteryId"].AsString);
+        Assert.Equal(ExternalApiInitializer.SampleApiClusterId, document["clusterId"].AsString);
+        Assert.Equal(ExternalApiInitializer.SampleBatteryFamily, document["identity"]["batteryFamily"].AsString);
+        Assert.Equal(ExternalApiInitializer.SampleBatterySerialNumber, document["identity"]["serialNumber"].AsString);
     }
 
     [Fact]
@@ -73,6 +99,8 @@ public sealed class ExternalApiInitializerTests
         Assert.Contains("ExternalApiInitializer.CreateSampleBatteryId", homeController);
         Assert.DoesNotContain("sample-customer-north-001", homeController);
         Assert.Contains("sample battery ID", landing);
+        Assert.Contains("public sample passport", landing, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("return Redirect($\"/{Uri.EscapeDataString(query)}\")", homeController);
     }
 
     [Fact]

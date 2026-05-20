@@ -249,6 +249,16 @@ public class PassportController : Controller
             return NotFound();
         }
 
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            var latestPublic = visibleRows.FirstOrDefault(row => row.IsLatestForBattery && row.IsPubliclyVisible)
+                ?? visibleRows.FirstOrDefault(row => row.IsPubliclyVisible);
+            if (latestPublic != null)
+            {
+                return Redirect($"/{Uri.EscapeDataString(latestPublic.PassportId)}/summary");
+            }
+        }
+
         var clusterId = BsonHelpers.GetString(battery, "clusterId");
         var clusterLabel = string.IsNullOrWhiteSpace(clusterId)
             ? "No cluster assigned"

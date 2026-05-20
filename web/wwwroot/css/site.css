@@ -371,10 +371,19 @@ a:hover {
     padding: 0 14px;
   }
 
+  .bp-header-actions {
+    justify-content: flex-start;
+    min-width: max-content;
+  }
+
   .bp-header-right-group,
   .bp-header-primary-links,
   .bp-header-account-links {
     flex: 0 0 auto;
+  }
+
+  .bp-header-right-group {
+    margin-left: 0;
   }
 
   .bp-main {
