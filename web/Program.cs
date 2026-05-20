@@ -54,6 +54,7 @@ builder.Services.AddSingleton<MongoContext>();
 builder.Services.AddSingleton<PassportRepository>();
 builder.Services.AddSingleton<BatteryRepository>();
 builder.Services.AddSingleton<BatteryPassportSnapshotService>();
+builder.Services.AddSingleton<BatteryPassportDeltaService>();
 builder.Services.AddSingleton<BatteryRouteResolutionService>();
 builder.Services.AddSingleton<ClusterRepository>();
 builder.Services.AddSingleton<PassportViewModelFactory>();

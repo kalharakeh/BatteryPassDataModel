@@ -64,6 +64,24 @@ public sealed class EditableFieldPolicyService
         "software.version"
     ];
 
+    public static readonly IReadOnlyDictionary<string, string[]> FieldPathsByKey =
+        new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["general.clusterId"] = ["clusterId"],
+            ["general.product"] = ["identity.batteryFamily", "app.product.productName"],
+            ["general.batteryFamily"] = ["identity.batteryFamily", "app.product.productName"],
+            ["general.productVersion"] = ["identity.batteryModel", "app.product.productVersion", "app.product.batteryModel"],
+            ["general.batteryModel"] = ["identity.batteryModel", "app.product.productVersion", "app.product.batteryModel"],
+            ["general.serialNumber"] = ["identity.serialNumber", "app.display.serialNumber"],
+            ["general.manufacturingDate"] = ["aspects.generalProductInformation.payload.manufacturingDate"],
+            ["general.manufacturedDate"] = ["aspects.generalProductInformation.payload.manufacturingDate"],
+            ["general.facilityId"] = ["app.display.facilityId"],
+            ["general.manufacturerName"] = ["app.display.manufacturerName"],
+            ["general.manufacturedBy"] = ["app.display.manufacturerName"],
+            ["general.softwareVersion"] = ["app.product.softwareVersion"],
+            ["software.version"] = ["app.product.softwareVersion"]
+        };
+
     private static readonly IReadOnlyDictionary<string, string> AliasByFieldKey =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {

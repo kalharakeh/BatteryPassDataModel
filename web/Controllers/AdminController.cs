@@ -34,6 +34,7 @@ public class AdminController : Controller
     private readonly BatteryRepository _batteryRepository;
     private readonly BatteryIdService _batteryIdService;
     private readonly BatteryPassportSnapshotService _batteryPassportSnapshotService;
+    private readonly BatteryPassportDeltaService _batteryPassportDeltaService;
     private readonly ClusterRepository _clusterRepository;
     private readonly PassportViewModelFactory _viewModelFactory;
     private readonly ExternalApiRepository _externalApiRepository;
@@ -54,6 +55,7 @@ public class AdminController : Controller
         BatteryRepository batteryRepository,
         BatteryIdService batteryIdService,
         BatteryPassportSnapshotService batteryPassportSnapshotService,
+        BatteryPassportDeltaService batteryPassportDeltaService,
         ClusterRepository clusterRepository,
         PassportViewModelFactory viewModelFactory,
         ExternalApiRepository externalApiRepository,
@@ -73,6 +75,7 @@ public class AdminController : Controller
         _batteryRepository = batteryRepository;
         _batteryIdService = batteryIdService;
         _batteryPassportSnapshotService = batteryPassportSnapshotService;
+        _batteryPassportDeltaService = batteryPassportDeltaService;
         _clusterRepository = clusterRepository;
         _viewModelFactory = viewModelFactory;
         _externalApiRepository = externalApiRepository;
@@ -211,6 +214,11 @@ public class AdminController : Controller
         {
             return Redirect($"/admin/batteries/new?error={Uri.EscapeDataString("Battery serial number is required.")}");
         }
+        var clusterId = Text(form, "clusterId");
+        if (string.IsNullOrWhiteSpace(clusterId))
+        {
+            return Redirect($"/admin/batteries/new?error={Uri.EscapeDataString("Battery cluster is required.")}");
+        }
 
         var product = await _productTemplateService.GetProductAsync(productId, cancellationToken) ?? BatteryProductTemplateCatalog.DefaultProduct;
         var batteryId = _batteryIdService.CreateBatteryId(product.ProductName, serialNumber);
@@ -236,7 +244,7 @@ public class AdminController : Controller
                 SerialNumber = serialNumber,
                 DisplayName = Text(form, "name", $"{product.ProductName} {serialNumber}"),
                 FacilityId = Text(form, "facilityId"),
-                ClusterId = Text(form, "clusterId"),
+                ClusterId = clusterId,
                 ManufacturingDate = Text(form, "manufacturingDate", now[..10])
             },
             now);
@@ -264,13 +272,10 @@ public class AdminController : Controller
             DateTimeOffset.UtcNow,
             cancellationToken);
         var passportId = BsonHelpers.GetString(passport, "passportId");
-        var now = DateTimeOffset.UtcNow.ToString("O");
-        var snapshot = EnsureDocument(EnsureDocument(battery, "app"), "snapshot");
-        snapshot["newPassportRequired"] = false;
-        snapshot["lastPassportCreatedAt"] = now;
-        snapshot["latestPassportId"] = passportId;
-        battery["updatedAt"] = now;
-        await _batteryRepository.ReplaceAsync(BsonHelpers.GetString(battery, "batteryId"), battery, cancellationToken);
+        await _batteryPassportDeltaService.ClearNewPassportRequiredAsync(
+            BsonHelpers.GetString(battery, "batteryId"),
+            passportId,
+            cancellationToken);
         TempData["StatusMessage"] = $"Passport {passportId} created for battery {BsonHelpers.GetString(battery, "batteryId")}.";
         return Redirect($"/admin/passports/{Uri.EscapeDataString(passportId)}/edit");
     }
@@ -316,14 +321,10 @@ public class AdminController : Controller
         productNode["softwareVersion"] = Text(Request.Form, "softwareVersion", productVersion.SoftwareVersion);
         ApplyBatteryIdentityFromDocument(battery, product, productVersion, now);
 
-        var snapshot = EnsureDocument(app, "snapshot");
-        snapshot["newPassportRequired"] = true;
-        snapshot["requiredSince"] = now;
-        snapshot["reason"] = "battery-data-updated";
         battery["updatedAt"] = now;
 
-        await _batteryRepository.ReplaceAsync(decodedBatteryId, battery, cancellationToken);
-        TempData["StatusMessage"] = "Battery data saved. Create a new passport snapshot to publish the updated battery data.";
+        await _batteryPassportDeltaService.UpdateNewPassportRequiredAsync(battery, cancellationToken);
+        TempData["StatusMessage"] = "Battery data saved.";
         return Redirect("/admin/clusters?tab=batteries");
     }
 

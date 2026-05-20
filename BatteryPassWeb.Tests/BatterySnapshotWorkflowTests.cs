@@ -1,5 +1,8 @@
 namespace BatteryPassWeb.Tests;
 
+using BatteryPassWeb.Services;
+using MongoDB.Bson;
+
 public sealed class BatterySnapshotWorkflowTests
 {
     [Fact]
@@ -99,6 +102,49 @@ public sealed class BatterySnapshotWorkflowTests
         Assert.Contains("IsHistoricalPassport", model);
         Assert.Contains("batteryId", factory);
         Assert.Contains("isLatestForBattery", factory);
+    }
+
+    [Fact]
+    public void BatteryPassportDeltaService_ShouldDetectAndClearEditableDifferences()
+    {
+        var battery = new BsonDocument
+        {
+            ["batteryId"] = "battery-1",
+            ["clusterId"] = "cluster-a",
+            ["identity"] = new BsonDocument { ["batteryModel"] = "2.0" },
+            ["app"] = new BsonDocument
+            {
+                ["display"] = new BsonDocument { ["facilityId"] = "line-a" },
+                ["product"] = new BsonDocument { ["softwareVersion"] = "4.0" }
+            }
+        };
+        var latestPassport = battery.DeepClone().AsBsonDocument;
+
+        Assert.False(BatteryPassportDeltaService.HasEditableDifferences(
+            battery,
+            latestPassport,
+            EditableFieldPolicyService.CreateDefaultPolicy()));
+
+        battery["clusterId"] = "cluster-b";
+        Assert.True(BatteryPassportDeltaService.HasEditableDifferences(
+            battery,
+            latestPassport,
+            EditableFieldPolicyService.CreateDefaultPolicy()));
+
+        battery["clusterId"] = "cluster-a";
+        Assert.False(BatteryPassportDeltaService.HasEditableDifferences(
+            battery,
+            latestPassport,
+            EditableFieldPolicyService.CreateDefaultPolicy()));
+    }
+
+    [Fact]
+    public void BatteryPassportSnapshotService_ShouldCopyCurrentBatteryCluster()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Services", "BatteryPassportSnapshotService.cs"));
+
+        Assert.Contains("[\"clusterId\"] = BsonHelpers.GetString(battery, \"clusterId\")", source);
+        Assert.DoesNotContain("previousPassport", source);
     }
 
     private static string RepoFile(params string[] parts)

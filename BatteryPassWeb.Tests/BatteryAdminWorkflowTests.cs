@@ -60,6 +60,17 @@ public sealed class BatteryAdminWorkflowTests
     }
 
     [Fact]
+    public void AdminBatteryCreate_ShouldRequireClusterAndSnapshotShouldClearPendingFlag()
+    {
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+
+        Assert.Contains("Battery cluster is required.", controller);
+        Assert.Contains("UpdateNewPassportRequiredAsync", controller);
+        Assert.Contains("ClearNewPassportRequiredAsync", controller);
+        Assert.DoesNotContain("snapshot[\"newPassportRequired\"] = true;", controller);
+    }
+
+    [Fact]
     public void AdminBatteryList_ShouldUseBatteriesTabAsCanonicalDestination()
     {
         var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
