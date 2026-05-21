@@ -1,3 +1,4 @@
+@using System.Globalization
 @model BatteryPassWeb.Models.ViewModels.PassportSummaryPageViewModel
 @{
     ViewData["Title"] = "Passport Summary";
@@ -12,7 +13,7 @@
         {
             var color = string.IsNullOrWhiteSpace(segment.Color) ? "#4f6f7d" : segment.Color;
             var end = start + segment.Percentage;
-            slices.Add($"{color} {start:F2}% {end:F2}%");
+            slices.Add($"{color} {start.ToString("0.##", CultureInfo.InvariantCulture)}% {end.ToString("0.##", CultureInfo.InvariantCulture)}%");
             start = end;
         }
 
@@ -27,8 +28,8 @@
 <main class="bp-page">
     <section class="bp-report-hero-card">
         <div class="bp-report-hero-layout">
-            <article class="bp-report-hero-info bp-summary-identity-grid">
-                <section class="bp-summary-id-panel bp-report-header bp-report-title-block">
+            <article class="bp-report-hero-info bp-summary-identity-grid bp-report-identity-grid">
+                <section class="bp-summary-id-panel bp-report-identity-panel bp-report-identity-panel--battery bp-report-header bp-report-title-block">
                     <span class="bp-summary-title">Battery</span>
                     <h1>@(string.IsNullOrWhiteSpace(passport.BatterySerialNumber) ? passport.PassportId : passport.BatterySerialNumber)</h1>
                     <p class="text-secondary">Cluster: @passport.ClusterLabel</p>
@@ -55,10 +56,19 @@
                     }
                 </section>
 
-                <section class="bp-summary-id-panel">
+                <section class="bp-summary-id-panel bp-report-identity-panel bp-report-identity-panel--identifiers">
                     <span class="bp-summary-title">Identifiers</span>
-                    <p class="bp-passport-id">Passport ID: <span class="bp-id-copy-row"><span class="bp-id-value">@passport.PassportId</span>@await Html.PartialAsync("_CopyIdButton", passport.PassportId)</span></p>
-                    <p class="bp-passport-id">Battery ID: <span class="bp-id-copy-row"><span class="bp-id-value">@(string.IsNullOrWhiteSpace(passport.BatteryId) ? "-" : passport.BatteryId)</span>@await Html.PartialAsync("_CopyIdButton", passport.BatteryId)</span></p>
+                    <p class="bp-passport-id"><span class="bp-id-label">Passport ID:</span><span class="bp-id-copy-row"><span class="bp-id-value">@passport.PassportId</span>@await Html.PartialAsync("_CopyIdButton", passport.PassportId)</span></p>
+                    <p class="bp-passport-id"><span class="bp-id-label">Battery ID:</span><span class="bp-id-copy-row"><span class="bp-id-value">@(string.IsNullOrWhiteSpace(passport.BatteryId) ? "-" : passport.BatteryId)</span>@await Html.PartialAsync("_CopyIdButton", passport.BatteryId)</span></p>
+                </section>
+
+                <section class="bp-summary-id-panel bp-summary-qr-panel bp-report-identity-panel bp-report-identity-panel--qr">
+                    <span class="bp-summary-title">QR code</span>
+                    <a class="bp-report-hero-qr"
+                       href="/qr/@Uri.EscapeDataString(qrBatteryId)/download"
+                       aria-label="Save battery code for @qrBatteryId">
+                        <img src="/qr/@Uri.EscapeDataString(qrBatteryId)/svg" alt="QR code for @qrBatteryId" />
+                    </a>
                 </section>
 
                 <dl class="bp-field-grid bp-report-hero-fields bp-summary-fields-panel">
@@ -77,15 +87,8 @@
             </article>
 
             <aside class="bp-report-hero-media">
-                <div class="bp-report-media-code-row">
-                    <div class="bp-image-wrap">
-                        <img src="@passport.BatteryImageUrl" alt="@passport.BatteryImageAlt" class="bp-battery-image" />
-                    </div>
-                    <a class="bp-summary-qr-panel bp-report-hero-qr"
-                       href="/qr/@Uri.EscapeDataString(qrBatteryId)/download"
-                       aria-label="Save battery code for @qrBatteryId">
-                        <img src="/qr/@Uri.EscapeDataString(qrBatteryId)/svg" alt="QR code for @qrBatteryId" />
-                    </a>
+                <div class="bp-image-wrap">
+                    <img src="@passport.BatteryImageUrl" alt="@passport.BatteryImageAlt" class="bp-battery-image" />
                 </div>
                 <a class="bp-report-hero-cta" href="/@Uri.EscapeDataString(passport.PassportId)">View more about this passport -&gt;</a>
             </aside>
@@ -95,11 +98,11 @@
     <section class="bp-card bp-report-wide-section">
         <span class="bp-summary-title">Summary report</span>
         <div class="bp-summary-section">
-            <div>
+            <div class="bp-summary-report-row bp-summary-report-row--power">
                 <h3 class="bp-subheading">Original Power</h3>
                 <p class="bp-number">@(passport.Performance.RatedMaximumPower > 0 ? passport.Performance.RatedMaximumPower : 380) kW</p>
             </div>
-            <div>
+            <div class="bp-summary-report-row bp-summary-report-row--carbon">
                 <h3 class="bp-subheading">Carbon footprint</h3>
                 <div class="bp-pie-row">
                     <div class="bp-pie" style="background:@BuildConicGradient(passport.CarbonFootprintSegments);"></div>
@@ -116,12 +119,15 @@
                     </table>
                 </div>
             </div>
-            <div>
+            <div class="bp-summary-report-row bp-summary-report-row--recycled">
                 <h3 class="bp-subheading">Recycled content share</h3>
                 <div class="bp-donut-grid">
                     @foreach (var chart in passport.RecycledContentCharts)
                     {
-                        var donutBackground = $"conic-gradient(#08a348 0 {chart.PreConsumerShare}%, #df6b3b {chart.PreConsumerShare}% {chart.PreConsumerShare + chart.PostConsumerShare}%, #d1d5db {chart.PreConsumerShare + chart.PostConsumerShare}% 100%)";
+                        var preConsumer = chart.PreConsumerShare.ToString("0.##", CultureInfo.InvariantCulture);
+                        var postStart = chart.PreConsumerShare.ToString("0.##", CultureInfo.InvariantCulture);
+                        var postEnd = (chart.PreConsumerShare + chart.PostConsumerShare).ToString("0.##", CultureInfo.InvariantCulture);
+                        var donutBackground = $"conic-gradient(#08a348 0 {preConsumer}%, #df6b3b {postStart}% {postEnd}%, #d1d5db {postEnd}% 100%)";
                         <div class="bp-donut-card">
                             <p class="fw-semibold mb-2">@chart.Material</p>
                             <div class="bp-donut" style="background:@donutBackground;">

@@ -238,17 +238,22 @@
                 <article class="bp-template-version-row" data-software-version-row>
                     <label class="bp-field-shell">
                         <span>Software version</span>
-                        <input type="text" name="softwareVersion" value="@softwareVersionRow.SoftwareVersion" required />
+                        <input type="text" name="softwareVersion" value="@softwareVersionRow.SoftwareVersion" readonly required />
                     </label>
                     <label class="bp-field-shell">
                         <span>Release date</span>
-                        <input type="date" name="softwareReleaseDate" value="@softwareVersionRow.SoftwareReleaseDate" required />
+                        <input type="date" name="softwareReleaseDate" value="@softwareVersionRow.SoftwareReleaseDate" readonly required />
                     </label>
                     <label class="bp-field-shell">
                         <span>Latest update</span>
-                        <input type="date" name="softwareLatestUpdate" value="@softwareVersionRow.SoftwareLatestUpdate" required />
+                        <input type="date" name="softwareLatestUpdate" value="@softwareVersionRow.SoftwareLatestUpdate" readonly required />
                     </label>
-                    <button type="button" class="bp-action-button is-danger" data-remove-software-version aria-label="Remove software version">Remove</button>
+                    <button type="button" class="bp-action-button is-danger bp-icon-only-button" data-remove-software-version aria-label="Remove software version" title="Remove software version">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M18 6 6 18"></path>
+                            <path d="m6 6 12 12"></path>
+                        </svg>
+                    </button>
                 </article>
                 }
             </div>
@@ -497,22 +502,87 @@
                 }, {});
             }
 
+            function softwareVersionRows(includePending = false) {
+                return Array.from(softwareList.querySelectorAll('[data-software-version-row]'))
+                    .filter(row => includePending || row.dataset.softwareVersionPending !== 'true');
+            }
+
             function collectSoftwareParameters() {
-                const softwareVersionRows = Array.from(softwareList.querySelectorAll('[data-software-version-row]'))
+                const softwareVersions = softwareVersionRows()
                     .map(row => ({
                         SoftwareVersion: row.querySelector('[name="softwareVersion"]')?.value?.trim() || '',
                         SoftwareReleaseDate: row.querySelector('[name="softwareReleaseDate"]')?.value || '',
                         SoftwareLatestUpdate: row.querySelector('[name="softwareLatestUpdate"]')?.value || ''
                     }))
                     .filter(row => row.SoftwareVersion);
-                const highest = [...softwareVersionRows].sort((left, right) =>
+                const highest = [...softwareVersions].sort((left, right) =>
                     String(right.SoftwareVersion || '').localeCompare(String(left.SoftwareVersion || ''), undefined, { numeric: true }))[0] || {};
                 return {
-                    SoftwareVersions: softwareVersionRows,
+                    SoftwareVersions: softwareVersions,
                     SoftwareVersion: highest.SoftwareVersion || '',
                     SoftwareReleaseDate: highest.SoftwareReleaseDate || '',
                     SoftwareLatestUpdate: highest.SoftwareLatestUpdate || ''
                 };
+            }
+
+            function todayIsoDate() {
+                return new Date().toISOString().slice(0, 10);
+            }
+
+            function incrementSoftwareVersion() {
+                const highest = softwareVersionRows()
+                    .map(row => row.querySelector('[name="softwareVersion"]')?.value?.trim() || '')
+                    .filter(Boolean)
+                    .sort((left, right) => String(right).localeCompare(String(left), undefined, { numeric: true }))[0] || '';
+
+                if (!highest) {
+                    return '1.0';
+                }
+
+                const segments = String(highest).split('.');
+                const lastSegment = segments[segments.length - 1];
+                if (/^\d+$/.test(lastSegment)) {
+                    segments[segments.length - 1] = String(Number(lastSegment) + 1);
+                    return segments.join('.');
+                }
+
+                return `${highest}-1`;
+            }
+
+            function softwareVersionButtonMarkup(type) {
+                if (type === 'save') {
+                    return `<button type="button" class="bp-action-button bp-icon-only-button" data-save-software-version aria-label="Save software version" title="Save software version">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M20 6 9 17l-5-5"></path>
+                        </svg>
+                    </button>`;
+                }
+
+                return `<button type="button" class="bp-action-button is-danger bp-icon-only-button" data-remove-software-version aria-label="Remove software version" title="Remove software version">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M18 6 6 18"></path>
+                        <path d="m6 6 12 12"></path>
+                    </svg>
+                </button>`;
+            }
+
+            function saveSoftwareVersionRow(row) {
+                const inputs = Array.from(row.querySelectorAll('input'));
+                const firstInvalid = inputs.find(input => !input.value);
+                if (firstInvalid) {
+                    firstInvalid.reportValidity();
+                    return;
+                }
+
+                inputs.forEach(input => {
+                    input.readOnly = true;
+                });
+                row.removeAttribute('data-software-version-pending');
+                const saveButton = row.querySelector('[data-save-software-version]');
+                if (saveButton) {
+                    saveButton.outerHTML = softwareVersionButtonMarkup('remove');
+                }
+                saveCurrentVersion();
             }
 
             function collectRequiredFieldKeys() {
@@ -662,24 +732,28 @@
                 });
             }
 
-            function createSoftwareVersionRow(version) {
+            function createSoftwareVersionRow(version, isPending = false) {
                 const row = document.createElement('article');
                 row.className = 'bp-template-version-row';
                 row.dataset.softwareVersionRow = '';
+                if (isPending) {
+                    row.dataset.softwareVersionPending = 'true';
+                }
+                const readonlyAttr = isPending ? '' : 'readonly';
                 row.innerHTML = `
                     <label class="bp-field-shell">
                         <span>Software version</span>
-                        <input type="text" name="softwareVersion" value="${escapeHtml(version?.SoftwareVersion || '')}" placeholder="4.0" required />
+                        <input type="text" name="softwareVersion" value="${escapeHtml(version?.SoftwareVersion || '')}" placeholder="4.0" ${readonlyAttr} required />
                     </label>
                     <label class="bp-field-shell">
                         <span>Release date</span>
-                        <input type="date" name="softwareReleaseDate" value="${escapeHtml(version?.SoftwareReleaseDate || '')}" required />
+                        <input type="date" name="softwareReleaseDate" value="${escapeHtml(version?.SoftwareReleaseDate || '')}" ${readonlyAttr} required />
                     </label>
                     <label class="bp-field-shell">
                         <span>Latest update</span>
-                        <input type="date" name="softwareLatestUpdate" value="${escapeHtml(version?.SoftwareLatestUpdate || '')}" required />
+                        <input type="date" name="softwareLatestUpdate" value="${escapeHtml(version?.SoftwareLatestUpdate || '')}" ${readonlyAttr} required />
                     </label>
-                    <button type="button" class="bp-action-button is-danger" data-remove-software-version aria-label="Remove software version">Remove</button>`;
+                    ${softwareVersionButtonMarkup(isPending ? 'save' : 'remove')}`;
                 return row;
             }
 
@@ -925,24 +999,35 @@
             baseProductVersionSelect?.addEventListener('change', () => {});
             applyBaseButton?.addEventListener('click', applyBaseTemplate);
             document.querySelector('[data-add-software-version]')?.addEventListener('click', () => {
+                const today = new Date().toISOString().slice(0, 10);
                 softwareList.appendChild(createSoftwareVersionRow({
-                    SoftwareVersion: '',
-                    SoftwareReleaseDate: '',
-                    SoftwareLatestUpdate: ''
-                }));
+                    SoftwareVersion: incrementSoftwareVersion(),
+                    SoftwareReleaseDate: today,
+                    SoftwareLatestUpdate: today
+                }, true));
             });
             softwareList?.addEventListener('click', (event) => {
+                const saveButton = event.target.closest?.('[data-save-software-version]');
+                if (saveButton) {
+                    const row = saveButton.closest('[data-software-version-row]');
+                    if (row) {
+                        saveSoftwareVersionRow(row);
+                    }
+                    return;
+                }
+
                 const removeButton = event.target.closest?.('[data-remove-software-version]');
                 if (!removeButton) {
                     return;
                 }
 
-                const rows = Array.from(softwareList.querySelectorAll('[data-software-version-row]'));
+                const rows = softwareVersionRows(true);
                 if (rows.length <= 1) {
                     return;
                 }
 
                 removeButton.closest('[data-software-version-row]')?.remove();
+                saveCurrentVersion();
             });
             addProductVersionButton?.addEventListener('click', () => {
                 saveCurrentVersion();

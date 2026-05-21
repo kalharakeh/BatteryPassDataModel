@@ -139,14 +139,14 @@
                                 <td><span>Global admin: @(isGlobalAdmin ? "Yes" : "No")</span></td>
                                 <td><span class="bp-user-count-pill">@MembershipCountLabel(memberships.Count)</span></td>
                                 <td class="bp-action-cell">
-                                    <button type="button" class="bp-action-button bp-user-drawer-toggle" data-user-drawer-toggle aria-expanded="false" aria-controls="@drawerId" aria-label="Open user actions" title="Open user actions" data-tooltip="Open user actions">
+                                    <button type="button" class="bp-action-button bp-user-drawer-toggle" data-user-drawer-toggle data-open-user="@user.Email" aria-expanded="false" aria-controls="@drawerId" aria-label="Open user actions" title="Open user actions" data-tooltip="Open user actions">
                                         <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
                                             <path d="m6 9 6 6 6-6" />
                                         </svg>
                                     </button>
                                 </td>
                             </tr>
-                            <tr id="@drawerId" class="bp-user-drawer-row" hidden>
+                            <tr id="@drawerId" class="bp-user-drawer-row" data-open-user="@user.Email" hidden>
                                 <td colspan="5">
                                     <div class="bp-user-drawer-grid bp-console-form-card">
                                         <section class="bp-user-drawer-panel">
@@ -287,6 +287,20 @@
                     row.hidden = expanded;
                 });
             });
+
+            const openUser = new URLSearchParams(window.location.search).get('openUser');
+            if (openUser) {
+                const drawer = Array.from(document.querySelectorAll('.bp-user-drawer-row[data-open-user]'))
+                    .find((row) => String(row.dataset.openUser || '').toLowerCase() === openUser.toLowerCase());
+                const toggle = drawer?.id
+                    ? document.querySelector(`[data-user-drawer-toggle][aria-controls="${CSS.escape(drawer.id)}"]`)
+                    : null;
+                if (drawer) {
+                    drawer.hidden = false;
+                    toggle?.setAttribute('aria-expanded', 'true');
+                    drawer.scrollIntoView({ block: 'center' });
+                }
+            }
 
             document.querySelectorAll('[data-password-reveal]').forEach((button) => {
                 button.addEventListener('click', () => {

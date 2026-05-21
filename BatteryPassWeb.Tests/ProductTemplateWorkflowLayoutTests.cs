@@ -161,6 +161,22 @@ public sealed class ProductTemplateWorkflowLayoutTests
     }
 
     [Fact]
+    public void FollowupProductEditor_ShouldUsePendingSaveSoftwareVersionRows()
+    {
+        var productView = File.ReadAllText(RepoFile("web", "Views", "Admin", "Product.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("data-software-version-pending", productView);
+        Assert.Contains("data-save-software-version", productView);
+        Assert.Contains("incrementSoftwareVersion", productView);
+        Assert.Contains("new Date().toISOString().slice(0, 10)", productView);
+        Assert.Contains("data-remove-software-version", productView);
+        Assert.Contains("readonly", productView);
+        Assert.Contains(".bp-template-version-row", css);
+        Assert.Contains("grid-template-columns", css);
+    }
+
+    [Fact]
     public void EditPassport_ShouldUpdateProductTemplateFieldsLiveFromCatalogData()
     {
         var edit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));

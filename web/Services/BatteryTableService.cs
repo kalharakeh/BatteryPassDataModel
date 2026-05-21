@@ -96,13 +96,15 @@ public sealed class BatteryTableService
         var passport = await _passportRepository.GetByPassportIdAsync(query, cancellationToken);
         if (passport != null)
         {
-            return BatteryTableSearchResult.Redirect($"/{Uri.EscapeDataString(BsonHelpers.GetString(passport, "passportId"))}");
+            var passportBatteryId = BsonHelpers.GetString(passport, "batteryId");
+            var passportBattery = await _batteryRepository.GetByBatteryIdAsync(passportBatteryId, cancellationToken);
+            return BatteryTableSearchResult.WithRows(passportBattery == null ? [] : [passportBattery]);
         }
 
         var battery = await _batteryRepository.GetByBatteryIdAsync(query, cancellationToken);
         if (battery != null)
         {
-            return BatteryTableSearchResult.Redirect(BatterySearchRedirectPath(BsonHelpers.GetString(battery, "batteryId"), isGlobalAdmin, isClusterAdmin));
+            return BatteryTableSearchResult.WithRows([battery]);
         }
 
         var bySerial = await _batteryRepository.SearchDocumentsAsync(query, includeArchived: isGlobalAdmin, cancellationToken);
@@ -112,7 +114,7 @@ public sealed class BatteryTableService
             .ToList();
         if (exactSerialMatches.Count == 1)
         {
-            return BatteryTableSearchResult.Redirect(BatterySearchRedirectPath(BsonHelpers.GetString(exactSerialMatches[0], "batteryId"), isGlobalAdmin, isClusterAdmin));
+            return BatteryTableSearchResult.WithRows(exactSerialMatches);
         }
 
         if (!isGlobalAdmin && await LooksLikeClusterQueryAsync(query, clusters, cancellationToken))
@@ -231,7 +233,8 @@ public sealed class BatteryTableService
         row.CanEditBattery = isGlobalAdmin || (scope == BatteryTableScope.ClusterAdminPassports && !string.IsNullOrWhiteSpace(row.EditUrl));
         row.CanCreatePassport = isGlobalAdmin || scope == BatteryTableScope.ClusterAdminPassports;
         row.CanOpenConformance = isGlobalAdmin && !string.IsNullOrWhiteSpace(row.ConformanceUrl);
-        row.ShowNewPassportRequired = row.NewPassportRequired;
+        row.ShowNewPassportRequired = row.NewPassportRequired && !IsDraftStatus(row.LatestPassportStatus);
+        row.DisplayStatus = row.ShowNewPassportRequired ? "New passport needed" : row.LatestPassportStatus;
     }
 
     private async Task<bool> LooksLikeClusterQueryAsync(
@@ -288,6 +291,10 @@ public sealed class BatteryTableService
             }
         }
     }
+
+    private static bool IsDraftStatus(string status) =>
+        status.Contains("draft", StringComparison.OrdinalIgnoreCase)
+        || status.Contains("awaiting", StringComparison.OrdinalIgnoreCase);
 
     private static string BatterySearchRedirectPath(string batteryId, bool isGlobalAdmin, bool isClusterAdmin)
     {

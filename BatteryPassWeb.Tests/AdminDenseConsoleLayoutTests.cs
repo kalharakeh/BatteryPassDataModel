@@ -46,9 +46,9 @@ public sealed class AdminDenseConsoleLayoutTests
         Assert.Contains("_BatteryTable", passports);
         Assert.Contains("Battery ID", batteryTable);
         Assert.Contains("<th>Passports</th>", batteryTable);
-        Assert.Contains("<th>Latest passport status</th>", batteryTable);
-        Assert.Contains("Battery Family", batteryTable);
-        Assert.Contains("Battery Model", batteryTable);
+        Assert.Contains("<th>Status</th>", batteryTable);
+        Assert.Contains("<th>Family</th>", batteryTable);
+        Assert.Contains("<th>Model</th>", batteryTable);
         Assert.Contains("Battery serial number", batteryTable);
         Assert.Contains("LatestPassportStatus", batteryTable);
         Assert.Contains("@row.BatteryFamily", batteryTable);

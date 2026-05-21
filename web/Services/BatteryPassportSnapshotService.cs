@@ -102,7 +102,10 @@ public sealed class BatteryPassportSnapshotService
     private static void ApplyPassportSpecificFields(BsonDocument passport, string passportId)
     {
         var generalPayload = EnsureDocument(EnsureDocument(EnsureDocument(passport, "aspects"), "generalProductInformation"), "payload");
-        generalPayload["batteryPassportIdentifier"] = passportId;
+        generalPayload["batteryPassportIdentifier"] = BatteryPassCanonicalDataCatalog.NormalizeBatteryPassportIdentifier(
+            BsonHelpers.GetString(generalPayload, "batteryPassportIdentifier"),
+            BsonHelpers.GetString(passport, "app", "display", "serialNumber"),
+            passportId);
     }
 
     private static BsonDocument EnsureDocument(BsonDocument parent, string key)

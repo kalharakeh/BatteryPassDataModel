@@ -65,7 +65,7 @@ public static class BatteryPassCanonicalDataCatalog
 
     public static double NormalizeMaterialMass(string label, double value)
     {
-        return IsReasonableNumber(value, 0.1, 500)
+        return IsReasonableNumber(value, 0, 1_000_000)
             ? Math.Round(value, 2)
             : MaterialByLabel(label).DemoMassKg;
     }

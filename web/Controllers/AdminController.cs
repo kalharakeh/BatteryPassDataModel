@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using System.Globalization;
 using System.Text.Json;
 using BCryptNet = BCrypt.Net.BCrypt;
 
@@ -294,6 +295,10 @@ public class AdminController : Controller
         {
             return await ReturnNewBatteryFormWithErrorAsync(form, "Battery serial number is required.", cancellationToken);
         }
+        if (await _batteryRepository.GetBySerialNumberAsync(serialNumber, cancellationToken) != null)
+        {
+            return await ReturnNewBatteryFormWithErrorAsync(form, "Battery serial number already exists.", cancellationToken);
+        }
         var clusterId = Text(form, "clusterId");
         if (string.IsNullOrWhiteSpace(clusterId))
         {
@@ -360,7 +365,7 @@ public class AdminController : Controller
             passportId,
             cancellationToken);
         TempData["StatusMessage"] = $"Passport {passportId} created for battery {BsonHelpers.GetString(battery, "batteryId")}.";
-        return Redirect($"/admin/passports/{Uri.EscapeDataString(passportId)}/edit");
+        return Redirect($"/admin/batteries/{Uri.EscapeDataString(BsonHelpers.GetString(battery, "batteryId"))}/passports?returnUrl={Uri.EscapeDataString("/admin/clusters?tab=batteries")}");
     }
 
     [HttpPost("batteries/{batteryId}/save")]
@@ -386,6 +391,9 @@ public class AdminController : Controller
             BsonHelpers.GetString(battery, "identity", "batteryModel"),
             BsonHelpers.GetString(battery, "app", "product", "productVersion"),
             product.LatestProductVersion.Version);
+        var currentSoftwareVersion = FirstNonEmpty(
+            BsonHelpers.GetString(battery, "identity", "softwareVersion"),
+            BsonHelpers.GetString(battery, "app", "product", "softwareVersion"));
         var requestedBatteryModel = FirstNonEmpty(
             Text(filteredForm, "batteryModel"),
             Text(filteredForm, "productVersion"),
@@ -405,6 +413,7 @@ public class AdminController : Controller
         display["manufacturerName"] = lockedManufacturerName;
         productNode["productId"] = product.ProductId;
         productNode["productName"] = product.ProductName;
+        var compareAllPassportData = false;
         if (!requestedBatteryModel.Equals(currentBatteryModel, StringComparison.OrdinalIgnoreCase))
         {
             var modelResult = await _batteryTemplateUpdateService.ApplyBatteryModelAsync(battery, requestedBatteryModel, cancellationToken);
@@ -412,11 +421,18 @@ public class AdminController : Controller
             {
                 return Redirect($"/admin/batteries/{Uri.EscapeDataString(decodedBatteryId)}/edit?error={Uri.EscapeDataString(modelResult.Message)}");
             }
+
+            compareAllPassportData = true;
         }
 
         var softwareVersion = Text(filteredForm, "softwareVersion");
         if (!string.IsNullOrWhiteSpace(softwareVersion))
         {
+            if (!softwareVersion.Equals(currentSoftwareVersion, StringComparison.OrdinalIgnoreCase))
+            {
+                compareAllPassportData = true;
+            }
+
             var softwareResult = await _batteryTemplateUpdateService.ApplySoftwareVersionAsync(battery, softwareVersion, cancellationToken);
             if (!softwareResult.Success)
             {
@@ -431,7 +447,14 @@ public class AdminController : Controller
         }
         battery["updatedAt"] = now;
 
-        await _batteryPassportDeltaService.UpdateNewPassportRequiredAsync(battery, cancellationToken);
+        if (compareAllPassportData)
+        {
+            await _batteryPassportDeltaService.UpdateNewPassportRequiredForPassportDataAsync(battery, cancellationToken);
+        }
+        else
+        {
+            await _batteryPassportDeltaService.UpdateNewPassportRequiredAsync(battery, cancellationToken);
+        }
         TempData["StatusMessage"] = "Battery data saved.";
         return Redirect("/admin/clusters?tab=batteries");
     }
@@ -1147,7 +1170,10 @@ public class AdminController : Controller
         await _clusterRepository.EnsureIndexesAsync(cancellationToken);
         if (await _clusterRepository.GetClusterByIdAsync(clusterId, cancellationToken) != null)
         {
-            return Redirect($"/admin/clusters?tab=clusters&error={Uri.EscapeDataString("Cluster ID already exists.")}");
+            TempData["ErrorMessage"] = "Cluster ID already exists.";
+            TempData["ClusterCreateName"] = name;
+            TempData["ClusterCreateId"] = clusterId;
+            return Redirect("/admin/clusters?tab=clusters");
         }
 
         try
@@ -1156,7 +1182,10 @@ public class AdminController : Controller
         }
         catch (MongoWriteException exception) when (exception.WriteError?.Category == ServerErrorCategory.DuplicateKey)
         {
-            return Redirect($"/admin/clusters?tab=clusters&error={Uri.EscapeDataString("Cluster ID already exists.")}");
+            TempData["ErrorMessage"] = "Cluster ID already exists.";
+            TempData["ClusterCreateName"] = name;
+            TempData["ClusterCreateId"] = clusterId;
+            return Redirect("/admin/clusters?tab=clusters");
         }
         return Redirect("/admin/clusters?tab=clusters");
     }
@@ -1223,7 +1252,7 @@ public class AdminController : Controller
         var clusterId = Text(Request.Form, "clusterId");
         var role = Text(Request.Form, "role", "member");
         await _clusterRepository.UpsertClusterMembershipAsync(email, clusterId, role, cancellationToken);
-        return Redirect("/admin/clusters?tab=users");
+        return Redirect($"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}");
     }
 
     [HttpPost("clusters/save-user")]
@@ -1250,13 +1279,13 @@ public class AdminController : Controller
         if (!string.IsNullOrWhiteSpace(password) && !password.Equals(passwordConfirmation, StringComparison.Ordinal))
         {
             TempData["ErrorMessage"] = "Passwords do not match.";
-            return Redirect("/admin/clusters?tab=users");
+            return Redirect($"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}");
         }
 
         if (existingUser == null && string.IsNullOrWhiteSpace(password))
         {
             TempData["ErrorMessage"] = "Password is required for new users.";
-            return Redirect("/admin/clusters?tab=users");
+            return Redirect($"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}");
         }
 
         var passwordHash = string.IsNullOrWhiteSpace(password) ? string.Empty : BCryptNet.HashPassword(password);
@@ -1269,7 +1298,7 @@ public class AdminController : Controller
             await _clusterRepository.UpsertClusterMembershipAsync(email, clusterId, membershipRole, cancellationToken);
         }
 
-        return Redirect("/admin/clusters?tab=users");
+        return Redirect($"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}");
     }
 
     [HttpPost("clusters/delete-user")]
@@ -1279,7 +1308,7 @@ public class AdminController : Controller
         var email = Text(Request.Form, "email");
         var clusterId = Text(Request.Form, "clusterId");
         await _clusterRepository.DeleteClusterMembershipAsync(email, clusterId, cancellationToken);
-        return Redirect("/admin/clusters?tab=users");
+        return Redirect($"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}");
     }
 
     [HttpPost("api/tokens/create")]
@@ -2692,11 +2721,17 @@ public class AdminController : Controller
         carbonPayload["carbonFootprintPerformanceClass"] = BatteryPassCanonicalDataCatalog.NormalizePerformanceClass(
             Text(form, "performanceClass", carbonPayload.GetValue("carbonFootprintPerformanceClass", "B").ToString()));
         var lifecycleRows = new BsonArray();
+        var existingLifecycleRows = carbonPayload.GetValue("carbonFootprintPerLifecycleStage", new BsonArray()) as BsonArray ?? new BsonArray();
         foreach (var carbonStage in BatteryPassCanonicalDataCatalog.CarbonStages)
         {
+            var fallbackCarbonStage = existingLifecycleRows
+                .OfType<BsonDocument>()
+                .FirstOrDefault(row => BsonText(row.GetValue("lifecycleStage", string.Empty)).Equals(carbonStage.Stage, StringComparison.OrdinalIgnoreCase))?
+                .GetValue("carbonFootprint", carbonStage.DemoValue)
+                .ToDouble() ?? carbonStage.DemoValue;
             var value = BatteryPassCanonicalDataCatalog.NormalizeCarbonStageValue(
                 carbonStage.Stage,
-                Number(form, carbonStage.Field, 0));
+                Number(form, carbonStage.Field, fallbackCarbonStage));
             lifecycleRows.Add(new BsonDocument
             {
                 ["lifecycleStage"] = carbonStage.Stage,
@@ -2727,7 +2762,10 @@ public class AdminController : Controller
         endOfLifeInformation["wastePrevention"] = Text(form, "wastePrevention", endOfLifeInformation.GetValue("wastePrevention", string.Empty).ToString());
         appCircularityNotes["separateCollection"] = endOfLifeInformation.GetValue("separateCollection", string.Empty).ToString();
         appCircularityNotes["wastePrevention"] = endOfLifeInformation.GetValue("wastePrevention", string.Empty).ToString();
-        appCircularityNotes["recycledContentShareVerification"] = Text(form, "recycledContentShareVerification", "unverified");
+        appCircularityNotes["recycledContentShareVerification"] = Text(
+            form,
+            "recycledContentShareVerification",
+            appCircularityNotes.GetValue("recycledContentShareVerification", "unverified").ToString());
 
         var recycledMaterials = new[]
         {
@@ -2736,11 +2774,15 @@ public class AdminController : Controller
             ("recycledLithium", "Lithium"),
             ("recycledLead", "Lead")
         };
+        var existingRecycledRows = circularityPayload.GetValue("recycledContent", new BsonArray()) as BsonArray ?? new BsonArray();
         var recycledAspectRows = new BsonArray();
         foreach (var (prefix, material) in recycledMaterials)
         {
-            var pre = Number(form, $"{prefix}Pre", 0);
-            var post = Number(form, $"{prefix}Post", 0);
+            var fallbackRecycledRow = existingRecycledRows
+                .OfType<BsonDocument>()
+                .FirstOrDefault(row => BsonText(row.GetValue("recycledMaterial", string.Empty)).Equals(material, StringComparison.OrdinalIgnoreCase));
+            var pre = Number(form, $"{prefix}Pre", fallbackRecycledRow?.GetValue("preConsumerShare", 0).ToDouble() ?? 0);
+            var post = Number(form, $"{prefix}Post", fallbackRecycledRow?.GetValue("postConsumerShare", 0).ToDouble() ?? 0);
             recycledAspectRows.Add(new BsonDocument
             {
                 ["recycledMaterial"] = material,
@@ -2840,7 +2882,13 @@ public class AdminController : Controller
     private static double Number(IFormCollection form, string key, double fallback)
     {
         var text = Text(form, key);
-        return double.TryParse(text, out var parsed) ? parsed : fallback;
+        if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
+            || double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out parsed))
+        {
+            return parsed;
+        }
+
+        return fallback;
     }
 
     private static string DateOnly(string? value)

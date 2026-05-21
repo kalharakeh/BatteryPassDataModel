@@ -28,6 +28,9 @@
     var evidenceStepOpen = evidencePack.BlockingCount > 0
         || evidencePack.UploadedUnsignedCount > 0
         || evidencePack.ChangedSinceSigningCount > 0;
+    var batteryEditHref = string.IsNullOrWhiteSpace(passport.BatteryId)
+        ? "/admin/clusters?tab=batteries"
+        : $"/admin/batteries/{Uri.EscapeDataString(passport.BatteryId)}/edit";
 }
 
 <main class="bp-page bp-admin-page bp-conformance-page">
@@ -59,7 +62,7 @@
                     <path d="m14 16 3 3" />
                 </svg>
             </a>
-            <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/edit" class="bp-action-button" aria-label="Edit passport snapshot" title="Edit passport snapshot" data-tooltip="Edit passport" data-action-icon="edit">
+            <a href="@batteryEditHref" class="bp-action-button" aria-label="Edit battery" title="Edit battery" data-tooltip="Edit battery" data-action-icon="edit">
                 <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M4 20h4l11-11a2.5 2.5 0 0 0-4-4L4 16z" />
                     <path d="M13.5 6.5l4 4" />
@@ -164,7 +167,7 @@
                                             <span>Section</span>
                                             <strong>@group.SectionLabel</strong>
                                         </div>
-                                        <a class="bp-secondary-button bp-button-compact" href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/edit#@group.EditAnchor">Edit section</a>
+                                        <a class="bp-secondary-button bp-button-compact" href="@(batteryEditHref)#@group.EditAnchor">Edit battery</a>
                                     </div>
                                     <div class="bp-completion-items">
                                         @foreach (var issue in group.Issues)
@@ -313,7 +316,7 @@
                             <div><dt>Signed hash</dt><dd><code>@(string.IsNullOrWhiteSpace(item.SignedHash) ? "-" : item.SignedHash)</code></dd></div>
                             <div><dt>Next action</dt><dd>@item.RecommendedAction</dd></div>
                         </dl>
-                        <a class="bp-secondary-button bp-button-compact" href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/edit#@EvidenceEditAnchor(item.DocumentKey)">Upload or replace</a>
+                        <a class="bp-secondary-button bp-button-compact" href="@(batteryEditHref)#@EvidenceEditAnchor(item.DocumentKey)">Upload or replace</a>
                     </article>
                 }
             </div>

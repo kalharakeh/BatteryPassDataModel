@@ -20,13 +20,14 @@ else
             <table class="table table-hover align-middle bp-console-table bp-shared-battery-table">
                 <thead>
                     <tr>
-                        <th>Battery ID</th>
-                        <th>Battery Family</th>
-                        <th>Battery Model</th>
                         <th>Battery serial number</th>
+                        <th>Battery ID</th>
+                        <th>Family</th>
+                        <th>Model</th>
+                        @* Battery Model *@
                         <th>Cluster</th>
                         <th>Passports</th>
-                        <th>Latest passport status</th>
+                        <th>Status</th>
                         <th>Updated</th>
                         <th class="bp-action-cell">Actions</th>
                     </tr>
@@ -37,18 +38,18 @@ else
                         var updated = string.IsNullOrWhiteSpace(row.UpdatedDate)
                             ? "-"
                             : row.UpdatedDate[..Math.Min(10, row.UpdatedDate.Length)];
-                        var passportStatusClass = row.LatestPassportStatus.Equals("Published", StringComparison.OrdinalIgnoreCase)
-                            || row.LatestPassportStatus.Equals("published", StringComparison.OrdinalIgnoreCase)
+                        var passportStatusClass = row.DisplayStatus.Equals("Published", StringComparison.OrdinalIgnoreCase)
+                            || row.DisplayStatus.Equals("published", StringComparison.OrdinalIgnoreCase)
                                 ? "bp-status-pill is-published"
-                                : row.LatestPassportStatus.Equals("Signed", StringComparison.OrdinalIgnoreCase)
-                                || row.LatestPassportStatus.Equals("signed", StringComparison.OrdinalIgnoreCase)
+                                : row.DisplayStatus.Equals("Signed", StringComparison.OrdinalIgnoreCase)
+                                || row.DisplayStatus.Equals("signed", StringComparison.OrdinalIgnoreCase)
                                     ? "bp-status-pill is-signed"
                                     : "bp-status-pill is-draft";
                         <tr>
-                            <td><span class="bp-battery-id-cell bp-id-copy-row"><span class="bp-id-value">@row.BatteryId</span>@await Html.PartialAsync("_CopyIdButton", row.BatteryId)</span></td>
+                            <td>@row.BatterySerialNumber</td>
+                            <td><span class="bp-battery-id-cell bp-battery-id-cell-compact bp-id-copy-row"><span class="bp-id-value">@row.BatteryId</span>@await Html.PartialAsync("_CopyIdButton", row.BatteryId)</span></td>
                             <td>@row.BatteryFamily</td>
                             <td>@row.BatteryModel</td>
-                            <td>@row.BatterySerialNumber</td>
                             <td>
                                 <strong>@row.ClusterLabel</strong>
                                 @if (!string.IsNullOrWhiteSpace(row.ClusterId))
@@ -57,14 +58,10 @@ else
                                 }
                             </td>
                             <td>@row.PassportCount passports</td>
-                            <td><span class="@passportStatusClass">@row.LatestPassportStatus</span></td>
+                            <td><span class="@passportStatusClass" data-latest-passport-status="@row.LatestPassportStatus">@(row.ShowNewPassportRequired ? "New passport needed" : row.DisplayStatus)</span></td>
                             <td>@updated</td>
                             <td class="bp-action-cell">
                                 <div class="bp-icon-action-row">
-                                    @if (row.ShowNewPassportRequired)
-                                    {
-                                        <span class="bp-status-pill is-draft" title="Create a new passport snapshot to expose saved battery changes.">New passport needed</span>
-                                    }
                                     @if (!string.IsNullOrWhiteSpace(row.SummaryUrl))
                                     {
                                         <a href="@row.SummaryUrl" class="bp-report-action" aria-label="Summary report" title="Summary report" data-tooltip="Summary report" data-action-icon="summary">

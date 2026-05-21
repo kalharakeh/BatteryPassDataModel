@@ -1,6 +1,7 @@
 using BatteryPassWeb.Models.ViewModels;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using System.Text.RegularExpressions;
 
 namespace BatteryPassWeb.Services;
 
@@ -47,6 +48,21 @@ public sealed class BatteryRepository
         }
 
         return await collection.Find(Builders<BsonDocument>.Filter.Eq("batteryId", batteryId.Trim())).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<BsonDocument?> GetBySerialNumberAsync(string serialNumber, CancellationToken cancellationToken = default)
+    {
+        var collection = GetCollection();
+        if (collection == null || string.IsNullOrWhiteSpace(serialNumber))
+        {
+            return null;
+        }
+
+        return await collection
+            .Find(Builders<BsonDocument>.Filter.Regex(
+                "identity.serialNumber",
+                new BsonRegularExpression($"^{Regex.Escape(serialNumber.Trim())}$", "i")))
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<BsonDocument>> SearchDocumentsAsync(string query, bool includeArchived = false, CancellationToken cancellationToken = default)
@@ -181,6 +197,7 @@ public sealed class BatteryRepository
             PassportCount = passportRows.Count,
             LatestPassportId = latest?.PassportId ?? string.Empty,
             LatestPassportStatus = latest?.PassportStatus ?? "Draft",
+            DisplayStatus = latest?.PassportStatus ?? "Draft",
             UpdatedDate = BsonHelpers.GetString(battery, "updatedAt"),
             NewPassportRequired = BsonHelpers.GetValue(battery, "app", "snapshot", "newPassportRequired") is { IsBoolean: true } newPassportRequired
                 && newPassportRequired.AsBoolean,

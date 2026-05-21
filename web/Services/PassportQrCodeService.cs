@@ -7,7 +7,7 @@ public sealed class PassportQrCodeService
     public string BuildPayloadUrl(HttpRequest request, string batteryId)
     {
         var escapedBatteryId = Uri.EscapeDataString(batteryId);
-        return $"{request.Scheme}://{request.Host}/{escapedBatteryId}/latest";
+        return $"{request.Scheme}://{request.Host}/{escapedBatteryId}/latest/summary";
     }
 
     public string GenerateSvg(string payload)

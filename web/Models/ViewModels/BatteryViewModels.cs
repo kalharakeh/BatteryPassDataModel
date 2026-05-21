@@ -11,6 +11,7 @@ public sealed class BatterySummaryViewModel
     public int PassportCount { get; init; }
     public string LatestPassportId { get; init; } = string.Empty;
     public string LatestPassportStatus { get; init; } = "Draft";
+    public string DisplayStatus { get; set; } = "Draft";
     public string UpdatedDate { get; init; } = string.Empty;
     public bool NewPassportRequired { get; init; }
     public IReadOnlyList<BatteryPassportHistoryRowViewModel> Passports { get; init; } = [];

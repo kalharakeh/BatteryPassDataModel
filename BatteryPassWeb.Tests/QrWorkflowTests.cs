@@ -28,6 +28,7 @@ public sealed class QrWorkflowTests
         Assert.Contains("CanOpenPassportDetailAsync", source);
         Assert.Contains("image/svg+xml", source);
         Assert.Contains("BuildPayloadUrl", source);
+        Assert.Contains("CreateSampleBatteryId", source);
     }
 
     [Fact]
@@ -159,10 +160,30 @@ public sealed class QrWorkflowTests
         var source = File.ReadAllText(RepoFile("web", "Services", "PassportQrCodeService.cs"));
         var controller = File.ReadAllText(RepoFile("web", "Controllers", "QrController.cs"));
 
-        Assert.Contains("/latest", source);
+        Assert.Contains("/latest/summary", source);
         Assert.Contains("BuildPayloadUrl", source);
         Assert.Contains("GetLatestPublicByBatteryIdAsync", controller);
         Assert.Contains("CanOpenPassportDetailAsync", controller);
+    }
+
+    [Fact]
+    public void FollowupQrWorkflow_ShouldRenderInsideReportIdentityHeader()
+    {
+        var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
+        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "QrController.cs"));
+
+        foreach (var view in new[] { summary, detail })
+        {
+            Assert.Contains("bp-report-identity-grid", view);
+            Assert.Contains("bp-report-identity-panel--qr", view);
+            Assert.Contains("/qr/@Uri.EscapeDataString(qrBatteryId)/download", view);
+            Assert.Contains("/qr/@Uri.EscapeDataString(qrBatteryId)/svg", view);
+            Assert.DoesNotContain("bp-report-media-code-row", view);
+        }
+
+        Assert.Contains("image/png", controller);
+        Assert.Contains("GetLatestPublicByBatteryIdAsync", controller);
     }
 
     private static string RepoFile(params string[] parts)

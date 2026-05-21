@@ -68,11 +68,11 @@ public sealed class EditableFieldPolicyService
         new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
             ["general.clusterId"] = ["clusterId"],
-            ["general.product"] = ["identity.batteryFamily", "app.product.productName"],
-            ["general.batteryFamily"] = ["identity.batteryFamily", "app.product.productName"],
-            ["general.productVersion"] = ["identity.batteryModel", "app.product.productVersion", "app.product.batteryModel"],
-            ["general.batteryModel"] = ["identity.batteryModel", "app.product.productVersion", "app.product.batteryModel"],
-            ["general.serialNumber"] = ["identity.serialNumber", "app.display.serialNumber"],
+            ["general.product"] = ["snapshot.batteryFamily", "app.product.productName"],
+            ["general.batteryFamily"] = ["snapshot.batteryFamily", "app.product.productName"],
+            ["general.productVersion"] = ["snapshot.batteryModel", "app.product.productVersion", "app.product.batteryModel"],
+            ["general.batteryModel"] = ["snapshot.batteryModel", "app.product.productVersion", "app.product.batteryModel"],
+            ["general.serialNumber"] = ["snapshot.batterySerialNumber", "app.display.serialNumber"],
             ["general.batteryStatus"] = ["aspects.generalProductInformation.payload.batteryStatus"],
             ["general.batteryMass"] = ["aspects.generalProductInformation.payload.batteryMass"],
             ["general.manufacturingDate"] = ["aspects.generalProductInformation.payload.manufacturingDate"],
@@ -82,6 +82,14 @@ public sealed class EditableFieldPolicyService
             ["general.manufacturedBy"] = ["app.display.manufacturerName"],
             ["general.softwareVersion"] = ["app.product.softwareVersion"],
             ["software.version"] = ["app.product.softwareVersion"],
+            ["material.nickelMass"] = ["aspects.materialComposition.payload.batteryMaterials[Nickel].batteryMaterialMass"],
+            ["material.copperMass"] = ["aspects.materialComposition.payload.batteryMaterials[Copper].batteryMaterialMass"],
+            ["material.aluminiumMass"] = ["aspects.materialComposition.payload.batteryMaterials[Aluminium].batteryMaterialMass"],
+            ["material.graphiteMass"] = ["aspects.materialComposition.payload.batteryMaterials[Graphite].batteryMaterialMass"],
+            ["material.manganeseMass"] = ["aspects.materialComposition.payload.batteryMaterials[Manganese].batteryMaterialMass"],
+            ["material.cobaltMass"] = ["aspects.materialComposition.payload.batteryMaterials[Cobalt].batteryMaterialMass"],
+            ["material.lithiumMass"] = ["aspects.materialComposition.payload.batteryMaterials[Lithium].batteryMaterialMass"],
+            ["material.electrolyteMass"] = ["aspects.materialComposition.payload.batteryMaterials[Electrolyte and separators].batteryMaterialMass"],
             ["performance.ratedEnergy"] = ["aspects.performanceAndDurability.payload.batteryTechicalProperties.ratedEnergy"],
             ["performance.ratedCapacity"] = ["aspects.performanceAndDurability.payload.batteryTechicalProperties.ratedCapacity"],
             ["performance.ratedMaximumPower"] = ["aspects.performanceAndDurability.payload.batteryTechicalProperties.ratedMaximumPower"],
@@ -91,8 +99,20 @@ public sealed class EditableFieldPolicyService
             ["supplyChain.supplyChainIndex"] = ["aspects.supplyChainDueDiligence.payload.supplyChainIndicies"],
             ["carbon.amount"] = ["aspects.carbonFootprintForBatteries.payload.batteryCarbonFootprint"],
             ["carbon.performanceClass"] = ["aspects.carbonFootprintForBatteries.payload.carbonFootprintPerformanceClass"],
+            ["carbon.rawMaterial"] = ["aspects.carbonFootprintForBatteries.payload.carbonFootprintPerLifecycleStage[RawMaterialExtraction].carbonFootprint"],
+            ["carbon.mainProduction"] = ["aspects.carbonFootprintForBatteries.payload.carbonFootprintPerLifecycleStage[MainProduction].carbonFootprint"],
+            ["carbon.distribution"] = ["aspects.carbonFootprintForBatteries.payload.carbonFootprintPerLifecycleStage[Distribution].carbonFootprint"],
+            ["carbon.recycling"] = ["aspects.carbonFootprintForBatteries.payload.carbonFootprintPerLifecycleStage[Recycling].carbonFootprint"],
             ["circularity.separateCollection"] = ["aspects.circularity.payload.endOfLifeInformation.separateCollection", "app.notes.circularity.separateCollection"],
-            ["circularity.wastePrevention"] = ["aspects.circularity.payload.endOfLifeInformation.wastePrevention", "app.notes.circularity.wastePrevention"]
+            ["circularity.wastePrevention"] = ["aspects.circularity.payload.endOfLifeInformation.wastePrevention", "app.notes.circularity.wastePrevention"],
+            ["circularity.recycledNickelPre"] = ["aspects.circularity.payload.recycledContent[Nickel].preConsumerShare"],
+            ["circularity.recycledNickelPost"] = ["aspects.circularity.payload.recycledContent[Nickel].postConsumerShare"],
+            ["circularity.recycledCobaltPre"] = ["aspects.circularity.payload.recycledContent[Cobalt].preConsumerShare"],
+            ["circularity.recycledCobaltPost"] = ["aspects.circularity.payload.recycledContent[Cobalt].postConsumerShare"],
+            ["circularity.recycledLithiumPre"] = ["aspects.circularity.payload.recycledContent[Lithium].preConsumerShare"],
+            ["circularity.recycledLithiumPost"] = ["aspects.circularity.payload.recycledContent[Lithium].postConsumerShare"],
+            ["circularity.recycledLeadPre"] = ["aspects.circularity.payload.recycledContent[Lead].preConsumerShare"],
+            ["circularity.recycledLeadPost"] = ["aspects.circularity.payload.recycledContent[Lead].postConsumerShare"]
         };
 
     private static readonly IReadOnlyDictionary<string, string> AliasByFieldKey =

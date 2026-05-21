@@ -39,7 +39,7 @@ public sealed class BatteryTemplateUpdateService
             product,
             selectedVersion,
             DateTimeOffset.UtcNow.ToString("O"));
-        await _batteryPassportDeltaService.UpdateNewPassportRequiredAsync(battery, cancellationToken);
+        await _batteryPassportDeltaService.UpdateNewPassportRequiredForPassportDataAsync(battery, cancellationToken);
         return new BatteryTemplateUpdateResult(true, "Battery Model updated.", battery);
     }
 
@@ -83,7 +83,7 @@ public sealed class BatteryTemplateUpdateService
             SetPath(battery, pair.Key, pair.Value);
         }
 
-        await _batteryPassportDeltaService.UpdateNewPassportRequiredAsync(battery, cancellationToken);
+        await _batteryPassportDeltaService.UpdateNewPassportRequiredForPassportDataAsync(battery, cancellationToken);
         return new BatteryTemplateUpdateResult(true, "Software Version updated.", battery);
     }
 

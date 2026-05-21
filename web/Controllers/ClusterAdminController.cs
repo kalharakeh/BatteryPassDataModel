@@ -92,7 +92,7 @@ public class ClusterAdminController : Controller
         var passportId = BsonHelpers.GetString(passport, "passportId");
         await _batteryPassportDeltaService.ClearNewPassportRequiredAsync(decodedBatteryId, passportId, cancellationToken);
         TempData["StatusMessage"] = $"Passport {passportId} created for battery {decodedBatteryId}.";
-        return Redirect($"/cluster-admin/passports/{Uri.EscapeDataString(passportId)}/edit");
+        return Redirect($"/cluster-admin/passports?q={Uri.EscapeDataString(decodedBatteryId)}");
     }
 
     [HttpGet("passports/{passportId}/edit")]
@@ -429,7 +429,7 @@ public class ClusterAdminController : Controller
 
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(clusterId))
         {
-            return Redirect("/cluster-admin/users");
+            return Redirect($"/cluster-admin/users{(string.IsNullOrWhiteSpace(email) ? string.Empty : $"?openUser={Uri.EscapeDataString(email)}")}");
         }
 
         if (!await _accessControlService.CanAdministerClusterAsync(User, clusterId, cancellationToken))
@@ -440,7 +440,7 @@ public class ClusterAdminController : Controller
         var currentEmail = AccessControlService.CurrentEmail(User).Trim().ToLowerInvariant();
         if (!AccessControlService.IsAdmin(User) && email.Equals(currentEmail, StringComparison.OrdinalIgnoreCase))
         {
-            return Redirect($"/cluster-admin/users?error={Uri.EscapeDataString("Cannot change your own local admin role.")}");
+            return Redirect($"/cluster-admin/users?error={Uri.EscapeDataString("Cannot change your own local admin role.")}&openUser={Uri.EscapeDataString(email)}");
         }
 
         var existingUser = await _clusterRepository.GetUserByEmailAsync(email, cancellationToken);
@@ -453,19 +453,19 @@ public class ClusterAdminController : Controller
             : [];
         if (!AccessControlService.IsAdmin(User) && existingRoles.Contains(AccessControlService.RoleAdmin, StringComparer.OrdinalIgnoreCase))
         {
-            return Redirect($"/cluster-admin/users?error={Uri.EscapeDataString("Local admins cannot modify global admin users.")}");
+            return Redirect($"/cluster-admin/users?error={Uri.EscapeDataString("Local admins cannot modify global admin users.")}&openUser={Uri.EscapeDataString(email)}");
         }
 
         var password = Text(Request.Form, "password");
         var passwordConfirmation = Text(Request.Form, "passwordConfirmation");
         if (!string.IsNullOrWhiteSpace(password) && !password.Equals(passwordConfirmation, StringComparison.Ordinal))
         {
-            return Redirect($"/cluster-admin/users?error={Uri.EscapeDataString("Passwords do not match.")}");
+            return Redirect($"/cluster-admin/users?error={Uri.EscapeDataString("Passwords do not match.")}&openUser={Uri.EscapeDataString(email)}");
         }
 
         if (existingUser == null && string.IsNullOrWhiteSpace(password))
         {
-            return Redirect($"/cluster-admin/users?error={Uri.EscapeDataString("Password is required for new users.")}");
+            return Redirect($"/cluster-admin/users?error={Uri.EscapeDataString("Password is required for new users.")}&openUser={Uri.EscapeDataString(email)}");
         }
 
         var roles = existingRoles.Where(existingRole => !existingRole.Equals(AccessControlService.RoleAdmin, StringComparison.OrdinalIgnoreCase)).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -478,7 +478,7 @@ public class ClusterAdminController : Controller
         var passwordHash = string.IsNullOrWhiteSpace(password) ? string.Empty : BCryptNet.HashPassword(password);
         await _clusterRepository.UpsertUserAsync(email, displayName, roles.ToList(), passwordHash, cancellationToken);
         await _clusterRepository.UpsertClusterMembershipAsync(email, clusterId, role, cancellationToken);
-        return Redirect("/cluster-admin/users");
+        return Redirect($"/cluster-admin/users?openUser={Uri.EscapeDataString(email)}");
     }
 
     [HttpPost("users/delete-membership")]
@@ -489,7 +489,7 @@ public class ClusterAdminController : Controller
         var clusterId = Text(Request.Form, "clusterId");
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(clusterId))
         {
-            return Redirect("/cluster-admin/users");
+            return Redirect($"/cluster-admin/users{(string.IsNullOrWhiteSpace(email) ? string.Empty : $"?openUser={Uri.EscapeDataString(email)}")}");
         }
 
         if (!await _accessControlService.CanAdministerClusterAsync(User, clusterId, cancellationToken))
@@ -500,11 +500,11 @@ public class ClusterAdminController : Controller
         var currentEmail = AccessControlService.CurrentEmail(User).Trim().ToLowerInvariant();
         if (!AccessControlService.IsAdmin(User) && email.Trim().ToLowerInvariant().Equals(currentEmail, StringComparison.OrdinalIgnoreCase))
         {
-            return Redirect($"/cluster-admin/users?error={Uri.EscapeDataString("Cannot change your own local admin role.")}");
+            return Redirect($"/cluster-admin/users?error={Uri.EscapeDataString("Cannot change your own local admin role.")}&openUser={Uri.EscapeDataString(email)}");
         }
 
         await _clusterRepository.DeleteClusterMembershipAsync(email, clusterId, cancellationToken);
-        return Redirect("/cluster-admin/users");
+        return Redirect($"/cluster-admin/users?openUser={Uri.EscapeDataString(email)}");
     }
 
     private async Task<bool> ValidateClusterTokenScopeAsync(string tokenId, CancellationToken cancellationToken)

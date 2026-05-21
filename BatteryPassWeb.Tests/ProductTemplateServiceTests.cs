@@ -238,10 +238,22 @@ public sealed class ProductTemplateServiceTests
         var source = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateService.cs"));
 
         Assert.Contains("BatteryCollection()", source);
-        Assert.Contains("UpdateNewPassportRequiredAsync", source);
+        Assert.Contains("UpdateNewPassportRequiredByBatteryIdAsync", source);
         Assert.Contains("changedBatteryIds", source);
         Assert.Contains("if (result.UpdatedPaths.Count == 0)", source);
         Assert.DoesNotContain("MarkCanonicalDirtyAsync(passportId, \"productVersionTemplatePushed\"", source);
+    }
+
+    [Fact]
+    public void FollowupProductTemplatePush_ShouldFilterByExactFamilyAndModel()
+    {
+        var source = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateService.cs"));
+
+        Assert.Contains("Eq(\"app.product.productId\", product.ProductId)", source);
+        Assert.Contains("Eq(\"app.product.productVersion\", selectedProductVersion.Version)", source);
+        Assert.Contains("UpdateNewPassportRequiredByBatteryIdAsync(", source);
+        Assert.Contains("compareAllPassportData: true", source);
+        Assert.DoesNotContain("Regex(\"app.product.productVersion\"", source);
     }
 
     [Fact]

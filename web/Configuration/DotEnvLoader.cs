@@ -31,10 +31,19 @@ public static class DotEnvLoader
                 value = value[1..^1];
             }
 
-            if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(key)))
+            var existingValue = Environment.GetEnvironmentVariable(key);
+            if (string.IsNullOrWhiteSpace(existingValue) || IsPlaceholderValue(existingValue))
             {
                 Environment.SetEnvironmentVariable(key, value);
             }
         }
+    }
+
+    private static bool IsPlaceholderValue(string value)
+    {
+        var normalized = value.Trim();
+        return normalized.StartsWith("replace-with", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("your MongoDB connection string", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("your mongodb connection string", StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -12,19 +12,22 @@ public sealed class QrController : Controller
     private readonly PassportPublishPolicyService _passportPublishPolicyService;
     private readonly AccessControlService _accessControlService;
     private readonly PassportQrCodeService _passportQrCodeService;
+    private readonly BatteryIdService _batteryIdService;
 
     public QrController(
         BatteryRepository batteryRepository,
         PassportRepository passportRepository,
         PassportPublishPolicyService passportPublishPolicyService,
         AccessControlService accessControlService,
-        PassportQrCodeService passportQrCodeService)
+        PassportQrCodeService passportQrCodeService,
+        BatteryIdService batteryIdService)
     {
         _batteryRepository = batteryRepository;
         _passportRepository = passportRepository;
         _passportPublishPolicyService = passportPublishPolicyService;
         _accessControlService = accessControlService;
         _passportQrCodeService = passportQrCodeService;
+        _batteryIdService = batteryIdService;
     }
 
     [HttpGet("{batteryId}/svg")]
@@ -61,6 +64,12 @@ public sealed class QrController : Controller
         if (string.IsNullOrWhiteSpace(batteryId))
         {
             return false;
+        }
+
+        var sampleBatteryId = ExternalApiInitializer.CreateSampleBatteryId(_batteryIdService);
+        if (batteryId.Equals(sampleBatteryId, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
         }
 
         var battery = await _batteryRepository.GetByBatteryIdAsync(batteryId, cancellationToken);

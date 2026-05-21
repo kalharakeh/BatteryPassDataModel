@@ -145,6 +145,12 @@ public class PassportController : Controller
             : Redirect($"{passportPath}/summary");
     }
 
+    [HttpGet("{batteryId}/latest/summary")]
+    public Task<IActionResult> LatestSummary(string batteryId, CancellationToken cancellationToken)
+    {
+        return Latest(batteryId, cancellationToken);
+    }
+
     [HttpGet("{id}")]
     public async Task<IActionResult> Detail(string id, CancellationToken cancellationToken)
     {
@@ -162,13 +168,14 @@ public class PassportController : Controller
 
         if (resolution.Kind != BatteryRouteTargetKind.Passport || resolution.Document == null)
         {
-            return NotFound();
+            return FallbackSamplePassport(decodedPassportId) != null
+                ? RedirectToPublicSummaryWithAccessNotice(decodedPassportId)
+                : NotFound();
         }
 
-        var nextPath = $"/{Uri.EscapeDataString(decodedPassportId)}";
         if (User.Identity?.IsAuthenticated != true)
         {
-            return Redirect($"/login?next={Uri.EscapeDataString(nextPath)}");
+            return RedirectToPublicSummaryWithAccessNotice(decodedPassportId);
         }
 
         var document = resolution.Document;
@@ -293,6 +300,11 @@ public class PassportController : Controller
         }
 
         return ExternalApiInitializer.CreateFallbackSampleDocument(ExternalApiInitializer.CreateSampleBatteryId(_batteryIdService));
+    }
+
+    private static IActionResult RedirectToPublicSummaryWithAccessNotice(string passportId)
+    {
+        return new RedirectResult($"/{Uri.EscapeDataString(passportId)}/summary?access=detail-required");
     }
 
     private bool IsGeneratedSampleBatteryId(string batteryId)

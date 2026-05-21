@@ -2,8 +2,10 @@ using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
+var currentDirectory = Directory.GetCurrentDirectory();
 DotEnvLoader.Load(Path.Combine(AppContext.BaseDirectory, ".env.local"));
-DotEnvLoader.Load(Path.Combine(Directory.GetCurrentDirectory(), ".env.local"));
+DotEnvLoader.Load(Path.Combine(currentDirectory, ".env.local"));
+DotEnvLoader.Load(Path.Combine(currentDirectory, "web", ".env.local"));
 
 var builder = WebApplication.CreateBuilder(args);
 

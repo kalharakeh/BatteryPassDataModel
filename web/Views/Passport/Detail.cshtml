@@ -1,3 +1,4 @@
+@using System.Globalization
 @model BatteryPassWeb.Models.ViewModels.PassportDetailViewModel
 @{
     ViewData["Title"] = "Passport Detail";
@@ -13,7 +14,7 @@
         {
             var color = string.IsNullOrWhiteSpace(segment.Color) ? "#4f6f7d" : segment.Color;
             var end = start + segment.Percentage;
-            slices.Add($"{color} {start:F2}% {end:F2}%");
+            slices.Add($"{color} {start.ToString("0.##", CultureInfo.InvariantCulture)}% {end.ToString("0.##", CultureInfo.InvariantCulture)}%");
             start = end;
         }
 
@@ -28,60 +29,63 @@
 <main class="bp-page">
     <section class="bp-report-hero-card">
         <div class="bp-report-hero-layout">
-            <article class="bp-report-hero-info bp-summary-identity-grid">
-                <div class="bp-report-hero-main">
-                    <div class="bp-report-header">
-                        <div class="bp-report-title-block">
-                            <p class="bp-passport-id">Passport ID: <span class="bp-id-copy-row"><span class="bp-id-value">@passport.PassportId</span>@await Html.PartialAsync("_CopyIdButton", passport.PassportId)</span></p>
-                            <p class="bp-passport-id">Battery ID: <span class="bp-id-copy-row"><span class="bp-id-value">@(string.IsNullOrWhiteSpace(passport.BatteryId) ? "-" : passport.BatteryId)</span>@await Html.PartialAsync("_CopyIdButton", passport.BatteryId)</span></p>
-                            <h1>@(string.IsNullOrWhiteSpace(passport.BatterySerialNumber) ? passport.PassportId : passport.BatterySerialNumber)</h1>
-                            <p class="text-secondary">Cluster: @passport.ClusterLabel</p>
-                        </div>
-                        <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
-                            @if (passport.IsHistoricalPassport)
-                            {
-                                <span class="bp-status-pill is-draft">Historical passport</span>
-                                <a href="@passport.LatestPassportUrl" class="bp-report-action" aria-label="Open latest passport" title="Open latest passport" data-tooltip="Open latest passport" data-action-icon="latest">
-                                    <svg class="bp-report-action-icon bp-latest-passport-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                        <path d="M12 5a7 7 0 1 1-6.32 4" />
-                                        <path d="M5 5v4h4" />
-                                        <path d="M12 8v4l3 2" />
-                                    </svg>
-                                </a>
-                            }
-                            else
-                            {
-                                <span class="bp-status-pill is-published">Latest passport</span>
-                            }
-                        </div>
+            <article class="bp-report-hero-info bp-summary-identity-grid bp-report-identity-grid">
+                <section class="bp-summary-id-panel bp-report-identity-panel bp-report-identity-panel--battery bp-report-header bp-report-title-block">
+                    <span class="bp-summary-title">Battery</span>
+                    <h1>@(string.IsNullOrWhiteSpace(passport.BatterySerialNumber) ? passport.PassportId : passport.BatterySerialNumber)</h1>
+                    <p class="text-secondary">Cluster: @passport.ClusterLabel</p>
+                    <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
+                        @if (passport.IsHistoricalPassport)
+                        {
+                            <span class="bp-status-pill is-draft">Historical passport</span>
+                            <a href="@passport.LatestPassportUrl" class="bp-report-action" aria-label="Open latest passport" title="Open latest passport" data-tooltip="Open latest passport" data-action-icon="latest">
+                                <svg class="bp-report-action-icon bp-latest-passport-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 5a7 7 0 1 1-6.32 4" />
+                                    <path d="M5 5v4h4" />
+                                    <path d="M12 8v4l3 2" />
+                                </svg>
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="bp-status-pill is-published">Latest passport</span>
+                        }
                     </div>
+                </section>
 
-                    <dl class="bp-field-grid bp-report-hero-fields">
-                        <div><dt>Battery Family</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatteryFamily) ? "-" : passport.BatteryFamily)</dd></div>
-                        <div><dt>Battery serial number</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatterySerialNumber) ? "-" : passport.BatterySerialNumber)</dd></div>
-                        <div><dt>Battery Model</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatteryModel) ? "-" : passport.BatteryModel)</dd></div>
-                        <div><dt>Software version</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareVersion) ? "-" : passport.SoftwareVersion)</dd></div>
-                        <div><dt>Category</dt><dd>@passport.Category</dd></div>
-                        <div><dt>Battery status</dt><dd>@passport.BatteryStatus</dd></div>
-                        <div><dt>Passport status</dt><dd>@passport.PassportStatus</dd></div>
-                        <div><dt>Weight</dt><dd>@passport.WeightLabel</dd></div>
-                        <div><dt>Manufactured date</dt><dd>@passport.ManufacturedDate</dd></div>
-                        <div><dt>Manufactured by</dt><dd>@passport.ManufacturerName</dd></div>
-                        <div><dt>Cluster</dt><dd>@passport.ClusterLabel</dd></div>
-                    </dl>
-                </div>
-            </article>
+                <section class="bp-summary-id-panel bp-report-identity-panel bp-report-identity-panel--identifiers">
+                    <span class="bp-summary-title">Identifiers</span>
+                    <p class="bp-passport-id"><span class="bp-id-label">Passport ID:</span><span class="bp-id-copy-row"><span class="bp-id-value">@passport.PassportId</span>@await Html.PartialAsync("_CopyIdButton", passport.PassportId)</span></p>
+                    <p class="bp-passport-id"><span class="bp-id-label">Battery ID:</span><span class="bp-id-copy-row"><span class="bp-id-value">@(string.IsNullOrWhiteSpace(passport.BatteryId) ? "-" : passport.BatteryId)</span>@await Html.PartialAsync("_CopyIdButton", passport.BatteryId)</span></p>
+                </section>
 
-            <aside class="bp-report-hero-media">
-                <div class="bp-report-media-code-row">
-                    <div class="bp-image-wrap">
-                        <img src="@passport.BatteryImageUrl" alt="@passport.BatteryImageAlt" class="bp-battery-image" />
-                    </div>
-                    <a class="bp-summary-qr-panel bp-report-hero-qr"
+                <section class="bp-summary-id-panel bp-summary-qr-panel bp-report-identity-panel bp-report-identity-panel--qr">
+                    <span class="bp-summary-title">QR code</span>
+                    <a class="bp-report-hero-qr"
                        href="/qr/@Uri.EscapeDataString(qrBatteryId)/download"
                        aria-label="Save battery code for @qrBatteryId">
                         <img src="/qr/@Uri.EscapeDataString(qrBatteryId)/svg" alt="QR code for @qrBatteryId" />
                     </a>
+                </section>
+
+                <dl class="bp-field-grid bp-report-hero-fields bp-summary-fields-panel">
+                    <div><dt>Battery Family</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatteryFamily) ? "-" : passport.BatteryFamily)</dd></div>
+                    <div><dt>Battery serial number</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatterySerialNumber) ? "-" : passport.BatterySerialNumber)</dd></div>
+                    <div><dt>Battery Model</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatteryModel) ? "-" : passport.BatteryModel)</dd></div>
+                    <div><dt>Software version</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareVersion) ? "-" : passport.SoftwareVersion)</dd></div>
+                    <div><dt>Category</dt><dd>@passport.Category</dd></div>
+                    <div><dt>Battery status</dt><dd>@passport.BatteryStatus</dd></div>
+                    <div><dt>Passport status</dt><dd>@passport.PassportStatus</dd></div>
+                    <div><dt>Weight</dt><dd>@passport.WeightLabel</dd></div>
+                    <div><dt>Manufactured date</dt><dd>@passport.ManufacturedDate</dd></div>
+                    <div><dt>Manufactured by</dt><dd>@passport.ManufacturerName</dd></div>
+                    <div><dt>Cluster</dt><dd>@passport.ClusterLabel</dd></div>
+                </dl>
+            </article>
+
+            <aside class="bp-report-hero-media">
+                <div class="bp-image-wrap">
+                    <img src="@passport.BatteryImageUrl" alt="@passport.BatteryImageAlt" class="bp-battery-image" />
                 </div>
                 <a class="bp-report-hero-cta" href="/@Uri.EscapeDataString(passport.PassportId)/summary">&lt;- Back to summary</a>
             </aside>
@@ -207,22 +211,20 @@
                         <div><dt>Contact phone</dt><dd>@passport.Operations.ContactPhone</dd></div>
                     </div>
                     <h3 class="bp-subheading mt-4">Telemetry history (last week)</h3>
-                    <div class="bp-two-column mt-3">
-                        <div class="bp-card">
+                    <div class="bp-telemetry-chart-grid mt-3">
+                        <div class="bp-card bp-telemetry-chart-card">
                             <p class="bp-help-text mb-2">Current consumption (kWh)</p>
                             <div class="bp-chart-frame"><canvas id="chart-consumption"></canvas></div>
                         </div>
-                        <div class="bp-card">
+                        <div class="bp-card bp-telemetry-chart-card">
                             <p class="bp-help-text mb-2">Current charge level (%)</p>
                             <div class="bp-chart-frame"><canvas id="chart-charge"></canvas></div>
                         </div>
-                    </div>
-                    <div class="bp-two-column mt-3">
-                        <div class="bp-card">
+                        <div class="bp-card bp-telemetry-chart-card">
                             <p class="bp-help-text mb-2">Current voltage (V)</p>
                             <div class="bp-chart-frame"><canvas id="chart-voltage"></canvas></div>
                         </div>
-                        <div class="bp-card">
+                        <div class="bp-card bp-telemetry-chart-card">
                             <p class="bp-help-text mb-2">Current current (A)</p>
                             <div class="bp-chart-frame"><canvas id="chart-current"></canvas></div>
                         </div>
@@ -282,7 +284,10 @@
                 <div class="bp-donut-grid mt-3">
                     @foreach (var chart in passport.RecycledContentCharts)
                     {
-                        var donutBackground = $"conic-gradient(#08a348 0 {chart.PreConsumerShare}%, #df6b3b {chart.PreConsumerShare}% {chart.PreConsumerShare + chart.PostConsumerShare}%, #d1d5db {chart.PreConsumerShare + chart.PostConsumerShare}% 100%)";
+                        var preConsumer = chart.PreConsumerShare.ToString("0.##", CultureInfo.InvariantCulture);
+                        var postStart = chart.PreConsumerShare.ToString("0.##", CultureInfo.InvariantCulture);
+                        var postEnd = (chart.PreConsumerShare + chart.PostConsumerShare).ToString("0.##", CultureInfo.InvariantCulture);
+                        var donutBackground = $"conic-gradient(#08a348 0 {preConsumer}%, #df6b3b {postStart}% {postEnd}%, #d1d5db {postEnd}% 100%)";
                         <div class="bp-donut-card">
                             <p class="fw-semibold mb-2">@chart.Material</p>
                             <div class="bp-donut" style="background:@donutBackground;">

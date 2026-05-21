@@ -131,6 +131,40 @@ public sealed class BatteryAdminWorkflowTests
         Assert.DoesNotContain(">X</button>", history);
     }
 
+    [Fact]
+    public void FollowupBatteryCreate_ShouldRequireClusterAndUniqueSerial()
+    {
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+        var repository = File.ReadAllText(RepoFile("web", "Services", "BatteryRepository.cs"));
+        var view = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
+
+        Assert.Contains("Battery cluster is required.", controller);
+        Assert.Contains("Battery serial number already exists.", controller);
+        Assert.Contains("GetBySerialNumberAsync", controller);
+        Assert.Contains("GetBySerialNumberAsync", repository);
+        Assert.Contains("name=\"clusterId\" required", view);
+        Assert.Contains("is-policy-locked", view);
+        Assert.Contains("data-editable-policy-locked", view);
+    }
+
+    [Fact]
+    public void FollowupPassportCreation_ShouldBeSnapshotOnlyAndAvoidDraftNewPassportConflict()
+    {
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+        var clusterAdminController = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
+        var deltaService = File.ReadAllText(RepoFile("web", "Services", "BatteryPassportDeltaService.cs"));
+        var table = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
+
+        Assert.Contains("CreatePassportSnapshotAsync", controller);
+        Assert.Contains("CreatePassportSnapshotAsync", clusterAdminController);
+        Assert.Contains("Redirect($\"/admin/batteries/{Uri.EscapeDataString", controller);
+        Assert.Contains("Redirect($\"/cluster-admin/passports", clusterAdminController);
+        Assert.DoesNotContain("return Redirect($\"/admin/passports/{Uri.EscapeDataString(passportId)}/edit\")", controller);
+        Assert.Contains("NumericBsonEquals", deltaService);
+        Assert.Contains("row.DisplayStatus", table);
+        Assert.Contains("row.ShowNewPassportRequired = row.NewPassportRequired && !IsDraftStatus(row.LatestPassportStatus);", File.ReadAllText(RepoFile("web", "Services", "BatteryTableService.cs")));
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

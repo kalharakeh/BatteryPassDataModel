@@ -40,6 +40,13 @@ public sealed class ProductTemplateService
 
     private sealed record SeedPassportSnapshot(string BatteryModel, int SnapshotOffsetDays);
 
+    private const string SeedModelCompact7MNorth1 = "CP7M-NORTH-001";
+    private const string SeedModelCompact7MNorth2 = "CP7M-NORTH-002";
+    private const string SeedModelCompact13MSouth1 = "CP13M-SOUTH-001";
+    private const string SeedModelCompact13MSouth2 = "CP13M-SOUTH-002";
+    private const string SeedModelCoreFleet1 = "CORE-FLEET-001";
+    private const string SeedModelCoreFleet2 = "CORE-FLEET-002";
+
     private readonly MongoContext _mongoContext;
     private readonly PassportRepository _passportRepository;
     private readonly BatteryRepository _batteryRepository;
@@ -342,22 +349,10 @@ public sealed class ProductTemplateService
         var resetInstant = DateTimeOffset.UtcNow;
         var resetAt = resetInstant.ToString("O");
 
-        // Seeded batteries: the API demo seed intentionally creates multiple passports
-        // so historical/latest behavior is visible immediately after a reset.
-        var batterySeeds = new SeedBatteryDefinition[]
-        {
-            new("compact-7m", "cluster-default-demonstrator", "CP7M-DEMO-001", "SN-0226151E", "Default Demonstrator Compact 7M battery", "DEFAULT-LINE-01", [new("1.0", -45)]),
-            new("compact-7m", "demo-cluster", "CP7M-DEMO-API-001", ExternalApiInitializer.SampleBatterySerialNumber, "Demo API Compact 7M battery", "DEMO-API-LINE-01", [new("1.0", -30), new("2.0", 0)]),
-            new("compact-7m", "cluster-north-operations", "CP7M-NORTH-001", "SN-NORTH-001", "North Compact 7M customer battery", "NORTH-LINE-01", [new("2.0", 0)]),
-            new("compact-7m", "cluster-north-operations", "CP7M-NORTH-002", "SN-NORTH-002", "North Compact 7M customer battery 2", "NORTH-LINE-02", [new("2.0", -4)]),
-            new("compact-13m", "cluster-south-operations", "CP13M-SOUTH-001", "SN-SOUTH-001", "South Compact 13M customer battery", "SOUTH-LINE-01", [new("1.0", -18)]),
-            new("compact-13m", "cluster-south-operations", "CP13M-SOUTH-002", "SN-SOUTH-002", "South Compact 13M customer battery 2", "SOUTH-LINE-02", [new("2.0", -2)]),
-            new("core", "cluster-fleet-operations", "CORE-FLEET-001", "SN-FLEET-001", "Fleet Core customer battery", "FLEET-LINE-01", [new("1.0", -12)]),
-            new("core", "cluster-fleet-operations", "CORE-FLEET-002", "SN-FLEET-002", "Fleet Core customer battery 2", "FLEET-LINE-02", [new("2.0", -1)])
-        };
-
         var products = await ListProductsAsync(cancellationToken);
-        var productsById = products.ToDictionary(product => product.ProductId, StringComparer.OrdinalIgnoreCase);
+        var seedProducts = products.Count == 0 ? BatteryProductTemplateCatalog.DefaultProducts : products;
+        var batterySeeds = BuildCanonicalSeedBatteryDefinitions(seedProducts);
+        var productsById = seedProducts.ToDictionary(product => product.ProductId, StringComparer.OrdinalIgnoreCase);
         var batteryIds = new List<string>();
         var passportIds = new List<string>();
 
@@ -411,6 +406,124 @@ public sealed class ProductTemplateService
             BatteryIds = batteryIds
         };
     }
+
+    private static IReadOnlyList<SeedBatteryDefinition> BuildCanonicalSeedBatteryDefinitions(
+        IReadOnlyList<BatteryProductTemplate> products)
+    {
+        var catalogProducts = products.Count == 0 ? BatteryProductTemplateCatalog.DefaultProducts : products;
+        var productsById = catalogProducts.ToDictionary(product => product.ProductId, StringComparer.OrdinalIgnoreCase);
+        var compact7M = productsById.TryGetValue("compact-7m", out var selectedCompact7M)
+            ? selectedCompact7M
+            : BatteryProductTemplateCatalog.DefaultProduct;
+        // Demo API keeps multiple passports so latest/history behavior is testable after reset.
+        var seeds = new List<SeedBatteryDefinition>
+        {
+            new(
+                "compact-7m",
+                "cluster-default-demonstrator",
+                "CP7M-DEMO-001",
+                "SN-0226151E",
+                "Default Demonstrator Compact 7M battery",
+                "DEFAULT-LINE-01",
+                [new(FindProductVersion(compact7M, "1.0").Version, -45)]),
+            new(
+                "compact-7m",
+                "demo-cluster",
+                "CP7M-DEMO-API-001",
+                ExternalApiInitializer.SampleBatterySerialNumber,
+                "Demo API Compact 7M battery",
+                "DEMO-API-LINE-01",
+                BuildDemoApiSnapshots(compact7M))
+        };
+
+        var offsetDays = -24;
+        foreach (var product in catalogProducts.OrderBy(product => product.ProductId, StringComparer.OrdinalIgnoreCase))
+        {
+            var clusterId = SeedClusterForProduct(product.ProductId);
+            IReadOnlyList<BatteryProductVersion> versions = product.ProductVersions.Count == 0
+                ? [product.LatestProductVersion]
+                : product.ProductVersions.OrderBy(version => version.Version, VersionStringComparer.Ascending).ToList();
+            var versionIndex = 1;
+            foreach (var version in versions)
+            {
+                seeds.Add(new SeedBatteryDefinition(
+                    product.ProductId,
+                    clusterId,
+                    SeedModelNumber(product.ProductId, versionIndex),
+                    SeedSerialNumber(product.ProductId, versionIndex),
+                    SeedDisplayName(product, clusterId, version),
+                    SeedFacilityId(clusterId, versionIndex),
+                    [new(version.Version, offsetDays)]));
+                offsetDays += 3;
+                versionIndex++;
+            }
+        }
+
+        return seeds;
+    }
+
+    private static IReadOnlyList<SeedPassportSnapshot> BuildDemoApiSnapshots(BatteryProductTemplate product)
+    {
+        var firstVersion = FindProductVersion(product, "1.0");
+        var latestVersion = FindProductVersion(product, "2.0");
+        return firstVersion.Version.Equals(latestVersion.Version, StringComparison.OrdinalIgnoreCase)
+            ? [new(firstVersion.Version, 0)]
+            : [new(firstVersion.Version, -30), new(latestVersion.Version, 0)];
+    }
+
+    private static BatteryProductVersion FindProductVersion(BatteryProductTemplate product, string preferredVersion)
+    {
+        return product.ProductVersions.FirstOrDefault(version =>
+                version.Version.Equals(preferredVersion, StringComparison.OrdinalIgnoreCase))
+            ?? product.LatestProductVersion;
+    }
+
+    private static string SeedClusterForProduct(string productId) =>
+        productId switch
+        {
+            "compact-7m" => "cluster-north-operations",
+            "compact-13m" => "cluster-south-operations",
+            "core" => "cluster-fleet-operations",
+            _ => "cluster-fleet-operations"
+        };
+
+    private static string SeedModelNumber(string productId, int versionIndex) =>
+        productId switch
+        {
+            "compact-7m" => versionIndex == 1 ? SeedModelCompact7MNorth1 : SeedModelCompact7MNorth2,
+            "compact-13m" => versionIndex == 1 ? SeedModelCompact13MSouth1 : SeedModelCompact13MSouth2,
+            "core" => versionIndex == 1 ? SeedModelCoreFleet1 : SeedModelCoreFleet2,
+            _ => $"MODEL-{versionIndex:000}"
+        };
+
+    private static string SeedSerialNumber(string productId, int versionIndex) =>
+        productId switch
+        {
+            "compact-7m" => $"SN-NORTH-{versionIndex:000}",
+            "compact-13m" => $"SN-SOUTH-{versionIndex:000}",
+            "core" => $"SN-FLEET-{versionIndex:000}",
+            _ => $"SN-SEED-{versionIndex:000}"
+        };
+
+    private static string SeedDisplayName(
+        BatteryProductTemplate product,
+        string clusterId,
+        BatteryProductVersion version)
+    {
+        var clusterName = FixedClusters.TryGetValue(clusterId, out var cluster)
+            ? cluster.Name.Replace(" Cluster", string.Empty, StringComparison.OrdinalIgnoreCase)
+            : "Customer";
+        return $"{clusterName} {product.ProductName} model {version.Version} battery";
+    }
+
+    private static string SeedFacilityId(string clusterId, int versionIndex) =>
+        clusterId switch
+        {
+            "cluster-north-operations" => $"NORTH-LINE-{versionIndex:00}",
+            "cluster-south-operations" => $"SOUTH-LINE-{versionIndex:00}",
+            "cluster-fleet-operations" => $"FLEET-LINE-{versionIndex:00}",
+            _ => $"DEMO-LINE-{versionIndex:00}"
+        };
 
     private async Task ClearDemoCollectionsAsync(CancellationToken cancellationToken)
     {
@@ -530,16 +643,23 @@ public sealed class ProductTemplateService
             ProductTemplatePassportBuilder.ApplyProductVersionToBattery(battery, product, selectedProductVersion, now);
             var newTemplate = ProductTemplatePassportBuilder.BuildTemplateBaseline(battery);
             var result = ProductTemplatePassportBuilder.ComputeSafeTemplateUpdates(before, oldTemplate, newTemplate);
+            var batteryId = BsonHelpers.GetString(result.UpdatedPassport, "batteryId");
             if (result.UpdatedPaths.Count == 0)
             {
                 skippedPaths.AddRange(result.SkippedOverridePaths);
+                await _batteryPassportDeltaService.UpdateNewPassportRequiredByBatteryIdAsync(
+                    batteryId,
+                    compareAllPassportData: true,
+                    cancellationToken);
                 continue;
             }
 
-            var batteryId = BsonHelpers.GetString(result.UpdatedPassport, "batteryId");
             result.UpdatedPassport["updatedAt"] = now;
             await _batteryRepository.ReplaceAsync(batteryId, result.UpdatedPassport, cancellationToken);
-            await _batteryPassportDeltaService.UpdateNewPassportRequiredAsync(result.UpdatedPassport, cancellationToken);
+            await _batteryPassportDeltaService.UpdateNewPassportRequiredByBatteryIdAsync(
+                batteryId,
+                compareAllPassportData: true,
+                cancellationToken);
             changedBatteryIds.Add(batteryId);
             skippedPaths.AddRange(result.SkippedOverridePaths);
         }

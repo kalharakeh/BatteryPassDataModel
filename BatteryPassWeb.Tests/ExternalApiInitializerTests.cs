@@ -80,7 +80,9 @@ public sealed class ExternalApiInitializerTests
         Assert.Contains("[\"demo-cluster\"]", productTemplateService);
         Assert.Contains("\"demo.user@example.test\"", productTemplateService);
         Assert.Contains("ExternalApiInitializer.SampleBatterySerialNumber", productTemplateService);
-        Assert.Contains("[new(\"1.0\", -30), new(\"2.0\", 0)]", productTemplateService);
+        Assert.Contains("BuildDemoApiSnapshots", productTemplateService);
+        Assert.Contains("FindProductVersion(product, \"1.0\")", productTemplateService);
+        Assert.Contains("FindProductVersion(product, \"2.0\")", productTemplateService);
         Assert.Contains("ExternalApiInitializer.SampleApiClusterId", helpController);
         Assert.Contains("SampleSignTokenId", helpController);
         Assert.Contains("SampleSignToken", helpModel);

@@ -130,11 +130,11 @@ public sealed class AdminTestFeedbackFixesTests
 
         Assert.Contains("bp-summary-identity-grid", summary);
         Assert.Contains("bp-summary-identity-grid", detail);
-        Assert.Contains("bp-report-media-code-row", summary);
-        Assert.Contains("bp-report-media-code-row", detail);
+        Assert.Contains("bp-report-identity-panel--qr", summary);
+        Assert.Contains("bp-report-identity-panel--qr", detail);
         Assert.Contains("CarbonStageColor", factory);
         Assert.Contains("bp-chart-frame", detail);
-        Assert.Contains("height: 240px", css);
+        Assert.Contains("height: clamp(220px, 28vw, 300px)", css);
         Assert.Contains("overflow: hidden", css);
         Assert.Contains("grid-template-columns: repeat(auto-fit", css);
     }

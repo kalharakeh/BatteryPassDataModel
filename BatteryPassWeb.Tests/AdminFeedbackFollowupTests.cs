@@ -217,6 +217,98 @@ public sealed class AdminFeedbackFollowupTests
         Assert.Contains("filter(row => Number.isFinite", detail);
     }
 
+    [Fact]
+    public void FollowupReportHeader_ShouldUseFixedThreeColumnIdentityGrid()
+    {
+        var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
+        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        foreach (var view in new[] { summary, detail })
+        {
+            Assert.Contains("bp-report-identity-grid", view);
+            Assert.Contains("bp-report-identity-panel--battery", view);
+            Assert.Contains("bp-report-identity-panel--identifiers", view);
+            Assert.Contains("bp-report-identity-panel--qr", view);
+            Assert.DoesNotContain("bp-report-media-code-row", view);
+            Assert.Contains("CultureInfo.InvariantCulture", view);
+        }
+
+        Assert.Contains("grid-template-columns: minmax(220px, 1fr) minmax(280px, 1.2fr) minmax(160px, 220px);", css);
+        Assert.Contains(".bp-report-identity-panel--qr", css);
+        Assert.Contains("@media (max-width: 1180px)", css);
+        Assert.Contains("@media (max-width: 760px)", css);
+    }
+
+    [Fact]
+    public void FollowupSharedBatteryTable_ShouldUseCompactColumnsAndStatusCell()
+    {
+        var table = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
+        var registry = File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml"));
+        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+
+        var expectedOrder = new[]
+        {
+            "<th>Battery serial number</th>",
+            "<th>Battery ID</th>",
+            "<th>Family</th>",
+            "<th>Model</th>",
+            "<th>Cluster</th>",
+            "<th>Passports</th>",
+            "<th>Status</th>",
+            "<th>Updated</th>",
+            "<th class=\"bp-action-cell\">Actions</th>"
+        };
+        var previousIndex = -1;
+        foreach (var heading in expectedOrder)
+        {
+            var index = table.IndexOf(heading, StringComparison.Ordinal);
+            Assert.True(index > previousIndex, $"{heading} should appear after the previous compact table column.");
+            previousIndex = index;
+        }
+
+        Assert.Contains("row.DisplayStatus", table);
+        Assert.Contains("New passport needed", table);
+        Assert.DoesNotContain("Latest passport status", table);
+        Assert.Contains("bp-battery-table-toolbar", registry);
+        Assert.Contains("bp-battery-table-toolbar", clusters);
+    }
+
+    [Fact]
+    public void FollowupUserAndClusterUx_ShouldPreserveInputAndDrawerState()
+    {
+        var adminController = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+        var clusterAdminController = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
+        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var clusterUsers = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "Users.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("TempData[\"ClusterCreateName\"]", adminController);
+        Assert.Contains("TempData[\"ClusterCreateId\"]", adminController);
+        Assert.Contains("Cluster ID already exists.", adminController);
+        Assert.Contains("value=\"member\" selected", clusters);
+        Assert.Contains("data-open-user", clusters);
+        Assert.Contains("data-open-user", clusterUsers);
+        Assert.Contains("openUser", adminController);
+        Assert.Contains("openUser", clusterAdminController);
+        Assert.Contains("::-ms-reveal", css);
+        Assert.Contains("::-ms-clear", css);
+    }
+
+    [Fact]
+    public void FollowupPerformanceCharts_ShouldUseEqualBoundedChartGrid()
+    {
+        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("bp-telemetry-chart-grid", detail);
+        Assert.Contains("bp-telemetry-chart-card", detail);
+        Assert.Contains("maintainAspectRatio: false", detail);
+        Assert.Contains(".bp-telemetry-chart-grid", css);
+        Assert.Contains(".bp-telemetry-chart-card", css);
+        Assert.Contains("height: clamp(220px, 28vw, 300px);", css);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
