@@ -33,11 +33,11 @@ public sealed class BatteryAdminWorkflowTests
     [Fact]
     public void AdminClustersView_ShouldManageBatteriesWithEmbeddedPassportHistory()
     {
-        var view = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var view = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
 
         Assert.Contains("Battery ID", view);
         Assert.Contains("Battery Model", view);
-        Assert.Contains("Passport history", view);
+        Assert.Contains("row.HistoryUrl", view);
         Assert.Contains("Create passport", view);
         Assert.DoesNotContain("data-battery-passport-history", view);
         Assert.DoesNotContain("Battery version", view);
@@ -110,7 +110,7 @@ public sealed class BatteryAdminWorkflowTests
     [Fact]
     public void AdminBatteryActions_ShouldUseUnifiedIconButtons()
     {
-        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var clusters = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
         var history = File.ReadAllText(RepoFile("web", "Views", "Admin", "BatteryPassports.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 

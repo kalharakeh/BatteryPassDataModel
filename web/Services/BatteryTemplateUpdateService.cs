@@ -57,19 +57,25 @@ public sealed class BatteryTemplateUpdateService
             BsonHelpers.GetString(battery, "app", "product", "productVersion"));
         var product = await _productTemplateService.GetProductAsync(productId, cancellationToken);
         var selectedVersion = product?.ProductVersions.FirstOrDefault(version =>
-            version.Version.Equals(batteryModel, StringComparison.OrdinalIgnoreCase)
-            && version.SoftwareVersion.Equals(requestedSoftwareVersion.Trim(), StringComparison.OrdinalIgnoreCase));
+            version.Version.Equals(batteryModel, StringComparison.OrdinalIgnoreCase));
         if (product == null || selectedVersion == null)
+        {
+            return new BatteryTemplateUpdateResult(false, "Unknown Software Version.", battery);
+        }
+
+        var selectedSoftwareVersion = selectedVersion.SoftwareVersions.FirstOrDefault(version =>
+            version.SoftwareVersion.Equals(requestedSoftwareVersion.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (selectedSoftwareVersion == null)
         {
             return new BatteryTemplateUpdateResult(false, "Unknown Software Version.", battery);
         }
 
         var setValues = new Dictionary<string, BsonValue>
         {
-            ["app.product.softwareVersion"] = selectedVersion.SoftwareVersion,
-            ["app.product.softwareReleaseDate"] = selectedVersion.SoftwareReleaseDate,
-            ["app.product.softwareLatestUpdate"] = selectedVersion.SoftwareLatestUpdate,
-            ["identity.softwareVersion"] = selectedVersion.SoftwareVersion,
+            ["app.product.softwareVersion"] = selectedSoftwareVersion.SoftwareVersion,
+            ["app.product.softwareReleaseDate"] = selectedSoftwareVersion.SoftwareReleaseDate,
+            ["app.product.softwareLatestUpdate"] = selectedSoftwareVersion.SoftwareLatestUpdate,
+            ["identity.softwareVersion"] = selectedSoftwareVersion.SoftwareVersion,
             ["updatedAt"] = DateTimeOffset.UtcNow.ToString("O")
         };
         foreach (var pair in setValues)

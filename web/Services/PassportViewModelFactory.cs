@@ -526,11 +526,25 @@ public sealed class PassportViewModelFactory
                 Value = BatteryPassCanonicalDataCatalog.NormalizeCarbonStageValue(
                     rawLabel,
                     NumberFromValue(stage.GetValue("carbonFootprint", 0))),
+                Color = CarbonStageColor(rawLabel),
                 Unit = "gCO2e/kWh"
             });
         }
 
         return result.Where(segment => !string.IsNullOrWhiteSpace(segment.Label)).ToList();
+    }
+
+    private static string CarbonStageColor(string stage)
+    {
+        var normalized = HumanizeLifecycleStage(stage);
+        return normalized switch
+        {
+            "raw material extraction" => "#22577a",
+            "main production" => "#38a3a5",
+            "distribution" => "#f2a541",
+            "recycling" => "#57cc99",
+            _ => "#7f8ea3"
+        };
     }
 
     private static string HumanizeLifecycleStage(string value)

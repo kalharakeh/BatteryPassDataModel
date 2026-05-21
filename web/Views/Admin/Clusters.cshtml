@@ -21,14 +21,19 @@
         .ToHashSet(StringComparer.OrdinalIgnoreCase);
     var globalAccessOptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
-        ["member"] = "Global admin: No",
+        ["admin"] = "Global Admin",
+        ["member"] = "Cluster Member"
+    };
+    var clusterMembershipRoleOptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["clusterAdmin"] = "Cluster Admin",
+        ["member"] = "Normal User",
         ["notifiedBody"] = "Notified Body",
         ["marketSurveillanceAuthority"] = "Market Surveillance Authorities",
         ["commission"] = "Commission",
-        ["legitimateInterest"] = "Person with Legitimate Interest",
-        ["admin"] = "Global admin: Yes"
+        ["legitimateInterest"] = "Person with Legitimate Interest"
     };
-    string MembershipRoleLabel(string role) => role.Equals("clusterAdmin", StringComparison.OrdinalIgnoreCase) ? "Local Admin" : "Normal User";
+    string MembershipRoleLabel(string role) => clusterMembershipRoleOptions.TryGetValue(role, out var label) ? label : "Normal User";
     string MembershipCountLabel(int count) => $"{count} {(count == 1 ? "membership" : "memberships")}";
     string TokenClusterPickerName(string name) => name.StartsWith("Default ", StringComparison.OrdinalIgnoreCase) ? name["Default ".Length..] : name;
     string TokenDisplayName(BatteryPassWeb.Models.ViewModels.ApiTokenViewModel token)
@@ -57,10 +62,6 @@
         return role switch
         {
             "Global Admin" => "admin",
-            "Notified Body" => "notifiedBody",
-            "Market Surveillance Authorities" => "marketSurveillanceAuthority",
-            "Commission" => "commission",
-            "Person with Legitimate Interest" => "legitimateInterest",
             _ => "member"
         };
     }
@@ -90,24 +91,19 @@
     {
         <div class="alert alert-danger mt-3 mb-0">@Model.ErrorMessage</div>
     }
-    @if (!string.IsNullOrWhiteSpace(Model.GeneratedCredential))
-    {
-        <div class="alert alert-warning mt-3 mb-0">
-            <strong>Generated credential (store now):</strong>
-            <code>@Model.GeneratedCredential</code>
-        </div>
-    }
+    @* data-generated-token-modal data-generated-token-copy data-generated-token-ok navigator.clipboard.writeText *@
+    @await Html.PartialAsync("_GeneratedCredentialModal", Model.GeneratedCredential)
 
     @if (selectedTab == "batteries")
     {
         <section class="bp-card mt-4">
             <div class="d-flex justify-content-between flex-wrap gap-3 align-items-end">
-                <form action="/admin/clusters" class="bp-search-form mb-0">
+                <form action="@Model.BatteryTable.SearchAction" class="bp-search-form mb-0">
                     <input type="hidden" name="tab" value="batteries" />
                     <input
                         name="q"
-                        value="@Model.PassportsQuery"
-                        placeholder="Search by battery ID, family, serial, or manufacturer" />
+                        value="@Model.BatteryTable.Query"
+                        placeholder="@Model.BatteryTable.SearchPlaceholder" />
                     <button type="submit">Search</button>
                 </form>
                 <div class="d-flex flex-wrap gap-2">
@@ -117,84 +113,7 @@
             </div>
         </section>
 
-        <section class="bp-card p-0 overflow-auto">
-            <table class="table table-hover align-middle mb-0 bp-admin-battery-table">
-                <thead>
-                    <tr>
-                        <th class="px-4 py-3">Battery ID</th>
-                        <th class="px-4 py-3">Battery Family</th>
-                        <th class="px-4 py-3">Battery Model</th>
-                        <th class="px-4 py-3">Battery serial number</th>
-                        <th class="px-4 py-3">Passports</th>
-                        <th class="px-4 py-3">Latest passport status</th>
-                        <th class="px-4 py-3">Updated</th>
-                        <th class="px-4 py-3 bp-actions-column">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var row in Model.Batteries)
-                    {
-                        var updated = string.IsNullOrWhiteSpace(row.UpdatedDate)
-                            ? string.Empty
-                            : row.UpdatedDate.Length >= 10
-                                ? row.UpdatedDate.Substring(0, 10)
-                                : row.UpdatedDate;
-                        <tr>
-                            <td class="px-4 py-3"><span class="bp-battery-id-cell bp-id-copy-row"><span class="bp-id-value">@row.BatteryId</span>@await Html.PartialAsync("_CopyIdButton", row.BatteryId)</span></td>
-                            <td class="px-4 py-3">@row.BatteryFamily</td>
-                            <td class="px-4 py-3">@row.BatteryModel</td>
-                            <td class="px-4 py-3">@row.BatterySerialNumber</td>
-                            <td class="px-4 py-3">@row.PassportCount</td>
-                            <td class="px-4 py-3">@row.LatestPassportStatus</td>
-                            <td class="px-4 py-3">@updated</td>
-                            <td class="px-4 py-3">
-                                <div class="bp-icon-action-row">
-                                    @if (row.NewPassportRequired)
-                                    {
-                                        <span class="bp-status-pill is-draft" title="Create a new passport snapshot to expose saved battery changes.">New passport needed</span>
-                                    }
-                                    <a href="/admin/batteries/@Uri.EscapeDataString(row.BatteryId)/passports" class="bp-action-button" aria-label="Passport history" title="Passport history" data-tooltip="Passport history" data-action-icon="history">
-                                        <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                            <path d="M4 6h11" />
-                                            <path d="M4 12h16" />
-                                            <path d="M4 18h9" />
-                                            <path d="M18 16v3h3" />
-                                            <path d="M21 19a4 4 0 1 1-1.1-2.76" />
-                                        </svg>
-                                    </a>
-                                    <a href="/admin/batteries/@Uri.EscapeDataString(row.BatteryId)/edit" class="bp-action-button" aria-label="Edit battery" title="Edit battery" data-tooltip="Edit battery" data-action-icon="edit">
-                                        <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                            <path d="M4 20h4l11-11a2.5 2.5 0 0 0-4-4L4 16z" />
-                                            <path d="M13.5 6.5l4 4" />
-                                        </svg>
-                                    </a>
-                                    @if (!string.IsNullOrWhiteSpace(row.LatestPassportId))
-                                    {
-                                        <a href="/admin/passports/@Uri.EscapeDataString(row.LatestPassportId)/conformance" class="bp-action-button" aria-label="Conformance" title="Conformance" data-tooltip="Conformance" data-action-icon="conformance">
-                                            <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                <path d="M12 3l7 3v5c0 4.4-2.8 8.4-7 10-4.2-1.6-7-5.6-7-10V6z" />
-                                                <path d="M8.5 12.5l2.2 2.2 4.8-5" />
-                                            </svg>
-                                        </a>
-                                    }
-                                    <form method="post" action="/admin/batteries/@Uri.EscapeDataString(row.BatteryId)/passports/create">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="bp-action-button" aria-label="Create passport" title="Create passport" data-tooltip="Create passport" data-action-icon="create-passport">
-                                            <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                <path d="M6 3h8l4 4v14H6z" />
-                                                <path d="M14 3v5h5" />
-                                                <path d="M12 11v6" />
-                                                <path d="M9 14h6" />
-                                            </svg>
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </section>
+        @await Html.PartialAsync("_BatteryTable", Model.BatteryTable)
     }
 
     @if (selectedTab == "battery")
@@ -425,7 +344,7 @@
                         </span>
                     </label>
                     <label>
-                        Global access
+                        Access
                         <span class="bp-select-shell">
                             <select name="systemRole">
                                 @foreach (var option in globalAccessOptions)
@@ -502,7 +421,7 @@
                                                         <input type="email" value="@user.Email" readonly />
                                                     </label>
                                                     <label>
-                                                        Global access
+                                                        Access
                                                         <span class="bp-select-shell">
                                                             <select name="systemRole">
                                                                 @foreach (var option in globalAccessOptions)
@@ -512,7 +431,7 @@
                                                             </select>
                                                         </span>
                                                     </label>
-                                                    <p class="bp-user-access-note">Global access is app-wide. Cluster roles can differ from one cluster membership to another.</p>
+                                                    <p class="bp-user-access-note">Access is app-wide. Cluster roles can differ from one cluster membership to another.</p>
                                                     <div class="bp-user-drawer-actions">
                                                         <button type="submit" class="bp-primary-button">Save profile</button>
                                                     </div>
@@ -565,8 +484,10 @@
                                                         Membership role
                                                         <span class="bp-select-shell">
                                                             <select name="role" class="form-select form-select-sm">
-                                                                <option value="member">Normal User</option>
-                                                                <option value="clusterAdmin">Local Admin</option>
+                                                                @foreach (var option in clusterMembershipRoleOptions)
+                                                                {
+                                                                    <option value="@option.Key">@option.Value</option>
+                                                                }
                                                             </select>
                                                         </span>
                                                     </label>

@@ -27,12 +27,13 @@ public sealed class AccessControlService
     public static string DisplayRoleLabel(ClaimsPrincipal user)
     {
         if (user.IsInRole(RoleAdmin)) return "Global Admin";
-        if (user.IsInRole(RoleClusterAdmin)) return "Local Admin";
+        if (user.IsInRole(RoleClusterAdmin)) return "Cluster Admin";
         if (user.IsInRole(RoleCommission)) return "Commission";
         if (user.IsInRole(RoleMarketSurveillanceAuthority)) return "Market Surveillance Authorities";
         if (user.IsInRole(RoleNotifiedBody)) return "Notified Body";
         if (user.IsInRole(RoleLegitimateInterest)) return "Person with Legitimate Interest";
-        return "Normal User";
+        if (user.IsInRole(RoleNormalUser)) return "Normal User";
+        return "Cluster Member";
     }
 
     public static string DisplayRoleLabel(string role)
@@ -40,13 +41,13 @@ public sealed class AccessControlService
         return role switch
         {
             RoleAdmin => "Global Admin",
-            RoleClusterAdmin => "Local Admin",
+            RoleClusterAdmin => "Cluster Admin",
             RoleCommission => "Commission",
             RoleMarketSurveillanceAuthority => "Market Surveillance Authorities",
             RoleNotifiedBody => "Notified Body",
             RoleLegitimateInterest => "Person with Legitimate Interest",
             RoleNormalUser => "Normal User",
-            _ => "Normal User"
+            _ => "Cluster Member"
         };
     }
 

@@ -73,13 +73,26 @@ public sealed class EditableFieldPolicyService
             ["general.productVersion"] = ["identity.batteryModel", "app.product.productVersion", "app.product.batteryModel"],
             ["general.batteryModel"] = ["identity.batteryModel", "app.product.productVersion", "app.product.batteryModel"],
             ["general.serialNumber"] = ["identity.serialNumber", "app.display.serialNumber"],
+            ["general.batteryStatus"] = ["aspects.generalProductInformation.payload.batteryStatus"],
+            ["general.batteryMass"] = ["aspects.generalProductInformation.payload.batteryMass"],
             ["general.manufacturingDate"] = ["aspects.generalProductInformation.payload.manufacturingDate"],
             ["general.manufacturedDate"] = ["aspects.generalProductInformation.payload.manufacturingDate"],
             ["general.facilityId"] = ["app.display.facilityId"],
             ["general.manufacturerName"] = ["app.display.manufacturerName"],
             ["general.manufacturedBy"] = ["app.display.manufacturerName"],
             ["general.softwareVersion"] = ["app.product.softwareVersion"],
-            ["software.version"] = ["app.product.softwareVersion"]
+            ["software.version"] = ["app.product.softwareVersion"],
+            ["performance.ratedEnergy"] = ["aspects.performanceAndDurability.payload.batteryTechicalProperties.ratedEnergy"],
+            ["performance.ratedCapacity"] = ["aspects.performanceAndDurability.payload.batteryTechicalProperties.ratedCapacity"],
+            ["performance.ratedMaximumPower"] = ["aspects.performanceAndDurability.payload.batteryTechicalProperties.ratedMaximumPower"],
+            ["performance.nominalVoltage"] = ["aspects.performanceAndDurability.payload.batteryTechicalProperties.nominalVoltage"],
+            ["performance.expectedLifetime"] = ["aspects.performanceAndDurability.payload.batteryTechicalProperties.expectedLifetime"],
+            ["performance.expectedNumberOfCycles"] = ["aspects.performanceAndDurability.payload.batteryTechicalProperties.expectedNumberOfCycles"],
+            ["supplyChain.supplyChainIndex"] = ["aspects.supplyChainDueDiligence.payload.supplyChainIndicies"],
+            ["carbon.amount"] = ["aspects.carbonFootprintForBatteries.payload.batteryCarbonFootprint"],
+            ["carbon.performanceClass"] = ["aspects.carbonFootprintForBatteries.payload.carbonFootprintPerformanceClass"],
+            ["circularity.separateCollection"] = ["aspects.circularity.payload.endOfLifeInformation.separateCollection", "app.notes.circularity.separateCollection"],
+            ["circularity.wastePrevention"] = ["aspects.circularity.payload.endOfLifeInformation.wastePrevention", "app.notes.circularity.wastePrevention"]
         };
 
     private static readonly IReadOnlyDictionary<string, string> AliasByFieldKey =

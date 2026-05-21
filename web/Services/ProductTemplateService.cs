@@ -207,7 +207,7 @@ public sealed class ProductTemplateService
         await EnsureDefaultTemplatesAsync(actor, cancellationToken);
         var product = await GetProductAsync(productId, cancellationToken) ?? BatteryProductTemplateCatalog.DefaultProduct;
         var selectedProductVersion = product.ProductVersions.FirstOrDefault(version =>
-                version.SoftwareVersion.Equals(softwareVersion, StringComparison.OrdinalIgnoreCase))
+                version.SoftwareVersions.Any(row => row.SoftwareVersion.Equals(softwareVersion, StringComparison.OrdinalIgnoreCase)))
             ?? product.LatestProductVersion;
         return await BuildPassportFromTemplateAsync(
             passportId,
@@ -311,6 +311,10 @@ public sealed class ProductTemplateService
 
     public async Task<ProductTemplateResetResult> ResetTemplateDemoAsync(string actor, CancellationToken cancellationToken = default)
     {
+        await ClearDemoCollectionsAsync(cancellationToken);
+        await _clusterRepository.EnsureIndexesAsync(cancellationToken);
+        await _externalApiRepository.EnsureIndexesAsync(cancellationToken);
+        await _batteryRepository.EnsureIndexesAsync(cancellationToken);
         await EnsureDefaultTemplatesAsync(actor, cancellationToken, force: true);
         await EnsureFixedClustersAndUsersAsync(cancellationToken);
         await EnsureFixedApiDemoTokensAsync(cancellationToken);
@@ -321,8 +325,6 @@ public sealed class ProductTemplateService
         {
             return new ProductTemplateResetResult(0, [], DateTimeOffset.UtcNow.ToString("O"));
         }
-
-        await _batteryRepository.EnsureIndexesAsync(cancellationToken);
 
         var existingIds = await passportCollection
             .Find(Builders<BsonDocument>.Filter.Empty)
@@ -344,7 +346,7 @@ public sealed class ProductTemplateService
         // so historical/latest behavior is visible immediately after a reset.
         var batterySeeds = new SeedBatteryDefinition[]
         {
-            new("compact-7m", string.Empty, "CP7M-DEMO-001", "SN-0226151E", "Compact 7M unassigned demonstrator battery", "DEFAULT-LINE-01", [new("1.0", -45)]),
+            new("compact-7m", "cluster-default-demonstrator", "CP7M-DEMO-001", "SN-0226151E", "Default Demonstrator Compact 7M battery", "DEFAULT-LINE-01", [new("1.0", -45)]),
             new("compact-7m", "demo-cluster", "CP7M-DEMO-API-001", ExternalApiInitializer.SampleBatterySerialNumber, "Demo API Compact 7M battery", "DEMO-API-LINE-01", [new("1.0", -30), new("2.0", 0)]),
             new("compact-7m", "cluster-north-operations", "CP7M-NORTH-001", "SN-NORTH-001", "North Compact 7M customer battery", "NORTH-LINE-01", [new("2.0", 0)]),
             new("compact-7m", "cluster-north-operations", "CP7M-NORTH-002", "SN-NORTH-002", "North Compact 7M customer battery 2", "NORTH-LINE-02", [new("2.0", -4)]),
@@ -408,6 +410,47 @@ public sealed class ProductTemplateService
             BatteryCount = batteryIds.Count,
             BatteryIds = batteryIds
         };
+    }
+
+    private async Task ClearDemoCollectionsAsync(CancellationToken cancellationToken)
+    {
+        if (_mongoContext.Database == null)
+        {
+            return;
+        }
+
+        var collectionNames = await _mongoContext.Database.ListCollectionNames().ToListAsync(cancellationToken);
+        var collectionsToDrop = new[]
+        {
+            "users",
+            "clusters",
+            "clusterMemberships",
+            "apiTokens",
+            "externalApiTokens",
+            "passports",
+            "batteries",
+            "batteryTelemetry",
+            "passportRevisions",
+            "auditEvents",
+            "editableFieldPolicies",
+            "localAdminEditableFieldPolicies",
+            "dataCompletionPolicies",
+            "batteryProductCompletionPolicies",
+            "batteryProductTemplates",
+            "batteryProductTemplateVersions",
+            "batteryProductTemplatePushRuns",
+            "passwordResetRequests",
+            "passportFiles.files",
+            "passportFiles.chunks"
+        };
+
+        foreach (var collectionName in collectionsToDrop)
+        {
+            if (collectionNames.Contains(collectionName, StringComparer.OrdinalIgnoreCase))
+            {
+                await _mongoContext.Database.DropCollectionAsync(collectionName, cancellationToken);
+            }
+        }
     }
 
     private async Task SignAndPublishSeedPassportAsync(

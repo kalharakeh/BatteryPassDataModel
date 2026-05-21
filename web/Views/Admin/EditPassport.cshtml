@@ -14,8 +14,11 @@
     var selectedBatteryImageUrl = BatteryPassWeb.Services.BatteryImageCatalog.NormalizeKnownImageUrl(passport.BatteryImageUrl, passport.PassportId);
     var selectedBatteryCategory = BatteryPassWeb.Services.BatteryImageCatalog.CategoryForImageUrl(selectedBatteryImageUrl);
     var productTemplateCatalogJson = JsonSerializer.Serialize(Model.ProductTemplateCatalog);
+    var editableFieldPolicyJson = JsonSerializer.Serialize(Model.FieldEditableByKey);
     var selectedCatalogProduct = Model.ProductTemplateCatalog.FirstOrDefault(product => product.ProductId.Equals(Model.SelectedProductId, StringComparison.OrdinalIgnoreCase));
     var selectedProductVersions = selectedCatalogProduct?.ProductVersions ?? Array.Empty<BatteryPassWeb.Models.ViewModels.ProductVersionEditViewModel>();
+    var selectedSoftwareVersions = selectedProductVersions.FirstOrDefault(version => version.Version.Equals(Model.SelectedProductVersion, StringComparison.OrdinalIgnoreCase))?.SoftwareVersions
+        ?? Array.Empty<BatteryPassWeb.Models.ViewModels.ProductSoftwareVersionEditViewModel>();
     var latestVersionByProductId = Model.ProductTemplateCatalog.ToDictionary(product => product.ProductId, product => product.LatestProductVersion, StringComparer.OrdinalIgnoreCase);
 
     double SegmentValue(string label, IReadOnlyList<BatteryPassWeb.Models.ViewModels.ChartSegmentViewModel> segments)
@@ -153,8 +156,9 @@
     @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage)) { <div class="alert alert-danger mt-3 mb-0">@Model.ErrorMessage</div> }
 
     <script type="application/json" data-product-template-catalog>@Html.Raw(productTemplateCatalogJson)</script>
+    <script type="application/json" data-editable-field-policy>@Html.Raw(editableFieldPolicyJson)</script>
 
-    <form method="post" action="@formAction" class="bp-edit-grid mt-4" data-edit-passport-form data-required-passport-validation="@isNew.ToString().ToLowerInvariant()" data-passport-id="@passport.PassportId">
+    <form method="post" action="@formAction" class="bp-edit-grid mt-4" data-edit-passport-form data-editable-field-state data-required-passport-validation="@isNew.ToString().ToLowerInvariant()" data-passport-id="@passport.PassportId">
         @Html.AntiForgeryToken()
         <nav class="bp-edit-nav" aria-label="Passport categories">
             @foreach (var section in passport.Sections)
@@ -193,6 +197,29 @@
                     <label class="bp-field-shell" data-field-key="general.product"><span>Battery Family <em class="bp-field-marker">@RequirementLabel("general.product")</em></span>@if (isBatteryEdit) { <input type="hidden" name="productId" value="@Model.SelectedProductId" /> }<select name="productId" data-product-template-select disabled="@isBatteryEdit">@foreach (var productTemplate in Model.ProductTemplates) { var latestVersion = latestVersionByProductId.TryGetValue(productTemplate.ProductId, out var latest) ? latest : string.Empty; if (productTemplate.ProductId.Equals(Model.SelectedProductId, StringComparison.OrdinalIgnoreCase)) { <option value="@productTemplate.ProductId" data-latest-product-version="@latestVersion" selected>@productTemplate.ProductName</option> } else { <option value="@productTemplate.ProductId" data-latest-product-version="@latestVersion">@productTemplate.ProductName</option> } }</select><small class="bp-field-help">@(isNewBattery || isBatteryEdit ? "Battery Family and serial number are locked because they define the Battery ID." : DirtySignedDataHelp("general.product", "Battery family copied into this battery."))</small></label>
                     <label class="bp-field-shell" data-field-key="general.productVersion"><span>Battery Model <em class="bp-field-marker">@RequirementLabel("general.productVersion")</em></span><select name="productVersion" data-product-version-select>@foreach (var productVersion in selectedProductVersions) { if (productVersion.Version.Equals(Model.SelectedProductVersion, StringComparison.OrdinalIgnoreCase)) { <option value="@productVersion.Version" selected>@productVersion.Version</option> } else { <option value="@productVersion.Version">@productVersion.Version</option> } }</select><small class="bp-field-help">@DirtySignedDataHelp("general.productVersion", "Battery Model copied into this battery.")</small></label>
                     <label class="bp-field-shell" data-field-key="general.serialNumber"><span>Battery serial number <em class="bp-field-marker">@RequirementLabel("general.serialNumber")</em></span><input type="text" name="serialNumber" value="@passport.BatterySerialNumber" readonly="@isBatteryEdit" /><small class="bp-field-help">@(isNewBattery || isBatteryEdit ? "Battery Family and serial number are locked because they define the Battery ID." : DirtySignedDataHelp("general.serialNumber", "Manufacturer serial number."))</small></label>
+                    @if (isNewBattery || isBatteryEdit)
+                    {
+                        <label class="bp-field-shell" data-field-key="general.clusterId">
+                            <span>Cluster <em class="bp-field-marker">@RequirementLabel("general.clusterId")</em></span>
+                            <span class="bp-select-shell">
+                                <select name="clusterId" required>
+                                    <option value="">Select cluster</option>
+                                    @foreach (var cluster in Model.Clusters)
+                                    {
+                                        if (cluster.ClusterId.Equals(Model.SelectedClusterId, StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            <option value="@cluster.ClusterId" selected>@cluster.Name</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@cluster.ClusterId">@cluster.Name</option>
+                                        }
+                                    }
+                                </select>
+                            </span>
+                            <small class="bp-field-help">@DirtySignedDataHelp("general.clusterId", "Cluster assignment for this battery.")</small>
+                        </label>
+                    }
                     @if (isNewBattery)
                     {
                         <div class="bp-field-shell bp-span-all" data-field-key="general.batteryIdPreview">
@@ -202,14 +229,14 @@
                         </div>
                     }
                     <label class="bp-field-shell"><span>Official schema category <em class="bp-field-marker">@RequirementLabel("general.category")</em></span><input type="text" name="category" value="@selectedBatteryCategory" readonly data-image-category /><small class="bp-field-help">@DirtySignedDataHelp("general.category", "Battery Pass schema category. Product is managed separately above.")</small></label>
-                    <label class="bp-field-shell"><span>Battery status <em class="bp-field-marker">@RequirementLabel("general.batteryStatus")</em></span><input type="text" name="batteryStatus" value="@passport.BatteryStatus" /><small class="bp-field-help">@DirtySignedDataHelp("general.batteryStatus", "Lifecycle/original status for the battery.")</small></label>
-                    <label class="bp-field-shell"><span>Weight kg <em class="bp-field-marker">@RequirementLabel("general.batteryMass")</em></span><input type="number" step="any" name="batteryMass" value="@passport.Weight" /><small class="bp-field-help">@DirtySignedDataHelp("general.batteryMass", "Battery mass in kg.")</small></label>
-                    <label class="bp-field-shell"><span>Manufactured date <em class="bp-field-marker">@RequirementLabel("general.manufacturingDate")</em></span><input type="date" name="manufacturingDate" value="@passport.ManufacturedDate" /><small class="bp-field-help">@DirtySignedDataHelp("general.manufacturingDate", "Manufacturing date.")</small></label>
-                    <label class="bp-field-shell"><span>Facility ID <em class="bp-field-marker">@RequirementLabel("general.facilityId")</em></span><input type="text" name="facilityId" value="@passport.FacilityId" /><small class="bp-field-help">@DirtySignedDataHelp("general.facilityId", "Production or facility identifier.")</small></label>
-                    <label class="bp-field-shell"><span>Manufactured by <em class="bp-field-marker">@RequirementLabel("general.manufacturerName")</em></span><input type="text" name="manufacturerName" value="@passport.ManufacturerName" readonly="@isBatteryEdit" /><small class="bp-field-help">@(isBatteryEdit ? "Locked after battery creation." : DirtySignedDataHelp("general.manufacturerName", "Manufacturer legal/display name."))</small></label>
+                    <label class="bp-field-shell" data-field-key="general.batteryStatus"><span>Battery status <em class="bp-field-marker">@RequirementLabel("general.batteryStatus")</em></span><input type="text" name="batteryStatus" value="@passport.BatteryStatus" /><small class="bp-field-help">@DirtySignedDataHelp("general.batteryStatus", "Lifecycle/original status for the battery.")</small></label>
+                    <label class="bp-field-shell" data-field-key="general.batteryMass"><span>Battery mass kg <em class="bp-field-marker">@RequirementLabel("general.batteryMass")</em></span><input type="number" step="any" name="batteryMass" value="@passport.Weight" /><small class="bp-field-help">@DirtySignedDataHelp("general.batteryMass", "Battery mass in kg.")</small></label>
+                    <label class="bp-field-shell" data-field-key="general.manufacturingDate"><span>Manufactured date <em class="bp-field-marker">@RequirementLabel("general.manufacturingDate")</em></span><input type="date" name="manufacturingDate" value="@passport.ManufacturedDate" /><small class="bp-field-help">@DirtySignedDataHelp("general.manufacturingDate", "Manufacturing date.")</small></label>
+                    <label class="bp-field-shell" data-field-key="general.facilityId"><span>Facility ID <em class="bp-field-marker">@RequirementLabel("general.facilityId")</em></span><input type="text" name="facilityId" value="@passport.FacilityId" /><small class="bp-field-help">@DirtySignedDataHelp("general.facilityId", "Production or facility identifier.")</small></label>
+                    <label class="bp-field-shell" data-field-key="general.manufacturerName"><span>Manufactured by <em class="bp-field-marker">@RequirementLabel("general.manufacturerName")</em></span><input type="text" name="manufacturerName" value="@passport.ManufacturerName" readonly="@isBatteryEdit" /><small class="bp-field-help">@(isBatteryEdit ? "Locked after battery creation." : DirtySignedDataHelp("general.manufacturerName", "Manufacturer legal/display name."))</small></label>
                     <label class="bp-field-shell"><span>Passport status <em class="bp-field-marker">@RequirementLabel("general.registryStatus")</em></span><select name="status">@if (passport.RegistryStatus != "archived") { <option value="draft" selected>Draft</option> } else { <option value="draft">Draft</option> } @if (passport.RegistryStatus == "archived") { <option value="archived" selected>Archived</option> } else { <option value="archived">Archived</option> }</select><small class="bp-field-help">@DirtySignedDataHelp("general.registryStatus", "Publishing is handled from the trust workflow after validation and signing.")</small></label>
                     <label class="bp-field-shell"><span>Battery image <em class="bp-field-marker">@RequirementLabel("general.batteryImageUrl")</em></span><select name="batteryImageUrl" data-battery-image-select>@foreach (var imageOption in batteryImageOptions) { if (imageOption.Url.Equals(selectedBatteryImageUrl, StringComparison.OrdinalIgnoreCase)) { <option value="@imageOption.Url" data-image-category="@imageOption.Category" selected>@imageOption.Label (@imageOption.Category)</option> } else { <option value="@imageOption.Url" data-image-category="@imageOption.Category">@imageOption.Label (@imageOption.Category)</option> } }</select><small class="bp-field-help">@RequirementHelp("general.batteryImageUrl", "Display image for the report.")</small></label>
-                    <label class="bp-field-shell" data-field-key="general.softwareVersion"><span>Software version <em class="bp-field-marker">@RequirementLabel("general.softwareVersion")</em></span><input type="text" name="softwareVersion" value="@passport.SoftwareVersion" readonly data-product-software-version /><small class="bp-field-help">@DirtySignedDataHelp("general.softwareVersion", "Software version parameter copied from the selected Battery Model.")</small></label>
+                    <label class="bp-field-shell" data-field-key="general.softwareVersion"><span>Software version <em class="bp-field-marker">@RequirementLabel("general.softwareVersion")</em></span><select name="softwareVersion" data-product-software-version-select data-product-software-version>@foreach (var softwareVersion in selectedSoftwareVersions) { if (softwareVersion.SoftwareVersion.Equals(passport.SoftwareVersion, StringComparison.OrdinalIgnoreCase)) { <option value="@softwareVersion.SoftwareVersion" data-release-date="@softwareVersion.SoftwareReleaseDate" data-latest-update="@softwareVersion.SoftwareLatestUpdate" selected>@softwareVersion.SoftwareVersion</option> } else { <option value="@softwareVersion.SoftwareVersion" data-release-date="@softwareVersion.SoftwareReleaseDate" data-latest-update="@softwareVersion.SoftwareLatestUpdate">@softwareVersion.SoftwareVersion</option> } }</select><small class="bp-field-help">@DirtySignedDataHelp("general.softwareVersion", "Software version parameter copied from the selected Battery Model.")</small></label>
                     <label class="bp-field-shell"><span>Released date</span><input type="date" name="softwareReleaseDate" value="@passport.SoftwareReleaseDate" readonly data-product-software-release /></label>
                     <label class="bp-field-shell"><span>Software latest update</span><input type="date" name="softwareLatestUpdate" value="@passport.SoftwareLatestUpdate" readonly data-product-software-update /></label>
                 </div>
@@ -220,7 +247,7 @@
                 <div class="bp-form-grid">
                     @foreach (var field in materialFields)
                     {
-                        <label class="bp-field-shell"><span>@field.Label <em class="bp-field-marker">@RequirementLabel(field.Key)</em></span><input type="number" step="any" name="@field.Name" value="@field.Value" /><small class="bp-field-help">@DirtySignedDataHelp(field.Key, field.Help)</small></label>
+                        <label class="bp-field-shell" data-field-key="@field.Key"><span>@field.Label <em class="bp-field-marker">@RequirementLabel(field.Key)</em></span><input type="number" step="any" name="@field.Name" value="@field.Value" /><small class="bp-field-help">@DirtySignedDataHelp(field.Key, field.Help)</small></label>
                     }
                 </div>
             </section>
@@ -230,7 +257,7 @@
                 <div class="bp-form-grid">
                     @foreach (var field in performanceFields)
                     {
-                        <label class="bp-field-shell"><span>@field.Label <em class="bp-field-marker">@RequirementLabel(field.Key)</em></span><input type="number" step="any" name="@field.Name" value="@field.Value" /><small class="bp-field-help">@(field.IsLive ? LiveOperationalHelp(field.Key, field.Help) : DirtySignedDataHelp(field.Key, field.Help))</small></label>
+                        <label class="bp-field-shell" data-field-key="@field.Key"><span>@field.Label <em class="bp-field-marker">@RequirementLabel(field.Key)</em></span><input type="number" step="any" name="@field.Name" value="@field.Value" /><small class="bp-field-help">@(field.IsLive ? LiveOperationalHelp(field.Key, field.Help) : DirtySignedDataHelp(field.Key, field.Help))</small></label>
                     }
                 </div>
             </section>
@@ -264,7 +291,7 @@
             <section id="admin-supply-chain" class="bp-card bp-edit-section">
                 <h2>Supply chain</h2>
                 <div class="bp-form-grid">
-                    <label class="bp-field-shell"><span>Supply chain index <em class="bp-field-marker">@RequirementLabel("supplyChain.supplyChainIndex")</em></span><input type="number" step="any" name="supplyChainIndex" value="@passport.SupplyChainIndex" /><small class="bp-field-help">@DirtySignedDataHelp("supplyChain.supplyChainIndex", "Supply chain due-diligence index.")</small></label>
+                    <label class="bp-field-shell" data-field-key="supplyChain.supplyChainIndex"><span>Supply chain index <em class="bp-field-marker">@RequirementLabel("supplyChain.supplyChainIndex")</em></span><input type="number" step="any" name="supplyChainIndex" value="@passport.SupplyChainIndex" /><small class="bp-field-help">@DirtySignedDataHelp("supplyChain.supplyChainIndex", "Supply chain due-diligence index.")</small></label>
                     @foreach (var document in supplyChainDocuments)
                     {
                         <div class="bp-document-row bp-span-all" data-document-upload-card data-document-key="@document.DocumentKey" data-upload-state="idle">
@@ -291,8 +318,8 @@
             <section id="admin-circularity" class="bp-card bp-edit-section">
                 <h2>Circularity</h2>
                 <div class="bp-form-grid">
-                    <label class="bp-field-shell bp-span-2"><span>Separate collection <em class="bp-field-marker">@RequirementLabel("circularity.separateCollection")</em></span><textarea name="separateCollection">@passport.Circularity.SeparateCollection</textarea><small class="bp-field-help">@DirtySignedDataHelp("circularity.separateCollection", "Collection instructions or URL.")</small></label>
-                    <label class="bp-field-shell bp-span-2"><span>Waste prevention <em class="bp-field-marker">@RequirementLabel("circularity.wastePrevention")</em></span><textarea name="wastePrevention">@passport.Circularity.WastePrevention</textarea><small class="bp-field-help">@DirtySignedDataHelp("circularity.wastePrevention", "Waste prevention instructions or URL.")</small></label>
+                    <label class="bp-field-shell bp-span-2" data-field-key="circularity.separateCollection"><span>Separate collection <em class="bp-field-marker">@RequirementLabel("circularity.separateCollection")</em></span><textarea name="separateCollection">@passport.Circularity.SeparateCollection</textarea><small class="bp-field-help">@DirtySignedDataHelp("circularity.separateCollection", "Collection instructions or URL.")</small></label>
+                    <label class="bp-field-shell bp-span-2" data-field-key="circularity.wastePrevention"><span>Waste prevention <em class="bp-field-marker">@RequirementLabel("circularity.wastePrevention")</em></span><textarea name="wastePrevention">@passport.Circularity.WastePrevention</textarea><small class="bp-field-help">@DirtySignedDataHelp("circularity.wastePrevention", "Waste prevention instructions or URL.")</small></label>
                     <label class="bp-field-shell"><span>Recycled content share verification <em class="bp-field-marker">@RequirementLabel("circularity.recycledContentShareVerification")</em></span>
                         <select name="recycledContentShareVerification">
                             @if (passport.Circularity.RecycledContentShareVerification == "verified") { <option value="verified" selected>Verified</option> } else { <option value="verified">Verified</option> }
@@ -304,7 +331,7 @@
                     </label>
                     @foreach (var field in recycledFields)
                     {
-                        <label class="bp-field-shell"><span>@field.Label <em class="bp-field-marker">@RequirementLabel(field.Key)</em></span><input type="number" step="any" name="@field.Name" value="@field.Value" /><small class="bp-field-help">@(field.IsDirty ? DirtySignedDataHelp(field.Key, field.Help) : RequirementHelp(field.Key, field.Help))</small></label>
+                        <label class="bp-field-shell" data-field-key="@field.Key"><span>@field.Label <em class="bp-field-marker">@RequirementLabel(field.Key)</em></span><input type="number" step="any" name="@field.Name" value="@field.Value" /><small class="bp-field-help">@(field.IsDirty ? DirtySignedDataHelp(field.Key, field.Help) : RequirementHelp(field.Key, field.Help))</small></label>
                     }
                 </div>
             </section>
@@ -314,9 +341,9 @@
                 <div class="bp-form-grid">
                     @foreach (var field in carbonFields)
                     {
-                        <label class="bp-field-shell"><span>@field.Label <em class="bp-field-marker">@RequirementLabel(field.Key)</em></span><input type="number" step="any" name="@field.Name" value="@field.Value" /><small class="bp-field-help">@DirtySignedDataHelp(field.Key, field.Help)</small></label>
+                        <label class="bp-field-shell" data-field-key="@field.Key"><span>@field.Label <em class="bp-field-marker">@RequirementLabel(field.Key)</em></span><input type="number" step="any" name="@field.Name" value="@field.Value" /><small class="bp-field-help">@DirtySignedDataHelp(field.Key, field.Help)</small></label>
                     }
-                    <label class="bp-field-shell"><span>Performance class <em class="bp-field-marker">@RequirementLabel("carbon.performanceClass")</em></span><input type="text" name="performanceClass" value="@passport.PerformanceClass" /><small class="bp-field-help">@DirtySignedDataHelp("carbon.performanceClass", "Carbon footprint performance class.")</small></label>
+                    <label class="bp-field-shell" data-field-key="carbon.performanceClass"><span>Performance class <em class="bp-field-marker">@RequirementLabel("carbon.performanceClass")</em></span><input type="text" name="performanceClass" value="@passport.PerformanceClass" /><small class="bp-field-help">@DirtySignedDataHelp("carbon.performanceClass", "Carbon footprint performance class.")</small></label>
                     <div class="bp-document-row bp-span-all" data-document-upload-card data-document-key="co2StudyReference" data-upload-state="idle">
                         <div class="bp-field-shell bp-document-field-shell">
                             <span>@passport.Documents.Co2StudyReference.Label <em class="bp-field-marker">@RequirementLabel("carbon.co2StudyReference")</em></span>
@@ -384,6 +411,8 @@
             const productSoftwareUpdateInput = form.querySelector('[data-product-software-update]');
             const productTemplateCatalogElement = document.querySelector('[data-product-template-catalog]');
             const productTemplateCatalog = parseProductTemplateCatalog(productTemplateCatalogElement?.textContent || '[]');
+            const editablePolicyElement = document.querySelector('[data-editable-field-policy]');
+            const editableFieldPolicy = parseEditableFieldPolicy(editablePolicyElement?.textContent || '{}');
             const passportId = form.dataset.passportId ?? '';
             const uploadCards = Array.from(form.querySelectorAll('[data-document-upload-card]'));
             const serialNumberInput = form.elements.serialNumber;
@@ -428,6 +457,37 @@
                 } catch {
                     return [];
                 }
+            }
+
+            function parseEditableFieldPolicy(rawJson) {
+                try {
+                    const parsed = JSON.parse(rawJson);
+                    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+                } catch {
+                    return {};
+                }
+            }
+
+            function applyEditableFieldPolicy() {
+                const policyKeys = Object.keys(editableFieldPolicy);
+                if (policyKeys.length === 0) {
+                    return;
+                }
+
+                form.querySelectorAll('.bp-field-shell[data-field-key]').forEach((shell) => {
+                    const fieldKey = shell.dataset.fieldKey || '';
+                    const isEditable = editableFieldPolicy[fieldKey] === true;
+                    if (isEditable) {
+                        return;
+                    }
+
+                    shell.classList.add('is-policy-locked', 'is-locked-field');
+                    shell.setAttribute('data-editable-policy-locked', 'true');
+                    shell.querySelectorAll('input:not([type="hidden"]), select, textarea, button[data-document-upload]').forEach((control) => {
+                        control.setAttribute('disabled', 'disabled');
+                        control.setAttribute('aria-readonly', 'true');
+                    });
+                });
             }
 
             async function updateBatteryIdPreview() {
@@ -532,13 +592,37 @@
                 }
 
                 if (productSoftwareVersionInput) {
-                    productSoftwareVersionInput.value = productVersion.SoftwareVersion || '';
+                    const softwareVersions = Array.isArray(productVersion.SoftwareVersions) && productVersion.SoftwareVersions.length > 0
+                        ? productVersion.SoftwareVersions
+                        : [{
+                            SoftwareVersion: productVersion.SoftwareVersion || '',
+                            SoftwareReleaseDate: productVersion.SoftwareReleaseDate || '',
+                            SoftwareLatestUpdate: productVersion.SoftwareLatestUpdate || ''
+                        }];
+                    if (productSoftwareVersionInput.matches('select')) {
+                        const previousValue = productSoftwareVersionInput.value || '';
+                        productSoftwareVersionInput.innerHTML = '';
+                        softwareVersions.forEach((softwareVersion) => {
+                            const option = document.createElement('option');
+                            option.value = softwareVersion.SoftwareVersion || '';
+                            option.textContent = softwareVersion.SoftwareVersion || '';
+                            option.dataset.releaseDate = softwareVersion.SoftwareReleaseDate || '';
+                            option.dataset.latestUpdate = softwareVersion.SoftwareLatestUpdate || '';
+                            productSoftwareVersionInput.appendChild(option);
+                        });
+                        productSoftwareVersionInput.value = softwareVersions.some(version => version.SoftwareVersion === previousValue)
+                            ? previousValue
+                            : softwareVersions[0]?.SoftwareVersion || '';
+                    } else {
+                        productSoftwareVersionInput.value = productVersion.SoftwareVersion || '';
+                    }
                 }
+                const selectedSoftwareOption = productSoftwareVersionInput?.selectedOptions?.[0];
                 if (productSoftwareReleaseInput) {
-                    productSoftwareReleaseInput.value = productVersion.SoftwareReleaseDate || '';
+                    productSoftwareReleaseInput.value = selectedSoftwareOption?.dataset.releaseDate || productVersion.SoftwareReleaseDate || '';
                 }
                 if (productSoftwareUpdateInput) {
-                    productSoftwareUpdateInput.value = productVersion.SoftwareLatestUpdate || '';
+                    productSoftwareUpdateInput.value = selectedSoftwareOption?.dataset.latestUpdate || productVersion.SoftwareLatestUpdate || '';
                 }
             }
 
@@ -849,6 +933,7 @@
 
             const hashSectionId = window.location.hash.replace('#', '');
             setActiveSection(sectionById.has(hashSectionId) ? hashSectionId : defaultSectionId, true);
+            applyEditableFieldPolicy();
             syncCategoryFromImage();
             batteryImageSelect?.addEventListener('change', syncCategoryFromImage);
             pristineFormState = serializeFormState(form);
@@ -858,6 +943,15 @@
             });
             productVersionSelect?.addEventListener('change', () => {
                 applyProductTemplateSelection(false, true);
+            });
+            productSoftwareVersionInput?.addEventListener('change', () => {
+                const selectedSoftwareOption = productSoftwareVersionInput.selectedOptions?.[0];
+                if (productSoftwareReleaseInput) {
+                    productSoftwareReleaseInput.value = selectedSoftwareOption?.dataset.releaseDate || '';
+                }
+                if (productSoftwareUpdateInput) {
+                    productSoftwareUpdateInput.value = selectedSoftwareOption?.dataset.latestUpdate || '';
+                }
             });
             serialNumberInput?.addEventListener('input', updateBatteryIdPreview);
             updateBatteryIdPreview();

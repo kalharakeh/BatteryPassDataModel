@@ -20,15 +20,17 @@ public sealed class AdminDenseConsoleLayoutTests
     public void Registry_ShouldUseDenseConsoleTableAndToolbar()
     {
         var registry = File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml"));
+        var batteryTable = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.Contains("bp-registry-page", registry);
         Assert.Contains("bp-console-toolbar", registry);
-        Assert.Contains("bp-table-card", registry);
-        Assert.Contains("bp-console-table", registry);
-        Assert.Contains("bp-battery-id-cell", registry);
-        Assert.Contains("bp-status-pill", registry);
-        Assert.Contains("bp-action-cell", registry);
+        Assert.Contains("_BatteryTable", registry);
+        Assert.Contains("bp-table-card", batteryTable);
+        Assert.Contains("bp-console-table", batteryTable);
+        Assert.Contains("bp-battery-id-cell", batteryTable);
+        Assert.Contains("bp-status-pill", batteryTable);
+        Assert.Contains("bp-action-cell", batteryTable);
         Assert.Contains(".bp-console-table", css);
         Assert.Contains(".bp-battery-id-cell", css);
         Assert.Contains("white-space: nowrap", css);
@@ -38,27 +40,28 @@ public sealed class AdminDenseConsoleLayoutTests
     public void LocalAdminPassports_ShouldUseBatteryIdentityColumnsAndIconActions()
     {
         var passports = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "Passports.cshtml"));
-        var controller = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
+        var batteryTable = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
+        var service = File.ReadAllText(RepoFile("web", "Services", "BatteryTableService.cs"));
 
-        Assert.Contains("Battery ID", passports);
-        Assert.Contains("<th>Passport ID</th>", passports);
-        Assert.Contains("<th>Status</th>", passports);
-        Assert.Contains("Battery Family", passports);
-        Assert.Contains("Battery Model", passports);
-        Assert.Contains("Battery serial number", passports);
-        Assert.Contains("PassportStatus", passports);
-        Assert.Contains("@row.BatteryFamily", passports);
-        Assert.Contains("@row.BatteryVersion", passports);
-        Assert.Contains("@row.BatterySerialNumber", passports);
-        Assert.Contains("bp-console-table", passports);
-        Assert.Contains("bp-battery-id-cell", passports);
-        Assert.Contains("aria-label=\"Edit local fields\"", passports);
+        Assert.Contains("_BatteryTable", passports);
+        Assert.Contains("Battery ID", batteryTable);
+        Assert.Contains("<th>Passports</th>", batteryTable);
+        Assert.Contains("<th>Latest passport status</th>", batteryTable);
+        Assert.Contains("Battery Family", batteryTable);
+        Assert.Contains("Battery Model", batteryTable);
+        Assert.Contains("Battery serial number", batteryTable);
+        Assert.Contains("LatestPassportStatus", batteryTable);
+        Assert.Contains("@row.BatteryFamily", batteryTable);
+        Assert.Contains("@row.BatteryModel", batteryTable);
+        Assert.Contains("@row.BatterySerialNumber", batteryTable);
+        Assert.Contains("bp-console-table", batteryTable);
+        Assert.Contains("bp-battery-id-cell", batteryTable);
+        Assert.Contains("aria-label=\"Edit battery\"", batteryTable);
         Assert.DoesNotContain("<th class=\"px-4 py-3\">Model</th>", passports);
         Assert.DoesNotContain("@row.ModelNumber", passports);
-        Assert.Contains("BatteryFamily = passport.BatteryFamily", controller);
-        Assert.Contains("BatteryVersion = passport.BatteryVersion", controller);
-        Assert.Contains("BatterySerialNumber = passport.BatterySerialNumber", controller);
-        Assert.Contains("serial", controller, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("_batteryRepository.ToSummary", service);
+        Assert.Contains("BatterySearchRedirectPath", service);
+        Assert.Contains("serial", service, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -104,8 +107,9 @@ public sealed class AdminDenseConsoleLayoutTests
 
         Assert.Contains("Create Cluster", clusters);
         Assert.Contains("Cluster ID already exists.", admin);
-        Assert.Contains("Global admin: Yes", clusters);
-        Assert.Contains("Global admin: No", clusters);
+        Assert.Contains("Access", clusters);
+        Assert.Contains("Global Admin", clusters);
+        Assert.Contains("Cluster Member", clusters);
         Assert.DoesNotContain("No global admin", clusters);
         Assert.Contains("bp-select-shell", clusters);
         Assert.Contains("bp-select-shell", clusterUsers);
@@ -170,7 +174,7 @@ public sealed class AdminDenseConsoleLayoutTests
         Assert.Contains("Account email (read-only)", usersTab);
         Assert.Contains("readonly", usersTab);
         Assert.Contains("bp-user-membership-add-row", usersTab);
-        Assert.Contains("Global access is app-wide", usersTab);
+        Assert.Contains("Access is app-wide", usersTab);
         Assert.DoesNotContain("<th>System role</th>", usersTab);
         Assert.DoesNotContain("Quick add membership", usersTab);
         Assert.DoesNotContain("bp-user-management-list", usersTab);

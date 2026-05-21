@@ -4,6 +4,14 @@ namespace BatteryPassWeb.Services;
 
 public sealed class BatteryPassportDeltaService
 {
+    private static readonly HashSet<string> OperationalFieldKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "performance.stateOfCharge",
+        "performance.remainingCapacity",
+        "performance.remainingEnergy",
+        "performance.fullCycles"
+    };
+
     private readonly PassportRepository _passportRepository;
     private readonly BatteryRepository _batteryRepository;
     private readonly EditableFieldPolicyService _editableFieldPolicyService;
@@ -66,6 +74,11 @@ public sealed class BatteryPassportDeltaService
         var checkedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var permission in policy.PermissionByKey.Values.Where(permission => permission.EditableAfterCreation))
         {
+            if (OperationalFieldKeys.Contains(permission.FieldKey))
+            {
+                continue;
+            }
+
             if (!checkedKeys.Add(permission.FieldKey)
                 || !EditableFieldPolicyService.FieldPathsByKey.TryGetValue(permission.FieldKey, out var paths))
             {

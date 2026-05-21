@@ -12,6 +12,25 @@ public sealed class ClusterRepository
         _mongoContext = mongoContext;
     }
 
+    public async Task EnsureIndexesAsync(CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null)
+        {
+            return;
+        }
+
+        await _mongoContext.Database.GetCollection<BsonDocument>("clusters").Indexes.CreateOneAsync(
+            new CreateIndexModel<BsonDocument>(
+                Builders<BsonDocument>.IndexKeys.Ascending("clusterId"),
+                new CreateIndexOptions { Unique = true }),
+            cancellationToken: cancellationToken);
+        await _mongoContext.Database.GetCollection<BsonDocument>("clusterMemberships").Indexes.CreateOneAsync(
+            new CreateIndexModel<BsonDocument>(
+                Builders<BsonDocument>.IndexKeys.Ascending("email").Ascending("clusterId"),
+                new CreateIndexOptions { Unique = true }),
+            cancellationToken: cancellationToken);
+    }
+
     public async Task<IReadOnlyList<BsonDocument>> ListClustersAsync(CancellationToken cancellationToken = default)
     {
         if (_mongoContext.Database == null)
@@ -33,7 +52,7 @@ public sealed class ClusterRepository
         }
 
         return await _mongoContext.Database.GetCollection<BsonDocument>("clusters")
-            .Find(Builders<BsonDocument>.Filter.Eq("clusterId", clusterId.Trim()))
+            .Find(Builders<BsonDocument>.Filter.Eq("clusterId", NormalizeClusterId(clusterId)))
             .FirstOrDefaultAsync(cancellationToken);
     }
 
@@ -99,7 +118,7 @@ public sealed class ClusterRepository
         }
 
         return await _mongoContext.Database.GetCollection<BsonDocument>("clusterMemberships")
-            .CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq("clusterId", clusterId), cancellationToken: cancellationToken);
+            .CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq("clusterId", NormalizeClusterId(clusterId)), cancellationToken: cancellationToken);
     }
 
     public async Task UpsertUserAsync(
@@ -210,11 +229,12 @@ public sealed class ClusterRepository
             return;
         }
 
+        var normalizedClusterId = NormalizeClusterId(clusterId);
         var now = DateTime.UtcNow.ToString("O");
         await _mongoContext.Database.GetCollection<BsonDocument>("clusters").UpdateOneAsync(
-            Builders<BsonDocument>.Filter.Eq("clusterId", clusterId),
+            Builders<BsonDocument>.Filter.Eq("clusterId", normalizedClusterId),
             Builders<BsonDocument>.Update
-                .Set("clusterId", clusterId)
+                .Set("clusterId", normalizedClusterId)
                 .Set("name", name)
                 .Set("updatedAt", now)
                 .SetOnInsert("createdAt", now),
@@ -229,9 +249,10 @@ public sealed class ClusterRepository
             return;
         }
 
+        var normalizedClusterId = NormalizeClusterId(clusterId);
         var now = DateTime.UtcNow.ToString("O");
         await _mongoContext.Database.GetCollection<BsonDocument>("clusters").UpdateOneAsync(
-            Builders<BsonDocument>.Filter.Eq("clusterId", clusterId),
+            Builders<BsonDocument>.Filter.Eq("clusterId", normalizedClusterId),
             Builders<BsonDocument>.Update
                 .Set("name", name)
                 .Set("updatedAt", now),
@@ -246,9 +267,9 @@ public sealed class ClusterRepository
         }
 
         await _mongoContext.Database.GetCollection<BsonDocument>("clusters")
-            .DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("clusterId", clusterId), cancellationToken);
+            .DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("clusterId", NormalizeClusterId(clusterId)), cancellationToken);
         await _mongoContext.Database.GetCollection<BsonDocument>("clusterMemberships")
-            .DeleteManyAsync(Builders<BsonDocument>.Filter.Eq("clusterId", clusterId), cancellationToken);
+            .DeleteManyAsync(Builders<BsonDocument>.Filter.Eq("clusterId", NormalizeClusterId(clusterId)), cancellationToken);
     }
 
     public async Task UpsertClusterMembershipAsync(string email, string clusterId, string role, CancellationToken cancellationToken = default)
@@ -259,17 +280,16 @@ public sealed class ClusterRepository
         }
 
         var normalizedEmail = email.Trim().ToLowerInvariant();
-        var normalizedRole = role.Equals(AccessControlService.RoleClusterAdmin, StringComparison.OrdinalIgnoreCase)
-            ? AccessControlService.RoleClusterAdmin
-            : AccessControlService.RoleNormalUser;
+        var normalizedClusterId = NormalizeClusterId(clusterId);
+        var normalizedRole = NormalizeClusterMembershipRole(role);
         var now = DateTime.UtcNow.ToString("O");
         await _mongoContext.Database.GetCollection<BsonDocument>("clusterMemberships").UpdateOneAsync(
             Builders<BsonDocument>.Filter.And(
                 Builders<BsonDocument>.Filter.Eq("email", normalizedEmail),
-                Builders<BsonDocument>.Filter.Eq("clusterId", clusterId)),
+                Builders<BsonDocument>.Filter.Eq("clusterId", normalizedClusterId)),
             Builders<BsonDocument>.Update
                 .Set("email", normalizedEmail)
-                .Set("clusterId", clusterId)
+                .Set("clusterId", normalizedClusterId)
                 .Set("role", normalizedRole)
                 .Set("updatedAt", now)
                 .SetOnInsert("createdAt", now),
@@ -287,7 +307,23 @@ public sealed class ClusterRepository
         await _mongoContext.Database.GetCollection<BsonDocument>("clusterMemberships").DeleteOneAsync(
             Builders<BsonDocument>.Filter.And(
                 Builders<BsonDocument>.Filter.Eq("email", email.Trim().ToLowerInvariant()),
-                Builders<BsonDocument>.Filter.Eq("clusterId", clusterId)),
+                Builders<BsonDocument>.Filter.Eq("clusterId", NormalizeClusterId(clusterId))),
             cancellationToken);
+    }
+
+    public static string NormalizeClusterId(string clusterId) =>
+        clusterId.Trim().ToLowerInvariant();
+
+    public static string NormalizeClusterMembershipRole(string role)
+    {
+        return role.Trim() switch
+        {
+            AccessControlService.RoleClusterAdmin => AccessControlService.RoleClusterAdmin,
+            AccessControlService.RoleNotifiedBody => AccessControlService.RoleNotifiedBody,
+            AccessControlService.RoleMarketSurveillanceAuthority => AccessControlService.RoleMarketSurveillanceAuthority,
+            AccessControlService.RoleCommission => AccessControlService.RoleCommission,
+            AccessControlService.RoleLegitimateInterest => AccessControlService.RoleLegitimateInterest,
+            _ => AccessControlService.RoleNormalUser
+        };
     }
 }

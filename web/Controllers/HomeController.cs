@@ -37,9 +37,17 @@ public class HomeController : Controller
         }
 
         var resolution = await _batteryRouteResolutionService.ResolveAsync(query, cancellationToken);
-        if (resolution.Kind is BatteryRouteTargetKind.Battery or BatteryRouteTargetKind.Passport)
+        if (resolution.Kind == BatteryRouteTargetKind.Battery)
         {
-            return Redirect($"/{Uri.EscapeDataString(query)}");
+            return Redirect($"/{Uri.EscapeDataString(query)}/latest");
+        }
+
+        if (resolution.Kind == BatteryRouteTargetKind.Passport)
+        {
+            var passportPath = $"/{Uri.EscapeDataString(query)}";
+            return User.Identity?.IsAuthenticated == true
+                ? Redirect(passportPath)
+                : Redirect($"{passportPath}/summary");
         }
 
         return RedirectToAction(nameof(Index), new

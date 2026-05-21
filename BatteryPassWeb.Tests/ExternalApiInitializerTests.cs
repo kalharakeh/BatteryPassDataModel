@@ -12,6 +12,7 @@ public sealed class ExternalApiInitializerTests
         var source = File.ReadAllText(RepoFile("web", "Services", "ExternalApiInitializer.cs"));
 
         Assert.Contains("CreateSampleBatteryId(_batteryIdService)", source);
+        Assert.Contains("DeleteByFamilyAndSerialExceptAsync", source);
         Assert.Contains("BuildFallbackSampleDocument(sampleBatteryId)", source);
         Assert.Contains("BuildFallbackSampleBattery(sampleBatteryId)", source);
         Assert.DoesNotContain("candidates.FirstOrDefault()?.DeepClone().AsBsonDocument", source);
@@ -100,7 +101,7 @@ public sealed class ExternalApiInitializerTests
         Assert.DoesNotContain("sample-customer-north-001", homeController);
         Assert.Contains("sample battery ID", landing);
         Assert.Contains("public sample passport", landing, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("return Redirect($\"/{Uri.EscapeDataString(query)}\")", homeController);
+        Assert.Contains("return Redirect($\"/{Uri.EscapeDataString(query)}/latest\")", homeController);
     }
 
     [Fact]

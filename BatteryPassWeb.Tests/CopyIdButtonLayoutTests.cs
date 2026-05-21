@@ -44,9 +44,12 @@ public sealed class CopyIdButtonLayoutTests
     [Fact]
     public void AdminAndRegistryIdSurfaces_ShouldRenderInlineCopyButtons()
     {
+        var sharedBatteryTable = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
+        Assert.Contains("_CopyIdButton", sharedBatteryTable);
+        Assert.Contains("bp-id-copy-row", sharedBatteryTable);
+
         var files = new[]
         {
-            RepoFile("web", "Views", "Registry", "Index.cshtml"),
             RepoFile("web", "Views", "Passport", "Battery.cshtml"),
             RepoFile("web", "Views", "Admin", "Clusters.cshtml"),
             RepoFile("web", "Views", "Admin", "BatteryPassports.cshtml"),
@@ -54,8 +57,6 @@ public sealed class CopyIdButtonLayoutTests
             RepoFile("web", "Views", "Admin", "Audit.cshtml"),
             RepoFile("web", "Views", "Admin", "Revisions.cshtml"),
             RepoFile("web", "Views", "Admin", "EditPassport.cshtml"),
-            RepoFile("web", "Views", "Admin", "Passports.cshtml"),
-            RepoFile("web", "Views", "ClusterAdmin", "Passports.cshtml"),
             RepoFile("web", "Views", "ClusterAdmin", "EditPassport.cshtml"),
             RepoFile("web", "Views", "Help", "Index.cshtml")
         };

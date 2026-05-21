@@ -4,7 +4,16 @@
     var errorMessage = ViewData["ErrorMessage"] as string ?? string.Empty;
     var clustersById = Model.Clusters.ToDictionary(cluster => cluster.ClusterId, cluster => cluster, StringComparer.OrdinalIgnoreCase);
     var userRowIndex = 0;
-    string MembershipRoleLabel(string role) => role.Equals("clusterAdmin", StringComparison.OrdinalIgnoreCase) ? "Local Admin" : "Normal User";
+    var clusterMembershipRoleOptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["clusterAdmin"] = "Cluster Admin",
+        ["member"] = "Normal User",
+        ["notifiedBody"] = "Notified Body",
+        ["marketSurveillanceAuthority"] = "Market Surveillance Authorities",
+        ["commission"] = "Commission",
+        ["legitimateInterest"] = "Person with Legitimate Interest"
+    };
+    string MembershipRoleLabel(string role) => clusterMembershipRoleOptions.TryGetValue(role, out var label) ? label : "Normal User";
     string MembershipCountLabel(int count) => $"{count} {(count == 1 ? "membership" : "memberships")}";
 }
 <main class="bp-page bp-admin-page">
@@ -81,11 +90,13 @@
                     </span>
                 </label>
                 <label>
-                    Membership Role
+                    Membership role
                     <span class="bp-select-shell">
                         <select name="role">
-                            <option value="member">Normal User</option>
-                            <option value="clusterAdmin">Local Admin</option>
+                            @foreach (var option in clusterMembershipRoleOptions)
+                            {
+                                <option value="@option.Key">@option.Value</option>
+                            }
                         </select>
                     </span>
                 </label>
@@ -201,11 +212,13 @@
                                                     </span>
                                                 </label>
                                                 <label>
-                                                    Membership Role
+                                                    Membership role
                                                     <span class="bp-select-shell">
                                                         <select name="role" class="form-select form-select-sm">
-                                                            <option value="member">Normal User</option>
-                                                            <option value="clusterAdmin">Local Admin</option>
+                                                            @foreach (var option in clusterMembershipRoleOptions)
+                                                            {
+                                                                <option value="@option.Key">@option.Value</option>
+                                                            }
                                                         </select>
                                                     </span>
                                                 </label>

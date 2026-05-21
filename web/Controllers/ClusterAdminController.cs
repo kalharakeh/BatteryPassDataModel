@@ -12,7 +12,11 @@ namespace BatteryPassWeb.Controllers;
 public class ClusterAdminController : Controller
 {
     private readonly PassportRepository _passportRepository;
+    private readonly BatteryRepository _batteryRepository;
+    private readonly BatteryPassportSnapshotService _batteryPassportSnapshotService;
+    private readonly BatteryPassportDeltaService _batteryPassportDeltaService;
     private readonly ClusterRepository _clusterRepository;
+    private readonly BatteryTableService _batteryTableService;
     private readonly PassportViewModelFactory _viewModelFactory;
     private readonly AccessControlService _accessControlService;
     private readonly ExternalApiRepository _externalApiRepository;
@@ -21,7 +25,11 @@ public class ClusterAdminController : Controller
 
     public ClusterAdminController(
         PassportRepository passportRepository,
+        BatteryRepository batteryRepository,
+        BatteryPassportSnapshotService batteryPassportSnapshotService,
+        BatteryPassportDeltaService batteryPassportDeltaService,
         ClusterRepository clusterRepository,
+        BatteryTableService batteryTableService,
         PassportViewModelFactory viewModelFactory,
         AccessControlService accessControlService,
         ExternalApiRepository externalApiRepository,
@@ -29,7 +37,11 @@ public class ClusterAdminController : Controller
         PassportTrustWorkflowService passportTrustWorkflowService)
     {
         _passportRepository = passportRepository;
+        _batteryRepository = batteryRepository;
+        _batteryPassportSnapshotService = batteryPassportSnapshotService;
+        _batteryPassportDeltaService = batteryPassportDeltaService;
         _clusterRepository = clusterRepository;
+        _batteryTableService = batteryTableService;
         _viewModelFactory = viewModelFactory;
         _accessControlService = accessControlService;
         _externalApiRepository = externalApiRepository;
@@ -46,52 +58,41 @@ public class ClusterAdminController : Controller
     [HttpGet("passports")]
     public async Task<IActionResult> Passports([FromQuery] string? q, CancellationToken cancellationToken)
     {
-        var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
-        var clusterNamesById = clusters
-            .Select(cluster => new
-            {
-                ClusterId = BsonHelpers.GetString(cluster, "clusterId"),
-                Name = BsonHelpers.GetString(cluster, "name")
-            })
-            .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
-            .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
+        var model = await _batteryTableService.BuildAsync(User, BatteryTableScope.ClusterAdminPassports, q, cancellationToken);
+        if (!string.IsNullOrWhiteSpace(model.RedirectPath))
+        {
+            return Redirect(model.RedirectPath);
+        }
 
-        var allPassports = await _passportRepository.SearchAsync(q ?? string.Empty, includeArchived: false, cancellationToken);
-        var managedClusterIds = await ManagedClusterIdsAsync(cancellationToken);
-        var passports = AccessControlService.IsAdmin(User)
-            ? allPassports
-            : allPassports
-                .Where(passport => !string.IsNullOrWhiteSpace(passport.ClusterId) && managedClusterIds.Contains(passport.ClusterId))
-                .ToList();
-
-        var model = passports
-            .Select(passport => new PassportSummaryViewModel
-            {
-                PassportId = passport.PassportId,
-                BatteryId = string.IsNullOrWhiteSpace(passport.BatteryId) ? passport.PassportId : passport.BatteryId,
-                DisplayName = passport.DisplayName,
-                ModelNumber = passport.ModelNumber,
-                ManufacturerName = passport.ManufacturerName,
-                SerialNumber = passport.SerialNumber,
-                RegistryStatus = passport.RegistryStatus,
-                ClusterId = passport.ClusterId,
-                ClusterLabel = string.IsNullOrWhiteSpace(passport.ClusterId)
-                    ? "No cluster assigned"
-                    : clusterNamesById.TryGetValue(passport.ClusterId, out var clusterName)
-                        ? clusterName
-                        : passport.ClusterId,
-                BatteryFamily = passport.BatteryFamily,
-                BatteryVersion = passport.BatteryVersion,
-                BatterySerialNumber = passport.BatterySerialNumber,
-                PassportStatus = passport.PassportStatus,
-                BatteryImageUrl = passport.BatteryImageUrl,
-                UpdatedDate = passport.UpdatedDate
-            })
-            .OrderBy(passport => passport.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        ViewData["Query"] = q ?? string.Empty;
         return View(model);
+    }
+
+    [HttpPost("batteries/{batteryId}/passports/create")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateBatteryPassport(string batteryId, CancellationToken cancellationToken)
+    {
+        var decodedBatteryId = Uri.UnescapeDataString(batteryId);
+        var battery = await _batteryRepository.GetByBatteryIdAsync(decodedBatteryId, cancellationToken);
+        if (battery == null)
+        {
+            return NotFound();
+        }
+
+        var clusterId = BsonHelpers.GetString(battery, "clusterId");
+        if (!await _accessControlService.CanAdministerClusterAsync(User, clusterId, cancellationToken))
+        {
+            return Forbid();
+        }
+
+        var passport = await _batteryPassportSnapshotService.CreatePassportSnapshotAsync(
+            battery,
+            CurrentActor(),
+            DateTimeOffset.UtcNow,
+            cancellationToken);
+        var passportId = BsonHelpers.GetString(passport, "passportId");
+        await _batteryPassportDeltaService.ClearNewPassportRequiredAsync(decodedBatteryId, passportId, cancellationToken);
+        TempData["StatusMessage"] = $"Passport {passportId} created for battery {decodedBatteryId}.";
+        return Redirect($"/cluster-admin/passports/{Uri.EscapeDataString(passportId)}/edit");
     }
 
     [HttpGet("passports/{passportId}/edit")]

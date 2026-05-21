@@ -17,63 +17,34 @@ public class RegistryController : Controller
     private readonly ClusterRepository _clusterRepository;
     private readonly AccessControlService _accessControlService;
     private readonly PassportPublishPolicyService _passportPublishPolicyService;
+    private readonly BatteryTableService _batteryTableService;
 
     public RegistryController(
         PassportRepository passportRepository,
         BatteryRepository batteryRepository,
         ClusterRepository clusterRepository,
         AccessControlService accessControlService,
-        PassportPublishPolicyService passportPublishPolicyService)
+        PassportPublishPolicyService passportPublishPolicyService,
+        BatteryTableService batteryTableService)
     {
         _passportRepository = passportRepository;
         _batteryRepository = batteryRepository;
         _clusterRepository = clusterRepository;
         _accessControlService = accessControlService;
         _passportPublishPolicyService = passportPublishPolicyService;
+        _batteryTableService = batteryTableService;
     }
 
     [HttpGet("")]
     public async Task<IActionResult> Index([FromQuery] string? q, CancellationToken cancellationToken)
     {
-        var query = q?.Trim() ?? string.Empty;
-        var isAdmin = AccessControlService.IsAdmin(User);
-        var isClusterAdmin = AccessControlService.IsClusterAdmin(User);
-        var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
-        var clusterNameById = clusters
-            .Select(cluster => new
-            {
-                ClusterId = BsonHelpers.GetString(cluster, "clusterId"),
-                Name = BsonHelpers.GetString(cluster, "name")
-            })
-            .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
-            .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
-
-        RegistrySearchResult? searchResult = null;
-        if (!string.IsNullOrWhiteSpace(query))
+        var model = await _batteryTableService.BuildAsync(User, BatteryTableScope.Registry, q, cancellationToken);
+        if (!string.IsNullOrWhiteSpace(model.RedirectPath))
         {
-            searchResult = await ResolveSearchAsync(query, isAdmin, isClusterAdmin, clusters, cancellationToken);
-            if (!string.IsNullOrWhiteSpace(searchResult.RedirectPath))
-            {
-                return Redirect(searchResult.RedirectPath);
-            }
-
-            if (!string.IsNullOrWhiteSpace(searchResult.AccessMessage))
-            {
-                ViewData["RegistryAccessMessage"] = searchResult.AccessMessage;
-            }
+            return Redirect(model.RedirectPath);
         }
 
-        var batteryDocuments = searchResult?.Rows
-            ?? await _batteryRepository.SearchDocumentsAsync(query, includeArchived: isAdmin, cancellationToken);
-        var rows = await BuildBatteryRowsAsync(batteryDocuments, isAdmin, clusterNameById, cancellationToken);
-
-        ViewData["RegistryScopeLabel"] = isAdmin
-            ? "Search and open all registered batteries, including drafts and archived passport records."
-            : "Search and open batteries with signed or published passports available to your role.";
-        ViewData["RegistryEmptyLabel"] = isAdmin
-            ? "No batteries are currently available in the registry."
-            : "No signed or published batteries are currently available to your role.";
-        return View(rows);
+        return View(model);
     }
 
     private async Task<RegistrySearchResult> ResolveSearchAsync(

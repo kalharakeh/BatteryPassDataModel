@@ -221,10 +221,10 @@ public sealed class ConformanceLayoutTests
     public void AdminPages_ShouldLinkToConformance()
     {
         var edit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
-        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var batteryTable = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
 
         Assert.Contains("/conformance", edit);
-        Assert.Contains("/conformance", clusters);
+        Assert.Contains("ConformanceUrl", batteryTable);
     }
 
     [Fact]

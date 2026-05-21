@@ -53,6 +53,7 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddSingleton<MongoContext>();
 builder.Services.AddSingleton<PassportRepository>();
 builder.Services.AddSingleton<BatteryRepository>();
+builder.Services.AddSingleton<BatteryTableService>();
 builder.Services.AddSingleton<BatteryPassportSnapshotService>();
 builder.Services.AddSingleton<BatteryPassportDeltaService>();
 builder.Services.AddSingleton<BatteryTemplateUpdateService>();

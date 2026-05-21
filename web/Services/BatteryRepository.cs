@@ -107,6 +107,31 @@ public sealed class BatteryRepository
         await collection.InsertOneAsync(battery, cancellationToken: cancellationToken);
     }
 
+    public async Task<long> DeleteByFamilyAndSerialExceptAsync(
+        string batteryFamily,
+        string serialNumber,
+        string batteryIdToKeep,
+        CancellationToken cancellationToken = default)
+    {
+        var collection = GetCollection();
+        if (collection == null
+            || string.IsNullOrWhiteSpace(batteryFamily)
+            || string.IsNullOrWhiteSpace(serialNumber)
+            || string.IsNullOrWhiteSpace(batteryIdToKeep))
+        {
+            return 0;
+        }
+
+        var builder = Builders<BsonDocument>.Filter;
+        var result = await collection.DeleteManyAsync(
+            builder.And(
+                builder.Eq("identity.batteryFamily", batteryFamily),
+                builder.Eq("identity.serialNumber", serialNumber),
+                builder.Ne("batteryId", batteryIdToKeep)),
+            cancellationToken);
+        return result.DeletedCount;
+    }
+
     public async Task ReplaceAsync(string batteryId, BsonDocument battery, CancellationToken cancellationToken = default)
     {
         var collection = GetCollection();

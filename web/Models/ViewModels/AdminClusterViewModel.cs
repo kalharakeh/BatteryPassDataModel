@@ -8,6 +8,7 @@ public sealed class AdminClusterViewModel
     public string SelectedTab { get; init; } = "passports";
     public string SelectedCredentialTab { get; init; } = "api-tokens";
     public string PassportsQuery { get; init; } = string.Empty;
+    public BatteryTablePageViewModel BatteryTable { get; init; } = new();
     public IReadOnlyList<ClusterViewModel> Clusters { get; init; } = [];
     public IReadOnlyList<BatterySummaryViewModel> Batteries { get; init; } = [];
     public IReadOnlyList<PassportSummaryViewModel> Passports { get; init; } = [];
@@ -55,8 +56,16 @@ public sealed class ProductVersionEditViewModel
     public string SoftwareVersion { get; init; } = string.Empty;
     public string SoftwareReleaseDate { get; init; } = string.Empty;
     public string SoftwareLatestUpdate { get; init; } = string.Empty;
+    public IReadOnlyList<ProductSoftwareVersionEditViewModel> SoftwareVersions { get; init; } = [];
     public IReadOnlyList<ProductTemplateDocumentViewModel> TemplateDocuments { get; init; } = [];
     public IReadOnlyList<string> RequiredFieldKeys { get; init; } = [];
+}
+
+public sealed class ProductSoftwareVersionEditViewModel
+{
+    public string SoftwareVersion { get; init; } = string.Empty;
+    public string SoftwareReleaseDate { get; init; } = string.Empty;
+    public string SoftwareLatestUpdate { get; init; } = string.Empty;
 }
 
 public sealed class ProductTemplateDocumentViewModel

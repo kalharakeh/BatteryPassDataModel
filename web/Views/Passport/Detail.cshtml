@@ -28,7 +28,7 @@
 <main class="bp-page">
     <section class="bp-report-hero-card">
         <div class="bp-report-hero-layout">
-            <article class="bp-report-hero-info">
+            <article class="bp-report-hero-info bp-summary-identity-grid">
                 <div class="bp-report-hero-main">
                     <div class="bp-report-header">
                         <div class="bp-report-title-block">
@@ -70,17 +70,18 @@
                         <div><dt>Cluster</dt><dd>@passport.ClusterLabel</dd></div>
                     </dl>
                 </div>
-
-                <a class="bp-report-hero-qr"
-                   href="/qr/@Uri.EscapeDataString(qrBatteryId)/download"
-                   aria-label="Save battery code for @qrBatteryId">
-                    <img src="/qr/@Uri.EscapeDataString(qrBatteryId)/svg" alt="QR code for @qrBatteryId" />
-                </a>
             </article>
 
             <aside class="bp-report-hero-media">
-                <div class="bp-image-wrap">
-                    <img src="@passport.BatteryImageUrl" alt="@passport.BatteryImageAlt" class="bp-battery-image" />
+                <div class="bp-report-media-code-row">
+                    <div class="bp-image-wrap">
+                        <img src="@passport.BatteryImageUrl" alt="@passport.BatteryImageAlt" class="bp-battery-image" />
+                    </div>
+                    <a class="bp-summary-qr-panel bp-report-hero-qr"
+                       href="/qr/@Uri.EscapeDataString(qrBatteryId)/download"
+                       aria-label="Save battery code for @qrBatteryId">
+                        <img src="/qr/@Uri.EscapeDataString(qrBatteryId)/svg" alt="QR code for @qrBatteryId" />
+                    </a>
                 </div>
                 <a class="bp-report-hero-cta" href="/@Uri.EscapeDataString(passport.PassportId)/summary">&lt;- Back to summary</a>
             </aside>
@@ -209,21 +210,21 @@
                     <div class="bp-two-column mt-3">
                         <div class="bp-card">
                             <p class="bp-help-text mb-2">Current consumption (kWh)</p>
-                            <canvas id="chart-consumption"></canvas>
+                            <div class="bp-chart-frame"><canvas id="chart-consumption"></canvas></div>
                         </div>
                         <div class="bp-card">
                             <p class="bp-help-text mb-2">Current charge level (%)</p>
-                            <canvas id="chart-charge"></canvas>
+                            <div class="bp-chart-frame"><canvas id="chart-charge"></canvas></div>
                         </div>
                     </div>
                     <div class="bp-two-column mt-3">
                         <div class="bp-card">
                             <p class="bp-help-text mb-2">Current voltage (V)</p>
-                            <canvas id="chart-voltage"></canvas>
+                            <div class="bp-chart-frame"><canvas id="chart-voltage"></canvas></div>
                         </div>
                         <div class="bp-card">
                             <p class="bp-help-text mb-2">Current current (A)</p>
-                            <canvas id="chart-current"></canvas>
+                            <div class="bp-chart-frame"><canvas id="chart-current"></canvas></div>
                         </div>
                     </div>
                 }
@@ -385,7 +386,6 @@
             const renderLine = (canvasId, label, data, color) => {
                 const canvas = document.getElementById(canvasId);
                 if (!canvas) return;
-                canvas.style.minHeight = "220px";
                 new Chart(canvas, {
                     type: 'line',
                     data: {

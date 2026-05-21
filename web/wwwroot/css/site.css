@@ -822,14 +822,14 @@ a:hover {
 
 .bp-local-editable-toggle-group {
   display: grid;
-  grid-template-columns: repeat(3, minmax(68px, auto));
-  gap: 10px;
+  grid-template-columns: repeat(3, minmax(76px, 1fr));
+  gap: 12px;
   align-items: end;
 }
 
 .bp-local-editable-toggle-wrap {
   position: relative;
-  inline-size: 42px;
+  inline-size: 76px;
   block-size: 42px;
   flex: 0 0 auto;
 }
@@ -846,7 +846,7 @@ a:hover {
 
 .bp-local-editable-field-toggle {
   position: absolute;
-  inset: auto 0 0;
+  inset: auto 17px 0;
   inline-size: 42px;
   block-size: 24px;
   z-index: 1;
@@ -856,7 +856,7 @@ a:hover {
 
 .bp-local-editable-toggle-shell {
   position: absolute;
-  inset: auto 0 0;
+  inset: auto 17px 0;
   block-size: 24px;
   border: 1px solid #b9c8d8;
   border-radius: 999px;
@@ -1432,9 +1432,13 @@ a:hover {
 }
 
 .bp-report-hero-info.bp-summary-identity-grid {
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(132px, 160px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   align-items: stretch;
+}
+
+.bp-report-hero-info.bp-summary-identity-grid > .bp-report-hero-main {
+  grid-column: 1 / -1;
 }
 
 .bp-summary-id-panel,
@@ -1543,7 +1547,7 @@ a:hover {
 .bp-report-hero-qr {
   justify-self: end;
   align-self: start;
-  width: 184px;
+  width: min(132px, 100%);
   aspect-ratio: 1;
   display: grid;
   place-items: center;
@@ -1585,6 +1589,19 @@ a:hover {
   border-radius: 8px;
   background: transparent;
   box-shadow: none;
+}
+
+.bp-report-media-code-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(108px, 132px);
+  gap: 12px;
+  align-items: start;
+}
+
+.bp-report-media-code-row .bp-report-hero-qr {
+  width: 100%;
+  justify-self: stretch;
 }
 
 .bp-report-hero-media .bp-battery-image {
@@ -1877,6 +1894,18 @@ a:hover {
   flex-shrink: 0;
 }
 
+.bp-chart-frame {
+  position: relative;
+  height: 240px;
+  overflow: hidden;
+}
+
+.bp-chart-frame canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
 .bp-legend {
   list-style: none;
   margin: 0;
@@ -1929,7 +1958,7 @@ a:hover {
 .bp-donut-grid {
   margin-top: 12px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
 }
 
@@ -3354,6 +3383,15 @@ a:hover {
   .bp-report-hero-media {
     grid-template-rows: auto auto;
     min-height: 0;
+  }
+
+  .bp-report-media-code-row {
+    grid-template-columns: 1fr;
+  }
+
+  .bp-report-media-code-row .bp-report-hero-qr {
+    max-width: 132px;
+    justify-self: start;
   }
 
   .bp-report-hero-media .bp-image-wrap {
@@ -6698,9 +6736,85 @@ a:hover {
   gap: 10px;
 }
 
+.bp-generated-token-modal[hidden] {
+  display: none;
+}
+
+.bp-generated-token-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1450;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.bp-generated-token-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.56);
+}
+
+.bp-generated-token-panel {
+  position: relative;
+  inline-size: min(560px, 100%);
+  border: 1px solid #cbd7e4;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 26px 80px rgba(15, 23, 42, 0.28);
+  padding: 24px;
+}
+
+.bp-generated-token-panel h2 {
+  margin: 0 0 10px;
+  font-size: 1.25rem;
+}
+
+.bp-generated-token-copy {
+  margin: 0 0 14px;
+  color: #46586a;
+}
+
+.bp-generated-token-value {
+  display: block;
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  background: #f6f8fb;
+  color: #102033;
+  padding: 12px;
+}
+
+.bp-generated-token-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
 .bp-management-shell {
   display: grid;
   gap: 18px;
+}
+
+.bp-field-shell.is-policy-locked {
+  opacity: 0.72;
+}
+
+.bp-field-shell.is-policy-locked input:not([type="hidden"]),
+.bp-field-shell.is-policy-locked select,
+.bp-field-shell.is-policy-locked textarea {
+  background: #eef2f6;
+  border-color: #cbd7e4;
+  color: #5c6c7d;
+  cursor: not-allowed;
+}
+
+.bp-field-shell.is-policy-locked .bp-field-help::after {
+  content: " Locked by editable fields policy.";
+  color: #6c7a89;
+  font-weight: 700;
 }
 
 .bp-management-create-card {

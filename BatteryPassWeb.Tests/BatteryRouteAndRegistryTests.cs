@@ -17,15 +17,15 @@ public sealed class BatteryRouteAndRegistryTests
     }
 
     [Fact]
-    public void HomeSearch_ShouldSendBatteryIdsToBatteryPageAndPassportIdsToSnapshot()
+    public void HomeSearch_ShouldSendBatteryIdsToLatestAndAnonymousPassportIdsToSummary()
     {
         var source = File.ReadAllText(RepoFile("web", "Controllers", "HomeController.cs"));
 
         Assert.Contains("BatteryRouteResolutionService", source);
         Assert.Contains("Battery", source);
         Assert.Contains("Passport", source);
-        Assert.Contains("/{Uri.EscapeDataString(query)}", source);
-        Assert.DoesNotContain("/summary\");", source);
+        Assert.Contains("/{Uri.EscapeDataString(query)}/latest", source);
+        Assert.Contains("{passportPath}/summary", source);
     }
 
     [Fact]
@@ -44,10 +44,10 @@ public sealed class BatteryRouteAndRegistryTests
     public void Registry_ShouldUseBatteryRowsAndPassportCounts()
     {
         var controller = File.ReadAllText(RepoFile("web", "Controllers", "RegistryController.cs"));
-        var view = File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml"));
+        var view = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
 
-        Assert.Contains("BatteryRepository", controller);
-        Assert.Contains("BatterySummaryViewModel", controller);
+        Assert.Contains("BatteryTableService", controller);
+        Assert.Contains("BatteryTablePageViewModel", File.ReadAllText(RepoFile("web", "Models", "ViewModels", "BatteryViewModels.cs")));
         Assert.Contains("PassportCount", view);
         Assert.Contains("passports", view);
         Assert.Contains("@row.BatteryId", view);
@@ -58,14 +58,14 @@ public sealed class BatteryRouteAndRegistryTests
     [Fact]
     public void RegistrySearch_ShouldSupportPassportBatterySerialAndGlobalAdminClusterSearch()
     {
-        var controller = File.ReadAllText(RepoFile("web", "Controllers", "RegistryController.cs"));
+        var controller = File.ReadAllText(RepoFile("web", "Services", "BatteryTableService.cs"));
         var repository = File.ReadAllText(RepoFile("web", "Services", "BatteryRepository.cs"));
-        var view = File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml"));
+        var view = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
 
         Assert.Contains("ResolveSearchAsync", controller);
         Assert.Contains("SearchByClusterAsync", repository);
         Assert.Contains("Cluster search requires global admin access.", controller);
-        Assert.Contains("Cluster search requires global admin access.", view);
+        Assert.Contains("AccessMessage", view);
     }
 
     [Fact]
@@ -124,15 +124,15 @@ public sealed class BatteryRouteAndRegistryTests
     [Fact]
     public void AdminBatteryList_ShouldUseCompactBatteryRowsWithoutEmbeddedHistory()
     {
-        var view = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var view = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
         var model = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "BatteryViewModels.cs"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        Assert.Contains("@row.PassportCount</td>", view);
-        Assert.DoesNotContain("@row.PassportCount passports", view);
+        Assert.Contains("@row.PassportCount", view);
+        Assert.Contains("@row.PassportCount passports", view);
         Assert.DoesNotContain("bp-passport-history-row", view);
         Assert.DoesNotContain("data-battery-passport-history", view);
-        Assert.Contains("/admin/batteries/@Uri.EscapeDataString(row.BatteryId)/passports", view);
+        Assert.Contains("row.HistoryUrl", view);
         Assert.Contains("NewPassportRequired", model);
         Assert.Contains(".bp-admin-battery-table .bp-battery-id-cell", css);
         Assert.Contains("max-width: none", css);
@@ -146,8 +146,9 @@ public sealed class BatteryRouteAndRegistryTests
 
         Assert.Contains("[HttpGet(\"batteries/{batteryId}/passports\")]", controller);
         Assert.Contains("BatteryPassports", controller);
-        Assert.Contains("Back to Batteries", view);
-        Assert.Contains("/admin/clusters?tab=batteries", view);
+        Assert.Contains("Model.ReturnLabel", view);
+        Assert.Contains("/admin/clusters?tab=batteries", File.ReadAllText(RepoFile("web", "Models", "ViewModels", "BatteryViewModels.cs")));
+        Assert.Contains("returnUrl", view);
         Assert.Contains("Summary report", view);
         Assert.Contains("Detailed report", view);
         Assert.Contains("Conformance", view);

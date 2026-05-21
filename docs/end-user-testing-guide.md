@@ -2,6 +2,8 @@
 
 Product Template is the internal implementation name for Battery Family. In the UI and tester workflows, Product Template and Battery Family mean the same stored template concept.
 
+For the focused May 2026 passport admin, registry, editable-field, API, QR, and telemetry acceptance flow, use `docs/passport-admin-registry-manual-test-flow.md`.
+
 
 
 ## 1. What this app is and how it is built

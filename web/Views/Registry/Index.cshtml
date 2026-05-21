@@ -1,116 +1,24 @@
-@model IReadOnlyList<BatteryPassWeb.Models.ViewModels.BatterySummaryViewModel>
+@model BatteryPassWeb.Models.ViewModels.BatteryTablePageViewModel
 @{
     ViewData["Title"] = "Scania Passport Registry";
-    var registryScopeLabel = ViewData["RegistryScopeLabel"] as string ?? "Search and open battery passports linked to your account.";
-    var registryEmptyLabel = ViewData["RegistryEmptyLabel"] as string ?? "No batteries are currently linked to your account.";
-    var registryAccessMessage = ViewData["RegistryAccessMessage"] as string ?? string.Empty;
-    var isGlobalAdmin = User.IsInRole(BatteryPassWeb.Services.AccessControlService.RoleAdmin);
-    var isClusterAdmin = User.IsInRole(BatteryPassWeb.Services.AccessControlService.RoleClusterAdmin) || isGlobalAdmin;
 }
 <main class="bp-page bp-admin-page bp-registry-page">
     <header class="bp-console-header">
         <div>
             <h1>Scania Passport Registry</h1>
-            <p class="text-secondary mb-0">@registryScopeLabel</p>
+            <p class="text-secondary mb-0">@Model.ScopeLabel</p>
         </div>
     </header>
 
     <section class="bp-console-toolbar">
-        <form action="/registry" class="bp-search-form">
+        <form action="@Model.SearchAction" class="bp-search-form">
             <input
                 name="q"
-                value="@Context.Request.Query["q"]"
-                placeholder="Search by battery ID, passport ID, serial, or cluster" />
+                value="@Model.Query"
+                placeholder="@Model.SearchPlaceholder" />
             <button type="submit">Search</button>
         </form>
     </section>
 
-    @if (!string.IsNullOrWhiteSpace(registryAccessMessage))
-    {
-        <div class="bp-card bp-alert-card">
-            Cluster search requires global admin access.
-        </div>
-    }
-
-    @if (Model.Count == 0)
-    {
-        <div class="bp-card">
-            @registryEmptyLabel
-        </div>
-    }
-    else
-    {
-        <div class="bp-card bp-table-card">
-            <div class="bp-table-scroll">
-            <table class="table table-hover align-middle bp-console-table">
-                <thead>
-                    <tr>
-                        <th>Battery ID</th>
-                        <th>Battery Family</th>
-                        <th>Battery Model</th>
-                        <th>Battery serial number</th>
-                        <th>Passports</th>
-                        <th>Latest passport status</th>
-                        <th>Updated</th>
-                        <th class="bp-action-cell">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var row in Model)
-                    {
-                        var passportStatusClass = row.LatestPassportStatus.Equals("published", StringComparison.OrdinalIgnoreCase)
-                            ? "bp-status-pill is-published"
-                            : row.LatestPassportStatus.Equals("signed", StringComparison.OrdinalIgnoreCase)
-                                ? "bp-status-pill is-signed"
-                                : "bp-status-pill is-draft";
-                        var escapedBatteryId = Uri.EscapeDataString(row.BatteryId);
-                        var batteryOpenHref = isGlobalAdmin
-                            ? $"/admin/batteries/{escapedBatteryId}/passports"
-                            : isClusterAdmin
-                                ? $"/{escapedBatteryId}"
-                                : $"/{escapedBatteryId}/latest";
-                        <tr>
-                            <td><span class="bp-battery-id-cell bp-id-copy-row"><span class="bp-id-value">@row.BatteryId</span>@await Html.PartialAsync("_CopyIdButton", row.BatteryId)</span></td>
-                            <td>@row.BatteryFamily</td>
-                            <td>@row.BatteryModel</td>
-                            <td>@row.BatterySerialNumber</td>
-                            <td>@row.PassportCount passports</td>
-                            <td><span class="@passportStatusClass">@row.LatestPassportStatus</span></td>
-                            <td>@(string.IsNullOrWhiteSpace(row.UpdatedDate) ? "-" : row.UpdatedDate[..Math.Min(10, row.UpdatedDate.Length)])</td>
-                            <td class="bp-action-cell">
-                                <div class="bp-icon-action-row">
-                                    @if (!string.IsNullOrWhiteSpace(row.LatestPassportId))
-                                    {
-                                    <a href="/@Uri.EscapeDataString(row.LatestPassportId)/summary" class="bp-report-action" aria-label="Summary report" title="Summary report" data-tooltip="Summary report" data-action-icon="summary">
-                                        <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                            <path d="M6 3h9l3 3v15H6z" />
-                                            <path d="M15 3v4h4" />
-                                            <path d="M9 11h6M9 15h6M9 19h4" />
-                                        </svg>
-                                    </a>
-                                    <a href="/@Uri.EscapeDataString(row.BatteryId)/latest" class="bp-report-action" aria-label="Detailed report" title="Detailed report" data-tooltip="Detailed report" data-action-icon="detail">
-                                        <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                            <path d="M6 3h9l3 3v15H6z" />
-                                            <path d="M15 3v4h4" />
-                                            <path d="M10 12a3 3 0 1 0 4.24 4.24" />
-                                            <path d="m14 16 3 3" />
-                                        </svg>
-                                    </a>
-                                    }
-                                    <a href="@batteryOpenHref" class="bp-report-action" aria-label="Passport history" title="Passport history" data-tooltip="Passport history" data-action-icon="history">
-                                        <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                            <path d="M6 3h9l3 3v15H6z" />
-                                            <path d="M15 3v4h4" />
-                                            <path d="M9 11h6M9 15h6M9 19h4" />
-                                        </svg>
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-            </div>
-        </div>
-    }
+    @await Html.PartialAsync("_BatteryTable", Model)
 </main>

@@ -21,6 +21,11 @@ public sealed class ExternalApiInitializer
         return batteryIdService.CreateBatteryId(SampleBatteryFamily, SampleBatterySerialNumber);
     }
 
+    public static BsonDocument CreateFallbackSampleDocument(string sampleBatteryId)
+    {
+        return BuildFallbackSampleDocument(sampleBatteryId);
+    }
+
     private readonly ExternalApiRepository _externalApiRepository;
     private readonly PassportRepository _passportRepository;
     private readonly BatteryRepository _batteryRepository;
@@ -66,6 +71,7 @@ public sealed class ExternalApiInitializer
 
             await _externalApiRepository.EnsureIndexesAsync(cancellationToken);
             await _batteryRepository.EnsureIndexesAsync(cancellationToken);
+            await _clusterRepository.EnsureIndexesAsync(cancellationToken);
             await _batteryTelemetryRepository.EnsureIndexesAsync(cancellationToken);
             await EnsureSamplePassportAsync(cancellationToken);
             await EnsureBatteryImagesAndCategoriesAsync(cancellationToken);
@@ -85,6 +91,11 @@ public sealed class ExternalApiInitializer
         var sampleBatteryId = CreateSampleBatteryId(_batteryIdService);
         var now = DateTime.UtcNow.ToString("O");
         await _clusterRepository.UpsertClusterAsync(SampleApiClusterId, "Demo API Cluster", cancellationToken);
+        await _batteryRepository.DeleteByFamilyAndSerialExceptAsync(
+            SampleBatteryFamily,
+            SampleBatterySerialNumber,
+            sampleBatteryId,
+            cancellationToken);
 
         var existingBattery = await _batteryRepository.GetByBatteryIdAsync(sampleBatteryId, cancellationToken);
         if (existingBattery == null)

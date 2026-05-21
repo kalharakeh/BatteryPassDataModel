@@ -33,19 +33,20 @@ public sealed class AdminFeedbackFollowupTests
     public void ReportActions_ShouldUseConsistentIconButtonsWithDesignedTooltips()
     {
         var registry = File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml"));
+        var batteryTable = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
         var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
         var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        var combined = string.Join(Environment.NewLine, registry, summary, detail);
+        var combined = string.Join(Environment.NewLine, registry, batteryTable, summary, detail);
         Assert.Contains("bp-report-action", combined);
-        Assert.Contains("data-tooltip=\"Summary report\"", registry);
-        Assert.Contains("data-tooltip=\"Detailed report\"", registry);
+        Assert.Contains("data-tooltip=\"Summary report\"", batteryTable);
+        Assert.Contains("data-tooltip=\"Detailed report\"", batteryTable);
         Assert.Contains("View more about this passport", summary);
         Assert.Contains("Back to summary", detail);
         Assert.Contains("bp-report-action-icon", combined);
-        Assert.DoesNotContain("<span aria-hidden=\"true\">S</span>", registry);
-        Assert.DoesNotContain("<span aria-hidden=\"true\">D</span>", registry);
+        Assert.DoesNotContain("<span aria-hidden=\"true\">S</span>", batteryTable);
+        Assert.DoesNotContain("<span aria-hidden=\"true\">D</span>", batteryTable);
         Assert.Contains(".bp-report-action::after", css);
         Assert.Contains("top: calc(-100% -", css);
     }
@@ -134,7 +135,7 @@ public sealed class AdminFeedbackFollowupTests
         Assert.DoesNotContain("class=\"bp-tag\"", clusterUsers);
         Assert.Contains("bp-token-console", clusters);
         Assert.Contains("bp-token-cluster-chip-picker", clusters);
-        Assert.Contains("bp-cluster-picker", clusterTokens);
+        Assert.Contains("bp-token-cluster-chip-picker", clusterTokens);
         Assert.Contains(".bp-confirm-modal", css);
         Assert.Contains(".bp-token-cluster-chip-picker", css);
     }
@@ -143,11 +144,13 @@ public sealed class AdminFeedbackFollowupTests
     public void RegistryController_ShouldPreserveBatteryIdentityFieldsForNormalUsers()
     {
         var source = File.ReadAllText(RepoFile("web", "Controllers", "RegistryController.cs"));
+        var batteryTable = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
+        var service = File.ReadAllText(RepoFile("web", "Services", "BatteryTableService.cs"));
 
         Assert.Contains("BatterySummaryViewModel", source);
-        Assert.Contains("_batteryRepository.ToSummary", source);
+        Assert.Contains("_batteryRepository.ToSummary", service);
         Assert.Contains("BatteryPassportHistoryRowViewModel", source);
-        Assert.Contains("LatestPassportStatus", File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml")));
+        Assert.Contains("LatestPassportStatus", batteryTable);
     }
 
     [Fact]

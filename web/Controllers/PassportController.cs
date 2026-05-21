@@ -16,6 +16,7 @@ public class PassportController : Controller
     private readonly BatteryTelemetryRepository _batteryTelemetryRepository;
     private readonly PassportTrustService _passportTrustService;
     private readonly PassportPublishPolicyService _passportPublishPolicyService;
+    private readonly BatteryIdService _batteryIdService;
 
     public PassportController(
         PassportRepository passportRepository,
@@ -26,7 +27,8 @@ public class PassportController : Controller
         AccessControlService accessControlService,
         BatteryTelemetryRepository batteryTelemetryRepository,
         PassportTrustService passportTrustService,
-        PassportPublishPolicyService passportPublishPolicyService)
+        PassportPublishPolicyService passportPublishPolicyService,
+        BatteryIdService batteryIdService)
     {
         _passportRepository = passportRepository;
         _batteryRepository = batteryRepository;
@@ -37,6 +39,7 @@ public class PassportController : Controller
         _batteryTelemetryRepository = batteryTelemetryRepository;
         _passportTrustService = passportTrustService;
         _passportPublishPolicyService = passportPublishPolicyService;
+        _batteryIdService = batteryIdService;
     }
 
     [HttpGet("{passportId}/summary")]
@@ -47,7 +50,9 @@ public class PassportController : Controller
             return NotFound();
         }
 
-        var document = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
+        var decodedPassportId = Uri.UnescapeDataString(passportId);
+        var document = await _passportRepository.GetByPassportIdAsync(decodedPassportId, cancellationToken)
+            ?? FallbackSamplePassport(decodedPassportId);
         if (document == null)
         {
             return NotFound();
@@ -126,10 +131,18 @@ public class PassportController : Controller
 
         if (document == null)
         {
+            if (IsGeneratedSampleBatteryId(decodedBatteryId))
+            {
+                return Redirect($"/{Uri.EscapeDataString(ExternalApiInitializer.SamplePassportId)}/summary");
+            }
+
             return NotFound();
         }
 
-        return Redirect($"/{Uri.EscapeDataString(BsonHelpers.GetString(document, "passportId"))}");
+        var passportPath = $"/{Uri.EscapeDataString(BsonHelpers.GetString(document, "passportId"))}";
+        return User.Identity?.IsAuthenticated == true
+            ? Redirect(passportPath)
+            : Redirect($"{passportPath}/summary");
     }
 
     [HttpGet("{id}")]
@@ -270,6 +283,21 @@ public class PassportController : Controller
         {
             Battery = _batteryRepository.ToSummary(battery, visibleRows, clusterLabel)
         });
+    }
+
+    private BsonDocument? FallbackSamplePassport(string passportId)
+    {
+        if (!passportId.Equals(ExternalApiInitializer.SamplePassportId, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return ExternalApiInitializer.CreateFallbackSampleDocument(ExternalApiInitializer.CreateSampleBatteryId(_batteryIdService));
+    }
+
+    private bool IsGeneratedSampleBatteryId(string batteryId)
+    {
+        return batteryId.Equals(ExternalApiInitializer.CreateSampleBatteryId(_batteryIdService), StringComparison.OrdinalIgnoreCase);
     }
 
     private BatteryPassportHistoryRowViewModel ToHistoryRow(BsonDocument passport)

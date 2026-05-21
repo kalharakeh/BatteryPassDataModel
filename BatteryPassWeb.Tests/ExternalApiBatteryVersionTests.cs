@@ -68,7 +68,7 @@ public sealed class ExternalApiBatteryVersionTests
     }
 
     [Fact]
-    public void ProductTemplateEditor_ShouldShowScalarSoftwareParameters()
+    public void ProductTemplateEditor_ShouldShowPerModelSoftwareVersionRows()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Product.cshtml"));
 
@@ -76,8 +76,8 @@ public sealed class ExternalApiBatteryVersionTests
         Assert.Contains("name=\"softwareVersion\"", markup);
         Assert.Contains("name=\"softwareReleaseDate\"", markup);
         Assert.Contains("name=\"softwareLatestUpdate\"", markup);
-        Assert.DoesNotContain("data-add-software-version", markup);
-        Assert.DoesNotContain("data-remove-software-version", markup);
+        Assert.Contains("data-add-software-version", markup);
+        Assert.Contains("data-remove-software-version", markup);
     }
 
     [Fact]

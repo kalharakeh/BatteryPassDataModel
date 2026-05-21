@@ -61,12 +61,6 @@
                     <p class="bp-passport-id">Battery ID: <span class="bp-id-copy-row"><span class="bp-id-value">@(string.IsNullOrWhiteSpace(passport.BatteryId) ? "-" : passport.BatteryId)</span>@await Html.PartialAsync("_CopyIdButton", passport.BatteryId)</span></p>
                 </section>
 
-                <a class="bp-summary-qr-panel bp-report-hero-qr"
-                   href="/qr/@Uri.EscapeDataString(qrBatteryId)/download"
-                   aria-label="Save battery code for @qrBatteryId">
-                    <img src="/qr/@Uri.EscapeDataString(qrBatteryId)/svg" alt="QR code for @qrBatteryId" />
-                </a>
-
                 <dl class="bp-field-grid bp-report-hero-fields bp-summary-fields-panel">
                     <div><dt>Battery Family</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatteryFamily) ? "-" : passport.BatteryFamily)</dd></div>
                     <div><dt>Battery serial number</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatterySerialNumber) ? "-" : passport.BatterySerialNumber)</dd></div>
@@ -83,8 +77,15 @@
             </article>
 
             <aside class="bp-report-hero-media">
-                <div class="bp-image-wrap">
-                    <img src="@passport.BatteryImageUrl" alt="@passport.BatteryImageAlt" class="bp-battery-image" />
+                <div class="bp-report-media-code-row">
+                    <div class="bp-image-wrap">
+                        <img src="@passport.BatteryImageUrl" alt="@passport.BatteryImageAlt" class="bp-battery-image" />
+                    </div>
+                    <a class="bp-summary-qr-panel bp-report-hero-qr"
+                       href="/qr/@Uri.EscapeDataString(qrBatteryId)/download"
+                       aria-label="Save battery code for @qrBatteryId">
+                        <img src="/qr/@Uri.EscapeDataString(qrBatteryId)/svg" alt="QR code for @qrBatteryId" />
+                    </a>
                 </div>
                 <a class="bp-report-hero-cta" href="/@Uri.EscapeDataString(passport.PassportId)">View more about this passport -&gt;</a>
             </aside>

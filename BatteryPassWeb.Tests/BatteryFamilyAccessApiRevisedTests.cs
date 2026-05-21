@@ -59,7 +59,7 @@ public sealed class BatteryFamilyAccessApiRevisedTests
     }
 
     [Fact]
-    public void Software_ShouldBeAParameterNotASeparateVariantWorkflow()
+    public void Software_ShouldBeConfiguredPerBatteryFamilyModel()
     {
         var modelSource = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateModels.cs"));
         var serviceSource = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateService.cs"));
@@ -69,11 +69,13 @@ public sealed class BatteryFamilyAccessApiRevisedTests
         Assert.Contains("string SoftwareVersion", modelSource);
         Assert.Contains("string SoftwareReleaseDate", modelSource);
         Assert.Contains("string SoftwareLatestUpdate", modelSource);
-        Assert.DoesNotContain("IReadOnlyList<BatteryProductSoftwareVersion> SoftwareVersions", modelSource);
+        Assert.Contains("IReadOnlyList<BatteryProductSoftwareVersion> SoftwareVersions", modelSource);
+        Assert.Contains("record BatteryProductSoftwareVersion", modelSource);
         Assert.DoesNotContain("batteryProductTemplateSoftwareVersions", serviceSource);
         Assert.DoesNotContain("[HttpPatch(\"batteries/{passportId}/software\")]", apiSource);
-        Assert.DoesNotContain("data-product-software", productView);
-        Assert.DoesNotContain("Software versions", productView);
+        Assert.Contains("data-software-version-row", productView);
+        Assert.Contains("data-add-software-version", productView);
+        Assert.Contains("Add software version", productView);
     }
 
     [Fact]
@@ -134,19 +136,21 @@ public sealed class BatteryFamilyAccessApiRevisedTests
     public void RegistryAndAdminViews_ShouldUseIconActionsAndRecoverableArchive()
     {
         var registry = File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml"));
+        var batteryTable = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
         var adminClusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
         var batteryPassports = File.ReadAllText(RepoFile("web", "Views", "Admin", "BatteryPassports.cshtml"));
         var repository = File.ReadAllText(RepoFile("web", "Services", "PassportRepository.cs"));
         var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
 
-        Assert.Contains("aria-label=\"Summary report\"", registry);
-        Assert.Contains("title=\"Summary report\"", registry);
-        Assert.Contains("aria-label=\"Detailed report\"", registry);
-        Assert.Contains("title=\"Detailed report\"", registry);
-        Assert.Contains("title=\"Edit battery\"", adminClusters);
-        Assert.Contains("title=\"Passport history\"", adminClusters);
-        Assert.Contains("title=\"Create passport\"", adminClusters);
-        Assert.Contains("title=\"Conformance\"", batteryPassports);
+        Assert.Contains("_BatteryTable", registry);
+        Assert.Contains("aria-label=\"Summary report\"", batteryTable);
+        Assert.Contains("title=\"Summary report\"", batteryTable);
+        Assert.Contains("aria-label=\"Detailed report\"", batteryTable);
+        Assert.Contains("title=\"Detailed report\"", batteryTable);
+        Assert.Contains("title=\"Edit battery\"", batteryTable);
+        Assert.Contains("title=\"Passport history\"", batteryTable);
+        Assert.Contains("title=\"Create passport\"", batteryTable);
+        Assert.Contains("title=\"Conformance\"", batteryTable);
         Assert.Contains("title=\"Archive\"", batteryPassports);
         Assert.Contains("title=\"Unarchive\"", batteryPassports);
         Assert.Contains("bp-confirm-modal", adminClusters);
