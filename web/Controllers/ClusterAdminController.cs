@@ -84,6 +84,12 @@ public class ClusterAdminController : Controller
             return Forbid();
         }
 
+        if (!await CanCreateBatteryPassport(battery, cancellationToken))
+        {
+            TempData["ErrorMessage"] = "No new passport is needed for this battery because the latest snapshot still matches the battery data.";
+            return Redirect($"/cluster-admin/batteries/{Uri.EscapeDataString(decodedBatteryId)}/passports?returnUrl={Uri.EscapeDataString("/cluster-admin/passports")}");
+        }
+
         var passport = await _batteryPassportSnapshotService.CreatePassportSnapshotAsync(
             battery,
             CurrentActor(),
@@ -93,6 +99,49 @@ public class ClusterAdminController : Controller
         await _batteryPassportDeltaService.ClearNewPassportRequiredAsync(decodedBatteryId, passportId, cancellationToken);
         TempData["StatusMessage"] = $"Passport {passportId} created for battery {decodedBatteryId}.";
         return Redirect($"/cluster-admin/passports?q={Uri.EscapeDataString(decodedBatteryId)}");
+    }
+
+    [HttpGet("batteries/{batteryId}/passports")]
+    public async Task<IActionResult> BatteryPassports(string batteryId, [FromQuery] string? returnUrl, CancellationToken cancellationToken)
+    {
+        var decodedBatteryId = Uri.UnescapeDataString(batteryId);
+        var battery = await _batteryRepository.GetByBatteryIdAsync(decodedBatteryId, cancellationToken);
+        if (battery == null)
+        {
+            return NotFound();
+        }
+
+        var clusterId = BsonHelpers.GetString(battery, "clusterId");
+        if (!await _accessControlService.CanAdministerClusterAsync(User, clusterId, cancellationToken))
+        {
+            return NotFound();
+        }
+
+        var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
+        var clusterNamesById = clusters
+            .Select(cluster => new
+            {
+                ClusterId = BsonHelpers.GetString(cluster, "clusterId"),
+                Name = BsonHelpers.GetString(cluster, "name")
+            })
+            .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
+            .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
+        var passports = await _passportRepository.ListByBatteryIdAsync(decodedBatteryId, includeArchived: false, cancellationToken);
+        var history = passports.Select(ToHistoryRow).ToList();
+        var batterySummary = _batteryRepository.ToSummary(battery, history, ResolveClusterLabel(battery, clusterNamesById));
+        var safeReturnUrl = SafeReturnUrl(returnUrl, "/cluster-admin/passports");
+
+        return View("BatteryPassports", new BatteryPassportHistoryPageViewModel
+        {
+            Battery = batterySummary,
+            CanCreatePassport = CanCreateBatteryPassport(batterySummary, passports),
+            StatusMessage = TempData["StatusMessage"]?.ToString() ?? string.Empty,
+            ErrorMessage = TempData["ErrorMessage"]?.ToString() ?? string.Empty,
+            ReturnUrl = safeReturnUrl,
+            ReturnLabel = safeReturnUrl.StartsWith("/cluster-admin/passports", StringComparison.OrdinalIgnoreCase)
+                ? "Back to Managed Passports"
+                : "Back"
+        });
     }
 
     [HttpGet("passports/{passportId}/edit")]
@@ -134,7 +183,14 @@ public class ClusterAdminController : Controller
             Passport = _viewModelFactory.Create(document, clusterNamesById),
             Mode = "cluster-edit",
             FieldEditableByKey = BuildEditableFieldDictionary(editablePolicy),
-            StatusMessage = status == "saved" ? "Local passport fields saved." : string.Empty,
+            StatusMessage = status switch
+            {
+                "saved" => "Local passport fields saved.",
+                "validated" => "Passport validation completed.",
+                "signed" => "Passport signed and immutable revision recorded.",
+                "published" => "Passport published from the latest verified revision.",
+                _ => string.Empty
+            },
             ErrorMessage = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error)
         };
 
@@ -530,6 +586,76 @@ public class ClusterAdminController : Controller
         }
 
         return true;
+    }
+
+    private async Task<bool> CanCreateBatteryPassport(BsonDocument battery, CancellationToken cancellationToken)
+    {
+        var batteryId = BsonHelpers.GetString(battery, "batteryId");
+        var passports = await _passportRepository.ListByBatteryIdAsync(batteryId, includeArchived: false, cancellationToken);
+        return CanCreateBatteryPassport(
+            _batteryRepository.ToSummary(battery, passports.Select(ToHistoryRow).ToList(), string.Empty),
+            passports);
+    }
+
+    private static bool CanCreateBatteryPassport(BatterySummaryViewModel battery, IReadOnlyList<BsonDocument> passports)
+    {
+        if (passports.Count == 0 || battery.PassportCount == 0)
+        {
+            return true;
+        }
+
+        var latest = passports.FirstOrDefault(passport => passport.GetValue("isLatestForBattery", false).ToBoolean())
+            ?? passports.FirstOrDefault();
+        return battery.NewPassportRequired && latest != null && !IsDraftPassport(latest);
+    }
+
+    private static bool IsDraftPassport(BsonDocument passport)
+    {
+        var status = BsonHelpers.GetString(passport, "registryInfo", "status");
+        return status.Contains("draft", StringComparison.OrdinalIgnoreCase)
+            || status.Contains("awaiting", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static BatteryPassportHistoryRowViewModel ToHistoryRow(BsonDocument passport)
+    {
+        return new BatteryPassportHistoryRowViewModel
+        {
+            PassportId = BsonHelpers.GetString(passport, "passportId"),
+            BatteryId = BsonHelpers.GetString(passport, "batteryId"),
+            CreatedAt = BsonHelpers.GetString(passport, "snapshot", "createdAt"),
+            PassportStatus = PassportRepository.BuildPassportStatusLabel(passport),
+            IsLatestForBattery = passport.GetValue("isLatestForBattery", false).ToBoolean(),
+            IsPubliclyVisible = true
+        };
+    }
+
+    private static string ResolveClusterLabel(BsonDocument battery, IReadOnlyDictionary<string, string> clusterNamesById)
+    {
+        var clusterId = BsonHelpers.GetString(battery, "clusterId");
+        if (string.IsNullOrWhiteSpace(clusterId))
+        {
+            return "No cluster assigned";
+        }
+
+        return clusterNamesById.TryGetValue(clusterId, out var clusterName) && !string.IsNullOrWhiteSpace(clusterName)
+            ? clusterName
+            : clusterId;
+    }
+
+    private static string SafeReturnUrl(string? returnUrl, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(returnUrl) || !returnUrl.StartsWith("/", StringComparison.Ordinal))
+        {
+            return fallback;
+        }
+
+        if (returnUrl.StartsWith("//", StringComparison.Ordinal)
+            || returnUrl.Contains("://", StringComparison.Ordinal))
+        {
+            return fallback;
+        }
+
+        return returnUrl;
     }
 
     private bool TokenIsInManagedScope(BsonDocument token, IReadOnlySet<string> managedClusterIds)

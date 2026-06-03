@@ -48,6 +48,7 @@ public sealed class BatteryDetailViewModel
 public sealed class BatteryPassportHistoryPageViewModel
 {
     public required BatterySummaryViewModel Battery { get; init; }
+    public bool CanCreatePassport { get; init; }
     public string StatusMessage { get; init; } = string.Empty;
     public string ErrorMessage { get; init; } = string.Empty;
     public string ReturnUrl { get; init; } = "/admin/clusters?tab=batteries";

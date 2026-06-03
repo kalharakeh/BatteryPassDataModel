@@ -354,6 +354,12 @@ public class AdminController : Controller
             return NotFound();
         }
 
+        if (!await CanCreateBatteryPassport(battery, cancellationToken))
+        {
+            TempData["ErrorMessage"] = "No new passport is needed for this battery because the latest snapshot still matches the battery data.";
+            return Redirect($"/admin/batteries/{Uri.EscapeDataString(BsonHelpers.GetString(battery, "batteryId"))}/passports?returnUrl={Uri.EscapeDataString("/admin/clusters?tab=batteries")}");
+        }
+
         var passport = await _batteryPassportSnapshotService.CreatePassportSnapshotAsync(
             battery,
             CurrentActor(),
@@ -484,11 +490,15 @@ public class AdminController : Controller
             battery,
             passports.Select(ToAdminHistoryRow).ToList(),
             ResolveClusterLabel(battery, clusterNamesById));
+        var activePassports = passports
+            .Where(passport => !BsonHelpers.GetString(passport, "registryInfo", "status").Equals("archived", StringComparison.OrdinalIgnoreCase))
+            .ToList();
 
         var safeReturnUrl = SafeReturnUrl(returnUrl, "/admin/clusters?tab=batteries");
         return View("BatteryPassports", new BatteryPassportHistoryPageViewModel
         {
             Battery = batterySummary,
+            CanCreatePassport = CanCreateBatteryPassport(batterySummary, activePassports),
             StatusMessage = TempData["StatusMessage"]?.ToString() ?? string.Empty,
             ErrorMessage = TempData["ErrorMessage"]?.ToString() ?? string.Empty,
             ReturnUrl = safeReturnUrl,
@@ -1697,6 +1707,34 @@ public class AdminController : Controller
         {
             _ => "api-tokens"
         };
+    }
+
+    private async Task<bool> CanCreateBatteryPassport(BsonDocument battery, CancellationToken cancellationToken)
+    {
+        var batteryId = BsonHelpers.GetString(battery, "batteryId");
+        var passports = await _passportRepository.ListByBatteryIdAsync(batteryId, includeArchived: false, cancellationToken);
+        return CanCreateBatteryPassport(
+            _batteryRepository.ToSummary(battery, passports.Select(ToAdminHistoryRow).ToList(), string.Empty),
+            passports);
+    }
+
+    private static bool CanCreateBatteryPassport(BatterySummaryViewModel battery, IReadOnlyList<BsonDocument> passports)
+    {
+        if (passports.Count == 0 || battery.PassportCount == 0)
+        {
+            return true;
+        }
+
+        var latest = passports.FirstOrDefault(passport => passport.GetValue("isLatestForBattery", false).ToBoolean())
+            ?? passports.FirstOrDefault();
+        return battery.NewPassportRequired && latest != null && !IsDraftPassport(latest);
+    }
+
+    private static bool IsDraftPassport(BsonDocument passport)
+    {
+        var status = BsonHelpers.GetString(passport, "registryInfo", "status");
+        return status.Contains("draft", StringComparison.OrdinalIgnoreCase)
+            || status.Contains("awaiting", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string BuildBlockedPublishMessage(string requestedStatus, string normalizedStatus)

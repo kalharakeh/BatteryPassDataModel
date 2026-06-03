@@ -3,7 +3,6 @@
     ViewData["Title"] = "Battery passport history";
     var battery = Model.Battery;
 }
-@* returnUrl Back to Registry *@
 
 <main class="bp-page bp-admin-page bp-registry-page">
     <header class="bp-console-header">
@@ -12,11 +11,10 @@
             <p class="bp-passport-id">Battery ID: <span class="bp-id-copy-row"><span class="bp-id-value">@battery.BatteryId</span>@await Html.PartialAsync("_CopyIdButton", battery.BatteryId)</span></p>
             <h1>@battery.BatterySerialNumber</h1>
             <p class="text-secondary mb-0">@battery.BatteryFamily - Battery Model @battery.BatteryModel - @battery.ClusterLabel</p>
-            <p class="text-secondary mb-0">Cluster-admin passport history is readonly history; only global admins can edit historical passports.</p>
         </div>
         @if (Model.CanCreatePassport)
         {
-            <form method="post" action="/admin/batteries/@Uri.EscapeDataString(battery.BatteryId)/passports/create">
+            <form method="post" action="/cluster-admin/batteries/@Uri.EscapeDataString(battery.BatteryId)/passports/create">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="bp-primary-button">Create passport</button>
             </form>
@@ -83,52 +81,14 @@
                                         <path d="m14 16 3 3" />
                                     </svg>
                                 </a>
-                                <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/conformance" class="bp-action-button" aria-label="Conformance" title="Conformance" data-tooltip="Conformance" data-action-icon="conformance">
-                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                        <path d="M12 3l7 3v5c0 4.4-2.8 8.4-7 10-4.2-1.6-7-5.6-7-10V6z" />
-                                        <path d="M8.5 12.5l2.2 2.2 4.8-5" />
-                                    </svg>
-                                </a>
-                                <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/audit" class="bp-action-button" aria-label="Audit trail" title="Audit trail" data-tooltip="Audit trail" data-action-icon="audit">
-                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                        <path d="M8 4h8" />
-                                        <path d="M7 8h10" />
-                                        <path d="M7 13h6" />
-                                        <path d="M7 18h9" />
-                                        <path d="M4 3h16v18H4z" />
-                                    </svg>
-                                </a>
-                                @if (passport.PassportStatus.Equals("Archived", StringComparison.OrdinalIgnoreCase))
+                                @if (passport.IsLatestForBattery)
                                 {
-                                    <form method="post" action="/admin/passports/unarchive">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="passportId" value="@passport.PassportId" />
-                                        <button type="submit" class="bp-action-button" aria-label="Unarchive" title="Unarchive" data-tooltip="Unarchive" data-action-icon="archive">
-                                            <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                <path d="M4 10h16" />
-                                                <path d="M6 10v9h12v-9" />
-                                                <path d="M8 5h8l2 5H6z" />
-                                                <path d="M12 17V12" />
-                                                <path d="M9.5 14.5L12 12l2.5 2.5" />
-                                            </svg>
-                                        </button>
-                                    </form>
-                                }
-                                else
-                                {
-                                    <form method="post" action="/admin/passports/archive">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="passportId" value="@passport.PassportId" />
-                                        <button type="submit" class="bp-action-button is-danger" aria-label="Archive" title="Archive" data-tooltip="Archive" data-action-icon="archive" data-confirm-action data-confirm-title="Archive passport" data-confirm-message="Archive @passport.PassportId? You can unarchive it from Administration." data-confirm-submit="Archive">
-                                            <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                <path d="M4 10h16" />
-                                                <path d="M6 10v9h12v-9" />
-                                                <path d="M8 5h8l2 5H6z" />
-                                                <path d="M12 12v5" />
-                                                <path d="M9.5 14.5L12 17l2.5-2.5" />
-                                            </svg>
-                                        </button>
-                                    </form>
+                                    <a href="/cluster-admin/passports/@Uri.EscapeDataString(passport.PassportId)/edit" class="bp-action-button" aria-label="Edit latest passport" title="Edit latest passport" data-tooltip="Edit latest passport" data-action-icon="edit">
+                                        <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M4 20h4l11-11a2.5 2.5 0 0 0-4-4L4 16z" />
+                                            <path d="M13.5 6.5l4 4" />
+                                        </svg>
+                                    </a>
                                 }
                             </div>
                         </td>

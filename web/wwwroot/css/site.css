@@ -6967,6 +6967,35 @@ a:hover {
   font-weight: 700;
 }
 
+.bp-local-trust-workflow {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+
+.bp-local-trust-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.bp-local-trust-actions form {
+  margin: 0;
+}
+
+@media (max-width: 780px) {
+  .bp-local-trust-workflow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .bp-local-trust-actions {
+    justify-content: flex-start;
+  }
+}
+
 .bp-management-create-card {
   display: grid;
   gap: 18px;

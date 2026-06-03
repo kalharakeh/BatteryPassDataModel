@@ -11,7 +11,8 @@
     <header class="bp-console-header">
         <div>
             <h1>Edit local passport fields</h1>
-            <p class="bp-passport-id mb-0"><span class="bp-id-copy-row"><span class="bp-id-value">@passport.PassportId</span>@await Html.PartialAsync("_CopyIdButton", passport.PassportId)</span></p>
+            <p class="bp-passport-id mb-1">Battery ID: <span class="bp-id-copy-row"><span class="bp-id-value">@passport.BatteryId</span>@await Html.PartialAsync("_CopyIdButton", passport.BatteryId)</span></p>
+            <p class="bp-passport-id mb-0">Passport ID: <span class="bp-id-copy-row"><span class="bp-id-value">@passport.PassportId</span>@await Html.PartialAsync("_CopyIdButton", passport.PassportId)</span></p>
         </div>
         <a href="/cluster-admin/passports" class="bp-secondary-button">Back to managed passports</a>
     </header>
@@ -130,6 +131,28 @@
                 <button type="submit" class="bp-primary-button">Save local updates</button>
             </div>
         </form>
+    </section>
+
+    <section class="bp-card bp-local-trust-workflow mt-3">
+        <div>
+            <span class="bp-summary-title">Trust workflow</span>
+            <h2 class="h5 mb-1">Validate, sign, and publish</h2>
+            <p class="text-secondary mb-0">Workflow actions are recorded against your account in the audit trail.</p>
+        </div>
+        <div class="bp-local-trust-actions">
+            <form method="post" action="/cluster-admin/passports/@Uri.EscapeDataString(passport.PassportId)/validate">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="bp-secondary-button">Validate</button>
+            </form>
+            <form method="post" action="/cluster-admin/passports/@Uri.EscapeDataString(passport.PassportId)/sign">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="bp-secondary-button">Sign</button>
+            </form>
+            <form method="post" action="/cluster-admin/passports/@Uri.EscapeDataString(passport.PassportId)/publish">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="bp-primary-button">Publish</button>
+            </form>
+        </div>
     </section>
 </main>
 
