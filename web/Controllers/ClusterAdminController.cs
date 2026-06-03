@@ -2,6 +2,7 @@ using BatteryPassWeb.Models.ViewModels;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Primitives;
 using MongoDB.Bson;
 using BCryptNet = BCrypt.Net.BCrypt;
 
@@ -11,10 +12,27 @@ namespace BatteryPassWeb.Controllers;
 [Route("cluster-admin")]
 public class ClusterAdminController : Controller
 {
+    private static readonly IReadOnlyDictionary<string, string[]> BatteryFormFieldsByEditableKey =
+        new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["general.clusterId"] = ["clusterId"],
+            ["general.productVersion"] = ["productVersion", "batteryModel"],
+            ["general.batteryModel"] = ["productVersion", "batteryModel"],
+            ["general.facilityId"] = ["facilityId"],
+            ["general.batteryImageUrl"] = ["batteryImageUrl"],
+            ["general.softwareVersion"] = ["softwareVersion"],
+            ["software.version"] = ["softwareVersion"],
+            ["performance.stateOfCharge"] = ["stateOfCharge"],
+            ["performance.remainingCapacity"] = ["remainingCapacity"],
+            ["performance.remainingEnergy"] = ["remainingEnergy"],
+            ["performance.fullCycles"] = ["fullCycles"]
+        };
+
     private readonly PassportRepository _passportRepository;
     private readonly BatteryRepository _batteryRepository;
     private readonly BatteryPassportSnapshotService _batteryPassportSnapshotService;
     private readonly BatteryPassportDeltaService _batteryPassportDeltaService;
+    private readonly BatteryTemplateUpdateService _batteryTemplateUpdateService;
     private readonly ClusterRepository _clusterRepository;
     private readonly BatteryTableService _batteryTableService;
     private readonly PassportViewModelFactory _viewModelFactory;
@@ -29,6 +47,7 @@ public class ClusterAdminController : Controller
         BatteryRepository batteryRepository,
         BatteryPassportSnapshotService batteryPassportSnapshotService,
         BatteryPassportDeltaService batteryPassportDeltaService,
+        BatteryTemplateUpdateService batteryTemplateUpdateService,
         ClusterRepository clusterRepository,
         BatteryTableService batteryTableService,
         PassportViewModelFactory viewModelFactory,
@@ -42,6 +61,7 @@ public class ClusterAdminController : Controller
         _batteryRepository = batteryRepository;
         _batteryPassportSnapshotService = batteryPassportSnapshotService;
         _batteryPassportDeltaService = batteryPassportDeltaService;
+        _batteryTemplateUpdateService = batteryTemplateUpdateService;
         _clusterRepository = clusterRepository;
         _batteryTableService = batteryTableService;
         _viewModelFactory = viewModelFactory;
@@ -181,15 +201,17 @@ public class ClusterAdminController : Controller
             .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
 
         var editablePolicy = await _editableFieldPolicyService.GetPolicyAsync(cancellationToken);
+        var battery = await _batteryRepository.GetByBatteryIdAsync(BsonHelpers.GetString(document, "batteryId"), cancellationToken);
+        var editDocument = BuildClusterAdminEditDocument(document, battery);
         var model = new Models.ViewModels.EditPassportViewModel
         {
-            Passport = _viewModelFactory.Create(document, clusterNamesById),
+            Passport = _viewModelFactory.Create(editDocument, clusterNamesById),
             Mode = "cluster-edit",
             FieldEditableByKey = BuildEditableFieldDictionary(editablePolicy),
             FieldVisibleByKey = BuildVisibleFieldDictionary(editablePolicy),
             StatusMessage = status switch
             {
-                "saved" => "Local passport fields saved.",
+                "saved" => "Battery data saved.",
                 "validated" => "Passport validation completed.",
                 "signed" => "Passport signed and immutable revision recorded.",
                 "published" => "Passport published from the latest verified revision.",
@@ -231,14 +253,71 @@ public class ClusterAdminController : Controller
             return Forbid();
         }
 
+        var batteryId = BsonHelpers.GetString(document, "batteryId");
+        var battery = await _batteryRepository.GetByBatteryIdAsync(batteryId, cancellationToken);
+        if (battery == null)
+        {
+            return Redirect("/cluster-admin/passports");
+        }
+
         var editablePolicy = await _editableFieldPolicyService.GetPolicyAsync(cancellationToken);
         var editableFieldKeys = editablePolicy.PermissionByKey.Values
             .Where(permission => permission.EditableByLocalAdmin)
             .Select(permission => permission.FieldKey)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        ApplyLocalPassportForm(document, Request.Form, DateTime.UtcNow.ToString("O"), editableFieldKeys);
-        await _passportRepository.ReplaceAsync(passportId, document, cancellationToken);
-        return Redirect($"/cluster-admin/passports/{Uri.EscapeDataString(passportId)}/edit?status=saved");
+        var filteredForm = ApplyLocalBatteryEditableFormValues(Request.Form, editablePolicy);
+        var currentBatteryModel = FirstNonEmpty(
+            BsonHelpers.GetString(battery, "identity", "batteryModel"),
+            BsonHelpers.GetString(battery, "app", "product", "productVersion"));
+        var currentSoftwareVersion = FirstNonEmpty(
+            BsonHelpers.GetString(battery, "identity", "softwareVersion"),
+            BsonHelpers.GetString(battery, "app", "product", "softwareVersion"));
+        var requestedBatteryModel = FirstNonEmpty(
+            Text(filteredForm, "batteryModel"),
+            Text(filteredForm, "productVersion"),
+            currentBatteryModel);
+        var compareAllPassportData = false;
+
+        if (!string.IsNullOrWhiteSpace(requestedBatteryModel)
+            && !requestedBatteryModel.Equals(currentBatteryModel, StringComparison.OrdinalIgnoreCase))
+        {
+            var modelResult = await _batteryTemplateUpdateService.ApplyBatteryModelAsync(battery, requestedBatteryModel, cancellationToken);
+            if (!modelResult.Success)
+            {
+                return Redirect(ClusterPassportEditRedirect(passportId, error: modelResult.Message));
+            }
+
+            compareAllPassportData = true;
+        }
+
+        var softwareVersion = Text(filteredForm, "softwareVersion");
+        if (!string.IsNullOrWhiteSpace(softwareVersion))
+        {
+            if (!softwareVersion.Equals(currentSoftwareVersion, StringComparison.OrdinalIgnoreCase))
+            {
+                compareAllPassportData = true;
+            }
+
+            var softwareResult = await _batteryTemplateUpdateService.ApplySoftwareVersionAsync(battery, softwareVersion, cancellationToken);
+            if (!softwareResult.Success)
+            {
+                return Redirect(ClusterPassportEditRedirect(passportId, error: softwareResult.Message));
+            }
+        }
+
+        ApplyLocalBatteryForm(battery, filteredForm, DateTime.UtcNow.ToString("O"), editableFieldKeys);
+        battery["updatedAt"] = DateTime.UtcNow.ToString("O");
+        if (compareAllPassportData)
+        {
+            await _batteryPassportDeltaService.UpdateNewPassportRequiredForPassportDataAsync(battery, cancellationToken);
+        }
+        else
+        {
+            await _batteryPassportDeltaService.UpdateNewPassportRequiredAsync(battery, cancellationToken);
+        }
+
+        TempData["StatusMessage"] = "Battery data saved. Create a new passport if the latest passport no longer matches the battery data.";
+        return Redirect($"/cluster-admin/batteries/{Uri.EscapeDataString(batteryId)}/passports?returnUrl={Uri.EscapeDataString("/cluster-admin/passports")}");
     }
 
     [HttpPost("passports/{passportId}/validate")]
@@ -767,12 +846,57 @@ public class ClusterAdminController : Controller
                 StringComparer.OrdinalIgnoreCase);
     }
 
-    private static void ApplyLocalPassportForm(BsonDocument document, IFormCollection form, string now, IReadOnlySet<string> editableFieldKeys)
+    private static IFormCollection ApplyLocalBatteryEditableFormValues(
+        IFormCollection source,
+        EditableFieldPolicySnapshot policy)
     {
-        var app = EnsureDocument(document, "app");
+        var allowedFieldNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var permission in policy.PermissionByKey.Values)
+        {
+            if (!permission.EditableByLocalAdmin
+                || !BatteryFormFieldsByEditableKey.TryGetValue(permission.FieldKey, out var formFields))
+            {
+                continue;
+            }
+
+            foreach (var formField in formFields)
+            {
+                allowedFieldNames.Add(formField);
+            }
+        }
+
+        var filtered = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase);
+        foreach (var fieldName in allowedFieldNames)
+        {
+            if (source.TryGetValue(fieldName, out var value))
+            {
+                filtered[fieldName] = value;
+            }
+        }
+
+        return new FormCollection(filtered);
+    }
+
+    private static BsonDocument BuildClusterAdminEditDocument(BsonDocument latestPassport, BsonDocument? battery)
+    {
+        var source = (battery ?? latestPassport).DeepClone().AsBsonDocument;
+        source["passportId"] = BsonHelpers.GetString(latestPassport, "passportId");
+        source["batteryId"] = BsonHelpers.GetString(latestPassport, "batteryId");
+        source["clusterId"] = FirstNonEmpty(BsonHelpers.GetString(source, "clusterId"), BsonHelpers.GetString(latestPassport, "clusterId"));
+        source["isLatestForBattery"] = latestPassport.GetValue("isLatestForBattery", false).ToBoolean();
+        source["registryInfo"] = latestPassport.GetValue("registryInfo", new BsonDocument()).DeepClone();
+        source["trust"] = latestPassport.GetValue("trust", new BsonDocument()).DeepClone();
+        source["validation"] = latestPassport.GetValue("validation", new BsonDocument()).DeepClone();
+        return source;
+    }
+
+    private static void ApplyLocalBatteryForm(BsonDocument battery, IFormCollection form, string now, IReadOnlySet<string> editableFieldKeys)
+    {
+        var app = EnsureDocument(battery, "app");
         var display = EnsureDocument(app, "display");
         var media = EnsureDocument(app, "media");
-        var aspects = EnsureDocument(document, "aspects");
+        var identity = EnsureDocument(battery, "identity");
+        var aspects = EnsureDocument(battery, "aspects");
 
         var generalAspect = EnsureDocument(aspects, "generalProductInformation");
         var generalPayload = EnsureDocument(generalAspect, "payload");
@@ -786,6 +910,7 @@ public class ClusterAdminController : Controller
         {
             var facilityId = Text(form, "facilityId", display.GetValue("facilityId", string.Empty).ToString());
             display["facilityId"] = facilityId;
+            identity["facilityId"] = facilityId;
             var manufacturingPlace = EnsureDocument(generalPayload, "manufacturingPlace");
             manufacturingPlace["streetAddress"] = facilityId;
             var manufacturerInformation = EnsureDocument(generalPayload, "manufacturerInformation");
@@ -797,9 +922,10 @@ public class ClusterAdminController : Controller
         {
             var batteryImageUrl = BatteryImageCatalog.NormalizeKnownImageUrl(
                 Text(form, "batteryImageUrl", media.GetValue("batteryImageUrl", BatteryImageCatalog.DefaultImageUrl).ToString()),
-                BsonHelpers.GetString(document, "passportId"));
+                BsonHelpers.GetString(battery, "batteryId"));
             media["batteryImageUrl"] = batteryImageUrl;
             media["batteryImageAlt"] = $"Industrial battery pack for passport {display.GetValue("modelNumber", string.Empty)}";
+            generalPayload["batteryCategory"] = BatteryImageCatalog.CategoryForImageUrl(batteryImageUrl);
         }
 
         if (editableFieldKeys.Contains("performance.stateOfCharge"))
@@ -842,8 +968,7 @@ public class ClusterAdminController : Controller
         };
         }
 
-        var registryInfo = EnsureDocument(document, "registryInfo");
-        registryInfo["updatedAt"] = now;
+        battery["updatedAt"] = now;
     }
 
     private static BsonDocument EnsureDocument(BsonDocument parent, string key)
@@ -918,5 +1043,18 @@ public class ClusterAdminController : Controller
 
         var nestedValue = document.GetValue(nestedKey, 0);
         return nestedValue.IsNumeric ? nestedValue.ToDouble() : 0;
+    }
+
+    private static string FirstNonEmpty(params string[] values)
+    {
+        foreach (var value in values)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value.Trim();
+            }
+        }
+
+        return string.Empty;
     }
 }

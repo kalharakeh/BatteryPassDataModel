@@ -286,7 +286,8 @@ public sealed class AdminFeedbackFollowupTests
         Assert.Contains("TempData[\"ClusterCreateName\"]", adminController);
         Assert.Contains("TempData[\"ClusterCreateId\"]", adminController);
         Assert.Contains("Cluster ID already exists.", adminController);
-        Assert.Contains("value=\"member\" selected", clusters);
+        Assert.Contains("[\"member\"] = \"Cluster Member\"", clusters);
+        Assert.Contains("selected=\"@(option.Key.Equals(\"member\"", clusters);
         Assert.Contains("data-open-user", clusters);
         Assert.Contains("data-open-user", clusterUsers);
         Assert.Contains("openUser", adminController);

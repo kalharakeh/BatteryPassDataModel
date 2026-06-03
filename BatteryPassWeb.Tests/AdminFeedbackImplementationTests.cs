@@ -82,6 +82,23 @@ public sealed class AdminFeedbackImplementationTests
     }
 
     [Fact]
+    public void ClusterAdminBatteryEdits_ShouldUpdateBatteryAndReuseNewPassportLogic()
+    {
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
+        var editView = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "EditPassport.cshtml"));
+
+        Assert.Contains("_batteryRepository.GetByBatteryIdAsync", controller);
+        Assert.Contains("ApplyLocalBatteryForm", controller);
+        Assert.Contains("_batteryPassportDeltaService.UpdateNewPassportRequired", controller);
+        Assert.DoesNotContain("ApplyLocalPassportForm(document", controller);
+        Assert.DoesNotContain("_passportRepository.ReplaceAsync(passportId, document", controller);
+        Assert.Contains("data-local-battery-form", editView);
+        Assert.Contains("name=\"batteryModel\"", editView);
+        Assert.Contains("name=\"softwareVersion\"", editView);
+        Assert.Contains("Save battery updates", editView);
+    }
+
+    [Fact]
     public void PassportCreation_ShouldBeGuardedWhenNoNewPassportIsNeeded()
     {
         var adminController = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));

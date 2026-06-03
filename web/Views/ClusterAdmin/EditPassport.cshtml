@@ -1,6 +1,6 @@
 @model BatteryPassWeb.Models.ViewModels.EditPassportViewModel
 @{
-    ViewData["Title"] = "Edit local passport fields";
+    ViewData["Title"] = "Edit local battery fields";
     var passport = Model.Passport;
     var batteryImageOptions = BatteryPassWeb.Services.BatteryImageCatalog.Options;
     var selectedBatteryImageUrl = BatteryPassWeb.Services.BatteryImageCatalog.NormalizeKnownImageUrl(passport.BatteryImageUrl, passport.PassportId);
@@ -11,7 +11,7 @@
 <main class="bp-page bp-admin-page">
     <header class="bp-console-header">
         <div>
-            <h1>Edit local passport fields</h1>
+            <h1>Edit local battery fields</h1>
             <p class="bp-passport-id mb-1">Battery ID: <span class="bp-id-copy-row"><span class="bp-id-value">@passport.BatteryId</span>@await Html.PartialAsync("_CopyIdButton", passport.BatteryId)</span></p>
             <p class="bp-passport-id mb-0">Passport ID: <span class="bp-id-copy-row"><span class="bp-id-value">@passport.PassportId</span>@await Html.PartialAsync("_CopyIdButton", passport.PassportId)</span></p>
         </div>
@@ -36,7 +36,7 @@
     }
 
     <section class="bp-card">
-        <form method="post" action="/cluster-admin/passports/save" class="bp-local-edit-grid" data-local-passport-form>
+        <form method="post" action="/cluster-admin/passports/save" class="bp-local-edit-grid" data-local-battery-form>
             @Html.AntiForgeryToken()
             <input type="hidden" name="passportId" value="@passport.PassportId" />
 
@@ -45,6 +45,34 @@
                 <label class="bp-field-shell">
                     <span>Cluster</span>
                     <input type="text" value="@passport.ClusterLabel" readonly />
+                </label>
+            }
+            @if (CanShowField("general.batteryModel"))
+            {
+                <label class="bp-field-shell">
+                    <span>Battery Model</span>
+                    @if (CanEditField("general.batteryModel"))
+                    {
+                        <input type="text" name="batteryModel" value="@passport.BatteryModel" />
+                    }
+                    else
+                    {
+                        <input type="text" value="@passport.BatteryModel" readonly />
+                    }
+                </label>
+            }
+            @if (CanShowField("general.softwareVersion"))
+            {
+                <label class="bp-field-shell">
+                    <span>Software version</span>
+                    @if (CanEditField("general.softwareVersion"))
+                    {
+                        <input type="text" name="softwareVersion" value="@passport.SoftwareVersion" />
+                    }
+                    else
+                    {
+                        <input type="text" value="@passport.SoftwareVersion" readonly />
+                    }
                 </label>
             }
             @if (CanShowField("general.facilityId"))
@@ -150,7 +178,7 @@
 
             <div class="bp-local-edit-actions d-flex justify-content-between flex-wrap gap-2 pt-2">
                 <a href="/@Uri.EscapeDataString(passport.PassportId)/summary" class="bp-secondary-button">Open summary report</a>
-                <button type="submit" class="bp-primary-button">Save local updates</button>
+                <button type="submit" class="bp-primary-button">Save battery updates</button>
             </div>
         </form>
     </section>
@@ -181,7 +209,7 @@
 @section Scripts {
     <script>
         (function () {
-            const form = document.querySelector('[data-local-passport-form]');
+            const form = document.querySelector('[data-local-battery-form]');
             if (!form) {
                 return;
             }
