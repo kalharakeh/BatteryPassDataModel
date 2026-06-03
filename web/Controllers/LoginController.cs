@@ -32,13 +32,23 @@ public class LoginController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Index(LoginViewModel model, CancellationToken cancellationToken)
     {
-        var principal = await _authService.AuthenticateAsync(model.Email, model.Password, cancellationToken);
-        if (principal == null)
+        var loginResult = await _authService.AuthenticateLoginAsync(model.Email, model.Password, cancellationToken);
+        if (loginResult.Status == LoginAuthenticationStatus.RequiresTemporaryPasswordChange)
+        {
+            return View("ChangeTemporaryPassword", new TemporaryPasswordChangeViewModel
+            {
+                Email = loginResult.Email,
+                StatusMessage = "You must choose a new password before continuing."
+            });
+        }
+
+        if (loginResult.Status != LoginAuthenticationStatus.Authenticated || loginResult.Principal == null)
         {
             model.ErrorMessage = "Invalid email or password.";
             return View(model);
         }
 
+        var principal = loginResult.Principal;
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
 
         if (!string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
@@ -63,23 +73,19 @@ public class LoginController : Controller
             HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
             RequestBaseUrl(),
             cancellationToken);
-        TempData["ForgotPasswordMessage"] = "If an account exists, reset instructions have been sent.";
+        TempData["ForgotPasswordMessage"] = "If an account exists, a temporary password has been sent.";
         return Redirect("/login");
     }
 
-    [HttpGet("reset-password")]
-    public IActionResult ResetPassword([FromQuery] string? email, [FromQuery] string? token)
+    [HttpGet("change-temporary-password")]
+    public IActionResult ChangeTemporaryPassword()
     {
-        return View(new ResetPasswordViewModel
-        {
-            Email = email ?? string.Empty,
-            Token = token ?? string.Empty
-        });
+        return View(new TemporaryPasswordChangeViewModel());
     }
 
-    [HttpPost("reset-password")]
+    [HttpPost("change-temporary-password")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ResetPassword(ResetPasswordViewModel model, CancellationToken cancellationToken)
+    public async Task<IActionResult> ChangeTemporaryPassword(TemporaryPasswordChangeViewModel model, CancellationToken cancellationToken)
     {
         if (!model.Password.Equals(model.PasswordConfirmation, StringComparison.Ordinal))
         {
@@ -89,20 +95,21 @@ public class LoginController : Controller
             return View(model);
         }
 
-        var success = await _authService.ConsumePasswordResetTokenAsync(
+        var success = await _authService.ConsumeTemporaryPasswordAsync(
             model.Email,
-            model.Token,
+            model.TemporaryPassword,
             model.Password,
             cancellationToken);
         if (!success)
         {
-            model.ErrorMessage = "The reset link is invalid or expired.";
+            model.ErrorMessage = "The temporary password is invalid or expired.";
+            model.TemporaryPassword = string.Empty;
             model.Password = string.Empty;
             model.PasswordConfirmation = string.Empty;
             return View(model);
         }
 
-        TempData["ForgotPasswordMessage"] = "Password reset complete. Sign in with your new password.";
+        TempData["ForgotPasswordMessage"] = "Password changed. Sign in with your new password.";
         return Redirect("/login");
     }
 

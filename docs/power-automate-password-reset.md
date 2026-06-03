@@ -1,6 +1,6 @@
 # Power Automate Password Reset Email Setup
 
-This app sends password reset email by calling a Microsoft Power Automate cloud flow. The app creates the reset token and reset URL, then posts them to the flow. Power Automate sends the email through Microsoft 365 Outlook.
+This app sends password reset email by calling a Microsoft Power Automate cloud flow. The app creates a strong temporary password, stores only its hash, then posts the temporary password to the flow. Power Automate sends the email through Microsoft 365 Outlook.
 
 Without the webhook URL, reset requests are still recorded and the login page keeps the same neutral message, but no email is sent.
 
@@ -18,7 +18,7 @@ Without the webhook URL, reset requests are still recorded and the login page ke
     "email": {
       "type": "string"
     },
-    "resetUrl": {
+    "temporaryPassword": {
       "type": "string"
     },
     "appName": {
@@ -27,7 +27,7 @@ Without the webhook URL, reset requests are still recorded and the login page ke
   },
   "required": [
     "email",
-    "resetUrl",
+    "temporaryPassword",
     "appName"
   ]
 }
@@ -51,9 +51,38 @@ Reset your Battery Pass password
 10. Set the body to:
 
 ```html
-<p>A password reset was requested for your Battery Pass account.</p>
-<p><a href="@{triggerBody()?['resetUrl']}">Reset your password</a></p>
-<p>This link expires in 60 minutes. If you did not request this, you can ignore this email.</p>
+<div style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#1f2933;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:28px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="620" cellpadding="0" cellspacing="0" style="width:620px;max-width:100%;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;">
+          <tr>
+            <td style="background:#0b1220;padding:24px 28px;color:#ffffff;">
+              <div style="font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:#9ca3af;">Scania</div>
+              <div style="font-size:24px;font-weight:700;margin-top:6px;">Battery Passport</div>
+              <div style="font-size:14px;color:#cbd5e1;margin-top:4px;">Temporary password</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px 28px;">
+              <h1 style="margin:0 0 14px 0;font-size:22px;line-height:1.3;color:#111827;">Temporary password created</h1>
+              <p style="margin:0 0 18px 0;font-size:15px;line-height:1.6;color:#374151;">A temporary password was created for your Battery Pass account.</p>
+              <p style="margin:0 0 10px 0;font-size:14px;line-height:1.6;color:#374151;">Temporary password</p>
+              <p style="margin:0 0 24px 0;padding:14px 16px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:6px;font-size:20px;line-height:1.4;color:#111827;font-family:Consolas,Monaco,monospace;letter-spacing:0.03em;">@{triggerBody()?['temporaryPassword']}</p>
+              <p style="margin:0;font-size:15px;line-height:1.6;color:#374151;">Sign in with this temporary password. You will be asked to choose a new password before continuing.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:18px 28px;background:#f9fafb;border-top:1px solid #e5e7eb;">
+              <p style="margin:0;font-size:12px;line-height:1.5;color:#6b7280;">This temporary password expires in 60 minutes. If you did not request this, contact your administrator.</p>
+              <p style="margin:10px 0 0 0;font-size:12px;line-height:1.5;color:#9ca3af;">Battery Passport Website · Automated security message</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</div>
 ```
 
 11. In the `If no` branch, add a `Response` action with status code `401`.
@@ -66,13 +95,10 @@ Reset your Battery Pass password
 Add these values to `web/.env.local` or to your hosting environment:
 
 ```env
-APP_BASE_URL=http://localhost:5186
 POWER_AUTOMATE_RESET_WEBHOOK_URL=https://prod-00.region.logic.azure.com/workflows/...
 POWER_AUTOMATE_RESET_WEBHOOK_SECRET=replace-with-the-same-long-secret-used-in-the-flow
 PASSWORD_RESET_APP_NAME=Battery Pass
 ```
-
-For a deployed app, set `APP_BASE_URL` to the public HTTPS URL so the reset link opens the right site.
 
 ## Test Flow
 
@@ -80,6 +106,8 @@ For a deployed app, set `APP_BASE_URL` to the public HTTPS URL so the reset link
 2. Open `/login`.
 3. Enter an existing user email in the forgot-password form.
 4. Confirm the email arrives from your Microsoft 365 mailbox.
-5. Open the link, set a new password, and sign in with it.
+5. Sign in with the temporary password from the email.
+6. Enter the same temporary password and choose a new password.
+7. Sign in with the new password.
 
-If no email arrives, check the Power Automate run history first. The most common issues are a wrong `POWER_AUTOMATE_RESET_WEBHOOK_URL`, a secret mismatch in `x-battery-pass-secret`, the Outlook connector not being signed in, or `APP_BASE_URL` pointing to the wrong app URL.
+If no email arrives, check the Power Automate run history first. The most common issues are a wrong `POWER_AUTOMATE_RESET_WEBHOOK_URL`, a secret mismatch in `x-battery-pass-secret`, or the Outlook connector not being signed in.

@@ -85,15 +85,15 @@ Run: `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --filter Admi
 - Create: `web/Services/EmailSender.cs`
 - Modify: `web/Controllers/LoginController.cs`
 - Modify: `web/Models/ViewModels/LoginViewModel.cs`
-- Create: `web/Models/ViewModels/ResetPasswordViewModel.cs`
+- Create: `web/Models/ViewModels/TemporaryPasswordChangeViewModel.cs`
 - Modify: `web/Views/Login/Index.cshtml`
-- Create: `web/Views/Login/ResetPassword.cshtml`
+- Create: `web/Views/Login/ChangeTemporaryPassword.cshtml`
 - Modify: `web/.env.example`
 
 - [ ] Generate random reset tokens, store only token hashes and expiry metadata.
-- [ ] Send reset links through a Power Automate HTTP-triggered flow.
+- [ ] Send expiring temporary passwords through a Power Automate HTTP-triggered flow.
 - [ ] Keep forgot-password response neutral for account enumeration safety.
-- [ ] Add reset-password GET/POST with password confirmation and one-time token consumption.
+- [ ] Add change-temporary-password GET/POST with password confirmation and one-time temporary password consumption.
 
 Run: `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --filter ForgotPasswordFlowTests`
 

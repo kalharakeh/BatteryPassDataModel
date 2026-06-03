@@ -12,17 +12,20 @@ public sealed class ForgotPasswordFlowTests
         var options = File.ReadAllText(RepoFile("web", "Configuration", "BatteryPassOptions.cs"));
 
         Assert.Contains("[HttpPost(\"forgot-password\")]", controller);
-        Assert.Contains("[HttpGet(\"reset-password\")]", controller);
-        Assert.Contains("[HttpPost(\"reset-password\")]", controller);
+        Assert.DoesNotContain("[HttpGet(\"reset-password\")]", controller);
+        Assert.DoesNotContain("[HttpPost(\"reset-password\")]", controller);
+        Assert.Contains("[HttpPost(\"change-temporary-password\")]", controller);
         Assert.Contains("CreatePasswordResetAsync", auth);
-        Assert.Contains("ConsumePasswordResetTokenAsync", auth);
+        Assert.Contains("AuthenticateLoginAsync", auth);
+        Assert.Contains("ConsumeTemporaryPasswordAsync", auth);
         Assert.Contains("IEmailSender", program);
         Assert.Contains("PowerAutomateResetWebhookUrl", options);
         Assert.Contains("POWER_AUTOMATE_RESET_WEBHOOK_URL", program);
         Assert.Contains("PowerAutomateEmailSender", program);
         Assert.Contains("Forgot password?", view);
-        Assert.Contains("If an account exists, reset instructions have been sent.", view);
-        Assert.True(File.Exists(RepoPath("web", "Views", "Login", "ResetPassword.cshtml")));
+        Assert.Contains("If an account exists, a temporary password has been sent.", view);
+        Assert.True(File.Exists(RepoPath("web", "Views", "Login", "ChangeTemporaryPassword.cshtml")));
+        Assert.False(File.Exists(RepoPath("web", "Views", "Login", "ResetPassword.cshtml")));
     }
 
     [Fact]
@@ -35,12 +38,33 @@ public sealed class ForgotPasswordFlowTests
         Assert.Contains("PowerAutomateEmailSender", sender);
         Assert.Contains("HttpClient", sender);
         Assert.Contains("x-battery-pass-secret", sender);
-        Assert.Contains("resetUrl", sender);
+        Assert.Contains("temporaryPassword", sender);
+        Assert.Contains("SendTemporaryPasswordAsync", sender);
+        Assert.DoesNotContain("resetUrl", sender);
         Assert.Contains("POWER_AUTOMATE_RESET_WEBHOOK_URL", env);
         Assert.Contains("POWER_AUTOMATE_RESET_WEBHOOK_SECRET", env);
         Assert.DoesNotContain("EMAIL_SMTP", env);
         Assert.DoesNotContain("EmailSmtp", options);
         Assert.DoesNotContain("SmtpClient", sender);
+    }
+
+    [Fact]
+    public void PasswordReset_ShouldGenerateExpiringTemporaryPasswordAndForceChange()
+    {
+        var auth = File.ReadAllText(RepoFile("web", "Services", "AuthService.cs"));
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "LoginController.cs"));
+        var changeView = RepoFile("web", "Views", "Login", "ChangeTemporaryPassword.cshtml");
+
+        Assert.Contains("CreateTemporaryPassword", auth);
+        Assert.Contains("temporaryPasswordHash", auth);
+        Assert.Contains("expiresAt", auth);
+        Assert.Contains("AddMinutes(60)", auth);
+        Assert.Contains("RequiresTemporaryPasswordChange", auth);
+        Assert.Contains("BCrypt.Net.BCrypt.Verify", auth);
+        Assert.Contains("temporary-password-sent", auth);
+        Assert.Contains("ChangeTemporaryPassword", controller);
+        Assert.Contains("Temporary password", File.ReadAllText(changeView));
+        Assert.Contains("You must choose a new password before continuing.", File.ReadAllText(changeView));
     }
 
     private static string RepoPath(params string[] parts)

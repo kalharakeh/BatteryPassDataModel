@@ -7,6 +7,38 @@ using MongoDB.Driver;
 
 namespace BatteryPassWeb.Services;
 
+public enum LoginAuthenticationStatus
+{
+    Invalid,
+    Authenticated,
+    RequiresTemporaryPasswordChange
+}
+
+public sealed class LoginAuthenticationResult
+{
+    public LoginAuthenticationStatus Status { get; init; }
+    public ClaimsPrincipal? Principal { get; init; }
+    public string Email { get; init; } = string.Empty;
+
+    public static LoginAuthenticationResult Invalid() => new()
+    {
+        Status = LoginAuthenticationStatus.Invalid
+    };
+
+    public static LoginAuthenticationResult Authenticated(ClaimsPrincipal principal) => new()
+    {
+        Status = LoginAuthenticationStatus.Authenticated,
+        Principal = principal,
+        Email = AccessControlService.CurrentEmail(principal)
+    };
+
+    public static LoginAuthenticationResult RequiresTemporaryPasswordChange(string email) => new()
+    {
+        Status = LoginAuthenticationStatus.RequiresTemporaryPasswordChange,
+        Email = email
+    };
+}
+
 public sealed class AuthService
 {
     private readonly MongoContext _mongoContext;
@@ -22,9 +54,15 @@ public sealed class AuthService
 
     public async Task<ClaimsPrincipal?> AuthenticateAsync(string email, string password, CancellationToken cancellationToken = default)
     {
+        var result = await AuthenticateLoginAsync(email, password, cancellationToken);
+        return result.Status == LoginAuthenticationStatus.Authenticated ? result.Principal : null;
+    }
+
+    public async Task<LoginAuthenticationResult> AuthenticateLoginAsync(string email, string password, CancellationToken cancellationToken = default)
+    {
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
-            return null;
+            return LoginAuthenticationResult.Invalid();
         }
 
         var normalizedEmail = email.Trim();
@@ -56,10 +94,15 @@ public sealed class AuthService
                             }
                         }
 
-                        return BuildPrincipal(normalizedEmail, BsonHelpers.GetString(user, "name"), roles);
+                        return LoginAuthenticationResult.Authenticated(BuildPrincipal(normalizedEmail, BsonHelpers.GetString(user, "name"), roles));
                     }
 
-                    return null;
+                    if (await IsActiveTemporaryPasswordAsync(normalizedEmail, password, cancellationToken))
+                    {
+                        return LoginAuthenticationResult.RequiresTemporaryPasswordChange(normalizedEmail.Trim().ToLowerInvariant());
+                    }
+
+                    return LoginAuthenticationResult.Invalid();
                 }
             }
         }
@@ -71,10 +114,10 @@ public sealed class AuthService
         if (normalizedEmail.Equals(_options.DemoAdminEmail, StringComparison.OrdinalIgnoreCase)
             && password == _options.DemoAdminPassword)
         {
-            return BuildPrincipal(_options.DemoAdminEmail, "Demo Administrator", [AccessControlService.RoleAdmin]);
+            return LoginAuthenticationResult.Authenticated(BuildPrincipal(_options.DemoAdminEmail, "Demo Administrator", [AccessControlService.RoleAdmin]));
         }
 
-        return null;
+        return LoginAuthenticationResult.Invalid();
     }
 
     public async Task<ClaimsPrincipal?> CreatePrincipalForUserAsync(string email, CancellationToken cancellationToken = default)
@@ -150,16 +193,16 @@ public sealed class AuthService
             ["status"] = user == null ? "account-not-found" : "created"
         };
 
+        var temporaryPassword = string.Empty;
         if (user != null)
         {
-            var token = CreateResetToken();
-            request["tokenHash"] = HashResetToken(token);
-            request["resetUrl"] = BuildResetUrl(normalizedEmail, token, requestBaseUrl);
+            temporaryPassword = CreateTemporaryPassword();
+            request["temporaryPasswordHash"] = BCrypt.Net.BCrypt.HashPassword(temporaryPassword);
         }
 
         await resetRequests.InsertOneAsync(request, cancellationToken: cancellationToken);
 
-        if (user == null || !request.TryGetValue("resetUrl", out var resetUrlValue) || resetUrlValue.IsBsonNull)
+        if (user == null || string.IsNullOrWhiteSpace(temporaryPassword))
         {
             return;
         }
@@ -175,11 +218,11 @@ public sealed class AuthService
 
         try
         {
-            await _emailSender.SendPasswordResetAsync(normalizedEmail, resetUrlValue.AsString, cancellationToken);
+            await _emailSender.SendTemporaryPasswordAsync(normalizedEmail, temporaryPassword, cancellationToken);
             await resetRequests.UpdateOneAsync(
                 Builders<BsonDocument>.Filter.Eq("_id", request["_id"]),
                 Builders<BsonDocument>.Update
-                    .Set("status", "email-sent")
+                    .Set("status", "temporary-password-sent")
                     .Set("sentAt", DateTimeOffset.UtcNow.ToString("O")),
                 cancellationToken: cancellationToken);
         }
@@ -194,15 +237,15 @@ public sealed class AuthService
         }
     }
 
-    public async Task<bool> ConsumePasswordResetTokenAsync(
+    public async Task<bool> ConsumeTemporaryPasswordAsync(
         string email,
-        string token,
+        string temporaryPassword,
         string newPassword,
         CancellationToken cancellationToken = default)
     {
         if (_mongoContext.Database == null
             || string.IsNullOrWhiteSpace(email)
-            || string.IsNullOrWhiteSpace(token)
+            || string.IsNullOrWhiteSpace(temporaryPassword)
             || string.IsNullOrWhiteSpace(newPassword)
             || newPassword.Length < 8)
         {
@@ -211,18 +254,9 @@ public sealed class AuthService
 
         var normalizedEmail = email.Trim().ToLowerInvariant();
         var now = DateTimeOffset.UtcNow.ToString("O");
-        var tokenHash = HashResetToken(token.Trim());
-        var resetRequests = _mongoContext.Database.GetCollection<BsonDocument>("passwordResetRequests");
-        var filter = Builders<BsonDocument>.Filter.And(
-            Builders<BsonDocument>.Filter.Eq("email", normalizedEmail),
-            Builders<BsonDocument>.Filter.Eq("tokenHash", tokenHash),
-            Builders<BsonDocument>.Filter.Eq("usedAt", BsonNull.Value),
-            Builders<BsonDocument>.Filter.Gt("expiresAt", now));
-
-        var request = await resetRequests.Find(filter)
-            .SortByDescending(document => document["requestedAt"])
-            .FirstOrDefaultAsync(cancellationToken);
-        if (request == null)
+        var request = await FindActiveTemporaryPasswordRequestAsync(normalizedEmail, cancellationToken);
+        if (request == null
+            || !BCrypt.Net.BCrypt.Verify(temporaryPassword.Trim(), BsonHelpers.GetString(request, "temporaryPasswordHash")))
         {
             return false;
         }
@@ -240,13 +274,40 @@ public sealed class AuthService
             return false;
         }
 
-        await resetRequests.UpdateOneAsync(
+        await _mongoContext.Database.GetCollection<BsonDocument>("passwordResetRequests").UpdateOneAsync(
             Builders<BsonDocument>.Filter.Eq("_id", request["_id"]),
             Builders<BsonDocument>.Update
                 .Set("usedAt", now)
                 .Set("status", "used"),
             cancellationToken: cancellationToken);
         return true;
+    }
+
+    private async Task<bool> IsActiveTemporaryPasswordAsync(string email, string password, CancellationToken cancellationToken)
+    {
+        var request = await FindActiveTemporaryPasswordRequestAsync(email.Trim().ToLowerInvariant(), cancellationToken);
+        return request != null
+            && BCrypt.Net.BCrypt.Verify(password, BsonHelpers.GetString(request, "temporaryPasswordHash"));
+    }
+
+    private async Task<BsonDocument?> FindActiveTemporaryPasswordRequestAsync(string normalizedEmail, CancellationToken cancellationToken)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(normalizedEmail))
+        {
+            return null;
+        }
+
+        var now = DateTimeOffset.UtcNow.ToString("O");
+        var filter = Builders<BsonDocument>.Filter.And(
+            Builders<BsonDocument>.Filter.Eq("email", normalizedEmail),
+            Builders<BsonDocument>.Filter.Eq("status", "temporary-password-sent"),
+            Builders<BsonDocument>.Filter.Eq("usedAt", BsonNull.Value),
+            Builders<BsonDocument>.Filter.Gt("expiresAt", now));
+
+        return await _mongoContext.Database.GetCollection<BsonDocument>("passwordResetRequests")
+            .Find(filter)
+            .SortByDescending(document => document["requestedAt"])
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     private static ClaimsPrincipal BuildPrincipal(string email, string name, IReadOnlyList<string> roles)
@@ -290,26 +351,34 @@ public sealed class AuthService
             : role;
     }
 
-    private static string CreateResetToken()
+    private static string CreateTemporaryPassword()
     {
-        Span<byte> bytes = stackalloc byte[32];
-        RandomNumberGenerator.Fill(bytes);
-        return Base64Url.Encode(bytes);
+        const string upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        const string lower = "abcdefghijkmnopqrstuvwxyz";
+        const string digits = "23456789";
+        const string symbols = "!@$?_-";
+        const string all = upper + lower + digits + symbols;
+        var characters = new List<char>
+        {
+            RandomCharacter(upper),
+            RandomCharacter(lower),
+            RandomCharacter(digits),
+            RandomCharacter(symbols)
+        };
+
+        while (characters.Count < 16)
+        {
+            characters.Add(RandomCharacter(all));
+        }
+
+        for (var index = characters.Count - 1; index > 0; index--)
+        {
+            var swapIndex = RandomNumberGenerator.GetInt32(index + 1);
+            (characters[index], characters[swapIndex]) = (characters[swapIndex], characters[index]);
+        }
+
+        return new string(characters.ToArray());
     }
 
-    private static string HashResetToken(string token)
-    {
-        var bytes = System.Text.Encoding.UTF8.GetBytes(token);
-        return Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
-    }
-
-    private string BuildResetUrl(string email, string token, string requestBaseUrl)
-    {
-        var baseUrl = !string.IsNullOrWhiteSpace(_options.AppBaseUrl)
-            ? _options.AppBaseUrl
-            : requestBaseUrl;
-        baseUrl = string.IsNullOrWhiteSpace(baseUrl) ? string.Empty : baseUrl.TrimEnd('/');
-        var path = $"/login/reset-password?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(token)}";
-        return string.IsNullOrWhiteSpace(baseUrl) ? path : $"{baseUrl}{path}";
-    }
+    private static char RandomCharacter(string alphabet) => alphabet[RandomNumberGenerator.GetInt32(alphabet.Length)];
 }

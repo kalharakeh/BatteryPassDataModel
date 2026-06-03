@@ -9,7 +9,7 @@ namespace BatteryPassWeb.Services;
 public interface IEmailSender
 {
     bool IsConfigured { get; }
-    Task SendPasswordResetAsync(string recipientEmail, string resetUrl, CancellationToken cancellationToken = default);
+    Task SendTemporaryPasswordAsync(string recipientEmail, string temporaryPassword, CancellationToken cancellationToken = default);
 }
 
 public sealed class PowerAutomateEmailSender : IEmailSender
@@ -32,11 +32,11 @@ public sealed class PowerAutomateEmailSender : IEmailSender
         !string.IsNullOrWhiteSpace(_options.PowerAutomateResetWebhookUrl)
         && Uri.TryCreate(_options.PowerAutomateResetWebhookUrl, UriKind.Absolute, out _);
 
-    public async Task SendPasswordResetAsync(string recipientEmail, string resetUrl, CancellationToken cancellationToken = default)
+    public async Task SendTemporaryPasswordAsync(string recipientEmail, string temporaryPassword, CancellationToken cancellationToken = default)
     {
         if (!IsConfigured)
         {
-            _logger.LogInformation("Password reset email was not sent because Power Automate webhook is not configured.");
+            _logger.LogInformation("Temporary password email was not sent because Power Automate webhook is not configured.");
             return;
         }
 
@@ -50,7 +50,7 @@ public sealed class PowerAutomateEmailSender : IEmailSender
         var payload = JsonSerializer.Serialize(new
         {
             email = recipientEmail,
-            resetUrl,
+            temporaryPassword,
             appName = string.IsNullOrWhiteSpace(_options.PasswordResetAppName)
                 ? "Battery Pass"
                 : _options.PasswordResetAppName

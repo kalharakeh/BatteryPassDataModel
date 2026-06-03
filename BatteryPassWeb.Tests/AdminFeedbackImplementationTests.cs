@@ -206,6 +206,8 @@ public sealed class AdminFeedbackImplementationTests
         Assert.Contains("When an HTTP request is received", docs);
         Assert.Contains("Send an email (V2)", docs);
         Assert.Contains("x-battery-pass-secret", docs);
+        Assert.Contains("temporaryPassword", docs);
+        Assert.DoesNotContain("resetUrl", docs);
         Assert.DoesNotContain("Brevo", docs);
     }
 
