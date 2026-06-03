@@ -72,6 +72,58 @@ public sealed class HelpWorkbenchLayoutTests
     }
 
     [Fact]
+    public void HelpWorkbench_ShouldExposeRunnableTemplateForEveryExternalApiEndpoint()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
+        var initializer = File.ReadAllText(RepoFile("web", "Services", "ExternalApiInitializer.cs"));
+        var helpController = File.ReadAllText(RepoFile("web", "Controllers", "HelpController.cs"));
+        var helpModel = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "ExternalApiHelpViewModel.cs"));
+
+        var documentedRouteFragments = System.Text.RegularExpressions.Regex
+            .Matches(controller, "\\[Http(?:Get|Post|Patch)\\(\"([^\"]+)\"\\)\\]")
+            .Select(match => $"@Model.BasePath/{match.Groups[1].Value}")
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        foreach (var route in documentedRouteFragments)
+        {
+            Assert.Contains(route, markup);
+        }
+
+        var workbenchTemplateKeys = new[]
+        {
+            "readFull",
+            "listClusters",
+            "listClusterBatteries",
+            "readBatteryPassports",
+            "readSection",
+            "readValuesAliases",
+            "readPathsAll",
+            "writeTelemetryPoint",
+            "readHistory24h",
+            "patchOperations",
+            "patchBatteryModel",
+            "patchSoftwareVersion",
+            "createPassport",
+            "validatePassport",
+            "signPassport",
+            "publishPassport"
+        };
+        foreach (var templateKey in workbenchTemplateKeys)
+        {
+            Assert.Contains($"value=\"{templateKey}\"", markup);
+            Assert.Contains($"{templateKey}: {{", markup);
+        }
+
+        Assert.Contains("SampleLifecycleTokenId", helpController);
+        Assert.Contains("SampleLifecycleToken", helpModel);
+        Assert.Contains("const sampleLifecycleToken", markup);
+        Assert.Contains("'sample-lifecycle': sampleLifecycleToken", markup);
+        Assert.Contains("tokenPreset: 'sample-lifecycle'", markup);
+        Assert.Contains("SAMPLEBATTERYPASSPORTLIFECYC001", initializer);
+    }
+
+    [Fact]
     public void HelpDocumentation_ShouldExplainExternalApiHttpCodes()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));

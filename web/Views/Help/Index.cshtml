@@ -34,7 +34,7 @@
             </div>
             <div>
                 <p class="mb-1 text-secondary small">Sample create, validate, sign and publish passport token</p>
-                <code>@Model.SampleSignToken</code>
+                <code>@Model.SampleLifecycleToken</code>
             </div>
         </div>
     </section>
@@ -399,7 +399,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 </article>
 
                 <article id="api-detail-passports" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Passport snapshot</span><h3>Create a new passport snapshot.</h3><p>Create a new passport snapshot for the Battery ID. This requires the create, validate, sign and publish passport token. The response returns the new Passport ID.</p></div>
+                    <div><span class="bp-summary-title">Passport snapshot</span><h3>Create a new passport snapshot.</h3><p>Create a new passport snapshot for the Battery ID after current battery data differs from the latest passport. This requires the create, validate, sign and publish passport token. The response returns the new Passport ID; use that Passport ID for validate, sign, and publish.</p></div>
                     <pre class="bp-help-pre"><code>POST @Model.BasePath/batteries/@Model.SampleBatteryId/passports</code></pre>
                 </article>
 
@@ -409,7 +409,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 </article>
 
                 <article id="api-detail-validate" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Validate</span><h3>Validate with the create, validate, sign and publish passport token.</h3><p>These tokens can create, validate, sign and publish passports only for their scoped clusters.</p></div>
+                    <div><span class="bp-summary-title">Validate</span><h3>Validate with the create, validate, sign and publish passport token.</h3><p>These tokens can create, validate, sign and publish passports only for their scoped clusters. If you just created a passport, replace the sample Passport ID with the Passport ID returned by create.</p></div>
                     <pre class="bp-help-pre"><code>POST @Model.BasePath/passports/@Model.SamplePassportId/validate</code></pre>
                 </article>
 
@@ -419,7 +419,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 </article>
 
                 <article id="api-detail-publish" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Publish</span><h3>Publish after validation and signing.</h3><p>Publish with a Sign token after validation and signing are current.</p></div>
+                    <div><span class="bp-summary-title">Publish</span><h3>Publish after validation and signing.</h3><p>Publish with the create, validate, sign and publish passport token after validation and signing are current.</p></div>
                     <pre class="bp-help-pre"><code>POST @Model.BasePath/passports/@Model.SamplePassportId/publish</code></pre>
                 </article>
                                 </div>
@@ -444,6 +444,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                         <option value="readFull">Read full battery</option>
                         <option value="listClusters">List accessible clusters</option>
                         <option value="listClusterBatteries">List cluster batteries</option>
+                        <option value="readSection">Read section</option>
                         <option value="readSectionPerformance">Read section: Performance</option>
                         <option value="readSectionCircularity">Read section: Circularity</option>
                         <option value="readValuesAliases">Read values: ratedEnergy, ratedCapacity, nickelMass</option>
@@ -455,6 +456,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                         <option value="patchOperations">Patch operations metadata</option>
                         <option value="patchBatteryModel">Patch Battery Model</option>
                         <option value="patchSoftwareVersion">Patch Software Version</option>
+                        <option value="createPassport">Create passport snapshot</option>
                         <option value="validatePassport">Validate passport</option>
                         <option value="signPassport">Sign passport</option>
                         <option value="publishPassport">Publish passport</option>
@@ -480,7 +482,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                     <select id="tester-token-preset">
                         <option value="sample-read">Sample read token</option>
                         <option value="sample-read-write">Sample read-write token</option>
-                        <option value="sample-sign">Sample create, validate, sign and publish passport token</option>
+                        <option value="sample-lifecycle">Sample create, validate, sign and publish passport token</option>
                         <option value="custom">Custom token</option>
                     </select>
                 </label>
@@ -529,7 +531,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
             const samplePassportId = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SamplePassportId));
             const sampleReadToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleReadToken));
             const sampleReadWriteToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleReadWriteToken));
-            const sampleSignToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleSignToken));
+            const sampleLifecycleToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleLifecycleToken));
 
             const docSearch = document.getElementById('doc-search');
             const docItems = Array.from(document.querySelectorAll('.bp-help-doc-item'));
@@ -625,6 +627,12 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 listClusterBatteries: {
                     method: 'GET',
                     path: `${basePath}/clusters/demo-cluster/batteries`,
+                    body: '',
+                    tokenPreset: 'sample-read'
+                },
+                readSection: {
+                    method: 'GET',
+                    path: `${basePath}/batteries/${sampleBatteryId}/section/general`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
@@ -732,30 +740,36 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                     }, null, 2),
                     tokenPreset: 'sample-read-write'
                 },
+                createPassport: {
+                    method: 'POST',
+                    path: `${basePath}/batteries/${sampleBatteryId}/passports`,
+                    body: '',
+                    tokenPreset: 'sample-lifecycle'
+                },
                 validatePassport: {
                     method: 'POST',
                     path: `${basePath}/passports/${samplePassportId}/validate`,
                     body: '',
-                    tokenPreset: 'sample-sign'
+                    tokenPreset: 'sample-lifecycle'
                 },
                 signPassport: {
                     method: 'POST',
                     path: `${basePath}/passports/${samplePassportId}/sign`,
                     body: '',
-                    tokenPreset: 'sample-sign'
+                    tokenPreset: 'sample-lifecycle'
                 },
                 publishPassport: {
                     method: 'POST',
                     path: `${basePath}/passports/${samplePassportId}/publish`,
                     body: '',
-                    tokenPreset: 'sample-sign'
+                    tokenPreset: 'sample-lifecycle'
                 }
             };
 
             const tokenByPreset = {
                 'sample-read': sampleReadToken,
                 'sample-read-write': sampleReadWriteToken,
-                'sample-sign': sampleSignToken
+                'sample-lifecycle': sampleLifecycleToken
             };
 
             const utf8ToBase64 = (value) => {

@@ -28,7 +28,7 @@ public class HelpController : Controller
     {
         var readTokenDocument = await _externalApiRepository.GetTokenByIdAsync(ExternalApiInitializer.SampleReadTokenId, cancellationToken);
         var readWriteTokenDocument = await _externalApiRepository.GetTokenByIdAsync(ExternalApiInitializer.SampleReadWriteTokenId, cancellationToken);
-        var signTokenDocument = await _externalApiRepository.GetTokenByIdAsync(ExternalApiInitializer.SampleSignTokenId, cancellationToken);
+        var lifecycleTokenDocument = await _externalApiRepository.GetTokenByIdAsync(ExternalApiInitializer.SampleLifecycleTokenId, cancellationToken);
         var sampleIds = await ResolveSampleIdsAsync(cancellationToken);
 
         var model = new ExternalApiHelpViewModel
@@ -42,9 +42,9 @@ public class HelpController : Controller
             SampleReadWriteToken = readWriteTokenDocument != null
                 ? _externalApiRepository.RevealToken(readWriteTokenDocument)
                 : ExternalApiInitializer.SampleReadWriteTokenValue,
-            SampleSignToken = signTokenDocument != null
-                ? _externalApiRepository.RevealToken(signTokenDocument)
-                : ExternalApiInitializer.SampleSignTokenValue
+            SampleLifecycleToken = lifecycleTokenDocument != null
+                ? _externalApiRepository.RevealToken(lifecycleTokenDocument)
+                : ExternalApiInitializer.SampleLifecycleTokenValue
         };
 
         return View(model);

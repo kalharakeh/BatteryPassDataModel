@@ -84,12 +84,12 @@ public sealed class ExternalApiInitializerTests
         Assert.Contains("FindProductVersion(product, \"1.0\")", productTemplateService);
         Assert.Contains("FindProductVersion(product, \"2.0\")", productTemplateService);
         Assert.Contains("ExternalApiInitializer.SampleApiClusterId", helpController);
-        Assert.Contains("SampleSignTokenId", helpController);
-        Assert.Contains("SampleSignToken", helpModel);
+        Assert.Contains("SampleLifecycleTokenId", helpController);
+        Assert.Contains("SampleLifecycleToken", helpModel);
         Assert.Contains("Sample create, validate, sign and publish passport token", helpView);
-        Assert.Contains("const sampleSignToken", helpView);
-        Assert.Contains("'sample-sign': sampleSignToken", helpView);
-        Assert.Contains("tokenPreset: 'sample-sign'", helpView);
+        Assert.Contains("const sampleLifecycleToken", helpView);
+        Assert.Contains("'sample-lifecycle': sampleLifecycleToken", helpView);
+        Assert.Contains("tokenPreset: 'sample-lifecycle'", helpView);
     }
 
     [Fact]
