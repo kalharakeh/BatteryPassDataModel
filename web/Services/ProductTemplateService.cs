@@ -777,6 +777,10 @@ public sealed class ProductTemplateService
         const string northCustomerPassword = "12345";
         var northCustomerPasswordHash = BCryptNet.HashPassword(northCustomerPassword);
         await _clusterRepository.UpsertUserAsync("admin@example.test", "General Admin", ["admin"], passwordHash, cancellationToken);
+        await _clusterRepository.UpsertUserAsync("notified.body@example.test", "Notified Body", [AccessControlService.RoleNotifiedBody], passwordHash, cancellationToken);
+        await _clusterRepository.UpsertUserAsync("msa@example.test", "Market Surveillance Authorities", [AccessControlService.RoleMarketSurveillanceAuthority], passwordHash, cancellationToken);
+        await _clusterRepository.UpsertUserAsync("commission@example.test", "Commission", [AccessControlService.RoleCommission], passwordHash, cancellationToken);
+        await _clusterRepository.UpsertUserAsync("legitimate.interest@example.test", "Person with Legitimate Interest", [AccessControlService.RoleLegitimateInterest], passwordHash, cancellationToken);
         foreach (var (clusterId, definition) in FixedClusters)
         {
             await _clusterRepository.UpsertClusterAsync(clusterId, definition.Name, cancellationToken);
@@ -833,6 +837,18 @@ public sealed class ProductTemplateService
             ExternalApiInitializer.SampleSignTokenValue,
             "Sample token (create, validate, sign and publish passport)",
             ExternalTokenAccessMode.Sign,
+            [ExternalApiInitializer.SampleApiClusterId],
+            allowUnassigned: false,
+            globalAccess: false,
+            actor: "system",
+            isSample: true,
+            cancellationToken);
+
+        await _externalApiRepository.UpsertFixedTokenAsync(
+            ExternalApiInitializer.SampleLifecycleTokenId,
+            ExternalApiInitializer.SampleLifecycleTokenValue,
+            "Sample token (read, write and passport lifecycle)",
+            ExternalTokenAccessMode.Lifecycle,
             [ExternalApiInitializer.SampleApiClusterId],
             allowUnassigned: false,
             globalAccess: false,

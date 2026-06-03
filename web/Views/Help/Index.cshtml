@@ -74,6 +74,28 @@
                         </tr>
                         <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">GET</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/clusters</code><small>Clusters this token can access</small></span></td>
+                            <td><span class="bp-help-access-pill">Read</span></td>
+                            <td>Discover cluster IDs before listing batteries.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-clusters" aria-expanded="false" aria-controls="api-detail-clusters" aria-label="Show cluster endpoint details" title="Show cluster endpoint details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">GET</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/clusters/{clusterId}/batteries</code><small>Battery IDs in one cluster</small></span></td>
+                            <td><span class="bp-help-access-pill">Read</span></td>
+                            <td>List batteries before reading or patching one.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-cluster-batteries" aria-expanded="false" aria-controls="api-detail-cluster-batteries" aria-label="Show cluster batteries endpoint details" title="Show cluster batteries endpoint details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">GET</span></td>
                             <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}</code><small>Latest passport snapshot</small></span></td>
                             <td><span class="bp-help-access-pill">Read</span></td>
                             <td>Read the complete battery passport response.</td>
@@ -250,6 +272,16 @@
                     </div>
                 </article>
 
+                <article id="api-detail-clusters" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
+                    <div><span class="bp-summary-title">Clusters</span><h3>List the clusters available to the token.</h3><p>Returns cluster IDs and names for the current token scope. Global tokens include every registered cluster.</p></div>
+                    <pre class="bp-help-pre"><code>GET @Model.BasePath/clusters</code></pre>
+                </article>
+
+                <article id="api-detail-cluster-batteries" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
+                    <div><span class="bp-summary-title">Cluster batteries</span><h3>List battery IDs in one cluster.</h3><p>Use this before reading, patching, or creating passports when an integration only knows the cluster ID.</p></div>
+                    <pre class="bp-help-pre"><code>GET @Model.BasePath/clusters/demo-cluster/batteries</code></pre>
+                </article>
+
                 <article id="api-detail-battery" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
                     <div><span class="bp-summary-title">Full battery</span><h3>Read the latest passport snapshot.</h3><p>Returns app metadata, aspects, registry data, schema versions, and validation details for the requested Battery ID.</p></div>
                     <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/@Model.SampleBatteryId</code></pre>
@@ -410,6 +442,8 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 <label>Template
                     <select id="tester-template">
                         <option value="readFull">Read full battery</option>
+                        <option value="listClusters">List accessible clusters</option>
+                        <option value="listClusterBatteries">List cluster batteries</option>
                         <option value="readSectionPerformance">Read section: Performance</option>
                         <option value="readSectionCircularity">Read section: Circularity</option>
                         <option value="readValuesAliases">Read values: ratedEnergy, ratedCapacity, nickelMass</option>
@@ -579,6 +613,18 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 readFull: {
                     method: 'GET',
                     path: `${basePath}/batteries/${sampleBatteryId}`,
+                    body: '',
+                    tokenPreset: 'sample-read'
+                },
+                listClusters: {
+                    method: 'GET',
+                    path: `${basePath}/clusters`,
+                    body: '',
+                    tokenPreset: 'sample-read'
+                },
+                listClusterBatteries: {
+                    method: 'GET',
+                    path: `${basePath}/clusters/demo-cluster/batteries`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },

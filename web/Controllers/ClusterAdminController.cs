@@ -724,6 +724,8 @@ public class ClusterAdminController : Controller
     {
         return value.ToLowerInvariant() switch
         {
+            "readwritesign" => ExternalTokenAccessMode.Lifecycle,
+            "lifecycle" => ExternalTokenAccessMode.Lifecycle,
             "sign" => ExternalTokenAccessMode.Sign,
             "readwrite" => ExternalTokenAccessMode.ReadWrite,
             _ => ExternalTokenAccessMode.Read

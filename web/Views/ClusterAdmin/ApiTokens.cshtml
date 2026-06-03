@@ -6,13 +6,25 @@
     string TokenClusterPickerName(string name) => name.StartsWith("Default ", StringComparison.OrdinalIgnoreCase) ? name["Default ".Length..] : name;
     string TokenDisplayName(BatteryPassWeb.Models.ViewModels.ApiTokenViewModel token)
     {
-        var suffixes = token.AccessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase)
-            ? new[] { " - readwrite", "-readwrite" }
-            : token.AccessMode.Equals("read", StringComparison.OrdinalIgnoreCase)
-                ? new[] { " - read", "-read" }
-                : [];
+        var suffixes = token.AccessMode.Equals("readWriteSign", StringComparison.OrdinalIgnoreCase)
+            ? new[] { " - readwritesign", "-readwritesign" }
+            : token.AccessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase)
+                ? new[] { " - readwrite", "-readwrite" }
+                : token.AccessMode.Equals("read", StringComparison.OrdinalIgnoreCase)
+                    ? new[] { " - read", "-read" }
+                    : [];
         var suffix = suffixes.FirstOrDefault(candidate => token.Name.EndsWith(candidate, StringComparison.OrdinalIgnoreCase));
         return string.IsNullOrWhiteSpace(suffix) ? token.Name : token.Name[..^suffix.Length];
+    }
+    string AccessLabel(BatteryPassWeb.Models.ViewModels.ApiTokenViewModel token)
+    {
+        return token.AccessMode.Equals("readWriteSign", StringComparison.OrdinalIgnoreCase)
+            ? "Read + write + passport lifecycle"
+            : token.AccessMode.Equals("sign", StringComparison.OrdinalIgnoreCase)
+                ? "Create, validate, sign and publish passport"
+                : token.AccessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase)
+                    ? "Read + write"
+                    : "Read";
     }
     string ScopeSummary(BatteryPassWeb.Models.ViewModels.ApiTokenViewModel token)
     {
@@ -80,6 +92,7 @@
                         <select name="accessMode">
                             <option value="read">Read</option>
                             <option value="readWrite">Read + write</option>
+                            <option value="readWriteSign">Read + write + passport lifecycle</option>
                             <option value="sign">Create, validate, sign and publish passport</option>
                         </select>
                     </span>
@@ -152,11 +165,7 @@
                     }
                     @foreach (var token in Model.ApiTokens)
                     {
-                        var accessLabel = token.AccessMode.Equals("sign", StringComparison.OrdinalIgnoreCase)
-                            ? "Create, validate, sign and publish passport"
-                            : token.AccessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase)
-                                ? "Read + write"
-                                : "Read";
+                        var accessLabel = AccessLabel(token);
                         var tokenDisplayName = TokenDisplayName(token);
                         var statusClass = token.IsActive ? "bp-status-pill is-active" : "bp-status-pill is-inactive";
                         var searchText = $"{token.Name} {token.TokenId} {accessLabel} {token.ClusterIdsLabel} {(token.GlobalAccess ? "Global scope" : string.Empty)} {(token.IsActive ? "Active" : "Inactive")}";

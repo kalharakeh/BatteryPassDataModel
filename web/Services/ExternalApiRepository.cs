@@ -8,7 +8,8 @@ public enum ExternalTokenAccessMode
 {
     Read,
     ReadWrite,
-    Sign
+    Sign,
+    Lifecycle
 }
 
 public enum ExternalTokenRequirement
@@ -402,6 +403,7 @@ public sealed class ExternalApiRepository
     {
         return accessMode switch
         {
+            ExternalTokenAccessMode.Lifecycle => "readWriteSign",
             ExternalTokenAccessMode.Sign => "sign",
             ExternalTokenAccessMode.ReadWrite => "readWrite",
             _ => "read"
@@ -415,6 +417,12 @@ public sealed class ExternalApiRepository
             return ExternalTokenAccessMode.Sign;
         }
 
+        if (accessMode.Equals("readWriteSign", StringComparison.OrdinalIgnoreCase)
+            || accessMode.Equals("lifecycle", StringComparison.OrdinalIgnoreCase))
+        {
+            return ExternalTokenAccessMode.Lifecycle;
+        }
+
         return accessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase)
             ? ExternalTokenAccessMode.ReadWrite
             : ExternalTokenAccessMode.Read;
@@ -424,8 +432,8 @@ public sealed class ExternalApiRepository
     {
         return requirement switch
         {
-            ExternalTokenRequirement.Sign => accessMode == ExternalTokenAccessMode.Sign,
-            ExternalTokenRequirement.Write => accessMode == ExternalTokenAccessMode.ReadWrite,
+            ExternalTokenRequirement.Sign => accessMode is ExternalTokenAccessMode.Sign or ExternalTokenAccessMode.Lifecycle,
+            ExternalTokenRequirement.Write => accessMode is ExternalTokenAccessMode.ReadWrite or ExternalTokenAccessMode.Lifecycle,
             _ => true
         };
     }

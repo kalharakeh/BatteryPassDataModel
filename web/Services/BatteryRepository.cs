@@ -111,6 +111,21 @@ public sealed class BatteryRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<BsonDocument>> ListByClusterIdAsync(string clusterId, CancellationToken cancellationToken = default)
+    {
+        var collection = GetCollection();
+        if (collection == null || string.IsNullOrWhiteSpace(clusterId))
+        {
+            return [];
+        }
+
+        return await collection
+            .Find(Builders<BsonDocument>.Filter.Eq("clusterId", ClusterRepository.NormalizeClusterId(clusterId)))
+            .SortByDescending(row => row["updatedAt"])
+            .Limit(500)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task CreateBatteryAsync(BsonDocument battery, CancellationToken cancellationToken = default)
     {
         var collection = GetCollection();

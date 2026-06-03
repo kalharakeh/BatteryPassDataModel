@@ -12,9 +12,11 @@ public sealed class ExternalApiInitializer
     public const string SampleReadTokenId = "sample-read-token";
     public const string SampleReadWriteTokenId = "sample-read-write-token";
     public const string SampleSignTokenId = "sample-sign-token";
+    public const string SampleLifecycleTokenId = "sample-lifecycle-token";
     public const string SampleReadTokenValue = "SAMPLEBATTERYPASSPORTREADTOKN001";
     public const string SampleReadWriteTokenValue = "SAMPLEBATTERYPASSPORTWRITETOK001";
     public const string SampleSignTokenValue = "SAMPLEBATTERYPASSPORTSIGNTOK001";
+    public const string SampleLifecycleTokenValue = "SAMPLEBATTERYPASSPORTLIFECYC001";
 
     public static string CreateSampleBatteryId(BatteryIdService batteryIdService)
     {
@@ -296,6 +298,13 @@ public sealed class ExternalApiInitializer
             "Sample token (create, validate, sign and publish passport)",
             ExternalTokenAccessMode.Sign,
             cancellationToken);
+
+        await EnsureFixedSampleTokenAsync(
+            SampleLifecycleTokenId,
+            SampleLifecycleTokenValue,
+            "Sample token (read, write and passport lifecycle)",
+            ExternalTokenAccessMode.Lifecycle,
+            cancellationToken);
     }
 
     private async Task EnsureFixedSampleTokenAsync(
@@ -442,6 +451,22 @@ public sealed class ExternalApiInitializer
                 await _externalApiRepository.CreateTokenAsync(
                     $"{clusterName} - readwrite",
                     ExternalTokenAccessMode.ReadWrite,
+                    [clusterId],
+                    allowUnassigned: false,
+                    globalAccess: false,
+                    actor: "system",
+                    autoClusterId: clusterId,
+                    cancellationToken: cancellationToken);
+            }
+
+            var hasLifecycleToken = existingTokens.Any(token =>
+                BsonHelpers.GetString(token, "autoClusterId").Equals(clusterId, StringComparison.OrdinalIgnoreCase)
+                && BsonHelpers.GetString(token, "accessMode").Equals("readWriteSign", StringComparison.OrdinalIgnoreCase));
+            if (!hasLifecycleToken)
+            {
+                await _externalApiRepository.CreateTokenAsync(
+                    $"{clusterName} - readwritesign",
+                    ExternalTokenAccessMode.Lifecycle,
                     [clusterId],
                     allowUnassigned: false,
                     globalAccess: false,

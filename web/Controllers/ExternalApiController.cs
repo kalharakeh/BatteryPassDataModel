@@ -47,28 +47,99 @@ public class ExternalApiController : ControllerBase
 
     private readonly PassportRepository _passportRepository;
     private readonly BatteryRepository _batteryRepository;
+    private readonly ClusterRepository _clusterRepository;
     private readonly ExternalApiRepository _externalApiRepository;
     private readonly BatteryTelemetryRepository _batteryTelemetryRepository;
     private readonly BatteryPassportSnapshotService _batteryPassportSnapshotService;
+    private readonly BatteryPassportDeltaService _batteryPassportDeltaService;
     private readonly BatteryTemplateUpdateService _batteryTemplateUpdateService;
     private readonly PassportTrustWorkflowService _passportTrustWorkflowService;
 
     public ExternalApiController(
         PassportRepository passportRepository,
         BatteryRepository batteryRepository,
+        ClusterRepository clusterRepository,
         ExternalApiRepository externalApiRepository,
         BatteryTelemetryRepository batteryTelemetryRepository,
         BatteryPassportSnapshotService batteryPassportSnapshotService,
+        BatteryPassportDeltaService batteryPassportDeltaService,
         BatteryTemplateUpdateService batteryTemplateUpdateService,
         PassportTrustWorkflowService passportTrustWorkflowService)
     {
         _passportRepository = passportRepository;
         _batteryRepository = batteryRepository;
+        _clusterRepository = clusterRepository;
         _externalApiRepository = externalApiRepository;
         _batteryTelemetryRepository = batteryTelemetryRepository;
         _batteryPassportSnapshotService = batteryPassportSnapshotService;
+        _batteryPassportDeltaService = batteryPassportDeltaService;
         _batteryTemplateUpdateService = batteryTemplateUpdateService;
         _passportTrustWorkflowService = passportTrustWorkflowService;
+    }
+
+    [HttpGet("clusters")]
+    public async Task<IActionResult> ListAccessibleClusters(CancellationToken cancellationToken)
+    {
+        var auth = await AuthorizeExternalApiAsync(ExternalTokenRequirement.Read, cancellationToken);
+        if (auth.ErrorResult != null)
+        {
+            return auth.ErrorResult;
+        }
+
+        var tokenContext = auth.TokenContext!;
+        var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
+        var accessibleClusters = clusters
+            .Where(cluster => CanAccessCluster(tokenContext, BsonHelpers.GetString(cluster, "clusterId")))
+            .Select(cluster => new
+            {
+                clusterId = BsonHelpers.GetString(cluster, "clusterId"),
+                name = BsonHelpers.GetString(cluster, "name")
+            })
+            .ToList();
+
+        return Envelope(StatusCodes.Status200OK, "Accessible clusters read successfully.", new
+        {
+            globalAccess = tokenContext.GlobalAccess,
+            allowUnassignedBatteries = tokenContext.AllowUnassigned,
+            clusters = accessibleClusters
+        });
+    }
+
+    [HttpGet("clusters/{clusterId}/batteries")]
+    public async Task<IActionResult> ListClusterBatteries(string clusterId, CancellationToken cancellationToken)
+    {
+        var auth = await AuthorizeExternalApiAsync(ExternalTokenRequirement.Read, cancellationToken);
+        if (auth.ErrorResult != null)
+        {
+            return auth.ErrorResult;
+        }
+
+        var normalizedClusterId = ClusterRepository.NormalizeClusterId(clusterId);
+        if (!CanAccessCluster(auth.TokenContext!, normalizedClusterId))
+        {
+            return Envelope(StatusCodes.Status403Forbidden, "Token cannot access this cluster scope.");
+        }
+
+        var cluster = await _clusterRepository.GetClusterByIdAsync(normalizedClusterId, cancellationToken);
+        if (cluster == null)
+        {
+            return Envelope(StatusCodes.Status404NotFound, "Cluster was not found.");
+        }
+
+        var batteries = await _batteryRepository.ListByClusterIdAsync(normalizedClusterId, cancellationToken);
+        return Envelope(StatusCodes.Status200OK, "Cluster batteries read successfully.", new
+        {
+            clusterId = normalizedClusterId,
+            clusterName = BsonHelpers.GetString(cluster, "name"),
+            batteries = batteries.Select(battery => new
+            {
+                batteryId = BsonHelpers.GetString(battery, "batteryId"),
+                batteryFamily = BsonHelpers.GetString(battery, "identity", "batteryFamily"),
+                batteryModel = BsonHelpers.GetString(battery, "identity", "batteryModel"),
+                serialNumber = BsonHelpers.GetString(battery, "identity", "serialNumber"),
+                newPassportRequired = BatteryRequiresNewPassport(battery)
+            }).ToList()
+        });
     }
 
     [HttpGet("batteries/{batteryId}")]
@@ -510,12 +581,18 @@ public class ExternalApiController : ControllerBase
             return auth.ErrorResult;
         }
 
+        if (!await CanCreateBatteryPassportAsync(auth.Battery!, cancellationToken))
+        {
+            return Envelope(StatusCodes.Status409Conflict, "No new passport is needed for this battery.");
+        }
+
         var passport = await _batteryPassportSnapshotService.CreatePassportSnapshotAsync(
             auth.Battery!,
             auth.TokenContext!.Name,
             DateTimeOffset.UtcNow,
             cancellationToken);
         var passportId = BsonHelpers.GetString(passport, "passportId");
+        await _batteryPassportDeltaService.ClearNewPassportRequiredAsync(batteryId, passportId, cancellationToken);
         return Envelope(StatusCodes.Status201Created, "Passport snapshot created.", new { batteryId, passportId });
     }
 
@@ -584,6 +661,31 @@ public class ExternalApiController : ControllerBase
     private async Task<BsonDocument?> GetLatestPassportForBatteryAsync(string batteryId, CancellationToken cancellationToken)
     {
         return (await _passportRepository.ListByBatteryIdAsync(batteryId, includeArchived: false, cancellationToken)).FirstOrDefault();
+    }
+
+    private async Task<ExternalAuthResult> AuthorizeExternalApiAsync(ExternalTokenRequirement requirement, CancellationToken cancellationToken)
+    {
+        if (!_externalApiRepository.IsAvailable)
+        {
+            return new ExternalAuthResult
+            {
+                ErrorResult = Envelope(StatusCodes.Status503ServiceUnavailable, "Database is not connected.")
+            };
+        }
+
+        var tokenValidation = await ValidateTokenForRequirementAsync(requirement, cancellationToken);
+        if (!tokenValidation.Success || tokenValidation.Context == null)
+        {
+            return new ExternalAuthResult
+            {
+                ErrorResult = Envelope(tokenValidation.StatusCode, tokenValidation.Message)
+            };
+        }
+
+        return new ExternalAuthResult
+        {
+            TokenContext = tokenValidation.Context
+        };
     }
 
     private async Task<ExternalAuthResult> AuthorizeBatteryAsync(string batteryId, ExternalTokenRequirement requirement, CancellationToken cancellationToken)
@@ -736,6 +838,27 @@ public class ExternalApiController : ControllerBase
         }
 
         return tokenContext.ClusterIds.Contains(clusterId, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private async Task<bool> CanCreateBatteryPassportAsync(BsonDocument battery, CancellationToken cancellationToken)
+    {
+        var batteryId = BsonHelpers.GetString(battery, "batteryId");
+        var passports = await _passportRepository.ListByBatteryIdAsync(batteryId, includeArchived: false, cancellationToken);
+        if (passports.Count == 0)
+        {
+            return true;
+        }
+
+        var latest = passports.FirstOrDefault(passport => passport.GetValue("isLatestForBattery", false).ToBoolean())
+            ?? passports.FirstOrDefault();
+        return BatteryRequiresNewPassport(battery) && latest != null && !IsDraftPassport(latest);
+    }
+
+    private static bool IsDraftPassport(BsonDocument passport)
+    {
+        var status = BsonHelpers.GetString(passport, "registryInfo", "status");
+        return status.Contains("draft", StringComparison.OrdinalIgnoreCase)
+            || status.Contains("awaiting", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool TryDecodeBasicToken(string raw, out string token)

@@ -1329,6 +1329,8 @@ public class AdminController : Controller
         var accessModeText = Text(Request.Form, "accessMode", "read");
         var accessMode = accessModeText.ToLowerInvariant() switch
         {
+            "readwritesign" => ExternalTokenAccessMode.Lifecycle,
+            "lifecycle" => ExternalTokenAccessMode.Lifecycle,
             "sign" => ExternalTokenAccessMode.Sign,
             "readwrite" => ExternalTokenAccessMode.ReadWrite,
             _ => ExternalTokenAccessMode.Read
@@ -1474,6 +1476,24 @@ public class AdminController : Controller
                 await _externalApiRepository.CreateTokenAsync(
                     $"{clusterName} - readwrite",
                     ExternalTokenAccessMode.ReadWrite,
+                    [clusterId],
+                    allowUnassigned: false,
+                    globalAccess: false,
+                    actor: actorValue,
+                    autoClusterId: clusterId,
+                    cancellationToken: cancellationToken);
+                generatedCount++;
+            }
+
+            if (ExistingGeneratedClusterTokenExists(existingTokens, clusterId, clusterName, "readWriteSign"))
+            {
+                skippedCount++;
+            }
+            else
+            {
+                await _externalApiRepository.CreateTokenAsync(
+                    $"{clusterName} - readwritesign",
+                    ExternalTokenAccessMode.Lifecycle,
                     [clusterId],
                     allowUnassigned: false,
                     globalAccess: false,
@@ -1636,7 +1656,8 @@ public class AdminController : Controller
 
         var accessMode = BsonHelpers.GetString(token, "accessMode");
         if (!accessMode.Equals("read", StringComparison.OrdinalIgnoreCase)
-            && !accessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase))
+            && !accessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase)
+            && !accessMode.Equals("readWriteSign", StringComparison.OrdinalIgnoreCase))
         {
             return null;
         }
@@ -1678,7 +1699,11 @@ public class AdminController : Controller
 
     private static bool GeneratedClusterTokenNameMatches(string tokenName, string clusterName, string accessMode)
     {
-        var expectedSuffix = accessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase) ? "readwrite" : "read";
+        var expectedSuffix = accessMode.Equals("readWriteSign", StringComparison.OrdinalIgnoreCase)
+            ? "readwritesign"
+            : accessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase)
+                ? "readwrite"
+                : "read";
         return tokenName.Equals($"{clusterName} - {expectedSuffix}", StringComparison.OrdinalIgnoreCase);
     }
 
