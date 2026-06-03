@@ -141,7 +141,7 @@ public sealed class ProductTemplateWorkflowLayoutTests
     public void AdminAndClusterAdmin_ShouldExposeEditableFieldPolicy()
     {
         var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
-        var clusterEdit = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "EditPassport.cshtml"));
+        var sharedEdit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
         var adminController = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
         var clusterAdminController = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
         var program = File.ReadAllText(RepoFile("web", "Program.cs"));
@@ -152,7 +152,8 @@ public sealed class ProductTemplateWorkflowLayoutTests
         Assert.Contains("editableAfterCreationFieldKeys", clusters);
         Assert.Contains("editableByLocalAdminFieldKeys", clusters);
         Assert.Contains("/admin/local-editable-fields/save", clusters);
-        Assert.Contains("FieldEditableByKey", clusterEdit);
+        Assert.Contains("FieldEditableByKey", sharedEdit);
+        Assert.Contains("FieldVisibleByKey", sharedEdit);
         Assert.Contains("EditableFieldPolicyService", adminController);
         Assert.Contains("LocalAdminEditableFieldPolicyService", adminController);
         Assert.Contains("LocalAdminEditableFieldPolicyService", clusterAdminController);

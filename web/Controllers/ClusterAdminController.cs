@@ -1,3 +1,4 @@
+using BatteryPassWeb.Models.Trust;
 using BatteryPassWeb.Models.ViewModels;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -39,6 +40,13 @@ public class ClusterAdminController : Controller
     private readonly AccessControlService _accessControlService;
     private readonly ExternalApiRepository _externalApiRepository;
     private readonly ProductTemplateService _productTemplateService;
+    private readonly DataCompletionPolicyService _dataCompletionPolicyService;
+    private readonly PassportValidationService _passportValidationService;
+    private readonly PassportPublishPolicyService _passportPublishPolicyService;
+    private readonly PassportTrustService _passportTrustService;
+    private readonly PassportReadinessService _passportReadinessService;
+    private readonly AuditRevisionService _auditRevisionService;
+    private readonly PassportEvidenceService _passportEvidenceService;
     private readonly EditableFieldPolicyService _editableFieldPolicyService;
     private readonly LocalAdminEditableFieldPolicyService _localAdminEditableFieldPolicyService;
     private readonly PassportTrustWorkflowService _passportTrustWorkflowService;
@@ -55,6 +63,13 @@ public class ClusterAdminController : Controller
         AccessControlService accessControlService,
         ExternalApiRepository externalApiRepository,
         ProductTemplateService productTemplateService,
+        DataCompletionPolicyService dataCompletionPolicyService,
+        PassportValidationService passportValidationService,
+        PassportPublishPolicyService passportPublishPolicyService,
+        PassportTrustService passportTrustService,
+        PassportReadinessService passportReadinessService,
+        AuditRevisionService auditRevisionService,
+        PassportEvidenceService passportEvidenceService,
         EditableFieldPolicyService editableFieldPolicyService,
         LocalAdminEditableFieldPolicyService localAdminEditableFieldPolicyService,
         PassportTrustWorkflowService passportTrustWorkflowService)
@@ -70,6 +85,13 @@ public class ClusterAdminController : Controller
         _accessControlService = accessControlService;
         _externalApiRepository = externalApiRepository;
         _productTemplateService = productTemplateService;
+        _dataCompletionPolicyService = dataCompletionPolicyService;
+        _passportValidationService = passportValidationService;
+        _passportPublishPolicyService = passportPublishPolicyService;
+        _passportTrustService = passportTrustService;
+        _passportReadinessService = passportReadinessService;
+        _auditRevisionService = auditRevisionService;
+        _passportEvidenceService = passportEvidenceService;
         _editableFieldPolicyService = editableFieldPolicyService;
         _localAdminEditableFieldPolicyService = localAdminEditableFieldPolicyService;
         _passportTrustWorkflowService = passportTrustWorkflowService;
@@ -206,6 +228,7 @@ public class ClusterAdminController : Controller
         var editablePolicy = await _editableFieldPolicyService.GetPolicyAsync(cancellationToken);
         var battery = await _batteryRepository.GetByBatteryIdAsync(BsonHelpers.GetString(document, "batteryId"), cancellationToken);
         var editDocument = BuildClusterAdminEditDocument(document, battery);
+        var dataRequirements = await _dataCompletionPolicyService.GetPolicyForPassportAsync(editDocument, cancellationToken);
         IReadOnlyList<BatteryProductTemplate> products = await _productTemplateService.ListProductsAsync(cancellationToken);
         if (products.Count == 0)
         {
@@ -228,9 +251,14 @@ public class ClusterAdminController : Controller
         {
             Passport = _viewModelFactory.Create(editDocument, clusterNamesById),
             Mode = "cluster-edit",
+            DataRequirements = dataRequirements,
+            ProductTemplates = BuildProductTemplateSummaries(products),
             ProductTemplateCatalog = BuildProductTemplateFormCatalog(products),
+            Clusters = BuildClusterViewModels(clusters),
             SelectedProductId = selectedProduct.ProductId,
             SelectedProductVersion = selectedVersion.Version,
+            SelectedClusterId = BsonHelpers.GetString(editDocument, "clusterId"),
+            FieldRequirementByKey = BuildFieldRequirementDictionary(dataRequirements),
             FieldEditableByKey = BuildEditableFieldDictionary(editablePolicy),
             FieldVisibleByKey = BuildVisibleFieldDictionary(editablePolicy),
             StatusMessage = status switch
@@ -244,7 +272,129 @@ public class ClusterAdminController : Controller
             ErrorMessage = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error)
         };
 
-        return View(model);
+        return View("~/Views/Admin/EditPassport.cshtml", model);
+    }
+
+    [HttpGet("passports/{passportId}/conformance")]
+    public async Task<IActionResult> Conformance(string passportId, [FromQuery] string? status, [FromQuery] string? error, CancellationToken cancellationToken)
+    {
+        var document = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
+        if (document == null)
+        {
+            return NotFound();
+        }
+
+        var clusterId = BsonHelpers.GetString(document, "clusterId");
+        if (!await _accessControlService.CanViewTrustConformanceAsync(User, clusterId, cancellationToken))
+        {
+            return Forbid();
+        }
+
+        var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
+        var clusterNamesById = clusters
+            .Select(cluster => new
+            {
+                ClusterId = BsonHelpers.GetString(cluster, "clusterId"),
+                Name = BsonHelpers.GetString(cluster, "name")
+            })
+            .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
+            .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
+        var dataRequirements = await _dataCompletionPolicyService.GetPolicyForPassportAsync(document, cancellationToken);
+        var validation = await ValidateWithEvidenceAsync(passportId, document, dataRequirements, cancellationToken);
+        var summary = validation.Summary;
+        var evidencePack = validation.EvidencePack;
+        var publishDecision = _passportPublishPolicyService.Evaluate(document, summary);
+        var verificationResult = _passportTrustService.Verify(document);
+        var readiness = _passportReadinessService.Evaluate(document, summary, publishDecision, verificationResult);
+
+        return View("~/Views/Admin/Conformance.cshtml", new ConformanceViewModel
+        {
+            Mode = "cluster-admin",
+            Passport = _viewModelFactory.Create(document, clusterNamesById, verificationResult),
+            ValidationSummary = summary,
+            Readiness = readiness,
+            EvidencePack = evidencePack,
+            GroupedBlockingIssues = BuildIssueGroups(summary, TrustValidationSeverity.BlockingError),
+            GroupedWarningIssues = BuildIssueGroups(summary, TrustValidationSeverity.Warning),
+            CanSign = publishDecision.CanSign,
+            CanPublish = publishDecision.CanPublish,
+            PublishBlockReason = publishDecision.PublishBlockReason,
+            VerificationResult = verificationResult,
+            StatusMessage = status switch
+            {
+                "validated" => "Passport validation completed.",
+                "signed" => "Passport signed and immutable revision recorded.",
+                "published" => "Passport published from the latest verified revision.",
+                _ => string.Empty
+            },
+            ErrorMessage = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error)
+        });
+    }
+
+    [HttpGet("passports/{passportId}/audit")]
+    public async Task<IActionResult> Audit(string passportId, CancellationToken cancellationToken)
+    {
+        var document = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
+        if (document == null)
+        {
+            return NotFound();
+        }
+
+        var clusterId = BsonHelpers.GetString(document, "clusterId");
+        if (!await _accessControlService.CanViewTrustConformanceAsync(User, clusterId, cancellationToken))
+        {
+            return Forbid();
+        }
+
+        var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
+        var clusterNamesById = clusters
+            .Select(cluster => new
+            {
+                ClusterId = BsonHelpers.GetString(cluster, "clusterId"),
+                Name = BsonHelpers.GetString(cluster, "name")
+            })
+            .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
+            .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
+        var auditEvents = await _auditRevisionService.ListAuditEventsAsync(passportId, cancellationToken);
+        return View("~/Views/Admin/Audit.cshtml", new PassportAuditTrailViewModel
+        {
+            Mode = "cluster-admin",
+            Passport = _viewModelFactory.Create(document, clusterNamesById, _passportTrustService.Verify(document)),
+            AuditEvents = auditEvents
+        });
+    }
+
+    [HttpGet("passports/{passportId}/revisions")]
+    public async Task<IActionResult> Revisions(string passportId, CancellationToken cancellationToken)
+    {
+        var document = await _passportRepository.GetByPassportIdAsync(passportId, cancellationToken);
+        if (document == null)
+        {
+            return NotFound();
+        }
+
+        var clusterId = BsonHelpers.GetString(document, "clusterId");
+        if (!await _accessControlService.CanViewTrustConformanceAsync(User, clusterId, cancellationToken))
+        {
+            return Forbid();
+        }
+
+        var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
+        var clusterNamesById = clusters
+            .Select(cluster => new
+            {
+                ClusterId = BsonHelpers.GetString(cluster, "clusterId"),
+                Name = BsonHelpers.GetString(cluster, "name")
+            })
+            .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
+            .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
+        var revisions = await _auditRevisionService.ListRevisionsAsync(passportId, cancellationToken);
+        return View("~/Views/Admin/Revisions.cshtml", new PassportRevisionHistoryViewModel
+        {
+            Mode = "cluster-admin",
+            Passport = _viewModelFactory.Create(document, clusterNamesById, _passportTrustService.Verify(document)),
+            Revisions = revisions
+        });
     }
 
     [HttpPost("passports/save")]
@@ -341,7 +491,7 @@ public class ClusterAdminController : Controller
         }
 
         TempData["StatusMessage"] = "Battery data saved. Create a new passport if the latest passport no longer matches the battery data.";
-        return Redirect($"/cluster-admin/batteries/{Uri.EscapeDataString(batteryId)}/passports?returnUrl={Uri.EscapeDataString("/cluster-admin/passports")}");
+        return Redirect($"/cluster-admin/passports?q={Uri.EscapeDataString(batteryId)}");
     }
 
     [HttpPost("passports/{passportId}/validate")]
@@ -364,7 +514,7 @@ public class ClusterAdminController : Controller
             CurrentActor(),
             "cluster-admin-ui",
             cancellationToken);
-        return Redirect(ClusterPassportEditRedirect(passportId, result.Success ? "validated" : string.Empty, result.Success ? string.Empty : result.Message));
+        return Redirect(ClusterPassportConformanceRedirect(passportId, result.Success ? "validated" : string.Empty, result.Success ? string.Empty : result.Message));
     }
 
     [HttpPost("passports/{passportId}/sign")]
@@ -388,7 +538,7 @@ public class ClusterAdminController : Controller
             "cluster-admin-ui",
             cancellationToken);
         var status = result.Success ? result.AutoPublished ? "published" : "signed" : string.Empty;
-        return Redirect(ClusterPassportEditRedirect(passportId, status, result.Success ? string.Empty : result.Message));
+        return Redirect(ClusterPassportConformanceRedirect(passportId, status, result.Success ? string.Empty : result.Message));
     }
 
     [HttpPost("passports/{passportId}/publish")]
@@ -411,7 +561,7 @@ public class ClusterAdminController : Controller
             CurrentActor(),
             "cluster-admin-ui",
             cancellationToken);
-        return Redirect(ClusterPassportEditRedirect(passportId, result.Success ? "published" : string.Empty, result.Success ? string.Empty : result.Message));
+        return Redirect(ClusterPassportConformanceRedirect(passportId, result.Success ? "published" : string.Empty, result.Success ? string.Empty : result.Message));
     }
 
     [HttpGet("users")]
@@ -850,6 +1000,52 @@ public class ClusterAdminController : Controller
         return managedClusterIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
+    private async Task<(TrustValidationSummary Summary, EvidencePackResult EvidencePack)> ValidateWithEvidenceAsync(
+        string passportId,
+        BsonDocument document,
+        DataCompletionPolicySnapshot dataRequirements,
+        CancellationToken cancellationToken)
+    {
+        var summary = _passportValidationService.Validate(document, dataRequirements);
+        var latestRevision = await _auditRevisionService.GetLatestSignedRevisionAsync(passportId, cancellationToken);
+        var evidencePack = _passportEvidenceService.Evaluate(document, latestRevision, dataRequirements);
+        summary = PassportEvidenceService.AppendValidationSection(summary, evidencePack);
+        return (summary, evidencePack);
+    }
+
+    private static IReadOnlyList<ConformanceIssueGroupViewModel> BuildIssueGroups(
+        TrustValidationSummary summary,
+        TrustValidationSeverity severity)
+    {
+        return summary.Sections
+            .Select(section => new ConformanceIssueGroupViewModel
+            {
+                SectionKey = section.SectionKey,
+                SectionLabel = section.SectionLabel,
+                EditAnchor = AdminSectionAnchor(section.SectionKey),
+                Issues = section.Issues
+                    .Where(issue => issue.Severity == severity)
+                    .ToList()
+            })
+            .Where(group => group.Issues.Count > 0)
+            .ToList();
+    }
+
+    private static string AdminSectionAnchor(string sectionKey)
+    {
+        return sectionKey switch
+        {
+            "generalProductInformation" or "identity" or "dataCompletionPolicy" => "admin-general",
+            "materialComposition" => "admin-material-composition",
+            "performanceAndDurability" => "admin-performance",
+            "labeling" => "admin-compliance",
+            "supplyChainDueDiligence" => "admin-supply-chain",
+            "circularity" => "admin-circularity",
+            "carbonFootprintForBatteries" => "admin-carbon-footprint",
+            _ => "admin-general"
+        };
+    }
+
     private static IReadOnlyDictionary<string, bool> BuildVisibleFieldDictionary(EditableFieldPolicySnapshot policy)
     {
         return policy.PermissionByKey.Values
@@ -868,6 +1064,43 @@ public class ClusterAdminController : Controller
                 group => group.Key,
                 group => group.Last().EditableByLocalAdmin,
                 StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static IReadOnlyDictionary<string, DataRequirementField> BuildFieldRequirementDictionary(DataCompletionPolicySnapshot dataRequirements)
+    {
+        return dataRequirements.Sections
+            .SelectMany(section => section.Fields)
+            .ToDictionary(field => field.FieldKey, field => field, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static IReadOnlyList<ClusterViewModel> BuildClusterViewModels(IEnumerable<BsonDocument> clusters) =>
+        clusters
+            .Select(cluster => new ClusterViewModel
+            {
+                ClusterId = BsonHelpers.GetString(cluster, "clusterId"),
+                Name = BsonHelpers.GetString(cluster, "name"),
+                CreatedAt = BsonHelpers.GetString(cluster, "createdAt"),
+                UpdatedAt = BsonHelpers.GetString(cluster, "updatedAt")
+            })
+            .OrderBy(cluster => cluster.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private static IReadOnlyList<ProductTemplateSummaryViewModel> BuildProductTemplateSummaries(IEnumerable<BatteryProductTemplate> products)
+    {
+        return products
+            .Select(product => new ProductTemplateSummaryViewModel
+            {
+                ProductId = product.ProductId,
+                ProductName = product.ProductName,
+                Description = product.Description,
+                ImageUrl = product.ImageUrl,
+                ModuleCount = product.ModuleCount,
+                BatteryVersionCount = product.ProductVersions.Count == 0 ? 1 : product.ProductVersions.Count,
+                RequiredFieldCount = product.RequiredFieldKeys.Count,
+                DocumentCount = product.TemplateDocuments.Count
+            })
+            .OrderBy(product => product.ProductName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private static IReadOnlyList<ProductTemplateFormCatalogItemViewModel> BuildProductTemplateFormCatalog(IEnumerable<BatteryProductTemplate> products)
@@ -1060,6 +1293,22 @@ public class ClusterAdminController : Controller
     private static string ClusterPassportEditRedirect(string passportId, string status = "", string error = "")
     {
         var url = $"/cluster-admin/passports/{Uri.EscapeDataString(passportId)}/edit";
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            return $"{url}?status={Uri.EscapeDataString(status)}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            return $"{url}?error={Uri.EscapeDataString(error)}";
+        }
+
+        return url;
+    }
+
+    private static string ClusterPassportConformanceRedirect(string passportId, string status = "", string error = "")
+    {
+        var url = $"/cluster-admin/passports/{Uri.EscapeDataString(passportId)}/conformance";
         if (!string.IsNullOrWhiteSpace(status))
         {
             return $"{url}?status={Uri.EscapeDataString(status)}";

@@ -237,12 +237,15 @@ public sealed class BatteryTableService
             : $"/cluster-admin/batteries/{escapedBatteryId}/passports/create";
         row.ConformanceUrl = string.IsNullOrWhiteSpace(row.LatestPassportId)
             ? string.Empty
-            : $"/admin/passports/{Uri.EscapeDataString(row.LatestPassportId)}/conformance";
+            : isGlobalAdmin
+                ? $"/admin/passports/{Uri.EscapeDataString(row.LatestPassportId)}/conformance"
+                : $"/cluster-admin/passports/{Uri.EscapeDataString(row.LatestPassportId)}/conformance";
         row.CanViewHistory = true;
         row.CanEditBattery = isGlobalAdmin || (scope == BatteryTableScope.ClusterAdminPassports && !string.IsNullOrWhiteSpace(row.EditUrl));
         row.CanCreatePassport = (isGlobalAdmin || scope == BatteryTableScope.ClusterAdminPassports)
             && CanCreateBatteryPassport(row);
-        row.CanOpenConformance = isGlobalAdmin && !string.IsNullOrWhiteSpace(row.ConformanceUrl);
+        row.CanOpenConformance = (isGlobalAdmin || scope == BatteryTableScope.ClusterAdminPassports)
+            && !string.IsNullOrWhiteSpace(row.ConformanceUrl);
         row.ShowNewPassportRequired = row.NewPassportRequired && !IsDraftStatus(row.LatestPassportStatus);
         row.DisplayStatus = row.ShowNewPassportRequired ? "New passport needed" : row.LatestPassportStatus;
     }

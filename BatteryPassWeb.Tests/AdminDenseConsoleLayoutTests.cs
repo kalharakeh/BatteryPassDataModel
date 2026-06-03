@@ -210,22 +210,22 @@ public sealed class AdminDenseConsoleLayoutTests
     [Fact]
     public void LocalAdminEditAndUsers_ShouldShareDenseConsoleStructure()
     {
-        var edit = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "EditPassport.cshtml"));
+        var edit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
         var users = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "Users.cshtml"));
         var tokens = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "ApiTokens.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.Contains("bp-local-admin-nav", users);
-        Assert.Contains("bp-local-admin-nav", edit);
+        Assert.DoesNotContain("bp-local-admin-nav", edit);
         Assert.Contains("bp-local-admin-nav", tokens);
         Assert.Contains("bp-user-management-table", users);
         Assert.DoesNotContain("bp-console-split", users);
-        Assert.Contains("bp-local-edit-grid", edit);
+        Assert.Contains("bp-edit-grid", edit);
         Assert.Contains("bp-field-shell", edit);
         Assert.Contains("bp-console-table", tokens);
         Assert.Contains(".bp-local-admin-nav", css);
         Assert.Contains(".bp-console-split", css);
-        Assert.Contains(".bp-local-edit-grid", css);
+        Assert.Contains(".bp-edit-grid", css);
     }
 
     [Fact]

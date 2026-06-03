@@ -5,6 +5,7 @@ namespace BatteryPassWeb.Models.ViewModels;
 
 public sealed class ConformanceViewModel
 {
+    public string Mode { get; init; } = "admin";
     public required PassportViewModel Passport { get; init; }
     public required TrustValidationSummary ValidationSummary { get; init; }
     public PassportReadinessDecision Readiness { get; init; } = new();
@@ -29,6 +30,7 @@ public sealed class ConformanceIssueGroupViewModel
 
 public sealed class PassportAuditTrailViewModel
 {
+    public string Mode { get; init; } = "admin";
     public required PassportViewModel Passport { get; init; }
     public IReadOnlyList<BsonDocument> AuditEvents { get; init; } = [];
     public string StatusMessage { get; init; } = string.Empty;
@@ -37,6 +39,7 @@ public sealed class PassportAuditTrailViewModel
 
 public sealed class PassportRevisionHistoryViewModel
 {
+    public string Mode { get; init; } = "admin";
     public required PassportViewModel Passport { get; init; }
     public IReadOnlyList<BsonDocument> Revisions { get; init; } = [];
     public string StatusMessage { get; init; } = string.Empty;

@@ -4,20 +4,26 @@
 @{
     ViewData["Title"] = "Passport revision history";
     var passport = Model.Passport;
+    var isClusterAdminMode = Model.Mode.Equals("cluster-admin", StringComparison.OrdinalIgnoreCase);
+    var workflowBasePath = isClusterAdminMode ? "/cluster-admin" : "/admin";
+    var backToBatteriesHref = isClusterAdminMode ? "/cluster-admin/passports" : "/admin/clusters?tab=batteries";
+    var editHref = $"{workflowBasePath}/passports/{Uri.EscapeDataString(passport.PassportId)}/edit";
+    var conformanceHref = $"{workflowBasePath}/passports/{Uri.EscapeDataString(passport.PassportId)}/conformance";
+    var auditHref = $"{workflowBasePath}/passports/{Uri.EscapeDataString(passport.PassportId)}/audit";
 }
 
 <main class="bp-page bp-admin-page bp-ledger">
     <div class="bp-ledger-header">
         <div>
-            <a href="/admin/clusters?tab=batteries" class="bp-secondary-button bp-button-compact mb-3">Back to batteries</a>
+            <a href="@backToBatteriesHref" class="bp-secondary-button bp-button-compact mb-3">Back to batteries</a>
             <span class="bp-summary-title">Revision history</span>
             <h1 class="mb-1">Immutable signed snapshots</h1>
             <p class="bp-passport-id mb-0"><span class="bp-id-copy-row"><span class="bp-id-value">@passport.PassportId</span>@await Html.PartialAsync("_CopyIdButton", passport.PassportId)</span></p>
         </div>
         <div class="d-flex flex-wrap gap-2">
-            <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/edit" class="bp-secondary-button">Edit passport</a>
-            <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/conformance" class="bp-secondary-button">Conformance</a>
-            <a href="/admin/passports/@Uri.EscapeDataString(passport.PassportId)/audit" class="bp-secondary-button">Audit trail</a>
+            <a href="@editHref" class="bp-secondary-button">Edit passport</a>
+            <a href="@conformanceHref" class="bp-secondary-button">Conformance</a>
+            <a href="@auditHref" class="bp-secondary-button">Audit trail</a>
         </div>
     </div>
 
