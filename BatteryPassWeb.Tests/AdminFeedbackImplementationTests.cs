@@ -193,19 +193,20 @@ public sealed class AdminFeedbackImplementationTests
     }
 
     [Fact]
-    public void BrevoSetup_ShouldBeDocumentedWithEnvironmentKeys()
+    public void PowerAutomateSetup_ShouldBeDocumentedWithEnvironmentKeys()
     {
         var env = File.ReadAllText(RepoFile("web", ".env.example"));
-        var docsPath = RepoPath("docs", "brevo-password-reset.md");
+        var docsPath = RepoPath("docs", "power-automate-password-reset.md");
 
-        Assert.Contains("EMAIL_SMTP_HOST", env);
-        Assert.Contains("EMAIL_SMTP_PORT", env);
-        Assert.Contains("EMAIL_SMTP_USERNAME", env);
-        Assert.Contains("EMAIL_SMTP_PASSWORD", env);
+        Assert.Contains("POWER_AUTOMATE_RESET_WEBHOOK_URL", env);
+        Assert.Contains("POWER_AUTOMATE_RESET_WEBHOOK_SECRET", env);
+        Assert.DoesNotContain("EMAIL_SMTP", env);
         Assert.True(File.Exists(docsPath));
         var docs = File.ReadAllText(docsPath);
-        Assert.Contains("smtp-relay.brevo.com", docs);
-        Assert.Contains("Brevo", docs);
+        Assert.Contains("When an HTTP request is received", docs);
+        Assert.Contains("Send an email (V2)", docs);
+        Assert.Contains("x-battery-pass-secret", docs);
+        Assert.DoesNotContain("Brevo", docs);
     }
 
     private static string RepoPath(params string[] parts)

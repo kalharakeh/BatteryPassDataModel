@@ -1,5 +1,6 @@
-using System.Net;
-using System.Net.Mail;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 using BatteryPassWeb.Configuration;
 using Microsoft.Extensions.Options;
 
@@ -11,57 +12,60 @@ public interface IEmailSender
     Task SendPasswordResetAsync(string recipientEmail, string resetUrl, CancellationToken cancellationToken = default);
 }
 
-public sealed class SmtpEmailSender : IEmailSender
+public sealed class PowerAutomateEmailSender : IEmailSender
 {
     private readonly BatteryPassOptions _options;
-    private readonly ILogger<SmtpEmailSender> _logger;
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<PowerAutomateEmailSender> _logger;
 
-    public SmtpEmailSender(IOptions<BatteryPassOptions> options, ILogger<SmtpEmailSender> logger)
+    public PowerAutomateEmailSender(
+        IOptions<BatteryPassOptions> options,
+        HttpClient httpClient,
+        ILogger<PowerAutomateEmailSender> logger)
     {
         _options = options.Value;
+        _httpClient = httpClient;
         _logger = logger;
     }
 
     public bool IsConfigured =>
-        !string.IsNullOrWhiteSpace(_options.EmailSmtpHost)
-        && _options.EmailSmtpPort > 0
-        && !string.IsNullOrWhiteSpace(_options.EmailSmtpUsername)
-        && !string.IsNullOrWhiteSpace(_options.EmailSmtpPassword)
-        && !string.IsNullOrWhiteSpace(FromEmail);
+        !string.IsNullOrWhiteSpace(_options.PowerAutomateResetWebhookUrl)
+        && Uri.TryCreate(_options.PowerAutomateResetWebhookUrl, UriKind.Absolute, out _);
 
     public async Task SendPasswordResetAsync(string recipientEmail, string resetUrl, CancellationToken cancellationToken = default)
     {
         if (!IsConfigured)
         {
-            _logger.LogInformation("Password reset email was not sent because SMTP is not configured.");
+            _logger.LogInformation("Password reset email was not sent because Power Automate webhook is not configured.");
             return;
         }
 
-        using var message = new MailMessage
+        using var request = new HttpRequestMessage(HttpMethod.Post, _options.PowerAutomateResetWebhookUrl);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        if (!string.IsNullOrWhiteSpace(_options.PowerAutomateResetWebhookSecret))
         {
-            From = new MailAddress(FromEmail, _options.EmailFromName),
-            Subject = "Reset your Battery Pass password",
-            Body = BuildPasswordResetBody(resetUrl),
-            IsBodyHtml = false
-        };
-        message.To.Add(new MailAddress(recipientEmail));
+            request.Headers.TryAddWithoutValidation("x-battery-pass-secret", _options.PowerAutomateResetWebhookSecret);
+        }
 
-        using var client = new SmtpClient(_options.EmailSmtpHost, _options.EmailSmtpPort)
+        var payload = JsonSerializer.Serialize(new
         {
-            EnableSsl = true,
-            Credentials = new NetworkCredential(_options.EmailSmtpUsername, _options.EmailSmtpPassword)
-        };
+            email = recipientEmail,
+            resetUrl,
+            appName = string.IsNullOrWhiteSpace(_options.PasswordResetAppName)
+                ? "Battery Pass"
+                : _options.PasswordResetAppName
+        });
+        request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
 
-        await client.SendMailAsync(message, cancellationToken);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogWarning(
+                "Power Automate password reset webhook returned {StatusCode}: {ResponseBody}",
+                (int)response.StatusCode,
+                responseBody);
+            throw new InvalidOperationException($"Power Automate password reset webhook failed with HTTP {(int)response.StatusCode}.");
+        }
     }
-
-    private string FromEmail =>
-        string.IsNullOrWhiteSpace(_options.EmailFromEmail)
-            ? _options.EmailSmtpUsername
-            : _options.EmailFromEmail;
-
-    private static string BuildPasswordResetBody(string resetUrl) =>
-        "A password reset was requested for your Battery Pass account.\n\n"
-        + $"Reset password: {resetUrl}\n\n"
-        + "This link expires in 60 minutes. If you did not request this, you can ignore this email.";
 }

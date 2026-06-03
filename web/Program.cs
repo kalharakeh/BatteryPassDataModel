@@ -32,24 +32,14 @@ builder.Services.Configure<BatteryPassOptions>(options =>
     options.IdGenerationSecret = Environment.GetEnvironmentVariable("ID_GENERATION_SECRET")
         ?? builder.Configuration["BatteryPass:IdGenerationSecret"]
         ?? string.Empty;
-    options.EmailSmtpHost = Environment.GetEnvironmentVariable("EMAIL_SMTP_HOST")
-        ?? builder.Configuration["BatteryPass:EmailSmtpHost"]
+    options.PowerAutomateResetWebhookUrl = Environment.GetEnvironmentVariable("POWER_AUTOMATE_RESET_WEBHOOK_URL")
+        ?? builder.Configuration["BatteryPass:PowerAutomateResetWebhookUrl"]
         ?? string.Empty;
-    options.EmailSmtpPort = int.TryParse(Environment.GetEnvironmentVariable("EMAIL_SMTP_PORT")
-            ?? builder.Configuration["BatteryPass:EmailSmtpPort"], out var emailSmtpPort)
-        ? emailSmtpPort
-        : 587;
-    options.EmailSmtpUsername = Environment.GetEnvironmentVariable("EMAIL_SMTP_USERNAME")
-        ?? builder.Configuration["BatteryPass:EmailSmtpUsername"]
+    options.PowerAutomateResetWebhookSecret = Environment.GetEnvironmentVariable("POWER_AUTOMATE_RESET_WEBHOOK_SECRET")
+        ?? builder.Configuration["BatteryPass:PowerAutomateResetWebhookSecret"]
         ?? string.Empty;
-    options.EmailSmtpPassword = Environment.GetEnvironmentVariable("EMAIL_SMTP_PASSWORD")
-        ?? builder.Configuration["BatteryPass:EmailSmtpPassword"]
-        ?? string.Empty;
-    options.EmailFromEmail = Environment.GetEnvironmentVariable("EMAIL_FROM_EMAIL")
-        ?? builder.Configuration["BatteryPass:EmailFromEmail"]
-        ?? string.Empty;
-    options.EmailFromName = Environment.GetEnvironmentVariable("EMAIL_FROM_NAME")
-        ?? builder.Configuration["BatteryPass:EmailFromName"]
+    options.PasswordResetAppName = Environment.GetEnvironmentVariable("PASSWORD_RESET_APP_NAME")
+        ?? builder.Configuration["BatteryPass:PasswordResetAppName"]
         ?? "Battery Pass";
     options.AppBaseUrl = Environment.GetEnvironmentVariable("APP_BASE_URL")
         ?? Environment.GetEnvironmentVariable("APP_URL")
@@ -112,7 +102,7 @@ builder.Services.AddSingleton(provider =>
     return new BatteryIdService(options.IdGenerationSecret, environment.IsDevelopment());
 });
 builder.Services.AddSingleton<AuthService>();
-builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
+builder.Services.AddHttpClient<IEmailSender, PowerAutomateEmailSender>();
 builder.Services.AddSingleton<ExternalApiSecurityService>();
 builder.Services.AddSingleton<ExternalApiRepository>();
 builder.Services.AddSingleton<BatteryTelemetryRepository>();

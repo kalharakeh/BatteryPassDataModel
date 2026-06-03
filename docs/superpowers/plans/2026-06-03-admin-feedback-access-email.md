@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Implement the admin feedback changes for role access, clean UI affordances, Brevo-ready password reset, external API discovery/lifecycle permissions, and reset-demo compatibility.
+**Goal:** Implement the admin feedback changes for role access, clean UI affordances, Power Automate password reset, external API discovery/lifecycle permissions, and reset-demo compatibility.
 
 **Architecture:** Keep the existing ASP.NET MVC/MongoDB structure and extend current services instead of introducing a new workflow layer. Use source-level tests already common in `BatteryPassWeb.Tests`, plus focused service/model tests where behavior can be exercised without MongoDB.
 
@@ -76,7 +76,7 @@ Run: `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --filter Admi
 
 Run: `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --filter AdminFeedbackImplementationTests`
 
-### Task 5: Brevo Password Reset
+### Task 5: Power Automate Password Reset
 
 **Files:**
 - Modify: `web/Configuration/BatteryPassOptions.cs`
@@ -91,7 +91,7 @@ Run: `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --filter Admi
 - Modify: `web/.env.example`
 
 - [ ] Generate random reset tokens, store only token hashes and expiry metadata.
-- [ ] Send reset links through SMTP using Brevo-compatible config.
+- [ ] Send reset links through a Power Automate HTTP-triggered flow.
 - [ ] Keep forgot-password response neutral for account enumeration safety.
 - [ ] Add reset-password GET/POST with password confirmation and one-time token consumption.
 
@@ -109,7 +109,7 @@ Run: `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --filter Forg
 - Modify: `web/Views/Admin/Clusters.cshtml`
 - Modify: `web/Views/ClusterAdmin/ApiTokens.cshtml`
 - Modify: `web/Views/Help/Index.cshtml`
-- Modify: docs with Brevo and API reset notes.
+- Modify: docs with Power Automate and API reset notes.
 
 - [ ] Add lifecycle/read-write-sign token mode without changing read, read-write, or sign semantics.
 - [ ] Add cluster list and cluster battery ID list endpoints scoped to token access.
@@ -123,7 +123,7 @@ Run: `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj`
 - [ ] Commit plan.
 - [ ] Commit failing tests.
 - [ ] Commit access/UI/lifecycle changes.
-- [ ] Commit Brevo password reset.
+- [ ] Commit Power Automate password reset.
 - [ ] Run `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj`.
 - [ ] Run `dotnet build web/BatteryPassWeb.csproj`.
 - [ ] Start the local app and perform a browser smoke check if MongoDB/dev startup succeeds.

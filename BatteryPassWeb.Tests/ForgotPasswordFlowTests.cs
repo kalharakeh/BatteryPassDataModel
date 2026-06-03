@@ -17,10 +17,30 @@ public sealed class ForgotPasswordFlowTests
         Assert.Contains("CreatePasswordResetAsync", auth);
         Assert.Contains("ConsumePasswordResetTokenAsync", auth);
         Assert.Contains("IEmailSender", program);
-        Assert.Contains("EmailSmtpHost", options);
+        Assert.Contains("PowerAutomateResetWebhookUrl", options);
+        Assert.Contains("POWER_AUTOMATE_RESET_WEBHOOK_URL", program);
+        Assert.Contains("PowerAutomateEmailSender", program);
         Assert.Contains("Forgot password?", view);
         Assert.Contains("If an account exists, reset instructions have been sent.", view);
         Assert.True(File.Exists(RepoPath("web", "Views", "Login", "ResetPassword.cshtml")));
+    }
+
+    [Fact]
+    public void PasswordResetEmail_ShouldUsePowerAutomateWebhookOnly()
+    {
+        var sender = File.ReadAllText(RepoFile("web", "Services", "EmailSender.cs"));
+        var env = File.ReadAllText(RepoFile("web", ".env.example"));
+        var options = File.ReadAllText(RepoFile("web", "Configuration", "BatteryPassOptions.cs"));
+
+        Assert.Contains("PowerAutomateEmailSender", sender);
+        Assert.Contains("HttpClient", sender);
+        Assert.Contains("x-battery-pass-secret", sender);
+        Assert.Contains("resetUrl", sender);
+        Assert.Contains("POWER_AUTOMATE_RESET_WEBHOOK_URL", env);
+        Assert.Contains("POWER_AUTOMATE_RESET_WEBHOOK_SECRET", env);
+        Assert.DoesNotContain("EMAIL_SMTP", env);
+        Assert.DoesNotContain("EmailSmtp", options);
+        Assert.DoesNotContain("SmtpClient", sender);
     }
 
     private static string RepoPath(params string[] parts)
