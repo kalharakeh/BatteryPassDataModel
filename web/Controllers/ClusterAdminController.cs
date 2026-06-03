@@ -20,6 +20,7 @@ public class ClusterAdminController : Controller
     private readonly PassportViewModelFactory _viewModelFactory;
     private readonly AccessControlService _accessControlService;
     private readonly ExternalApiRepository _externalApiRepository;
+    private readonly EditableFieldPolicyService _editableFieldPolicyService;
     private readonly LocalAdminEditableFieldPolicyService _localAdminEditableFieldPolicyService;
     private readonly PassportTrustWorkflowService _passportTrustWorkflowService;
 
@@ -33,6 +34,7 @@ public class ClusterAdminController : Controller
         PassportViewModelFactory viewModelFactory,
         AccessControlService accessControlService,
         ExternalApiRepository externalApiRepository,
+        EditableFieldPolicyService editableFieldPolicyService,
         LocalAdminEditableFieldPolicyService localAdminEditableFieldPolicyService,
         PassportTrustWorkflowService passportTrustWorkflowService)
     {
@@ -45,6 +47,7 @@ public class ClusterAdminController : Controller
         _viewModelFactory = viewModelFactory;
         _accessControlService = accessControlService;
         _externalApiRepository = externalApiRepository;
+        _editableFieldPolicyService = editableFieldPolicyService;
         _localAdminEditableFieldPolicyService = localAdminEditableFieldPolicyService;
         _passportTrustWorkflowService = passportTrustWorkflowService;
     }
@@ -177,12 +180,13 @@ public class ClusterAdminController : Controller
             .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
             .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
 
-        var editablePolicy = await _localAdminEditableFieldPolicyService.GetPolicyAsync(cancellationToken);
+        var editablePolicy = await _editableFieldPolicyService.GetPolicyAsync(cancellationToken);
         var model = new Models.ViewModels.EditPassportViewModel
         {
             Passport = _viewModelFactory.Create(document, clusterNamesById),
             Mode = "cluster-edit",
             FieldEditableByKey = BuildEditableFieldDictionary(editablePolicy),
+            FieldVisibleByKey = BuildVisibleFieldDictionary(editablePolicy),
             StatusMessage = status switch
             {
                 "saved" => "Local passport fields saved.",
@@ -227,8 +231,12 @@ public class ClusterAdminController : Controller
             return Forbid();
         }
 
-        var editablePolicy = await _localAdminEditableFieldPolicyService.GetPolicyAsync(cancellationToken);
-        ApplyLocalPassportForm(document, Request.Form, DateTime.UtcNow.ToString("O"), editablePolicy.EditableFieldKeys.ToHashSet(StringComparer.OrdinalIgnoreCase));
+        var editablePolicy = await _editableFieldPolicyService.GetPolicyAsync(cancellationToken);
+        var editableFieldKeys = editablePolicy.PermissionByKey.Values
+            .Where(permission => permission.EditableByLocalAdmin)
+            .Select(permission => permission.FieldKey)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        ApplyLocalPassportForm(document, Request.Form, DateTime.UtcNow.ToString("O"), editableFieldKeys);
         await _passportRepository.ReplaceAsync(passportId, document, cancellationToken);
         return Redirect($"/cluster-admin/passports/{Uri.EscapeDataString(passportId)}/edit?status=saved");
     }
@@ -737,11 +745,24 @@ public class ClusterAdminController : Controller
         return managedClusterIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
-    private static IReadOnlyDictionary<string, bool> BuildEditableFieldDictionary(LocalAdminEditableFieldPolicySnapshot policy)
+    private static IReadOnlyDictionary<string, bool> BuildVisibleFieldDictionary(EditableFieldPolicySnapshot policy)
     {
-        return policy.Sections
-            .SelectMany(section => section.Fields)
-            .ToDictionary(field => field.FieldKey, field => policy.IsEditable(field.FieldKey), StringComparer.OrdinalIgnoreCase);
+        return policy.PermissionByKey.Values
+            .GroupBy(permission => permission.FieldKey, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Last().VisibleToClusterAdmin,
+                StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static IReadOnlyDictionary<string, bool> BuildEditableFieldDictionary(EditableFieldPolicySnapshot policy)
+    {
+        return policy.PermissionByKey.Values
+            .GroupBy(permission => permission.FieldKey, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Last().EditableByLocalAdmin,
+                StringComparer.OrdinalIgnoreCase);
     }
 
     private static void ApplyLocalPassportForm(BsonDocument document, IFormCollection form, string now, IReadOnlySet<string> editableFieldKeys)

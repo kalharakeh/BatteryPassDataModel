@@ -15,6 +15,10 @@
         .Where(permission => permission.EditableAfterCreation)
         .Select(permission => permission.FieldKey)
         .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    var visibleToClusterAdminKeys = Model.LocalEditableFieldPolicy.PermissionByKey.Values
+        .Where(permission => permission.VisibleToClusterAdmin)
+        .Select(permission => permission.FieldKey)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
     var editableByLocalAdminKeys = Model.LocalEditableFieldPolicy.PermissionByKey.Values
         .Where(permission => permission.EditableByLocalAdmin)
         .Select(permission => permission.FieldKey)
@@ -606,7 +610,7 @@
             <div class="d-flex justify-content-between flex-wrap gap-3 align-items-start">
                 <div>
                     <h2 class="h5 mb-1">Editable fields</h2>
-                    <p class="text-secondary mb-0">Choose which battery parameters can be edited at creation, after creation, and by cluster admins.</p>
+                    <p class="text-secondary mb-0">Choose which battery parameters can be edited at creation, after creation, shown to cluster admins, and edited by cluster admins.</p>
                 </div>
                 @if (!string.IsNullOrWhiteSpace(Model.LocalEditableFieldPolicy.UpdatedAt))
                 {
@@ -619,7 +623,8 @@
                     <span class="bp-user-count-pill">@Model.LocalEditableFieldPolicy.Sections.Count sections</span>
                     <span class="bp-user-count-pill">@Model.LocalEditableFieldPolicy.EditableAtCreationCount creation</span>
                     <span class="bp-user-count-pill">@Model.LocalEditableFieldPolicy.EditableAfterCreationCount after creation</span>
-                    <span class="bp-user-count-pill">@Model.LocalEditableFieldPolicy.EditableByLocalAdminCount cluster admin</span>
+                    <span class="bp-user-count-pill">@Model.LocalEditableFieldPolicy.VisibleToClusterAdminCount shown to cluster admin</span>
+                    <span class="bp-user-count-pill">@Model.LocalEditableFieldPolicy.EditableByLocalAdminCount editable by cluster admin</span>
                 </div>
                 <div class="bp-table-card p-0">
                     <div class="bp-table-scroll">
@@ -630,6 +635,7 @@
                                     <th>Total fields</th>
                                     <th>Editable</th>
                                     <th>After creation</th>
+                                    <th>Shown</th>
                                     <th>Cluster admin</th>
                                     <th>Examples</th>
                                     <th class="bp-action-cell">Actions</th>
@@ -643,6 +649,7 @@
                                     var orderedFields = policySection.Fields.OrderBy(field => field.SortOrder).ToList();
                                     var sectionCreationCount = orderedFields.Count(field => editableAtCreationKeys.Contains(field.FieldKey));
                                     var sectionAfterCreationCount = orderedFields.Count(field => editableAfterCreationKeys.Contains(field.FieldKey));
+                                    var sectionVisibleCount = orderedFields.Count(field => visibleToClusterAdminKeys.Contains(field.FieldKey));
                                     var sectionLocalAdminCount = orderedFields.Count(field => editableByLocalAdminKeys.Contains(field.FieldKey));
                                     var examples = string.Join(", ", orderedFields.Take(2).Select(field => field.Label));
                                     <tr>
@@ -653,7 +660,8 @@
                                         <td><span class="bp-user-count-pill">@policySection.Fields.Count fields</span></td>
                                         <td><span class="bp-local-editable-state-pill @(sectionCreationCount > 0 ? "is-on" : string.Empty)">@sectionCreationCount creation</span></td>
                                         <td><span class="bp-local-editable-state-pill @(sectionAfterCreationCount > 0 ? "is-on" : string.Empty)">@sectionAfterCreationCount after</span></td>
-                                        <td><span class="bp-local-editable-state-pill @(sectionLocalAdminCount > 0 ? "is-on" : string.Empty)">@sectionLocalAdminCount cluster admin</span></td>
+                                        <td><span class="bp-local-editable-state-pill @(sectionVisibleCount > 0 ? "is-on" : string.Empty)">@sectionVisibleCount shown</span></td>
+                                        <td><span class="bp-local-editable-state-pill @(sectionLocalAdminCount > 0 ? "is-on" : string.Empty)">@sectionLocalAdminCount editable</span></td>
                                         <td><span class="bp-local-editable-examples">@examples</span></td>
                                         <td class="bp-action-cell">
                                             <button type="button" class="bp-action-button bp-local-editable-drawer-toggle" data-local-editable-drawer-toggle aria-expanded="false" aria-controls="@drawerId" aria-label="Open @policySection.Label fields" title="Open @policySection.Label fields" data-tooltip="Open fields">
@@ -664,12 +672,13 @@
                                         </td>
                                     </tr>
                                     <tr id="@drawerId" class="bp-local-editable-drawer-row" hidden>
-                                        <td colspan="7">
+                                        <td colspan="8">
                                             <div class="bp-local-editable-field-grid">
                                                 @foreach (var field in orderedFields)
                                                 {
                                                     var isEditableAtCreation = editableAtCreationKeys.Contains(field.FieldKey);
                                                     var isEditableAfterCreation = editableAfterCreationKeys.Contains(field.FieldKey);
+                                                    var isVisibleToClusterAdmin = visibleToClusterAdminKeys.Contains(field.FieldKey);
                                                     var isEditableByLocalAdmin = editableByLocalAdminKeys.Contains(field.FieldKey);
                                                     <label class="bp-local-editable-field-card">
                                                         <span class="bp-local-editable-field-copy">
@@ -689,7 +698,12 @@
                                                                 <span class="bp-local-editable-toggle-shell" aria-hidden="true"></span>
                                                             </span>
                                                             <span class="bp-local-editable-toggle-wrap">
-                                                                <span class="bp-local-editable-toggle-label">Cluster admin</span>
+                                                                <span class="bp-local-editable-toggle-label">Show</span>
+                                                                <input class="bp-local-editable-field-toggle" type="checkbox" name="visibleToClusterAdminFieldKeys" value="@field.FieldKey" checked="@isVisibleToClusterAdmin" aria-label="@field.Label Show for Cluster Admin" title="Show for Cluster Admin" data-editable-policy-visible />
+                                                                <span class="bp-local-editable-toggle-shell" aria-hidden="true"></span>
+                                                            </span>
+                                                            <span class="bp-local-editable-toggle-wrap">
+                                                                <span class="bp-local-editable-toggle-label">Edit</span>
                                                                 <input class="bp-local-editable-field-toggle" type="checkbox" name="editableByLocalAdminFieldKeys" value="@field.FieldKey" checked="@isEditableByLocalAdmin" aria-label="@field.Label editable by cluster admins" data-editable-policy-local />
                                                                 <span class="bp-local-editable-toggle-shell" aria-hidden="true"></span>
                                                             </span>
@@ -1082,14 +1096,16 @@
             document.querySelectorAll('[data-editable-policy-row]').forEach((row) => {
                 const creation = row.querySelector('[data-editable-policy-creation]');
                 const afterCreation = row.querySelector('[data-editable-policy-after]');
+                const visibleToClusterAdmin = row.querySelector('[data-editable-policy-visible]');
                 const localAdmin = row.querySelector('[data-editable-policy-local]');
-                if (!creation || !afterCreation || !localAdmin) {
+                if (!creation || !afterCreation || !visibleToClusterAdmin || !localAdmin) {
                     return;
                 }
 
                 creation.addEventListener('change', () => {
                     if (!creation.checked) {
                         afterCreation.checked = false;
+                        visibleToClusterAdmin.checked = false;
                         localAdmin.checked = false;
                     }
                 });
@@ -1100,10 +1116,16 @@
                         localAdmin.checked = false;
                     }
                 });
+                visibleToClusterAdmin.addEventListener('change', () => {
+                    if (!visibleToClusterAdmin.checked) {
+                        localAdmin.checked = false;
+                    }
+                });
                 localAdmin.addEventListener('change', () => {
                     if (localAdmin.checked) {
                         creation.checked = true;
                         afterCreation.checked = true;
+                        visibleToClusterAdmin.checked = true;
                     }
                 });
             });

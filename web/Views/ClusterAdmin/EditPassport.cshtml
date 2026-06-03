@@ -5,6 +5,7 @@
     var batteryImageOptions = BatteryPassWeb.Services.BatteryImageCatalog.Options;
     var selectedBatteryImageUrl = BatteryPassWeb.Services.BatteryImageCatalog.NormalizeKnownImageUrl(passport.BatteryImageUrl, passport.PassportId);
     var selectedBatteryCategory = BatteryPassWeb.Services.BatteryImageCatalog.CategoryForImageUrl(selectedBatteryImageUrl);
+    bool CanShowField(string fieldKey) => Model.FieldVisibleByKey.Count == 0 || Model.FieldVisibleByKey.TryGetValue(fieldKey, out var visible) && visible;
     bool CanEditField(string fieldKey) => Model.FieldEditableByKey.TryGetValue(fieldKey, out var editable) && editable;
 }
 <main class="bp-page bp-admin-page">
@@ -39,92 +40,113 @@
             @Html.AntiForgeryToken()
             <input type="hidden" name="passportId" value="@passport.PassportId" />
 
-            <label class="bp-field-shell">
-                <span>Cluster</span>
-                <input type="text" value="@passport.ClusterLabel" readonly />
-            </label>
-            <label class="bp-field-shell">
-                <span>Facility ID</span>
-                @if (CanEditField("general.facilityId"))
-                {
-                    <input type="text" name="facilityId" value="@passport.FacilityId" />
-                }
-                else
-                {
-                    <input type="text" value="@passport.FacilityId" readonly />
-                }
-            </label>
-            <label class="bp-field-shell">
-                <span>Battery image</span>
-                @if (CanEditField("general.batteryImageUrl"))
-                {
-                    <select name="batteryImageUrl" data-battery-image-select>
-                        @foreach (var imageOption in batteryImageOptions)
-                        {
-                            if (imageOption.Url.Equals(selectedBatteryImageUrl, StringComparison.OrdinalIgnoreCase))
+            @if (CanShowField("general.clusterId"))
+            {
+                <label class="bp-field-shell">
+                    <span>Cluster</span>
+                    <input type="text" value="@passport.ClusterLabel" readonly />
+                </label>
+            }
+            @if (CanShowField("general.facilityId"))
+            {
+                <label class="bp-field-shell">
+                    <span>Facility ID</span>
+                    @if (CanEditField("general.facilityId"))
+                    {
+                        <input type="text" name="facilityId" value="@passport.FacilityId" />
+                    }
+                    else
+                    {
+                        <input type="text" value="@passport.FacilityId" readonly />
+                    }
+                </label>
+            }
+            @if (CanShowField("general.batteryImageUrl"))
+            {
+                <label class="bp-field-shell">
+                    <span>Battery image</span>
+                    @if (CanEditField("general.batteryImageUrl"))
+                    {
+                        <select name="batteryImageUrl" data-battery-image-select>
+                            @foreach (var imageOption in batteryImageOptions)
                             {
-                                <option value="@imageOption.Url" data-image-category="@imageOption.Category" selected>@imageOption.Label (@imageOption.Category)</option>
+                                if (imageOption.Url.Equals(selectedBatteryImageUrl, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <option value="@imageOption.Url" data-image-category="@imageOption.Category" selected>@imageOption.Label (@imageOption.Category)</option>
+                                }
+                                else
+                                {
+                                    <option value="@imageOption.Url" data-image-category="@imageOption.Category">@imageOption.Label (@imageOption.Category)</option>
+                                }
                             }
-                            else
-                            {
-                                <option value="@imageOption.Url" data-image-category="@imageOption.Category">@imageOption.Label (@imageOption.Category)</option>
-                            }
-                        }
-                    </select>
-                }
-                else
-                {
-                    <input type="text" value="@selectedBatteryImageUrl" readonly />
-                }
-            </label>
-            <label class="bp-field-shell">
-                <span>Category</span>
-                <input type="text" name="category" value="@selectedBatteryCategory" readonly data-image-category />
-            </label>
-            <label class="bp-field-shell">
-                <span>State of charge %</span>
-                @if (CanEditField("performance.stateOfCharge"))
-                {
-                    <input type="number" step="any" min="0" max="100" name="stateOfCharge" value="@passport.Performance.StateOfCharge" />
-                }
-                else
-                {
-                    <input type="number" step="any" value="@passport.Performance.StateOfCharge" readonly />
-                }
-            </label>
-            <label class="bp-field-shell">
-                <span>Remaining capacity %</span>
-                @if (CanEditField("performance.remainingCapacity"))
-                {
-                    <input type="number" step="any" min="0" max="100" name="remainingCapacity" value="@passport.Performance.RemainingCapacity" />
-                }
-                else
-                {
-                    <input type="number" step="any" value="@passport.Performance.RemainingCapacity" readonly />
-                }
-            </label>
-            <label class="bp-field-shell">
-                <span>Remaining energy kWh</span>
-                @if (CanEditField("performance.remainingEnergy"))
-                {
-                    <input type="number" step="any" min="0" name="remainingEnergy" value="@passport.Performance.RemainingEnergy" />
-                }
-                else
-                {
-                    <input type="number" step="any" value="@passport.Performance.RemainingEnergy" readonly />
-                }
-            </label>
-            <label class="bp-field-shell">
-                <span>Full cycles</span>
-                @if (CanEditField("performance.fullCycles"))
-                {
-                    <input type="number" step="1" min="0" name="fullCycles" value="@passport.Performance.Cycles" />
-                }
-                else
-                {
-                    <input type="number" step="1" value="@passport.Performance.Cycles" readonly />
-                }
-            </label>
+                        </select>
+                    }
+                    else
+                    {
+                        <input type="text" value="@selectedBatteryImageUrl" readonly />
+                    }
+                </label>
+                <label class="bp-field-shell">
+                    <span>Category</span>
+                    <input type="text" name="category" value="@selectedBatteryCategory" readonly data-image-category />
+                </label>
+            }
+            @if (CanShowField("performance.stateOfCharge"))
+            {
+                <label class="bp-field-shell">
+                    <span>State of charge %</span>
+                    @if (CanEditField("performance.stateOfCharge"))
+                    {
+                        <input type="number" step="any" min="0" max="100" name="stateOfCharge" value="@passport.Performance.StateOfCharge" />
+                    }
+                    else
+                    {
+                        <input type="number" step="any" value="@passport.Performance.StateOfCharge" readonly />
+                    }
+                </label>
+            }
+            @if (CanShowField("performance.remainingCapacity"))
+            {
+                <label class="bp-field-shell">
+                    <span>Remaining capacity %</span>
+                    @if (CanEditField("performance.remainingCapacity"))
+                    {
+                        <input type="number" step="any" min="0" max="100" name="remainingCapacity" value="@passport.Performance.RemainingCapacity" />
+                    }
+                    else
+                    {
+                        <input type="number" step="any" value="@passport.Performance.RemainingCapacity" readonly />
+                    }
+                </label>
+            }
+            @if (CanShowField("performance.remainingEnergy"))
+            {
+                <label class="bp-field-shell">
+                    <span>Remaining energy kWh</span>
+                    @if (CanEditField("performance.remainingEnergy"))
+                    {
+                        <input type="number" step="any" min="0" name="remainingEnergy" value="@passport.Performance.RemainingEnergy" />
+                    }
+                    else
+                    {
+                        <input type="number" step="any" value="@passport.Performance.RemainingEnergy" readonly />
+                    }
+                </label>
+            }
+            @if (CanShowField("performance.fullCycles"))
+            {
+                <label class="bp-field-shell">
+                    <span>Full cycles</span>
+                    @if (CanEditField("performance.fullCycles"))
+                    {
+                        <input type="number" step="1" min="0" name="fullCycles" value="@passport.Performance.Cycles" />
+                    }
+                    else
+                    {
+                        <input type="number" step="1" value="@passport.Performance.Cycles" readonly />
+                    }
+                </label>
+            }
 
             <div class="bp-local-edit-actions d-flex justify-content-between flex-wrap gap-2 pt-2">
                 <a href="/@Uri.EscapeDataString(passport.PassportId)/summary" class="bp-secondary-button">Open summary report</a>

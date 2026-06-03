@@ -17,6 +17,8 @@ public sealed class EditPassportViewModel
         new Dictionary<string, DataRequirementField>(StringComparer.OrdinalIgnoreCase);
     public IReadOnlyDictionary<string, bool> FieldEditableByKey { get; init; } =
         new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+    public IReadOnlyDictionary<string, bool> FieldVisibleByKey { get; init; } =
+        new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
     public string StatusMessage { get; init; } = string.Empty;
     public string ErrorMessage { get; init; } = string.Empty;
 }

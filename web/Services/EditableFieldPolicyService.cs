@@ -8,7 +8,8 @@ public sealed record EditableFieldPermission(
     string FieldKey,
     bool EditableAtCreation,
     bool EditableAfterCreation,
-    bool EditableByLocalAdmin);
+    bool EditableByLocalAdmin,
+    bool VisibleToClusterAdmin = false);
 
 public sealed class EditableFieldPolicySnapshot
 {
@@ -22,6 +23,7 @@ public sealed class EditableFieldPolicySnapshot
     public int EditableAtCreationCount => PermissionByKey.Values.Count(permission => permission.EditableAtCreation);
     public int EditableAfterCreationCount => PermissionByKey.Values.Count(permission => permission.EditableAfterCreation);
     public int EditableByLocalAdminCount => PermissionByKey.Values.Count(permission => permission.EditableByLocalAdmin);
+    public int VisibleToClusterAdminCount => PermissionByKey.Values.Count(permission => permission.VisibleToClusterAdmin);
 
     public bool IsEditableAtCreation(string fieldKey) =>
         PermissionByKey.TryGetValue(fieldKey, out var permission) && permission.EditableAtCreation;
@@ -31,6 +33,9 @@ public sealed class EditableFieldPolicySnapshot
 
     public bool IsEditableByLocalAdmin(string fieldKey) =>
         PermissionByKey.TryGetValue(fieldKey, out var permission) && permission.EditableByLocalAdmin;
+
+    public bool IsVisibleToClusterAdmin(string fieldKey) =>
+        PermissionByKey.TryGetValue(fieldKey, out var permission) && permission.VisibleToClusterAdmin;
 }
 
 public sealed class EditableFieldPolicyService
@@ -142,6 +147,7 @@ public sealed class EditableFieldPolicyService
         var defaultCreation = ExpandAliases(DefaultEditableAtCreationFieldKeys);
         var defaultAfterCreation = ExpandAliases(DefaultEditableAfterCreationFieldKeys);
         var defaultLocalAdmin = ExpandAliases(DefaultEditableAfterCreationFieldKeys);
+        var defaultVisibleToClusterAdmin = ExpandAliases(DefaultEditableAfterCreationFieldKeys);
         var requested = permissions?
             .GroupBy(permission => permission.FieldKey, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.Last(), StringComparer.OrdinalIgnoreCase)
@@ -154,7 +160,8 @@ public sealed class EditableFieldPolicyService
                 fieldKey,
                 defaultCreation.Contains(fieldKey),
                 defaultAfterCreation.Contains(fieldKey),
-                defaultLocalAdmin.Contains(fieldKey));
+                defaultLocalAdmin.Contains(fieldKey),
+                defaultVisibleToClusterAdmin.Contains(fieldKey));
             if (requested.TryGetValue(fieldKey, out var requestedPermission))
             {
                 basePermission = requestedPermission with { FieldKey = fieldKey };
@@ -248,7 +255,8 @@ public sealed class EditableFieldPolicyService
                     ["fieldKey"] = permission.FieldKey,
                     ["editableAtCreation"] = permission.EditableAtCreation,
                     ["editableAfterCreation"] = permission.EditableAfterCreation,
-                    ["editableByLocalAdmin"] = permission.EditableByLocalAdmin
+                    ["editableByLocalAdmin"] = permission.EditableByLocalAdmin,
+                    ["visibleToClusterAdmin"] = permission.VisibleToClusterAdmin
                 })),
             ["updatedAt"] = policy.UpdatedAt,
             ["updatedBy"] = policy.UpdatedBy
@@ -259,11 +267,19 @@ public sealed class EditableFieldPolicyService
     {
         var permissions = (document.GetValue("permissions", new BsonArray()) as BsonArray ?? new BsonArray())
             .OfType<BsonDocument>()
-            .Select(permission => new EditableFieldPermission(
-                BsonHelpers.GetString(permission, "fieldKey"),
-                permission.GetValue("editableAtCreation", false).ToBoolean(),
-                permission.GetValue("editableAfterCreation", false).ToBoolean(),
-                permission.GetValue("editableByLocalAdmin", false).ToBoolean()))
+            .Select(permission =>
+            {
+                var editableByLocalAdmin = permission.GetValue("editableByLocalAdmin", false).ToBoolean();
+                var visibleToClusterAdmin = permission.Contains("visibleToClusterAdmin")
+                    ? permission.GetValue("visibleToClusterAdmin", false).ToBoolean()
+                    : editableByLocalAdmin;
+                return new EditableFieldPermission(
+                    BsonHelpers.GetString(permission, "fieldKey"),
+                    permission.GetValue("editableAtCreation", false).ToBoolean(),
+                    permission.GetValue("editableAfterCreation", false).ToBoolean(),
+                    editableByLocalAdmin,
+                    visibleToClusterAdmin);
+            })
             .Where(permission => !string.IsNullOrWhiteSpace(permission.FieldKey))
             .ToList();
 
@@ -351,10 +367,12 @@ public sealed class EditableFieldPolicyService
             || permission.EditableAfterCreation
             || permission.EditableByLocalAdmin;
         var editableAfterCreation = permission.EditableAfterCreation || permission.EditableByLocalAdmin;
+        var visibleToClusterAdmin = permission.VisibleToClusterAdmin || permission.EditableByLocalAdmin;
         return permission with
         {
             EditableAtCreation = editableAtCreation,
-            EditableAfterCreation = editableAfterCreation
+            EditableAfterCreation = editableAfterCreation,
+            VisibleToClusterAdmin = visibleToClusterAdmin
         };
     }
 

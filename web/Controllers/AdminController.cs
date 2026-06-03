@@ -1496,16 +1496,19 @@ public class AdminController : Controller
     {
         var creationKeys = FormKeys("editableAtCreationFieldKeys");
         var afterCreationKeys = FormKeys("editableAfterCreationFieldKeys");
+        var visibleKeys = FormKeys("visibleToClusterAdminFieldKeys");
         var localAdminKeys = FormKeys("editableByLocalAdminFieldKeys");
         var allKeys = creationKeys
             .Concat(afterCreationKeys)
+            .Concat(visibleKeys)
             .Concat(localAdminKeys)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Select(fieldKey => new EditableFieldPermission(
                 fieldKey,
                 creationKeys.Contains(fieldKey),
                 afterCreationKeys.Contains(fieldKey),
-                localAdminKeys.Contains(fieldKey)))
+                localAdminKeys.Contains(fieldKey),
+                visibleKeys.Contains(fieldKey)))
             .ToList();
 
         await _editableFieldPolicyService.SavePolicyAsync(allKeys, CurrentActor(), cancellationToken);
