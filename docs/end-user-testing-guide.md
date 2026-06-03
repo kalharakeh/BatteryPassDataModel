@@ -411,7 +411,7 @@ After reset, open `/help` and copy the current generated sample Battery ID and l
 
 - Read token: `SAMPLEBATTERYPASSPORTREADTOKN001`
 - Read-write token: `SAMPLEBATTERYPASSPORTWRITETOK001`
-- Validate/sign/publish token: `SAMPLEBATTERYPASSPORTSIGNTOK001`
+- Passport Lifecycle token: `SAMPLEBATTERYPASSPORTSIGNTOK001`
 
 The `/help` API help page uses a dense endpoint table. Open an endpoint detail with the row control; the detail panel appears inline under the row being inspected while the request workbench stays available for live calls.
 

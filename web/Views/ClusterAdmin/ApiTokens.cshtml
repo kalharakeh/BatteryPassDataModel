@@ -19,9 +19,9 @@
     string AccessLabel(BatteryPassWeb.Models.ViewModels.ApiTokenViewModel token)
     {
         return token.AccessMode.Equals("readWriteSign", StringComparison.OrdinalIgnoreCase)
-            ? "Read + write + passport lifecycle"
+            ? "Full access"
             : token.AccessMode.Equals("sign", StringComparison.OrdinalIgnoreCase)
-                ? "Create, validate, sign and publish passport"
+                ? "Passport Lifecycle"
                 : token.AccessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase)
                     ? "Read + write"
                     : "Read";
@@ -92,8 +92,8 @@
                         <select name="accessMode">
                             <option value="read">Read</option>
                             <option value="readWrite">Read + write</option>
-                            <option value="readWriteSign">Read + write + passport lifecycle</option>
-                            <option value="sign">Create, validate, sign and publish passport</option>
+                            <option value="readWriteSign">Full access</option>
+                            <option value="sign">Passport Lifecycle</option>
                         </select>
                     </span>
                 </label>

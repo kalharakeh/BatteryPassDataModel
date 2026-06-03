@@ -46,7 +46,7 @@ public sealed class ExternalApiBatteryIdTests
     }
 
     [Fact]
-    public void ExternalApi_ShouldListBatteryPassportsAndUseCreateValidateSignPublishLabel()
+    public void ExternalApi_ShouldListBatteryPassportsAndUsePassportLifecycleLabel()
     {
         var controller = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
         var help = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
@@ -54,8 +54,10 @@ public sealed class ExternalApiBatteryIdTests
 
         Assert.Contains("[HttpGet(\"batteries/{batteryId}/passports\")]", controller);
         Assert.Contains("ListBatteryPassports", controller);
-        Assert.Contains("create, validate, sign and publish passport", help);
-        Assert.Contains("Sample token (create, validate, sign and publish passport)", seed);
+        Assert.Contains("Passport Lifecycle", help);
+        Assert.DoesNotContain("create, validate, sign and publish passport", help);
+        Assert.Contains("Sample token (Passport Lifecycle)", seed);
+        Assert.DoesNotContain("Sample token (create, validate, sign and publish passport)", seed);
     }
 
     private static string RepoFile(params string[] parts)

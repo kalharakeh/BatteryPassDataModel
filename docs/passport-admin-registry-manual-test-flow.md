@@ -380,7 +380,7 @@ Covers original point: 20.
 2. Open the endpoint/template dropdown.
 3. Confirm `/api/external/v1/batteries/{batteryId}/passports` is present.
 4. Select it and run the sample request with the sample Battery ID.
-5. Confirm the sign workflow token label says **create, validate, sign and publish passport**.
+5. Confirm the sign workflow token label says **Passport Lifecycle**.
 
 Expected result: the passports endpoint is visible and the token label accurately describes the full passport lifecycle capability.
 
@@ -456,7 +456,7 @@ Covers original point: 28. Covers follow-up exact model-scope fix.
 ## 27. Create, Validate, Sign, And Publish Workflow
 
 1. Use a battery that needs a new passport.
-2. Use the UI or API token with **create, validate, sign and publish passport** capability.
+2. Use the UI or API token with **Passport Lifecycle** capability.
 3. Create a new passport snapshot.
 4. Validate it.
 5. Sign it.
@@ -464,7 +464,7 @@ Covers original point: 28. Covers follow-up exact model-scope fix.
 7. Confirm the latest passport status becomes Published.
 8. Confirm the battery table no longer says **New passport needed** if current battery data matches the latest published passport.
 
-Expected result: read/write token is not enough for the full trust workflow; the create/validate/sign/publish capability can complete the lifecycle for allowed batteries.
+Expected result: read/write token is not enough for the full trust workflow; the Passport Lifecycle capability can complete the lifecycle for allowed batteries.
 
 Covers original points: 24, 31.
 

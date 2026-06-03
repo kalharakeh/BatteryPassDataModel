@@ -33,7 +33,7 @@
                 <code>@Model.SampleReadWriteToken</code>
             </div>
             <div>
-                <p class="mb-1 text-secondary small">Sample create, validate, sign and publish passport token</p>
+                <p class="mb-1 text-secondary small">Sample Passport Lifecycle token</p>
                 <code>@Model.SampleLifecycleToken</code>
             </div>
         </div>
@@ -196,7 +196,7 @@
                         <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">POST</span></td>
                             <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/passports</code><small>Create a passport snapshot</small></span></td>
-                            <td><span class="bp-help-access-pill">Create, validate, sign and publish passport</span></td>
+                            <td><span class="bp-help-access-pill">Passport Lifecycle</span></td>
                             <td>Create the next passport revision for a Battery ID.</td>
                             <td class="bp-action-cell">
                                 <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-passports" aria-expanded="false" aria-controls="api-detail-passports" aria-label="Show passport creation endpoint details" title="Show passport creation endpoint details" data-tooltip="Details">
@@ -218,7 +218,7 @@
                         <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">POST</span></td>
                             <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/passports/{passportId}/validate</code><small>Validation gate</small></span></td>
-                            <td><span class="bp-help-access-pill">Create, validate, sign and publish passport</span></td>
+                            <td><span class="bp-help-access-pill">Passport Lifecycle</span></td>
                             <td>Run trust validation before signing.</td>
                             <td class="bp-action-cell">
                                 <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-validate" aria-expanded="false" aria-controls="api-detail-validate" aria-label="Show validate endpoint details" title="Show validate endpoint details" data-tooltip="Details">
@@ -229,7 +229,7 @@
                         <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">POST</span></td>
                             <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/passports/{passportId}/sign</code><small>Proof creation</small></span></td>
-                            <td><span class="bp-help-access-pill">Create, validate, sign and publish passport</span></td>
+                            <td><span class="bp-help-access-pill">Passport Lifecycle</span></td>
                             <td>Create the signed proof for the current passport core.</td>
                             <td class="bp-action-cell">
                                 <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-sign" aria-expanded="false" aria-controls="api-detail-sign" aria-label="Show sign endpoint details" title="Show sign endpoint details" data-tooltip="Details">
@@ -240,7 +240,7 @@
                         <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">POST</span></td>
                             <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/passports/{passportId}/publish</code><small>Public registry gate</small></span></td>
-                            <td><span class="bp-help-access-pill">Create, validate, sign and publish passport</span></td>
+                            <td><span class="bp-help-access-pill">Passport Lifecycle</span></td>
                             <td>Publish only after validation and signing are current.</td>
                             <td class="bp-action-cell">
                                 <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-publish" aria-expanded="false" aria-controls="api-detail-publish" aria-label="Show publish endpoint details" title="Show publish endpoint details" data-tooltip="Details">
@@ -399,7 +399,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 </article>
 
                 <article id="api-detail-passports" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Passport snapshot</span><h3>Create a new passport snapshot.</h3><p>Create a new passport snapshot for the Battery ID after current battery data differs from the latest passport. This requires the create, validate, sign and publish passport token. The response returns the new Passport ID; use that Passport ID for validate, sign, and publish.</p></div>
+                    <div><span class="bp-summary-title">Passport snapshot</span><h3>Create a new passport snapshot.</h3><p>Create a new passport snapshot for the Battery ID after current battery data differs from the latest passport. This requires the Passport Lifecycle token. The response returns the new Passport ID; use that Passport ID for validate, sign, and publish.</p></div>
                     <pre class="bp-help-pre"><code>POST @Model.BasePath/batteries/@Model.SampleBatteryId/passports</code></pre>
                 </article>
 
@@ -409,7 +409,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 </article>
 
                 <article id="api-detail-validate" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Validate</span><h3>Validate with the create, validate, sign and publish passport token.</h3><p>These tokens can create, validate, sign and publish passports only for their scoped clusters. If you just created a passport, replace the sample Passport ID with the Passport ID returned by create.</p></div>
+                    <div><span class="bp-summary-title">Validate</span><h3>Validate with the Passport Lifecycle token.</h3><p>Passport Lifecycle tokens can run trust actions only for their scoped clusters. If you just created a passport, replace the sample Passport ID with the Passport ID returned by create.</p></div>
                     <pre class="bp-help-pre"><code>POST @Model.BasePath/passports/@Model.SamplePassportId/validate</code></pre>
                 </article>
 
@@ -419,7 +419,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 </article>
 
                 <article id="api-detail-publish" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Publish</span><h3>Publish after validation and signing.</h3><p>Publish with the create, validate, sign and publish passport token after validation and signing are current.</p></div>
+                    <div><span class="bp-summary-title">Publish</span><h3>Publish after validation and signing.</h3><p>Publish with the Passport Lifecycle token after validation and signing are current.</p></div>
                     <pre class="bp-help-pre"><code>POST @Model.BasePath/passports/@Model.SamplePassportId/publish</code></pre>
                 </article>
                                 </div>
@@ -482,7 +482,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                     <select id="tester-token-preset">
                         <option value="sample-read">Sample read token</option>
                         <option value="sample-read-write">Sample read-write token</option>
-                        <option value="sample-lifecycle">Sample create, validate, sign and publish passport token</option>
+                        <option value="sample-lifecycle">Sample Passport Lifecycle token</option>
                         <option value="custom">Custom token</option>
                     </select>
                 </label>

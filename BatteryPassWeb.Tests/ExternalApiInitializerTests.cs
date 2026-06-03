@@ -86,7 +86,8 @@ public sealed class ExternalApiInitializerTests
         Assert.Contains("ExternalApiInitializer.SampleApiClusterId", helpController);
         Assert.Contains("SampleLifecycleTokenId", helpController);
         Assert.Contains("SampleLifecycleToken", helpModel);
-        Assert.Contains("Sample create, validate, sign and publish passport token", helpView);
+        Assert.Contains("Sample Passport Lifecycle token", helpView);
+        Assert.DoesNotContain("Sample create, validate, sign and publish passport token", helpView);
         Assert.Contains("const sampleLifecycleToken", helpView);
         Assert.Contains("'sample-lifecycle': sampleLifecycleToken", helpView);
         Assert.Contains("tokenPreset: 'sample-lifecycle'", helpView);

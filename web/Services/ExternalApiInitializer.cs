@@ -295,14 +295,14 @@ public sealed class ExternalApiInitializer
         await EnsureFixedSampleTokenAsync(
             SampleSignTokenId,
             SampleSignTokenValue,
-            "Sample token (create, validate, sign and publish passport)",
+            "Sample token (Passport Lifecycle)",
             ExternalTokenAccessMode.Sign,
             cancellationToken);
 
         await EnsureFixedSampleTokenAsync(
             SampleLifecycleTokenId,
             SampleLifecycleTokenValue,
-            "Sample token (read, write and passport lifecycle)",
+            "Sample token (Full access)",
             ExternalTokenAccessMode.Lifecycle,
             cancellationToken);
     }

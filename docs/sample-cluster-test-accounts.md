@@ -60,7 +60,7 @@ Use Token Value in the `Authorization` header. The Token ID shown in API Token M
 | --- | --- |
 | Read | `SAMPLEBATTERYPASSPORTREADTOKN001` |
 | Read-write | `SAMPLEBATTERYPASSPORTWRITETOK001` |
-| Validate/sign/publish | `SAMPLEBATTERYPASSPORTSIGNTOK001` |
+| Passport Lifecycle | `SAMPLEBATTERYPASSPORTSIGNTOK001` |
 
 ## Compatibility Search Alias
 

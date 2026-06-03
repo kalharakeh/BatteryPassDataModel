@@ -835,7 +835,7 @@ public sealed class ProductTemplateService
         await _externalApiRepository.UpsertFixedTokenAsync(
             ExternalApiInitializer.SampleSignTokenId,
             ExternalApiInitializer.SampleSignTokenValue,
-            "Sample token (create, validate, sign and publish passport)",
+            "Sample token (Passport Lifecycle)",
             ExternalTokenAccessMode.Sign,
             [ExternalApiInitializer.SampleApiClusterId],
             allowUnassigned: false,
@@ -847,7 +847,7 @@ public sealed class ProductTemplateService
         await _externalApiRepository.UpsertFixedTokenAsync(
             ExternalApiInitializer.SampleLifecycleTokenId,
             ExternalApiInitializer.SampleLifecycleTokenValue,
-            "Sample token (read, write and passport lifecycle)",
+            "Sample token (Full access)",
             ExternalTokenAccessMode.Lifecycle,
             [ExternalApiInitializer.SampleApiClusterId],
             allowUnassigned: false,

@@ -198,7 +198,10 @@ public sealed class BatteryFamilyAccessApiRevisedTests
         Assert.Contains("ValidateClusterTokenScopeAsync", controller);
         Assert.Contains("CanAdministerClusterAsync", controller);
         Assert.Contains("/cluster-admin/api-tokens/create", view);
-        Assert.Contains("Create, validate, sign and publish passport", view);
+        Assert.Contains("Full access", view);
+        Assert.DoesNotContain("Read + write + Passport Lifecycle", view);
+        Assert.Contains("Passport Lifecycle", view);
+        Assert.DoesNotContain("Create, validate, sign and publish passport", view);
         Assert.Contains("/cluster-admin/api-tokens/delete", view);
     }
 
