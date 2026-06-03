@@ -29,6 +29,23 @@ public sealed class AdminFeedbackImplementationTests
     }
 
     [Fact]
+    public void CreateUserDropdown_ShouldIncludeGlobalReportRoles()
+    {
+        var clustersView = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var createFormStart = clustersView.IndexOf("action=\"/admin/clusters/save-user\" class=\"bp-user-create-strip\"", StringComparison.Ordinal);
+        Assert.True(createFormStart >= 0);
+        var createFormEnd = clustersView.IndexOf("</form>", createFormStart, StringComparison.Ordinal);
+        Assert.True(createFormEnd > createFormStart);
+        var createForm = clustersView[createFormStart..createFormEnd];
+
+        Assert.Contains("globalAccessOptions", createForm);
+        Assert.Contains("[\"notifiedBody\"]", clustersView);
+        Assert.Contains("[\"marketSurveillanceAuthority\"]", clustersView);
+        Assert.Contains("[\"commission\"]", clustersView);
+        Assert.Contains("[\"legitimateInterest\"]", clustersView);
+    }
+
+    [Fact]
     public void EditableFields_ShouldSeparateClusterAdminVisibilityFromEditability()
     {
         var policy = File.ReadAllText(RepoFile("web", "Services", "EditableFieldPolicyService.cs"));
