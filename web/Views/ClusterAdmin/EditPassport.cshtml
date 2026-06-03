@@ -1,3 +1,4 @@
+@using System.Text.Json
 @model BatteryPassWeb.Models.ViewModels.EditPassportViewModel
 @{
     ViewData["Title"] = "Edit local battery fields";
@@ -5,6 +6,11 @@
     var batteryImageOptions = BatteryPassWeb.Services.BatteryImageCatalog.Options;
     var selectedBatteryImageUrl = BatteryPassWeb.Services.BatteryImageCatalog.NormalizeKnownImageUrl(passport.BatteryImageUrl, passport.PassportId);
     var selectedBatteryCategory = BatteryPassWeb.Services.BatteryImageCatalog.CategoryForImageUrl(selectedBatteryImageUrl);
+    var productTemplateCatalogJson = JsonSerializer.Serialize(Model.ProductTemplateCatalog);
+    var selectedCatalogProduct = Model.ProductTemplateCatalog.FirstOrDefault(product => product.ProductId.Equals(Model.SelectedProductId, StringComparison.OrdinalIgnoreCase));
+    var selectedProductVersions = selectedCatalogProduct?.ProductVersions ?? Array.Empty<BatteryPassWeb.Models.ViewModels.ProductVersionEditViewModel>();
+    var selectedSoftwareVersions = selectedProductVersions.FirstOrDefault(version => version.Version.Equals(Model.SelectedProductVersion, StringComparison.OrdinalIgnoreCase))?.SoftwareVersions
+        ?? Array.Empty<BatteryPassWeb.Models.ViewModels.ProductSoftwareVersionEditViewModel>();
     bool CanShowField(string fieldKey) => Model.FieldVisibleByKey.Count == 0 || Model.FieldVisibleByKey.TryGetValue(fieldKey, out var visible) && visible;
     bool CanEditField(string fieldKey) => Model.FieldEditableByKey.TryGetValue(fieldKey, out var editable) && editable;
 }
@@ -35,8 +41,10 @@
         <div class="alert alert-danger mt-2 mb-0">@Model.ErrorMessage</div>
     }
 
+    <script type="application/json" data-product-template-catalog>@Html.Raw(productTemplateCatalogJson)</script>
+
     <section class="bp-card">
-        <form method="post" action="/cluster-admin/passports/save" class="bp-local-edit-grid" data-local-battery-form>
+        <form method="post" action="/cluster-admin/passports/save" class="bp-local-edit-grid" data-local-battery-form data-selected-product-id="@Model.SelectedProductId" data-selected-product-version="@Model.SelectedProductVersion">
             @Html.AntiForgeryToken()
             <input type="hidden" name="passportId" value="@passport.PassportId" />
 
@@ -53,7 +61,24 @@
                     <span>Battery Model</span>
                     @if (CanEditField("general.batteryModel"))
                     {
-                        <input type="text" name="batteryModel" value="@passport.BatteryModel" />
+                        <select name="batteryModel" data-product-version-select data-product-template-enum-field="general.batteryModel">
+                            @foreach (var productVersion in selectedProductVersions)
+                            {
+                                if (productVersion.Version.Equals(Model.SelectedProductVersion, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <option value="@productVersion.Version" selected>@productVersion.Version</option>
+                                }
+                                else
+                                {
+                                    <option value="@productVersion.Version">@productVersion.Version</option>
+                                }
+                            }
+                            @if (!string.IsNullOrWhiteSpace(passport.BatteryModel)
+                                && selectedProductVersions.All(productVersion => !productVersion.Version.Equals(passport.BatteryModel, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                <option value="@passport.BatteryModel" selected>@passport.BatteryModel</option>
+                            }
+                        </select>
                     }
                     else
                     {
@@ -67,7 +92,24 @@
                     <span>Software version</span>
                     @if (CanEditField("general.softwareVersion"))
                     {
-                        <input type="text" name="softwareVersion" value="@passport.SoftwareVersion" />
+                        <select name="softwareVersion" data-product-software-version-select data-product-template-enum-field="general.softwareVersion">
+                            @foreach (var softwareVersion in selectedSoftwareVersions)
+                            {
+                                if (softwareVersion.SoftwareVersion.Equals(passport.SoftwareVersion, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <option value="@softwareVersion.SoftwareVersion" data-release-date="@softwareVersion.SoftwareReleaseDate" data-latest-update="@softwareVersion.SoftwareLatestUpdate" selected>@softwareVersion.SoftwareVersion</option>
+                                }
+                                else
+                                {
+                                    <option value="@softwareVersion.SoftwareVersion" data-release-date="@softwareVersion.SoftwareReleaseDate" data-latest-update="@softwareVersion.SoftwareLatestUpdate">@softwareVersion.SoftwareVersion</option>
+                                }
+                            }
+                            @if (!string.IsNullOrWhiteSpace(passport.SoftwareVersion)
+                                && selectedSoftwareVersions.All(softwareVersion => !softwareVersion.SoftwareVersion.Equals(passport.SoftwareVersion, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                <option value="@passport.SoftwareVersion" selected>@passport.SoftwareVersion</option>
+                            }
+                        </select>
                     }
                     else
                     {
@@ -213,6 +255,90 @@
             if (!form) {
                 return;
             }
+
+            const productTemplateCatalogElement = document.querySelector('[data-product-template-catalog]');
+            const productVersionSelect = form.querySelector('[data-product-version-select]');
+            const softwareVersionSelect = form.querySelector('[data-product-software-version-select]');
+            const selectedProductId = form.dataset.selectedProductId || '';
+            const selectedProductVersion = form.dataset.selectedProductVersion || '';
+            const productTemplateCatalog = parseProductTemplateCatalog(productTemplateCatalogElement?.textContent || '[]');
+
+            function parseProductTemplateCatalog(rawJson) {
+                try {
+                    const parsed = JSON.parse(rawJson);
+                    return Array.isArray(parsed) ? parsed : [];
+                } catch {
+                    return [];
+                }
+            }
+
+            function selectedProduct() {
+                return productTemplateCatalog.find(product => (product.ProductId || '').toLowerCase() === selectedProductId.toLowerCase())
+                    || productTemplateCatalog[0]
+                    || null;
+            }
+
+            function findProductVersion(product, productVersion) {
+                const versions = Array.isArray(product?.ProductVersions) ? product.ProductVersions : [];
+                return versions.find(version => (version.Version || '').toLowerCase() === productVersion.toLowerCase())
+                    || versions[0]
+                    || null;
+            }
+
+            function updateProductVersionOptions() {
+                if (!productVersionSelect) {
+                    return;
+                }
+
+                const product = selectedProduct();
+                const versions = Array.isArray(product?.ProductVersions) ? product.ProductVersions : [];
+                const previousValue = productVersionSelect.value || selectedProductVersion;
+                productVersionSelect.innerHTML = '';
+                versions.forEach((productVersion) => {
+                    const option = document.createElement('option');
+                    option.value = productVersion.Version || '';
+                    option.textContent = productVersion.Version || '';
+                    productVersionSelect.appendChild(option);
+                });
+                if (versions.some(version => version.Version === previousValue)) {
+                    productVersionSelect.value = previousValue;
+                } else if (versions.length > 0) {
+                    productVersionSelect.value = versions[0].Version || '';
+                }
+            }
+
+            function updateSoftwareVersionOptions() {
+                if (!softwareVersionSelect) {
+                    return;
+                }
+
+                const product = selectedProduct();
+                const productVersion = findProductVersion(product, productVersionSelect?.value || selectedProductVersion);
+                const softwareVersions = Array.isArray(productVersion?.SoftwareVersions) && productVersion.SoftwareVersions.length > 0
+                    ? productVersion.SoftwareVersions
+                    : productVersion?.SoftwareVersion
+                        ? [{ SoftwareVersion: productVersion.SoftwareVersion, SoftwareReleaseDate: productVersion.SoftwareReleaseDate, SoftwareLatestUpdate: productVersion.SoftwareLatestUpdate }]
+                        : [];
+                const previousValue = softwareVersionSelect.value;
+                softwareVersionSelect.innerHTML = '';
+                softwareVersions.forEach((softwareVersion) => {
+                    const option = document.createElement('option');
+                    option.value = softwareVersion.SoftwareVersion || '';
+                    option.textContent = softwareVersion.SoftwareVersion || '';
+                    option.dataset.releaseDate = softwareVersion.SoftwareReleaseDate || '';
+                    option.dataset.latestUpdate = softwareVersion.SoftwareLatestUpdate || '';
+                    softwareVersionSelect.appendChild(option);
+                });
+                if (softwareVersions.some(version => version.SoftwareVersion === previousValue)) {
+                    softwareVersionSelect.value = previousValue;
+                } else if (softwareVersions.length > 0) {
+                    softwareVersionSelect.value = softwareVersions[0].SoftwareVersion || '';
+                }
+            }
+
+            updateProductVersionOptions();
+            updateSoftwareVersionOptions();
+            productVersionSelect?.addEventListener('change', updateSoftwareVersionOptions);
 
             const batteryImageSelect = form.querySelector('[data-battery-image-select]');
             const categoryInput = form.querySelector('[data-image-category]');

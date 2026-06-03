@@ -38,6 +38,7 @@ public class ClusterAdminController : Controller
     private readonly PassportViewModelFactory _viewModelFactory;
     private readonly AccessControlService _accessControlService;
     private readonly ExternalApiRepository _externalApiRepository;
+    private readonly ProductTemplateService _productTemplateService;
     private readonly EditableFieldPolicyService _editableFieldPolicyService;
     private readonly LocalAdminEditableFieldPolicyService _localAdminEditableFieldPolicyService;
     private readonly PassportTrustWorkflowService _passportTrustWorkflowService;
@@ -53,6 +54,7 @@ public class ClusterAdminController : Controller
         PassportViewModelFactory viewModelFactory,
         AccessControlService accessControlService,
         ExternalApiRepository externalApiRepository,
+        ProductTemplateService productTemplateService,
         EditableFieldPolicyService editableFieldPolicyService,
         LocalAdminEditableFieldPolicyService localAdminEditableFieldPolicyService,
         PassportTrustWorkflowService passportTrustWorkflowService)
@@ -67,6 +69,7 @@ public class ClusterAdminController : Controller
         _viewModelFactory = viewModelFactory;
         _accessControlService = accessControlService;
         _externalApiRepository = externalApiRepository;
+        _productTemplateService = productTemplateService;
         _editableFieldPolicyService = editableFieldPolicyService;
         _localAdminEditableFieldPolicyService = localAdminEditableFieldPolicyService;
         _passportTrustWorkflowService = passportTrustWorkflowService;
@@ -203,10 +206,31 @@ public class ClusterAdminController : Controller
         var editablePolicy = await _editableFieldPolicyService.GetPolicyAsync(cancellationToken);
         var battery = await _batteryRepository.GetByBatteryIdAsync(BsonHelpers.GetString(document, "batteryId"), cancellationToken);
         var editDocument = BuildClusterAdminEditDocument(document, battery);
+        IReadOnlyList<BatteryProductTemplate> products = await _productTemplateService.ListProductsAsync(cancellationToken);
+        if (products.Count == 0)
+        {
+            products = BatteryProductTemplateCatalog.DefaultProducts;
+        }
+
+        var selectedProductId = FirstNonEmpty(
+            BsonHelpers.GetString(editDocument, "app", "product", "productId"),
+            BsonHelpers.GetString(editDocument, "identity", "productId"),
+            BatteryProductTemplateCatalog.DefaultProductId);
+        var selectedProduct = products.FirstOrDefault(product => product.ProductId.Equals(selectedProductId, StringComparison.OrdinalIgnoreCase))
+            ?? BatteryProductTemplateCatalog.DefaultProduct;
+        var selectedProductVersion = FirstNonEmpty(
+            BsonHelpers.GetString(editDocument, "app", "product", "productVersion"),
+            BsonHelpers.GetString(editDocument, "identity", "batteryModel"),
+            selectedProduct.LatestProductVersion.Version);
+        var selectedVersion = selectedProduct.ProductVersions.FirstOrDefault(version => version.Version.Equals(selectedProductVersion, StringComparison.OrdinalIgnoreCase))
+            ?? selectedProduct.LatestProductVersion;
         var model = new Models.ViewModels.EditPassportViewModel
         {
             Passport = _viewModelFactory.Create(editDocument, clusterNamesById),
             Mode = "cluster-edit",
+            ProductTemplateCatalog = BuildProductTemplateFormCatalog(products),
+            SelectedProductId = selectedProduct.ProductId,
+            SelectedProductVersion = selectedVersion.Version,
             FieldEditableByKey = BuildEditableFieldDictionary(editablePolicy),
             FieldVisibleByKey = BuildVisibleFieldDictionary(editablePolicy),
             StatusMessage = status switch
@@ -844,6 +868,48 @@ public class ClusterAdminController : Controller
                 group => group.Key,
                 group => group.Last().EditableByLocalAdmin,
                 StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static IReadOnlyList<ProductTemplateFormCatalogItemViewModel> BuildProductTemplateFormCatalog(IEnumerable<BatteryProductTemplate> products)
+    {
+        return products
+            .Select(product => new ProductTemplateFormCatalogItemViewModel
+            {
+                ProductId = product.ProductId,
+                ProductName = product.ProductName,
+                ProductVersions = BuildProductVersionEditModels(product.ProductVersions.Count == 0
+                    ? [product.LatestProductVersion]
+                    : product.ProductVersions),
+                LatestProductVersion = product.LatestProductVersion.Version
+            })
+            .ToList();
+    }
+
+    private static IReadOnlyList<ProductVersionEditViewModel> BuildProductVersionEditModels(IEnumerable<BatteryProductVersion> productVersions)
+    {
+        return productVersions
+            .OrderBy(version => version.Version, StringComparer.OrdinalIgnoreCase)
+            .Reverse()
+            .Select(version =>
+            {
+                var highestSoftwareVersion = version.HighestSoftwareVersion;
+                return new ProductVersionEditViewModel
+                {
+                    Version = version.Version,
+                    SoftwareVersion = highestSoftwareVersion.SoftwareVersion,
+                    SoftwareReleaseDate = highestSoftwareVersion.SoftwareReleaseDate,
+                    SoftwareLatestUpdate = highestSoftwareVersion.SoftwareLatestUpdate,
+                    SoftwareVersions = version.SoftwareVersions
+                        .Select(softwareVersion => new ProductSoftwareVersionEditViewModel
+                        {
+                            SoftwareVersion = softwareVersion.SoftwareVersion,
+                            SoftwareReleaseDate = softwareVersion.SoftwareReleaseDate,
+                            SoftwareLatestUpdate = softwareVersion.SoftwareLatestUpdate
+                        })
+                        .ToList()
+                };
+            })
+            .ToList();
     }
 
     private static IFormCollection ApplyLocalBatteryEditableFormValues(

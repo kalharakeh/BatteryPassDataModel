@@ -99,6 +99,27 @@ public sealed class AdminFeedbackImplementationTests
     }
 
     [Fact]
+    public void ClusterAdminProductTemplateEnumFields_ShouldRenderAsDropdowns()
+    {
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
+        var editView = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "EditPassport.cshtml"));
+
+        Assert.Contains("ProductTemplateService", controller);
+        Assert.Contains("_productTemplateService.ListProductsAsync", controller);
+        Assert.Contains("ProductTemplateCatalog = BuildProductTemplateFormCatalog(products)", controller);
+        Assert.Contains("SelectedProductId = selectedProduct.ProductId", controller);
+        Assert.Contains("SelectedProductVersion = selectedVersion.Version", controller);
+        Assert.Contains("data-product-template-catalog", editView);
+        Assert.Contains("data-selected-product-version", editView);
+        Assert.Contains("name=\"batteryModel\" data-product-version-select", editView);
+        Assert.Contains("name=\"softwareVersion\" data-product-software-version-select", editView);
+        Assert.Contains("function updateProductVersionOptions", editView);
+        Assert.Contains("function updateSoftwareVersionOptions", editView);
+        Assert.DoesNotContain("<input type=\"text\" name=\"batteryModel\"", editView);
+        Assert.DoesNotContain("<input type=\"text\" name=\"softwareVersion\"", editView);
+    }
+
+    [Fact]
     public void PassportCreation_ShouldBeGuardedWhenNoNewPassportIsNeeded()
     {
         var adminController = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
