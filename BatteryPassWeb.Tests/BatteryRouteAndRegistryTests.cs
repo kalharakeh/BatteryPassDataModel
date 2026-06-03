@@ -56,7 +56,7 @@ public sealed class BatteryRouteAndRegistryTests
     }
 
     [Fact]
-    public void RegistrySearch_ShouldSupportPassportBatterySerialAndGlobalAdminClusterSearch()
+    public void RegistrySearch_ShouldSupportPassportBatterySerialAndAllClusterReadSearch()
     {
         var controller = File.ReadAllText(RepoFile("web", "Services", "BatteryTableService.cs"));
         var repository = File.ReadAllText(RepoFile("web", "Services", "BatteryRepository.cs"));
@@ -64,7 +64,8 @@ public sealed class BatteryRouteAndRegistryTests
 
         Assert.Contains("ResolveSearchAsync", controller);
         Assert.Contains("SearchByClusterAsync", repository);
-        Assert.Contains("Cluster search requires global admin access.", controller);
+        Assert.Contains("HasAllClusterReadScope", controller);
+        Assert.Contains("Cluster search is not available for this role.", controller);
         Assert.Contains("AccessMessage", view);
     }
 

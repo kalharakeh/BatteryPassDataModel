@@ -984,7 +984,7 @@ public class AdminController : Controller
         var clusterNamesById = clusterViewModels.ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
         var needsBatteries = selectedTab == "batteries";
         var needsPassports = selectedTab is "battery" or "api-token-management";
-        var needsUsers = selectedTab == "users";
+        var needsUsers = selectedTab is "users" or "clusters";
         var needsCredentials = selectedTab == "api-token-management";
         var needsProducts = selectedTab == "products";
         var needsLocalEditablePolicy = selectedTab == "local-editable-fields";
@@ -1764,6 +1764,10 @@ public class AdminController : Controller
         return role.Trim() switch
         {
             AccessControlService.RoleAdmin => AccessControlService.RoleAdmin,
+            AccessControlService.RoleNotifiedBody => AccessControlService.RoleNotifiedBody,
+            AccessControlService.RoleMarketSurveillanceAuthority => AccessControlService.RoleMarketSurveillanceAuthority,
+            AccessControlService.RoleCommission => AccessControlService.RoleCommission,
+            AccessControlService.RoleLegitimateInterest => AccessControlService.RoleLegitimateInterest,
             _ => AccessControlService.RoleNormalUser
         };
     }

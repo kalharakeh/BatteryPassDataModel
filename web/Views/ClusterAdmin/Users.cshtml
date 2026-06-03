@@ -7,13 +7,16 @@
     var clusterMembershipRoleOptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         ["clusterAdmin"] = "Cluster Admin",
-        ["member"] = "Normal User",
-        ["notifiedBody"] = "Notified Body",
-        ["marketSurveillanceAuthority"] = "Market Surveillance Authorities",
-        ["commission"] = "Commission",
-        ["legitimateInterest"] = "Person with Legitimate Interest"
+        ["member"] = "Normal User"
     };
-    string MembershipRoleLabel(string role) => clusterMembershipRoleOptions.TryGetValue(role, out var label) ? label : "Normal User";
+    string MembershipRoleLabel(string role) => role switch
+    {
+        "notifiedBody" => "Notified Body",
+        "marketSurveillanceAuthority" => "Market Surveillance Authorities",
+        "commission" => "Commission",
+        "legitimateInterest" => "Person with Legitimate Interest",
+        _ => clusterMembershipRoleOptions.TryGetValue(role, out var label) ? label : "Normal User"
+    };
     string MembershipCountLabel(int count) => $"{count} {(count == 1 ? "membership" : "memberships")}";
 }
 <main class="bp-page bp-admin-page">

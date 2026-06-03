@@ -6996,6 +6996,62 @@ a:hover {
   font-weight: 800;
 }
 
+.bp-cluster-user-toggle {
+  inline-size: auto;
+  min-inline-size: 0;
+  padding: 0 8px;
+  gap: 6px;
+}
+
+.bp-cluster-user-toggle[aria-expanded="true"] .bp-action-icon {
+  transform: rotate(180deg);
+}
+
+.bp-cluster-user-drawer-row td {
+  background: #fbfdff;
+  white-space: normal;
+}
+
+.bp-cluster-user-drawer {
+  display: grid;
+  gap: 12px;
+  padding: 10px 4px;
+}
+
+.bp-cluster-user-drawer h3 {
+  margin: 0;
+  color: var(--bp-text);
+  font-size: 0.96rem;
+  font-weight: 650;
+}
+
+.bp-cluster-user-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px;
+}
+
+.bp-cluster-user-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid #d6e1ec;
+  border-radius: 8px;
+  background: #fff;
+  padding: 9px 10px;
+}
+
+.bp-cluster-user-row span:first-child {
+  display: grid;
+  min-width: 0;
+}
+
+.bp-cluster-user-row strong,
+.bp-cluster-user-row code {
+  overflow-wrap: anywhere;
+}
+
 .bp-cluster-rename-form,
 .bp-cluster-danger-form {
   display: inline-flex;

@@ -24,18 +24,25 @@
     var globalAccessOptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         ["admin"] = "Global Admin",
+        ["notifiedBody"] = "Notified Body",
+        ["marketSurveillanceAuthority"] = "Market Surveillance Authorities",
+        ["commission"] = "Commission",
+        ["legitimateInterest"] = "Person with Legitimate Interest",
         ["member"] = "Cluster Member"
     };
     var clusterMembershipRoleOptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         ["clusterAdmin"] = "Cluster Admin",
-        ["member"] = "Normal User",
-        ["notifiedBody"] = "Notified Body",
-        ["marketSurveillanceAuthority"] = "Market Surveillance Authorities",
-        ["commission"] = "Commission",
-        ["legitimateInterest"] = "Person with Legitimate Interest"
+        ["member"] = "Normal User"
     };
-    string MembershipRoleLabel(string role) => clusterMembershipRoleOptions.TryGetValue(role, out var label) ? label : "Normal User";
+    string MembershipRoleLabel(string role) => role switch
+    {
+        "notifiedBody" => "Notified Body",
+        "marketSurveillanceAuthority" => "Market Surveillance Authorities",
+        "commission" => "Commission",
+        "legitimateInterest" => "Person with Legitimate Interest",
+        _ => clusterMembershipRoleOptions.TryGetValue(role, out var label) ? label : "Normal User"
+    };
     string MembershipCountLabel(int count) => $"{count} {(count == 1 ? "membership" : "memberships")}";
     string TokenClusterPickerName(string name) => name.StartsWith("Default ", StringComparison.OrdinalIgnoreCase) ? name["Default ".Length..] : name;
     string TokenDisplayName(BatteryPassWeb.Models.ViewModels.ApiTokenViewModel token)
@@ -64,6 +71,10 @@
         return role switch
         {
             "Global Admin" => "admin",
+            "Notified Body" => "notifiedBody",
+            "Market Surveillance Authorities" => "marketSurveillanceAuthority",
+            "Commission" => "commission",
+            "Person with Legitimate Interest" => "legitimateInterest",
             _ => "member"
         };
     }
@@ -201,6 +212,7 @@
 
     @if (selectedTab == "clusters")
     {
+        var clusterRowIndex = 0;
         <div class="bp-management-shell bp-cluster-management-shell mt-4">
             <section class="bp-card bp-cluster-create-strip bp-console-form-card">
                 <div>
@@ -228,6 +240,7 @@
                             <tr>
                                 <th>Cluster</th>
                                 <th>Cluster ID</th>
+                                <th>Users</th>
                                 <th>Rename</th>
                                 <th>Delete</th>
                                 <th>Force delete</th>
@@ -237,19 +250,32 @@
                             @if (Model.Clusters.Count == 0)
                             {
                                 <tr>
-                                    <td class="text-secondary" colspan="5">No clusters have been registered.</td>
+                                    <td class="text-secondary" colspan="6">No clusters have been registered.</td>
                                 </tr>
                             }
                             else
                             {
                                 @foreach (var cluster in Model.Clusters)
                                 {
+                                    var clusterMemberships = Model.Memberships
+                                        .Where(membership => membership.ClusterId.Equals(cluster.ClusterId, StringComparison.OrdinalIgnoreCase))
+                                        .OrderBy(membership => membership.Email, StringComparer.OrdinalIgnoreCase)
+                                        .ToList();
+                                    var drawerId = $"admin-cluster-user-drawer-{clusterRowIndex++}";
                                     <tr>
                                         <td>
                                             <p class="bp-cluster-name">@cluster.Name</p>
                                             <p class="mb-0 small text-secondary">Registered cluster</p>
                                         </td>
                                         <td><code class="bp-code-wrap">@cluster.ClusterId</code></td>
+                                        <td>
+                                            <button type="button" class="bp-action-button bp-cluster-user-toggle" data-cluster-user-toggle aria-expanded="false" aria-controls="@drawerId" aria-label="Users in cluster @cluster.Name" title="Users in cluster" data-tooltip="Users in cluster">
+                                                <span class="bp-user-count-pill">@clusterMemberships.Count users</span>
+                                                <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                    <path d="m6 9 6 6 6-6" />
+                                                </svg>
+                                            </button>
+                                        </td>
                                         <td>
                                             <form method="post" action="/admin/clusters/update" class="bp-cluster-rename-form">
                                                 @Html.AntiForgeryToken()
@@ -290,6 +316,37 @@
                                                     </svg>
                                                 </button>
                                             </form>
+                                        </td>
+                                    </tr>
+                                    <tr id="@drawerId" class="bp-cluster-user-drawer-row" data-cluster-user-drawer-row hidden>
+                                        <td colspan="6">
+                                            <div class="bp-cluster-user-drawer">
+                                                <div>
+                                                    <h3>Users in cluster</h3>
+                                                    <p class="mb-0 text-secondary">@cluster.Name</p>
+                                                </div>
+                                                @if (clusterMemberships.Count == 0)
+                                                {
+                                                    <p class="mb-0 text-secondary">No users are assigned to this cluster.</p>
+                                                }
+                                                else
+                                                {
+                                                    <div class="bp-cluster-user-list">
+                                                        @foreach (var membership in clusterMemberships)
+                                                        {
+                                                            var user = Model.Users.FirstOrDefault(candidate => candidate.Email.Equals(membership.Email, StringComparison.OrdinalIgnoreCase));
+                                                            var displayName = string.IsNullOrWhiteSpace(user?.Name) ? membership.Email : user.Name;
+                                                            <div class="bp-cluster-user-row">
+                                                                <span>
+                                                                    <strong>@displayName</strong>
+                                                                    <code>@membership.Email</code>
+                                                                </span>
+                                                                <span class="bp-user-membership-role">@MembershipRoleLabel(membership.Role)</span>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
                                         </td>
                                     </tr>
                                 }
@@ -354,7 +411,7 @@
                             </select>
                         </span>
                     </label>
-                    <button type="submit" class="bp-primary-button">Save user</button>
+                    <button type="submit" class="bp-primary-button">Create User</button>
                 </form>
             </section>
 
@@ -967,6 +1024,20 @@
             });
 
             document.querySelectorAll('[data-user-drawer-toggle]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const drawerId = button.getAttribute('aria-controls');
+                    const drawer = drawerId ? document.getElementById(drawerId) : null;
+                    if (!drawer) {
+                        return;
+                    }
+
+                    const expanded = button.getAttribute('aria-expanded') === 'true';
+                    button.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+                    drawer.hidden = expanded;
+                });
+            });
+
+            document.querySelectorAll('[data-cluster-user-toggle]').forEach((button) => {
                 button.addEventListener('click', () => {
                     const drawerId = button.getAttribute('aria-controls');
                     const drawer = drawerId ? document.getElementById(drawerId) : null;

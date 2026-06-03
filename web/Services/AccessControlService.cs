@@ -52,7 +52,7 @@ public sealed class AccessControlService
     }
 
     public static bool CanSeeDraftPassports(ClaimsPrincipal user) =>
-        IsAdmin(user) || user.IsInRole(RoleCommission);
+        CanSeeUnpublishedAcrossClusters(user);
 
     public static bool CanSeeSignedPassports(ClaimsPrincipal user) =>
         IsAdmin(user)
@@ -66,6 +66,14 @@ public sealed class AccessControlService
         || user.IsInRole(RoleMarketSurveillanceAuthority)
         || user.IsInRole(RoleCommission)
         || user.IsInRole(RoleLegitimateInterest);
+
+    public static bool HasAllClusterReadScope(ClaimsPrincipal user) =>
+        IsAdmin(user) || HasGlobalReportReadRole(user);
+
+    public static bool CanSeeUnpublishedAcrossClusters(ClaimsPrincipal user) =>
+        IsAdmin(user)
+        || user.IsInRole(RoleMarketSurveillanceAuthority)
+        || user.IsInRole(RoleCommission);
 
     public static string CurrentEmail(ClaimsPrincipal user) =>
         user.FindFirstValue(ClaimTypes.Email)

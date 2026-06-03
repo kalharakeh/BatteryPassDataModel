@@ -14,7 +14,7 @@ public enum BatteryTableScope
 
 public sealed class BatteryTableService
 {
-    private const string ClusterSearchRequiresGlobalAdminMessage = "Cluster search requires global admin access.";
+    private const string ClusterSearchNotAvailableMessage = "Cluster search is not available for this role.";
 
     private readonly BatteryRepository _batteryRepository;
     private readonly PassportRepository _passportRepository;
@@ -45,6 +45,7 @@ public sealed class BatteryTableService
         var normalizedQuery = query?.Trim() ?? string.Empty;
         var isGlobalAdmin = AccessControlService.IsAdmin(user);
         var isClusterAdmin = AccessControlService.IsClusterAdmin(user) && !isGlobalAdmin;
+        var hasAllClusterReadScope = AccessControlService.HasAllClusterReadScope(user);
         var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
         var clusterNamesById = clusters
             .Select(cluster => new
@@ -58,7 +59,7 @@ public sealed class BatteryTableService
         var baseModel = CreateBaseModel(scope, normalizedQuery);
         var searchResult = string.IsNullOrWhiteSpace(normalizedQuery)
             ? BatteryTableSearchResult.Empty()
-            : await ResolveSearchAsync(user, scope, normalizedQuery, isGlobalAdmin, isClusterAdmin, clusters, cancellationToken);
+            : await ResolveSearchAsync(user, scope, normalizedQuery, isGlobalAdmin, isClusterAdmin, hasAllClusterReadScope, clusters, cancellationToken);
         if (!string.IsNullOrWhiteSpace(searchResult.RedirectPath))
         {
             return baseModel.WithRedirect(searchResult.RedirectPath);
@@ -90,6 +91,7 @@ public sealed class BatteryTableService
         string query,
         bool isGlobalAdmin,
         bool isClusterAdmin,
+        bool hasAllClusterReadScope,
         IReadOnlyList<BsonDocument> clusters,
         CancellationToken cancellationToken)
     {
@@ -117,12 +119,12 @@ public sealed class BatteryTableService
             return BatteryTableSearchResult.WithRows(exactSerialMatches);
         }
 
-        if (!isGlobalAdmin && await LooksLikeClusterQueryAsync(query, clusters, cancellationToken))
+        if (!hasAllClusterReadScope && await LooksLikeClusterQueryAsync(query, clusters, cancellationToken))
         {
-            return BatteryTableSearchResult.Denied(ClusterSearchRequiresGlobalAdminMessage);
+            return BatteryTableSearchResult.Denied(ClusterSearchNotAvailableMessage);
         }
 
-        if (isGlobalAdmin)
+        if (hasAllClusterReadScope)
         {
             var clusterRows = await SearchBatteriesForClusterQueryAsync(query, clusters, cancellationToken);
             if (clusterRows.Count > 0)
@@ -142,6 +144,11 @@ public sealed class BatteryTableService
         CancellationToken cancellationToken)
     {
         if (isGlobalAdmin)
+        {
+            return batteryDocuments;
+        }
+
+        if (AccessControlService.HasAllClusterReadScope(user))
         {
             return batteryDocuments;
         }
@@ -217,7 +224,9 @@ public sealed class BatteryTableService
             : $"/{escapedBatteryId}/latest";
         row.HistoryUrl = isGlobalAdmin
             ? $"/admin/batteries/{escapedBatteryId}/passports?returnUrl={escapedReturnUrl}"
-            : $"/{escapedBatteryId}";
+            : scope == BatteryTableScope.ClusterAdminPassports
+                ? $"/cluster-admin/batteries/{escapedBatteryId}/passports?returnUrl={escapedReturnUrl}"
+                : $"/{escapedBatteryId}";
         row.EditUrl = isGlobalAdmin
             ? $"/admin/batteries/{escapedBatteryId}/edit"
             : string.IsNullOrWhiteSpace(row.LatestPassportId)
@@ -231,7 +240,8 @@ public sealed class BatteryTableService
             : $"/admin/passports/{Uri.EscapeDataString(row.LatestPassportId)}/conformance";
         row.CanViewHistory = true;
         row.CanEditBattery = isGlobalAdmin || (scope == BatteryTableScope.ClusterAdminPassports && !string.IsNullOrWhiteSpace(row.EditUrl));
-        row.CanCreatePassport = isGlobalAdmin || scope == BatteryTableScope.ClusterAdminPassports;
+        row.CanCreatePassport = (isGlobalAdmin || scope == BatteryTableScope.ClusterAdminPassports)
+            && CanCreateBatteryPassport(row);
         row.CanOpenConformance = isGlobalAdmin && !string.IsNullOrWhiteSpace(row.ConformanceUrl);
         row.ShowNewPassportRequired = row.NewPassportRequired && !IsDraftStatus(row.LatestPassportStatus);
         row.DisplayStatus = row.ShowNewPassportRequired ? "New passport needed" : row.LatestPassportStatus;
@@ -295,6 +305,10 @@ public sealed class BatteryTableService
     private static bool IsDraftStatus(string status) =>
         status.Contains("draft", StringComparison.OrdinalIgnoreCase)
         || status.Contains("awaiting", StringComparison.OrdinalIgnoreCase);
+
+    private static bool CanCreateBatteryPassport(BatterySummaryViewModel row) =>
+        row.PassportCount == 0
+        || row.NewPassportRequired && !IsDraftStatus(row.LatestPassportStatus);
 
     private static string BatterySearchRedirectPath(string batteryId, bool isGlobalAdmin, bool isClusterAdmin)
     {
