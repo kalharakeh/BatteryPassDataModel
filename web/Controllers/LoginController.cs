@@ -58,11 +58,51 @@ public class LoginController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ForgotPassword([FromForm] string email, CancellationToken cancellationToken)
     {
-        await _authService.StorePasswordResetRequestAsync(
+        await _authService.CreatePasswordResetAsync(
             email,
             HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
+            RequestBaseUrl(),
             cancellationToken);
-        TempData["ForgotPasswordMessage"] = "If an account exists, reset instructions will be sent when email delivery is configured.";
+        TempData["ForgotPasswordMessage"] = "If an account exists, reset instructions have been sent.";
+        return Redirect("/login");
+    }
+
+    [HttpGet("reset-password")]
+    public IActionResult ResetPassword([FromQuery] string? email, [FromQuery] string? token)
+    {
+        return View(new ResetPasswordViewModel
+        {
+            Email = email ?? string.Empty,
+            Token = token ?? string.Empty
+        });
+    }
+
+    [HttpPost("reset-password")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ResetPassword(ResetPasswordViewModel model, CancellationToken cancellationToken)
+    {
+        if (!model.Password.Equals(model.PasswordConfirmation, StringComparison.Ordinal))
+        {
+            model.ErrorMessage = "Passwords do not match.";
+            model.Password = string.Empty;
+            model.PasswordConfirmation = string.Empty;
+            return View(model);
+        }
+
+        var success = await _authService.ConsumePasswordResetTokenAsync(
+            model.Email,
+            model.Token,
+            model.Password,
+            cancellationToken);
+        if (!success)
+        {
+            model.ErrorMessage = "The reset link is invalid or expired.";
+            model.Password = string.Empty;
+            model.PasswordConfirmation = string.Empty;
+            return View(model);
+        }
+
+        TempData["ForgotPasswordMessage"] = "Password reset complete. Sign in with your new password.";
         return Redirect("/login");
     }
 
@@ -73,4 +113,6 @@ public class LoginController : Controller
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return Redirect("/");
     }
+
+    private string RequestBaseUrl() => $"{Request.Scheme}://{Request.Host}";
 }

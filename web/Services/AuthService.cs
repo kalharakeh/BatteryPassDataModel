@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using BatteryPassWeb.Configuration;
 using Microsoft.Extensions.Options;
 using MongoDB.Bson;
@@ -10,11 +11,13 @@ public sealed class AuthService
 {
     private readonly MongoContext _mongoContext;
     private readonly BatteryPassOptions _options;
+    private readonly IEmailSender _emailSender;
 
-    public AuthService(MongoContext mongoContext, IOptions<BatteryPassOptions> options)
+    public AuthService(MongoContext mongoContext, IOptions<BatteryPassOptions> options, IEmailSender emailSender)
     {
         _mongoContext = mongoContext;
         _options = options.Value;
+        _emailSender = emailSender;
     }
 
     public async Task<ClaimsPrincipal?> AuthenticateAsync(string email, string password, CancellationToken cancellationToken = default)
@@ -118,18 +121,132 @@ public sealed class AuthService
 
     public async Task StorePasswordResetRequestAsync(string email, string remoteIp, CancellationToken cancellationToken = default)
     {
+        await CreatePasswordResetAsync(email, remoteIp, string.Empty, cancellationToken);
+    }
+
+    public async Task CreatePasswordResetAsync(
+        string email,
+        string remoteIp,
+        string requestBaseUrl,
+        CancellationToken cancellationToken = default)
+    {
         if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email))
         {
             return;
         }
 
-        await _mongoContext.Database.GetCollection<BsonDocument>("passwordResetRequests").InsertOneAsync(new BsonDocument
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        var now = DateTimeOffset.UtcNow;
+        var users = _mongoContext.Database.GetCollection<BsonDocument>("users");
+        var user = await users.Find(Builders<BsonDocument>.Filter.Eq("email", normalizedEmail)).FirstOrDefaultAsync(cancellationToken);
+        var resetRequests = _mongoContext.Database.GetCollection<BsonDocument>("passwordResetRequests");
+        var request = new BsonDocument
         {
-            ["email"] = email.Trim().ToLowerInvariant(),
+            ["email"] = normalizedEmail,
             ["remoteIp"] = remoteIp,
-            ["requestedAt"] = DateTimeOffset.UtcNow.ToString("O"),
-            ["status"] = "email-not-configured"
-        }, cancellationToken: cancellationToken);
+            ["requestedAt"] = now.ToString("O"),
+            ["expiresAt"] = now.AddMinutes(60).ToString("O"),
+            ["usedAt"] = BsonNull.Value,
+            ["status"] = user == null ? "account-not-found" : "created"
+        };
+
+        if (user != null)
+        {
+            var token = CreateResetToken();
+            request["tokenHash"] = HashResetToken(token);
+            request["resetUrl"] = BuildResetUrl(normalizedEmail, token, requestBaseUrl);
+        }
+
+        await resetRequests.InsertOneAsync(request, cancellationToken: cancellationToken);
+
+        if (user == null || !request.TryGetValue("resetUrl", out var resetUrlValue) || resetUrlValue.IsBsonNull)
+        {
+            return;
+        }
+
+        if (!_emailSender.IsConfigured)
+        {
+            await resetRequests.UpdateOneAsync(
+                Builders<BsonDocument>.Filter.Eq("_id", request["_id"]),
+                Builders<BsonDocument>.Update.Set("status", "email-not-configured"),
+                cancellationToken: cancellationToken);
+            return;
+        }
+
+        try
+        {
+            await _emailSender.SendPasswordResetAsync(normalizedEmail, resetUrlValue.AsString, cancellationToken);
+            await resetRequests.UpdateOneAsync(
+                Builders<BsonDocument>.Filter.Eq("_id", request["_id"]),
+                Builders<BsonDocument>.Update
+                    .Set("status", "email-sent")
+                    .Set("sentAt", DateTimeOffset.UtcNow.ToString("O")),
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            await resetRequests.UpdateOneAsync(
+                Builders<BsonDocument>.Filter.Eq("_id", request["_id"]),
+                Builders<BsonDocument>.Update
+                    .Set("status", "email-failed")
+                    .Set("deliveryError", exception.Message),
+                cancellationToken: cancellationToken);
+        }
+    }
+
+    public async Task<bool> ConsumePasswordResetTokenAsync(
+        string email,
+        string token,
+        string newPassword,
+        CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null
+            || string.IsNullOrWhiteSpace(email)
+            || string.IsNullOrWhiteSpace(token)
+            || string.IsNullOrWhiteSpace(newPassword)
+            || newPassword.Length < 8)
+        {
+            return false;
+        }
+
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        var now = DateTimeOffset.UtcNow.ToString("O");
+        var tokenHash = HashResetToken(token.Trim());
+        var resetRequests = _mongoContext.Database.GetCollection<BsonDocument>("passwordResetRequests");
+        var filter = Builders<BsonDocument>.Filter.And(
+            Builders<BsonDocument>.Filter.Eq("email", normalizedEmail),
+            Builders<BsonDocument>.Filter.Eq("tokenHash", tokenHash),
+            Builders<BsonDocument>.Filter.Eq("usedAt", BsonNull.Value),
+            Builders<BsonDocument>.Filter.Gt("expiresAt", now));
+
+        var request = await resetRequests.Find(filter)
+            .SortByDescending(document => document["requestedAt"])
+            .FirstOrDefaultAsync(cancellationToken);
+        if (request == null)
+        {
+            return false;
+        }
+
+        var passwordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        var users = _mongoContext.Database.GetCollection<BsonDocument>("users");
+        var userUpdate = await users.UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("email", normalizedEmail),
+            Builders<BsonDocument>.Update
+                .Set("passwordHash", passwordHash)
+                .Set("updatedAt", now),
+            cancellationToken: cancellationToken);
+        if (userUpdate.MatchedCount == 0)
+        {
+            return false;
+        }
+
+        await resetRequests.UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("_id", request["_id"]),
+            Builders<BsonDocument>.Update
+                .Set("usedAt", now)
+                .Set("status", "used"),
+            cancellationToken: cancellationToken);
+        return true;
     }
 
     private static ClaimsPrincipal BuildPrincipal(string email, string name, IReadOnlyList<string> roles)
@@ -171,5 +288,28 @@ public sealed class AuthService
         return role.Equals("viewer", StringComparison.OrdinalIgnoreCase)
             ? AccessControlService.RoleNormalUser
             : role;
+    }
+
+    private static string CreateResetToken()
+    {
+        Span<byte> bytes = stackalloc byte[32];
+        RandomNumberGenerator.Fill(bytes);
+        return Base64Url.Encode(bytes);
+    }
+
+    private static string HashResetToken(string token)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(token);
+        return Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+    }
+
+    private string BuildResetUrl(string email, string token, string requestBaseUrl)
+    {
+        var baseUrl = !string.IsNullOrWhiteSpace(_options.AppBaseUrl)
+            ? _options.AppBaseUrl
+            : requestBaseUrl;
+        baseUrl = string.IsNullOrWhiteSpace(baseUrl) ? string.Empty : baseUrl.TrimEnd('/');
+        var path = $"/login/reset-password?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(token)}";
+        return string.IsNullOrWhiteSpace(baseUrl) ? path : $"{baseUrl}{path}";
     }
 }

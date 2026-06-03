@@ -32,6 +32,30 @@ builder.Services.Configure<BatteryPassOptions>(options =>
     options.IdGenerationSecret = Environment.GetEnvironmentVariable("ID_GENERATION_SECRET")
         ?? builder.Configuration["BatteryPass:IdGenerationSecret"]
         ?? string.Empty;
+    options.EmailSmtpHost = Environment.GetEnvironmentVariable("EMAIL_SMTP_HOST")
+        ?? builder.Configuration["BatteryPass:EmailSmtpHost"]
+        ?? string.Empty;
+    options.EmailSmtpPort = int.TryParse(Environment.GetEnvironmentVariable("EMAIL_SMTP_PORT")
+            ?? builder.Configuration["BatteryPass:EmailSmtpPort"], out var emailSmtpPort)
+        ? emailSmtpPort
+        : 587;
+    options.EmailSmtpUsername = Environment.GetEnvironmentVariable("EMAIL_SMTP_USERNAME")
+        ?? builder.Configuration["BatteryPass:EmailSmtpUsername"]
+        ?? string.Empty;
+    options.EmailSmtpPassword = Environment.GetEnvironmentVariable("EMAIL_SMTP_PASSWORD")
+        ?? builder.Configuration["BatteryPass:EmailSmtpPassword"]
+        ?? string.Empty;
+    options.EmailFromEmail = Environment.GetEnvironmentVariable("EMAIL_FROM_EMAIL")
+        ?? builder.Configuration["BatteryPass:EmailFromEmail"]
+        ?? string.Empty;
+    options.EmailFromName = Environment.GetEnvironmentVariable("EMAIL_FROM_NAME")
+        ?? builder.Configuration["BatteryPass:EmailFromName"]
+        ?? "Battery Pass";
+    options.AppBaseUrl = Environment.GetEnvironmentVariable("APP_BASE_URL")
+        ?? Environment.GetEnvironmentVariable("APP_URL")
+        ?? builder.Configuration["BatteryPass:AppBaseUrl"]
+        ?? builder.Configuration["BatteryPass:AppUrl"]
+        ?? string.Empty;
 });
 
 builder.Services
@@ -88,6 +112,7 @@ builder.Services.AddSingleton(provider =>
     return new BatteryIdService(options.IdGenerationSecret, environment.IsDevelopment());
 });
 builder.Services.AddSingleton<AuthService>();
+builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
 builder.Services.AddSingleton<ExternalApiSecurityService>();
 builder.Services.AddSingleton<ExternalApiRepository>();
 builder.Services.AddSingleton<BatteryTelemetryRepository>();
