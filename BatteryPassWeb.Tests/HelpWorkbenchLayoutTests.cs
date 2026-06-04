@@ -63,6 +63,21 @@ public sealed class HelpWorkbenchLayoutTests
     }
 
     [Fact]
+    public void HelpPage_ShouldDisplayRuntimePublicApiUrl()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "HelpController.cs"));
+        var helpModel = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "ExternalApiHelpViewModel.cs"));
+
+        Assert.Contains("PublicBaseUrl", helpModel);
+        Assert.Contains("RequestBaseUrl()", controller);
+        Assert.Contains("Current API URL", markup);
+        Assert.Contains("@Model.PublicBaseUrl@Model.BasePath", markup);
+        Assert.Contains("resolveAbsoluteUrl", markup);
+        Assert.Contains("window.location.origin", markup);
+    }
+
+    [Fact]
     public void HelpWorkbenchValuesTemplate_ShouldTargetValuesEndpoint()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));

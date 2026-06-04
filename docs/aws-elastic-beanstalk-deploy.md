@@ -148,12 +148,28 @@ Wait until the environment health is **Green**.
 AWS will give you a temporary URL like:
 
 ```text
-http://battery-pass-prod.eu-north-1.elasticbeanstalk.com
+http://battery-pass-env.eba-2a34ep5k.eu-north-1.elasticbeanstalk.com
 ```
 
-Open it and check only the public homepage/registry pages. Do not log in over this temporary HTTP URL.
+Open it and check the public homepage, registry pages, and `/help` API workbench.
 
-This URL is only for smoke testing. The real public URL should be `https://sib-dpd.eu`.
+While using this temporary Beanstalk URL, keep these environment properties:
+
+```text
+APP_BASE_URL=http://battery-pass-env.eba-2a34ep5k.eu-north-1.elasticbeanstalk.com
+APP_URL=http://battery-pass-env.eba-2a34ep5k.eu-north-1.elasticbeanstalk.com
+REQUIRE_HTTPS_REDIRECTION=false
+```
+
+The temporary external API base URL is:
+
+```text
+http://battery-pass-env.eba-2a34ep5k.eu-north-1.elasticbeanstalk.com/api/external/v1
+```
+
+The `/help` request workbench uses the current browser host, so when `/help` is opened on Beanstalk it sends API calls to Beanstalk. When the domain is later connected, the same workbench will use the domain automatically.
+
+This URL is good for temporary testing. The real public URL should be `https://sib-dpd.eu` once the domain and HTTPS certificate are ready.
 
 ## 8. Create Route 53 hosted zone
 

@@ -34,6 +34,7 @@ public class HelpController : Controller
         var model = new ExternalApiHelpViewModel
         {
             BasePath = "/api/external/v1",
+            PublicBaseUrl = RequestBaseUrl(),
             SampleBatteryId = sampleIds.BatteryId,
             SamplePassportId = sampleIds.PassportId,
             SampleReadToken = readTokenDocument != null
@@ -49,6 +50,8 @@ public class HelpController : Controller
 
         return View(model);
     }
+
+    private string RequestBaseUrl() => $"{Request.Scheme}://{Request.Host}";
 
     private async Task<(string BatteryId, string PassportId)> ResolveSampleIdsAsync(CancellationToken cancellationToken)
     {

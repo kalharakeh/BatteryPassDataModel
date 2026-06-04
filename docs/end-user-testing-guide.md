@@ -418,6 +418,7 @@ The `/help` API help page uses a dense endpoint table. Open an endpoint detail w
 The examples below use shell variables so the generated IDs can change safely after reset.
 
 ```bash
+apiBaseUrl="http://battery-pass-env.eba-2a34ep5k.eu-north-1.elasticbeanstalk.com/api/external/v1"
 sampleBatteryId="<copy the Sample Battery ID from /help>"
 samplePassportId="<copy the Sample latest Passport ID from /help>"
 readToken="SAMPLEBATTERYPASSPORTREADTOKN001"
@@ -425,17 +426,19 @@ writeToken="SAMPLEBATTERYPASSPORTWRITETOK001"
 signToken="SAMPLEBATTERYPASSPORTSIGNTOK001"
 ```
 
+For local testing, use `apiBaseUrl="http://localhost:5186/api/external/v1"` instead.
+
 ### 8.1 cURL - read full battery
 
 ```bash
-curl -X GET "http://localhost:5186/api/external/v1/batteries/$sampleBatteryId" \
+curl -X GET "$apiBaseUrl/batteries/$sampleBatteryId" \
   -H "Authorization: Basic $readToken"
 ```
 
 ### 8.2 cURL - write telemetry
 
 ```bash
-curl -X POST "http://localhost:5186/api/external/v1/batteries/$sampleBatteryId/telemetry" \
+curl -X POST "$apiBaseUrl/batteries/$sampleBatteryId/telemetry" \
   -H "Authorization: Basic $writeToken" \
   -H "Content-Type: application/json" \
   -d "{\"points\":[{\"currentConsumptionKwh\":154.6,\"currentChargeLevelPct\":82.1,\"currentVoltageV\":401.7,\"currentCurrentA\":49.2}]}"
@@ -444,7 +447,7 @@ curl -X POST "http://localhost:5186/api/external/v1/batteries/$sampleBatteryId/t
 ### 8.3 cURL - patch operations
 
 ```bash
-curl -X PATCH "http://localhost:5186/api/external/v1/batteries/$sampleBatteryId/operations" \
+curl -X PATCH "$apiBaseUrl/batteries/$sampleBatteryId/operations" \
   -H "Authorization: Basic $writeToken" \
   -H "Content-Type: application/json" \
   -d "{\"isActive\":true,\"locationOfUse\":{\"siteName\":\"Factory 4\",\"city\":\"Berlin\",\"country\":\"DE\"},\"contactPerson\":{\"name\":\"Anna Becker\",\"email\":\"anna@example.test\"}}"
@@ -453,7 +456,7 @@ curl -X PATCH "http://localhost:5186/api/external/v1/batteries/$sampleBatteryId/
 ### 8.4 cURL - patch software version parameter
 
 ```bash
-curl -X PATCH "http://localhost:5186/api/external/v1/batteries/$sampleBatteryId/battery-model" \
+curl -X PATCH "$apiBaseUrl/batteries/$sampleBatteryId/battery-model" \
   -H "Authorization: Basic $writeToken" \
   -H "Content-Type: application/json" \
   -d "{\"batteryModel\":\"2.0\"}"
@@ -462,16 +465,16 @@ curl -X PATCH "http://localhost:5186/api/external/v1/batteries/$sampleBatteryId/
 ### 8.5 cURL - create, validate, sign, and publish a new passport
 
 ```bash
-curl -X POST "http://localhost:5186/api/external/v1/batteries/$sampleBatteryId/passports" \
+curl -X POST "$apiBaseUrl/batteries/$sampleBatteryId/passports" \
   -H "Authorization: Basic $signToken"
 
-curl -X POST "http://localhost:5186/api/external/v1/passports/$samplePassportId/validate" \
+curl -X POST "$apiBaseUrl/passports/$samplePassportId/validate" \
   -H "Authorization: Basic $signToken"
 
-curl -X POST "http://localhost:5186/api/external/v1/passports/$samplePassportId/sign" \
+curl -X POST "$apiBaseUrl/passports/$samplePassportId/sign" \
   -H "Authorization: Basic $signToken"
 
-curl -X POST "http://localhost:5186/api/external/v1/passports/$samplePassportId/publish" \
+curl -X POST "$apiBaseUrl/passports/$samplePassportId/publish" \
   -H "Authorization: Basic $signToken"
 ```
 
@@ -479,11 +482,12 @@ curl -X POST "http://localhost:5186/api/external/v1/passports/$samplePassportId/
 
 ```js
 const token = "YOUR_TOKEN_VALUE";
+const apiBaseUrl = "http://battery-pass-env.eba-2a34ep5k.eu-north-1.elasticbeanstalk.com/api/external/v1";
 const sampleBatteryId = "COPY_SAMPLE_BATTERY_ID_FROM_HELP";
 const auth = "Basic " + btoa(token + ":");
 
 const response = await fetch(
-  `http://localhost:5186/api/external/v1/batteries/${sampleBatteryId}/values?path=ratedEnergy&path=nickelMass`,
+  `${apiBaseUrl}/batteries/${sampleBatteryId}/values?path=ratedEnergy&path=nickelMass`,
   {
     method: "GET",
     headers: {
@@ -504,10 +508,11 @@ import base64
 import requests
 
 token = "YOUR_TOKEN_VALUE"
+api_base_url = "http://battery-pass-env.eba-2a34ep5k.eu-north-1.elasticbeanstalk.com/api/external/v1"
 sample_battery_id = "COPY_SAMPLE_BATTERY_ID_FROM_HELP"
 auth = "Basic " + base64.b64encode(f"{token}:".encode("utf-8")).decode("utf-8")
 
-url = f"http://localhost:5186/api/external/v1/batteries/{sample_battery_id}/telemetry/history?hours=24"
+url = f"{api_base_url}/batteries/{sample_battery_id}/telemetry/history?hours=24"
 resp = requests.get(url, headers={"Authorization": auth, "Accept": "application/json"}, timeout=30)
 print(resp.status_code)
 print(resp.json())
