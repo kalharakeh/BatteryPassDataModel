@@ -1,5 +1,6 @@
 using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Services;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
 var currentDirectory = Directory.GetCurrentDirectory();
@@ -46,6 +47,9 @@ builder.Services.Configure<BatteryPassOptions>(options =>
         ?? builder.Configuration["BatteryPass:AppBaseUrl"]
         ?? builder.Configuration["BatteryPass:AppUrl"]
         ?? string.Empty;
+    options.RequireHttpsRedirection = DeploymentSecurityConfiguration.ParseRequireHttpsRedirection(
+        Environment.GetEnvironmentVariable("REQUIRE_HTTPS_REDIRECTION")
+            ?? builder.Configuration["BatteryPass:RequireHttpsRedirection"]);
 });
 
 builder.Services
@@ -66,6 +70,7 @@ builder.Services.AddAuthorization(options =>
 });
 
 builder.Services.AddControllersWithViews();
+builder.Services.Configure<ForwardedHeadersOptions>(ElasticBeanstalkForwardedHeaders.Configure);
 builder.Services.AddSingleton<MongoContext>();
 builder.Services.AddSingleton<PassportRepository>();
 builder.Services.AddSingleton<BatteryRepository>();
@@ -109,14 +114,22 @@ builder.Services.AddSingleton<BatteryTelemetryRepository>();
 builder.Services.AddSingleton<ExternalApiInitializer>();
 
 var app = builder.Build();
+var batteryPassOptions = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<BatteryPassOptions>>().Value;
 
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/error");
-    app.UseHsts();
+    if (batteryPassOptions.RequireHttpsRedirection)
+    {
+        app.UseHsts();
+    }
 }
 
-app.UseHttpsRedirection();
+app.UseForwardedHeaders();
+if (batteryPassOptions.RequireHttpsRedirection)
+{
+    app.UseHttpsRedirection();
+}
 app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthentication();

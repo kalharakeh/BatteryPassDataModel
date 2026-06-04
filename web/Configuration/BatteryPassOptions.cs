@@ -13,4 +13,5 @@ public sealed class BatteryPassOptions
     public string PowerAutomateResetWebhookSecret { get; set; } = string.Empty;
     public string PasswordResetAppName { get; set; } = "Battery Pass";
     public string AppBaseUrl { get; set; } = string.Empty;
+    public bool RequireHttpsRedirection { get; set; } = true;
 }
