@@ -1,0 +1,132 @@
+@using MongoDB.Bson
+@using BatteryPassWeb.Services
+@model BsonDocument
+@{
+    var auditEvent = Model;
+    var metadata = Metadata(auditEvent);
+    var changedFields = ChangedFields(metadata);
+    var eventType = BsonHelpers.GetString(auditEvent, "eventType");
+    var entityType = BsonHelpers.GetString(auditEvent, "entityType");
+    var entityId = FirstNonEmpty(BsonHelpers.GetString(auditEvent, "entityId"), BsonHelpers.GetString(auditEvent, "EntityId"), "-");
+    var actorType = FirstNonEmpty(BsonHelpers.GetString(auditEvent, "actorRole"), BsonHelpers.GetString(auditEvent, "actorType"));
+    var createdAt = BsonHelpers.GetString(auditEvent, "createdAt");
+    var batteryId = FirstNonEmpty(BsonHelpers.GetString(auditEvent, "batteryId"), "-");
+    var passportId = FirstNonEmpty(BsonHelpers.GetString(auditEvent, "passportId"), BsonHelpers.GetString(auditEvent, "passportDppId"), "-");
+}
+
+<article class="bp-audit-event-row @EventTone(eventType)">
+    <div class="bp-audit-event-time">
+        <span>@EventShortName(eventType)</span>
+        <time datetime="@createdAt" title="@createdAt">@ShortTimestamp(createdAt)</time>
+    </div>
+    <div class="bp-audit-event-main">
+        <div class="bp-audit-event-titleline">
+            <span class="bp-ledger-label">What changed</span>
+            <code>@eventType</code>
+        </div>
+        <h3>@HumanizeEvent(eventType)</h3>
+        <p>@BsonHelpers.GetString(auditEvent, "message")</p>
+
+        @if (changedFields.Count > 0)
+        {
+            <div class="bp-ledger-changes">
+                <span class="bp-ledger-label">Changed fields</span>
+                @foreach (var changedField in changedFields)
+                {
+                    <div class="bp-ledger-change-row">
+                        <code>@BsonHelpers.GetString(changedField, "path")</code>
+                        <span>@BsonHelpers.GetString(changedField, "changeType")</span>
+                        <small>@Shorten(BsonHelpers.GetString(changedField, "before")) -> @Shorten(BsonHelpers.GetString(changedField, "after"))</small>
+                    </div>
+                }
+            </div>
+        }
+
+        <details class="bp-ledger-metadata bp-audit-event-metadata">
+            <summary>Metadata</summary>
+            <code>@metadata.ToJson()</code>
+        </details>
+    </div>
+    <dl class="bp-audit-event-facts">
+        <div><dt>Actor</dt><dd>@BsonHelpers.GetString(auditEvent, "actor") <span>@actorType</span></dd></div>
+        <div><dt>Source</dt><dd>@BsonHelpers.GetString(auditEvent, "source")</dd></div>
+        <div><dt>Entity</dt><dd><span class="bp-audit-event-chip">@entityType</span><code class="bp-audit-event-chip">@entityId</code></dd></div>
+        <div><dt>Battery</dt><dd><code class="bp-audit-event-chip">@batteryId</code></dd></div>
+        <div><dt>Passport</dt><dd><code class="bp-audit-event-chip">@passportId</code></dd></div>
+    </dl>
+</article>
+
+@functions {
+    private static BsonDocument Metadata(BsonDocument auditEvent)
+    {
+        return auditEvent.GetValue("metadata", new BsonDocument()) is BsonDocument metadata
+            ? metadata
+            : new BsonDocument();
+    }
+
+    private static IReadOnlyList<BsonDocument> ChangedFields(BsonDocument metadata)
+    {
+        return metadata.GetValue("changedFields", new BsonArray()) is BsonArray changedFields
+            ? changedFields.OfType<BsonDocument>().ToList()
+            : [];
+    }
+
+    private static string FirstNonEmpty(params string[] values)
+    {
+        return values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? string.Empty;
+    }
+
+    private static string Shorten(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "-";
+        }
+
+        return value.Length <= 120 ? value : value[..120] + "...";
+    }
+
+    private static string EventTone(string eventType)
+    {
+        if (eventType.Contains("blocked", StringComparison.OrdinalIgnoreCase)
+            || eventType.Contains("denied", StringComparison.OrdinalIgnoreCase)
+            || eventType.Contains("deleted", StringComparison.OrdinalIgnoreCase)
+            || eventType.Contains("archived", StringComparison.OrdinalIgnoreCase))
+        {
+            return "is-warning";
+        }
+
+        if (eventType.Contains("signed", StringComparison.OrdinalIgnoreCase)
+            || eventType.Contains("published", StringComparison.OrdinalIgnoreCase)
+            || eventType.Contains("validated", StringComparison.OrdinalIgnoreCase))
+        {
+            return "is-proof";
+        }
+
+        return eventType.Contains("updated", StringComparison.OrdinalIgnoreCase)
+            || eventType.Contains("created", StringComparison.OrdinalIgnoreCase)
+            || eventType.Contains("uploaded", StringComparison.OrdinalIgnoreCase)
+            || eventType.Contains("replaced", StringComparison.OrdinalIgnoreCase)
+            || eventType.Contains("saved", StringComparison.OrdinalIgnoreCase)
+            ? "is-change"
+            : "is-neutral";
+    }
+
+    private static string EventShortName(string eventType)
+    {
+        var parts = eventType.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return parts.Length == 0 ? "event" : parts[^1];
+    }
+
+    private static string ShortTimestamp(string value)
+    {
+        return DateTimeOffset.TryParse(value, out var timestamp)
+            ? timestamp.ToString("yyyy-MM-dd HH:mm")
+            : value;
+    }
+
+    private static string HumanizeEvent(string eventType)
+    {
+        return eventType.Replace('.', ' ').Replace('-', ' ');
+    }
+}

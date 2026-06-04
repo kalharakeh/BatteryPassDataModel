@@ -54,6 +54,7 @@ public class ExternalApiController : ControllerBase
     private readonly BatteryPassportDeltaService _batteryPassportDeltaService;
     private readonly BatteryTemplateUpdateService _batteryTemplateUpdateService;
     private readonly BatteryCreationService _batteryCreationService;
+    private readonly BatteryAuditService _batteryAuditService;
     private readonly PassportTrustWorkflowService _passportTrustWorkflowService;
 
     public ExternalApiController(
@@ -66,6 +67,7 @@ public class ExternalApiController : ControllerBase
         BatteryPassportDeltaService batteryPassportDeltaService,
         BatteryTemplateUpdateService batteryTemplateUpdateService,
         BatteryCreationService batteryCreationService,
+        BatteryAuditService batteryAuditService,
         PassportTrustWorkflowService passportTrustWorkflowService)
     {
         _passportRepository = passportRepository;
@@ -77,6 +79,7 @@ public class ExternalApiController : ControllerBase
         _batteryPassportDeltaService = batteryPassportDeltaService;
         _batteryTemplateUpdateService = batteryTemplateUpdateService;
         _batteryCreationService = batteryCreationService;
+        _batteryAuditService = batteryAuditService;
         _passportTrustWorkflowService = passportTrustWorkflowService;
     }
 
@@ -441,6 +444,23 @@ public class ExternalApiController : ControllerBase
             await _passportRepository.UpdateFieldsAsync(latestPassportId, setValues, cancellationToken);
         }
 
+        await _batteryAuditService.AppendBatteryAuditEventAsync(
+            batteryId,
+            "battery.telemetry.written",
+            auth.TokenContext!.Name,
+            "external-api",
+            "external-api",
+            "Battery telemetry written through external API.",
+            new BsonDocument
+            {
+                ["pointsAccepted"] = points.Count,
+                ["latestMeasuredAt"] = latestPoint.MeasuredAtUtc.ToString("O"),
+                ["latestPassportId"] = latestPassportId,
+                ["writtenFields"] = new BsonArray(setValues.Keys.Select(key => (BsonValue)key))
+            },
+            auth.TokenContext.TokenId,
+            cancellationToken);
+
         return Envelope(StatusCodes.Status201Created, "Telemetry written successfully.", new
         {
             batteryId,
@@ -496,6 +516,7 @@ public class ExternalApiController : ControllerBase
             return auth.ErrorResult;
         }
 
+        var beforeUpdate = auth.Battery!.DeepClone().AsBsonDocument;
         if (payload.ValueKind != JsonValueKind.Object)
         {
             return Envelope(StatusCodes.Status400BadRequest, "Body must be a JSON object.");
@@ -554,6 +575,24 @@ public class ExternalApiController : ControllerBase
             await _passportRepository.UpdateFieldsAsync(latestPassportId, setValues, cancellationToken);
         }
 
+        var afterUpdate = beforeUpdate.DeepClone().AsBsonDocument;
+        foreach (var pair in setValues)
+        {
+            SetPath(afterUpdate, pair.Key, pair.Value);
+        }
+        var changeMetadata = AuditRevisionService.BuildChangeMetadata(beforeUpdate, afterUpdate, "externalApiOperationsUpdate");
+        changeMetadata["latestPassportId"] = latestPassportId;
+        await _batteryAuditService.AppendBatteryAuditEventAsync(
+            batteryId,
+            "battery.operations.updated",
+            auth.TokenContext!.Name,
+            "external-api",
+            "external-api",
+            "Battery operations fields updated through external API.",
+            changeMetadata,
+            auth.TokenContext.TokenId,
+            cancellationToken);
+
         return Envelope(StatusCodes.Status200OK, "Operations fields updated successfully.", new { batteryId, passportId = latestPassportId });
     }
 
@@ -575,11 +614,26 @@ public class ExternalApiController : ControllerBase
         }
 
         var requestedBatteryModel = batteryModelElement.GetString()!.Trim();
+        var beforeUpdate = auth.Battery!.DeepClone().AsBsonDocument;
         var result = await _batteryTemplateUpdateService.ApplyBatteryModelAsync(auth.Battery!, requestedBatteryModel, cancellationToken);
         if (!result.Success)
         {
             return Envelope(StatusCodes.Status400BadRequest, UnknownBatteryModelMessage);
         }
+
+        var changeMetadata = AuditRevisionService.BuildChangeMetadata(beforeUpdate, result.Battery, "externalApiBatteryModelUpdate");
+        changeMetadata["requestedBatteryModel"] = requestedBatteryModel;
+        changeMetadata["newPassportRequired"] = BsonHelpers.GetValue(result.Battery, "app", "snapshot", "newPassportRequired") ?? BsonNull.Value;
+        await _batteryAuditService.AppendBatteryAuditEventAsync(
+            batteryId,
+            "battery.model.updated",
+            auth.TokenContext!.Name,
+            "external-api",
+            "external-api",
+            "Battery Model updated through external API.",
+            changeMetadata,
+            auth.TokenContext.TokenId,
+            cancellationToken);
 
         return Envelope(StatusCodes.Status200OK, "Battery Model updated on the battery record. Create, validate, sign, and publish a new passport to expose the updated snapshot.", new
         {
@@ -606,10 +660,27 @@ public class ExternalApiController : ControllerBase
             return Envelope(StatusCodes.Status400BadRequest, "softwareVersion is required and must be a string.");
         }
 
+        var beforeUpdate = auth.Battery!.DeepClone().AsBsonDocument;
         var result = await _batteryTemplateUpdateService.ApplySoftwareVersionAsync(
             auth.Battery!,
             softwareVersionElement.GetString()!,
             cancellationToken);
+        if (result.Success)
+        {
+            var changeMetadata = AuditRevisionService.BuildChangeMetadata(beforeUpdate, result.Battery, "externalApiSoftwareVersionUpdate");
+            changeMetadata["requestedSoftwareVersion"] = softwareVersionElement.GetString()!;
+            changeMetadata["newPassportRequired"] = BsonHelpers.GetValue(result.Battery, "app", "snapshot", "newPassportRequired") ?? BsonNull.Value;
+            await _batteryAuditService.AppendBatteryAuditEventAsync(
+                batteryId,
+                "battery.software.updated",
+                auth.TokenContext!.Name,
+                "external-api",
+                "external-api",
+                "Software Version updated through external API.",
+                changeMetadata,
+                auth.TokenContext.TokenId,
+                cancellationToken);
+        }
         return Envelope(
             result.Success ? StatusCodes.Status200OK : StatusCodes.Status400BadRequest,
             result.Message,
@@ -638,6 +709,9 @@ public class ExternalApiController : ControllerBase
             auth.Battery!,
             auth.TokenContext!.Name,
             DateTimeOffset.UtcNow,
+            "external-api",
+            "external-api",
+            auth.TokenContext.TokenId,
             cancellationToken);
         var passportId = BsonHelpers.GetString(passport, "passportId");
         await _batteryPassportDeltaService.ClearNewPassportRequiredAsync(batteryId, passportId, cancellationToken);
@@ -1381,6 +1455,24 @@ public class ExternalApiController : ControllerBase
         {
             setValues[targetPath] = value;
         }
+    }
+
+    private static void SetPath(BsonDocument document, string path, BsonValue value)
+    {
+        var segments = path.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var current = document;
+        foreach (var segment in segments.Take(segments.Length - 1))
+        {
+            if (!current.TryGetValue(segment, out var child) || child is not BsonDocument childDocument)
+            {
+                childDocument = new BsonDocument();
+                current[segment] = childDocument;
+            }
+
+            current = childDocument;
+        }
+
+        current[segments.Last()] = value;
     }
 
     private static BatteryCreationCommand ReadBatteryCreationCommand(JsonElement payload)

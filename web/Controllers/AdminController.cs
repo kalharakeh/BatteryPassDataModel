@@ -120,6 +120,8 @@ public class AdminController : Controller
     private readonly ProductTemplateService _productTemplateService;
     private readonly PassportTrustService _passportTrustService;
     private readonly AuditRevisionService _auditRevisionService;
+    private readonly BatteryAuditService _batteryAuditService;
+    private readonly ApplicationAuditService _applicationAuditService;
     private readonly PassportTrustWorkflowService _passportTrustWorkflowService;
 
     public AdminController(
@@ -144,6 +146,8 @@ public class AdminController : Controller
         ProductTemplateService productTemplateService,
         PassportTrustService passportTrustService,
         AuditRevisionService auditRevisionService,
+        BatteryAuditService batteryAuditService,
+        ApplicationAuditService applicationAuditService,
         PassportTrustWorkflowService passportTrustWorkflowService)
     {
         _passportRepository = passportRepository;
@@ -167,6 +171,8 @@ public class AdminController : Controller
         _productTemplateService = productTemplateService;
         _passportTrustService = passportTrustService;
         _auditRevisionService = auditRevisionService;
+        _batteryAuditService = batteryAuditService;
+        _applicationAuditService = applicationAuditService;
         _passportTrustWorkflowService = passportTrustWorkflowService;
     }
 
@@ -182,6 +188,33 @@ public class AdminController : Controller
         ViewData["StatusMessage"] = string.IsNullOrWhiteSpace(status) ? string.Empty : Uri.UnescapeDataString(status);
         ViewData["ErrorMessage"] = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error);
         return View();
+    }
+
+    [HttpGet("audit")]
+    public async Task<IActionResult> AuditLog(
+        [FromQuery] string? q,
+        [FromQuery] string? entityType,
+        [FromQuery] string? category,
+        [FromQuery] string? actor,
+        [FromQuery] string? source,
+        [FromQuery] string? from,
+        [FromQuery] string? to,
+        CancellationToken cancellationToken)
+    {
+        var filter = new ApplicationAuditFilter(
+            Search: q ?? string.Empty,
+            EntityType: entityType ?? string.Empty,
+            Category: category ?? string.Empty,
+            Actor: actor ?? string.Empty,
+            Source: source ?? string.Empty,
+            From: from ?? string.Empty,
+            To: to ?? string.Empty);
+        var events = await _applicationAuditService.ListApplicationAuditEventsAsync(filter, cancellationToken);
+        return View("AuditLog", new ApplicationAuditLogViewModel
+        {
+            Filter = filter,
+            Events = events
+        });
     }
 
     [HttpGet("passports")]
@@ -319,7 +352,7 @@ public class AdminController : Controller
                     ApplyPassportForm(battery, filteredForm, createNow);
                 }
             },
-            new BatteryCreationActor(CurrentActor(), "admin-ui", "admin-ui"),
+            new BatteryCreationActor(CurrentActor(), "admin", "admin-ui"),
             BatteryCreationClusterScope.Unrestricted,
             cancellationToken);
 
@@ -352,7 +385,9 @@ public class AdminController : Controller
             battery,
             CurrentActor(),
             DateTimeOffset.UtcNow,
-            cancellationToken);
+            "admin",
+            "admin-ui",
+            cancellationToken: cancellationToken);
         var passportId = BsonHelpers.GetString(passport, "passportId");
         await _batteryPassportDeltaService.ClearNewPassportRequiredAsync(
             BsonHelpers.GetString(battery, "batteryId"),
@@ -373,6 +408,7 @@ public class AdminController : Controller
             return NotFound();
         }
 
+        var beforeSave = battery.DeepClone().AsBsonDocument;
         var productId = FirstNonEmpty(
             BsonHelpers.GetString(battery, "identity", "productId"),
             BsonHelpers.GetString(battery, "app", "product", "productId"),
@@ -449,6 +485,21 @@ public class AdminController : Controller
         {
             await _batteryPassportDeltaService.UpdateNewPassportRequiredAsync(battery, cancellationToken);
         }
+        var changeMetadata = AuditRevisionService.BuildChangeMetadata(beforeSave, battery, "batteryAdminSave");
+        if (changeMetadata.GetValue("changedFields", new BsonArray()) is BsonArray { Count: > 0 })
+        {
+            changeMetadata["newPassportRequired"] = BsonHelpers.GetValue(battery, "app", "snapshot", "newPassportRequired") ?? BsonNull.Value;
+            changeMetadata["compareAllPassportData"] = compareAllPassportData;
+            await _batteryAuditService.AppendBatteryAuditEventAsync(
+                decodedBatteryId,
+                "battery.updated",
+                CurrentActor(),
+                "admin",
+                "admin-ui",
+                "Battery data updated from the admin form.",
+                changeMetadata,
+                cancellationToken: cancellationToken);
+        }
         TempData["StatusMessage"] = "Battery data saved.";
         return Redirect("/admin/clusters?tab=batteries");
     }
@@ -506,6 +557,14 @@ public class AdminController : Controller
         if (!string.IsNullOrWhiteSpace(passportId))
         {
             await _passportRepository.ArchivePassportAsync(passportId, cancellationToken);
+            await _auditRevisionService.AppendAuditEventAsync(
+                passportId,
+                "passport.archived",
+                CurrentActor(),
+                "admin",
+                "admin-ui",
+                "Passport archived from the admin console.",
+                cancellationToken: cancellationToken);
         }
 
         return Redirect(AdminBatteriesUrl());
@@ -519,6 +578,14 @@ public class AdminController : Controller
         if (!string.IsNullOrWhiteSpace(passportId))
         {
             await _passportRepository.UnarchivePassportAsync(passportId, cancellationToken);
+            await _auditRevisionService.AppendAuditEventAsync(
+                passportId,
+                "passport.unarchived",
+                CurrentActor(),
+                "admin",
+                "admin-ui",
+                "Passport unarchived from the admin console.",
+                cancellationToken: cancellationToken);
         }
 
         return Redirect(AdminBatteriesUrl());
@@ -573,6 +640,21 @@ public class AdminController : Controller
 
         await _passportRepository.ReplaceAsync(passportId, document, cancellationToken);
         await _passportRepository.UpdateTrustValidationAsync(passportId, validationSummary, cancellationToken);
+        await _auditRevisionService.AppendAuditEventAsync(
+            passportId,
+            "passport.created",
+            CurrentActor(),
+            "admin",
+            "admin-ui",
+            "Passport created from the admin form.",
+            new BsonDocument
+            {
+                ["batteryId"] = BsonHelpers.GetString(document, "batteryId"),
+                ["registryStatus"] = normalizedStatus,
+                ["blockingErrors"] = validationSummary.BlockingErrorCount,
+                ["warnings"] = validationSummary.WarningCount
+            },
+            cancellationToken);
         var blockedPublishMessage = BuildBlockedPublishMessage(requestedStatus, normalizedStatus);
         if (!string.IsNullOrWhiteSpace(blockedPublishMessage))
         {
@@ -851,7 +933,10 @@ public class AdminController : Controller
 
         var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
         var clusterNamesById = BuildClusterDictionary(clusters);
-        var auditEvents = await _auditRevisionService.ListAuditEventsAsync(passportId, cancellationToken);
+        var auditEvents = await _applicationAuditService.ListPassportTimelineEventsAsync(
+            passportId,
+            BsonHelpers.GetString(document, "batteryId"),
+            cancellationToken);
         return View("Audit", new PassportAuditTrailViewModel
         {
             Passport = _viewModelFactory.Create(document, clusterNamesById, _passportTrustService.Verify(document)),
@@ -922,6 +1007,18 @@ public class AdminController : Controller
             ?? (BatteryProductTemplateCatalog.DefaultProduct with { ProductId = productId });
         var product = BuildProductTemplateFromForm(form, existing);
         await _productTemplateService.SaveProductAsync(product, CurrentActor(), cancellationToken);
+        await AppendAdminAuditAsync(
+            "product.saved",
+            "Battery family template saved.",
+            new BsonDocument
+            {
+                ["productId"] = product.ProductId,
+                ["productName"] = product.ProductName,
+                ["versionCount"] = product.ProductVersions.Count
+            },
+            "product",
+            product.ProductId,
+            cancellationToken);
         return Redirect($"/admin/products/{Uri.EscapeDataString(product.ProductId)}?status={Uri.EscapeDataString("Battery family saved. Push a Battery Model when you want matching batteries to receive safe template changes.")}");
     }
 
@@ -930,6 +1027,20 @@ public class AdminController : Controller
     public async Task<IActionResult> PushProductVersionTemplate(string productId, string productVersion, CancellationToken cancellationToken)
     {
         var result = await _productTemplateService.PushProductVersionAsync(productId, productVersion, CurrentActor(), cancellationToken);
+        await AppendAdminAuditAsync(
+            "product.version.pushed",
+            "Battery Model template pushed to matching batteries.",
+            new BsonDocument
+            {
+                ["productId"] = productId,
+                ["productVersion"] = productVersion,
+                ["matchedBatteries"] = result.MatchedBatteries,
+                ["updatedBatteries"] = result.UpdatedBatteries,
+                ["skippedBatteries"] = result.SkippedBatteries
+            },
+            "product",
+            productId,
+            cancellationToken);
         var message = $"Battery Model push finished: {result.UpdatedBatteries} of {result.MatchedBatteries} matching batteries updated. Manual overrides were preserved.";
         return Redirect($"/admin/products/{Uri.EscapeDataString(productId)}?status={Uri.EscapeDataString(message)}");
     }
@@ -941,6 +1052,17 @@ public class AdminController : Controller
         try
         {
             var result = await _productTemplateService.ResetTemplateDemoAsync(CurrentActor(), cancellationToken);
+            await AppendAdminAuditAsync(
+                "product.demoReset",
+                "Product template demo data reset.",
+                new BsonDocument
+                {
+                    ["batteryCount"] = result.BatteryCount,
+                    ["passportCount"] = result.PassportCount
+                },
+                "product",
+                "demo-reset",
+                cancellationToken);
             TempData["StatusMessage"] = $"Product template demo reset completed: seeded {result.BatteryCount} batteries and {result.PassportCount} passport snapshots from MongoDB product templates.";
             return Redirect("/admin/clusters?tab=products");
         }
@@ -1185,6 +1307,17 @@ public class AdminController : Controller
             TempData["ClusterCreateId"] = clusterId;
             return Redirect("/admin/clusters?tab=clusters");
         }
+        await AppendAdminAuditAsync(
+            "cluster.created",
+            "Cluster created.",
+            new BsonDocument
+            {
+                ["clusterId"] = clusterId,
+                ["name"] = name
+            },
+            "cluster",
+            clusterId,
+            cancellationToken);
         return Redirect("/admin/clusters?tab=clusters");
     }
 
@@ -1195,6 +1328,17 @@ public class AdminController : Controller
         var clusterId = Text(Request.Form, "clusterId");
         var name = Text(Request.Form, "name");
         await _clusterRepository.UpdateClusterNameAsync(clusterId, name, cancellationToken);
+        await AppendAdminAuditAsync(
+            "cluster.updated",
+            "Cluster updated.",
+            new BsonDocument
+            {
+                ["clusterId"] = clusterId,
+                ["name"] = name
+            },
+            "cluster",
+            clusterId,
+            cancellationToken);
         return Redirect("/admin/clusters?tab=clusters");
     }
 
@@ -1212,6 +1356,13 @@ public class AdminController : Controller
         }
 
         await _clusterRepository.DeleteClusterAsync(clusterId, cancellationToken);
+        await AppendAdminAuditAsync(
+            "cluster.deleted",
+            "Cluster deleted.",
+            new BsonDocument { ["clusterId"] = clusterId },
+            "cluster",
+            clusterId,
+            cancellationToken);
         return Redirect("/admin/clusters?tab=clusters");
     }
 
@@ -1229,6 +1380,17 @@ public class AdminController : Controller
 
         await _passportRepository.ClearPassportClusterAsync(clusterId, cancellationToken);
         await _clusterRepository.DeleteClusterAsync(clusterId, cancellationToken);
+        await AppendAdminAuditAsync(
+            "cluster.deleted",
+            "Cluster force-deleted after linked data was cleared.",
+            new BsonDocument
+            {
+                ["clusterId"] = clusterId,
+                ["forceDelete"] = true
+            },
+            "cluster",
+            clusterId,
+            cancellationToken);
         return Redirect("/admin/clusters?tab=clusters");
     }
 
@@ -1239,6 +1401,17 @@ public class AdminController : Controller
         var passportId = Text(Request.Form, "passportId");
         var clusterId = Text(Request.Form, "clusterId");
         await _passportRepository.UpdatePassportClusterAsync(passportId, clusterId, cancellationToken);
+        await AppendAdminAuditAsync(
+            "cluster.passport.assigned",
+            "Passport assigned to cluster.",
+            new BsonDocument
+            {
+                ["passportId"] = passportId,
+                ["clusterId"] = clusterId
+            },
+            "cluster",
+            clusterId,
+            cancellationToken);
         return Redirect("/admin/clusters?tab=battery");
     }
 
@@ -1250,6 +1423,18 @@ public class AdminController : Controller
         var clusterId = Text(Request.Form, "clusterId");
         var role = Text(Request.Form, "role", "member");
         await _clusterRepository.UpsertClusterMembershipAsync(email, clusterId, role, cancellationToken);
+        await AppendAdminAuditAsync(
+            "cluster.user.assigned",
+            "User assigned to cluster.",
+            new BsonDocument
+            {
+                ["email"] = email,
+                ["clusterId"] = clusterId,
+                ["role"] = role
+            },
+            "cluster",
+            clusterId,
+            cancellationToken);
         return Redirect($"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}");
     }
 
@@ -1296,6 +1481,21 @@ public class AdminController : Controller
             await _clusterRepository.UpsertClusterMembershipAsync(email, clusterId, membershipRole, cancellationToken);
         }
 
+        await AppendAdminAuditAsync(
+            "cluster.user.saved",
+            existingUser == null ? "User created." : "User updated.",
+            new BsonDocument
+            {
+                ["email"] = email,
+                ["name"] = displayName,
+                ["roles"] = new BsonArray(roles.Select(role => (BsonValue)role)),
+                ["clusterId"] = clusterId,
+                ["passwordChanged"] = !string.IsNullOrWhiteSpace(passwordHash)
+            },
+            "user",
+            email,
+            cancellationToken);
+
         return Redirect($"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}");
     }
 
@@ -1306,6 +1506,17 @@ public class AdminController : Controller
         var email = Text(Request.Form, "email");
         var clusterId = Text(Request.Form, "clusterId");
         await _clusterRepository.DeleteClusterMembershipAsync(email, clusterId, cancellationToken);
+        await AppendAdminAuditAsync(
+            "cluster.user.membership.deleted",
+            "User cluster membership deleted.",
+            new BsonDocument
+            {
+                ["email"] = email,
+                ["clusterId"] = clusterId
+            },
+            "user",
+            email,
+            cancellationToken);
         return Redirect($"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}");
     }
 
@@ -1335,7 +1546,7 @@ public class AdminController : Controller
             .ToList();
 
         var actor = AccessControlService.CurrentEmail(User);
-        var (_, tokenValue) = await _externalApiRepository.CreateTokenAsync(
+        var (tokenDocument, tokenValue) = await _externalApiRepository.CreateTokenAsync(
             name,
             accessMode,
             clusterIds,
@@ -1344,6 +1555,21 @@ public class AdminController : Controller
             string.IsNullOrWhiteSpace(actor) ? "admin" : actor,
             cancellationToken: cancellationToken);
 
+        await AppendAdminAuditAsync(
+            "apiToken.created",
+            "API token created.",
+            new BsonDocument
+            {
+                ["tokenId"] = BsonHelpers.GetString(tokenDocument, "tokenId"),
+                ["name"] = name,
+                ["accessMode"] = accessMode.ToString(),
+                ["globalAccess"] = globalAccess,
+                ["allowUnassigned"] = allowUnassigned,
+                ["clusterIds"] = new BsonArray(clusterIds.Select(clusterId => (BsonValue)clusterId))
+            },
+            "apiToken",
+            BsonHelpers.GetString(tokenDocument, "tokenId"),
+            cancellationToken);
         TempData["StatusMessage"] = $"API token \"{name}\" created.";
         TempData["GeneratedCredential"] = tokenValue;
         return Redirect("/admin/clusters?tab=api-tokens");
@@ -1355,6 +1581,16 @@ public class AdminController : Controller
     {
         var tokenId = Text(Request.Form, "tokenId");
         var success = await _externalApiRepository.DeleteTokenAsync(tokenId, cancellationToken);
+        if (success)
+        {
+            await AppendAdminAuditAsync(
+                "apiToken.deleted",
+                "API token deleted.",
+                new BsonDocument { ["tokenId"] = tokenId },
+                "apiToken",
+                tokenId,
+                cancellationToken);
+        }
         TempData[success ? "StatusMessage" : "ErrorMessage"] = success
             ? $"Token {tokenId} deleted."
             : $"Token {tokenId} was not found.";
@@ -1377,6 +1613,20 @@ public class AdminController : Controller
         var tokens = await _externalApiRepository.ListTokensAsync(cancellationToken);
         var duplicateTokenIds = GeneratedClusterDuplicateTokenIds(tokens, clusterNamesById);
         var deletedCount = await _externalApiRepository.DeleteTokensAsync(duplicateTokenIds, cancellationToken);
+        if (deletedCount > 0)
+        {
+            await AppendAdminAuditAsync(
+                "apiToken.deleted",
+                "Generated API token duplicates cleaned up.",
+                new BsonDocument
+                {
+                    ["deletedCount"] = deletedCount,
+                    ["tokenIds"] = new BsonArray(duplicateTokenIds.Select(tokenId => (BsonValue)tokenId))
+                },
+                "apiToken",
+                "generated-duplicates",
+                cancellationToken);
+        }
         TempData[deletedCount > 0 ? "StatusMessage" : "ErrorMessage"] = deletedCount > 0
             ? $"Cleaned up {deletedCount} unused generated token{(deletedCount == 1 ? string.Empty : "s")}."
             : "No unused generated token duplicates were found.";
@@ -1391,6 +1641,20 @@ public class AdminController : Controller
         var isActive = Request.Form["isActive"].FirstOrDefault()?.Equals("true", StringComparison.OrdinalIgnoreCase) == true;
         var actor = AccessControlService.CurrentEmail(User);
         var success = await _externalApiRepository.SetTokenActiveAsync(tokenId, isActive, string.IsNullOrWhiteSpace(actor) ? "admin" : actor, cancellationToken);
+        if (success)
+        {
+            await AppendAdminAuditAsync(
+                "apiToken.updated",
+                "API token active state changed.",
+                new BsonDocument
+                {
+                    ["tokenId"] = tokenId,
+                    ["isActive"] = isActive
+                },
+                "apiToken",
+                tokenId,
+                cancellationToken);
+        }
         TempData[success ? "StatusMessage" : "ErrorMessage"] = success
             ? $"Token {tokenId} updated."
             : $"Token {tokenId} was not found.";
@@ -1412,6 +1676,13 @@ public class AdminController : Controller
         {
             TempData["StatusMessage"] = $"Token {tokenId} regenerated.";
             TempData["GeneratedCredential"] = newToken;
+            await AppendAdminAuditAsync(
+                "apiToken.regenerated",
+                "API token regenerated.",
+                new BsonDocument { ["tokenId"] = tokenId },
+                "apiToken",
+                tokenId,
+                cancellationToken);
         }
 
         return Redirect("/admin/clusters?tab=api-tokens");
@@ -1495,6 +1766,17 @@ public class AdminController : Controller
         TempData["StatusMessage"] = generatedCount == 0
             ? $"Per-cluster tokens already exist. Skipped {skippedCount} existing token{(skippedCount == 1 ? string.Empty : "s")}."
             : $"Generated {generatedCount} cluster token{(generatedCount == 1 ? string.Empty : "s")} and skipped {skippedCount} existing token{(skippedCount == 1 ? string.Empty : "s")}.";
+        await AppendAdminAuditAsync(
+            "apiToken.created",
+            "Per-cluster API token generation finished.",
+            new BsonDocument
+            {
+                ["generatedCount"] = generatedCount,
+                ["skippedCount"] = skippedCount
+            },
+            "apiToken",
+            "per-cluster-generation",
+            cancellationToken);
         return Redirect("/admin/clusters?tab=api-token-management");
     }
 
@@ -1521,6 +1803,20 @@ public class AdminController : Controller
 
         await _editableFieldPolicyService.SavePolicyAsync(allKeys, CurrentActor(), cancellationToken);
         await _localAdminEditableFieldPolicyService.SavePolicyAsync(localAdminKeys.ToList(), CurrentActor(), cancellationToken);
+        await AppendAdminAuditAsync(
+            "editablePolicy.updated",
+            "Editable field policy updated.",
+            new BsonDocument
+            {
+                ["editableAtCreationCount"] = creationKeys.Count,
+                ["editableAfterCreationCount"] = afterCreationKeys.Count,
+                ["visibleToClusterAdminCount"] = visibleKeys.Count,
+                ["editableByLocalAdminCount"] = localAdminKeys.Count,
+                ["editableByLocalAdminFieldKeys"] = new BsonArray(localAdminKeys.Select(fieldKey => (BsonValue)fieldKey))
+            },
+            "editablePolicy",
+            "battery-fields",
+            cancellationToken);
         TempData["StatusMessage"] = "Editable fields updated.";
         return Redirect("/admin/clusters?tab=local-editable-fields");
     }
@@ -2554,6 +2850,26 @@ public class AdminController : Controller
     {
         var actor = AccessControlService.CurrentEmail(User);
         return string.IsNullOrWhiteSpace(actor) ? "admin" : actor;
+    }
+
+    private Task AppendAdminAuditAsync(
+        string eventType,
+        string message,
+        BsonDocument? metadata,
+        string entityType,
+        string entityId,
+        CancellationToken cancellationToken)
+    {
+        return _applicationAuditService.AppendApplicationAuditEventAsync(
+            eventType,
+            CurrentActor(),
+            "admin",
+            "admin-ui",
+            message,
+            metadata,
+            entityType,
+            entityId,
+            cancellationToken: cancellationToken);
     }
 
     private static Dictionary<string, string> BuildClusterDictionary(IEnumerable<BsonDocument> clusters)

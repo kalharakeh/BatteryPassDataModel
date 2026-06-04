@@ -98,6 +98,7 @@ builder.Services.AddSingleton<DemoSigningKeyService>();
 builder.Services.AddSingleton<PassportTrustService>();
 builder.Services.AddSingleton<AuditRevisionService>();
 builder.Services.AddSingleton<BatteryAuditService>();
+builder.Services.AddSingleton<ApplicationAuditService>();
 builder.Services.AddSingleton<BatteryCreationService>();
 builder.Services.AddSingleton<PassportTrustWorkflowService>();
 builder.Services.AddSingleton<AccessControlService>();

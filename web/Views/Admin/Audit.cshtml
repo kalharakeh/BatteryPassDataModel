@@ -1,5 +1,3 @@
-@using MongoDB.Bson
-@using BatteryPassWeb.Services
 @model BatteryPassWeb.Models.ViewModels.PassportAuditTrailViewModel
 @{
     ViewData["Title"] = "Passport audit trail";
@@ -57,52 +55,7 @@
         <div class="bp-ledger-timeline">
             @foreach (var auditEvent in Model.AuditEvents)
             {
-                var metadata = Metadata(auditEvent);
-                var changedFields = ChangedFields(metadata);
-                var eventType = BsonHelpers.GetString(auditEvent, "eventType");
-                <article class="bp-ledger-event @EventTone(eventType)">
-                    <div class="bp-ledger-event-rail">
-                        <span>@EventShortName(eventType)</span>
-                    </div>
-                    <div class="bp-ledger-event-body">
-                        <div class="bp-ledger-event-title">
-                            <div>
-                                <span class="bp-ledger-label">What changed</span>
-                                <h3>@HumanizeEvent(eventType)</h3>
-                            </div>
-                            <code>@eventType</code>
-                        </div>
-
-                        <p>@BsonHelpers.GetString(auditEvent, "message")</p>
-
-                        <dl class="bp-ledger-kv">
-                            <div><dt>When</dt><dd>@BsonHelpers.GetString(auditEvent, "createdAt")</dd></div>
-                            <div><dt>Who</dt><dd>@BsonHelpers.GetString(auditEvent, "actor") <span>@BsonHelpers.GetString(auditEvent, "actorRole")</span></dd></div>
-                            <div><dt>Where</dt><dd>@BsonHelpers.GetString(auditEvent, "source")</dd></div>
-                            <div><dt>Why</dt><dd>@FirstNonEmpty(MetadataText(metadata, "dirtyReason"), MetadataText(metadata, "reason"), "-")</dd></div>
-                        </dl>
-
-                        @if (changedFields.Count > 0)
-                        {
-                            <div class="bp-ledger-changes">
-                                <span class="bp-ledger-label">Changed fields</span>
-                                @foreach (var changedField in changedFields)
-                                {
-                                    <div class="bp-ledger-change-row">
-                                        <code>@BsonHelpers.GetString(changedField, "path")</code>
-                                        <span>@BsonHelpers.GetString(changedField, "changeType")</span>
-                                        <small>@Shorten(BsonHelpers.GetString(changedField, "before")) -> @Shorten(BsonHelpers.GetString(changedField, "after"))</small>
-                                    </div>
-                                }
-                            </div>
-                        }
-
-                        <details class="bp-ledger-metadata">
-                            <summary>Metadata</summary>
-                            <code>@metadata.ToJson()</code>
-                        </details>
-                    </div>
-                </article>
+                @await Html.PartialAsync("_AuditEventRow", auditEvent)
             }
 
             @if (Model.AuditEvents.Count == 0)
@@ -112,75 +65,3 @@
         </div>
     </section>
 </main>
-
-@functions {
-    private static BsonDocument Metadata(BsonDocument auditEvent)
-    {
-        return auditEvent.GetValue("metadata", new BsonDocument()) is BsonDocument metadata
-            ? metadata
-            : new BsonDocument();
-    }
-
-    private static IReadOnlyList<BsonDocument> ChangedFields(BsonDocument metadata)
-    {
-        return metadata.GetValue("changedFields", new BsonArray()) is BsonArray changedFields
-            ? changedFields.OfType<BsonDocument>().ToList()
-            : [];
-    }
-
-    private static string MetadataText(BsonDocument metadata, string key)
-    {
-        return BsonHelpers.GetString(metadata, key);
-    }
-
-    private static string FirstNonEmpty(params string[] values)
-    {
-        return values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? string.Empty;
-    }
-
-    private static string Shorten(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return "-";
-        }
-
-        return value.Length <= 120 ? value : value[..120] + "...";
-    }
-
-    private static string EventTone(string eventType)
-    {
-        if (eventType.Contains("blocked", StringComparison.OrdinalIgnoreCase)
-            || eventType.Contains("denied", StringComparison.OrdinalIgnoreCase))
-        {
-            return "is-warning";
-        }
-
-        if (eventType.Contains("signed", StringComparison.OrdinalIgnoreCase)
-            || eventType.Contains("published", StringComparison.OrdinalIgnoreCase))
-        {
-            return "is-proof";
-        }
-
-        return eventType.Contains("updated", StringComparison.OrdinalIgnoreCase)
-            || eventType.Contains("uploaded", StringComparison.OrdinalIgnoreCase)
-            || eventType.Contains("replaced", StringComparison.OrdinalIgnoreCase)
-            ? "is-change"
-            : "is-neutral";
-    }
-
-    private static string EventShortName(string eventType)
-    {
-        var parts = eventType.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        return parts.Length == 0 ? "event" : parts[^1];
-    }
-
-    private static string HumanizeEvent(string eventType)
-    {
-        return eventType
-            .Replace("passport.", string.Empty, StringComparison.OrdinalIgnoreCase)
-            .Replace("file.", "file ", StringComparison.OrdinalIgnoreCase)
-            .Replace('.', ' ')
-            .Replace('-', ' ');
-    }
-}

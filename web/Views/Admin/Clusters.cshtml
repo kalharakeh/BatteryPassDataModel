@@ -4,9 +4,9 @@
     var selectedTab = Model.SelectedTab;
     var credentialTab = Model.SelectedCredentialTab;
     var clustersById = Model.Clusters.ToDictionary(cluster => cluster.ClusterId, cluster => cluster, StringComparer.OrdinalIgnoreCase);
-    string TabClass(string tab) => selectedTab == tab ? "bp-tab bp-tab-active" : "bp-tab";
     var query = Model.PassportsQuery ?? string.Empty;
     var querySuffix = string.IsNullOrWhiteSpace(query) ? string.Empty : $"&q={Uri.EscapeDataString(query)}";
+    ViewData["AdminBatteriesQuerySuffix"] = querySuffix;
     var editableAtCreationKeys = Model.LocalEditableFieldPolicy.PermissionByKey.Values
         .Where(permission => permission.EditableAtCreation)
         .Select(permission => permission.FieldKey)
@@ -98,19 +98,10 @@
 <main class="bp-page bp-admin-page">
     <div>
         <h1 class="mb-1">Administration</h1>
-        <p class="text-secondary mb-0">Manage batteries, passport snapshots, battery families, cluster assignments, registered clusters, and user memberships from one page.</p>
+        <p class="text-secondary mb-0">Manage batteries, passport snapshots, battery families, cluster assignments, registered clusters, user memberships, credentials, and audit history from one page.</p>
     </div>
 
-    <nav class="bp-tab-row mt-4" aria-label="Administration tabs">
-        <a class="@TabClass("batteries")" href="/admin/clusters?tab=batteries@querySuffix">Batteries</a>
-        <a class="@TabClass("battery")" href="/admin/clusters?tab=battery">Battery cluster assignments</a>
-        <a class="@TabClass("clusters")" href="/admin/clusters?tab=clusters">Registered clusters</a>
-        <a class="@TabClass("users")" href="/admin/clusters?tab=users">Users</a>
-        <a class="@TabClass("local-editable-fields")" href="/admin/clusters?tab=local-editable-fields">Editable fields</a>
-        <a class="@TabClass("api-token-management")" href="/admin/clusters?tab=api-token-management">API Token Management</a>
-        <a class="@TabClass("products")" href="/admin/clusters?tab=products">Battery families</a>
-        <a class="bp-tab" href="/admin/help">Help</a>
-    </nav>
+    @await Html.PartialAsync("_AdminTabs", selectedTab)
 
     @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
     {

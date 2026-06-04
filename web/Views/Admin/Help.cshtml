@@ -12,16 +12,7 @@
         </div>
     </header>
 
-    <nav class="bp-tab-row" aria-label="Administration tabs">
-        <a class="bp-tab" href="/admin/clusters?tab=batteries">Batteries</a>
-        <a class="bp-tab" href="/admin/clusters?tab=battery">Battery cluster assignments</a>
-        <a class="bp-tab" href="/admin/clusters?tab=clusters">Registered clusters</a>
-        <a class="bp-tab" href="/admin/clusters?tab=users">Users</a>
-        <a class="bp-tab" href="/admin/clusters?tab=local-editable-fields">Local editable fields</a>
-        <a class="bp-tab" href="/admin/clusters?tab=api-token-management">API Token Management</a>
-        <a class="bp-tab" href="/admin/clusters?tab=products">Battery families</a>
-        <a class="bp-tab bp-tab-active" href="/admin/help">Help</a>
-    </nav>
+    @await Html.PartialAsync("_AdminTabs", "help")
 
     @if (!string.IsNullOrWhiteSpace(statusMessage))
     {

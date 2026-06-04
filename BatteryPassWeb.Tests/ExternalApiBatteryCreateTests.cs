@@ -12,7 +12,7 @@ public sealed class ExternalApiBatteryCreateTests
         Assert.Contains("CustomizeBatteryBeforeInsert", source);
         Assert.Contains("ApplyBatteryEditableFormValues(form, editablePolicy, forCreation: true)", source);
         Assert.Contains("ApplyPassportForm(battery, filteredForm, createNow)", source);
-        Assert.Contains("new BatteryCreationActor(CurrentActor(), \"admin-ui\", \"admin-ui\")", source);
+        Assert.Contains("new BatteryCreationActor(CurrentActor(), \"admin\", \"admin-ui\")", source);
         Assert.DoesNotContain("await _batteryRepository.CreateBatteryAsync(battery, cancellationToken);", source);
     }
 

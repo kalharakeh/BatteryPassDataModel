@@ -26,13 +26,15 @@ public sealed class DataRequirementsAdminLayoutTests
     public void AdminWorkspace_ShouldNotRenderGlobalDataRequirementsTab()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var tabs = File.ReadAllText(RepoFile("web", "Views", "Shared", "_AdminTabs.cshtml"));
         var model = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "AdminClusterViewModel.cs"));
         var adminClusterModel = model[..model.IndexOf("public sealed class ProductTemplateSummaryViewModel", StringComparison.Ordinal)];
 
         Assert.Contains("Battery families", markup);
-        Assert.Contains("tab=products", markup);
+        Assert.Contains("tab=products", tabs);
         Assert.Contains("Required fields", markup);
         Assert.DoesNotContain("tab=data-requirements", markup);
+        Assert.DoesNotContain("tab=data-requirements", tabs);
         Assert.DoesNotContain("selectedTab == \"data-requirements\"", markup);
         Assert.DoesNotContain("Save data requirements", markup);
         Assert.DoesNotContain("Model.DataRequirements", markup);

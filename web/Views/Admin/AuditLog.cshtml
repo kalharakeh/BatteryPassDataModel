@@ -1,0 +1,97 @@
+@using Microsoft.AspNetCore.Html
+@using System.Text.Encodings.Web
+@model BatteryPassWeb.Models.ViewModels.ApplicationAuditLogViewModel
+@{
+    ViewData["Title"] = "Application audit log";
+    var filter = Model.Filter;
+}
+
+<main class="bp-page bp-admin-page bp-audit-log">
+    <div>
+        <h1 class="mb-1">Administration</h1>
+        <p class="text-secondary mb-0">Manage batteries, passport snapshots, battery families, cluster assignments, registered clusters, user memberships, credentials, and audit history from one page.</p>
+    </div>
+
+    @await Html.PartialAsync("_AdminTabs", "audit")
+
+    <section class="bp-card bp-ledger-panel">
+        <form method="get" class="bp-audit-filter-grid">
+            <label>
+                <span>Search</span>
+                <input type="search" name="q" value="@filter.Search" placeholder="ID, actor, event, message" />
+            </label>
+            <label>
+                <span>Entity</span>
+                <select name="entityType">
+                    @Option("", "All entities", filter.EntityType)
+                    @Option("battery", "Battery", filter.EntityType)
+                    @Option("passport", "Passport", filter.EntityType)
+                    @Option("cluster", "Cluster", filter.EntityType)
+                    @Option("apiToken", "API token", filter.EntityType)
+                    @Option("account", "Account", filter.EntityType)
+                </select>
+            </label>
+            <label>
+                <span>Category</span>
+                <select name="category">
+                    @Option("", "All categories", filter.Category)
+                    @Option("battery", "Battery", filter.Category)
+                    @Option("passport", "Passport", filter.Category)
+                    @Option("file", "Files", filter.Category)
+                    @Option("admin", "Admin", filter.Category)
+                    @Option("security", "Security", filter.Category)
+                </select>
+            </label>
+            <label>
+                <span>Actor</span>
+                <input type="text" name="actor" value="@filter.Actor" placeholder="email or token name" />
+            </label>
+            <label>
+                <span>Source</span>
+                <input type="text" name="source" value="@filter.Source" placeholder="admin-ui, external-api" />
+            </label>
+            <label>
+                <span>From</span>
+                <input type="date" name="from" value="@filter.From" />
+            </label>
+            <label>
+                <span>To</span>
+                <input type="date" name="to" value="@filter.To" />
+            </label>
+            <div class="bp-audit-filter-actions">
+                <button type="submit" class="bp-primary-button">Apply</button>
+                <a href="/admin/audit" class="bp-secondary-button">Reset</a>
+            </div>
+        </form>
+    </section>
+
+    <section class="bp-card bp-ledger-panel">
+        <div class="bp-ledger-panel-heading">
+            <div>
+                <span class="bp-summary-title">@Model.Events.Count event@(Model.Events.Count == 1 ? string.Empty : "s")</span>
+                <h2>Timeline</h2>
+            </div>
+            <p>Events are normalized from passport, battery, and application audit collections.</p>
+        </div>
+
+        <div class="bp-ledger-timeline">
+            @foreach (var auditEvent in Model.Events)
+            {
+                @await Html.PartialAsync("_AuditEventRow", auditEvent)
+            }
+
+            @if (Model.Events.Count == 0)
+            {
+                <div class="bp-table-empty">No audit events match the current filters.</div>
+            }
+        </div>
+    </section>
+</main>
+
+@functions {
+    private IHtmlContent Option(string value, string label, string selectedValue)
+    {
+        var selected = value.Equals(selectedValue, StringComparison.OrdinalIgnoreCase) ? " selected" : string.Empty;
+        return new HtmlString($"<option value=\"{HtmlEncoder.Default.Encode(value)}\"{selected}>{HtmlEncoder.Default.Encode(label)}</option>");
+    }
+}

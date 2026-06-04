@@ -280,13 +280,15 @@ public sealed class AdminDenseConsoleLayoutTests
     public void AdminHelp_ShouldUsePersistentAdminTabsAndLighterWorkflowIntro()
     {
         var help = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
+        var tabs = File.ReadAllText(RepoFile("web", "Views", "Shared", "_AdminTabs.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        Assert.Contains("bp-tab-row", help);
-        Assert.Contains("Administration tabs", help);
-        Assert.Contains("bp-tab-active", help);
-        Assert.Contains("href=\"/admin/clusters?tab=batteries\"", help);
-        Assert.Contains("href=\"/admin/clusters?tab=api-token-management\"", help);
+        Assert.Contains("_AdminTabs", help);
+        Assert.Contains("bp-tab-row", tabs);
+        Assert.Contains("Administration tabs", tabs);
+        Assert.Contains("bp-tab-active", tabs);
+        Assert.Contains("tab=batteries", tabs);
+        Assert.Contains("href=\"/admin/clusters?tab=api-token-management\"", tabs);
         Assert.Contains("bp-admin-help-reference-console", help);
         Assert.Contains("bp-admin-help-reference-toolbar", help);
         Assert.Contains("bp-admin-help-workflow-table", help);

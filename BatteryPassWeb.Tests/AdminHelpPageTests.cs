@@ -33,18 +33,20 @@ public sealed class AdminHelpPageTests
     public void AdminHelpView_ShouldRenderDenseNavigationWithoutBackToMainAdminLink()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
+        var tabs = File.ReadAllText(RepoFile("web", "Views", "Shared", "_AdminTabs.cshtml"));
 
         Assert.Contains("bp-console-header", markup);
-        Assert.Contains("Administration tabs", markup);
-        Assert.Contains("bp-tab-active", markup);
-        Assert.Contains("href=\"/admin/clusters?tab=batteries\"", markup);
-        Assert.Contains("href=\"/admin/clusters?tab=local-editable-fields\"", markup);
-        Assert.Contains("href=\"/admin/help\"", markup);
+        Assert.Contains("_AdminTabs", markup);
+        Assert.Contains("Administration tabs", tabs);
+        Assert.Contains("bp-tab-active", tabs);
+        Assert.Contains("href=\"@($\"/admin/clusters?tab=batteries{batteryQuerySuffix}\")\"", tabs);
+        Assert.Contains("href=\"/admin/clusters?tab=local-editable-fields\"", tabs);
+        Assert.Contains("href=\"/admin/help\"", tabs);
         Assert.DoesNotContain("Back to main admin page", markup);
         Assert.DoesNotContain("bp-page-return-row", markup);
         Assert.DoesNotContain("bp-page-return-link", markup);
         Assert.True(
-            markup.IndexOf("bp-tab-row", StringComparison.Ordinal) <
+            markup.IndexOf("_AdminTabs", StringComparison.Ordinal) <
             markup.IndexOf("bp-admin-help-reference-console", StringComparison.Ordinal),
             "The admin help tab navigation should stay above the dense reference console.");
     }

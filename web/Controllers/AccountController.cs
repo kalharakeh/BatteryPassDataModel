@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MongoDB.Bson;
 using BCryptNet = BCrypt.Net.BCrypt;
 
 namespace BatteryPassWeb.Controllers;
@@ -14,11 +15,16 @@ public sealed class AccountController : Controller
 {
     private readonly ClusterRepository _clusterRepository;
     private readonly AuthService _authService;
+    private readonly ApplicationAuditService _applicationAuditService;
 
-    public AccountController(ClusterRepository clusterRepository, AuthService authService)
+    public AccountController(
+        ClusterRepository clusterRepository,
+        AuthService authService,
+        ApplicationAuditService applicationAuditService)
     {
         _clusterRepository = clusterRepository;
         _authService = authService;
+        _applicationAuditService = applicationAuditService;
     }
 
     [HttpGet("")]
@@ -80,6 +86,23 @@ public sealed class AccountController : Controller
         var passwordHash = string.IsNullOrWhiteSpace(password) ? string.Empty : BCryptNet.HashPassword(password);
         await _clusterRepository.UpdateUserProfileAsync(currentEmail, name, passwordHash, cancellationToken);
         await _clusterRepository.UpdateUserEmailAsync(currentEmail, newEmail, cancellationToken);
+        await _applicationAuditService.AppendApplicationAuditEventAsync(
+            "account.profile.updated",
+            currentEmail,
+            "account",
+            "account-ui",
+            "Account profile updated.",
+            new BsonDocument
+            {
+                ["previousEmail"] = currentEmail,
+                ["newEmail"] = newEmail,
+                ["name"] = name,
+                ["emailChanged"] = !newEmail.Equals(currentEmail, StringComparison.OrdinalIgnoreCase),
+                ["passwordChanged"] = !string.IsNullOrWhiteSpace(passwordHash)
+            },
+            "account",
+            newEmail,
+            cancellationToken: cancellationToken);
 
         var principal = await _authService.CreatePrincipalForUserAsync(newEmail, cancellationToken);
         if (principal != null)

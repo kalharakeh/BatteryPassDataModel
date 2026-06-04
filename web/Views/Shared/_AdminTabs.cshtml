@@ -1,0 +1,18 @@
+@model string
+@{
+    var activeTab = Model ?? string.Empty;
+    var batteryQuerySuffix = ViewData["AdminBatteriesQuerySuffix"] as string ?? string.Empty;
+    string TabClass(string tab) => activeTab.Equals(tab, StringComparison.OrdinalIgnoreCase) ? "bp-tab bp-tab-active" : "bp-tab";
+}
+
+<nav class="bp-tab-row mt-4" aria-label="Administration tabs">
+    <a class="@TabClass("batteries")" href="@($"/admin/clusters?tab=batteries{batteryQuerySuffix}")">Batteries</a>
+    <a class="@TabClass("battery")" href="/admin/clusters?tab=battery">Battery cluster assignments</a>
+    <a class="@TabClass("clusters")" href="/admin/clusters?tab=clusters">Registered clusters</a>
+    <a class="@TabClass("users")" href="/admin/clusters?tab=users">Users</a>
+    <a class="@TabClass("local-editable-fields")" href="/admin/clusters?tab=local-editable-fields">Editable fields</a>
+    <a class="@TabClass("api-token-management")" href="/admin/clusters?tab=api-token-management">API Token Management</a>
+    <a class="@TabClass("products")" href="/admin/clusters?tab=products">Battery families</a>
+    <a class="@TabClass("audit")" href="/admin/audit">Audit log</a>
+    <a class="@TabClass("help")" href="/admin/help">Help</a>
+</nav>

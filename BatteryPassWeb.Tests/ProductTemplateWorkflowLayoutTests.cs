@@ -36,10 +36,12 @@ public sealed class ProductTemplateWorkflowLayoutTests
     public void AdminPages_ShouldExposeProductsTabAndTemplateBasedNewPassportFlow()
     {
         var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var tabs = File.ReadAllText(RepoFile("web", "Views", "Shared", "_AdminTabs.cshtml"));
         var edit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
         var help = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
 
-        Assert.Contains("tab=products", clusters);
+        Assert.Contains("tab=products", tabs);
+        Assert.Contains("_AdminTabs", clusters);
         Assert.Contains("Battery families", clusters);
         Assert.Contains("name=\"productId\"", edit);
         Assert.Contains("name=\"softwareVersion\"", edit);
@@ -141,12 +143,13 @@ public sealed class ProductTemplateWorkflowLayoutTests
     public void AdminAndClusterAdmin_ShouldExposeEditableFieldPolicy()
     {
         var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var tabs = File.ReadAllText(RepoFile("web", "Views", "Shared", "_AdminTabs.cshtml"));
         var sharedEdit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
         var adminController = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
         var clusterAdminController = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
         var program = File.ReadAllText(RepoFile("web", "Program.cs"));
 
-        Assert.Contains("tab=local-editable-fields", clusters);
+        Assert.Contains("tab=local-editable-fields", tabs);
         Assert.Contains("Editable fields", clusters);
         Assert.Contains("editableAtCreationFieldKeys", clusters);
         Assert.Contains("editableAfterCreationFieldKeys", clusters);

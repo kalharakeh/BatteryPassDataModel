@@ -4,6 +4,7 @@ using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
+using MongoDB.Bson;
 
 namespace BatteryPassWeb.Controllers;
 
@@ -11,10 +12,12 @@ namespace BatteryPassWeb.Controllers;
 public class LoginController : Controller
 {
     private readonly AuthService _authService;
+    private readonly ApplicationAuditService _applicationAuditService;
 
-    public LoginController(AuthService authService)
+    public LoginController(AuthService authService, ApplicationAuditService applicationAuditService)
     {
         _authService = authService;
+        _applicationAuditService = applicationAuditService;
     }
 
     [HttpGet("")]
@@ -68,11 +71,26 @@ public class LoginController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ForgotPassword([FromForm] string email, CancellationToken cancellationToken)
     {
+        var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
         await _authService.CreatePasswordResetAsync(
             email,
-            HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
+            remoteIp,
             RequestBaseUrl(),
             cancellationToken);
+        await _applicationAuditService.AppendApplicationAuditEventAsync(
+            "security.passwordReset.requested",
+            string.IsNullOrWhiteSpace(email) ? "anonymous" : email.Trim().ToLowerInvariant(),
+            "anonymous",
+            "login",
+            "Password reset requested.",
+            new BsonDocument
+            {
+                ["email"] = string.IsNullOrWhiteSpace(email) ? string.Empty : email.Trim().ToLowerInvariant(),
+                ["remoteIp"] = remoteIp
+            },
+            "account",
+            string.IsNullOrWhiteSpace(email) ? "anonymous" : email.Trim().ToLowerInvariant(),
+            cancellationToken: cancellationToken);
         TempData["ForgotPasswordMessage"] = "If an account exists, a temporary password has been sent.";
         return Redirect("/login");
     }
@@ -110,6 +128,16 @@ public class LoginController : Controller
         }
 
         TempData["ForgotPasswordMessage"] = "Password changed. Sign in with your new password.";
+        await _applicationAuditService.AppendApplicationAuditEventAsync(
+            "security.password.changed",
+            model.Email.Trim().ToLowerInvariant(),
+            "account",
+            "login",
+            "Password changed through temporary password flow.",
+            new BsonDocument { ["email"] = model.Email.Trim().ToLowerInvariant() },
+            "account",
+            model.Email.Trim().ToLowerInvariant(),
+            cancellationToken: cancellationToken);
         return Redirect("/login");
     }
 

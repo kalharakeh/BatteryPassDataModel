@@ -6,19 +6,44 @@ public sealed class BatteryPassportSnapshotService
 {
     private readonly BatteryIdService _batteryIdService;
     private readonly PassportRepository _passportRepository;
+    private readonly AuditRevisionService _auditRevisionService;
+    private readonly BatteryAuditService _batteryAuditService;
 
     public BatteryPassportSnapshotService(
         BatteryIdService batteryIdService,
-        PassportRepository passportRepository)
+        PassportRepository passportRepository,
+        AuditRevisionService auditRevisionService,
+        BatteryAuditService batteryAuditService)
     {
         _batteryIdService = batteryIdService;
         _passportRepository = passportRepository;
+        _auditRevisionService = auditRevisionService;
+        _batteryAuditService = batteryAuditService;
+    }
+
+    public Task<BsonDocument> CreatePassportSnapshotAsync(
+        BsonDocument battery,
+        string actor,
+        DateTimeOffset createdAt,
+        CancellationToken cancellationToken = default)
+    {
+        return CreatePassportSnapshotAsync(
+            battery,
+            actor,
+            createdAt,
+            "admin",
+            "admin-ui",
+            string.Empty,
+            cancellationToken);
     }
 
     public async Task<BsonDocument> CreatePassportSnapshotAsync(
         BsonDocument battery,
         string actor,
         DateTimeOffset createdAt,
+        string actorType,
+        string source,
+        string actorTokenId = "",
         CancellationToken cancellationToken = default)
     {
         // Passport snapshots are immutable for non-telemetry data after this point.
@@ -42,6 +67,34 @@ public sealed class BatteryPassportSnapshotService
         passport.Remove("_id");
 
         await _passportRepository.ReplaceAsync(passportId, passport, cancellationToken);
+        var metadata = new BsonDocument
+        {
+            ["batteryId"] = batteryId,
+            ["passportId"] = passportId,
+            ["batteryFamily"] = BsonHelpers.GetString(battery, "identity", "batteryFamily"),
+            ["batteryModel"] = batteryModel,
+            ["serialNumber"] = BsonHelpers.GetString(battery, "identity", "serialNumber"),
+            ["clusterId"] = BsonHelpers.GetString(battery, "clusterId")
+        };
+        await _auditRevisionService.AppendAuditEventAsync(
+            passportId,
+            "passport.created",
+            actor,
+            actorType,
+            source,
+            "Passport snapshot created from battery record.",
+            metadata,
+            cancellationToken);
+        await _batteryAuditService.AppendBatteryAuditEventAsync(
+            batteryId,
+            "battery.passport.created",
+            actor,
+            actorType,
+            source,
+            "Passport snapshot created for battery.",
+            metadata,
+            actorTokenId,
+            cancellationToken);
         return passport;
     }
 

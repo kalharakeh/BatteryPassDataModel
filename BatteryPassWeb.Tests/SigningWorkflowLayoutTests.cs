@@ -150,19 +150,21 @@ public sealed class SigningWorkflowLayoutTests
     public void AdminAuditAndRevisionViews_ShouldRenderLedgerPages()
     {
         var audit = File.ReadAllText(RepoFile("web", "Views", "Admin", "Audit.cshtml"));
+        var auditRow = File.ReadAllText(RepoFile("web", "Views", "Shared", "_AuditEventRow.cshtml"));
         var revisions = File.ReadAllText(RepoFile("web", "Views", "Admin", "Revisions.cshtml"));
         var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.Contains("Audit trail", audit);
         Assert.Contains("Model.AuditEvents", audit);
-        Assert.Contains("What changed", audit);
-        Assert.Contains("When", audit);
-        Assert.Contains("Who", audit);
-        Assert.Contains("Where", audit);
-        Assert.Contains("Changed fields", audit);
+        Assert.Contains("_AuditEventRow", audit);
+        Assert.Contains("What changed", auditRow);
+        Assert.Contains("bp-audit-event-time", auditRow);
+        Assert.Contains("Actor", auditRow);
+        Assert.Contains("Source", auditRow);
+        Assert.Contains("Changed fields", auditRow);
         Assert.Contains("dirtyReason", audit);
-        Assert.Contains("metadata", audit);
+        Assert.Contains("metadata.ToJson()", auditRow);
         Assert.Contains("Revision history", revisions);
         Assert.Contains("Model.Revisions", revisions);
         Assert.Contains("Document hashes", revisions);

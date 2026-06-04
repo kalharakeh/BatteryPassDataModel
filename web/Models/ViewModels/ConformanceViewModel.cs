@@ -1,4 +1,5 @@
 using BatteryPassWeb.Models.Trust;
+using BatteryPassWeb.Services;
 using MongoDB.Bson;
 
 namespace BatteryPassWeb.Models.ViewModels;
@@ -44,4 +45,10 @@ public sealed class PassportRevisionHistoryViewModel
     public IReadOnlyList<BsonDocument> Revisions { get; init; } = [];
     public string StatusMessage { get; init; } = string.Empty;
     public string ErrorMessage { get; init; } = string.Empty;
+}
+
+public sealed class ApplicationAuditLogViewModel
+{
+    public ApplicationAuditFilter Filter { get; init; } = new();
+    public IReadOnlyList<BsonDocument> Events { get; init; } = [];
 }

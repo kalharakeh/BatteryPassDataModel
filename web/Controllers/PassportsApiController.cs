@@ -101,6 +101,19 @@ public class PassportsApiController : ControllerBase
         registryInfo["status"] = NormalizeDraftRegistryStatus(BsonHelpers.GetString(document, "registryInfo", "status"));
 
         await _passportRepository.ReplaceAsync(passportId, document, cancellationToken);
+        await _auditRevisionService.AppendAuditEventAsync(
+            passportId,
+            "passport.created",
+            CurrentActor(),
+            "admin",
+            "api",
+            "Passport created through API.",
+            new BsonDocument
+            {
+                ["batteryId"] = BsonHelpers.GetString(document, "batteryId"),
+                ["registryStatus"] = BsonHelpers.GetString(document, "registryInfo", "status")
+            },
+            cancellationToken);
         return Created($"/api/passports/{Uri.EscapeDataString(passportId)}", new { passport = BsonHelpers.ToDotNet(document) });
     }
 
@@ -129,6 +142,7 @@ public class PassportsApiController : ControllerBase
             return directPublishBlock;
         }
 
+        var beforeUpdate = existing.DeepClone().AsBsonDocument;
         document.Remove("_id");
         document["passportId"] = passportId;
         _passportPublishPolicyService.SanitizeTrustClaimsForDraftSave(document);
@@ -141,6 +155,21 @@ public class PassportsApiController : ControllerBase
         registryInfo["status"] = NormalizeDraftRegistryStatus(BsonHelpers.GetString(document, "registryInfo", "status"));
 
         await _passportRepository.ReplaceAsync(passportId, document, cancellationToken);
+        var changeMetadata = AuditRevisionService.BuildChangeMetadata(beforeUpdate, document, "passportApiUpdate");
+        if (changeMetadata.GetValue("changedFields", new BsonArray()) is BsonArray { Count: > 0 })
+        {
+            changeMetadata["batteryId"] = BsonHelpers.GetString(document, "batteryId");
+            changeMetadata["registryStatus"] = BsonHelpers.GetString(document, "registryInfo", "status");
+            await _auditRevisionService.AppendAuditEventAsync(
+                passportId,
+                "passport.updated",
+                CurrentActor(),
+                "admin",
+                "api",
+                "Passport updated through API.",
+                changeMetadata,
+                cancellationToken);
+        }
         return Ok(new { passport = BsonHelpers.ToDotNet(document) });
     }
 
@@ -161,6 +190,21 @@ public class PassportsApiController : ControllerBase
         var dataRequirements = await _dataCompletionPolicyService.GetPolicyAsync(cancellationToken);
         var summary = await ValidateWithEvidenceAsync(passportId, passport, dataRequirements, cancellationToken);
         await _passportRepository.UpdateTrustValidationAsync(passportId, summary, cancellationToken);
+        await _auditRevisionService.AppendAuditEventAsync(
+            passportId,
+            "passport.validated",
+            CurrentActor(),
+            "admin",
+            "api",
+            "Passport validation completed through API.",
+            new BsonDocument
+            {
+                ["blockingErrors"] = summary.BlockingErrorCount,
+                ["warnings"] = summary.WarningCount,
+                ["passedChecks"] = summary.PassedCount,
+                ["canSign"] = summary.CanSign
+            },
+            cancellationToken);
         return Ok(new
         {
             passportId,
@@ -396,6 +440,14 @@ public class PassportsApiController : ControllerBase
         }
 
         await _passportRepository.ArchivePassportAsync(passportId, cancellationToken);
+        await _auditRevisionService.AppendAuditEventAsync(
+            passportId,
+            "passport.archived",
+            CurrentActor(),
+            "admin",
+            "api",
+            "Passport archived through API.",
+            cancellationToken: cancellationToken);
         return Ok(new { archived = true, passportId });
     }
 

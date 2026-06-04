@@ -46,6 +46,8 @@ public class ClusterAdminController : Controller
     private readonly PassportTrustService _passportTrustService;
     private readonly PassportReadinessService _passportReadinessService;
     private readonly AuditRevisionService _auditRevisionService;
+    private readonly BatteryAuditService _batteryAuditService;
+    private readonly ApplicationAuditService _applicationAuditService;
     private readonly PassportEvidenceService _passportEvidenceService;
     private readonly EditableFieldPolicyService _editableFieldPolicyService;
     private readonly LocalAdminEditableFieldPolicyService _localAdminEditableFieldPolicyService;
@@ -69,6 +71,8 @@ public class ClusterAdminController : Controller
         PassportTrustService passportTrustService,
         PassportReadinessService passportReadinessService,
         AuditRevisionService auditRevisionService,
+        BatteryAuditService batteryAuditService,
+        ApplicationAuditService applicationAuditService,
         PassportEvidenceService passportEvidenceService,
         EditableFieldPolicyService editableFieldPolicyService,
         LocalAdminEditableFieldPolicyService localAdminEditableFieldPolicyService,
@@ -91,6 +95,8 @@ public class ClusterAdminController : Controller
         _passportTrustService = passportTrustService;
         _passportReadinessService = passportReadinessService;
         _auditRevisionService = auditRevisionService;
+        _batteryAuditService = batteryAuditService;
+        _applicationAuditService = applicationAuditService;
         _passportEvidenceService = passportEvidenceService;
         _editableFieldPolicyService = editableFieldPolicyService;
         _localAdminEditableFieldPolicyService = localAdminEditableFieldPolicyService;
@@ -142,7 +148,9 @@ public class ClusterAdminController : Controller
             battery,
             CurrentActor(),
             DateTimeOffset.UtcNow,
-            cancellationToken);
+            "clusterAdmin",
+            "cluster-admin-ui",
+            cancellationToken: cancellationToken);
         var passportId = BsonHelpers.GetString(passport, "passportId");
         await _batteryPassportDeltaService.ClearNewPassportRequiredAsync(decodedBatteryId, passportId, cancellationToken);
         TempData["StatusMessage"] = $"Passport {passportId} created for battery {decodedBatteryId}.";
@@ -355,7 +363,10 @@ public class ClusterAdminController : Controller
             })
             .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
             .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
-        var auditEvents = await _auditRevisionService.ListAuditEventsAsync(passportId, cancellationToken);
+        var auditEvents = await _applicationAuditService.ListPassportTimelineEventsAsync(
+            passportId,
+            BsonHelpers.GetString(document, "batteryId"),
+            cancellationToken);
         return View("~/Views/Admin/Audit.cshtml", new PassportAuditTrailViewModel
         {
             Mode = "cluster-admin",
@@ -434,6 +445,7 @@ public class ClusterAdminController : Controller
             return Redirect("/cluster-admin/passports");
         }
 
+        var beforeSave = battery.DeepClone().AsBsonDocument;
         var editablePolicy = await _editableFieldPolicyService.GetPolicyAsync(cancellationToken);
         var editableFieldKeys = editablePolicy.PermissionByKey.Values
             .Where(permission => permission.EditableByLocalAdmin)
@@ -488,6 +500,22 @@ public class ClusterAdminController : Controller
         else
         {
             await _batteryPassportDeltaService.UpdateNewPassportRequiredAsync(battery, cancellationToken);
+        }
+
+        var changeMetadata = AuditRevisionService.BuildChangeMetadata(beforeSave, battery, "clusterAdminBatterySave");
+        if (changeMetadata.GetValue("changedFields", new BsonArray()) is BsonArray { Count: > 0 })
+        {
+            changeMetadata["newPassportRequired"] = BsonHelpers.GetValue(battery, "app", "snapshot", "newPassportRequired") ?? BsonNull.Value;
+            changeMetadata["compareAllPassportData"] = compareAllPassportData;
+            await _batteryAuditService.AppendBatteryAuditEventAsync(
+                batteryId,
+                "battery.updated",
+                CurrentActor(),
+                "clusterAdmin",
+                "cluster-admin-ui",
+                "Battery data updated by a cluster admin.",
+                changeMetadata,
+                cancellationToken: cancellationToken);
         }
 
         TempData["StatusMessage"] = "Battery data saved. Create a new passport if the latest passport no longer matches the battery data.";
@@ -684,7 +712,7 @@ public class ClusterAdminController : Controller
         var name = Text(Request.Form, "name", "Cluster API token");
         var accessMode = ParseTokenMode(Text(Request.Form, "accessMode", "read"));
         var actor = AccessControlService.CurrentEmail(User);
-        var (_, tokenValue) = await _externalApiRepository.CreateTokenAsync(
+        var (tokenDocument, tokenValue) = await _externalApiRepository.CreateTokenAsync(
             name,
             accessMode,
             clusterIds,
@@ -692,6 +720,19 @@ public class ClusterAdminController : Controller
             globalAccess: false,
             actor: string.IsNullOrWhiteSpace(actor) ? "cluster-admin" : actor,
             cancellationToken: cancellationToken);
+        await AppendClusterAdminAuditAsync(
+            "apiToken.created",
+            "Cluster API token created.",
+            new BsonDocument
+            {
+                ["tokenId"] = BsonHelpers.GetString(tokenDocument, "tokenId"),
+                ["name"] = name,
+                ["accessMode"] = accessMode.ToString(),
+                ["clusterIds"] = new BsonArray(clusterIds.Select(clusterId => (BsonValue)clusterId))
+            },
+            "apiToken",
+            BsonHelpers.GetString(tokenDocument, "tokenId"),
+            cancellationToken);
         TempData["GeneratedCredential"] = tokenValue;
         TempData["StatusMessage"] = "API token created.";
         return Redirect("/cluster-admin/api-tokens");
@@ -708,6 +749,13 @@ public class ClusterAdminController : Controller
         }
 
         await _externalApiRepository.SetTokenActiveAsync(tokenId, false, AccessControlService.CurrentEmail(User), cancellationToken);
+        await AppendClusterAdminAuditAsync(
+            "apiToken.deleted",
+            "Cluster API token deactivated.",
+            new BsonDocument { ["tokenId"] = tokenId },
+            "apiToken",
+            tokenId,
+            cancellationToken);
         TempData["StatusMessage"] = "API token deleted.";
         return Redirect("/cluster-admin/api-tokens");
     }
@@ -731,6 +779,13 @@ public class ClusterAdminController : Controller
         {
             TempData["GeneratedCredential"] = tokenValue;
             TempData["StatusMessage"] = "API token regenerated.";
+            await AppendClusterAdminAuditAsync(
+                "apiToken.regenerated",
+                "Cluster API token regenerated.",
+                new BsonDocument { ["tokenId"] = tokenId },
+                "apiToken",
+                tokenId,
+                cancellationToken);
         }
 
         return Redirect("/cluster-admin/api-tokens");
@@ -795,6 +850,20 @@ public class ClusterAdminController : Controller
         var passwordHash = string.IsNullOrWhiteSpace(password) ? string.Empty : BCryptNet.HashPassword(password);
         await _clusterRepository.UpsertUserAsync(email, displayName, roles.ToList(), passwordHash, cancellationToken);
         await _clusterRepository.UpsertClusterMembershipAsync(email, clusterId, role, cancellationToken);
+        await AppendClusterAdminAuditAsync(
+            "cluster.user.saved",
+            existingUser == null ? "Cluster user created." : "Cluster user updated.",
+            new BsonDocument
+            {
+                ["email"] = email,
+                ["name"] = displayName,
+                ["clusterId"] = clusterId,
+                ["role"] = role,
+                ["passwordChanged"] = !string.IsNullOrWhiteSpace(passwordHash)
+            },
+            "user",
+            email,
+            cancellationToken);
         return Redirect($"/cluster-admin/users?openUser={Uri.EscapeDataString(email)}");
     }
 
@@ -821,6 +890,17 @@ public class ClusterAdminController : Controller
         }
 
         await _clusterRepository.DeleteClusterMembershipAsync(email, clusterId, cancellationToken);
+        await AppendClusterAdminAuditAsync(
+            "cluster.user.membership.deleted",
+            "Cluster user membership deleted.",
+            new BsonDocument
+            {
+                ["email"] = email,
+                ["clusterId"] = clusterId
+            },
+            "user",
+            email,
+            cancellationToken);
         return Redirect($"/cluster-admin/users?openUser={Uri.EscapeDataString(email)}");
     }
 
@@ -1326,6 +1406,26 @@ public class ClusterAdminController : Controller
     {
         var email = AccessControlService.CurrentEmail(User);
         return string.IsNullOrWhiteSpace(email) ? "cluster-admin" : email;
+    }
+
+    private Task AppendClusterAdminAuditAsync(
+        string eventType,
+        string message,
+        BsonDocument? metadata,
+        string entityType,
+        string entityId,
+        CancellationToken cancellationToken)
+    {
+        return _applicationAuditService.AppendApplicationAuditEventAsync(
+            eventType,
+            CurrentActor(),
+            "clusterAdmin",
+            "cluster-admin-ui",
+            message,
+            metadata,
+            entityType,
+            entityId,
+            cancellationToken: cancellationToken);
     }
 
     private static double Number(IFormCollection form, string key, double fallback)
