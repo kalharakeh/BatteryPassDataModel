@@ -53,6 +53,7 @@ public class ExternalApiController : ControllerBase
     private readonly BatteryPassportSnapshotService _batteryPassportSnapshotService;
     private readonly BatteryPassportDeltaService _batteryPassportDeltaService;
     private readonly BatteryTemplateUpdateService _batteryTemplateUpdateService;
+    private readonly BatteryCreationService _batteryCreationService;
     private readonly PassportTrustWorkflowService _passportTrustWorkflowService;
 
     public ExternalApiController(
@@ -64,6 +65,7 @@ public class ExternalApiController : ControllerBase
         BatteryPassportSnapshotService batteryPassportSnapshotService,
         BatteryPassportDeltaService batteryPassportDeltaService,
         BatteryTemplateUpdateService batteryTemplateUpdateService,
+        BatteryCreationService batteryCreationService,
         PassportTrustWorkflowService passportTrustWorkflowService)
     {
         _passportRepository = passportRepository;
@@ -74,6 +76,7 @@ public class ExternalApiController : ControllerBase
         _batteryPassportSnapshotService = batteryPassportSnapshotService;
         _batteryPassportDeltaService = batteryPassportDeltaService;
         _batteryTemplateUpdateService = batteryTemplateUpdateService;
+        _batteryCreationService = batteryCreationService;
         _passportTrustWorkflowService = passportTrustWorkflowService;
     }
 
@@ -139,6 +142,51 @@ public class ExternalApiController : ControllerBase
                 serialNumber = BsonHelpers.GetString(battery, "identity", "serialNumber"),
                 newPassportRequired = BatteryRequiresNewPassport(battery)
             }).ToList()
+        });
+    }
+
+    [HttpPost("batteries")]
+    public async Task<IActionResult> CreateBattery([FromBody] JsonElement payload, CancellationToken cancellationToken)
+    {
+        var auth = await AuthorizeExternalApiAsync(ExternalTokenRequirement.Write, cancellationToken);
+        if (auth.ErrorResult != null)
+        {
+            return auth.ErrorResult;
+        }
+
+        if (payload.ValueKind != JsonValueKind.Object)
+        {
+            return Envelope(StatusCodes.Status400BadRequest, "Body must be a JSON object.");
+        }
+
+        var result = await _batteryCreationService.CreateBatteryAsync(
+            ReadBatteryCreationCommand(payload),
+            new BatteryCreationActor(
+                auth.TokenContext!.Name,
+                "external-api",
+                "external-api",
+                auth.TokenContext.TokenId),
+            BatteryCreationClusterScope.FromToken(auth.TokenContext!),
+            cancellationToken);
+
+        if (!result.Success)
+        {
+            return Envelope(result.StatusCode, result.Message);
+        }
+
+        var battery = result.Battery!;
+        return Envelope(StatusCodes.Status201Created, result.Message, new
+        {
+            batteryId = result.BatteryId,
+            batteryFamily = BsonHelpers.GetString(battery, "identity", "batteryFamily"),
+            batteryModel = BsonHelpers.GetString(battery, "identity", "batteryModel"),
+            softwareVersion = BsonHelpers.GetString(battery, "identity", "softwareVersion"),
+            serialNumber = BsonHelpers.GetString(battery, "identity", "serialNumber"),
+            clusterId = BsonHelpers.GetString(battery, "clusterId"),
+            createdBy = BsonHelpers.GetString(battery, "createdBy"),
+            createdByType = BsonHelpers.GetString(battery, "createdByType"),
+            createdByTokenId = BsonHelpers.GetString(battery, "createdByTokenId"),
+            createPassportPath = $"/api/external/v1/batteries/{Uri.EscapeDataString(result.BatteryId)}/passports"
         });
     }
 
@@ -1333,6 +1381,40 @@ public class ExternalApiController : ControllerBase
         {
             setValues[targetPath] = value;
         }
+    }
+
+    private static BatteryCreationCommand ReadBatteryCreationCommand(JsonElement payload)
+    {
+        return new BatteryCreationCommand
+        {
+            BatteryFamily = ReadString(payload, "batteryFamily"),
+            ProductId = ReadString(payload, "productId"),
+            BatteryModel = ReadString(payload, "batteryModel"),
+            ProductVersion = ReadString(payload, "productVersion"),
+            SoftwareVersion = ReadString(payload, "softwareVersion"),
+            SerialNumber = ReadString(payload, "serialNumber"),
+            ClusterId = ReadString(payload, "clusterId"),
+            ModelNumber = ReadString(payload, "modelNumber"),
+            DisplayName = FirstNonEmpty(ReadString(payload, "displayName"), ReadString(payload, "name")),
+            FacilityId = ReadString(payload, "facilityId"),
+            ManufacturingDate = ReadString(payload, "manufacturingDate")
+        };
+    }
+
+    private static string ReadString(JsonElement payload, string propertyName)
+    {
+        if (!TryGetPropertyIgnoreCase(payload, propertyName, out var property)
+            || property.ValueKind != JsonValueKind.String)
+        {
+            return string.Empty;
+        }
+
+        return property.GetString()?.Trim() ?? string.Empty;
+    }
+
+    private static string FirstNonEmpty(params string[] values)
+    {
+        return values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? string.Empty;
     }
 
     private static bool TryGetPropertyIgnoreCase(JsonElement element, string propertyName, out JsonElement propertyValue)
