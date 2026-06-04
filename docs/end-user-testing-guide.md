@@ -340,9 +340,11 @@ Read:
 
 Write (requires `readWrite` token):
 
+- `POST /batteries`
 - `POST /batteries/{batteryId}/telemetry`
 - `PATCH /batteries/{batteryId}/operations`
 - `PATCH /batteries/{batteryId}/battery-model`
+- `PATCH /batteries/{batteryId}/software-version`
 
 Trust actions (requires sign token):
 
@@ -350,6 +352,15 @@ Trust actions (requires sign token):
 - `POST /passports/{passportId}/validate`
 - `POST /passports/{passportId}/sign`
 - `POST /passports/{passportId}/publish`
+
+Battery creation behavior:
+
+- Full route: `POST /api/external/v1/batteries`
+- Body fields include `batteryFamily` or `productId`, `batteryModel`, `productVersion`, `softwareVersion`, `serialNumber`, `clusterId`, and optional display/manufacturing fields.
+- The API reuses the same creation interlocks as the admin flow: Battery Family must exist, Battery Model must belong to that family, software version must belong to the selected model, serial number must be globally unique, cluster must exist, and the token must be allowed to write to that cluster.
+- A duplicate serial returns `400 Bad Request`; it does not create a battery.
+- Successful creation returns the generated Battery ID and writes a `battery.created` audit event with source `external-api`, actor name, and token ID.
+- Create the battery record first, then call `POST /api/external/v1/batteries/{batteryId}/passports` if a passport snapshot is needed.
 
 Software update behavior:
 
@@ -362,8 +373,9 @@ Software update behavior:
 
 ### 7.5 What cannot be done (external API)
 
-- Cannot create new batteries.
 - Cannot delete passports.
+- Cannot create a battery and passport in one request.
+- Cannot bypass Battery Family, Battery Model, software version, serial uniqueness, or cluster-scope validation when creating a battery.
 - Can create a new passport snapshot only for an existing battery with a valid sign token.
 - Cannot edit full passport sections/aspects.
 - Cannot write telemetry with read-only token.
@@ -462,7 +474,18 @@ curl -X PATCH "$apiBaseUrl/batteries/$sampleBatteryId/battery-model" \
   -d "{\"batteryModel\":\"2.0\"}"
 ```
 
-### 8.5 cURL - create, validate, sign, and publish a new passport
+### 8.5 cURL - create a battery record
+
+```bash
+curl -X POST "$apiBaseUrl/batteries" \
+  -H "Authorization: Basic $writeToken" \
+  -H "Content-Type: application/json" \
+  -d "{\"batteryFamily\":\"Compact 7M\",\"productId\":\"compact-7m\",\"batteryModel\":\"2.0\",\"productVersion\":\"2.0\",\"softwareVersion\":\"4.0\",\"serialNumber\":\"SN-API-REPLACE-ME\",\"clusterId\":\"demo-cluster\",\"displayName\":\"API created battery\"}"
+```
+
+Repeat the same request with the same `serialNumber` to confirm the duplicate serial check returns `400 Bad Request`.
+
+### 8.6 cURL - create, validate, sign, and publish a new passport
 
 ```bash
 curl -X POST "$apiBaseUrl/batteries/$sampleBatteryId/passports" \
@@ -478,7 +501,7 @@ curl -X POST "$apiBaseUrl/passports/$samplePassportId/publish" \
   -H "Authorization: Basic $signToken"
 ```
 
-### 8.6 JavaScript (fetch)
+### 8.7 JavaScript (fetch)
 
 ```js
 const token = "YOUR_TOKEN_VALUE";
@@ -501,7 +524,7 @@ const data = await response.json();
 console.log(data);
 ```
 
-### 8.7 Python (requests)
+### 8.8 Python (requests)
 
 ```python
 import base64
@@ -535,10 +558,11 @@ These are not the token-based external integration API; they use app login/cooki
 5. Open API Token Management, create read/write and Sign tokens, confirm Token ID and Token Value are distinct, confirm the scope count opens cluster-name details, then call external API with the scoped Token Value.
 6. Verify read token cannot write.
 7. Verify out-of-scope token gets `403`.
-8. Verify telemetry write appears in detail history charts.
-9. Patch Battery Model through `/api/external/v1/batteries/{batteryId}/battery-model` and confirm the response says a new passport, validation, signing, and publishing are required.
-10. Open `/help` and `/admin/help`, expand a detail row, and confirm the inline row panel opens directly under the selected row.
-11. Open the detailed report and confirm the General tab software parameters shows product, product ID, release date, and latest update.
+8. Create a battery through `POST /api/external/v1/batteries`, confirm the returned Battery ID, confirm the audit log records `battery.created`, and repeat the same payload to verify duplicate serial rejection.
+9. Verify telemetry write appears in detail history charts.
+10. Patch Battery Model through `/api/external/v1/batteries/{batteryId}/battery-model` and confirm the response says a new passport, validation, signing, and publishing are required.
+11. Open `/help` and `/admin/help`, expand a detail row, and confirm the inline row panel opens directly under the selected row.
+12. Open the detailed report and confirm the General tab software parameters shows product, product ID, release date, and latest update.
 
 ## 11. Trust workflow hardening checklist
 

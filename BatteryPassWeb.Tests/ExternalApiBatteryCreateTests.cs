@@ -46,6 +46,33 @@ public sealed class ExternalApiBatteryCreateTests
         Assert.DoesNotContain("BsonDocument.Parse", source);
     }
 
+    [Fact]
+    public void ExternalApiHelp_ShouldDocumentCreateBatteryEndpointAndSeparatePassportCreation()
+    {
+        var help = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
+
+        Assert.Contains("@Model.BasePath/batteries</code><small>Create battery record", help);
+        Assert.Contains("serialNumber", help);
+        Assert.Contains("batteryFamily", help);
+        Assert.Contains("batteryModel", help);
+        Assert.Contains("softwareVersion", help);
+        Assert.Contains("clusterId", help);
+        Assert.Contains("Create the battery record first, then create a passport snapshot", help);
+        Assert.Contains("SN-API-REPLACE-ME", help);
+    }
+
+    [Fact]
+    public void QaDocs_ShouldIncludeExternalApiBatteryCreationChecks()
+    {
+        var guide = File.ReadAllText(RepoFile("docs", "end-user-testing-guide.md"));
+        var qa = File.ReadAllText(RepoFile("docs", "qa-test-pack.md"));
+
+        Assert.Contains("POST /api/external/v1/batteries", guide);
+        Assert.Contains("duplicate serial", guide, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("POST /api/external/v1/batteries", qa);
+        Assert.Contains("battery.created", qa);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

@@ -81,6 +81,7 @@ Main battery IDs:
 | Document evidence | Upload or replace required document evidence. | Hash is stored, evidence becomes part of validation/signature flow, changed evidence requires a new signature. |
 | Access control | Try restricted document download as the wrong user or guest. | Access is denied with 403. Authorized admins/cluster users can access permitted files. |
 | API auth | Call external API with read token, read-write token, bad token, and wrong cluster scope. | Correct responses: read succeeds, write requires read-write, bad token is 401, wrong scope is 403. |
+| API battery creation | Call `POST /api/external/v1/batteries` with Battery Family, Battery Model, software version, unique serial, and token-scoped cluster. Repeat with the same serial. | First response returns `201 Created`, generated Battery ID, and audit event `battery.created` with `external-api` source/token ID. Duplicate serial returns `400 Bad Request`. |
 | API telemetry | Post telemetry to a Battery ID. | Latest passport detail charts update and passport trust state does not become dirty. |
 | API model validation | Patch Battery Model to an unknown model. | API returns `400 Bad Request` with allowed models. |
 | API passport creation | POST `/api/external/v1/batteries/{batteryId}/passports` with the fixed sign token. | Response returns `201 Created` and the new Passport ID. |
@@ -102,6 +103,7 @@ Mark each item pass/fail during a formal test run.
 | Editing signed battery data requires a new passport snapshot. |  |  |
 | Re-validating, signing, and publishing returns the latest passport to clean. |  |  |
 | API telemetry update does not dirty the passport. |  |  |
+| API battery creation returns a generated Battery ID, logs `battery.created`, enforces cluster scope, and rejects duplicate serial values. |  |  |
 | Battery Model API change to an allowed model requires a new passport, validation, signing, and publishing. |  |  |
 | Battery Model API change to an unknown model returns 400. |  |  |
 | Battery family push preserves manual overrides. |  |  |
@@ -129,7 +131,7 @@ Mark each item pass/fail during a formal test run.
 6. Verify admin trust workflow: validate, sign, publish.
 7. Verify dirty recovery after a battery data edit and new passport snapshot.
 8. Verify document evidence upload, hash, signature, and access control.
-9. Verify API reads, telemetry writes, operations patch, passport creation, and battery-model patch.
+9. Verify API reads, battery creation, telemetry writes, operations patch, passport creation, and battery-model patch.
 10. Verify Battery family edit/push behavior.
 11. File bugs using the template below.
 
@@ -138,7 +140,7 @@ Mark each item pass/fail during a formal test run.
 - This is still a demonstrator, not the final production deployment.
 - Battery families and seeded batteries are realistic enough for testing but are not official production master data.
 - The reset action intentionally deletes older sample/demo data and restores eight batteries with nine passport snapshots.
-- External API writes are limited to telemetry, operations metadata, Battery Model changes, and passport snapshot creation for an existing battery.
+- External API writes are limited to battery creation, telemetry, operations metadata, Battery Model changes, software version changes, and passport snapshot creation for an existing battery.
 - API telemetry does not require signing; Battery Model API changes require a new passport, validation, signing, and publishing.
 - Signing verifies the canonical passport core and referenced evidence hashes; it does not parse PDF contents.
 - Camera QR scanning depends on browser/device permissions. Image upload scanning is the fallback.

@@ -99,6 +99,17 @@
                             </td>
                         </tr>
                         <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">POST</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries</code><small>Create battery record</small></span></td>
+                            <td><span class="bp-help-access-pill">Read-write</span></td>
+                            <td>Create a Battery ID after validating family, model, software, serial, and cluster scope.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-create-battery" aria-expanded="false" aria-controls="api-detail-create-battery" aria-label="Show battery creation endpoint details" title="Show battery creation endpoint details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">GET</span></td>
                             <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}</code><small>Latest passport snapshot</small></span></td>
                             <td><span class="bp-help-access-pill">Read</span></td>
@@ -286,6 +297,26 @@
                     <pre class="bp-help-pre"><code>GET @Model.BasePath/clusters/demo-cluster/batteries</code></pre>
                 </article>
 
+                <article id="api-detail-create-battery" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
+                    <div>
+                        <span class="bp-summary-title">Battery creation</span>
+                        <h3>Create a battery record and receive its generated Battery ID.</h3>
+                        <p>Requires a read-write token scoped to the submitted cluster. The API validates Battery Family, Battery Model, software version, globally unique serial number, and cluster access before inserting the battery. Created records are audit logged with source <code>external-api</code> and the token ID.</p>
+                        <p>Create the battery record first, then create a passport snapshot with <code>POST @Model.BasePath/batteries/{batteryId}/passports</code> when a passport is needed.</p>
+                    </div>
+                    <pre class="bp-help-pre"><code>POST @Model.BasePath/batteries
+{
+  "batteryFamily": "Compact 7M",
+  "productId": "compact-7m",
+  "batteryModel": "2.0",
+  "productVersion": "2.0",
+  "softwareVersion": "4.0",
+  "serialNumber": "SN-API-REPLACE-ME",
+  "clusterId": "demo-cluster",
+  "displayName": "API created battery"
+}</code></pre>
+                </article>
+
                 <article id="api-detail-battery" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
                     <div><span class="bp-summary-title">Full battery</span><h3>Read the latest passport snapshot.</h3><p>Returns app metadata, aspects, registry data, schema versions, and validation details for the requested Battery ID.</p></div>
                     <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/@Model.SampleBatteryId</code></pre>
@@ -448,6 +479,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                         <option value="readFull">Read full battery</option>
                         <option value="listClusters">List accessible clusters</option>
                         <option value="listClusterBatteries">List cluster batteries</option>
+                        <option value="createBattery">Create battery</option>
                         <option value="readSection">Read section</option>
                         <option value="readSectionPerformance">Read section: Performance</option>
                         <option value="readSectionCircularity">Read section: Circularity</option>
@@ -633,6 +665,21 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                     path: `${basePath}/clusters/demo-cluster/batteries`,
                     body: '',
                     tokenPreset: 'sample-read'
+                },
+                createBattery: {
+                    method: 'POST',
+                    path: `${basePath}/batteries`,
+                    body: JSON.stringify({
+                        batteryFamily: 'Compact 7M',
+                        productId: 'compact-7m',
+                        batteryModel: '2.0',
+                        productVersion: '2.0',
+                        softwareVersion: '4.0',
+                        serialNumber: 'SN-API-REPLACE-ME',
+                        clusterId: 'demo-cluster',
+                        displayName: 'API created battery'
+                    }, null, 2),
+                    tokenPreset: 'sample-read-write'
                 },
                 readSection: {
                     method: 'GET',
