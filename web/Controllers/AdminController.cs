@@ -106,6 +106,7 @@ public class AdminController : Controller
     private readonly BatteryPassportSnapshotService _batteryPassportSnapshotService;
     private readonly BatteryPassportDeltaService _batteryPassportDeltaService;
     private readonly BatteryTemplateUpdateService _batteryTemplateUpdateService;
+    private readonly BatteryCreationService _batteryCreationService;
     private readonly ClusterRepository _clusterRepository;
     private readonly PassportViewModelFactory _viewModelFactory;
     private readonly ExternalApiRepository _externalApiRepository;
@@ -129,6 +130,7 @@ public class AdminController : Controller
         BatteryPassportSnapshotService batteryPassportSnapshotService,
         BatteryPassportDeltaService batteryPassportDeltaService,
         BatteryTemplateUpdateService batteryTemplateUpdateService,
+        BatteryCreationService batteryCreationService,
         ClusterRepository clusterRepository,
         PassportViewModelFactory viewModelFactory,
         ExternalApiRepository externalApiRepository,
@@ -151,6 +153,7 @@ public class AdminController : Controller
         _batteryPassportSnapshotService = batteryPassportSnapshotService;
         _batteryPassportDeltaService = batteryPassportDeltaService;
         _batteryTemplateUpdateService = batteryTemplateUpdateService;
+        _batteryCreationService = batteryCreationService;
         _clusterRepository = clusterRepository;
         _viewModelFactory = viewModelFactory;
         _externalApiRepository = externalApiRepository;
@@ -291,56 +294,41 @@ public class AdminController : Controller
         var form = Request.Form;
         var productId = Text(form, "productId", BatteryProductTemplateCatalog.DefaultProductId);
         var serialNumber = Text(form, "serialNumber");
-        if (string.IsNullOrWhiteSpace(serialNumber))
-        {
-            return await ReturnNewBatteryFormWithErrorAsync(form, "Battery serial number is required.", cancellationToken);
-        }
-        if (await _batteryRepository.GetBySerialNumberAsync(serialNumber, cancellationToken) != null)
-        {
-            return await ReturnNewBatteryFormWithErrorAsync(form, "Battery serial number already exists.", cancellationToken);
-        }
-        var clusterId = Text(form, "clusterId");
-        if (string.IsNullOrWhiteSpace(clusterId))
-        {
-            return await ReturnNewBatteryFormWithErrorAsync(form, "Battery cluster is required.", cancellationToken);
-        }
-
-        var product = await _productTemplateService.GetProductAsync(productId, cancellationToken) ?? BatteryProductTemplateCatalog.DefaultProduct;
-        var batteryId = _batteryIdService.CreateBatteryId(product.ProductName, serialNumber);
-        if (await _batteryRepository.GetByBatteryIdAsync(batteryId, cancellationToken) != null)
-        {
-            return await ReturnNewBatteryFormWithErrorAsync(form, "Battery already exists for this family and serial number.", cancellationToken);
-        }
-
         var requestedBatteryModel = FirstNonEmpty(
             Text(form, "batteryModel"),
-            Text(form, "productVersion"),
-            product.LatestProductVersion.Version);
-        var productVersion = product.ProductVersions.FirstOrDefault(version => version.Version.Equals(requestedBatteryModel, StringComparison.OrdinalIgnoreCase))
-            ?? product.LatestProductVersion;
+            Text(form, "productVersion"));
         var now = DateTimeOffset.UtcNow.ToString("O");
         var editablePolicy = await _editableFieldPolicyService.GetPolicyAsync(cancellationToken);
         var filteredForm = ApplyBatteryEditableFormValues(form, editablePolicy, forCreation: true);
-        var battery = ProductTemplatePassportBuilder.BuildBatteryFromTemplate(
-            batteryId,
-            product,
-            productVersion,
-            new ProductTemplateBatteryIdentity
+
+        var result = await _batteryCreationService.CreateBatteryAsync(
+            new BatteryCreationCommand
             {
-                ModelNumber = Text(form, "modelNumber", $"{product.ProductId}-{serialNumber}"),
+                ModelNumber = Text(form, "modelNumber"),
+                ProductId = productId,
+                BatteryModel = requestedBatteryModel,
+                ProductVersion = Text(form, "productVersion"),
+                SoftwareVersion = Text(form, "softwareVersion"),
                 SerialNumber = serialNumber,
-                DisplayName = Text(form, "name", $"{product.ProductName} {serialNumber}"),
+                ClusterId = Text(form, "clusterId"),
+                DisplayName = Text(form, "name"),
                 FacilityId = Text(form, "facilityId"),
-                ClusterId = clusterId,
-                ManufacturingDate = Text(form, "manufacturingDate", now[..10])
+                ManufacturingDate = Text(form, "manufacturingDate", now[..10]),
+                CustomizeBatteryBeforeInsert = (battery, createNow) =>
+                {
+                    ApplyPassportForm(battery, filteredForm, createNow);
+                }
             },
-            now);
-        ApplyPassportForm(battery, filteredForm, now);
-        ApplyBatteryIdentityFromDocument(battery, product, productVersion, now);
-        battery["clusterId"] = clusterId;
-        battery["updatedAt"] = now;
-        await _batteryRepository.CreateBatteryAsync(battery, cancellationToken);
-        TempData["StatusMessage"] = $"Battery {batteryId} created. Create the first passport when the data is ready.";
+            new BatteryCreationActor(CurrentActor(), "admin-ui", "admin-ui"),
+            BatteryCreationClusterScope.Unrestricted,
+            cancellationToken);
+
+        if (!result.Success)
+        {
+            return await ReturnNewBatteryFormWithErrorAsync(form, result.Message, cancellationToken);
+        }
+
+        TempData["StatusMessage"] = $"Battery {result.BatteryId} created. Create the first passport when the data is ready.";
         return Redirect("/admin/clusters?tab=batteries");
     }
 
