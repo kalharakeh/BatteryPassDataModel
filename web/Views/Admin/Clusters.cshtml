@@ -39,6 +39,15 @@
         ["clusterAdmin"] = "Cluster Admin",
         ["member"] = "Normal User"
     };
+    var sessionTimeoutOptions = new Dictionary<int, string>
+    {
+        [30] = "30 minutes",
+        [60] = "1 hour",
+        [180] = "3 hours",
+        [360] = "6 hours",
+        [480] = "8 hours",
+        [720] = "12 hours"
+    };
     string MembershipRoleLabel(string role) => role switch
     {
         "notifiedBody" => "Notified Body",
@@ -369,6 +378,29 @@
     {
         var userRowIndex = 0;
         <div class="bp-management-shell mt-4">
+            <section class="bp-card bp-session-timeout-card bp-console-form-card">
+                <div>
+                    <span class="bp-summary-title">Security</span>
+                    <h2 class="h5 mb-2">Global session timeout</h2>
+                    <p class="text-secondary mb-0">Signed-in users are logged out after this period of inactivity.</p>
+                </div>
+                <form method="post" action="/admin/clusters/session-timeout" class="bp-session-timeout-form">
+                    @Html.AntiForgeryToken()
+                    <label>
+                        Inactivity timeout
+                        <span class="bp-select-shell">
+                            <select name="sessionTimeoutMinutes" aria-label="Global session timeout">
+                                @foreach (var option in sessionTimeoutOptions)
+                                {
+                                    <option value="@option.Key" selected="@(option.Key == Model.SessionTimeoutMinutes)">@option.Value</option>
+                                }
+                            </select>
+                        </span>
+                    </label>
+                    <button type="submit" class="bp-primary-button">Save timeout</button>
+                </form>
+            </section>
+
             <section class="bp-card bp-management-create-card bp-console-form-card">
                 <div>
                     <span class="bp-summary-title">User setup</span>
@@ -426,7 +458,7 @@
 
             <section class="bp-card bp-table-card p-0">
                 <div class="bp-table-scroll">
-                    <table class="table align-middle mb-0 bp-console-table bp-user-management-table">
+                    <table class="table align-middle mb-0 bp-console-table bp-user-management-table bp-mobile-card-table">
                         <thead>
                             <tr>
                                 <th>Username</th>
@@ -453,16 +485,16 @@
                                 var drawerId = $"admin-user-drawer-{userRowIndex++}";
 
                                 <tr>
-                                    <td class="bp-user-name-cell">
+                                    <td class="bp-user-name-cell" data-label="Username">
                                         <strong>@displayName</strong>
                                     </td>
-                                    <td>
+                                    <td data-label="Email">
                                         <code>@user.Email</code>
                                     </td>
-                                    <td>
+                                    <td data-label="Cluster memberships">
                                         <span class="bp-user-count-pill">@MembershipCountLabel(memberships.Count)</span>
                                     </td>
-                                    <td class="bp-action-cell">
+                                    <td class="bp-action-cell" data-label="Actions">
                                         <button type="button" class="bp-action-button bp-user-drawer-toggle" data-user-drawer-toggle data-open-user="@user.Email" aria-expanded="false" aria-controls="@drawerId" aria-label="Open user actions" title="Open user actions" data-tooltip="Open user actions">
                                             <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
                                                 <path d="m6 9 6 6 6-6" />
@@ -818,7 +850,7 @@
                 </label>
             </div>
                 <div class="bp-table-scroll">
-                    <table class="table align-middle bp-console-table bp-credential-table bp-token-management-table">
+                    <table class="table align-middle bp-console-table bp-credential-table bp-token-management-table bp-mobile-card-table">
                         <colgroup>
                             <col class="bp-token-name-column" />
                             <col class="bp-token-id-column" />
@@ -859,21 +891,21 @@
                                 var statusClass = token.IsActive ? "bp-status-pill is-active" : "bp-status-pill is-inactive";
                                 var searchText = $"{token.Name} {token.TokenId} {accessLabel} {token.ClusterIdsLabel} {(token.GlobalAccess ? "Global scope" : string.Empty)} {(token.IsActive ? "Active" : "Inactive")}";
                                 <tr data-token-row data-token-search-value="@searchText">
-                                    <td>
+                                    <td data-label="Token">
                                         <p class="bp-credential-name">@tokenDisplayName</p>
                                         @if (token.IsSample)
                                         {
                                             <p class="mb-0 small text-secondary">Sample token</p>
                                         }
                                     </td>
-                                    <td>
+                                    <td data-label="Token ID">
                                         <span class="bp-token-id-cell bp-id-copy-row">
                                             <code class="bp-id-value">@token.TokenId</code>
                                             @await Html.PartialAsync("_CopyIdButton", token.TokenId)
                                         </span>
                                     </td>
-                                    <td><span class="bp-access-pill">@accessLabel</span></td>
-                                    <td class="bp-token-scope-cell">
+                                    <td data-label="Access"><span class="bp-access-pill">@accessLabel</span></td>
+                                    <td class="bp-token-scope-cell" data-label="Scope">
                                         <details class="bp-token-scope-details">
                                             <summary class="bp-token-scope-summary">@ScopeSummary(token)</summary>
                                             <div class="bp-token-scope-list">
@@ -901,9 +933,9 @@
                                             </div>
                                         </details>
                                     </td>
-                                    <td><span class="@statusClass">@(token.IsActive ? "Active" : "Inactive")</span></td>
-                                    <td>@(string.IsNullOrWhiteSpace(token.LastUsedAt) ? "-" : token.LastUsedAt)</td>
-                                    <td>
+                                    <td data-label="Status"><span class="@statusClass">@(token.IsActive ? "Active" : "Inactive")</span></td>
+                                    <td data-label="Last used">@(string.IsNullOrWhiteSpace(token.LastUsedAt) ? "-" : token.LastUsedAt)</td>
+                                    <td class="bp-action-cell" data-label="Actions">
                                         <div class="bp-icon-action-row">
                                             <form method="post" action="/admin/api/tokens/regenerate">
                                                 @Html.AntiForgeryToken()

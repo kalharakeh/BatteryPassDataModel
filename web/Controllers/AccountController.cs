@@ -1,7 +1,5 @@
 using BatteryPassWeb.Models.ViewModels;
 using BatteryPassWeb.Services;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
@@ -16,15 +14,18 @@ public sealed class AccountController : Controller
     private readonly ClusterRepository _clusterRepository;
     private readonly AuthService _authService;
     private readonly ApplicationAuditService _applicationAuditService;
+    private readonly AuthenticationSessionService _authenticationSessionService;
 
     public AccountController(
         ClusterRepository clusterRepository,
         AuthService authService,
-        ApplicationAuditService applicationAuditService)
+        ApplicationAuditService applicationAuditService,
+        AuthenticationSessionService authenticationSessionService)
     {
         _clusterRepository = clusterRepository;
         _authService = authService;
         _applicationAuditService = applicationAuditService;
+        _authenticationSessionService = authenticationSessionService;
     }
 
     [HttpGet("")]
@@ -107,7 +108,7 @@ public sealed class AccountController : Controller
         var principal = await _authService.CreatePrincipalForUserAsync(newEmail, cancellationToken);
         if (principal != null)
         {
-            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+            await _authenticationSessionService.SignInAsync(HttpContext, principal, cancellationToken);
         }
 
         return View("Index", new AccountProfileViewModel

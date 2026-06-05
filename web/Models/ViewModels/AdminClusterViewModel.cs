@@ -23,6 +23,7 @@ public sealed class AdminClusterViewModel
     public string StatusMessage { get; init; } = string.Empty;
     public string ErrorMessage { get; init; } = string.Empty;
     public string GeneratedCredential { get; init; } = string.Empty;
+    public int SessionTimeoutMinutes { get; init; } = 180;
 }
 
 public sealed class ProductTemplateSummaryViewModel

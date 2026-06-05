@@ -2,9 +2,14 @@ namespace BatteryPassWeb.Configuration;
 
 public sealed class BatteryPassOptions
 {
+    public const int DefaultSessionTimeoutMinutes = 180;
+    public const int MinimumSessionTimeoutMinutes = 15;
+    public const int MaximumSessionTimeoutMinutes = 1440;
+
     public string MongoDbUri { get; set; } = string.Empty;
     public string MongoDbName { get; set; } = "battery_pass_demo";
     public string SessionSecret { get; set; } = string.Empty;
+    public int SessionTimeoutMinutes { get; set; } = DefaultSessionTimeoutMinutes;
     public string DemoAdminEmail { get; set; } = "admin@example.test";
     public string DemoAdminPassword { get; set; } = "Password123!";
     public string ExternalApiEncryptionKey { get; set; } = string.Empty;
@@ -14,4 +19,19 @@ public sealed class BatteryPassOptions
     public string PasswordResetAppName { get; set; } = "Battery Pass";
     public string AppBaseUrl { get; set; } = string.Empty;
     public bool RequireHttpsRedirection { get; set; } = true;
+
+    public static int NormalizeSessionTimeoutMinutes(int minutes)
+    {
+        if (minutes < MinimumSessionTimeoutMinutes)
+        {
+            return MinimumSessionTimeoutMinutes;
+        }
+
+        if (minutes > MaximumSessionTimeoutMinutes)
+        {
+            return MaximumSessionTimeoutMinutes;
+        }
+
+        return minutes;
+    }
 }

@@ -21,6 +21,11 @@ builder.Services.Configure<BatteryPassOptions>(options =>
     options.SessionSecret = Environment.GetEnvironmentVariable("SESSION_SECRET")
         ?? builder.Configuration["BatteryPass:SessionSecret"]
         ?? string.Empty;
+    var sessionTimeoutText = Environment.GetEnvironmentVariable("SESSION_TIMEOUT_MINUTES")
+        ?? builder.Configuration["BatteryPass:SessionTimeoutMinutes"];
+    options.SessionTimeoutMinutes = int.TryParse(sessionTimeoutText, out var sessionTimeoutMinutes)
+        ? BatteryPassOptions.NormalizeSessionTimeoutMinutes(sessionTimeoutMinutes)
+        : BatteryPassOptions.DefaultSessionTimeoutMinutes;
     options.DemoAdminEmail = Environment.GetEnvironmentVariable("DEMO_ADMIN_EMAIL")
         ?? builder.Configuration["BatteryPass:DemoAdminEmail"]
         ?? "admin@example.test";
@@ -61,6 +66,12 @@ builder.Services
         options.Cookie.Name = "battery-pass-demo-session";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(BatteryPassOptions.DefaultSessionTimeoutMinutes);
+        options.SlidingExpiration = true;
+        options.Events.OnValidatePrincipal = context =>
+            context.HttpContext.RequestServices
+                .GetRequiredService<AuthenticationSessionService>()
+                .ValidatePrincipalAsync(context);
     });
 
 builder.Services.AddAuthorization(options =>
@@ -99,6 +110,8 @@ builder.Services.AddSingleton<PassportTrustService>();
 builder.Services.AddSingleton<AuditRevisionService>();
 builder.Services.AddSingleton<BatteryAuditService>();
 builder.Services.AddSingleton<ApplicationAuditService>();
+builder.Services.AddSingleton<ApplicationSettingsService>();
+builder.Services.AddSingleton<AuthenticationSessionService>();
 builder.Services.AddSingleton<BatteryCreationService>();
 builder.Services.AddSingleton<PassportTrustWorkflowService>();
 builder.Services.AddSingleton<AccessControlService>();

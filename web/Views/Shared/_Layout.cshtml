@@ -9,6 +9,11 @@
     var customerRole = string.Empty;
     var clusterNames = new List<string>();
     var requestPath = Context.Request.Path;
+    var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
+    var theme = BatteryPassWeb.Controllers.ThemeController.NormalizeTheme(
+        Context.Request.Cookies[BatteryPassWeb.Controllers.ThemeController.ThemeCookieName]);
+    var nextTheme = theme.Equals("dark", StringComparison.OrdinalIgnoreCase) ? "light" : "dark";
+    var themeLabel = nextTheme.Equals("dark", StringComparison.OrdinalIgnoreCase) ? "Switch to dark mode" : "Switch to light mode";
     var mainClass = requestPath.StartsWithSegments("/registry")
         || requestPath.StartsWithSegments("/admin")
         || requestPath.StartsWithSegments("/cluster-admin")
@@ -48,7 +53,7 @@
     }
 }
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="@theme">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -104,6 +109,33 @@
                             </div>
                         }
                         <div class="bp-header-account-links">
+                            <form method="post" action="/theme" class="bp-theme-toggle-form">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="theme" value="@nextTheme" />
+                                <input type="hidden" name="returnUrl" value="@returnUrl" />
+                                <button type="submit" class="bp-theme-toggle" aria-label="@themeLabel" title="@themeLabel" data-tooltip="@themeLabel">
+                                    @if (theme.Equals("dark", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <svg class="bp-theme-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="4" />
+                                            <path d="M12 2v2" />
+                                            <path d="M12 20v2" />
+                                            <path d="m4.93 4.93 1.41 1.41" />
+                                            <path d="m17.66 17.66 1.41 1.41" />
+                                            <path d="M2 12h2" />
+                                            <path d="M20 12h2" />
+                                            <path d="m6.34 17.66-1.41 1.41" />
+                                            <path d="m19.07 4.93-1.41 1.41" />
+                                        </svg>
+                                    }
+                                    else
+                                    {
+                                        <svg class="bp-theme-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z" />
+                                        </svg>
+                                    }
+                                </button>
+                            </form>
                         @if (isAuthenticated)
                         {
                             <form method="post" action="/login/logout" class="bp-header-logout-form">

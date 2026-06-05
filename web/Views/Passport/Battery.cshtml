@@ -19,7 +19,7 @@
 
     <section class="bp-card bp-table-card">
         <div class="bp-table-scroll">
-            <table class="table table-hover align-middle bp-console-table">
+            <table class="table table-hover align-middle bp-console-table bp-mobile-card-table">
                 <thead>
                     <tr>
                         <th>Passport ID</th>
@@ -33,11 +33,11 @@
                     @foreach (var row in battery.Passports)
                     {
                         <tr>
-                            <td class="text-break"><span class="bp-id-copy-row"><span class="bp-id-value">@row.PassportId</span>@await Html.PartialAsync("_CopyIdButton", row.PassportId)</span></td>
-                            <td>@row.PassportStatus</td>
-                            <td>@(string.IsNullOrWhiteSpace(row.CreatedAt) ? "-" : row.CreatedAt[..Math.Min(10, row.CreatedAt.Length)])</td>
-                            <td>@(row.IsLatestForBattery ? "Latest" : "Historical")</td>
-                            <td class="bp-action-cell">
+                            <td class="text-break" data-label="Passport ID"><span class="bp-id-copy-row"><span class="bp-id-value">@row.PassportId</span>@await Html.PartialAsync("_CopyIdButton", row.PassportId)</span></td>
+                            <td data-label="Status">@row.PassportStatus</td>
+                            <td data-label="Created">@(string.IsNullOrWhiteSpace(row.CreatedAt) ? "-" : row.CreatedAt[..Math.Min(10, row.CreatedAt.Length)])</td>
+                            <td data-label="Marker">@(row.IsLatestForBattery ? "Latest" : "Historical")</td>
+                            <td class="bp-action-cell" data-label="Actions">
                                 <div class="bp-icon-action-row">
                                     <a href="/@Uri.EscapeDataString(row.PassportId)/summary" class="bp-report-action" aria-label="Summary report" title="Summary report" data-tooltip="Summary report" data-action-icon="summary">
                                         <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">

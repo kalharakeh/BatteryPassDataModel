@@ -129,7 +129,7 @@
             </label>
         </div>
         <div class="bp-table-scroll">
-            <table class="table align-middle bp-console-table bp-credential-table bp-token-management-table">
+            <table class="table align-middle bp-console-table bp-credential-table bp-token-management-table bp-mobile-card-table">
                 <colgroup>
                     <col class="bp-token-name-column" />
                     <col class="bp-token-id-column" />
@@ -170,21 +170,21 @@
                         var statusClass = token.IsActive ? "bp-status-pill is-active" : "bp-status-pill is-inactive";
                         var searchText = $"{token.Name} {token.TokenId} {accessLabel} {token.ClusterIdsLabel} {(token.GlobalAccess ? "Global scope" : string.Empty)} {(token.IsActive ? "Active" : "Inactive")}";
                         <tr data-token-row data-token-search-value="@searchText">
-                            <td>
+                            <td data-label="Token">
                                 <p class="bp-credential-name">@tokenDisplayName</p>
                                 @if (token.IsSample)
                                 {
                                     <p class="mb-0 small text-secondary">Sample token</p>
                                 }
                             </td>
-                            <td>
+                            <td data-label="Token ID">
                                 <span class="bp-token-id-cell bp-id-copy-row">
                                     <code class="bp-id-value">@token.TokenId</code>
                                     @await Html.PartialAsync("_CopyIdButton", token.TokenId)
                                 </span>
                             </td>
-                            <td><span class="bp-access-pill">@accessLabel</span></td>
-                            <td class="bp-token-scope-cell">
+                            <td data-label="Access"><span class="bp-access-pill">@accessLabel</span></td>
+                            <td class="bp-token-scope-cell" data-label="Scope">
                                 <details class="bp-token-scope-details">
                                     <summary class="bp-token-scope-summary">@ScopeSummary(token)</summary>
                                     <div class="bp-token-scope-list">
@@ -212,9 +212,9 @@
                                     </div>
                                 </details>
                             </td>
-                            <td><span class="@statusClass">@(token.IsActive ? "Active" : "Inactive")</span></td>
-                            <td>@(string.IsNullOrWhiteSpace(token.LastUsedAt) ? "-" : token.LastUsedAt)</td>
-                            <td>
+                            <td data-label="Status"><span class="@statusClass">@(token.IsActive ? "Active" : "Inactive")</span></td>
+                            <td data-label="Last used">@(string.IsNullOrWhiteSpace(token.LastUsedAt) ? "-" : token.LastUsedAt)</td>
+                            <td class="bp-action-cell" data-label="Actions">
                                 <div class="bp-icon-action-row">
                                     <form method="post" action="/cluster-admin/api-tokens/regenerate">
                                         @Html.AntiForgeryToken()

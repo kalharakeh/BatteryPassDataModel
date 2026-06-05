@@ -109,7 +109,7 @@
 
         <section class="bp-card bp-table-card p-0">
             <div class="bp-table-scroll">
-                <table class="table align-middle mb-0 bp-console-table bp-user-management-table">
+                <table class="table align-middle mb-0 bp-console-table bp-user-management-table bp-mobile-card-table">
                     <thead>
                         <tr>
                             <th>Username</th>
@@ -137,11 +137,11 @@
                             var drawerId = $"cluster-user-drawer-{userRowIndex++}";
 
                             <tr>
-                                <td class="bp-user-name-cell"><strong>@displayName</strong></td>
-                                <td><code>@user.Email</code></td>
-                                <td><span>Global admin: @(isGlobalAdmin ? "Yes" : "No")</span></td>
-                                <td><span class="bp-user-count-pill">@MembershipCountLabel(memberships.Count)</span></td>
-                                <td class="bp-action-cell">
+                                <td class="bp-user-name-cell" data-label="Username"><strong>@displayName</strong></td>
+                                <td data-label="Email"><code>@user.Email</code></td>
+                                <td data-label="Global admin"><span>Global admin: @(isGlobalAdmin ? "Yes" : "No")</span></td>
+                                <td data-label="Cluster memberships"><span class="bp-user-count-pill">@MembershipCountLabel(memberships.Count)</span></td>
+                                <td class="bp-action-cell" data-label="Actions">
                                     <button type="button" class="bp-action-button bp-user-drawer-toggle" data-user-drawer-toggle data-open-user="@user.Email" aria-expanded="false" aria-controls="@drawerId" aria-label="Open user actions" title="Open user actions" data-tooltip="Open user actions">
                                         <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
                                             <path d="m6 9 6 6 6-6" />

@@ -35,7 +35,7 @@
     }
 
     <section class="bp-card p-0 overflow-auto">
-        <table class="table table-hover align-middle mb-0 bp-admin-history-table">
+        <table class="table table-hover align-middle mb-0 bp-admin-history-table bp-mobile-card-table">
             <thead>
                 <tr>
                     <th class="px-4 py-3">Passport ID</th>
@@ -60,11 +60,11 @@
                             ? passport.CreatedAt.Substring(0, 10)
                             : passport.CreatedAt;
                     <tr>
-                        <td class="px-4 py-3"><span class="bp-battery-id-cell bp-id-copy-row"><span class="bp-id-value">@passport.PassportId</span>@await Html.PartialAsync("_CopyIdButton", passport.PassportId)</span></td>
-                        <td class="px-4 py-3">@(passport.IsLatestForBattery ? "Latest" : "Historical")</td>
-                        <td class="px-4 py-3">@passport.PassportStatus</td>
-                        <td class="px-4 py-3">@created</td>
-                        <td class="px-4 py-3">
+                        <td class="px-4 py-3" data-label="Passport ID"><span class="bp-battery-id-cell bp-id-copy-row"><span class="bp-id-value">@passport.PassportId</span>@await Html.PartialAsync("_CopyIdButton", passport.PassportId)</span></td>
+                        <td class="px-4 py-3" data-label="State">@(passport.IsLatestForBattery ? "Latest" : "Historical")</td>
+                        <td class="px-4 py-3" data-label="Status">@passport.PassportStatus</td>
+                        <td class="px-4 py-3" data-label="Created">@created</td>
+                        <td class="px-4 py-3 bp-action-cell" data-label="Actions">
                             <div class="bp-icon-action-row">
                                 <a href="/@Uri.EscapeDataString(passport.PassportId)/summary" class="bp-report-action" aria-label="Summary report" title="Summary report" data-tooltip="Summary report" data-action-icon="summary">
                                     <svg class="bp-report-action-icon" viewBox="0 0 24 24" aria-hidden="true">

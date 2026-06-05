@@ -17,7 +17,7 @@ else
 {
     <div class="bp-card bp-table-card">
         <div class="bp-table-scroll">
-            <table class="table table-hover align-middle bp-console-table bp-shared-battery-table">
+            <table class="table table-hover align-middle bp-console-table bp-shared-battery-table bp-mobile-card-table">
                 <thead>
                     <tr>
                         <th>Battery serial number</th>
@@ -46,21 +46,21 @@ else
                                     ? "bp-status-pill is-signed"
                                     : "bp-status-pill is-draft";
                         <tr>
-                            <td>@row.BatterySerialNumber</td>
-                            <td><span class="bp-battery-id-cell bp-battery-id-cell-compact bp-id-copy-row"><span class="bp-id-value">@row.BatteryId</span>@await Html.PartialAsync("_CopyIdButton", row.BatteryId)</span></td>
-                            <td>@row.BatteryFamily</td>
-                            <td>@row.BatteryModel</td>
-                            <td>
+                            <td data-label="Battery serial number">@row.BatterySerialNumber</td>
+                            <td data-label="Battery ID"><span class="bp-battery-id-cell bp-battery-id-cell-compact bp-id-copy-row"><span class="bp-id-value">@row.BatteryId</span>@await Html.PartialAsync("_CopyIdButton", row.BatteryId)</span></td>
+                            <td data-label="Family">@row.BatteryFamily</td>
+                            <td data-label="Model">@row.BatteryModel</td>
+                            <td data-label="Cluster">
                                 <strong>@row.ClusterLabel</strong>
                                 @if (!string.IsNullOrWhiteSpace(row.ClusterId))
                                 {
                                     <small class="d-block text-secondary">@row.ClusterId</small>
                                 }
                             </td>
-                            <td>@row.PassportCount passports</td>
-                            <td><span class="@passportStatusClass" data-latest-passport-status="@row.LatestPassportStatus">@(row.ShowNewPassportRequired ? "New passport needed" : row.DisplayStatus)</span></td>
-                            <td>@updated</td>
-                            <td class="bp-action-cell">
+                            <td data-label="Passports">@row.PassportCount passports</td>
+                            <td data-label="Status"><span class="@passportStatusClass" data-latest-passport-status="@row.LatestPassportStatus">@(row.ShowNewPassportRequired ? "New passport needed" : row.DisplayStatus)</span></td>
+                            <td data-label="Updated">@updated</td>
+                            <td class="bp-action-cell" data-label="Actions">
                                 <div class="bp-icon-action-row">
                                     @if (!string.IsNullOrWhiteSpace(row.SummaryUrl))
                                     {

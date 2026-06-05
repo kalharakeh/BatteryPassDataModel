@@ -13,22 +13,28 @@ public class LoginController : Controller
 {
     private readonly AuthService _authService;
     private readonly ApplicationAuditService _applicationAuditService;
+    private readonly AuthenticationSessionService _authenticationSessionService;
 
-    public LoginController(AuthService authService, ApplicationAuditService applicationAuditService)
+    public LoginController(
+        AuthService authService,
+        ApplicationAuditService applicationAuditService,
+        AuthenticationSessionService authenticationSessionService)
     {
         _authService = authService;
         _applicationAuditService = applicationAuditService;
+        _authenticationSessionService = authenticationSessionService;
     }
 
     [HttpGet("")]
-    public IActionResult Index([FromQuery] string? next)
+    public IActionResult Index([FromQuery] string? next, [FromQuery] string? returnUrl)
     {
+        var safeReturnUrl = SafeInteractiveReturnUrl(next) ?? SafeInteractiveReturnUrl(returnUrl);
         if (User.Identity?.IsAuthenticated == true)
         {
-            return Redirect(next ?? "/admin");
+            return Redirect(safeReturnUrl ?? "/admin");
         }
 
-        return View(new LoginViewModel { ReturnUrl = next ?? string.Empty });
+        return View(new LoginViewModel { ReturnUrl = safeReturnUrl ?? string.Empty });
     }
 
     [HttpPost("")]
@@ -52,11 +58,12 @@ public class LoginController : Controller
         }
 
         var principal = loginResult.Principal;
-        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+        await _authenticationSessionService.SignInAsync(HttpContext, principal, cancellationToken);
 
-        if (!string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
+        var safeReturnUrl = SafeInteractiveReturnUrl(model.ReturnUrl);
+        if (!string.IsNullOrWhiteSpace(safeReturnUrl))
         {
-            return Redirect(model.ReturnUrl);
+            return Redirect(safeReturnUrl);
         }
 
         if (principal.IsInRole("admin"))
@@ -150,4 +157,21 @@ public class LoginController : Controller
     }
 
     private string RequestBaseUrl() => $"{Request.Scheme}://{Request.Host}";
+
+    private string? SafeInteractiveReturnUrl(string? returnUrl)
+    {
+        if (string.IsNullOrWhiteSpace(returnUrl) || !Url.IsLocalUrl(returnUrl))
+        {
+            return null;
+        }
+
+        var pathOnly = returnUrl.Split('?', '#')[0];
+        if (pathOnly.Equals("/api", StringComparison.OrdinalIgnoreCase)
+            || pathOnly.StartsWith("/api/", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return returnUrl;
+    }
 }

@@ -1,3 +1,4 @@
+using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Models.Trust;
 using BatteryPassWeb.Models.ViewModels;
 using BatteryPassWeb.Services;
@@ -122,6 +123,7 @@ public class AdminController : Controller
     private readonly AuditRevisionService _auditRevisionService;
     private readonly BatteryAuditService _batteryAuditService;
     private readonly ApplicationAuditService _applicationAuditService;
+    private readonly ApplicationSettingsService _applicationSettingsService;
     private readonly PassportTrustWorkflowService _passportTrustWorkflowService;
 
     public AdminController(
@@ -148,6 +150,7 @@ public class AdminController : Controller
         AuditRevisionService auditRevisionService,
         BatteryAuditService batteryAuditService,
         ApplicationAuditService applicationAuditService,
+        ApplicationSettingsService applicationSettingsService,
         PassportTrustWorkflowService passportTrustWorkflowService)
     {
         _passportRepository = passportRepository;
@@ -173,6 +176,7 @@ public class AdminController : Controller
         _auditRevisionService = auditRevisionService;
         _batteryAuditService = batteryAuditService;
         _applicationAuditService = applicationAuditService;
+        _applicationSettingsService = applicationSettingsService;
         _passportTrustWorkflowService = passportTrustWorkflowService;
     }
 
@@ -1217,7 +1221,8 @@ public class AdminController : Controller
             SampleReadWriteToken = await ResolveTokenValueAsync(ExternalApiInitializer.SampleReadWriteTokenId, ExternalApiInitializer.SampleReadWriteTokenValue, cancellationToken),
             StatusMessage = TempData["StatusMessage"]?.ToString() ?? string.Empty,
             ErrorMessage = TempData["ErrorMessage"]?.ToString() ?? string.Empty,
-            GeneratedCredential = TempData["GeneratedCredential"]?.ToString() ?? string.Empty
+            GeneratedCredential = TempData["GeneratedCredential"]?.ToString() ?? string.Empty,
+            SessionTimeoutMinutes = await _applicationSettingsService.GetSessionTimeoutMinutesAsync(cancellationToken)
         };
 
         return View(model);
@@ -1497,6 +1502,35 @@ public class AdminController : Controller
             cancellationToken);
 
         return Redirect($"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}");
+    }
+
+    [HttpPost("clusters/session-timeout")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveSessionTimeout(CancellationToken cancellationToken)
+    {
+        var requestedTimeout = int.TryParse(Text(Request.Form, "sessionTimeoutMinutes"), out var parsedTimeout)
+            ? parsedTimeout
+            : BatteryPassOptions.DefaultSessionTimeoutMinutes;
+        var actor = AccessControlService.CurrentEmail(User);
+        var normalizedTimeout = await _applicationSettingsService.SetSessionTimeoutMinutesAsync(
+            requestedTimeout,
+            actor,
+            cancellationToken);
+
+        await AppendAdminAuditAsync(
+            "settings.sessionTimeout.updated",
+            "Global session timeout updated.",
+            new BsonDocument
+            {
+                ["sessionTimeoutMinutes"] = normalizedTimeout,
+                ["updatedBy"] = actor
+            },
+            "settings",
+            "session-timeout",
+            cancellationToken);
+
+        TempData["StatusMessage"] = $"Global session timeout updated to {FormatSessionTimeout(normalizedTimeout)}.";
+        return Redirect("/admin/clusters?tab=users");
     }
 
     [HttpPost("clusters/delete-user")]
@@ -3251,6 +3285,13 @@ public class AdminController : Controller
     {
         var value = form[key].FirstOrDefault()?.Trim();
         return string.IsNullOrWhiteSpace(value) ? fallback ?? string.Empty : value;
+    }
+
+    private static string FormatSessionTimeout(int minutes)
+    {
+        return minutes % 60 == 0
+            ? $"{minutes / 60} {(minutes == 60 ? "hour" : "hours")}"
+            : $"{minutes} minutes";
     }
 
     private static double Number(IFormCollection form, string key, double fallback)
