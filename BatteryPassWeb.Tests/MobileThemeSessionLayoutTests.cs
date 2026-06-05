@@ -66,12 +66,36 @@ public sealed class MobileThemeSessionLayoutTests
     }
 
     [Fact]
+    public void DarkTheme_ShouldCoverAdminPolicyFormsAndProductEditorControls()
+    {
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("[data-theme=\"dark\"] .bp-report-action", css);
+        Assert.Contains("[data-theme=\"dark\"] .bp-cluster-create-form input", css);
+        Assert.Contains("[data-theme=\"dark\"] .bp-cluster-rename-form .form-control", css);
+        Assert.Contains("[data-theme=\"dark\"] .bp-user-create-strip input", css);
+        Assert.Contains("[data-theme=\"dark\"] .bp-user-create-strip label", css);
+        Assert.Contains("[data-theme=\"dark\"] .bp-user-count-pill", css);
+        Assert.Contains("[data-theme=\"dark\"] .bp-local-editable-field-card", css);
+        Assert.Contains("[data-theme=\"dark\"] .bp-local-editable-toggle-shell", css);
+        Assert.Contains("[data-theme=\"dark\"] .bp-requirement-switch", css);
+        Assert.Contains("[data-theme=\"dark\"] .bp-requirement-toggle", css);
+        Assert.Contains("[data-theme=\"dark\"] .bp-product-editor-section .bp-field-shell input", css);
+        Assert.Contains("[data-theme=\"dark\"] .bp-product-editor-section .bp-field-shell textarea", css);
+        Assert.Contains("[data-theme=\"dark\"] .bp-product-version-selected-field input", css);
+        Assert.Contains("[data-theme=\"dark\"] .bp-product-version-tab", css);
+        Assert.Contains("[data-theme=\"dark\"] .bp-template-version-row", css);
+        Assert.Contains("[data-theme=\"dark\"] .bp-template-document-row", css);
+    }
+
+    [Fact]
     public void LoginReturnUrl_ShouldUseFrameworkReturnUrlButRejectApiDestinations()
     {
         var controller = File.ReadAllText(RepoFile("web", "Controllers", "LoginController.cs"));
         var apiController = File.ReadAllText(RepoFile("web", "Controllers", "AuthApiController.cs"));
 
-        Assert.Contains("Index([FromQuery] string? next, [FromQuery] string? returnUrl)", controller);
+        Assert.Contains("Index([FromQuery] string? next, [FromQuery] string? returnUrl, [FromQuery] bool switchAccount)", controller);
+        Assert.Contains("&& !switchAccount", controller);
         Assert.Contains("SafeInteractiveReturnUrl", controller);
         Assert.Contains("StartsWith(\"/api/\"", controller);
         Assert.Contains("SafeInteractiveReturnUrl(model.ReturnUrl)", controller);

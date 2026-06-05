@@ -50,10 +50,6 @@
                             <span class="bp-status-pill is-published">Latest passport</span>
                         }
                     </div>
-                    @if (!string.IsNullOrWhiteSpace(Model.DetailAccessNotice))
-                    {
-                        <p class="bp-warning mt-3">@Model.DetailAccessNotice</p>
-                    }
                 </section>
 
                 <section class="bp-summary-id-panel bp-report-identity-panel bp-report-identity-panel--identifiers">
@@ -90,7 +86,14 @@
                 <div class="bp-image-wrap">
                     <img src="@passport.BatteryImageUrl" alt="@passport.BatteryImageAlt" class="bp-battery-image" />
                 </div>
-                <a class="bp-report-hero-cta" href="/@Uri.EscapeDataString(passport.PassportId)">View more about this passport -&gt;</a>
+                @if (Model.CanOpenDetail)
+                {
+                    <a class="bp-report-hero-cta" href="@Model.DetailActionUrl">View more about this passport -&gt;</a>
+                }
+                else
+                {
+                    <a class="bp-report-hero-cta bp-report-hero-cta-warning" href="@Model.DetailActionUrl">@Model.DetailAccessNotice</a>
+                }
             </aside>
         </div>
     </section>

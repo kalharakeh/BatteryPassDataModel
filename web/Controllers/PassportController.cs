@@ -112,6 +112,8 @@ public class PassportController : Controller
         return View(new PassportSummaryPageViewModel
         {
             Passport = passport,
+            CanOpenDetail = canOpenDetail,
+            DetailActionUrl = BuildDetailActionUrl(passport.PassportId, canOpenDetail, User.Identity?.IsAuthenticated == true),
             DetailAccessNotice = detailAccessNotice
         });
     }
@@ -305,6 +307,18 @@ public class PassportController : Controller
     private static IActionResult RedirectToPublicSummaryWithAccessNotice(string passportId)
     {
         return new RedirectResult($"/{Uri.EscapeDataString(passportId)}/summary?access=detail-required");
+    }
+
+    private static string BuildDetailActionUrl(string passportId, bool canOpenDetail, bool isAuthenticated)
+    {
+        var detailPath = $"/{Uri.EscapeDataString(passportId)}";
+        if (canOpenDetail)
+        {
+            return detailPath;
+        }
+
+        var loginPath = $"/login?next={Uri.EscapeDataString(detailPath)}";
+        return isAuthenticated ? $"{loginPath}&switchAccount=1" : loginPath;
     }
 
     private bool IsGeneratedSampleBatteryId(string batteryId)

@@ -1,7 +1,11 @@
+using System.Runtime.CompilerServices;
+
 namespace BatteryPassWeb.Tests;
 
 public sealed class BatteryRouteAndRegistryTests
 {
+    private static readonly string TestSourceFile = CurrentSourceFile();
+
     [Fact]
     public void PublicRoutes_ShouldResolveBatteryIdLatestAndPassportId()
     {
@@ -109,6 +113,28 @@ public sealed class BatteryRouteAndRegistryTests
     }
 
     [Fact]
+    public void PassportSummaryLockedDetail_ShouldReplaceHeroCtaAndReturnAfterLogin()
+    {
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "PassportController.cs"));
+        var loginController = File.ReadAllText(RepoFile("web", "Controllers", "LoginController.cs"));
+        var model = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "PassportSummaryPageViewModel.cs"));
+        var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
+
+        Assert.Contains("public bool CanOpenDetail", model);
+        Assert.Contains("public string DetailActionUrl", model);
+        Assert.Contains("CanOpenDetail = canOpenDetail", controller);
+        Assert.Contains("DetailActionUrl = BuildDetailActionUrl(", controller);
+        Assert.Contains("switchAccount=1", controller);
+        Assert.Contains("[FromQuery] bool switchAccount", loginController);
+        Assert.Contains("&& !switchAccount", loginController);
+        Assert.DoesNotContain("<p class=\"bp-warning mt-3\">@Model.DetailAccessNotice</p>", summary);
+        Assert.Contains("if (Model.CanOpenDetail)", summary);
+        Assert.Contains("href=\"@Model.DetailActionUrl\">View more about this passport", summary);
+        Assert.Contains("bp-report-hero-cta bp-report-hero-cta-warning", summary);
+        Assert.Contains("@Model.DetailAccessNotice", summary);
+    }
+
+    [Fact]
     public void BatteryLevelView_ShouldShowBatteryIdLabelAndIconActions()
     {
         var view = File.ReadAllText(RepoFile("web", "Views", "Passport", "Battery.cshtml"));
@@ -160,18 +186,32 @@ public sealed class BatteryRouteAndRegistryTests
 
     private static string RepoFile(params string[] parts)
     {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory != null)
-        {
-            var candidate = Path.Combine(new[] { directory.FullName }.Concat(parts).ToArray());
-            if (File.Exists(candidate))
+        var roots = new[]
             {
-                return candidate;
+                AppContext.BaseDirectory,
+                Directory.GetCurrentDirectory(),
+                Path.GetDirectoryName(TestSourceFile) ?? string.Empty
             }
+            .Where(root => !string.IsNullOrWhiteSpace(root))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
 
-            directory = directory.Parent;
+        foreach (var root in roots)
+        {
+            var directory = new DirectoryInfo(root);
+            while (directory != null)
+            {
+                var candidate = Path.Combine(new[] { directory.FullName }.Concat(parts).ToArray());
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+
+                directory = directory.Parent;
+            }
         }
 
         throw new FileNotFoundException($"Could not find repository file: {Path.Combine(parts)}");
     }
+
+    private static string CurrentSourceFile([CallerFilePath] string sourceFile = "") => sourceFile;
 }

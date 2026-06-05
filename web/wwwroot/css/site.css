@@ -1927,6 +1927,20 @@ a:hover {
   outline: 0;
 }
 
+.bp-report-hero-cta.bp-report-hero-cta-warning {
+  border: 1px solid #fedf89;
+  background: #fffaeb;
+  color: #b54708;
+  box-shadow: none;
+  font-weight: 650;
+}
+
+.bp-report-hero-cta.bp-report-hero-cta-warning:hover,
+.bp-report-hero-cta.bp-report-hero-cta-warning:focus-visible {
+  background: #fff4d6;
+  color: #93370d;
+}
+
 .bp-report-header {
   position: relative;
 }
@@ -8464,6 +8478,18 @@ a:hover {
   color: #fff;
 }
 
+[data-theme="dark"] .bp-report-hero-cta.bp-report-hero-cta-warning {
+  border-color: #ad7c2d;
+  background: #3b2f1a;
+  color: #ffd8a8;
+}
+
+[data-theme="dark"] .bp-report-hero-cta.bp-report-hero-cta-warning:hover,
+[data-theme="dark"] .bp-report-hero-cta.bp-report-hero-cta-warning:focus-visible {
+  background: #4a3a1c;
+  color: #ffe7bd;
+}
+
 [data-theme="dark"] .bp-token-create-strip,
 [data-theme="dark"] .bp-token-cluster-chip-picker,
 [data-theme="dark"] .bp-token-cluster-chip-grid label,
@@ -8515,6 +8541,235 @@ a:hover {
   border-color: var(--bp-border);
   background: #0b1628;
   color: var(--bp-muted);
+}
+
+[data-theme="dark"] .bp-report-action,
+[data-theme="dark"] .bp-report-action-prominent {
+  border-color: #3f5f86;
+  background: #0b1628;
+  color: var(--bp-text);
+  box-shadow: 0 4px 13px rgba(0, 0, 0, 0.24);
+}
+
+[data-theme="dark"] .bp-report-action:hover,
+[data-theme="dark"] .bp-report-action:focus-visible,
+[data-theme="dark"] .bp-report-action-prominent:hover,
+[data-theme="dark"] .bp-report-action-prominent:focus-visible {
+  border-color: var(--bp-primary);
+  background: #132d4f;
+  color: #cce3ff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+[data-theme="dark"] .bp-report-action-prominent::before {
+  border-color: rgba(122, 182, 255, 0.28);
+}
+
+[data-theme="dark"] .bp-report-action::after {
+  border-color: #3f5f86;
+  background: #132d4f;
+  color: var(--bp-text);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.36);
+}
+
+[data-theme="dark"] .bp-cluster-create-form input,
+[data-theme="dark"] .bp-cluster-create-form select,
+[data-theme="dark"] .bp-cluster-rename-form .form-control,
+[data-theme="dark"] .bp-cluster-danger-form .form-control,
+[data-theme="dark"] .bp-user-create-strip input,
+[data-theme="dark"] .bp-user-create-strip select,
+[data-theme="dark"] .bp-user-drawer-panel input,
+[data-theme="dark"] .bp-user-drawer-panel select,
+[data-theme="dark"] .bp-user-membership-add-row select,
+[data-theme="dark"] .bp-session-timeout-form input,
+[data-theme="dark"] .bp-product-editor-section .bp-field-shell input,
+[data-theme="dark"] .bp-product-editor-section .bp-field-shell select,
+[data-theme="dark"] .bp-product-editor-section .bp-field-shell textarea,
+[data-theme="dark"] .bp-product-version-selected-field input,
+[data-theme="dark"] .bp-product-version-selected-field select,
+[data-theme="dark"] .bp-product-version-tab-input input,
+[data-theme="dark"] .bp-template-version-row input,
+[data-theme="dark"] .bp-version-field-compact input,
+[data-theme="dark"] .bp-version-field-compact select {
+  border-color: var(--bp-border);
+  background: #101f35;
+  color: var(--bp-text);
+  box-shadow: none;
+}
+
+[data-theme="dark"] .bp-product-editor-section .bp-field-shell input[readonly],
+[data-theme="dark"] .bp-product-version-selected-field input[readonly],
+[data-theme="dark"] .bp-product-version-tab-input input[readonly],
+[data-theme="dark"] .bp-template-version-row input[readonly] {
+  background: #0b1628;
+  color: var(--bp-muted);
+}
+
+[data-theme="dark"] .bp-cluster-create-form input::placeholder,
+[data-theme="dark"] .bp-cluster-rename-form .form-control::placeholder,
+[data-theme="dark"] .bp-cluster-danger-form .form-control::placeholder,
+[data-theme="dark"] .bp-user-create-strip input::placeholder,
+[data-theme="dark"] .bp-product-editor-section .bp-field-shell input::placeholder,
+[data-theme="dark"] .bp-product-version-selected-field input::placeholder,
+[data-theme="dark"] .bp-product-editor-section .bp-field-shell textarea::placeholder,
+[data-theme="dark"] .bp-template-version-row input::placeholder {
+  color: #7f94ad;
+}
+
+[data-theme="dark"] .bp-cluster-create-form label,
+[data-theme="dark"] .bp-inline-form-grid label,
+[data-theme="dark"] .bp-user-create-strip label,
+[data-theme="dark"] .bp-user-form-grid label,
+[data-theme="dark"] .bp-token-create-grid label,
+[data-theme="dark"] .bp-membership-edit-form label,
+[data-theme="dark"] .bp-force-delete-form label,
+[data-theme="dark"] .bp-user-drawer-panel label,
+[data-theme="dark"] .bp-session-timeout-form label,
+[data-theme="dark"] .bp-product-editor-section .bp-field-shell > span,
+[data-theme="dark"] .bp-product-version-selected-field span,
+[data-theme="dark"] .bp-product-version-tab-main span,
+[data-theme="dark"] .bp-product-version-tab-input span,
+[data-theme="dark"] .bp-local-editable-toggle-label {
+  color: var(--bp-muted);
+}
+
+[data-theme="dark"] .bp-user-count-pill,
+[data-theme="dark"] .bp-local-editable-state-pill,
+[data-theme="dark"] .bp-data-policy-meta span,
+[data-theme="dark"] .bp-requirement-section-count,
+[data-theme="dark"] .bp-template-document-visibility {
+  border-color: #3f5f86;
+  background: #0b1628;
+  color: var(--bp-text);
+}
+
+[data-theme="dark"] .bp-local-editable-state-pill.is-on,
+[data-theme="dark"] .bp-product-version-tab.is-active .bp-product-version-chip-pill {
+  border-color: #236a44;
+  background: #0d2d1d;
+  color: #b9f6cf;
+}
+
+[data-theme="dark"] .bp-management-card,
+[data-theme="dark"] .bp-cluster-user-drawer-row td,
+[data-theme="dark"] .bp-user-drawer-row td,
+[data-theme="dark"] .bp-cluster-user-row,
+[data-theme="dark"] .bp-user-drawer-panel,
+[data-theme="dark"] .bp-user-membership-row,
+[data-theme="dark"] .bp-local-editable-drawer-row td,
+[data-theme="dark"] .bp-local-editable-field-card,
+[data-theme="dark"] .bp-data-requirements-shell,
+[data-theme="dark"] .bp-requirement-stats div,
+[data-theme="dark"] .bp-requirement-section-card,
+[data-theme="dark"] .bp-requirement-section-header,
+[data-theme="dark"] .bp-requirement-switch,
+[data-theme="dark"] .bp-data-requirements-savebar,
+[data-theme="dark"] .bp-product-template-hero,
+[data-theme="dark"] .bp-product-editor-hero,
+[data-theme="dark"] .bp-product-editor-section,
+[data-theme="dark"] .bp-product-version-console,
+[data-theme="dark"] .bp-product-version-tab,
+[data-theme="dark"] .bp-product-version-selected-panel,
+[data-theme="dark"] .bp-template-document-row,
+[data-theme="dark"] .bp-template-version-row,
+[data-theme="dark"] .bp-product-editor-savebar,
+[data-theme="dark"] .bp-product-template-meta div,
+[data-theme="dark"] .bp-user-access-note {
+  border-color: var(--bp-border);
+  background: #101f35;
+  color: var(--bp-text);
+}
+
+[data-theme="dark"] .bp-product-version-tab.is-active,
+[data-theme="dark"] .bp-product-version-tab:hover {
+  border-color: #3f5f86;
+  border-left-color: var(--bp-primary);
+  background: #132d4f;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+}
+
+[data-theme="dark"] .bp-product-template-card-media,
+[data-theme="dark"] .bp-product-editor-preview {
+  border-color: var(--bp-border);
+  background:
+    linear-gradient(145deg, rgba(16, 31, 53, 0.96), rgba(11, 22, 40, 0.96));
+}
+
+[data-theme="dark"] .bp-requirement-toggle,
+[data-theme="dark"] .bp-local-editable-toggle-shell {
+  border-color: #3f5f86;
+  background: #0b1628;
+  box-shadow: inset 0 0 0 1px rgba(159, 177, 200, 0.08);
+}
+
+[data-theme="dark"] .bp-requirement-switch input:checked + .bp-requirement-toggle,
+[data-theme="dark"] .bp-local-editable-field-toggle:checked + .bp-local-editable-toggle-shell {
+  border-color: #12906f;
+  background: #16826c;
+}
+
+[data-theme="dark"] .bp-product-template-card-body h3,
+[data-theme="dark"] .bp-product-editor-section h2,
+[data-theme="dark"] .bp-product-section-heading h2,
+[data-theme="dark"] .bp-product-version-console-header h2,
+[data-theme="dark"] .bp-product-version-tab-main,
+[data-theme="dark"] .bp-product-version-tab-main strong,
+[data-theme="dark"] .bp-template-document-row strong,
+[data-theme="dark"] .bp-data-requirements-hero h2,
+[data-theme="dark"] .bp-requirement-section-header h3,
+[data-theme="dark"] .bp-requirement-section-count strong,
+[data-theme="dark"] .bp-requirement-stats strong,
+[data-theme="dark"] .bp-requirement-copy strong,
+[data-theme="dark"] .bp-data-requirements-savebar strong,
+[data-theme="dark"] .bp-local-editable-field-copy strong,
+[data-theme="dark"] .bp-user-membership-name,
+[data-theme="dark"] .bp-product-template-meta dd {
+  color: var(--bp-text);
+}
+
+[data-theme="dark"] .bp-product-template-hero p,
+[data-theme="dark"] .bp-product-template-card-body p,
+[data-theme="dark"] .bp-product-template-meta dt,
+[data-theme="dark"] .bp-product-version-tab small,
+[data-theme="dark"] .bp-product-version-selected-meta,
+[data-theme="dark"] .bp-product-editor-savebar span,
+[data-theme="dark"] .bp-template-sync-note,
+[data-theme="dark"] .bp-template-document-row span,
+[data-theme="dark"] .bp-requirement-stats span,
+[data-theme="dark"] .bp-requirement-section-header span,
+[data-theme="dark"] .bp-requirement-copy small,
+[data-theme="dark"] .bp-data-requirements-savebar span,
+[data-theme="dark"] .bp-local-editable-section-cell span,
+[data-theme="dark"] .bp-local-editable-examples,
+[data-theme="dark"] .bp-local-editable-field-copy span,
+[data-theme="dark"] .bp-user-membership-role,
+[data-theme="dark"] .bp-user-access-note,
+[data-theme="dark"] .bp-management-card-title code,
+[data-theme="dark"] .bp-user-card-identity p,
+[data-theme="dark"] .bp-membership-row span,
+[data-theme="dark"] .bp-cluster-picker small {
+  color: var(--bp-muted);
+}
+
+[data-theme="dark"] .bp-template-document-row code,
+[data-theme="dark"] .bp-requirement-copy code,
+[data-theme="dark"] .bp-local-editable-field-copy code {
+  border-color: var(--bp-border);
+  background: #0b1628;
+  color: var(--bp-text);
+}
+
+[data-theme="dark"] .bp-danger-button {
+  border-color: #8c303b;
+  background: #35131a;
+  color: #ffc3ca;
+}
+
+[data-theme="dark"] .bp-danger-button:hover,
+[data-theme="dark"] .bp-danger-button:focus-visible {
+  border-color: #b94b59;
+  background: #4a1b24;
+  color: #ffe0e4;
 }
 
 @media (max-width: 1280px) {

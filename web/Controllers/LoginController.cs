@@ -26,10 +26,10 @@ public class LoginController : Controller
     }
 
     [HttpGet("")]
-    public IActionResult Index([FromQuery] string? next, [FromQuery] string? returnUrl)
+    public IActionResult Index([FromQuery] string? next, [FromQuery] string? returnUrl, [FromQuery] bool switchAccount)
     {
         var safeReturnUrl = SafeInteractiveReturnUrl(next) ?? SafeInteractiveReturnUrl(returnUrl);
-        if (User.Identity?.IsAuthenticated == true)
+        if (User.Identity?.IsAuthenticated == true && !switchAccount)
         {
             return Redirect(safeReturnUrl ?? "/admin");
         }
