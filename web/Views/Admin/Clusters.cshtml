@@ -149,7 +149,7 @@
     {
         <section class="bp-card bp-table-card mt-4">
             <div class="bp-table-scroll">
-                <table class="table table-hover align-middle bp-console-table bp-admin-cluster-assignment-table">
+                <table class="table table-hover align-middle bp-console-table bp-admin-cluster-assignment-table bp-mobile-card-table">
                     <thead>
                         <tr>
                             <th>Battery ID</th>
@@ -179,18 +179,18 @@
                                         ? passport.UpdatedDate.Substring(0, 10)
                                         : passport.UpdatedDate;
                                 <tr>
-                                    <td><span class="bp-battery-id-cell bp-id-copy-row"><span class="bp-id-value">@passport.BatteryId</span>@await Html.PartialAsync("_CopyIdButton", passport.BatteryId)</span></td>
-                                    <td>@passport.BatteryFamily</td>
-                                    <td>@passport.BatteryVersion</td>
-                                    <td>@passport.BatterySerialNumber</td>
-                                    <td>
+                                    <td data-label="Battery ID"><span class="bp-battery-id-cell bp-id-copy-row"><span class="bp-id-value">@passport.BatteryId</span>@await Html.PartialAsync("_CopyIdButton", passport.BatteryId)</span></td>
+                                    <td data-label="Battery Family">@passport.BatteryFamily</td>
+                                    <td data-label="Battery Model">@passport.BatteryVersion</td>
+                                    <td data-label="Battery serial number">@passport.BatterySerialNumber</td>
+                                    <td data-label="Current cluster">
                                         <p class="mb-0">@passport.ClusterLabel</p>
                                         @if (!string.IsNullOrWhiteSpace(passport.ClusterId))
                                         {
                                             <p class="mb-0 small text-secondary">@passport.ClusterId</p>
                                         }
                                     </td>
-                                    <td>
+                                    <td data-label="Assign">
                                         <form method="post" action="/admin/clusters/assign-passport" class="bp-cluster-assignment-form">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="passportId" value="@passport.PassportId" />
@@ -216,7 +216,7 @@
                                             </button>
                                         </form>
                                     </td>
-                                    <td>@updated</td>
+                                    <td data-label="Updated">@updated</td>
                                 </tr>
                             }
                         }
@@ -251,7 +251,7 @@
             </section>
             <section class="bp-card bp-table-card">
                 <div class="bp-table-scroll">
-                    <table class="table table-hover align-middle bp-console-table bp-cluster-management-table">
+                    <table class="table table-hover align-middle bp-console-table bp-cluster-management-table bp-mobile-card-table">
                         <thead>
                             <tr>
                                 <th>Cluster</th>
@@ -279,12 +279,12 @@
                                         .ToList();
                                     var drawerId = $"admin-cluster-user-drawer-{clusterRowIndex++}";
                                     <tr>
-                                        <td>
+                                        <td data-label="Cluster">
                                             <p class="bp-cluster-name">@cluster.Name</p>
                                             <p class="mb-0 small text-secondary">Registered cluster</p>
                                         </td>
-                                        <td><code class="bp-code-wrap">@cluster.ClusterId</code></td>
-                                        <td>
+                                        <td data-label="Cluster ID"><code class="bp-code-wrap">@cluster.ClusterId</code></td>
+                                        <td data-label="Users">
                                             <button type="button" class="bp-action-button bp-cluster-user-toggle" data-cluster-user-toggle aria-expanded="false" aria-controls="@drawerId" aria-label="Users in cluster @cluster.Name" title="Users in cluster" data-tooltip="Users in cluster">
                                                 <span class="bp-user-count-pill">@clusterMemberships.Count users</span>
                                                 <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -292,7 +292,7 @@
                                                 </svg>
                                             </button>
                                         </td>
-                                        <td>
+                                        <td data-label="Rename">
                                             <form method="post" action="/admin/clusters/update" class="bp-cluster-rename-form">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
@@ -304,7 +304,7 @@
                                                 </button>
                                             </form>
                                         </td>
-                                        <td>
+                                        <td data-label="Delete">
                                             <form method="post" action="/admin/clusters/delete" class="bp-cluster-delete-form">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
@@ -319,7 +319,7 @@
                                                 </button>
                                             </form>
                                         </td>
-                                        <td>
+                                        <td data-label="Force delete">
                                             <form method="post" action="/admin/clusters/force-delete" class="bp-cluster-danger-form">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
@@ -665,7 +665,7 @@
                 </div>
                 <div class="bp-table-card p-0">
                     <div class="bp-table-scroll">
-                        <table class="table align-middle mb-0 bp-console-table bp-local-editable-policy-table">
+                        <table class="table align-middle mb-0 bp-console-table bp-local-editable-policy-table bp-mobile-card-table">
                             <thead>
                                 <tr>
                                     <th>Section</th>
@@ -690,17 +690,17 @@
                                     var sectionLocalAdminCount = orderedFields.Count(field => editableByLocalAdminKeys.Contains(field.FieldKey));
                                     var examples = string.Join(", ", orderedFields.Take(2).Select(field => field.Label));
                                     <tr>
-                                        <td class="bp-local-editable-section-cell">
+                                        <td class="bp-local-editable-section-cell" data-label="Section">
                                             <strong>@policySection.Label</strong>
                                             <span>@policySection.SectionKey</span>
                                         </td>
-                                        <td><span class="bp-user-count-pill">@policySection.Fields.Count fields</span></td>
-                                        <td><span class="bp-local-editable-state-pill @(sectionCreationCount > 0 ? "is-on" : string.Empty)">@sectionCreationCount creation</span></td>
-                                        <td><span class="bp-local-editable-state-pill @(sectionAfterCreationCount > 0 ? "is-on" : string.Empty)">@sectionAfterCreationCount after</span></td>
-                                        <td><span class="bp-local-editable-state-pill @(sectionVisibleCount > 0 ? "is-on" : string.Empty)">@sectionVisibleCount shown</span></td>
-                                        <td><span class="bp-local-editable-state-pill @(sectionLocalAdminCount > 0 ? "is-on" : string.Empty)">@sectionLocalAdminCount editable</span></td>
-                                        <td><span class="bp-local-editable-examples">@examples</span></td>
-                                        <td class="bp-action-cell">
+                                        <td data-label="Total fields"><span class="bp-user-count-pill">@policySection.Fields.Count fields</span></td>
+                                        <td data-label="Editable"><span class="bp-local-editable-state-pill @(sectionCreationCount > 0 ? "is-on" : string.Empty)">@sectionCreationCount creation</span></td>
+                                        <td data-label="After creation"><span class="bp-local-editable-state-pill @(sectionAfterCreationCount > 0 ? "is-on" : string.Empty)">@sectionAfterCreationCount after</span></td>
+                                        <td data-label="Shown"><span class="bp-local-editable-state-pill @(sectionVisibleCount > 0 ? "is-on" : string.Empty)">@sectionVisibleCount shown</span></td>
+                                        <td data-label="Cluster admin"><span class="bp-local-editable-state-pill @(sectionLocalAdminCount > 0 ? "is-on" : string.Empty)">@sectionLocalAdminCount editable</span></td>
+                                        <td data-label="Examples"><span class="bp-local-editable-examples">@examples</span></td>
+                                        <td class="bp-action-cell" data-label="Actions">
                                             <button type="button" class="bp-action-button bp-local-editable-drawer-toggle" data-local-editable-drawer-toggle aria-expanded="false" aria-controls="@drawerId" aria-label="Open @policySection.Label fields" title="Open @policySection.Label fields" data-tooltip="Open fields">
                                                 <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
                                                     <path d="m6 9 6 6 6-6" />

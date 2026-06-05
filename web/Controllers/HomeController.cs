@@ -39,7 +39,9 @@ public class HomeController : Controller
         var resolution = await _batteryRouteResolutionService.ResolveAsync(query, cancellationToken);
         if (resolution.Kind == BatteryRouteTargetKind.Battery)
         {
-            return Redirect($"/{Uri.EscapeDataString(query)}/latest");
+            var resolvedBatteryId = BsonHelpers.GetString(resolution.Document!, "batteryId");
+            var routeBatteryId = string.IsNullOrWhiteSpace(resolvedBatteryId) ? query : resolvedBatteryId;
+            return Redirect($"/{Uri.EscapeDataString(routeBatteryId)}/latest");
         }
 
         if (resolution.Kind == BatteryRouteTargetKind.Passport)

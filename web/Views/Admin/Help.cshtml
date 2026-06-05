@@ -44,7 +44,7 @@
         </div>
 
         <div class="bp-table-scroll">
-            <table id="workflow-steps" class="table bp-console-table bp-admin-help-workflow-table">
+                <table id="workflow-steps" class="table bp-console-table bp-admin-help-workflow-table bp-mobile-card-table">
                 <thead>
                     <tr>
                         <th>Workflow</th>
@@ -204,7 +204,7 @@
         </div>
         <section id="status-dictionary" aria-label="Status dictionary">
             <div class="bp-table-scroll">
-                <table class="table bp-console-table bp-admin-help-status-table">
+                <table class="table bp-console-table bp-admin-help-status-table bp-mobile-card-table">
                     <thead>
                         <tr>
                             <th>Status</th>
@@ -213,14 +213,14 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr><td><strong>Draft</strong></td><td>Editable admin data. Draft can be incomplete and unsigned.</td><td>Fill required data.</td></tr>
-                        <tr><td><strong>Validated</strong></td><td>The latest validation completed with zero blocking validation errors. Validation alone is not a signature.</td><td>Sign next.</td></tr>
-                        <tr><td><strong>Signed</strong></td><td>The canonical passport core has a hash and proof metadata.</td><td>Publish if proof is current.</td></tr>
-                        <tr><td><strong>Clean</strong></td><td>The current passport core still matches the latest signed hash.</td><td>Keep or publish.</td></tr>
-                        <tr><td><strong>Dirty</strong></td><td>The passport core changed after signing. Validate and sign again.</td><td>Use dirty recovery.</td></tr>
-                        <tr><td><strong>Published</strong></td><td>The passport is public and should have a current valid signature proof.</td><td>Monitor edits.</td></tr>
-                        <tr><td><strong>Public discovery</strong></td><td>Public search, registry discovery, and direct public passport URLs expose only passports that are published, signed, clean, and verifiable.</td><td>Keep proof current.</td></tr>
-                        <tr><td><strong>Admin discovery</strong></td><td>Draft, dirty, unsigned, or unpublished passports stay visible to admins so they can finish the workflow.</td><td>Finish trust workflow.</td></tr>
+                    <tr><td data-label="Status"><strong>Draft</strong></td><td data-label="Meaning">Editable admin data. Draft can be incomplete and unsigned.</td><td data-label="Admin action">Fill required data.</td></tr>
+                    <tr><td data-label="Status"><strong>Validated</strong></td><td data-label="Meaning">The latest validation completed with zero blocking validation errors. Validation alone is not a signature.</td><td data-label="Admin action">Sign next.</td></tr>
+                    <tr><td data-label="Status"><strong>Signed</strong></td><td data-label="Meaning">The canonical passport core has a hash and proof metadata.</td><td data-label="Admin action">Publish if proof is current.</td></tr>
+                    <tr><td data-label="Status"><strong>Clean</strong></td><td data-label="Meaning">The current passport core still matches the latest signed hash.</td><td data-label="Admin action">Keep or publish.</td></tr>
+                    <tr><td data-label="Status"><strong>Dirty</strong></td><td data-label="Meaning">The passport core changed after signing. Validate and sign again.</td><td data-label="Admin action">Use dirty recovery.</td></tr>
+                    <tr><td data-label="Status"><strong>Published</strong></td><td data-label="Meaning">The passport is public and should have a current valid signature proof.</td><td data-label="Admin action">Monitor edits.</td></tr>
+                    <tr><td data-label="Status"><strong>Public discovery</strong></td><td data-label="Meaning">Public search, registry discovery, and direct public passport URLs expose only passports that are published, signed, clean, and verifiable.</td><td data-label="Admin action">Keep proof current.</td></tr>
+                    <tr><td data-label="Status"><strong>Admin discovery</strong></td><td data-label="Meaning">Draft, dirty, unsigned, or unpublished passports stay visible to admins so they can finish the workflow.</td><td data-label="Admin action">Finish trust workflow.</td></tr>
                     </tbody>
                 </table>
             </div>

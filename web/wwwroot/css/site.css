@@ -383,6 +383,10 @@ a:hover {
   stroke-linejoin: round;
 }
 
+.bp-header-mobile-menu {
+  display: none;
+}
+
 .bp-theme-toggle::after {
   position: absolute;
   left: 50%;
@@ -1446,30 +1450,32 @@ a:hover {
 }
 
 .bp-search-input-shell input {
-  padding-right: 48px;
+  min-height: 54px;
+  padding-right: 66px;
 }
 
-.bp-qr-trigger {
+.bp-search-input-shell .bp-qr-trigger {
   position: absolute;
   top: 50%;
   right: 8px;
-  width: 34px;
-  height: 34px;
-  min-height: 34px !important;
+  width: 44px;
+  height: 44px;
+  min-height: 44px !important;
+  min-width: 44px;
   transform: translateY(-50%);
   z-index: 2;
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #eef4fb !important;
   color: var(--bp-scania-blue) !important;
   padding: 0 !important;
   box-shadow: inset 0 0 0 1px rgba(4, 30, 66, 0.12);
 }
 
-.bp-qr-trigger:hover {
+.bp-search-input-shell .bp-qr-trigger:hover {
   background: #dbeafe !important;
 }
 
@@ -2404,6 +2410,10 @@ a:hover {
   flex-wrap: nowrap;
   overflow-x: auto;
   gap: 8px;
+}
+
+.bp-admin-mobile-tab-form {
+  display: none;
 }
 
 .bp-tab {
@@ -8451,6 +8461,16 @@ a:hover {
   color: #fff;
 }
 
+[data-theme="dark"] .bp-warning {
+  border-color: #ad7c2d;
+  background: #2f2618;
+  color: #ffd8a8;
+}
+
+[data-theme="dark"] .bp-warning .fw-semibold {
+  color: #ffe7bd;
+}
+
 [data-theme="dark"] .bp-secondary-button,
 [data-theme="dark"] .bp-admin-help-anchor-tabs a,
 [data-theme="dark"] .bp-icon-button,
@@ -9003,23 +9023,112 @@ a:hover {
   .bp-header-nav-row {
     position: relative;
     min-height: 48px;
+    overflow-x: visible;
     scrollbar-width: thin;
     scroll-padding-inline: 12px;
   }
 
   .bp-header-nav-row::after {
-    content: "";
-    position: sticky;
-    right: 0;
-    align-self: stretch;
-    flex: 0 0 18px;
-    pointer-events: none;
-    background: linear-gradient(90deg, rgba(4, 30, 66, 0), var(--bp-scania-blue));
+    display: none;
+    content: none;
   }
 
   .bp-header-actions {
-    min-width: max-content;
-    scroll-snap-type: x proximity;
+    width: 100%;
+    min-width: 0;
+    scroll-snap-type: none;
+  }
+
+  .bp-header-right-group {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    margin-left: 0;
+  }
+
+  .bp-header-primary-links {
+    display: none;
+  }
+
+  .bp-header-mobile-menu {
+    display: inline-flex;
+    flex: 0 0 auto;
+  }
+
+  .bp-header-mobile-menu summary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 52px;
+    border-right: 1px solid var(--bp-scania-blue-border);
+    color: #fff;
+    cursor: pointer;
+    font-weight: 800;
+    list-style: none;
+    padding: 0 16px;
+  }
+
+  .bp-header-mobile-menu summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .bp-header-mobile-menu[open] summary {
+    background: #0f3263;
+  }
+
+  .bp-header-mobile-menu-panel {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 40;
+    width: min(320px, calc(100vw - 16px));
+    display: grid;
+    border: 1px solid var(--bp-scania-blue-border);
+    background: var(--bp-scania-blue);
+    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.28);
+  }
+
+  .bp-header-mobile-menu:not([open]) .bp-header-mobile-menu-panel {
+    display: none;
+  }
+
+  .bp-header-mobile-menu[open] .bp-header-mobile-menu-panel {
+    display: grid;
+  }
+
+  .bp-header-mobile-menu-panel a {
+    min-height: 44px;
+    justify-content: flex-start;
+    border-right: 0;
+    border-top: 1px solid var(--bp-scania-blue-border);
+    padding: 0 16px;
+  }
+
+  .bp-mobile-identity {
+    display: grid;
+    gap: 3px;
+    padding: 12px 16px;
+    color: #fff;
+  }
+
+  .bp-mobile-identity p {
+    margin: 0;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .bp-mobile-identity p:first-child {
+    font-weight: 800;
+  }
+
+  .bp-mobile-identity p:not(:first-child) {
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.82rem;
+  }
+
+  .bp-header-account-links {
+    margin-left: auto;
+    flex: 0 0 auto;
   }
 
   .bp-header-actions a,
@@ -9070,6 +9179,35 @@ a:hover {
     white-space: nowrap;
   }
 
+  .bp-admin-page .bp-tab-row {
+    display: none;
+  }
+
+  .bp-admin-mobile-tab-form {
+    display: grid;
+    gap: 6px;
+    margin-top: 16px !important;
+  }
+
+  .bp-admin-mobile-tab-form label {
+    color: var(--bp-muted);
+    font-size: 0.76rem;
+    font-weight: 850;
+    text-transform: uppercase;
+  }
+
+  .bp-admin-mobile-tab-form select {
+    width: 100%;
+    min-height: 46px;
+    border: 1px solid var(--bp-border);
+    border-radius: 8px;
+    background: var(--bp-surface);
+    color: var(--bp-text);
+    font: inherit;
+    font-weight: 750;
+    padding: 0 12px;
+  }
+
   .bp-primary-button,
   .bp-secondary-button,
   .bp-danger-button,
@@ -9094,6 +9232,10 @@ a:hover {
   .form-control,
   .form-select {
     min-height: 44px;
+  }
+
+  .bp-search-input-shell input {
+    min-height: 54px !important;
   }
 
   .bp-action-button,
@@ -9204,8 +9346,10 @@ a:hover {
     grid-template-columns: minmax(8.5rem, 38%) minmax(0, 1fr);
     gap: 8px;
     border: 0 !important;
+    max-width: none !important;
     padding: 8px 0 !important;
     white-space: normal;
+    width: 100% !important;
   }
 
   .bp-mobile-card-table td::before {
@@ -9226,6 +9370,9 @@ a:hover {
 
   .bp-mobile-card-table .bp-action-cell {
     grid-template-columns: 1fr;
+    max-width: none !important;
+    width: 100% !important;
+    text-align: left;
   }
 
   .bp-mobile-card-table .bp-action-cell::before {
@@ -9233,8 +9380,117 @@ a:hover {
   }
 
   .bp-mobile-card-table .bp-icon-action-row {
+    width: 100%;
     justify-content: flex-start;
     flex-wrap: wrap;
+    white-space: normal;
+  }
+
+  .bp-mobile-card-table td[data-label="Battery ID"],
+  .bp-mobile-card-table td[data-label="Passport ID"],
+  .bp-mobile-card-table td[data-label="Token ID"],
+  .bp-mobile-card-table td[data-label="Cluster ID"],
+  .bp-mobile-card-table td[data-label="Email"],
+  .bp-mobile-card-table td[data-label="Endpoint"] {
+    grid-template-columns: 1fr;
+    max-width: none !important;
+    width: 100% !important;
+  }
+
+  .bp-mobile-card-table .bp-battery-id-cell,
+  .bp-mobile-card-table .bp-id-copy-row,
+  .bp-mobile-card-table .bp-code-wrap,
+  .bp-api-help-page .bp-help-endpoint-cell code {
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal !important;
+  }
+
+  .bp-mobile-card-table .bp-battery-id-cell.bp-id-copy-row,
+  .bp-mobile-card-table .bp-id-copy-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px;
+  }
+
+  .bp-mobile-card-table .bp-id-value,
+  .bp-mobile-card-table code,
+  .bp-api-help-page code {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    white-space: normal;
+  }
+
+  .bp-mobile-card-table.bp-api-help-endpoint-table,
+  .bp-mobile-card-table.bp-admin-help-workflow-table,
+  .bp-mobile-card-table.bp-admin-help-status-table,
+  .bp-mobile-card-table.bp-admin-cluster-assignment-table,
+  .bp-mobile-card-table.bp-cluster-management-table,
+  .bp-mobile-card-table.bp-local-editable-policy-table {
+    min-width: 0;
+    table-layout: auto;
+  }
+
+  .bp-mobile-card-table.bp-api-help-endpoint-table .bp-help-doc-item {
+    border: 1px solid var(--bp-border);
+    border-radius: 8px;
+    background: var(--bp-surface);
+    padding: 10px 12px;
+  }
+
+  .bp-api-help-endpoint-table td:nth-child(1)::before {
+    content: "Method";
+  }
+
+  .bp-api-help-endpoint-table td:nth-child(2)::before {
+    content: "Endpoint";
+  }
+
+  .bp-api-help-endpoint-table td:nth-child(3)::before {
+    content: "Access";
+  }
+
+  .bp-api-help-endpoint-table td:nth-child(4)::before {
+    content: "Use when";
+  }
+
+  .bp-api-help-endpoint-table td:nth-child(5)::before {
+    content: "Details";
+  }
+
+  .bp-admin-help-workflow-table td:nth-child(1)::before {
+    content: "Workflow";
+  }
+
+  .bp-admin-help-workflow-table td:nth-child(2)::before {
+    content: "When to use";
+  }
+
+  .bp-admin-help-workflow-table td:nth-child(3)::before {
+    content: "Admin surface";
+  }
+
+  .bp-admin-help-workflow-table td:nth-child(4)::before {
+    content: "Success signal";
+  }
+
+  .bp-admin-help-workflow-table td:nth-child(5)::before {
+    content: "Details";
+  }
+
+  .bp-battery-table-toolbar,
+  .bp-battery-table-toolbar .bp-search-form,
+  .bp-console-toolbar .bp-search-form {
+    width: 100%;
+    flex-basis: auto;
+  }
+
+  .bp-search-form button:not(.bp-qr-trigger),
+  .bp-battery-table-toolbar .bp-secondary-button,
+  .bp-battery-table-toolbar .bp-primary-button {
+    width: 100%;
   }
 
   .bp-user-create-strip,
@@ -9245,6 +9501,40 @@ a:hover {
   .bp-token-create-strip,
   .bp-token-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .bp-cluster-rename-form,
+  .bp-cluster-danger-form,
+  .bp-cluster-assignment-form,
+  .bp-cluster-user-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    white-space: normal;
+  }
+
+  .bp-cluster-assignment-form .bp-select-shell,
+  .bp-cluster-assignment-form select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .bp-cluster-rename-form .form-control,
+  .bp-cluster-danger-form .form-control {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .bp-user-membership-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    white-space: normal;
+  }
+
+  .bp-cluster-user-toggle {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .bp-session-timeout-form .bp-primary-button,

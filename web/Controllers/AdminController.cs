@@ -2926,7 +2926,7 @@ public class AdminController : Controller
             return fallback;
         }
 
-        return _externalApiRepository.RevealToken(tokenDocument);
+        return _externalApiRepository.TryRevealToken(tokenDocument, fallback);
     }
 
     private async Task<BsonDocument> BuildDraftPassportDocumentAsync(

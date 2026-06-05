@@ -87,7 +87,7 @@ public sealed class ValidationPolicyLayoutTests
 
         Assert.Contains("ExtractIdFromQrPayload", home);
         Assert.Contains("BatteryRouteResolutionService", home);
-        Assert.Contains("Redirect($\"/{Uri.EscapeDataString(query)}/latest\")", home);
+        Assert.Contains("Redirect($\"/{Uri.EscapeDataString(routeBatteryId)}/latest\")", home);
         Assert.Contains("IsAdminSearch", searchModel);
         Assert.Contains("Model.IsAdminSearch", searchView);
         Assert.Contains("No battery passport ID was found", searchView);

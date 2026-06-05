@@ -138,7 +138,7 @@ public class PassportController : Controller
                 return Redirect($"/{Uri.EscapeDataString(ExternalApiInitializer.SamplePassportId)}/summary");
             }
 
-            return NotFound();
+            return RedirectToSearchNotFound(decodedBatteryId);
         }
 
         var passportPath = $"/{Uri.EscapeDataString(BsonHelpers.GetString(document, "passportId"))}";
@@ -324,6 +324,15 @@ public class PassportController : Controller
     private bool IsGeneratedSampleBatteryId(string batteryId)
     {
         return batteryId.Equals(ExternalApiInitializer.CreateSampleBatteryId(_batteryIdService), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private IActionResult RedirectToSearchNotFound(string query)
+    {
+        return RedirectToAction("Index", "Home", new
+        {
+            q = query,
+            notFound = "1"
+        });
     }
 
     private BatteryPassportHistoryRowViewModel ToHistoryRow(BsonDocument passport)

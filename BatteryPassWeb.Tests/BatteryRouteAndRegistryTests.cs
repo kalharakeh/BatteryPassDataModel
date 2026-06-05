@@ -28,8 +28,21 @@ public sealed class BatteryRouteAndRegistryTests
         Assert.Contains("BatteryRouteResolutionService", source);
         Assert.Contains("Battery", source);
         Assert.Contains("Passport", source);
-        Assert.Contains("/{Uri.EscapeDataString(query)}/latest", source);
+        Assert.Contains("var resolvedBatteryId = BsonHelpers.GetString(resolution.Document!, \"batteryId\");", source);
+        Assert.Contains("var routeBatteryId = string.IsNullOrWhiteSpace(resolvedBatteryId) ? query : resolvedBatteryId;", source);
+        Assert.Contains("/{Uri.EscapeDataString(routeBatteryId)}/latest", source);
         Assert.Contains("{passportPath}/summary", source);
+    }
+
+    [Fact]
+    public void LatestRoute_ShouldReturnToSearchNotFoundInsteadOfRawBrowser404()
+    {
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "PassportController.cs"));
+
+        Assert.Contains("RedirectToSearchNotFound(decodedBatteryId)", controller);
+        Assert.Contains("private IActionResult RedirectToSearchNotFound(string query)", controller);
+        Assert.Contains("RedirectToAction(\"Index\", \"Home\"", controller);
+        Assert.Contains("notFound = \"1\"", controller);
     }
 
     [Fact]

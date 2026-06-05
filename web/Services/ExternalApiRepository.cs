@@ -373,6 +373,18 @@ public sealed class ExternalApiRepository
         return _securityService.Decrypt(BsonHelpers.GetString(tokenDocument, "encryptedToken"));
     }
 
+    public string TryRevealToken(BsonDocument tokenDocument, string fallback)
+    {
+        try
+        {
+            return RevealToken(tokenDocument);
+        }
+        catch (System.Security.Cryptography.CryptographicException)
+        {
+            return fallback;
+        }
+    }
+
     private static ExternalApiTokenContext ToTokenContext(BsonDocument tokenDocument)
     {
         var accessMode = AccessModeFromValue(BsonHelpers.GetString(tokenDocument, "accessMode"));

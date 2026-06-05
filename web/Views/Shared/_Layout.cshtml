@@ -79,6 +79,30 @@
             <div class="bp-header-nav-row">
                 <nav class="bp-nav bp-header-actions" aria-label="Main navigation">
                     <div class="bp-header-right-group">
+                        @if (isAuthenticated)
+                        {
+                            <details class="bp-header-mobile-menu">
+                                <summary>Menu</summary>
+                                <div class="bp-header-mobile-menu-panel">
+                                    <div class="bp-mobile-identity">
+                                        <p>@identityLabel</p>
+                                        <p>@customerName / @customerRole</p>
+                                        <p>@(clusterNames.Count > 0 ? string.Join(", ", clusterNames) : "No cluster")</p>
+                                    </div>
+                                    <a href="/registry">Open Registry</a>
+                                    @if (showAdminLink)
+                                    {
+                                        <a href="/admin">Admin</a>
+                                    }
+                                    else if (showClusterAdminLink)
+                                    {
+                                        <a href="/cluster-admin">Cluster admin</a>
+                                    }
+                                    <a href="/help">Help</a>
+                                    <a href="/account">Account</a>
+                                </div>
+                            </details>
+                        }
                         <div class="bp-header-primary-links">
                         @if (isAuthenticated)
                         {
@@ -257,6 +281,15 @@
                     button.setAttribute('data-tooltip', 'Copy failed');
                     button.setAttribute('title', 'Copy failed');
                 }
+            });
+
+            document.addEventListener('change', function (event) {
+                const select = event.target.closest('[data-admin-mobile-tab-select]');
+                if (!select || !select.value) {
+                    return;
+                }
+
+                window.location.href = select.value;
             });
         })();
     </script>

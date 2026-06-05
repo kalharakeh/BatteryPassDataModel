@@ -94,6 +94,21 @@ public sealed class ExternalApiInitializerTests
     }
 
     [Fact]
+    public void HelpAndAdminPages_ShouldFallbackWhenStoredDemoTokensCannotBeRevealed()
+    {
+        var repository = File.ReadAllText(RepoFile("web", "Services", "ExternalApiRepository.cs"));
+        var adminController = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+        var helpController = File.ReadAllText(RepoFile("web", "Controllers", "HelpController.cs"));
+
+        Assert.Contains("TryRevealToken", repository);
+        Assert.Contains("catch (System.Security.Cryptography.CryptographicException)", repository);
+        Assert.Contains("TryRevealToken(tokenDocument, fallback)", adminController);
+        Assert.Contains("TryRevealToken(readTokenDocument, ExternalApiInitializer.SampleReadTokenValue)", helpController);
+        Assert.Contains("TryRevealToken(readWriteTokenDocument, ExternalApiInitializer.SampleReadWriteTokenValue)", helpController);
+        Assert.Contains("TryRevealToken(lifecycleTokenDocument, ExternalApiInitializer.SampleLifecycleTokenValue)", helpController);
+    }
+
+    [Fact]
     public void LandingSearchSample_ShouldUseGeneratedDemoBatteryIdInsteadOfLegacyDid()
     {
         var homeController = File.ReadAllText(RepoFile("web", "Controllers", "HomeController.cs"));
@@ -104,7 +119,7 @@ public sealed class ExternalApiInitializerTests
         Assert.DoesNotContain("sample-customer-north-001", homeController);
         Assert.Contains("sample battery ID", landing);
         Assert.Contains("public sample passport", landing, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("return Redirect($\"/{Uri.EscapeDataString(query)}/latest\")", homeController);
+        Assert.Contains("return Redirect($\"/{Uri.EscapeDataString(routeBatteryId)}/latest\")", homeController);
     }
 
     [Fact]

@@ -139,6 +139,12 @@ public sealed class QrWorkflowTests
         Assert.Contains(".bp-qr-trigger", css);
         Assert.Contains(".bp-qr-trigger-icon", css);
         Assert.Contains("z-index: 2", css);
+        Assert.Contains(".bp-search-input-shell .bp-qr-trigger", css);
+        Assert.Contains("right: 8px;", css);
+        Assert.Contains("width: 44px;", css);
+        Assert.Contains("min-height: 54px;", css);
+        Assert.Contains("padding-right: 66px;", css);
+        Assert.Contains(".bp-search-form button:not(.bp-qr-trigger)", css);
         Assert.Contains(".bp-qr-modal", css);
         Assert.Contains(".bp-qr-video", css);
     }

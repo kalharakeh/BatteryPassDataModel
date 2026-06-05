@@ -38,13 +38,13 @@ public class HelpController : Controller
             SampleBatteryId = sampleIds.BatteryId,
             SamplePassportId = sampleIds.PassportId,
             SampleReadToken = readTokenDocument != null
-                ? _externalApiRepository.RevealToken(readTokenDocument)
+                ? _externalApiRepository.TryRevealToken(readTokenDocument, ExternalApiInitializer.SampleReadTokenValue)
                 : ExternalApiInitializer.SampleReadTokenValue,
             SampleReadWriteToken = readWriteTokenDocument != null
-                ? _externalApiRepository.RevealToken(readWriteTokenDocument)
+                ? _externalApiRepository.TryRevealToken(readWriteTokenDocument, ExternalApiInitializer.SampleReadWriteTokenValue)
                 : ExternalApiInitializer.SampleReadWriteTokenValue,
             SampleLifecycleToken = lifecycleTokenDocument != null
-                ? _externalApiRepository.RevealToken(lifecycleTokenDocument)
+                ? _externalApiRepository.TryRevealToken(lifecycleTokenDocument, ExternalApiInitializer.SampleLifecycleTokenValue)
                 : ExternalApiInitializer.SampleLifecycleTokenValue
         };
 

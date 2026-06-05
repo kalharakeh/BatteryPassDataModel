@@ -28,6 +28,36 @@ public sealed class MobileThemeSessionLayoutTests
     }
 
     [Fact]
+    public void MobileUx_ShouldUseMenusAndCardRowsInsteadOfHorizontalAdminTables()
+    {
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+        var layout = File.ReadAllText(RepoFile("web", "Views", "Shared", "_Layout.cshtml"));
+        var adminTabs = File.ReadAllText(RepoFile("web", "Views", "Shared", "_AdminTabs.cshtml"));
+        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var adminHelp = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
+        var apiHelp = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
+
+        Assert.Contains("bp-header-mobile-menu", layout);
+        Assert.Contains("bp-mobile-identity", layout);
+        Assert.Contains("bp-admin-mobile-tab-form", adminTabs);
+        Assert.Contains("data-admin-mobile-tab-select", adminTabs);
+        Assert.Contains("bp-admin-cluster-assignment-table bp-mobile-card-table", clusters);
+        Assert.Contains("bp-cluster-management-table bp-mobile-card-table", clusters);
+        Assert.Contains("bp-local-editable-policy-table bp-mobile-card-table", clusters);
+        Assert.Contains("data-label=\"Assign\"", clusters);
+        Assert.Contains("data-label=\"Cluster ID\"", clusters);
+        Assert.Contains("data-label=\"Examples\"", clusters);
+        Assert.Contains("bp-admin-help-workflow-table bp-mobile-card-table", adminHelp);
+        Assert.Contains("bp-admin-help-status-table bp-mobile-card-table", adminHelp);
+        Assert.Contains("bp-api-help-endpoint-table bp-mobile-card-table", apiHelp);
+        Assert.Contains("data-label=\"Endpoint\"", apiHelp);
+        Assert.Contains(".bp-mobile-card-table td[data-label=\"Battery ID\"]", css);
+        Assert.Contains(".bp-admin-mobile-tab-form", css);
+        Assert.Contains(".bp-header-mobile-menu", css);
+        Assert.Contains(".bp-admin-page .bp-tab-row", css);
+    }
+
+    [Fact]
     public void ThemeSwitch_ShouldBeAvailableFromSharedLayoutAndPreserveLightDefaults()
     {
         var layout = File.ReadAllText(RepoFile("web", "Views", "Shared", "_Layout.cshtml"));
@@ -53,6 +83,7 @@ public sealed class MobileThemeSessionLayoutTests
     {
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
+        Assert.Contains("[data-theme=\"dark\"] .bp-warning", css);
         Assert.Contains("[data-theme=\"dark\"] .bp-api-help-meta-strip", css);
         Assert.Contains("[data-theme=\"dark\"] .bp-api-help-doc-heading", css);
         Assert.Contains("[data-theme=\"dark\"] .bp-api-help-selected-panel", css);
