@@ -52,6 +52,23 @@ public sealed class AdminEditGuidanceTests
         Assert.Contains(".bp-field-help", css);
     }
 
+    [Fact]
+    public void EditPassportView_ShouldGreyReadonlyAndDisabledDateFields()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("type=\"date\" name=\"softwareReleaseDate\"", markup);
+        Assert.Contains("type=\"date\" name=\"softwareLatestUpdate\"", markup);
+        Assert.Contains("readonly data-product-software-release", markup);
+        Assert.Contains("readonly data-product-software-update", markup);
+        Assert.Contains("control.setAttribute('disabled', 'disabled');", markup);
+
+        Assert.Contains(".bp-form-grid input[type=\"date\"][readonly]", css);
+        Assert.Contains(".bp-form-grid input[type=\"date\"]:disabled", css);
+        Assert.Contains("background: #eef2f6;", css);
+    }
+
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

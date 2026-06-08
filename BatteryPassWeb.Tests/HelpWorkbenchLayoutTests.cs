@@ -63,6 +63,56 @@ public sealed class HelpWorkbenchLayoutTests
     }
 
     [Fact]
+    public void HelpWorkbench_ShouldKeepIdentityAndTokenFieldsStableAcrossTemplateChanges()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
+
+        Assert.Contains("id=\"tester-battery-id\"", markup);
+        Assert.Contains("id=\"tester-passport-id\"", markup);
+        Assert.Contains("id=\"tester-token\"", markup);
+        Assert.Contains("const getWorkbenchContext", markup);
+        Assert.Contains("resolveTemplatePath(template.pathTemplate", markup);
+        Assert.Contains("batteryIdEl?.addEventListener", markup);
+        Assert.Contains("passportIdEl?.addEventListener", markup);
+        Assert.Contains("tokenPresetEl?.addEventListener('change'", markup);
+        Assert.DoesNotContain("tokenPresetEl.value = template.tokenPreset;", markup);
+    }
+
+    [Fact]
+    public void HelpWorkbench_ShouldShowStickyEditableIdsWithCurrentValueCopyButtons()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+        var layout = File.ReadAllText(RepoFile("web", "Views", "Shared", "_Layout.cshtml"));
+        var workbenchIndex = markup.IndexOf("Request workbench", StringComparison.Ordinal);
+
+        Assert.True(workbenchIndex >= 0, "Request workbench should exist.");
+        var workbenchMarkup = markup[workbenchIndex..];
+
+        Assert.Contains("bp-help-sticky-id-field", workbenchMarkup);
+        Assert.Contains("bp-help-sticky-id-control", workbenchMarkup);
+        Assert.Contains("id=\"tester-battery-id\"", workbenchMarkup);
+        Assert.Contains("id=\"tester-passport-id\"", workbenchMarkup);
+        Assert.DoesNotContain("id=\"tester-battery-id\" class=\"bp-id-value\" value=\"@Model.SampleBatteryId\" readonly", workbenchMarkup);
+        Assert.DoesNotContain("id=\"tester-passport-id\" class=\"bp-id-value\" value=\"@Model.SamplePassportId\" readonly", workbenchMarkup);
+        Assert.Contains("data-copy-target=\"#tester-battery-id\"", workbenchMarkup);
+        Assert.Contains("data-copy-target=\"#tester-passport-id\"", workbenchMarkup);
+        Assert.Contains("Copy Battery ID", workbenchMarkup);
+        Assert.Contains("Copy Passport ID", workbenchMarkup);
+        Assert.DoesNotContain("Html.PartialAsync(\"_CopyIdButton\", Model.SampleBatteryId)", workbenchMarkup);
+        Assert.DoesNotContain("Html.PartialAsync(\"_CopyIdButton\", Model.SamplePassportId)", workbenchMarkup);
+
+        Assert.Contains(".bp-help-sticky-id-field", css);
+        Assert.Contains(".bp-help-sticky-id-control", css);
+        Assert.Contains(".bp-help-sticky-id-control input {", css);
+        Assert.DoesNotContain(".bp-help-sticky-id-control input[readonly]", css);
+        Assert.Contains(".bp-help-sticky-id-control .bp-copy-id-button", css);
+
+        Assert.Contains("const targetSelector = button.getAttribute('data-copy-target')", layout);
+        Assert.Contains("target.value", layout);
+    }
+
+    [Fact]
     public void HelpPage_ShouldDisplayRuntimePublicApiUrl()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));

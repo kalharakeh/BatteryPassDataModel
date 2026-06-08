@@ -1,0 +1,23 @@
+@model string
+@{
+    var activeTab = Model ?? string.Empty;
+    string TabClass(string tab) => activeTab.Equals(tab, StringComparison.OrdinalIgnoreCase) ? "bp-tab bp-tab-active" : "bp-tab";
+    bool IsSelected(string tab) => activeTab.Equals(tab, StringComparison.OrdinalIgnoreCase);
+}
+
+<form class="bp-admin-mobile-tab-form mt-4" aria-label="Cluster administration section">
+    <label for="bp-cluster-admin-mobile-tab-select">Cluster admin section</label>
+    <select id="bp-cluster-admin-mobile-tab-select" data-admin-mobile-tab-select>
+        <option value="/cluster-admin/passports" selected="@IsSelected("passports")">Managed passports</option>
+        <option value="/cluster-admin/users" selected="@IsSelected("users")">Users</option>
+        <option value="/cluster-admin/api-tokens" selected="@IsSelected("api-tokens")">API token management</option>
+    </select>
+</form>
+
+<nav class="bp-local-admin-nav" aria-label="Local admin tabs">
+    <div class="bp-tab-row">
+        <a class="@TabClass("passports")" href="/cluster-admin/passports">Managed passports</a>
+        <a class="@TabClass("users")" href="/cluster-admin/users">Users</a>
+        <a class="@TabClass("api-tokens")" href="/cluster-admin/api-tokens">API token management</a>
+    </div>
+</nav>

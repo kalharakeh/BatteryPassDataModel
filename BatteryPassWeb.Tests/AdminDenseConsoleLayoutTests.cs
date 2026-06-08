@@ -213,11 +213,13 @@ public sealed class AdminDenseConsoleLayoutTests
         var edit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
         var users = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "Users.cshtml"));
         var tokens = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "ApiTokens.cshtml"));
+        var localTabs = File.ReadAllText(RepoFile("web", "Views", "Shared", "_ClusterAdminTabs.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        Assert.Contains("bp-local-admin-nav", users);
+        Assert.Contains("_ClusterAdminTabs", users);
         Assert.DoesNotContain("bp-local-admin-nav", edit);
-        Assert.Contains("bp-local-admin-nav", tokens);
+        Assert.Contains("_ClusterAdminTabs", tokens);
+        Assert.Contains("bp-local-admin-nav", localTabs);
         Assert.Contains("bp-user-management-table", users);
         Assert.DoesNotContain("bp-console-split", users);
         Assert.Contains("bp-edit-grid", edit);

@@ -258,7 +258,11 @@
                     return;
                 }
 
-                const value = button.getAttribute('data-copy-value') || '';
+                const targetSelector = button.getAttribute('data-copy-target') || '';
+                const target = targetSelector ? document.querySelector(targetSelector) : null;
+                const value = target && 'value' in target
+                    ? target.value
+                    : button.getAttribute('data-copy-value') || '';
                 if (!value) {
                     return;
                 }

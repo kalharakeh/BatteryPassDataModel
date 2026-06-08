@@ -58,6 +58,55 @@ public sealed class MobileThemeSessionLayoutTests
     }
 
     [Fact]
+    public void ClusterAdminMobileUx_ShouldUseClusterScopedMobileSectionDropdown()
+    {
+        var partialPath = RepoPath("web", "Views", "Shared", "_ClusterAdminTabs.cshtml");
+        Assert.True(File.Exists(partialPath));
+
+        var clusterTabs = File.ReadAllText(partialPath);
+        var passports = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "Passports.cshtml"));
+        var users = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "Users.cshtml"));
+        var apiTokens = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "ApiTokens.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+        var mobileFormIndex = clusterTabs.IndexOf("<form class=\"bp-admin-mobile-tab-form mt-4\"", StringComparison.Ordinal);
+        var localNavIndex = clusterTabs.IndexOf("<nav class=\"bp-local-admin-nav\"", StringComparison.Ordinal);
+
+        Assert.Contains("bp-admin-mobile-tab-form", clusterTabs);
+        Assert.Contains("Cluster admin section", clusterTabs);
+        Assert.Contains("data-admin-mobile-tab-select", clusterTabs);
+        Assert.Contains("value=\"/cluster-admin/passports\"", clusterTabs);
+        Assert.Contains("value=\"/cluster-admin/users\"", clusterTabs);
+        Assert.Contains("value=\"/cluster-admin/api-tokens\"", clusterTabs);
+        Assert.Contains("aria-label=\"Local admin tabs\"", clusterTabs);
+        Assert.Contains("bp-tab-row", clusterTabs);
+        Assert.Contains("Managed passports", clusterTabs);
+        Assert.Contains("API token management", clusterTabs);
+        Assert.True(mobileFormIndex >= 0);
+        Assert.True(localNavIndex > mobileFormIndex);
+        Assert.Contains("@await Html.PartialAsync(\"_ClusterAdminTabs\", \"passports\")", passports);
+        Assert.Contains("@await Html.PartialAsync(\"_ClusterAdminTabs\", \"users\")", users);
+        Assert.Contains("@await Html.PartialAsync(\"_ClusterAdminTabs\", \"api-tokens\")", apiTokens);
+        Assert.Contains(".bp-admin-page .bp-tab-row", css);
+        Assert.Contains(".bp-admin-page .bp-local-admin-nav", css);
+    }
+
+    [Fact]
+    public void GlobalAdminMobileToolbar_ShouldAvoidDuplicateHelpButtonAndAlignCreateAction()
+    {
+        var adminTabs = File.ReadAllText(RepoFile("web", "Views", "Shared", "_AdminTabs.cshtml"));
+        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
+
+        Assert.Contains("<option value=\"/admin/help\"", adminTabs);
+        Assert.Contains("bp-battery-toolbar-actions", clusters);
+        Assert.Contains("bp-battery-toolbar-help", clusters);
+        Assert.Contains(".bp-battery-toolbar-actions", css);
+        Assert.Contains(".bp-battery-toolbar-help", css);
+        Assert.Contains("display: none;", css);
+        Assert.Contains(".bp-battery-table-toolbar > .d-flex", css);
+    }
+
+    [Fact]
     public void ThemeSwitch_ShouldBeAvailableFromSharedLayoutAndPreserveLightDefaults()
     {
         var layout = File.ReadAllText(RepoFile("web", "Views", "Shared", "_Layout.cshtml"));

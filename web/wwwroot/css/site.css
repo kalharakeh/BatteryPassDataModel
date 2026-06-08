@@ -1202,6 +1202,24 @@ a:hover {
   min-height: 96px;
 }
 
+.bp-form-grid input[readonly],
+.bp-form-grid textarea[readonly],
+.bp-form-grid input:disabled,
+.bp-form-grid select:disabled,
+.bp-form-grid textarea:disabled,
+.bp-form-grid input[type="date"][readonly],
+.bp-form-grid input[type="date"]:disabled {
+  border-color: #cbd7e4;
+  background: #eef2f6;
+  color: #5c6c7d;
+}
+
+.bp-form-grid input:disabled,
+.bp-form-grid select:disabled,
+.bp-form-grid textarea:disabled {
+  cursor: not-allowed;
+}
+
 .bp-fieldset {
   border: 1px solid #cbd5e1;
   border-radius: 8px;
@@ -5020,6 +5038,35 @@ a:hover {
   padding: 14px 16px 16px;
 }
 
+.bp-help-sticky-id-field {
+  color: #435568;
+}
+
+.bp-help-sticky-id-control {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.bp-help-sticky-id-control input {
+  min-width: 0;
+  border-color: #b8c7d8;
+  background: linear-gradient(90deg, #4f8ac9 0 4px, #fbfdff 4px);
+  color: #243447;
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 0.8rem;
+}
+
+.bp-help-sticky-id-control .bp-copy-id-button {
+  inline-size: 36px;
+  block-size: 36px;
+  min-inline-size: 36px;
+  border-radius: 8px;
+  background: #fff;
+}
+
 .bp-api-help-section-card > .d-flex,
 .bp-api-help-section-card > .mt-3 {
   margin-left: 16px;
@@ -8390,6 +8437,32 @@ a:hover {
   color: var(--bp-text);
 }
 
+[data-theme="dark"] .bp-form-grid input[readonly],
+[data-theme="dark"] .bp-form-grid textarea[readonly],
+[data-theme="dark"] .bp-form-grid input:disabled,
+[data-theme="dark"] .bp-form-grid select:disabled,
+[data-theme="dark"] .bp-form-grid textarea:disabled,
+[data-theme="dark"] .bp-form-grid input[type="date"][readonly],
+[data-theme="dark"] .bp-form-grid input[type="date"]:disabled {
+  border-color: var(--bp-border);
+  background: #0b1628;
+  color: var(--bp-muted);
+}
+
+[data-theme="dark"] .bp-help-sticky-id-field {
+  color: var(--bp-muted);
+}
+
+[data-theme="dark"] .bp-help-sticky-id-control input {
+  border-color: var(--bp-border);
+  background: linear-gradient(90deg, #78a8da 0 4px, #101f35 4px);
+  color: var(--bp-text);
+}
+
+[data-theme="dark"] .bp-help-sticky-id-control .bp-copy-id-button {
+  background: #101f35;
+}
+
 [data-theme="dark"] .bp-api-help-meta-strip .text-secondary,
 [data-theme="dark"] .bp-help-endpoint-cell small,
 [data-theme="dark"] .bp-help-detail-panel p,
@@ -9183,6 +9256,10 @@ a:hover {
     display: none;
   }
 
+  .bp-admin-page .bp-local-admin-nav {
+    display: none;
+  }
+
   .bp-admin-mobile-tab-form {
     display: grid;
     gap: 6px;
@@ -9485,6 +9562,22 @@ a:hover {
   .bp-console-toolbar .bp-search-form {
     width: 100%;
     flex-basis: auto;
+  }
+
+  .bp-battery-table-toolbar > .d-flex {
+    width: 100%;
+    gap: 14px !important;
+  }
+
+  .bp-battery-toolbar-actions {
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 10px !important;
+  }
+
+  .bp-battery-toolbar-help {
+    display: none;
   }
 
   .bp-search-form button:not(.bp-qr-trigger),

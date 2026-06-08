@@ -511,6 +511,28 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                         <option value="raw">Basic &lt;token&gt;</option>
                     </select>
                 </label>
+                <label class="bp-help-sticky-id-field">Battery ID
+                    <span class="bp-help-sticky-id-control">
+                        <input id="tester-battery-id" class="bp-id-value" value="@Model.SampleBatteryId" />
+                        <button type="button" class="bp-copy-id-button" aria-label="Copy Battery ID" title="Copy Battery ID" data-tooltip="Copy Battery ID" data-copy-id-button data-copy-target="#tester-battery-id">
+                            <svg class="bp-copy-id-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <rect x="9" y="9" width="10" height="10" rx="2" />
+                                <path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" />
+                            </svg>
+                        </button>
+                    </span>
+                </label>
+                <label class="bp-help-sticky-id-field">Passport ID
+                    <span class="bp-help-sticky-id-control">
+                        <input id="tester-passport-id" class="bp-id-value" value="@Model.SamplePassportId" />
+                        <button type="button" class="bp-copy-id-button" aria-label="Copy Passport ID" title="Copy Passport ID" data-tooltip="Copy Passport ID" data-copy-id-button data-copy-target="#tester-passport-id">
+                            <svg class="bp-copy-id-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <rect x="9" y="9" width="10" height="10" rx="2" />
+                                <path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" />
+                            </svg>
+                        </button>
+                    </span>
+                </label>
                 <label class="bp-span-all">Path
                     <input id="tester-path" value="@Model.BasePath/batteries/@Model.SampleBatteryId" />
                 </label>
@@ -622,6 +644,8 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
             const methodEl = document.getElementById('tester-method');
             const pathEl = document.getElementById('tester-path');
             const authFormatEl = document.getElementById('tester-auth-format');
+            const batteryIdEl = document.getElementById('tester-battery-id');
+            const passportIdEl = document.getElementById('tester-passport-id');
             const tokenPresetEl = document.getElementById('tester-token-preset');
             const tokenEl = document.getElementById('tester-token');
             const bodyEl = document.getElementById('tester-body');
@@ -650,25 +674,25 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
             const templates = {
                 readFull: {
                     method: 'GET',
-                    path: `${basePath}/batteries/${sampleBatteryId}`,
+                    pathTemplate: `${basePath}/batteries/{batteryId}`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
                 listClusters: {
                     method: 'GET',
-                    path: `${basePath}/clusters`,
+                    pathTemplate: `${basePath}/clusters`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
                 listClusterBatteries: {
                     method: 'GET',
-                    path: `${basePath}/clusters/demo-cluster/batteries`,
+                    pathTemplate: `${basePath}/clusters/demo-cluster/batteries`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
                 createBattery: {
                     method: 'POST',
-                    path: `${basePath}/batteries`,
+                    pathTemplate: `${basePath}/batteries`,
                     body: JSON.stringify({
                         batteryFamily: 'Compact 7M',
                         productId: 'compact-7m',
@@ -683,49 +707,49 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 },
                 readSection: {
                     method: 'GET',
-                    path: `${basePath}/batteries/${sampleBatteryId}/section/general`,
+                    pathTemplate: `${basePath}/batteries/{batteryId}/section/general`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
                 readSectionPerformance: {
                     method: 'GET',
-                    path: `${basePath}/batteries/${sampleBatteryId}/section/performance`,
+                    pathTemplate: `${basePath}/batteries/{batteryId}/section/performance`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
                 readSectionCircularity: {
                     method: 'GET',
-                    path: `${basePath}/batteries/${sampleBatteryId}/section/circularity`,
+                    pathTemplate: `${basePath}/batteries/{batteryId}/section/circularity`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
                 readValuesAliases: {
                     method: 'GET',
-                    path: `${basePath}/batteries/${sampleBatteryId}/values?path=ratedEnergy&path=ratedCapacity&path=nickelMass`,
+                    pathTemplate: `${basePath}/batteries/{batteryId}/values?path=ratedEnergy&path=ratedCapacity&path=nickelMass`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
                 readPathsAll: {
                     method: 'GET',
-                    path: `${basePath}/batteries/${sampleBatteryId}/paths?section=full`,
+                    pathTemplate: `${basePath}/batteries/{batteryId}/paths?section=full`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
                 readBatteryPassports: {
                     method: 'GET',
-                    path: `${basePath}/batteries/${sampleBatteryId}/passports`,
+                    pathTemplate: `${basePath}/batteries/{batteryId}/passports`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
                 readHistory24h: {
                     method: 'GET',
-                    path: `${basePath}/batteries/${sampleBatteryId}/telemetry/history?hours=24`,
+                    pathTemplate: `${basePath}/batteries/{batteryId}/telemetry/history?hours=24`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
                 writeTelemetryPoint: {
                     method: 'POST',
-                    path: `${basePath}/batteries/${sampleBatteryId}/telemetry`,
+                    pathTemplate: `${basePath}/batteries/{batteryId}/telemetry`,
                     body: JSON.stringify({
                         points: [
                             {
@@ -740,7 +764,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 },
                 writeTelemetrySeries: {
                     method: 'POST',
-                    path: `${basePath}/batteries/${sampleBatteryId}/telemetry`,
+                    pathTemplate: `${basePath}/batteries/{batteryId}/telemetry`,
                     body: JSON.stringify({
                         series: {
                             currentConsumptionKwh: [
@@ -760,7 +784,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 },
                 patchOperations: {
                     method: 'PATCH',
-                    path: `${basePath}/batteries/${sampleBatteryId}/operations`,
+                    pathTemplate: `${basePath}/batteries/{batteryId}/operations`,
                     body: JSON.stringify({
                         isActive: true,
                         locationOfUse: {
@@ -777,7 +801,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 },
                 patchBatteryModel: {
                     method: 'PATCH',
-                    path: `${basePath}/batteries/${sampleBatteryId}/battery-model`,
+                    pathTemplate: `${basePath}/batteries/{batteryId}/battery-model`,
                     body: JSON.stringify({
                         batteryModel: '2.0'
                     }, null, 2),
@@ -785,7 +809,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 },
                 patchSoftwareVersion: {
                     method: 'PATCH',
-                    path: `${basePath}/batteries/${sampleBatteryId}/software-version`,
+                    pathTemplate: `${basePath}/batteries/{batteryId}/software-version`,
                     body: JSON.stringify({
                         softwareVersion: '4.0'
                     }, null, 2),
@@ -793,25 +817,25 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 },
                 createPassport: {
                     method: 'POST',
-                    path: `${basePath}/batteries/${sampleBatteryId}/passports`,
+                    pathTemplate: `${basePath}/batteries/{batteryId}/passports`,
                     body: '',
                     tokenPreset: 'sample-lifecycle'
                 },
                 validatePassport: {
                     method: 'POST',
-                    path: `${basePath}/passports/${samplePassportId}/validate`,
+                    pathTemplate: `${basePath}/passports/{passportId}/validate`,
                     body: '',
                     tokenPreset: 'sample-lifecycle'
                 },
                 signPassport: {
                     method: 'POST',
-                    path: `${basePath}/passports/${samplePassportId}/sign`,
+                    pathTemplate: `${basePath}/passports/{passportId}/sign`,
                     body: '',
                     tokenPreset: 'sample-lifecycle'
                 },
                 publishPassport: {
                     method: 'POST',
-                    path: `${basePath}/passports/${samplePassportId}/publish`,
+                    pathTemplate: `${basePath}/passports/{passportId}/publish`,
                     body: '',
                     tokenPreset: 'sample-lifecycle'
                 }
@@ -903,6 +927,17 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 }
 
                 return `${window.location.origin}${value.startsWith('/') ? value : `/${value}`}`;
+            };
+
+            const getWorkbenchContext = () => ({
+                batteryId: (batteryIdEl?.value || sampleBatteryId).trim() || sampleBatteryId,
+                passportId: (passportIdEl?.value || samplePassportId).trim() || samplePassportId
+            });
+
+            const resolveTemplatePath = (pathTemplate, context = getWorkbenchContext()) => {
+                return (pathTemplate || '')
+                    .replaceAll('{batteryId}', context.batteryId)
+                    .replaceAll('{passportId}', context.passportId);
             };
 
             const setTokenFromPreset = () => {
@@ -1066,10 +1101,18 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 }
 
                 methodEl.value = template.method;
-                pathEl.value = template.path;
+                pathEl.value = resolveTemplatePath(template.pathTemplate, getWorkbenchContext());
                 bodyEl.value = template.body;
-                tokenPresetEl.value = template.tokenPreset;
-                setTokenFromPreset();
+                syncRawRequestFromControls();
+            };
+
+            const refreshTemplatePathFromContext = () => {
+                const template = templates[templateSelect.value];
+                if (!template) {
+                    return;
+                }
+
+                pathEl.value = resolveTemplatePath(template.pathTemplate, getWorkbenchContext());
                 syncRawRequestFromControls();
             };
 
@@ -1092,6 +1135,10 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
             document.getElementById('tester-reset')?.addEventListener('click', () => {
                 templateSelect.value = 'readFull';
                 authFormatEl.value = 'base64';
+                batteryIdEl.value = sampleBatteryId;
+                passportIdEl.value = samplePassportId;
+                tokenPresetEl.value = 'sample-read';
+                tokenEl.value = sampleReadToken;
                 applyTemplate('readFull');
                 setStatus('-');
                 setResponse('{}');
@@ -1101,6 +1148,11 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 setTokenFromPreset();
                 syncRawRequestFromControls();
             });
+
+            batteryIdEl?.addEventListener('input', refreshTemplatePathFromContext);
+            batteryIdEl?.addEventListener('change', refreshTemplatePathFromContext);
+            passportIdEl?.addEventListener('input', refreshTemplatePathFromContext);
+            passportIdEl?.addEventListener('change', refreshTemplatePathFromContext);
 
             document.querySelectorAll('.template-shortcut').forEach(button => {
                 button.addEventListener('click', () => {
