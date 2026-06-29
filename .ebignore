@@ -1,0 +1,18 @@
+# Elastic Beanstalk source bundle guardrails
+web-next-legacy/
+**/node_modules/
+**/.next/
+
+# Local/generated output
+artifacts/
+.run-logs/
+.runlogs/
+.codex-inspect/
+.superpowers/
+*.log
+
+# Local environment files
+.env
+.env.*
+!.env.example
+!.env.*.example

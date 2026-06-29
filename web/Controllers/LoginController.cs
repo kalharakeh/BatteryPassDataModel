@@ -1,9 +1,11 @@
 using System.Security.Claims;
+using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Models.ViewModels;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MongoDB.Bson;
 
 namespace BatteryPassWeb.Controllers;
@@ -38,6 +40,7 @@ public class LoginController : Controller
     }
 
     [HttpPost("")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.Login)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Index(LoginViewModel model, CancellationToken cancellationToken)
     {
@@ -75,6 +78,7 @@ public class LoginController : Controller
     }
 
     [HttpPost("forgot-password")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.Login)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ForgotPassword([FromForm] string email, CancellationToken cancellationToken)
     {
@@ -109,6 +113,7 @@ public class LoginController : Controller
     }
 
     [HttpPost("change-temporary-password")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.Login)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ChangeTemporaryPassword(TemporaryPasswordChangeViewModel model, CancellationToken cancellationToken)
     {

@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.GridFS;
+using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Services;
 using System.Security.Cryptography;
 
@@ -17,22 +20,27 @@ public class FilesApiController : ControllerBase
     private readonly AccessControlService _accessControlService;
     private readonly PassportPublishPolicyService _passportPublishPolicyService;
     private readonly AuditRevisionService _auditRevisionService;
+    private readonly BatteryPassOptions _options;
 
     public FilesApiController(
         MongoContext mongoContext,
         PassportRepository passportRepository,
         AccessControlService accessControlService,
         PassportPublishPolicyService passportPublishPolicyService,
-        AuditRevisionService auditRevisionService)
+        AuditRevisionService auditRevisionService,
+        IOptions<BatteryPassOptions> options)
     {
         _mongoContext = mongoContext;
         _passportRepository = passportRepository;
         _accessControlService = accessControlService;
         _passportPublishPolicyService = passportPublishPolicyService;
         _auditRevisionService = auditRevisionService;
+        _options = options.Value;
     }
 
     [HttpPost("")]
+    [ValidateAntiForgeryToken]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.FileUpload)]
     [Authorize(Policy = "ClusterAdminOrAdmin")]
     public async Task<IActionResult> Upload([FromForm] IFormFile? file, [FromForm] string? passportId, [FromForm] string? documentKey, [FromForm] string? publicAccess, CancellationToken cancellationToken)
     {
@@ -44,6 +52,13 @@ public class FilesApiController : ControllerBase
         if (file == null || file.Length == 0)
         {
             return BadRequest(new { error = "File is required." });
+        }
+
+        if (_options.MaxUploadBytes > 0 && file.Length > _options.MaxUploadBytes)
+        {
+            return StatusCode(
+                StatusCodes.Status413PayloadTooLarge,
+                new { error = $"File exceeds the maximum upload size of {_options.MaxUploadBytes} bytes." });
         }
 
         var normalizedPassportId = passportId?.Trim() ?? string.Empty;

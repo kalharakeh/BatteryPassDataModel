@@ -1,3 +1,5 @@
+using BatteryPassWeb.Configuration;
+using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 
 namespace BatteryPassWeb.Services;
@@ -35,6 +37,7 @@ public sealed class ExternalApiInitializer
     private readonly ClusterRepository _clusterRepository;
     private readonly PassportDataNormalizationService _passportDataNormalizationService;
     private readonly BatteryIdService _batteryIdService;
+    private readonly BatteryPassOptions _options;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private bool _initialized;
 
@@ -45,7 +48,8 @@ public sealed class ExternalApiInitializer
         BatteryTelemetryRepository batteryTelemetryRepository,
         ClusterRepository clusterRepository,
         PassportDataNormalizationService passportDataNormalizationService,
-        BatteryIdService batteryIdService)
+        BatteryIdService batteryIdService,
+        IOptions<BatteryPassOptions> options)
     {
         _externalApiRepository = externalApiRepository;
         _passportRepository = passportRepository;
@@ -54,6 +58,7 @@ public sealed class ExternalApiInitializer
         _clusterRepository = clusterRepository;
         _passportDataNormalizationService = passportDataNormalizationService;
         _batteryIdService = batteryIdService;
+        _options = options.Value;
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -75,7 +80,10 @@ public sealed class ExternalApiInitializer
             await _batteryRepository.EnsureIndexesAsync(cancellationToken);
             await _clusterRepository.EnsureIndexesAsync(cancellationToken);
             await _batteryTelemetryRepository.EnsureIndexesAsync(cancellationToken);
-            await EnsureSamplePassportAsync(cancellationToken);
+            if (_options.EnableDemoData)
+            {
+                await EnsureSamplePassportAsync(cancellationToken);
+            }
             await EnsureBatteryImagesAndCategoriesAsync(cancellationToken);
             await NormalizeExistingPassportDataAsync(cancellationToken);
             await EnsureSampleTokensAsync(cancellationToken);
@@ -278,33 +286,39 @@ public sealed class ExternalApiInitializer
 
     private async Task EnsureSampleTokensAsync(CancellationToken cancellationToken)
     {
-        await EnsureFixedSampleTokenAsync(
-            SampleReadTokenId,
-            SampleReadTokenValue,
-            "Sample token (read)",
-            ExternalTokenAccessMode.Read,
-            cancellationToken);
+        if (_options.EnableDemoData && _options.EnablePublicDemoReadToken)
+        {
+            await EnsureFixedSampleTokenAsync(
+                SampleReadTokenId,
+                SampleReadTokenValue,
+                "Sample token (read)",
+                ExternalTokenAccessMode.Read,
+                cancellationToken);
+        }
 
-        await EnsureFixedSampleTokenAsync(
-            SampleReadWriteTokenId,
-            SampleReadWriteTokenValue,
-            "Sample token (read-write)",
-            ExternalTokenAccessMode.ReadWrite,
-            cancellationToken);
+        if (_options.EnableDemoData && _options.EnableDemoWriteSignTesting)
+        {
+            await EnsureFixedSampleTokenAsync(
+                SampleReadWriteTokenId,
+                SampleReadWriteTokenValue,
+                "Sample token (read-write)",
+                ExternalTokenAccessMode.ReadWrite,
+                cancellationToken);
 
-        await EnsureFixedSampleTokenAsync(
-            SampleSignTokenId,
-            SampleSignTokenValue,
-            "Sample token (Passport Lifecycle)",
-            ExternalTokenAccessMode.Sign,
-            cancellationToken);
+            await EnsureFixedSampleTokenAsync(
+                SampleSignTokenId,
+                SampleSignTokenValue,
+                "Sample token (Passport Lifecycle)",
+                ExternalTokenAccessMode.Sign,
+                cancellationToken);
 
-        await EnsureFixedSampleTokenAsync(
-            SampleLifecycleTokenId,
-            SampleLifecycleTokenValue,
-            "Sample token (Full access)",
-            ExternalTokenAccessMode.Lifecycle,
-            cancellationToken);
+            await EnsureFixedSampleTokenAsync(
+                SampleLifecycleTokenId,
+                SampleLifecycleTokenValue,
+                "Sample token (Full access)",
+                ExternalTokenAccessMode.Lifecycle,
+                cancellationToken);
+        }
     }
 
     private async Task EnsureFixedSampleTokenAsync(

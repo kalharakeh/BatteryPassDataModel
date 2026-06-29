@@ -1,7 +1,10 @@
 using System.Text;
 using System.Text.Json;
+using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 
 namespace BatteryPassWeb.Controllers;
@@ -56,6 +59,7 @@ public class ExternalApiController : ControllerBase
     private readonly BatteryCreationService _batteryCreationService;
     private readonly BatteryAuditService _batteryAuditService;
     private readonly PassportTrustWorkflowService _passportTrustWorkflowService;
+    private readonly BatteryPassOptions _options;
 
     public ExternalApiController(
         PassportRepository passportRepository,
@@ -68,7 +72,8 @@ public class ExternalApiController : ControllerBase
         BatteryTemplateUpdateService batteryTemplateUpdateService,
         BatteryCreationService batteryCreationService,
         BatteryAuditService batteryAuditService,
-        PassportTrustWorkflowService passportTrustWorkflowService)
+        PassportTrustWorkflowService passportTrustWorkflowService,
+        IOptions<BatteryPassOptions> options)
     {
         _passportRepository = passportRepository;
         _batteryRepository = batteryRepository;
@@ -81,9 +86,11 @@ public class ExternalApiController : ControllerBase
         _batteryCreationService = batteryCreationService;
         _batteryAuditService = batteryAuditService;
         _passportTrustWorkflowService = passportTrustWorkflowService;
+        _options = options.Value;
     }
 
     [HttpGet("clusters")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiRead)]
     public async Task<IActionResult> ListAccessibleClusters(CancellationToken cancellationToken)
     {
         var auth = await AuthorizeExternalApiAsync(ExternalTokenRequirement.Read, cancellationToken);
@@ -112,6 +119,7 @@ public class ExternalApiController : ControllerBase
     }
 
     [HttpGet("clusters/{clusterId}/batteries")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiRead)]
     public async Task<IActionResult> ListClusterBatteries(string clusterId, CancellationToken cancellationToken)
     {
         var auth = await AuthorizeExternalApiAsync(ExternalTokenRequirement.Read, cancellationToken);
@@ -149,6 +157,7 @@ public class ExternalApiController : ControllerBase
     }
 
     [HttpPost("batteries")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiWrite)]
     public async Task<IActionResult> CreateBattery([FromBody] JsonElement payload, CancellationToken cancellationToken)
     {
         var auth = await AuthorizeExternalApiAsync(ExternalTokenRequirement.Write, cancellationToken);
@@ -194,6 +203,7 @@ public class ExternalApiController : ControllerBase
     }
 
     [HttpGet("batteries/{batteryId}")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiRead)]
     public async Task<IActionResult> GetBattery(string batteryId, CancellationToken cancellationToken)
     {
         var auth = await AuthorizeBatteryAsync(batteryId, ExternalTokenRequirement.Read, cancellationToken);
@@ -217,6 +227,7 @@ public class ExternalApiController : ControllerBase
     }
 
     [HttpGet("batteries/{batteryId}/passports")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiRead)]
     public async Task<IActionResult> ListBatteryPassports(string batteryId, CancellationToken cancellationToken)
     {
         var auth = await AuthorizeBatteryAsync(batteryId, ExternalTokenRequirement.Read, cancellationToken);
@@ -240,6 +251,7 @@ public class ExternalApiController : ControllerBase
     }
 
     [HttpGet("batteries/{batteryId}/section/{sectionName}")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiRead)]
     public async Task<IActionResult> GetBatterySection(string batteryId, string sectionName, CancellationToken cancellationToken)
     {
         var auth = await AuthorizeBatteryAsync(batteryId, ExternalTokenRequirement.Read, cancellationToken);
@@ -286,6 +298,7 @@ public class ExternalApiController : ControllerBase
     }
 
     [HttpGet("batteries/{batteryId}/values")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiRead)]
     public async Task<IActionResult> GetBatteryValues(string batteryId, [FromQuery(Name = "path")] string[] paths, CancellationToken cancellationToken)
     {
         var auth = await AuthorizeBatteryAsync(batteryId, ExternalTokenRequirement.Read, cancellationToken);
@@ -327,6 +340,7 @@ public class ExternalApiController : ControllerBase
     }
 
     [HttpGet("batteries/{batteryId}/paths")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiRead)]
     public async Task<IActionResult> GetBatteryPaths(
         string batteryId,
         [FromQuery] string? section,
@@ -397,6 +411,7 @@ public class ExternalApiController : ControllerBase
     }
 
     [HttpPost("batteries/{batteryId}/telemetry")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiWrite)]
     public async Task<IActionResult> WriteTelemetry(string batteryId, [FromBody] JsonElement payload, CancellationToken cancellationToken)
     {
         var auth = await AuthorizeBatteryAsync(batteryId, ExternalTokenRequirement.Write, cancellationToken);
@@ -405,7 +420,7 @@ public class ExternalApiController : ControllerBase
             return auth.ErrorResult;
         }
 
-        if (!TryParseTelemetryPoints(payload, out var points, out var telemetryError))
+        if (!TryParseTelemetryPointsWithinLimit(payload, _options.MaxTelemetryPoints, out var points, out var telemetryError))
         {
             return Envelope(StatusCodes.Status400BadRequest, telemetryError);
         }
@@ -472,6 +487,7 @@ public class ExternalApiController : ControllerBase
     }
 
     [HttpGet("batteries/{batteryId}/telemetry/history")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiRead)]
     public async Task<IActionResult> ReadTelemetryHistory(string batteryId, [FromQuery] int? hours, CancellationToken cancellationToken)
     {
         var auth = await AuthorizeBatteryAsync(batteryId, ExternalTokenRequirement.Read, cancellationToken);
@@ -508,6 +524,7 @@ public class ExternalApiController : ControllerBase
     }
 
     [HttpPatch("batteries/{batteryId}/operations")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiWrite)]
     public async Task<IActionResult> UpdateOperations(string batteryId, [FromBody] JsonElement payload, CancellationToken cancellationToken)
     {
         var auth = await AuthorizeBatteryAsync(batteryId, ExternalTokenRequirement.Write, cancellationToken);
@@ -597,6 +614,7 @@ public class ExternalApiController : ControllerBase
     }
 
     [HttpPatch("batteries/{batteryId}/battery-model")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiWrite)]
     public async Task<IActionResult> UpdateBatteryModel(string batteryId, [FromBody] JsonElement payload, CancellationToken cancellationToken)
     {
         var auth = await AuthorizeBatteryAsync(batteryId, ExternalTokenRequirement.Write, cancellationToken);
@@ -644,6 +662,7 @@ public class ExternalApiController : ControllerBase
     }
 
     [HttpPatch("batteries/{batteryId}/software-version")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiWrite)]
     public async Task<IActionResult> UpdateSoftwareVersion(string batteryId, [FromBody] JsonElement payload, CancellationToken cancellationToken)
     {
         var auth = await AuthorizeBatteryAsync(batteryId, ExternalTokenRequirement.Write, cancellationToken);
@@ -692,6 +711,7 @@ public class ExternalApiController : ControllerBase
     }
 
     [HttpPost("batteries/{batteryId}/passports")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiLifecycle)]
     public async Task<IActionResult> CreateBatteryPassport(string batteryId, CancellationToken cancellationToken)
     {
         var auth = await AuthorizeBatteryAsync(batteryId, ExternalTokenRequirement.Sign, cancellationToken);
@@ -719,6 +739,7 @@ public class ExternalApiController : ControllerBase
     }
 
     [HttpPost("passports/{passportId}/validate")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiLifecycle)]
     public async Task<IActionResult> ValidateBatteryPassport(string passportId, CancellationToken cancellationToken)
     {
         var auth = await AuthorizeAsync(passportId, ExternalTokenRequirement.Sign, cancellationToken);
@@ -739,6 +760,7 @@ public class ExternalApiController : ControllerBase
     }
 
     [HttpPost("passports/{passportId}/sign")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiLifecycle)]
     public async Task<IActionResult> SignBatteryPassport(string passportId, CancellationToken cancellationToken)
     {
         var auth = await AuthorizeAsync(passportId, ExternalTokenRequirement.Sign, cancellationToken);
@@ -761,6 +783,7 @@ public class ExternalApiController : ControllerBase
     }
 
     [HttpPost("passports/{passportId}/publish")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiLifecycle)]
     public async Task<IActionResult> PublishBatteryPassport(string passportId, CancellationToken cancellationToken)
     {
         var auth = await AuthorizeAsync(passportId, ExternalTokenRequirement.Sign, cancellationToken);
@@ -1229,6 +1252,71 @@ public class ExternalApiController : ControllerBase
         }
 
         return true;
+    }
+
+    private static bool TryParseTelemetryPointsWithinLimit(
+        JsonElement payload,
+        int maxTelemetryPoints,
+        out List<TelemetryWritePoint> points,
+        out string error)
+    {
+        points = [];
+        if (!TelemetryPayloadWithinPointLimit(payload, maxTelemetryPoints, out error))
+        {
+            return false;
+        }
+
+        return TryParseTelemetryPoints(payload, out points, out error);
+    }
+
+    private static bool TelemetryPayloadWithinPointLimit(JsonElement payload, int maxTelemetryPoints, out string error)
+    {
+        error = string.Empty;
+        if (maxTelemetryPoints <= 0)
+        {
+            return true;
+        }
+
+        var estimatedPointCount = EstimateTelemetryPointCount(payload);
+        if (estimatedPointCount <= maxTelemetryPoints)
+        {
+            return true;
+        }
+
+        error = $"Telemetry payload exceeds the maximum of {maxTelemetryPoints} point(s).";
+        return false;
+    }
+
+    private static int EstimateTelemetryPointCount(JsonElement payload)
+    {
+        if (payload.ValueKind == JsonValueKind.Object
+            && TryGetPropertyIgnoreCase(payload, "series", out var seriesElement)
+            && seriesElement.ValueKind == JsonValueKind.Object)
+        {
+            var count = 0;
+            foreach (var series in seriesElement.EnumerateObject())
+            {
+                count += series.Value.ValueKind == JsonValueKind.Array
+                    ? series.Value.GetArrayLength()
+                    : 1;
+            }
+
+            return count;
+        }
+
+        if (payload.ValueKind == JsonValueKind.Object
+            && TryGetPropertyIgnoreCase(payload, "points", out var pointsElement)
+            && pointsElement.ValueKind == JsonValueKind.Array)
+        {
+            return pointsElement.GetArrayLength();
+        }
+
+        return payload.ValueKind switch
+        {
+            JsonValueKind.Array => payload.GetArrayLength(),
+            JsonValueKind.Object => 1,
+            _ => 0
+        };
     }
 
     private static void AddParsedTelemetryPoint(JsonElement item, List<TelemetryWritePoint> points, ref int ignoredMalformedPoints)

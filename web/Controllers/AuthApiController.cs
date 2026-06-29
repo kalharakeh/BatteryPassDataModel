@@ -1,7 +1,9 @@
+using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace BatteryPassWeb.Controllers;
 
@@ -19,6 +21,8 @@ public class AuthApiController : ControllerBase
     }
 
     [HttpPost("login")]
+    [ValidateAntiForgeryToken]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.Login)]
     public async Task<IActionResult> Login([FromForm] string? email, [FromForm] string? password, [FromForm] string? next, CancellationToken cancellationToken)
     {
         var safeNext = SafeInteractiveReturnUrl(next);
@@ -39,6 +43,7 @@ public class AuthApiController : ControllerBase
     }
 
     [HttpPost("logout")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
     {
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);

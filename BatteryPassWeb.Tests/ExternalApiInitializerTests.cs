@@ -89,23 +89,54 @@ public sealed class ExternalApiInitializerTests
         Assert.Contains("Sample Passport Lifecycle token", helpView);
         Assert.DoesNotContain("Sample create, validate, sign and publish passport token", helpView);
         Assert.Contains("const sampleLifecycleToken", helpView);
-        Assert.Contains("'sample-lifecycle': sampleLifecycleToken", helpView);
+        Assert.Contains("'sample-lifecycle': canUsePrivilegedDemoTokens ? sampleLifecycleToken : ''", helpView);
         Assert.Contains("tokenPreset: 'sample-lifecycle'", helpView);
     }
 
     [Fact]
-    public void HelpAndAdminPages_ShouldFallbackWhenStoredDemoTokensCannotBeRevealed()
+    public void DemoInitializer_ShouldRequireExplicitFeatureFlagsForSampleDataAndTokens()
+    {
+        var options = File.ReadAllText(RepoFile("web", "Configuration", "BatteryPassOptions.cs"));
+        var program = File.ReadAllText(RepoFile("web", "Program.cs"));
+        var initializer = File.ReadAllText(RepoFile("web", "Services", "ExternalApiInitializer.cs"));
+        var appSettings = File.ReadAllText(RepoFile("web", "appsettings.json"));
+        var developmentSettings = File.ReadAllText(RepoFile("web", "appsettings.Development.json"));
+        var envExample = File.ReadAllText(RepoFile("web", ".env.example"));
+
+        Assert.Contains("EnableDemoData", options);
+        Assert.Contains("EnablePublicDemoReadToken", options);
+        Assert.Contains("EnableDemoWriteSignTesting", options);
+        Assert.Contains("ENABLE_DEMO_DATA", program);
+        Assert.Contains("ENABLE_PUBLIC_DEMO_READ_TOKEN", program);
+        Assert.Contains("ENABLE_DEMO_WRITE_SIGN_TESTING", program);
+        Assert.Contains("IOptions<BatteryPassOptions>", initializer);
+        Assert.Contains("if (_options.EnableDemoData)", initializer);
+        Assert.Contains("if (_options.EnableDemoData && _options.EnablePublicDemoReadToken)", initializer);
+        Assert.Contains("if (_options.EnableDemoData && _options.EnableDemoWriteSignTesting)", initializer);
+        Assert.Contains("\"EnableDemoData\": false", appSettings);
+        Assert.Contains("\"EnablePublicDemoReadToken\": false", appSettings);
+        Assert.Contains("\"EnableDemoWriteSignTesting\": false", appSettings);
+        Assert.Contains("\"EnableDemoData\": true", developmentSettings);
+        Assert.Contains("\"EnablePublicDemoReadToken\": true", developmentSettings);
+        Assert.Contains("\"EnableDemoWriteSignTesting\": true", developmentSettings);
+        Assert.Contains("ENABLE_DEMO_DATA=true", envExample);
+        Assert.Contains("ENABLE_PUBLIC_DEMO_READ_TOKEN=true", envExample);
+        Assert.Contains("ENABLE_DEMO_WRITE_SIGN_TESTING=true", envExample);
+    }
+
+    [Fact]
+    public void HelpAndAdminPages_ShouldUseExplicitDemoTokenFallbacksWithoutStoredReveal()
     {
         var repository = File.ReadAllText(RepoFile("web", "Services", "ExternalApiRepository.cs"));
         var adminController = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
         var helpController = File.ReadAllText(RepoFile("web", "Controllers", "HelpController.cs"));
 
-        Assert.Contains("TryRevealToken", repository);
-        Assert.Contains("catch (System.Security.Cryptography.CryptographicException)", repository);
-        Assert.Contains("TryRevealToken(tokenDocument, fallback)", adminController);
-        Assert.Contains("TryRevealToken(readTokenDocument, ExternalApiInitializer.SampleReadTokenValue)", helpController);
-        Assert.Contains("TryRevealToken(readWriteTokenDocument, ExternalApiInitializer.SampleReadWriteTokenValue)", helpController);
-        Assert.Contains("TryRevealToken(lifecycleTokenDocument, ExternalApiInitializer.SampleLifecycleTokenValue)", helpController);
+        Assert.DoesNotContain("TryRevealToken", repository);
+        Assert.DoesNotContain("Decrypt", repository);
+        Assert.Contains("return fallback;", adminController);
+        Assert.Contains("? ExternalApiInitializer.SampleReadTokenValue", helpController);
+        Assert.Contains("? ExternalApiInitializer.SampleReadWriteTokenValue", helpController);
+        Assert.Contains("? ExternalApiInitializer.SampleLifecycleTokenValue", helpController);
     }
 
     [Fact]

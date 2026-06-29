@@ -76,6 +76,11 @@ public sealed class ExternalApiRepository
         {
             await _mongoContext.Database.DropCollectionAsync("batterySecrets", cancellationToken);
         }
+
+        await tokens.UpdateManyAsync(
+            Builders<BsonDocument>.Filter.Exists("encryptedToken"),
+            Builders<BsonDocument>.Update.Unset("encryptedToken"),
+            cancellationToken: cancellationToken);
     }
 
     public async Task<IReadOnlyList<BsonDocument>> ListTokensAsync(CancellationToken cancellationToken = default)
@@ -140,7 +145,6 @@ public sealed class ExternalApiRepository
             ["globalAccess"] = globalAccess,
             ["isActive"] = true,
             ["tokenHash"] = _securityService.HashSecret(token),
-            ["encryptedToken"] = _securityService.Encrypt(token),
             ["isSample"] = isSample,
             ["createdBy"] = actor,
             ["updatedBy"] = actor,
@@ -197,7 +201,7 @@ public sealed class ExternalApiRepository
             .Set("globalAccess", globalAccess)
             .Set("isActive", true)
             .Set("tokenHash", _securityService.HashSecret(normalizedToken))
-            .Set("encryptedToken", _securityService.Encrypt(normalizedToken))
+            .Unset("encryptedToken")
             .Set("isSample", isSample)
             .Set("updatedBy", actor)
             .Set("updatedAt", now)
@@ -275,7 +279,7 @@ public sealed class ExternalApiRepository
         var newToken = _securityService.CreateToken();
         var update = Builders<BsonDocument>.Update
             .Set("tokenHash", _securityService.HashSecret(newToken))
-            .Set("encryptedToken", _securityService.Encrypt(newToken))
+            .Unset("encryptedToken")
             .Set("updatedBy", actor)
             .Set("updatedAt", DateTime.UtcNow.ToString("O"))
             .Set("lastUsedAt", BsonNull.Value);
@@ -366,23 +370,6 @@ public sealed class ExternalApiRepository
             StatusCode = StatusCodes.Status401Unauthorized,
             Message = "Token is invalid."
         };
-    }
-
-    public string RevealToken(BsonDocument tokenDocument)
-    {
-        return _securityService.Decrypt(BsonHelpers.GetString(tokenDocument, "encryptedToken"));
-    }
-
-    public string TryRevealToken(BsonDocument tokenDocument, string fallback)
-    {
-        try
-        {
-            return RevealToken(tokenDocument);
-        }
-        catch (System.Security.Cryptography.CryptographicException)
-        {
-            return fallback;
-        }
     }
 
     private static ExternalApiTokenContext ToTokenContext(BsonDocument tokenDocument)

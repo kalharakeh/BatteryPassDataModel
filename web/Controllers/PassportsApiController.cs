@@ -23,6 +23,7 @@ public class PassportsApiController : ControllerBase
     private readonly PassportEvidenceService _passportEvidenceService;
     private readonly PassportTrustService _passportTrustService;
     private readonly AuditRevisionService _auditRevisionService;
+    private readonly AccessControlService _accessControlService;
 
     public PassportsApiController(
         PassportRepository passportRepository,
@@ -31,7 +32,8 @@ public class PassportsApiController : ControllerBase
         DataCompletionPolicyService dataCompletionPolicyService,
         PassportEvidenceService passportEvidenceService,
         PassportTrustService passportTrustService,
-        AuditRevisionService auditRevisionService)
+        AuditRevisionService auditRevisionService,
+        AccessControlService accessControlService)
     {
         _passportRepository = passportRepository;
         _passportValidationService = passportValidationService;
@@ -40,6 +42,7 @@ public class PassportsApiController : ControllerBase
         _passportEvidenceService = passportEvidenceService;
         _passportTrustService = passportTrustService;
         _auditRevisionService = auditRevisionService;
+        _accessControlService = accessControlService;
     }
 
     [HttpGet]
@@ -62,6 +65,7 @@ public class PassportsApiController : ControllerBase
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create([FromBody] JsonElement payload, CancellationToken cancellationToken)
     {
         if (!User.IsInRole("admin"))
@@ -118,6 +122,7 @@ public class PassportsApiController : ControllerBase
     }
 
     [HttpPut("{passportId}")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Update(string passportId, [FromBody] JsonElement payload, CancellationToken cancellationToken)
     {
         if (!User.IsInRole("admin"))
@@ -174,6 +179,7 @@ public class PassportsApiController : ControllerBase
     }
 
     [HttpPost("{passportId}/validate")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Validate(string passportId, CancellationToken cancellationToken)
     {
         if (!User.IsInRole("admin"))
@@ -218,6 +224,7 @@ public class PassportsApiController : ControllerBase
     }
 
     [HttpPost("{passportId}/sign")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Sign(string passportId, CancellationToken cancellationToken)
     {
         if (!User.IsInRole("admin"))
@@ -305,6 +312,7 @@ public class PassportsApiController : ControllerBase
     }
 
     [HttpPost("{passportId}/publish")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Publish(string passportId, CancellationToken cancellationToken)
     {
         if (!User.IsInRole("admin"))
@@ -422,6 +430,16 @@ public class PassportsApiController : ControllerBase
             return NotFound(new { error = "Passport does not exist", passportId });
         }
 
+        if (!_passportPublishPolicyService.IsPubliclyVisible(passport))
+        {
+            if (User.Identity?.IsAuthenticated != true
+                || !await _accessControlService.CanOpenPassportDetailAsync(User, passport, _passportPublishPolicyService, cancellationToken)
+                || !await _accessControlService.CanViewTrustConformanceAsync(User, BsonHelpers.GetString(passport, "clusterId"), cancellationToken))
+            {
+                return NotFound(new { error = "Passport does not exist", passportId });
+            }
+        }
+
         var verification = _passportTrustService.Verify(passport);
         return Ok(new
         {
@@ -432,6 +450,7 @@ public class PassportsApiController : ControllerBase
     }
 
     [HttpDelete("{passportId}")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Archive(string passportId, CancellationToken cancellationToken)
     {
         if (!User.IsInRole("admin"))

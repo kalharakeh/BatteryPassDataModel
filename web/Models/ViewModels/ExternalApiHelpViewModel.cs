@@ -9,4 +9,7 @@ public sealed class ExternalApiHelpViewModel
     public string SampleReadToken { get; init; } = string.Empty;
     public string SampleReadWriteToken { get; init; } = string.Empty;
     public string SampleLifecycleToken { get; init; } = string.Empty;
+    public bool DemoWriteSignTestingEnabled { get; init; }
+    public bool CanUsePrivilegedDemoTokens { get; init; }
+    public string PrivilegedDemoTokenMessage { get; init; } = string.Empty;
 }

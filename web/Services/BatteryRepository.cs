@@ -82,7 +82,7 @@ public sealed class BatteryRepository
 
         if (!string.IsNullOrWhiteSpace(query))
         {
-            var regex = new BsonRegularExpression(query.Trim(), "i");
+            var regex = SearchRegexBuilder.CreateLiteralContainsRegex(query);
             filters.Add(builder.Or(
                 builder.Regex("batteryId", regex),
                 builder.Regex("identity.batteryFamily", regex),
@@ -103,7 +103,7 @@ public sealed class BatteryRepository
             return [];
         }
 
-        var regex = new BsonRegularExpression(query.Trim(), "i");
+        var regex = SearchRegexBuilder.CreateLiteralContainsRegex(query);
         return await collection
             .Find(Builders<BsonDocument>.Filter.Regex("clusterId", regex))
             .SortByDescending(row => row["updatedAt"])

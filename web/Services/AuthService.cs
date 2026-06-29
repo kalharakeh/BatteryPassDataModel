@@ -111,7 +111,8 @@ public sealed class AuthService
             // Mongo unavailable fallback handled below.
         }
 
-        if (normalizedEmail.Equals(_options.DemoAdminEmail, StringComparison.OrdinalIgnoreCase)
+        if (CanUseDemoAdminFallback()
+            && normalizedEmail.Equals(_options.DemoAdminEmail, StringComparison.OrdinalIgnoreCase)
             && password == _options.DemoAdminPassword)
         {
             return LoginAuthenticationResult.Authenticated(BuildPrincipal(_options.DemoAdminEmail, "Demo Administrator", [AccessControlService.RoleAdmin]));
@@ -154,13 +155,19 @@ public sealed class AuthService
             }
         }
 
-        if (normalizedEmail.Equals(_options.DemoAdminEmail, StringComparison.OrdinalIgnoreCase))
+        if (CanUseDemoAdminFallback()
+            && normalizedEmail.Equals(_options.DemoAdminEmail, StringComparison.OrdinalIgnoreCase))
         {
             return BuildPrincipal(_options.DemoAdminEmail, "Demo Administrator", [AccessControlService.RoleAdmin]);
         }
 
         return null;
     }
+
+    private bool CanUseDemoAdminFallback() =>
+        _options.EnableDemoAdminFallback
+        && !string.IsNullOrWhiteSpace(_options.DemoAdminEmail)
+        && !string.IsNullOrWhiteSpace(_options.DemoAdminPassword);
 
     public async Task StorePasswordResetRequestAsync(string email, string remoteIp, CancellationToken cancellationToken = default)
     {

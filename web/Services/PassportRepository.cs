@@ -38,7 +38,7 @@ public sealed class PassportRepository
 
         if (!string.IsNullOrWhiteSpace(query))
         {
-            var regex = new BsonRegularExpression(query.Trim(), "i");
+            var regex = SearchRegexBuilder.CreateLiteralContainsRegex(query);
             filters.Add(builder.Or(
                 builder.Regex("passportId", regex),
                 builder.Regex("batteryId", regex),

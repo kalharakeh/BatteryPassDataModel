@@ -30,15 +30,36 @@
             </div>
             <div>
                 <p class="mb-1 text-secondary small">Sample read token</p>
-                <code>@Model.SampleReadToken</code>
+                @if (!string.IsNullOrWhiteSpace(Model.SampleReadToken))
+                {
+                    <code>@Model.SampleReadToken</code>
+                }
+                else
+                {
+                    <span class="text-secondary small">Demo read token disabled.</span>
+                }
             </div>
             <div>
                 <p class="mb-1 text-secondary small">Sample read-write token</p>
-                <code>@Model.SampleReadWriteToken</code>
+                @if (Model.CanUsePrivilegedDemoTokens)
+                {
+                    <code>@Model.SampleReadWriteToken</code>
+                }
+                else
+                {
+                    <span class="text-secondary small">Available to an approved tester.</span>
+                }
             </div>
             <div>
                 <p class="mb-1 text-secondary small">Sample Passport Lifecycle token</p>
-                <code>@Model.SampleLifecycleToken</code>
+                @if (Model.CanUsePrivilegedDemoTokens)
+                {
+                    <code>@Model.SampleLifecycleToken</code>
+                }
+                else
+                {
+                    <span class="text-secondary small">Available to an approved tester.</span>
+                }
             </div>
         </div>
     </section>
@@ -543,6 +564,10 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                         <option value="sample-lifecycle">Sample Passport Lifecycle token</option>
                         <option value="custom">Custom token</option>
                     </select>
+                    @if (!Model.CanUsePrivilegedDemoTokens)
+                    {
+                        <small class="text-secondary">@Model.PrivilegedDemoTokenMessage</small>
+                    }
                 </label>
                 <label class="bp-span-2">Token value
                     <input id="tester-token" value="@Model.SampleReadToken" />
@@ -590,6 +615,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
             const sampleReadToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleReadToken));
             const sampleReadWriteToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleReadWriteToken));
             const sampleLifecycleToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleLifecycleToken));
+            const canUsePrivilegedDemoTokens = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CanUsePrivilegedDemoTokens));
 
             const docSearch = document.getElementById('doc-search');
             const docItems = Array.from(document.querySelectorAll('.bp-help-doc-item'));
@@ -843,8 +869,8 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
 
             const tokenByPreset = {
                 'sample-read': sampleReadToken,
-                'sample-read-write': sampleReadWriteToken,
-                'sample-lifecycle': sampleLifecycleToken
+                'sample-read-write': canUsePrivilegedDemoTokens ? sampleReadWriteToken : '',
+                'sample-lifecycle': canUsePrivilegedDemoTokens ? sampleLifecycleToken : ''
             };
 
             const utf8ToBase64 = (value) => {
