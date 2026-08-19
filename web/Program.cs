@@ -185,8 +185,25 @@ builder.Services.AddRateLimiter(options =>
 
 builder.Services.AddControllersWithViews();
 var trustedProxyNetworks = builder.Configuration["TRUSTED_PROXY_NETWORKS"];
+var trustedProxyHopLimit = builder.Configuration["TRUSTED_PROXY_HOP_LIMIT"];
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
-    ElasticBeanstalkForwardedHeaders.Configure(options, trustedProxyNetworks));
+    ElasticBeanstalkForwardedHeaders.Configure(options, trustedProxyNetworks, trustedProxyHopLimit));
+
+// UseHttpsRedirection has to know which port to redirect to. It looks for an
+// explicit HttpsPort, an HTTPS_PORT configuration value, or an https:// address
+// Kestrel is bound to. Behind Elastic Beanstalk none of those exist - TLS
+// terminates at the load balancer and Kestrel is started with plain
+// "--urls http://localhost:5000" - so without this the middleware silently
+// passes every request through and no redirect ever happens.
+builder.Services.AddHttpsRedirection(options =>
+{
+    options.HttpsPort = HttpsRedirectionDefaults.PublicHttpsPort;
+
+    // Deliberately a temporary redirect. A 301 is cached hard by browsers, which
+    // would make disabling REQUIRE_HTTPS_REDIRECTION ineffective for anyone who
+    // had already visited. 307 keeps the setting a genuine off switch.
+    options.RedirectStatusCode = StatusCodes.Status307TemporaryRedirect;
+});
 builder.Services.AddSingleton<MongoContext>();
 builder.Services.AddSingleton<PassportRepository>();
 builder.Services.AddSingleton<BatteryRepository>();
@@ -240,13 +257,85 @@ var batteryPassOptions = app.Services.GetRequiredService<Microsoft.Extensions.Op
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/error");
-    if (batteryPassOptions.RequireHttpsRedirection)
-    {
-        app.UseHsts();
-    }
 }
 
+var healthDiagnosticsEnabled = BatteryPassHealthCheck.DiagnosticsEnabled(
+    builder.Configuration[BatteryPassHealthCheck.DiagnosticsEnvironmentVariable]);
+
+// Snapshot the proxy headers before UseForwardedHeaders consumes them. Afterwards
+// they read as absent whether they were never sent, or were applied and stripped,
+// and those two cases call for completely different fixes.
+if (healthDiagnosticsEnabled)
+{
+    app.Use(async (context, next) =>
+    {
+        context.Items[BatteryPassHealthCheck.RawForwardedHeadersKey] = context.Request.Headers
+            .Where(header => BatteryPassHealthCheck.IsProxyHeader(header.Key))
+            .Select(header => new KeyValuePair<string, string>(header.Key, header.Value.ToString()))
+            .ToList();
+
+        await next();
+    });
+}
+
+// nginx overwrites X-Forwarded-Proto with its own scheme, which is always http
+// because TLS terminates at the load balancer. X-Forwarded-Port survives intact, so
+// restore the scheme from it before UseForwardedHeaders runs - the corrected value
+// then passes through the same trusted-proxy checks as any other forwarded header.
+app.Use(async (context, next) =>
+{
+    if (ElasticBeanstalkForwardedHeaders.ShouldRestoreHttpsScheme(
+            context.Request.Headers["X-Forwarded-Port"].ToString(),
+            context.Request.Headers["X-Forwarded-Proto"].ToString()))
+    {
+        context.Request.Headers["X-Forwarded-Proto"] = "https";
+    }
+
+    await next();
+});
+
 app.UseForwardedHeaders();
+
+// HSTS must run after UseForwardedHeaders. It only emits its header when the
+// request is recognised as HTTPS, and behind the load balancer that is only true
+// once X-Forwarded-Proto has been applied - nginx reaches Kestrel over plain HTTP.
+// Registered earlier, it silently never fires.
+if (!app.Environment.IsDevelopment() && batteryPassOptions.RequireHttpsRedirection)
+{
+    app.UseHsts();
+}
+
+// The load balancer health check reaches the instance over plain HTTP. It is
+// answered here, ahead of the HTTPS redirect, so it always sees a 200 rather than
+// a 301 - a redirected health check marks every target unhealthy and takes the
+// whole environment out of service.
+//
+// This deliberately touches no database or external dependency. A degraded
+// backend should surface as errors on real requests, not as instances being
+// cycled out of the load balancer.
+app.Map(BatteryPassHealthCheck.Path, healthApp => healthApp.Run(async context =>
+{
+    context.Response.StatusCode = StatusCodes.Status200OK;
+    context.Response.ContentType = "text/plain";
+
+    if (!healthDiagnosticsEnabled)
+    {
+        await context.Response.WriteAsync(BatteryPassHealthCheck.ResponseBody);
+        return;
+    }
+
+    // Never redirected, so this still answers while a redirect loop is in progress -
+    // which is exactly when knowing what the application sees matters most.
+    await context.Response.WriteAsync(BatteryPassHealthCheck.BuildDiagnostics(
+        context.Request.Scheme,
+        context.Request.IsHttps,
+        context.Request.Headers["X-Forwarded-Proto"].ToString(),
+        context.Request.Headers["X-Forwarded-For"].ToString(),
+        context.Connection.RemoteIpAddress?.ToString(),
+        context.Items[BatteryPassHealthCheck.RawForwardedHeadersKey]
+            as IEnumerable<KeyValuePair<string, string>>));
+}));
+
 if (batteryPassOptions.RequireHttpsRedirection)
 {
     app.UseHttpsRedirection();
