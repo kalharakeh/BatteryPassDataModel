@@ -253,6 +253,36 @@ public sealed class DppStore
         return await Collection<BatteryPack>().Find(pack => batchIds.Contains(pack.BatchId)).Project(pack => pack.Id).ToListAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// The clusters of the published packs whose passport uses this model, batch or pack record. Draft packs count for
+    /// nobody: a draft is visible to the team only (J-6).
+    /// </summary>
+    public async Task<IReadOnlyList<string>> FindPublishedClusterIdsUsingAsync(string? modelId = null, string? batchId = null, string? packId = null, CancellationToken cancellationToken = default)
+    {
+        if (_database is null)
+        {
+            return [];
+        }
+
+        var packIds = packId is not null
+            ? [packId]
+            : (await FindPackIdsUsingAsync(modelId: modelId, batchId: batchId, cancellationToken: cancellationToken)).ToList();
+        if (packIds.Count == 0)
+        {
+            return [];
+        }
+
+        var published = await Collection<PassportVersion>()
+            .Find(version => packIds.Contains(version.PackId) && version.DppStatus == DppStatuses.Active)
+            .Project(version => version.PackId)
+            .ToListAsync(cancellationToken);
+        var clusters = await Collection<BatteryPack>()
+            .Find(pack => published.Contains(pack.Id) && pack.ClusterId != null)
+            .Project(pack => pack.ClusterId)
+            .ToListAsync(cancellationToken);
+        return clusters.OfType<string>().Distinct(StringComparer.Ordinal).ToArray();
+    }
+
     private IMongoCollection<T> Collection<T>() => RequireDatabase().GetCollection<T>(CollectionName<T>());
 
     private IMongoDatabase RequireDatabase() =>
