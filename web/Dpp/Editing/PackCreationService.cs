@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Identifiers;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Dpp.Values;
@@ -18,13 +19,14 @@ public sealed record NewPack(
 public sealed record PackCreationResult(BatteryPack? Pack, IReadOnlyList<KeyResult> Keys, string? Problem);
 
 /// <summary>
-/// Creates a draft pack (design 7.1): the team only, all values accepted or nothing saved. The app issues #6 and sets
-/// #22 to "original"; everything else goes through the save pipeline's checks.
+/// Creates a draft pack (design 7.1): the team only, all values accepted or nothing saved. The app issues #6, sets
+/// #22 to "original" and points #92 at the pack's accident page; everything else goes through the save pipeline's checks.
 /// </summary>
 public sealed class PackCreationService(
     DppStore store,
     SavePipeline pipeline,
     IIdentifierScheme identifiers,
+    DppLinks links,
     ApplicationAuditService audit,
     TimeProvider clock)
 {
@@ -38,6 +40,11 @@ public sealed class PackCreationService(
         if (sender.Kind != SenderKind.Team)
         {
             return Failed("only the team creates packs");
+        }
+
+        if (!links.IsConfigured)
+        {
+            return Failed(DppLinks.NotConfigured);
         }
 
         if (await store.GetAsync<ProductionBatch>(request.BatchId, cancellationToken) is null)
@@ -71,6 +78,7 @@ public sealed class PackCreationService(
         };
         pack.Values["uniqueProductIdentifier"] = Stored(JsonValue.Create(identifiers.NewPackIdentifier()), now, "system", sender.Who);
         pack.Values["batteryStatus"] = Stored(new JsonObject { ["batteryStatusValues"] = "original" }, now, "system", sender.Who);
+        pack.Values["informationOnAccidents"] = Stored(links.AccidentPageLink(pack.Id), now, "system", sender.Who);
         foreach (var (key, value) in evaluation.Accepted)
         {
             pack.Values[key] = Stored(value, now, request.Source, sender.Who);

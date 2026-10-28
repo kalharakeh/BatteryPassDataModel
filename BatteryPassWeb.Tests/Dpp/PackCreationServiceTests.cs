@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Identifiers;
 using BatteryPassWeb.Dpp.Store;
@@ -29,6 +30,25 @@ public sealed class PackCreationServiceTests(MongoFixture mongo)
         Assert.Equal("system", pack.Values["uniqueProductIdentifier"].Source);
         Assert.Equal("form", pack.Values["warrantyPeriod"].Source);
         Assert.Equal(DppStoreTesting.Now.UtcDateTime, pack.Values["manufacturingDate"].GeneratedAtUtc);
+        Assert.Equal(DocumentTesting.Links.AccidentPageUrl(pack.Id), pack.Values["informationOnAccidents"].Value["url"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task WithoutAnAppBaseUrl_PackCreationShouldStopWithAClearMessage()
+    {
+        var (store, context, seed) = await DppStoreTesting.SeededStoreAsync(mongo);
+        var service = new PackCreationService(
+            store,
+            SavePipelineTesting.Pipeline(store, context),
+            new TestIdentifierScheme(),
+            DocumentTesting.NoLinks,
+            new ApplicationAuditService(context),
+            new FixedTimeProvider(DppStoreTesting.Now));
+
+        var result = await service.CreateAsync(Team, NewPack(seed, ("batterySerialNumber", "\"VPC9-0006\"")));
+
+        Assert.Equal(DppLinks.NotConfigured, result.Problem);
+        Assert.Empty(await store.FindPacksBySerialNumberAsync("VPC9-0006"));
     }
 
     [Fact]
@@ -101,6 +121,7 @@ public sealed class PackCreationServiceTests(MongoFixture mongo)
             store,
             SavePipelineTesting.Pipeline(store, context),
             new TestIdentifierScheme(),
+            DocumentTesting.Links,
             new ApplicationAuditService(context),
             new FixedTimeProvider(DppStoreTesting.Now));
         return (store, service, seed);
