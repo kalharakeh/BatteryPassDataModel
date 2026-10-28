@@ -17,6 +17,7 @@ public sealed class DppStore
     public const string Batches = "dpp_batches";
     public const string Operators = "dpp_operators";
     public const string Packs = "dpp_packs";
+    public const string Versions = "dpp_passport_versions";
 
     private const string UniqueProductIdentifierField = "Values.uniqueProductIdentifier.Value";
     private const string SerialNumberField = "Values.batterySerialNumber.Value";
@@ -29,6 +30,7 @@ public sealed class DppStore
         [typeof(ProductionBatch)] = Batches,
         [typeof(EconomicOperator)] = Operators,
         [typeof(BatteryPack)] = Packs,
+        [typeof(PassportVersion)] = Versions,
     };
 
     private readonly IMongoDatabase? _database;
@@ -77,6 +79,18 @@ public sealed class DppStore
                 Builders<BatteryModel>.IndexKeys.Ascending(model => model.FamilyId),
                 new CreateIndexOptions { Name = "family" }),
             cancellationToken: cancellationToken);
+        await Collection<PassportVersion>().Indexes.CreateManyAsync(
+        [
+            new CreateIndexModel<PassportVersion>(
+                Builders<PassportVersion>.IndexKeys.Ascending(version => version.DigitalProductPassportId),
+                new CreateIndexOptions { Unique = true, Name = "passport_id" }),
+            new CreateIndexModel<PassportVersion>(
+                Builders<PassportVersion>.IndexKeys.Ascending(version => version.PackId).Ascending(version => version.Number),
+                new CreateIndexOptions { Unique = true, Name = "pack_number" }),
+            new CreateIndexModel<PassportVersion>(
+                Builders<PassportVersion>.IndexKeys.Ascending(version => version.PackId).Ascending(version => version.DppStatus),
+                new CreateIndexOptions { Name = "pack_status" }),
+        ], cancellationToken);
     }
 
     public async Task<T?> GetAsync<T>(string id, CancellationToken cancellationToken = default)
@@ -155,6 +169,88 @@ public sealed class DppStore
         return model is null || site is null || economicOperator is null
             ? null
             : new PassportSources(pack, batch, model, site, economicOperator);
+    }
+
+    /// <summary>The pack's active version; the newest one if two briefly overlap while a version is published.</summary>
+    public async Task<PassportVersion?> GetActiveVersionAsync(string packId, CancellationToken cancellationToken = default)
+    {
+        if (_database is null || string.IsNullOrWhiteSpace(packId))
+        {
+            return null;
+        }
+
+        return await Collection<PassportVersion>()
+            .Find(version => version.PackId == packId && version.DppStatus == DppStatuses.Active)
+            .SortByDescending(version => version.Number)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>A version by its passport ID (#5), whatever its status.</summary>
+    public async Task<PassportVersion?> GetVersionByPassportIdAsync(string passportId, CancellationToken cancellationToken = default)
+    {
+        if (_database is null || string.IsNullOrWhiteSpace(passportId))
+        {
+            return null;
+        }
+
+        return await Collection<PassportVersion>().Find(version => version.DigitalProductPassportId == passportId).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<PassportVersion>> ListVersionsAsync(string packId, CancellationToken cancellationToken = default)
+    {
+        if (_database is null || string.IsNullOrWhiteSpace(packId))
+        {
+            return [];
+        }
+
+        return await Collection<PassportVersion>().Find(version => version.PackId == packId).SortBy(version => version.Number).ToListAsync(cancellationToken);
+    }
+
+    /// <summary>The highest version number of the pack; 0 before its first publication.</summary>
+    public async Task<int> GetLatestVersionNumberAsync(string packId, CancellationToken cancellationToken = default)
+    {
+        var latest = await Collection<PassportVersion>()
+            .Find(version => version.PackId == packId)
+            .SortByDescending(version => version.Number)
+            .Project(version => version.Number)
+            .FirstOrDefaultAsync(cancellationToken);
+        return latest;
+    }
+
+    /// <summary>Marks every other active version of the pack as archived.</summary>
+    public Task ArchiveOtherVersionsAsync(string packId, string activeVersionId, CancellationToken cancellationToken = default) =>
+        Collection<PassportVersion>().UpdateManyAsync(
+            version => version.PackId == packId && version.DppStatus == DppStatuses.Active && version.Id != activeVersionId,
+            Builders<PassportVersion>.Update.Set(version => version.DppStatus, DppStatuses.Archived),
+            cancellationToken: cancellationToken);
+
+    /// <summary>Sets #4 of a version (a live update made available now).</summary>
+    public Task SetVersionLastUpdatedAsync(string versionId, DateTime lastUpdatedUtc, CancellationToken cancellationToken = default) =>
+        Collection<PassportVersion>().UpdateOneAsync(
+            version => version.Id == versionId,
+            Builders<PassportVersion>.Update.Set(version => version.LastUpdatedUtc, lastUpdatedUtc),
+            cancellationToken: cancellationToken);
+
+    /// <summary>The packs whose passport is built from this model, batch, site or operator record.</summary>
+    public async Task<IReadOnlyList<string>> FindPackIdsUsingAsync(string? modelId = null, string? siteId = null, string? batchId = null, string? operatorId = null, CancellationToken cancellationToken = default)
+    {
+        if (_database is null)
+        {
+            return [];
+        }
+
+        if (operatorId is not null)
+        {
+            return await Collection<BatteryPack>().Find(pack => pack.OperatorId == operatorId).Project(pack => pack.Id).ToListAsync(cancellationToken);
+        }
+
+        var batchIds = batchId is not null
+            ? [batchId]
+            : await Collection<ProductionBatch>()
+                .Find(batch => (modelId != null && batch.ModelId == modelId) || (siteId != null && batch.SiteId == siteId))
+                .Project(batch => batch.Id)
+                .ToListAsync(cancellationToken);
+        return await Collection<BatteryPack>().Find(pack => batchIds.Contains(pack.BatchId)).Project(pack => pack.Id).ToListAsync(cancellationToken);
     }
 
     private IMongoCollection<T> Collection<T>() => RequireDatabase().GetCollection<T>(CollectionName<T>());
