@@ -399,7 +399,7 @@ Step 2 is planned in four parts, each ending with a working app:
 
 - **2a, store and save pipeline:** the repositories (tested against a throwaway MongoDB), turning bare values into the schema's form, who may change what, the save pipeline with preview and a change log, test identifiers and pack creation. Backend only; every pack is a draft.
 - **2b, publication and versions:** the publication checks, passport IDs (#5), signing of the static core, versions and archiving.
-- **2c, documents:** public links, and uploaded files behind access-checked links.
+- **2c, documents:** public links, and uploaded files behind access checks, including the audience rule of 5.2 and #92's accident reports. Backend only: the download route and the accident page arrive with step 3's roles.
 - **2d, the team's editing pages:** after a layout mock-up (section 12), including the family picture.
 
 ## 15. Judgement calls
