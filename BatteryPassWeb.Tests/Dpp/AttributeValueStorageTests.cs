@@ -19,6 +19,10 @@ public sealed class AttributeValueStorageTests
     [InlineData("\"2026-09\"")]
     [InlineData("412")]
     [InlineData("12.5")]
+    [InlineData("75.4")] // not exact in binary: must not come back as 75.400000000000006
+    [InlineData("""{"kgCO2EquivalentPerKilowattHourValue":4.8,"kgCO2EquivalentPerKilowattHourUnit":"kgCO2-eq/kWh"}""")]
+    [InlineData("""[{"concentration":1.2,"hazardPhrases":["H301"]}]""")]
+    [InlineData("true")]
     public void Value_ShouldRoundTripThroughBson(string json)
     {
         var original = new AttributeValue { Value = JsonNode.Parse(json)!, GeneratedAtUtc = Generated, Source = "form", Who = "team@example.com" };
