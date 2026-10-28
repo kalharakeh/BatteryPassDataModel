@@ -14,7 +14,7 @@
 - **Section 15** lists the choices this design makes where the file and the 21 decisions don't decide. These are the places to push back. **Section 16** lists the open items.
 - **Appendix A** is the attribute catalogue (73 rows), **Appendix B** the schema notes, **Appendix C** how each row of the comparison workbook is covered.
 
-This is the umbrella design for six implementation plans, one per build step (section 14). Each plan is written and reviewed separately; step 1 comes first. The earlier 10-task plan `docs/superpowers/plans/2026-10-28-dpp-v3-high-priority-access-fixes.md` is replaced: its access rules move into step 3.
+This is the umbrella design for the six build steps of section 14. Each step gets its own implementation plan, written and reviewed separately; step 2 is planned in four parts (2a–2d). The earlier 10-task plan `docs/superpowers/plans/2026-10-28-dpp-v3-high-priority-access-fixes.md` is replaced: its access rules move into step 3.
 
 Terms used:
 
@@ -394,6 +394,13 @@ Each attribute holds one document per owner (model, batch or pack).
 | 6. Go-live readiness | The identifier scheme switch (once O-1 is decided); help pages and test pack rewritten; manual checks over the role matrix; data reset on the hosted environment |
 
 Each step ends with all tests passing and a working app. Appendix C shows which workbook rows each step closes.
+
+Step 2 is planned in four parts, each ending with a working app:
+
+- **2a, store and save pipeline:** the repositories (tested against a throwaway MongoDB), turning bare values into the schema's form, who may change what, the save pipeline with preview and a change log, test identifiers and pack creation. Backend only; every pack is a draft.
+- **2b, publication and versions:** the publication checks, passport IDs (#5), signing of the static core, versions and archiving.
+- **2c, documents:** public links, and uploaded files behind access-checked links.
+- **2d, the team's editing pages:** after a layout mock-up (section 12), including the family picture.
 
 ## 15. Judgement calls
 
