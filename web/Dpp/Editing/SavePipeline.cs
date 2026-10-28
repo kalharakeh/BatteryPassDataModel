@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using BatteryPassWeb.Dpp.Catalog;
+using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Dpp.Values;
 using BatteryPassWeb.Services;
@@ -59,6 +60,7 @@ public sealed class SavePipeline(
     AttributeValueValidator validator,
     ApplicationAuditService audit,
     TimeProvider clock,
+    DppLinks links,
     IEnumerable<IPackChangeListener> listeners)
 {
     public const string AuditEventType = "dpp.change";
@@ -165,9 +167,18 @@ public sealed class SavePipeline(
 
         var value = normalizer.Normalize(attribute, raw)!;
         var issues = validator.Validate(attribute, value);
-        return issues.Count > 0
-            ? (KeyOutcome.Rejected, string.Join("; ", issues.Select(issue => $"{issue.Location} {issue.Message}".Trim())), null)
-            : (KeyOutcome.Saved, string.Empty, value);
+        if (issues.Count > 0)
+        {
+            return (KeyOutcome.Rejected, string.Join("; ", issues.Select(issue => $"{issue.Location} {issue.Message}".Trim())), null);
+        }
+
+        // Restricted documents are served by the app behind access checks; a link elsewhere would publish them.
+        if (DppLinks.RestrictedDocumentProperties.Contains(attribute.Property) && !links.IsAppUrl(value["url"]?.GetValue<string>() ?? string.Empty))
+        {
+            return (KeyOutcome.Rejected, $"#{attribute.Number} must link to a file uploaded to the app", null);
+        }
+
+        return (KeyOutcome.Saved, string.Empty, value);
     }
 
     /// <summary>Re-stated attributes start on the model; a pack only gets its own value through the status change.</summary>

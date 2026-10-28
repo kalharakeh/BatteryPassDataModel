@@ -23,10 +23,10 @@
       "hazardousSubstancesAndTheirImpact": [
         { "chemicalName": "Lithium hexafluorophosphate", "identifierType": "CAS No", "identifier": "21324-40-3", "concentration": 1.2, "hazardPhrases": [ "H301", "H314", "H372" ], "precautionaryPhrases": [ "P260", "P280", "P301+P310" ], "substanceLocation": "Electrolyte" }
       ],
-      "dismantlingInformation": { "contentType": "application/pdf", "url": "https://passport.example.com/documents/model-test/dismantling.pdf", "language": "en-GB", "resourceTitle": "Dismantling manual" },
-      "partNumbersForComponents": { "contentType": "application/pdf", "url": "https://passport.example.com/documents/model-test/part-numbers.pdf", "language": "en-GB", "resourceTitle": "Part numbers for components" },
-      "informationOnSourcesOfSpareParts": { "contentType": "application/pdf", "url": "https://passport.example.com/documents/model-test/spare-parts.pdf", "language": "en-GB", "resourceTitle": "Sources of spare parts" },
-      "safetyMeasures": { "contentType": "application/pdf", "url": "https://passport.example.com/documents/model-test/safety-measures.pdf", "language": "en-GB", "resourceTitle": "Safety measures" },
+      "dismantlingInformation": { "contentType": "application/pdf", "url": "https://passport.example.com/dpp/documents/doc-dismantling", "language": "en-GB", "resourceTitle": "Dismantling manual" },
+      "partNumbersForComponents": { "contentType": "application/pdf", "url": "https://passport.example.com/dpp/documents/doc-part-numbers", "language": "en-GB", "resourceTitle": "Part numbers for components" },
+      "informationOnSourcesOfSpareParts": { "contentType": "application/pdf", "url": "https://passport.example.com/dpp/documents/doc-spare-parts", "language": "en-GB", "resourceTitle": "Sources of spare parts" },
+      "safetyMeasures": { "contentType": "application/pdf", "url": "https://passport.example.com/dpp/documents/doc-safety-measures", "language": "en-GB", "resourceTitle": "Safety measures" },
       "informationOnTheRoleOfEndUsersInContributingToWastePrevention": { "contentType": "text/html", "url": "https://www.example.com/battery/waste-prevention", "language": "en-GB", "resourceTitle": "Your role in waste prevention" },
       "informationOnTheRoleOfEndUsersInContributingToTheSeparateCollectionOfWasteBatteries": { "contentType": "text/html", "url": "https://www.example.com/battery/separate-collection", "language": "en-GB", "resourceTitle": "Your role in separate collection" },
       "informationOnBatteryCollectionPreparationForSecondLifeAndOnTreatmentAtEndOfLife": { "contentType": "application/pdf", "url": "https://www.example.com/battery/collection-and-treatment.pdf", "language": "en-GB", "resourceTitle": "Collection, second life and treatment" },
@@ -69,7 +69,7 @@
       "batteryModelIdentifier": "EXB-NMC-100",
       "carbonFootprintLabel": { "contentType": "image/png", "url": "https://www.example.com/battery/carbon-footprint-label.png", "language": "en-GB", "resourceTitle": "Carbon footprint label" },
       "euDeclarationOfConformity": { "contentType": "application/pdf", "url": "https://www.example.com/battery/eu-declaration-of-conformity.pdf", "language": "en-GB", "resourceTitle": "EU declaration of conformity" },
-      "resultsOfTestReportsProvingCompliance": { "contentType": "application/pdf", "url": "https://passport.example.com/documents/batch-test-2026/test-reports.pdf", "language": "en-GB", "resourceTitle": "Test reports" },
+      "resultsOfTestReportsProvingCompliance": { "contentType": "application/pdf", "url": "https://passport.example.com/dpp/documents/doc-test-reports", "language": "en-GB", "resourceTitle": "Test reports" },
       "batteryCarbonFootprintPerFunctionalUnit": { "kgCO2EquivalentPerKilowattHourValue": 75.4, "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh" },
       "contributionOfRawMaterialAcquisitionAndPreProcessingLifecycleStage": { "kgCO2EquivalentPerKilowattHourValue": 48.1, "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh" },
       "contributionOfMainProductProductionLifecycleStage": { "kgCO2EquivalentPerKilowattHourValue": 20.3, "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh" },
@@ -108,7 +108,7 @@
       "stateOfChargeSoC": { "percentUnit": "%", "percentageValue": 76 },
       "numberOfFullChargingAndDischargingCycles": 412,
       "temperatureInformation": { "degreeCelsiusUnit": "°C", "celsiusValue": 23 },
-      "informationOnAccidents": { "contentType": "text/html", "url": "https://passport.example.com/packs/VPC8C05-6788/accidents", "language": "en-GB", "resourceTitle": "Accident information" }
+      "informationOnAccidents": { "contentType": "text/html", "url": "https://passport.example.com/dpp/packs/pack-VPC8C05-6788/accidents", "language": "en-GB", "resourceTitle": "Accident information" }
     }
   }
 }

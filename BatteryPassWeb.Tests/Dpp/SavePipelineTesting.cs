@@ -17,5 +17,6 @@ internal static class SavePipelineTesting
         new AttributeValueValidator(DppStoreTesting.Schemas),
         new ApplicationAuditService(context),
         clock,
+        DocumentTesting.Links,
         listeners);
 }

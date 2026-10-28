@@ -1,3 +1,4 @@
+using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Identifiers;
 using BatteryPassWeb.Dpp.Publication;
@@ -28,6 +29,7 @@ public static class DppServiceCollectionExtensions
         services.AddSingleton<PublicationService>();
         services.AddSingleton<IPackChangeListener>(provider => provider.GetRequiredService<PublicationService>());
         services.AddSingleton<PassportReader>();
+        services.AddSingleton<DppLinks>();
         return services;
     }
 }
