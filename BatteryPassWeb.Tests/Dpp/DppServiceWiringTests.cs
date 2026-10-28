@@ -2,9 +2,11 @@ using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Dpp;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Identifiers;
+using BatteryPassWeb.Dpp.Publication;
 using BatteryPassWeb.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using System.Security.Cryptography;
 
 namespace BatteryPassWeb.Tests.Dpp;
 
@@ -17,6 +19,7 @@ public sealed class DppServiceWiringTests
             .AddSingleton(Options.Create(new BatteryPassOptions()))
             .AddSingleton<MongoContext>()
             .AddSingleton<ApplicationAuditService>()
+            .AddSingleton(new DemoSigningKeyService(ECDsa.Create(ECCurve.NamedCurves.nistP256)))
             .AddDpp()
             .BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
 
@@ -24,6 +27,8 @@ public sealed class DppServiceWiringTests
         Assert.NotNull(provider.GetRequiredService<PackCreationService>());
         Assert.IsType<TestIdentifierScheme>(provider.GetRequiredService<IIdentifierScheme>());
         Assert.Same(TimeProvider.System, provider.GetRequiredService<TimeProvider>());
+        Assert.NotNull(provider.GetRequiredService<PassportReader>());
+        Assert.Same(provider.GetRequiredService<PublicationService>(), Assert.Single(provider.GetServices<IPackChangeListener>()));
     }
 
     [Fact]
