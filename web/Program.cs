@@ -1,4 +1,6 @@
 using BatteryPassWeb.Configuration;
+using BatteryPassWeb.Dpp;
+using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
@@ -250,6 +252,7 @@ builder.Services.AddSingleton<ExternalApiSecurityService>();
 builder.Services.AddSingleton<ExternalApiRepository>();
 builder.Services.AddSingleton<BatteryTelemetryRepository>();
 builder.Services.AddSingleton<ExternalApiInitializer>();
+builder.Services.AddDpp();
 
 var app = builder.Build();
 var batteryPassOptions = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<BatteryPassOptions>>().Value;
@@ -379,6 +382,7 @@ app.MapControllers();
 
 using (var scope = app.Services.CreateScope())
 {
+    await scope.ServiceProvider.GetRequiredService<DppStore>().EnsureIndexesAsync();
     var initializer = scope.ServiceProvider.GetRequiredService<ExternalApiInitializer>();
     await initializer.InitializeAsync();
 }
