@@ -69,12 +69,14 @@ public static class PassportAssembler
         1 => JsonValue.Create(DppSchemaVersion),
         2 => new JsonObject { ["dppStatusValue"] = header.DppStatus },
         3 => new JsonObject { ["dppGranularityValue"] = "item" },
-        4 => JsonValue.Create(ToUtc(header.LastUpdatedUtc).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture)),
+        4 => JsonValue.Create(FormatTimestamp(header.LastUpdatedUtc)),
         5 => JsonValue.Create(header.DigitalProductPassportId),
         _ => throw new InvalidOperationException($"#{number} is not a system attribute."),
     };
 
-    private static DateTime ToUtc(DateTime value) => value.Kind == DateTimeKind.Local ? value.ToUniversalTime() : value;
+    /// <summary>#4's format: UTC, ISO 8601, whole seconds (e.g. 2026-10-28T09:30:00Z).</summary>
+    public static string FormatTimestamp(DateTime utc) =>
+        (utc.Kind == DateTimeKind.Local ? utc.ToUniversalTime() : utc).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
 
     private static JsonObject Child(JsonObject parent, string name)
     {
