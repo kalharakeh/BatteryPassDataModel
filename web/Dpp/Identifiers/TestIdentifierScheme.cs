@@ -5,6 +5,9 @@ public interface IIdentifierScheme
 {
     string NewPackIdentifier();
 
+    /// <summary>A new passport ID (#5) for one passport version.</summary>
+    string NewPassportIdentifier();
+
     /// <summary>True for identifiers issued for testing; pages show a banner for these (design 10).</summary>
     bool IsTestIdentifier(string identifier);
 }
@@ -18,6 +21,8 @@ public sealed class TestIdentifierScheme : IIdentifierScheme
     public const string Prefix = "urn:x-battery-pass:TEST-";
 
     public string NewPackIdentifier() => $"{Prefix}{Guid.NewGuid():N}";
+
+    public string NewPassportIdentifier() => $"{Prefix}DPP-{Guid.NewGuid():N}";
 
     public bool IsTestIdentifier(string identifier) =>
         identifier?.StartsWith(Prefix, StringComparison.Ordinal) == true;

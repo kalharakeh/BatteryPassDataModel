@@ -19,6 +19,17 @@ public sealed class TestIdentifierSchemeTests
     }
 
     [Fact]
+    public void NewPassportIdentifier_ShouldBeAMarkedTestUrnThatPassesTheValueChecks()
+    {
+        var identifier = _scheme.NewPassportIdentifier();
+
+        Assert.StartsWith("urn:x-battery-pass:TEST-DPP-", identifier, StringComparison.Ordinal);
+        Assert.True(_scheme.IsTestIdentifier(identifier));
+        Assert.NotEqual(identifier, _scheme.NewPassportIdentifier());
+        Assert.Empty(new AttributeValueValidator(DppStoreTesting.Schemas).Validate(AttributeCatalog.ByNumber(5), JsonValue.Create(identifier)));
+    }
+
+    [Fact]
     public void NewPackIdentifier_ShouldNeverRepeat()
     {
         var identifiers = Enumerable.Range(0, 200).Select(_ => _scheme.NewPackIdentifier()).ToList();
