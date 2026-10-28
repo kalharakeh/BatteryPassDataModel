@@ -58,9 +58,12 @@ public sealed class SavePipeline(
     AttributeValueNormalizer normalizer,
     AttributeValueValidator validator,
     ApplicationAuditService audit,
-    TimeProvider clock)
+    TimeProvider clock,
+    IEnumerable<IPackChangeListener> listeners)
 {
     public const string AuditEventType = "dpp.change";
+
+    private readonly IPackChangeListener[] _listeners = listeners.ToArray();
 
     public async Task<SaveResult> SaveAsync(ChangeSender sender, ChangeSet changes, bool preview = false, CancellationToken cancellationToken = default)
     {
@@ -97,6 +100,10 @@ public sealed class SavePipeline(
                 entityType: $"dpp-{changes.Target.ToString().ToLowerInvariant()}",
                 entityId: changes.TargetId,
                 cancellationToken: cancellationToken);
+            foreach (var listener in _listeners)
+            {
+                await listener.ValuesSavedAsync(changes.Target, changes.TargetId, stored.Keys.ToArray(), sender.Who, cancellationToken);
+            }
         }
 
         return new SaveResult(true, saved, evaluation.Results);
