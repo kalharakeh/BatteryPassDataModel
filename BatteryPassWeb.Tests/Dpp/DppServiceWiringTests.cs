@@ -1,5 +1,6 @@
 using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Dpp;
+using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Identifiers;
 using BatteryPassWeb.Dpp.Publication;
@@ -16,7 +17,7 @@ public sealed class DppServiceWiringTests
     public void AddDpp_ShouldResolveEveryServiceWithoutADatabase()
     {
         using var provider = new ServiceCollection()
-            .AddSingleton(Options.Create(new BatteryPassOptions()))
+            .AddSingleton(Options.Create(new BatteryPassOptions { AppBaseUrl = DocumentTesting.BaseUrl }))
             .AddSingleton<MongoContext>()
             .AddSingleton<ApplicationAuditService>()
             .AddSingleton(new DemoSigningKeyService(ECDsa.Create(ECCurve.NamedCurves.nistP256)))
@@ -28,6 +29,8 @@ public sealed class DppServiceWiringTests
         Assert.IsType<TestIdentifierScheme>(provider.GetRequiredService<IIdentifierScheme>());
         Assert.Same(TimeProvider.System, provider.GetRequiredService<TimeProvider>());
         Assert.NotNull(provider.GetRequiredService<PassportReader>());
+        Assert.NotNull(provider.GetRequiredService<DocumentService>());
+        Assert.True(provider.GetRequiredService<DppLinks>().IsConfigured);
         Assert.Same(provider.GetRequiredService<PublicationService>(), Assert.Single(provider.GetServices<IPackChangeListener>()));
     }
 
@@ -38,5 +41,7 @@ public sealed class DppServiceWiringTests
 
         Assert.Contains("builder.Services.AddDpp();", program, StringComparison.Ordinal);
         Assert.Contains("await scope.ServiceProvider.GetRequiredService<DppStore>().EnsureIndexesAsync();", program, StringComparison.Ordinal);
+        Assert.Contains("await scope.ServiceProvider.GetRequiredService<DocumentStore>().EnsureIndexesAsync();", program, StringComparison.Ordinal);
+        Assert.Contains("APP_BASE_URL is not set", program, StringComparison.Ordinal);
     }
 }

@@ -1,5 +1,6 @@
 using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Dpp;
+using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -383,6 +384,11 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     await scope.ServiceProvider.GetRequiredService<DppStore>().EnsureIndexesAsync();
+    await scope.ServiceProvider.GetRequiredService<DocumentStore>().EnsureIndexesAsync();
+    if (!scope.ServiceProvider.GetRequiredService<DppLinks>().IsConfigured)
+    {
+        app.Logger.LogWarning("APP_BASE_URL is not set: battery packs can't be created and documents can't be linked until it is.");
+    }
     var initializer = scope.ServiceProvider.GetRequiredService<ExternalApiInitializer>();
     await initializer.InitializeAsync();
 }

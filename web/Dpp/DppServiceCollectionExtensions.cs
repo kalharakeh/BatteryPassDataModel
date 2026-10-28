@@ -12,7 +12,10 @@ namespace BatteryPassWeb.Dpp;
 
 public static class DppServiceCollectionExtensions
 {
-    /// <summary>Registers the V3 passport services (design section 3). They need MongoContext, ApplicationAuditService and DemoSigningKeyService.</summary>
+    /// <summary>
+    /// Registers the V3 passport services (design section 3). They need MongoContext, ApplicationAuditService,
+    /// DemoSigningKeyService and the BatteryPassOptions (APP_BASE_URL for document links).
+    /// </summary>
     public static IServiceCollection AddDpp(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -30,6 +33,8 @@ public static class DppServiceCollectionExtensions
         services.AddSingleton<IPackChangeListener>(provider => provider.GetRequiredService<PublicationService>());
         services.AddSingleton<PassportReader>();
         services.AddSingleton<DppLinks>();
+        services.AddSingleton<DocumentStore>();
+        services.AddSingleton<DocumentService>();
         return services;
     }
 }
