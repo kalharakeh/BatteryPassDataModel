@@ -9,4 +9,8 @@
 <main class="bp-page">
     <partial name="_PassportHero" model="Model" view-data="ViewData" />
     <partial name="_PassportTabs" model="Model" />
+    @if (ViewData["LiveHistory"] is IReadOnlyList<BatteryPassWeb.Dpp.Api.LiveHistoryEntry> { Count: > 0 } history)
+    {
+        <partial name="_LiveHistory" model="history" />
+    }
 </main>

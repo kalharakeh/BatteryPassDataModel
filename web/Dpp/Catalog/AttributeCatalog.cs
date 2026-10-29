@@ -132,4 +132,32 @@ public static class AttributeCatalog
             : throw new KeyNotFoundException($"The catalogue has no attribute {number}.");
 
     public static AttributeDefinition? FindByProperty(string property) => ByPropertyIndex.GetValueOrDefault(property);
+
+    /// <summary>
+    /// When a conditional attribute applies (J-9), in plain words, from the V3 file's "other exemptions" column. The file
+    /// gives none for #19; its definition (the commercial warranty period) says when it applies.
+    /// </summary>
+    private static readonly Dictionary<int, string> ConditionTexts = new()
+    {
+        [19] = "Only when the battery has a commercial warranty.",
+        [24] = "Not needed when the battery's lead and cadmium are below the thresholds for the symbols.",
+        [49] = "Not needed when the battery contains no nickel.",
+        [50] = "Not needed when the battery contains no cobalt.",
+        [51] = "Not needed when the battery contains no lithium.",
+        [52] = "Not needed when the battery contains no lead.",
+        [71] = "Not needed for non-cycle applications.",
+        [72] = "Not needed for non-cycle applications.",
+        [74] = "Not needed for non-cycle applications.",
+        [82] = "Not needed for non-cycle applications.",
+        [83] = "Not needed for non-cycle applications.",
+        [84] = "Not needed for non-cycle applications.",
+        [85] = "Not needed for non-cycle applications.",
+    };
+
+    /// <summary>The condition of a conditional attribute of the file; null for the others and for the extensions.</summary>
+    public static string? ConditionOf(AttributeDefinition attribute)
+    {
+        ArgumentNullException.ThrowIfNull(attribute);
+        return attribute.IsExtension ? null : ConditionTexts.GetValueOrDefault(attribute.Number);
+    }
 }

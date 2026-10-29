@@ -1,0 +1,31 @@
+@using BatteryPassWeb.Dpp.Api
+@using BatteryPassWeb.Dpp.Forms
+@using BatteryPassWeb.Dpp.Pages
+@inject AttributeForms Forms
+@model IReadOnlyList<LiveHistoryEntry>
+@{
+    // The live values of the last week, newest measurement first: what the battery system or a person sent, as this
+    // reader may see it (decision 30).
+    const int Shown = 100;
+}
+<section class="bp-card mt-4 bp-live-history" aria-labelledby="live-history-title">
+    <span class="bp-summary-title">Live values</span>
+    <h2 id="live-history-title" class="h5">The last 7 days</h2>
+    <p class="text-secondary">Newest first. Each value with when it was measured and how it arrived.@(Model.Count > Shown ? $" The latest {Shown} of {Model.Count}." : string.Empty)</p>
+    <div class="bp-table-scroll">
+        <table class="table align-middle bp-console-table bp-mobile-card-table mb-0">
+            <thead><tr><th>Measured</th><th>Value</th><th>Reading</th><th>Came from</th></tr></thead>
+            <tbody>
+                @foreach (var entry in Model.Take(Shown))
+                {
+                    <tr>
+                        <td data-label="Measured">@ValueWords.Time(entry.MeasuredAtUtc)</td>
+                        <td data-label="Value">@entry.Attribute.Label @entry.Attribute.Name</td>
+                        <td data-label="Reading">@string.Join(", ", ValueWords.Lines(Forms.For(entry.Attribute), entry.Value).Select(line => line.Text))</td>
+                        <td data-label="Came from">@PassportPages.SourceWord(entry.Source)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>

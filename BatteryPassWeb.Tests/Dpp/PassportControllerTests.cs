@@ -228,6 +228,22 @@ public sealed class PassportControllerTests(MongoFixture mongo)
         return rig;
     }
 
+    [Fact]
+    public async Task TheDetailPage_ShouldShowTheLiveValueHistoryToThoseWhoMaySeeIt()
+    {
+        var rig = await PublicationTesting.PublishedRigAsync(mongo);
+        var pack = (await rig.Store.GetAsync<BatteryPassWeb.Dpp.Store.BatteryPack>(rig.PackId))!;
+        await BatteryApiTests.Api(rig).WriteLiveValuesAsync(PublicationTesting.Team, pack, new Dictionary<string, JsonNode?> { ["stateOfChargeSoC"] = JsonValue.Create(55) }, null, preview: false);
+        var id = PassportPagesTests.Identifier(rig);
+
+        var team = Assert.IsType<ViewResult>(await Pages(rig, "team@example.com", AccessControlService.RoleAdmin).Detail(id, CancellationToken.None, BatteryApiTests.Api(rig)));
+        var outsider = Assert.IsType<ViewResult>(await Pages(rig, "someone@example.com").Detail(id, CancellationToken.None, BatteryApiTests.Api(rig)));
+
+        var history = Assert.IsAssignableFrom<IReadOnlyList<BatteryPassWeb.Dpp.Api.LiveHistoryEntry>>(team.ViewData["LiveHistory"]);
+        Assert.Contains(history, entry => entry.Attribute.Number == 63 && entry.Value.ToJsonString().Contains("55", StringComparison.Ordinal));
+        Assert.Empty(Assert.IsAssignableFrom<IReadOnlyList<BatteryPassWeb.Dpp.Api.LiveHistoryEntry>>(outsider.ViewData["LiveHistory"])); // a signed-in stranger sees no live values
+    }
+
     private static HttpContext Http(string? email, string role) => new DefaultHttpContext
     {
         User = email is null

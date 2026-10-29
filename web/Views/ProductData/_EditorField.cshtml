@@ -125,6 +125,10 @@
                 <span>@(form.Kind == FormKind.Upload ? "Downloaded" : "Seen") only by @field.SeenBy.</span>
             </details>
         }
+        @if (AttributeCatalog.ConditionOf(definition) is { } condition)
+        {
+            <small class="bp-field-help bp-attr-condition">@condition</small>
+        }
         @if (hint is not null)
         {
             <small class="bp-field-help">@hint</small>

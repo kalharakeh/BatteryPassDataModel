@@ -71,6 +71,18 @@ public sealed class ReviewFixesTests
     }
 
     [Fact]
+    public void EveryConditionalAttribute_ShouldSayWhenItApplies()
+    {
+        var conditional = BatteryPassWeb.Dpp.Catalog.AttributeCatalog.FileAttributes.Where(a => a.Requirement == BatteryPassWeb.Dpp.Catalog.Requirement.Conditional).ToArray();
+
+        Assert.Equal(13, conditional.Length);
+        Assert.All(conditional, a => Assert.False(string.IsNullOrWhiteSpace(BatteryPassWeb.Dpp.Catalog.AttributeCatalog.ConditionOf(a))));
+        Assert.All(BatteryPassWeb.Dpp.Catalog.AttributeCatalog.All.Except(conditional), a => Assert.Null(BatteryPassWeb.Dpp.Catalog.AttributeCatalog.ConditionOf(a)));
+        Assert.Equal("Not needed when the battery contains no nickel.", BatteryPassWeb.Dpp.Catalog.AttributeCatalog.ConditionOf(BatteryPassWeb.Dpp.Catalog.AttributeCatalog.ByNumber(49)));
+        Assert.Contains("AttributeCatalog.ConditionOf(definition)", Read("web", "Views", "ProductData", "_EditorField.cshtml"));
+    }
+
+    [Fact]
     public void TheSharedNote_ShouldNameTreatmentFacilities()
     {
         Assert.Contains("repairers, recyclers and treatment facilities", Read("web", "Dpp", "Pages", "PassportPages.cs"));
