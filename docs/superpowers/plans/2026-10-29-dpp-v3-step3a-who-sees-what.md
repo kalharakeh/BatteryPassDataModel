@@ -1627,7 +1627,7 @@ Start the app from your PC against `battery_pass_v3`, as for the earlier steps, 
 1. **Users** (menu): "Access" offers the three "Legitimate interest: …" roles and no "Person with Legitimate Interest". An account that had the old role shows "Cluster Member".
 2. **A published battery's page**, Accident reports: add a report (a PDF) if it has none. Its title opens the file in the browser; "accident page" opens the page that lists it, newest first.
 3. **A model or batch with an uploaded file** (#29, #45–#48): "Open the file" opens it.
-4. **A draft battery's accident page** (`/dpp/packs/<its id>/accidents`): you see it, with "No accidents reported".
+4. **A draft battery's accident page:** on the draft's battery page, follow "accident page" under Accident reports: you see it, with "No accidents reported". Note its address (`/dpp/packs/<battery>/accidents`) for checks 5 and 6.
 5. **Sign out** and open the accident page's address again: the sign-in page opens; after signing in you are back on the accident page.
 6. **An account without access** (for example a new "Cluster Member" with no cluster): the accident page and a file's address say "Not available".
 7. **A narrow window** (about 390 px): the accident page doesn't scroll sideways.
