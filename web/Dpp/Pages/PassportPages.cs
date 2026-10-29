@@ -250,9 +250,10 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
 
     /// <summary>
     /// The stored value's time and source, when the stored value is still the one shown. An archived version may show a
-    /// value that has changed since; its origin isn't known any more, so none is given. #1–#5 are set by the app.
+    /// value that has changed since; its origin isn't known any more, so none is given. #1–#5 are set by the app. The
+    /// detail page and the API (3c) both show it.
     /// </summary>
-    private static ValueOrigin? Origin(AttributeDefinition attribute, PassportSources sources, JsonNode? shown)
+    public static ValueOrigin? Origin(AttributeDefinition attribute, PassportSources sources, JsonNode? shown)
     {
         var stored = attribute.Storage switch
         {

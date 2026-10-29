@@ -1,6 +1,7 @@
 using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Dpp;
 using BatteryPassWeb.Dpp.Access;
+using BatteryPassWeb.Dpp.Api;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Forms;
@@ -41,6 +42,7 @@ public sealed class DppServiceWiringTests
         Assert.NotNull(provider.GetRequiredService<BatteryPages>());
         Assert.NotNull(provider.GetRequiredService<DppReaders>());
         Assert.NotNull(provider.GetRequiredService<ReaderPages>());
+        Assert.NotNull(provider.GetRequiredService<PassportApi>());
     }
 
     [Fact]
