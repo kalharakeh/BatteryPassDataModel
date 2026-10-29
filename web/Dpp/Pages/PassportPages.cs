@@ -1,0 +1,297 @@
+using System.Text.Json.Nodes;
+using BatteryPassWeb.Dpp.Access;
+using BatteryPassWeb.Dpp.Assembly;
+using BatteryPassWeb.Dpp.Catalog;
+using BatteryPassWeb.Dpp.Forms;
+using BatteryPassWeb.Dpp.Identifiers;
+using BatteryPassWeb.Dpp.Publication;
+using BatteryPassWeb.Dpp.Store;
+using BatteryPassWeb.Dpp.Values;
+
+namespace BatteryPassWeb.Dpp.Pages;
+
+/// <summary>When a stored value was generated (design 4.1) and where it came from: "form", "upload", "feed" or "seed".</summary>
+public sealed record ValueOrigin(DateTime GeneratedAtUtc, string Source, bool Measured);
+
+/// <summary>One attribute on a passport page: its value in words and, on the detail page, its origin.</summary>
+public sealed record ShownValue(AttributeDefinition Attribute, IReadOnlyList<ValueLine> Lines, ValueOrigin? Origin);
+
+/// <summary>
+/// A tab of the passport pages: a schema section of public data, or one audience's data (detail page). <paramref name="Tab"/>
+/// is the tab's short name, <paramref name="Title"/> the heading inside it.
+/// </summary>
+public sealed record PassportSection(string Key, string Title, string Tab, string Note, IReadOnlyList<ShownValue> Values);
+
+/// <summary>One part of a chart on the summary report: a carbon footprint stage or a recycled content share.</summary>
+public sealed record ChartPart(string Label, decimal Value, string Unit);
+
+/// <summary>
+/// A published passport version as one reader sees it (design 12): the public data by schema section and, on the
+/// detail page, one section per audience the reader may see. Everything shown went through <see cref="PassportFilter"/>.
+/// </summary>
+public sealed record PassportPage(
+    PassportVersion Version,
+    PassportVersion? Current,
+    string Identifier,
+    string? FamilyName,
+    string? PictureHref,
+    bool IsTest,
+    bool SignatureHolds,
+    bool ReaderSeesMore,
+    IReadOnlyList<PassportSection> Sections,
+    IReadOnlyList<PassportSection> Audiences,
+    IReadOnlyList<ChartPart> Carbon,
+    IReadOnlyList<ChartPart> Recycled)
+{
+    /// <summary>True for the active version; an archived one links to <see cref="Current"/>.</summary>
+    public bool IsCurrent => Version.DppStatus == DppStatuses.Active;
+
+    /// <summary>The address of this page: the battery ID for the current version, the version's own passport ID otherwise.</summary>
+    public string Address => IsCurrent ? Identifier : Version.DigitalProductPassportId;
+
+    /// <summary>A public value shown on the page by its number, e.g. #11 for the hero's title; null when it has none.</summary>
+    public ShownValue? Value(int number) =>
+        Sections.SelectMany(section => section.Values).FirstOrDefault(value => value.Attribute.Number == number);
+
+    /// <summary>The first line of a public value in words, or "-".</summary>
+    public string Text(int number) => Value(number)?.Lines.FirstOrDefault()?.Text ?? "-";
+}
+
+/// <summary>Where a published passport is: its version, and the battery's ID (#6) and serial number (#11).</summary>
+public sealed record PassportLocation(PassportVersion Version, string Identifier, string SerialNumber)
+{
+    /// <summary>The pages' address: the battery ID for the current version, the version's own passport ID otherwise.</summary>
+    public string Address => Version.DppStatus == DppStatuses.Active ? Identifier : Version.DigitalProductPassportId;
+}
+
+/// <summary>
+/// The public summary and the detail page (design 12, step 3b). A passport is found by its battery ID (#6, the
+/// current version), its passport ID (#5, that version) or the battery's serial number (#11). Only published
+/// versions are shown: drafts stay with the team (J-6).
+/// </summary>
+public sealed class PassportPages(DppStore store, PassportReader reader, AttributeForms forms, IIdentifierScheme identifiers)
+{
+    /// <summary>The reader-facing title and line of each schema section, in the schema's order.</summary>
+    private static readonly (string Key, string Title, string Tab, string Note)[] SectionTexts =
+    [
+        (AttributeDefinition.HeaderSection, "Passport", "Passport", "This passport and the battery it belongs to."),
+        ("identifiersAndProductData", "Identifiers and product data", "Identifiers", "What the battery is and who makes it."),
+        ("symbolsLabelsAndDocumentationOfConformity", "Symbols, labels and conformity", "Symbols and conformity", "The battery's symbols and its declaration of conformity."),
+        ("batteryCarbonFootprint", "Carbon footprint", "Carbon footprint", "Per functional unit and per life-cycle stage."),
+        ("supplyChainDueDiligence", "Due diligence", "Due diligence", "The supply chain due diligence report."),
+        ("batteryMaterialsAndComposition", "Materials and composition", "Materials", "Chemistry, critical raw materials and hazardous substances."),
+        ("circularityAndResourceEfficiency", "Circularity", "Circularity", "Recycled and renewable content, and the end user's role in collection and waste prevention."),
+        ("performanceAndDurability", "Performance and durability", "Performance", "Capacity, voltage, power, efficiency and expected lifetime."),
+    ];
+
+    /// <summary>The detail page's audience sections (design 5.1), with who sees each.</summary>
+    private static readonly (Audience Audience, string Key, string Title, string Note)[] AudienceTexts =
+    [
+        (Audience.Purchaser, "purchaser", "Purchaser", "Seen by the battery's cluster and market surveillance."),
+        (Audience.Shared, "shared", "Shared", "Seen by the battery's cluster, market surveillance, the Commission and, per value, repairers and recyclers with a legitimate interest."),
+        (Audience.Authorities, "authorities", "Authorities", "Seen by notified bodies, market surveillance and the Commission."),
+    ];
+
+    private static readonly (int Number, string Label)[] CarbonStages =
+    [
+        (31, "Raw material acquisition"),
+        (32, "Main production"),
+        (33, "Distribution"),
+        (34, "End of life and recycling"),
+    ];
+
+    private static readonly (int Number, string Label)[] RecycledShares = [(49, "Nickel"), (50, "Cobalt"), (51, "Lithium"), (52, "Lead")];
+
+    /// <summary>The public summary's address. Colons stay as they are, so a battery ID reads as written.</summary>
+    public static string SummaryHref(string id) => $"/dpp/{Escape(id)}";
+
+    /// <summary>The detail page's address.</summary>
+    public static string DetailHref(string id) => $"/dpp/{Escape(id)}/detail";
+
+    /// <summary>The QR code's picture of a battery, and the same picture as a file to save.</summary>
+    public static string QrHref(string id) => $"/qr/{Escape(id)}/svg";
+
+    public static string QrDownloadHref(string id) => $"/qr/{Escape(id)}/download";
+
+    /// <summary>What a reader-facing source is called on the detail page.</summary>
+    public static string SourceWord(string source) => source switch
+    {
+        "form" => "form",
+        "upload" => "upload",
+        "feed" => "battery system",
+        "seed" => "test data",
+        _ => source,
+    };
+
+    /// <summary>
+    /// The published version a battery ID (#6), passport ID (#5) or serial number (#11) names; null when there is none.
+    /// A serial number counts only when exactly one published battery has it.
+    /// </summary>
+    public async Task<PassportVersion?> FindAsync(string? id, CancellationToken cancellationToken = default)
+    {
+        var text = id?.Trim() ?? string.Empty;
+        if (text.Length == 0)
+        {
+            return null;
+        }
+
+        if (await store.GetVersionByPassportIdAsync(text, cancellationToken) is { } version)
+        {
+            return version;
+        }
+
+        if (await store.FindPackByUniqueProductIdentifierAsync(text, cancellationToken) is { } pack)
+        {
+            return await store.GetActiveVersionAsync(pack.Id, cancellationToken);
+        }
+
+        var published = new List<PassportVersion>();
+        foreach (var candidate in await store.FindPacksBySerialNumberAsync(text, cancellationToken))
+        {
+            if (await store.GetActiveVersionAsync(candidate.Id, cancellationToken) is { } active)
+            {
+                published.Add(active);
+            }
+        }
+
+        return published.Count == 1 ? published[0] : null;
+    }
+
+    /// <summary>The published passport an ID names, with the battery's ID and serial number; null when there is none.</summary>
+    public async Task<PassportLocation?> LocateAsync(string? id, CancellationToken cancellationToken = default)
+    {
+        var version = await FindAsync(id, cancellationToken);
+        var pack = version is null ? null : await store.GetAsync<BatteryPack>(version.PackId, cancellationToken);
+        return version is null || pack is null
+            ? null
+            : new PassportLocation(version, PackText(pack, "uniqueProductIdentifier") ?? string.Empty, PackText(pack, "batterySerialNumber") ?? string.Empty);
+    }
+
+    /// <summary>The public summary: public data only, whoever is reading. <see cref="PassportPage.ReaderSeesMore"/> says whether the detail page has more for this reader.</summary>
+    public Task<PassportPage?> SummaryAsync(Reader who, string id, CancellationToken cancellationToken = default) =>
+        PageAsync(who, id, detail: false, cancellationToken);
+
+    /// <summary>The detail page: the public data and each audience section the reader may see, every value with its origin.</summary>
+    public Task<PassportPage?> DetailAsync(Reader who, string id, CancellationToken cancellationToken = default) =>
+        PageAsync(who, id, detail: true, cancellationToken);
+
+    private async Task<PassportPage?> PageAsync(Reader who, string id, bool detail, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(who);
+        var version = await FindAsync(id, cancellationToken);
+        var published = version is null ? null : await reader.VersionAsync(version.DigitalProductPassportId, cancellationToken);
+        var sources = version is null ? null : await store.LoadSourcesAsync(version.PackId, cancellationToken);
+        if (version is null || published is null || sources is null)
+        {
+            return null;
+        }
+
+        var clusters = await store.FindPublishedClusterIdsUsingAsync(packId: version.PackId, cancellationToken: cancellationToken);
+        var everyone = PassportFilter.Cut(published.Passport, Reader.Anonymous, clusters);
+        var seen = detail ? PassportFilter.Cut(published.Passport, who, clusters) : everyone;
+        var family = await store.GetAsync<BatteryFamily>(sources.Model.FamilyId, cancellationToken);
+        var identifier = Text(everyone, AttributeCatalog.ByNumber(6)) ?? string.Empty;
+        var current = version.DppStatus == DppStatuses.Active ? null : await store.GetActiveVersionAsync(version.PackId, cancellationToken);
+
+        var sections = SectionTexts
+            .Select(section => new PassportSection(
+                section.Key,
+                section.Title,
+                section.Tab,
+                section.Note,
+                Shown(seen, sources, detail, AttributeCatalog.All.Where(a => a.Audience == Audience.Public && a.Section == section.Key))))
+            .Where(section => section.Values.Count > 0)
+            .ToArray();
+        var audiences = detail
+            ? AudienceTexts
+                .Where(audience => AttributeCatalog.All.Any(a => a.Audience == audience.Audience && AudienceRules.MaySee(who, a, clusters)))
+                .Select(audience => new PassportSection(
+                    audience.Key,
+                    audience.Title,
+                    audience.Title,
+                    audience.Note,
+                    Shown(seen, sources, detail, AttributeCatalog.All.Where(a => a.Audience == audience.Audience))))
+                .ToArray()
+            : [];
+
+        return new PassportPage(
+            version,
+            current,
+            identifier,
+            family?.Name,
+            family?.PictureFileId is null ? null : $"/dpp/families/{Uri.EscapeDataString(family.Id)}/picture",
+            identifiers.IsTestIdentifier(identifier) || identifiers.IsTestIdentifier(version.DigitalProductPassportId),
+            PassportReader.Verify(version),
+            AttributeCatalog.All.Any(a => a.Audience != Audience.Public && AudienceRules.MaySee(who, a, clusters)),
+            sections,
+            audiences,
+            Chart(everyone, CarbonStages, "kgCO2EquivalentPerKilowattHourValue", "kgCO2-eq/kWh"),
+            Chart(everyone, RecycledShares, "percentageValue", "%"));
+    }
+
+    /// <summary>The attributes' values in the cut passport, in catalogue order; the detail page adds each value's origin.</summary>
+    private IReadOnlyList<ShownValue> Shown(JsonObject passport, PassportSources sources, bool detail, IEnumerable<AttributeDefinition> attributes)
+    {
+        var shown = new List<ShownValue>();
+        foreach (var attribute in attributes)
+        {
+            var value = Find(passport, attribute);
+            var lines = ValueWords.Lines(forms.For(attribute), value);
+            if (lines.Count == 0)
+            {
+                continue;
+            }
+
+            shown.Add(new ShownValue(attribute, lines, detail ? Origin(attribute, sources, value) : null));
+        }
+
+        return shown;
+    }
+
+    /// <summary>
+    /// The stored value's time and source, when the stored value is still the one shown. An archived version may show a
+    /// value that has changed since; its origin isn't known any more, so none is given. #1–#5 are set by the app.
+    /// </summary>
+    private static ValueOrigin? Origin(AttributeDefinition attribute, PassportSources sources, JsonNode? shown)
+    {
+        var stored = attribute.Storage switch
+        {
+            StorageLocation.Pack => sources.Pack.Values.GetValueOrDefault(attribute.Property),
+            StorageLocation.Operator => sources.Operator.Values.GetValueOrDefault(attribute.Property),
+            StorageLocation.Batch => sources.Batch.Values.GetValueOrDefault(attribute.Property),
+            StorageLocation.Site => sources.Site.Values.GetValueOrDefault(attribute.Property),
+            StorageLocation.Model => sources.Model.Values.GetValueOrDefault(attribute.Property),
+            StorageLocation.ModelWithPackOverride => sources.Pack.Values.GetValueOrDefault(attribute.Property) ?? sources.Model.Values.GetValueOrDefault(attribute.Property),
+            _ => null,
+        };
+        return stored is null || !FormValues.SameValue(stored.Value, shown)
+            ? null
+            : new ValueOrigin(stored.GeneratedAtUtc, stored.Source, attribute.Change == ChangeRule.Live);
+    }
+
+    private static IReadOnlyList<ChartPart> Chart(JsonObject passport, (int Number, string Label)[] parts, string valueName, string unit) =>
+        parts
+            .Select(part => (part.Label, Value: ValueWords.Decimal(Find(passport, AttributeCatalog.ByNumber(part.Number))?[valueName])))
+            .Where(part => part.Value is not null)
+            .Select(part => new ChartPart(part.Label, part.Value!.Value, unit))
+            .ToArray();
+
+    private static JsonNode? Find(JsonObject passport, AttributeDefinition attribute)
+    {
+        JsonNode? node = passport;
+        foreach (var name in attribute.Path.Split('.'))
+        {
+            node = node?[name];
+        }
+
+        return node;
+    }
+
+    private static string? Text(JsonObject passport, AttributeDefinition attribute) =>
+        Find(passport, attribute) is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+
+    private static string? PackText(BatteryPack pack, string property) =>
+        pack.Values.GetValueOrDefault(property)?.Value is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+
+    private static string Escape(string id) => Uri.EscapeDataString(id).Replace("%3A", ":", StringComparison.Ordinal);
+}
