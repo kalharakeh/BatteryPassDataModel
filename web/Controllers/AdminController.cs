@@ -1,4 +1,5 @@
 using BatteryPassWeb.Configuration;
+using BatteryPassWeb.Dpp.Audit;
 using BatteryPassWeb.Models.Trust;
 using BatteryPassWeb.Models.ViewModels;
 using BatteryPassWeb.Services;
@@ -200,8 +201,13 @@ public class AdminController : Controller
         [FromQuery] string? source,
         [FromQuery] string? from,
         [FromQuery] string? to,
+        [FromQuery] int? show,
+        [FromServices] AuditLines auditLines,
         CancellationToken cancellationToken)
     {
+        // 50 events at a time; one more is read to know whether "Show 50 more" has anything to show.
+        const int PageSize = 50;
+        var shown = Math.Clamp(show ?? PageSize, PageSize, 1000);
         var filter = new ApplicationAuditFilter(
             Search: q ?? string.Empty,
             EntityType: entityType ?? string.Empty,
@@ -209,12 +215,18 @@ public class AdminController : Controller
             Actor: actor ?? string.Empty,
             Source: source ?? string.Empty,
             From: from ?? string.Empty,
-            To: to ?? string.Empty);
+            To: to ?? string.Empty,
+            Limit: shown + 1);
         var events = await _applicationAuditService.ListApplicationAuditEventsAsync(filter, cancellationToken);
+        var lines = await auditLines.DescribeAsync(events.Take(shown).ToArray(), cancellationToken);
         return View("AuditLog", new ApplicationAuditLogViewModel
         {
             Filter = filter,
-            Events = events
+            Events = events,
+            Days = AuditLines.ByDay(lines, auditLines.Zone, DateTimeOffset.UtcNow),
+            Show = shown,
+            HasMore = events.Count > shown,
+            Zone = auditLines.Zone,
         });
     }
 

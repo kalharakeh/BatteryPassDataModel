@@ -1,3 +1,4 @@
+using BatteryPassWeb.Dpp.Audit;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Forms;
@@ -40,6 +41,7 @@ public static class DppServiceCollectionExtensions
         services.AddSingleton<AttributeForms>();
         services.AddSingleton<RecordEditor>();
         services.AddSingleton<ProductDataPages>();
+        services.AddSingleton<AuditLines>();
         return services;
     }
 }

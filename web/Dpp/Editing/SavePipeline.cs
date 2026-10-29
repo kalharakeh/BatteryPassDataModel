@@ -108,7 +108,7 @@ public sealed class SavePipeline(
                 removed.Length == 0
                     ? $"{stored.Count} value(s) saved on {changes.Target} {changes.TargetId}"
                     : $"{stored.Count} value(s) saved and {removed.Length} removed on {changes.Target} {changes.TargetId}",
-                AuditMetadata(results, target.Values),
+                AuditMetadata(results, target.Values, stored),
                 entityType: $"dpp-{changes.Target.ToString().ToLowerInvariant()}",
                 entityId: changes.TargetId,
                 cancellationToken: cancellationToken);
@@ -320,7 +320,11 @@ public sealed class SavePipeline(
     };
 
     /// <summary>Each key's outcome, and for a saved or removed value the one it replaced, so the history shows before and after.</summary>
-    private static BsonDocument AuditMetadata(IReadOnlyList<KeyResult> results, IReadOnlyDictionary<string, AttributeValue> before) => new()
+    /// <summary>Each key's outcome, with the value it replaced and, when saved, the new value (both as JSON text).</summary>
+    private static BsonDocument AuditMetadata(
+        IReadOnlyList<KeyResult> results,
+        IReadOnlyDictionary<string, AttributeValue> before,
+        IReadOnlyDictionary<string, AttributeValue> after) => new()
     {
         ["keys"] = new BsonArray(results.Select(result =>
         {
@@ -335,6 +339,11 @@ public sealed class SavePipeline(
                 entry["previous"] = before.TryGetValue(result.Key, out var previous) && previous.Value is not null
                     ? previous.Value.ToJsonString()
                     : BsonNull.Value;
+            }
+
+            if (result.Outcome == KeyOutcome.Saved && after.TryGetValue(result.Key, out var value) && value.Value is not null)
+            {
+                entry["value"] = value.Value.ToJsonString();
             }
 
             return entry;

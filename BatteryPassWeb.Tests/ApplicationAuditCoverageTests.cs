@@ -44,7 +44,7 @@ public sealed class ApplicationAuditCoverageTests
         Assert.Contains("name=\"source\"", view);
         Assert.Contains("name=\"from\"", view);
         Assert.Contains("name=\"to\"", view);
-        Assert.Contains("Model.Events", view);
+        Assert.Contains("Model.Days", view);
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public sealed class ApplicationAuditCoverageTests
         Assert.Contains("bp-audit-event-main", partial);
         Assert.Contains("bp-audit-event-facts", partial);
         Assert.Contains("bp-audit-event-chip", partial);
-        Assert.Contains("_AuditEventRow", globalAuditView);
+        Assert.Contains("_AuditLine", globalAuditView);
         Assert.Contains("_AuditEventRow", passportAuditView);
         Assert.DoesNotContain("bp-ledger-event ", globalAuditView);
         Assert.DoesNotContain("bp-ledger-event ", passportAuditView);

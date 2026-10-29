@@ -94,5 +94,6 @@ public sealed class ValueRemovalTests(MongoFixture mongo)
         var events = await new ApplicationAuditService(rig.Context).ListApplicationAuditEventsAsync(new ApplicationAuditFilter());
         var logged = Assert.Single(events, e => e["eventType"].AsString == SavePipeline.AuditEventType);
         Assert.Equal(before, logged["metadata"]["keys"][0]["previous"].AsString);
+        Assert.Equal("""{"gramKilogramValue":600,"gramKilogramUnit":"kg"}""", logged["metadata"]["keys"][0]["value"].AsString);
     }
 }
