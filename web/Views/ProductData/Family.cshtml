@@ -1,3 +1,4 @@
+@using BatteryPassWeb.Dpp.Editing
 @using BatteryPassWeb.Dpp.Pages
 @model FamilyPage
 @{
@@ -138,8 +139,12 @@
         <section class="bp-card bp-product-editor-section bp-console-form-card mt-4" id="batches">
             <div class="bp-product-section-heading">
                 <div>
-                    <h2>Batches of @selected.Name</h2>
-                    <p class="bp-help-text mb-0">One per calendar year and manufacturing site: carbon footprint, recycled content, the declaration of conformity and test reports.</p>
+                    <h2>Production batches of model @selected.Name</h2>
+                    <p class="bp-help-text mb-0">
+                        A batch is every battery of this model made in one calendar year at one manufacturing site. Values that
+                        depend on when and where batteries were made are set per batch: carbon footprint, recycled content, the
+                        declaration of conformity and test reports.
+                    </p>
                 </div>
             </div>
             @if (Model.Batches.Count == 0)
@@ -194,7 +199,8 @@
                             <option value="">Choose a site…</option>
                             @foreach (var site in Model.Sites)
                             {
-                                <option value="@site.Id">@site.Name</option>
+                                var siteMissing = RecordEditor.CountMissing(TargetKind.Site, site.Values);
+                                <option value="@site.Id">@(siteMissing > 0 ? $"{site.Name} ({siteMissing} missing)" : site.Name)</option>
                             }
                         </select>
                     </label>

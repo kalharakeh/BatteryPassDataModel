@@ -17,6 +17,15 @@
     // A batch's page is already titled with its year and site; its editor is simply its passport values.
     var eyebrow = Model.Kind == TargetKind.Batch ? Model.KindLabel : $"{Model.KindLabel} · passport values";
     var title = Model.Kind == TargetKind.Batch ? "Passport values" : Model.Name;
+
+    // Whose values these are: the batch page says it in its heading.
+    var scope = Model.Kind switch
+    {
+        TargetKind.Model => "Every battery of this model shares these values.",
+        TargetKind.Site => "Every battery made at this site shares these values.",
+        TargetKind.Operator => "Every battery this operator places on the market shares these values.",
+        _ => null,
+    };
 }
 
 <section class="bp-card bp-console-form-card bp-editor-card mt-4" id="editor">
@@ -24,6 +33,10 @@
         <div class="bp-editor-heading">
             <span class="bp-summary-title">@eyebrow</span>
             <h2 class="bp-editor-title">@title</h2>
+            @if (scope is not null)
+            {
+                <p class="bp-editor-scope">@scope</p>
+            }
             <p class="bp-editor-summary">
                 @if (Model.Missing > 0)
                 {

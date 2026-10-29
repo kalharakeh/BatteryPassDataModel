@@ -1,7 +1,10 @@
+@using BatteryPassWeb.Dpp.Editing
 @using BatteryPassWeb.Dpp.Pages
 @model BatchPage
 @{
     ViewData["Title"] = $"Batch {Model.Batch.Year} · {Model.Site.Name} · {Model.Model.Name}";
+    var modelMissing = RecordEditor.CountMissing(TargetKind.Model, Model.Model.Values);
+    var siteMissing = RecordEditor.CountMissing(TargetKind.Site, Model.Site.Values);
 }
 
 <main class="bp-page bp-admin-page">
@@ -19,6 +22,33 @@
             Model @Model.Model.Name of @Model.Family.Name. Every battery of this model made at @Model.Site.Name in
             @Model.Batch.Year shares these values.
         </p>
+        <ul class="bp-value-sources" aria-label="Where these batteries' other passport values come from">
+            <li>
+                <span>Their other values:</span>
+            </li>
+            <li>
+                <a href="@ProductDataPages.FamilyHref(Model.Family.Id, Model.Model.Id)#editor">Model @Model.Model.Name</a>
+                @if (modelMissing > 0)
+                {
+                    <span class="bp-missing-note">@modelMissing missing</span>
+                }
+                else
+                {
+                    <span class="bp-done-note">Complete</span>
+                }
+            </li>
+            <li>
+                <a href="@ProductDataPages.SitesHref("site", Model.Site.Id)#editor">Site @Model.Site.Name</a>
+                @if (siteMissing > 0)
+                {
+                    <span class="bp-missing-note">@siteMissing missing</span>
+                }
+                else
+                {
+                    <span class="bp-done-note">Complete</span>
+                }
+            </li>
+        </ul>
     </header>
 
     @await Html.PartialAsync("_Messages")

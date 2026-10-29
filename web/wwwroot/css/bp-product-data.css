@@ -267,9 +267,62 @@ main .bp-status-line.is-info {
   gap: 12px;
 }
 
-.bp-add-family .bp-product-version-selected-field {
-  flex: 1 1 320px;
-  max-width: 520px;
+/* A native dialog (e.g. naming a new family): site.css's panel, centred over a dimmed page. */
+dialog.bp-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  height: fit-content;
+}
+
+dialog.bp-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.bp-dialog h2 {
+  margin: 0 0 4px;
+  font-size: 1.25rem;
+  font-weight: 650;
+}
+
+.bp-dialog .bp-product-version-selected-field {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0 18px;
+}
+
+.bp-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Whose values an editor holds, under its title. */
+.bp-editor-scope {
+  margin: 0;
+  color: #52637a;
+}
+
+/* The batch page: the model and site that hold the batteries' other values. */
+.bp-value-sources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 22px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  color: #52637a;
+}
+
+.bp-value-sources li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bp-value-sources a {
+  font-weight: 600;
 }
 
 .bp-product-template-card-media,
@@ -1089,8 +1142,14 @@ main .bp-status-line.is-info {
   --bs-table-bg-state: rgba(122, 182, 255, 0.12);
 }
 
-[data-theme="dark"] .bp-page-heading p {
+[data-theme="dark"] .bp-page-heading p,
+[data-theme="dark"] .bp-editor-scope,
+[data-theme="dark"] .bp-value-sources {
   color: var(--bp-muted);
+}
+
+[data-theme="dark"] dialog.bp-dialog::backdrop {
+  background: rgba(2, 6, 23, 0.65);
 }
 
 [data-theme="dark"] .bp-product-template-card-media,

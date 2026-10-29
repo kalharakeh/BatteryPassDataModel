@@ -23,19 +23,30 @@
                 and manufacturing site) holds the carbon footprint, recycled content and conformity documents.
             </p>
         </div>
-        <form method="post" action="/admin/families" class="bp-add-family mt-3">
-            @Html.AntiForgeryToken()
-            <label class="bp-product-version-selected-field">
-                <span>New battery family</span>
-                <input type="text" name="name" placeholder="Family name, e.g. Compact 7M" required />
-            </label>
-            <button type="submit" class="bp-primary-button text-nowrap">Add battery family</button>
-        </form>
+        <div class="bp-add-family mt-3">
+            <button type="button" class="bp-primary-button text-nowrap" data-open-dialog="add-family-dialog">Add battery family</button>
+        </div>
     </section>
+
+    <dialog id="add-family-dialog" class="bp-modal-panel bp-dialog" aria-labelledby="add-family-title">
+        <form method="post" action="/admin/families">
+            @Html.AntiForgeryToken()
+            <h2 id="add-family-title">Add a battery family</h2>
+            <p class="bp-help-text">Its models, picture and batches come next, on the family's page.</p>
+            <label class="bp-product-version-selected-field">
+                <span>Family name</span>
+                <input type="text" name="name" placeholder="e.g. Compact 7M" required autofocus />
+            </label>
+            <div class="bp-dialog-actions">
+                <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
+                <button type="submit" class="bp-primary-button">Create family</button>
+            </div>
+        </form>
+    </dialog>
 
     @if (Model.Families.Count == 0)
     {
-        <div class="bp-card mt-4">No battery families yet. Add the first one above, then its models, their batches and the family picture.</div>
+        <div class="bp-card mt-4">No battery families yet. Use Add battery family to create the first; its models, batches and picture follow on its page.</div>
     }
     else
     {
@@ -76,3 +87,7 @@
         </section>
     }
 </main>
+
+@section Scripts {
+    <script src="~/js/bp-record-editor.js" asp-append-version="true"></script>
+}

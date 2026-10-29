@@ -32,6 +32,13 @@
         rail.scrollLeft += selectedChip.getBoundingClientRect().left - rail.getBoundingClientRect().left - 16;
     }
 
+    // A button with data-open-dialog opens that native <dialog>: focus, Escape and the dimmed page come with it, and
+    // its Cancel button (formmethod="dialog") closes it without sending anything.
+    document.querySelectorAll('[data-open-dialog]').forEach((button) => {
+        const dialog = document.getElementById(button.dataset.openDialog);
+        button.addEventListener('click', () => dialog?.showModal());
+    });
+
     const form = document.querySelector('[data-record-editor]');
     if (!form) {
         return;
