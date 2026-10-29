@@ -52,6 +52,58 @@ public sealed partial class AttributeValueValidator(OfficialSchemas schemas)
         {
             yield return new SchemaIssue($"/{fixedUnit.UnitProperty}", $"unit: must be \"{fixedUnit.Unit}\" for #{attribute.Number}");
         }
+
+        // Masses, capacities, voltages, powers, resistances, lifetimes and C-rates can't be negative (as in the app
+        // before V3); the schema itself bounds only percentages. Temperatures, also the test temperatures inside these
+        // values, can be below zero.
+        if (NonNegative.Contains(attribute.Number) && value is not null)
+        {
+            foreach (var (path, number) in Numbers(value, string.Empty))
+            {
+                if (number < 0)
+                {
+                    yield return new SchemaIssue(path, "minimum: must not be below 0");
+                }
+            }
+        }
+    }
+
+    private static readonly HashSet<int> NonNegative = [21, 57, 64, 65, 66, 67, 70, 78, 81, 82, 85];
+
+    private static IEnumerable<(string Path, double Number)> Numbers(JsonNode node, string path)
+    {
+        switch (node)
+        {
+            case JsonObject obj:
+                foreach (var (key, child) in obj)
+                {
+                    if (child is not null && !key.Contains("temperature", StringComparison.OrdinalIgnoreCase))
+                    {
+                        foreach (var found in Numbers(child, $"{path}/{key}"))
+                        {
+                            yield return found;
+                        }
+                    }
+                }
+
+                break;
+            case JsonArray array:
+                for (var index = 0; index < array.Count; index++)
+                {
+                    if (array[index] is { } item)
+                    {
+                        foreach (var found in Numbers(item, $"{path}/{index}"))
+                        {
+                            yield return found;
+                        }
+                    }
+                }
+
+                break;
+            case JsonValue leaf when leaf.GetValueKind() == JsonValueKind.Number:
+                yield return (path, double.Parse(leaf.ToJsonString(), NumberStyles.Float, CultureInfo.InvariantCulture));
+                break;
+        }
     }
 
     private static bool IsUtcTimestamp(string text) => DateTime.TryParseExact(

@@ -116,17 +116,25 @@ public sealed class DppStore
     /// Sets the given values on one record, leaving its other values as they are; false when no record has that id.
     /// Each key is set on its own, so a live feed and a form saving at the same time don't overwrite each other.
     /// </summary>
-    public async Task<bool> SetValuesAsync<T>(string id, IReadOnlyDictionary<string, AttributeValue> values, CancellationToken cancellationToken = default)
+    public Task<bool> SetValuesAsync<T>(string id, IReadOnlyDictionary<string, AttributeValue> values, CancellationToken cancellationToken = default)
+        where T : class, IDppRecord =>
+        SetValuesAsync<T>(id, values, [], cancellationToken);
+
+    /// <summary>Sets the given values and removes the <paramref name="removals"/> in one update; false when no record has that id.</summary>
+    public async Task<bool> SetValuesAsync<T>(string id, IReadOnlyDictionary<string, AttributeValue> values, IReadOnlyCollection<string> removals, CancellationToken cancellationToken = default)
         where T : class, IDppRecord
     {
         ArgumentNullException.ThrowIfNull(values);
+        ArgumentNullException.ThrowIfNull(removals);
         RequireDatabase();
-        if (values.Count == 0)
+        if (values.Count == 0 && removals.Count == 0)
         {
             throw new ArgumentException("There are no values to set.", nameof(values));
         }
 
-        var update = Builders<T>.Update.Combine(values.Select(entry => Builders<T>.Update.Set($"Values.{entry.Key}", entry.Value)));
+        var update = Builders<T>.Update.Combine(
+            values.Select(entry => Builders<T>.Update.Set($"Values.{entry.Key}", entry.Value))
+                .Concat(removals.Select(key => Builders<T>.Update.Unset($"Values.{key}"))));
         var result = await Collection<T>().UpdateOneAsync(Builders<T>.Filter.Eq("_id", id), update, cancellationToken: cancellationToken);
         return result.MatchedCount == 1;
     }

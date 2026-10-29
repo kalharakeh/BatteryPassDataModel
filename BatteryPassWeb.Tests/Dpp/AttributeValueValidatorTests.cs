@@ -43,4 +43,15 @@ public sealed class AttributeValueValidatorTests
 
         Assert.Contains(issues, issue => issue.Message.Contains(expectedMessagePart, StringComparison.Ordinal));
     }
+
+    [Theory]
+    [InlineData(21, """{"gramKilogramValue":-1,"gramKilogramUnit":"kg"}""", false)]
+    [InlineData(21, """{"gramKilogramValue":0,"gramKilogramUnit":"kg"}""", true)]
+    [InlineData(88, """{"celsiusValue":-20,"degreeCelsiusUnit":"°C"}""", true)] // a temperature may be below zero
+    public void PhysicalQuantities_ShouldNotBeNegative(int number, string json, bool valid)
+    {
+        var issues = Validator.Validate(AttributeCatalog.ByNumber(number), JsonNode.Parse(json));
+
+        Assert.Equal(valid, issues.Count == 0);
+    }
 }

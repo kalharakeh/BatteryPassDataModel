@@ -31,18 +31,23 @@ public enum KeyOutcome
     Ignored,
 
     Rejected,
+
+    /// <summary>A stored value the team removed (or would remove, in a preview).</summary>
+    Removed,
 }
 
 public sealed record KeyResult(string Key, KeyOutcome Outcome, string Message);
 
 /// <summary>One change set for one record. <paramref name="Source"/> is "form", "upload" or "feed".</summary>
 /// <param name="MeasuredAtUtc">When the values were generated (e.g. a feed's measurement time); the save time if null.</param>
+/// <param name="Removals">Stored values to remove. Only the team removes values; for everyone else empty never overwrites.</param>
 public sealed record ChangeSet(
     TargetKind Target,
     string TargetId,
     IReadOnlyDictionary<string, JsonNode?> Values,
     string Source,
-    DateTime? MeasuredAtUtc = null);
+    DateTime? MeasuredAtUtc = null,
+    IReadOnlyCollection<string>? Removals = null);
 
 public sealed record SaveResult(bool Found, bool Saved, IReadOnlyList<KeyResult> Keys);
 
@@ -79,9 +84,12 @@ public sealed class SavePipeline(
         }
 
         var evaluation = Evaluate(sender, changes.Target, target.ClusterId, changes.Values);
-        if (preview || evaluation.Accepted.Count == 0)
+        var removals = await EvaluateRemovalsAsync(sender, changes, target, cancellationToken);
+        var results = evaluation.Results.Concat(removals).ToArray();
+        var removed = removals.Where(result => result.Outcome == KeyOutcome.Removed).Select(result => result.Key).ToArray();
+        if (preview || (evaluation.Accepted.Count == 0 && removed.Length == 0))
         {
-            return new SaveResult(true, false, evaluation.Results);
+            return new SaveResult(true, false, results);
         }
 
         var generatedAt = changes.MeasuredAtUtc?.ToUniversalTime() ?? clock.GetUtcNow().UtcDateTime;
@@ -89,7 +97,7 @@ public sealed class SavePipeline(
             entry => entry.Key,
             entry => new AttributeValue { Value = entry.Value, GeneratedAtUtc = generatedAt, Source = changes.Source, Who = sender.Who },
             StringComparer.Ordinal);
-        var saved = await SetValuesAsync(changes.Target, changes.TargetId, stored, cancellationToken);
+        var saved = await ApplyAsync(changes.Target, changes.TargetId, stored, removed, cancellationToken);
         if (saved)
         {
             await audit.AppendApplicationAuditEventAsync(
@@ -97,18 +105,84 @@ public sealed class SavePipeline(
                 sender.Who,
                 sender.Kind.ToString(),
                 changes.Source,
-                $"{stored.Count} value(s) saved on {changes.Target} {changes.TargetId}",
-                AuditMetadata(evaluation.Results),
+                removed.Length == 0
+                    ? $"{stored.Count} value(s) saved on {changes.Target} {changes.TargetId}"
+                    : $"{stored.Count} value(s) saved and {removed.Length} removed on {changes.Target} {changes.TargetId}",
+                AuditMetadata(results, target.Values),
                 entityType: $"dpp-{changes.Target.ToString().ToLowerInvariant()}",
                 entityId: changes.TargetId,
                 cancellationToken: cancellationToken);
             foreach (var listener in _listeners)
             {
-                await listener.ValuesSavedAsync(changes.Target, changes.TargetId, stored.Keys.ToArray(), sender.Who, cancellationToken);
+                await listener.ValuesSavedAsync(changes.Target, changes.TargetId, stored.Keys.Concat(removed).ToArray(), sender.Who, cancellationToken);
             }
         }
 
-        return new SaveResult(true, saved, evaluation.Results);
+        return new SaveResult(true, saved, results);
+    }
+
+    /// <summary>
+    /// Judges each value to remove: a catalogue attribute of this record that the sender may change, stored now, and
+    /// not one a published passport built from this record needs by February 2027 (it would block the new version and
+    /// leave the published passport out of date). Only the team removes values.
+    /// </summary>
+    private async Task<IReadOnlyList<KeyResult>> EvaluateRemovalsAsync(ChangeSender sender, ChangeSet changes, Target target, CancellationToken cancellationToken)
+    {
+        if (changes.Removals is not { Count: > 0 } removals)
+        {
+            return [];
+        }
+
+        bool? published = null;
+        var results = new List<KeyResult>();
+        foreach (var key in removals.Distinct(StringComparer.Ordinal))
+        {
+            var (outcome, message, _) = EvaluateKey(sender, changes.Target, target.ClusterId, key, JsonValue.Create("remove"), checkValue: false);
+            if (outcome != KeyOutcome.Saved)
+            {
+                results.Add(new KeyResult(key, outcome, message));
+                continue;
+            }
+
+            var attribute = AttributeCatalog.FindByProperty(key)!;
+            if (sender.Kind != SenderKind.Team)
+            {
+                results.Add(new KeyResult(key, KeyOutcome.Rejected, $"#{attribute.Number} is removed only by the team; an empty value never overwrites"));
+            }
+            else if (changes.Values.ContainsKey(key))
+            {
+                results.Add(new KeyResult(key, KeyOutcome.Ignored, "set and removed at once; the new value is kept"));
+            }
+            else if (!target.Values.ContainsKey(key))
+            {
+                results.Add(new KeyResult(key, KeyOutcome.Ignored, "no value to remove"));
+            }
+            else if (attribute.Requirement != Requirement.Conditional && attribute.MandatoryFromFeb2027
+                && (published ??= await UsedByPublishedPassportAsync(changes.Target, changes.TargetId, cancellationToken)))
+            {
+                results.Add(new KeyResult(key, KeyOutcome.Rejected, "The published passports need this value, so it can't be removed. Change it instead."));
+            }
+            else
+            {
+                results.Add(new KeyResult(key, KeyOutcome.Removed, string.Empty));
+            }
+        }
+
+        return results;
+    }
+
+    private async Task<bool> UsedByPublishedPassportAsync(TargetKind target, string id, CancellationToken cancellationToken)
+    {
+        var packIds = target switch
+        {
+            TargetKind.Pack => [id],
+            TargetKind.Model => await store.FindPackIdsUsingAsync(modelId: id, cancellationToken: cancellationToken),
+            TargetKind.Site => await store.FindPackIdsUsingAsync(siteId: id, cancellationToken: cancellationToken),
+            TargetKind.Batch => await store.FindPackIdsUsingAsync(batchId: id, cancellationToken: cancellationToken),
+            TargetKind.Operator => await store.FindPackIdsUsingAsync(operatorId: id, cancellationToken: cancellationToken),
+            _ => [],
+        };
+        return packIds.Count > 0 && (await store.ListActiveVersionsAsync(packIds, cancellationToken)).Count > 0;
     }
 
     /// <summary>Judges every key without saving anything; also used when a pack is created.</summary>
@@ -132,8 +206,9 @@ public sealed class SavePipeline(
         return new Evaluation(results, accepted);
     }
 
+    /// <param name="checkValue">False when only the attribute and the sender's rights are judged (a removal).</param>
     private (KeyOutcome Outcome, string Message, JsonNode? Value) EvaluateKey(
-        ChangeSender sender, TargetKind target, string? packClusterId, string key, JsonNode? raw)
+        ChangeSender sender, TargetKind target, string? packClusterId, string key, JsonNode? raw, bool checkValue = true)
     {
         if (AttributeCatalog.FindByProperty(key) is not { } attribute)
         {
@@ -158,6 +233,11 @@ public sealed class SavePipeline(
         if (!EditRights.MayEdit(sender, attribute, packClusterId))
         {
             return (KeyOutcome.Rejected, $"#{attribute.Number} can't be changed by this sender", null);
+        }
+
+        if (!checkValue)
+        {
+            return (KeyOutcome.Saved, string.Empty, null);
         }
 
         if (IsEmpty(raw))
@@ -211,43 +291,53 @@ public sealed class SavePipeline(
         _ => value.GetValueKind() == JsonValueKind.String && string.IsNullOrWhiteSpace(value.GetValue<string>()),
     };
 
-    private async Task<(bool Found, string? ClusterId)> FindTargetAsync(TargetKind target, string id, CancellationToken cancellationToken)
+    /// <summary>The record a change set is for: whether it exists, its cluster (packs only) and its stored values.</summary>
+    private sealed record Target(bool Found, string? ClusterId, IReadOnlyDictionary<string, AttributeValue> Values);
+
+    private static readonly Target NotFound = new(false, null, new Dictionary<string, AttributeValue>());
+
+    private async Task<Target> FindTargetAsync(TargetKind target, string id, CancellationToken cancellationToken)
     {
-        switch (target)
+        return target switch
         {
-            case TargetKind.Pack:
-                var pack = await store.GetAsync<BatteryPack>(id, cancellationToken);
-                return (pack is not null, pack?.ClusterId);
-            case TargetKind.Model:
-                return (await store.GetAsync<BatteryModel>(id, cancellationToken) is not null, null);
-            case TargetKind.Site:
-                return (await store.GetAsync<ManufacturingSite>(id, cancellationToken) is not null, null);
-            case TargetKind.Batch:
-                return (await store.GetAsync<ProductionBatch>(id, cancellationToken) is not null, null);
-            case TargetKind.Operator:
-                return (await store.GetAsync<EconomicOperator>(id, cancellationToken) is not null, null);
-            default:
-                throw new ArgumentOutOfRangeException(nameof(target), target, null);
-        }
+            TargetKind.Pack => await store.GetAsync<BatteryPack>(id, cancellationToken) is { } pack ? new Target(true, pack.ClusterId, pack.Values) : NotFound,
+            TargetKind.Model => await store.GetAsync<BatteryModel>(id, cancellationToken) is { } model ? new Target(true, null, model.Values) : NotFound,
+            TargetKind.Site => await store.GetAsync<ManufacturingSite>(id, cancellationToken) is { } site ? new Target(true, null, site.Values) : NotFound,
+            TargetKind.Batch => await store.GetAsync<ProductionBatch>(id, cancellationToken) is { } batch ? new Target(true, null, batch.Values) : NotFound,
+            TargetKind.Operator => await store.GetAsync<EconomicOperator>(id, cancellationToken) is { } economicOperator ? new Target(true, null, economicOperator.Values) : NotFound,
+            _ => throw new ArgumentOutOfRangeException(nameof(target), target, null),
+        };
     }
 
-    private Task<bool> SetValuesAsync(TargetKind target, string id, IReadOnlyDictionary<string, AttributeValue> values, CancellationToken cancellationToken) => target switch
+    private Task<bool> ApplyAsync(TargetKind target, string id, IReadOnlyDictionary<string, AttributeValue> values, IReadOnlyCollection<string> removals, CancellationToken cancellationToken) => target switch
     {
-        TargetKind.Pack => store.SetValuesAsync<BatteryPack>(id, values, cancellationToken),
-        TargetKind.Model => store.SetValuesAsync<BatteryModel>(id, values, cancellationToken),
-        TargetKind.Site => store.SetValuesAsync<ManufacturingSite>(id, values, cancellationToken),
-        TargetKind.Batch => store.SetValuesAsync<ProductionBatch>(id, values, cancellationToken),
-        TargetKind.Operator => store.SetValuesAsync<EconomicOperator>(id, values, cancellationToken),
+        TargetKind.Pack => store.SetValuesAsync<BatteryPack>(id, values, removals, cancellationToken),
+        TargetKind.Model => store.SetValuesAsync<BatteryModel>(id, values, removals, cancellationToken),
+        TargetKind.Site => store.SetValuesAsync<ManufacturingSite>(id, values, removals, cancellationToken),
+        TargetKind.Batch => store.SetValuesAsync<ProductionBatch>(id, values, removals, cancellationToken),
+        TargetKind.Operator => store.SetValuesAsync<EconomicOperator>(id, values, removals, cancellationToken),
         _ => throw new ArgumentOutOfRangeException(nameof(target), target, null),
     };
 
-    private static BsonDocument AuditMetadata(IReadOnlyList<KeyResult> results) => new()
+    /// <summary>Each key's outcome, and for a saved or removed value the one it replaced, so the history shows before and after.</summary>
+    private static BsonDocument AuditMetadata(IReadOnlyList<KeyResult> results, IReadOnlyDictionary<string, AttributeValue> before) => new()
     {
-        ["keys"] = new BsonArray(results.Select(result => new BsonDocument
+        ["keys"] = new BsonArray(results.Select(result =>
         {
-            ["key"] = result.Key,
-            ["outcome"] = result.Outcome.ToString(),
-            ["message"] = result.Message,
+            var entry = new BsonDocument
+            {
+                ["key"] = result.Key,
+                ["outcome"] = result.Outcome.ToString(),
+                ["message"] = result.Message,
+            };
+            if (result.Outcome is KeyOutcome.Saved or KeyOutcome.Removed)
+            {
+                entry["previous"] = before.TryGetValue(result.Key, out var previous) && previous.Value is not null
+                    ? previous.Value.ToJsonString()
+                    : BsonNull.Value;
+            }
+
+            return entry;
         })),
     };
 }
