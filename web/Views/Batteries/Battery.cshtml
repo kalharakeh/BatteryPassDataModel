@@ -334,7 +334,7 @@
     <section class="bp-card bp-console-form-card bp-battery-card mt-4" id="accidents">
         <span class="bp-summary-title">Accident reports <span class="bp-attr-number">#92</span></span>
         <h2>@(Model.AccidentReports.Count == 0 ? "No accidents reported" : Words.Count(Model.AccidentReports.Count, "accident report"))</h2>
-        <p class="mb-0">The passport links to the battery's accident page, which lists these reports or says none were reported. Seen only by the battery's cluster, market surveillance and your team.</p>
+        <p class="mb-0">The passport links to the battery's <a href="@ReaderPages.AccidentsHref(Model.Pack.Id)">accident page</a>, which lists these reports or says none were reported. Seen only by the battery's cluster, market surveillance and your team.</p>
         @{ await CardMessagesAsync("accidents"); }
         @if (Model.AccidentReports.Count > 0)
         {
@@ -342,7 +342,7 @@
                 @foreach (var report in Model.AccidentReports)
                 {
                     <li>
-                        <span><strong>@report.Title</strong> · @report.FileName · @Size(report.Length)</span>
+                        <span><a href="@ReaderPages.DocumentHref(report.Id)"><strong>@report.Title</strong></a> · @report.FileName · @Size(report.Length)</span>
                         <span class="bp-batteries-muted">@When(report.UploadedAtUtc) by @report.UploadedBy</span>
                     </li>
                 }

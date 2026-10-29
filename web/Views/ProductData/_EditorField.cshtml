@@ -177,7 +177,7 @@
                 <input type="text" readonly value="@current" aria-label="Current file" data-upload-name />
                 @if (document is not null)
                 {
-                    <small class="bp-field-help">SHA-256 <code>@document.Sha256</code></small>
+                    <small class="bp-field-help"><a href="@ReaderPages.DocumentHref(document.Id)">Open the file</a> · SHA-256 <code>@document.Sha256</code></small>
                 }
                 <fieldset class="bp-attr-upload">
                     <legend>@(document is null ? "Upload a file" : "Upload a new file")</legend>
