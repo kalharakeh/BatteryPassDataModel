@@ -190,13 +190,23 @@ public sealed class DocumentService(
             return false;
         }
 
-        var clusters = owner switch
+        if (owner is not (TargetKind.Model or TargetKind.Batch or TargetKind.Pack))
         {
-            TargetKind.Pack => await store.FindPublishedClusterIdsUsingAsync(packId: ownerId, cancellationToken: cancellationToken),
-            TargetKind.Batch => await store.FindPublishedClusterIdsUsingAsync(batchId: ownerId, cancellationToken: cancellationToken),
-            TargetKind.Model => await store.FindPublishedClusterIdsUsingAsync(modelId: ownerId, cancellationToken: cancellationToken),
-            _ => [],
-        };
+            return false;
+        }
+
+        var modelId = owner == TargetKind.Model ? ownerId : null;
+        var batchId = owner == TargetKind.Batch ? ownerId : null;
+        var packId = owner == TargetKind.Pack ? ownerId : null;
+
+        // Nothing unpublished leaves the team (J-6): until a published passport uses the record, its documents are the team's.
+        if (!reader.Roles.Contains(ReaderRole.Team)
+            && !await store.HasPublishedPackUsingAsync(modelId, batchId, packId, cancellationToken))
+        {
+            return false;
+        }
+
+        var clusters = await store.FindPublishedClusterIdsUsingAsync(modelId, batchId, packId, cancellationToken);
         return AudienceRules.MaySee(reader, attribute, clusters);
     }
 

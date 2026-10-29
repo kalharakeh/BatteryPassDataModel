@@ -322,6 +322,28 @@ public sealed class DppStore
     /// </summary>
     public async Task<IReadOnlyList<string>> FindPublishedClusterIdsUsingAsync(string? modelId = null, string? batchId = null, string? packId = null, CancellationToken cancellationToken = default)
     {
+        var published = await FindPublishedPackIdsUsingAsync(modelId, batchId, packId, cancellationToken);
+        if (published.Count == 0)
+        {
+            return [];
+        }
+
+        var clusters = await Collection<BatteryPack>()
+            .Find(pack => published.Contains(pack.Id) && pack.ClusterId != null)
+            .Project(pack => pack.ClusterId)
+            .ToListAsync(cancellationToken);
+        return clusters.OfType<string>().Distinct(StringComparer.Ordinal).ToArray();
+    }
+
+    /// <summary>
+    /// True when a published passport is built from this model, batch or pack record, whether or not its pack has a
+    /// cluster. Until then the record's documents are the team's only (J-6).
+    /// </summary>
+    public async Task<bool> HasPublishedPackUsingAsync(string? modelId = null, string? batchId = null, string? packId = null, CancellationToken cancellationToken = default) =>
+        (await FindPublishedPackIdsUsingAsync(modelId, batchId, packId, cancellationToken)).Count > 0;
+
+    private async Task<IReadOnlyList<string>> FindPublishedPackIdsUsingAsync(string? modelId, string? batchId, string? packId, CancellationToken cancellationToken)
+    {
         if (_database is null)
         {
             return [];
@@ -335,15 +357,10 @@ public sealed class DppStore
             return [];
         }
 
-        var published = await Collection<PassportVersion>()
+        return await Collection<PassportVersion>()
             .Find(version => packIds.Contains(version.PackId) && version.DppStatus == DppStatuses.Active)
             .Project(version => version.PackId)
             .ToListAsync(cancellationToken);
-        var clusters = await Collection<BatteryPack>()
-            .Find(pack => published.Contains(pack.Id) && pack.ClusterId != null)
-            .Project(pack => pack.ClusterId)
-            .ToListAsync(cancellationToken);
-        return clusters.OfType<string>().Distinct(StringComparer.Ordinal).ToArray();
     }
 
     /// <summary>Every record of one kind. Families, sites and operators are few; the pages sort them by name.</summary>

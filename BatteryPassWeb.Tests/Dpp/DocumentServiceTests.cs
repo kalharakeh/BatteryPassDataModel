@@ -105,6 +105,9 @@ public sealed class DocumentServiceTests(MongoFixture mongo)
     [InlineData("li-treatment", true, false)] // #45 isn't shared with treatment facilities
     [InlineData("own-cluster-user", true, true)]
     [InlineData("own-cluster-user", false, false)] // a draft pack gives its cluster nothing (J-6)
+    [InlineData("team", false, true)]
+    [InlineData("market-surveillance", false, false)] // nothing unpublished leaves the team (J-6)
+    [InlineData("li-repair", false, false)]
     [InlineData("other-cluster", true, false)]
     [InlineData("anonymous", true, false)]
     public async Task Read_ShouldServeTheFileOnlyToItsAudience(string kind, bool published, bool allowed)
@@ -121,6 +124,20 @@ public sealed class DocumentServiceTests(MongoFixture mongo)
         {
             Assert.Equal(content, file.Content);
         }
+    }
+
+    [Theory]
+    [InlineData("notified-body", true)]
+    [InlineData("market-surveillance", true)]
+    [InlineData("own-cluster-user", false)]
+    public async Task APublishedBatteryWithoutACluster_ShouldServeItsBatchsTestReportsToTheAuthorities(string kind, bool allowed)
+    {
+        var rig = await PublicationTesting.PublishedRigAsync(mongo);
+        await rig.Store.SetPackClusterAsync(rig.PackId, null);
+        var service = Service(rig);
+        var uploaded = (await service.UploadAsync(PublicationTesting.Team, TargetKind.Batch, "batch-test-2026", "resultsOfTestReportsProvingCompliance", new DocumentUpload("tests.pdf", DocumentTesting.Pdf()))).Document!;
+
+        Assert.Equal(allowed, await service.ReadAsync(ReaderFor(kind), uploaded.Id) is not null);
     }
 
     [Fact]
@@ -193,6 +210,7 @@ public sealed class DocumentServiceTests(MongoFixture mongo)
         "market-surveillance" => Reader.With("msa@example.com", ReaderRole.MarketSurveillance),
         "li-repair" => Reader.With("repair@example.com", ReaderRole.LiRepair),
         "li-treatment" => Reader.With("treatment@example.com", ReaderRole.LiTreatment),
+        "notified-body" => Reader.With("nb@example.com", ReaderRole.NotifiedBody),
         "own-cluster-user" => Reader.With("user@example.com", ReaderRole.ClusterUser, "cluster-test"),
         "other-cluster" => Reader.With("other@example.com", ReaderRole.ClusterUser, "another-cluster"),
         _ => Reader.Anonymous,
