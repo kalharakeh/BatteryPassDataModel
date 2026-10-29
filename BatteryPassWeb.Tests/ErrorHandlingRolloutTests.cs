@@ -5,14 +5,11 @@ public sealed class ErrorHandlingRolloutTests
     [Fact]
     public void TrustChangingAdminActions_ShouldShowServiceErrorInsteadOfClaimingSuccess()
     {
-        var api = File.ReadAllText(RepoFile("web", "Controllers", "PassportsApiController.cs"));
         var repository = File.ReadAllText(RepoFile("web", "Services", "PassportRepository.cs"));
         var workflow = File.ReadAllText(RepoFile("web", "Services", "PassportTrustWorkflowService.cs"));
 
         Assert.Contains("if (!trustUpdated)", workflow);
         Assert.Contains("if (!published)", workflow);
-        Assert.Contains("StatusCodes.Status503ServiceUnavailable", api);
-        Assert.Contains("retrySafe = true", api);
         Assert.Contains("Task<bool> UpdateTrustSignatureAsync", repository);
         Assert.Contains("Task<bool> PublishPassportAsync", repository);
         Assert.Contains("result.MatchedCount > 0", repository);

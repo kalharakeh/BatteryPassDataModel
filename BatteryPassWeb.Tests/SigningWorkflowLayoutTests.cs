@@ -28,12 +28,10 @@ public sealed class SigningWorkflowLayoutTests
     {
         var source = File.ReadAllText(RepoFile("web", "Controllers", "PassportsApiController.cs"));
 
-        Assert.Contains("[HttpPost(\"{passportId}/sign\")]", source);
-        Assert.Contains("[HttpPost(\"{passportId}/publish\")]", source);
+        Assert.DoesNotContain("HttpPost", source);
         Assert.Contains("[AllowAnonymous]", source);
-        Assert.Contains("[HttpGet(\"{passportId}/verify\")]", source);
-        Assert.Contains("PassportTrustService", source);
-        Assert.Contains("AuditRevisionService", source);
+        Assert.Contains("[HttpGet(\"{id}/verify\")]", source);
+        Assert.Contains("PassportReader.Verify(version)", source);
     }
 
     [Fact]

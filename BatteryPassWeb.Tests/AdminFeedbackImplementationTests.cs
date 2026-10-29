@@ -150,7 +150,7 @@ public sealed class AdminFeedbackImplementationTests
     [Fact]
     public void ExternalApi_ShouldListAccessibleClustersAndUseLifecycleTokens()
     {
-        var api = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
+        var api = File.ReadAllText(RepoFile("web", "Controllers", "DppApiController.cs"));
         var repository = File.ReadAllText(RepoFile("web", "Services", "ExternalApiRepository.cs"));
         var adminController = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
         var clusterAdminController = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));

@@ -5,16 +5,8 @@ public sealed class AntiForgeryProtectionTests
     [Fact]
     public void CookieAuthenticatedJsonMutationApis_ShouldRequireAntiForgeryTokens()
     {
-        var passportsApi = File.ReadAllText(RepoFile("web", "Controllers", "PassportsApiController.cs"));
         var filesApi = File.ReadAllText(RepoFile("web", "Controllers", "FilesApiController.cs"));
         var authApi = File.ReadAllText(RepoFile("web", "Controllers", "AuthApiController.cs"));
-
-        AssertMethodHasAttribute(passportsApi, "Create", "ValidateAntiForgeryToken");
-        AssertMethodHasAttribute(passportsApi, "Update", "ValidateAntiForgeryToken");
-        AssertMethodHasAttribute(passportsApi, "Validate", "ValidateAntiForgeryToken");
-        AssertMethodHasAttribute(passportsApi, "Sign", "ValidateAntiForgeryToken");
-        AssertMethodHasAttribute(passportsApi, "Publish", "ValidateAntiForgeryToken");
-        AssertMethodHasAttribute(passportsApi, "Archive", "ValidateAntiForgeryToken");
 
         AssertMethodHasAttribute(filesApi, "Upload", "ValidateAntiForgeryToken");
         AssertMethodHasAttribute(authApi, "Login", "ValidateAntiForgeryToken");

@@ -20,18 +20,6 @@ public sealed class ValidationPolicyLayoutTests
     }
 
     [Fact]
-    public void PassportsApiController_ShouldBlockDirectPublishAndSanitizeTrustClaims()
-    {
-        var source = File.ReadAllText(RepoFile("web", "Controllers", "PassportsApiController.cs"));
-
-        Assert.Contains("PassportPublishPolicyService", source);
-        Assert.Contains("RejectDirectPublishRequest", source);
-        Assert.Contains("SanitizeTrustClaimsForDraftSave", source);
-        Assert.Contains("Direct publish is blocked", source);
-        Assert.DoesNotContain("MarkCanonicalDirtyAsync", source);
-    }
-
-    [Fact]
     public void EditPassportView_ShouldNotExposeDirectPublishedStatusSelection()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));

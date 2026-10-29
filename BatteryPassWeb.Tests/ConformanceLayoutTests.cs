@@ -2,15 +2,6 @@ namespace BatteryPassWeb.Tests;
 
 public sealed class ConformanceLayoutTests
 {
-    [Fact]
-    public void PassportsApiController_ShouldExposeValidateEndpoint()
-    {
-        var source = File.ReadAllText(RepoFile("web", "Controllers", "PassportsApiController.cs"));
-
-        Assert.Contains("[HttpPost(\"{passportId}/validate\")]", source);
-        Assert.Contains("PassportValidationService", source);
-        Assert.Contains("UpdateTrustValidationAsync", source);
-    }
 
     [Fact]
     public void AdminController_ShouldExposeConformancePageAndValidateAction()
@@ -236,17 +227,6 @@ public sealed class ConformanceLayoutTests
         var program = File.ReadAllText(RepoFile("web", "Program.cs"));
 
         Assert.Contains("AddSingleton<PassportReadinessService>", program);
-    }
-
-    [Fact]
-    public void AdminAndApiControllers_ShouldAppendEvidenceValidationSection()
-    {
-        var api = File.ReadAllText(RepoFile("web", "Controllers", "PassportsApiController.cs"));
-
-
-        Assert.Contains("PassportEvidenceService", api);
-        Assert.Contains("_passportEvidenceService.Evaluate", api);
-        Assert.Contains("AppendValidationSection", api);
     }
 
     [Fact]

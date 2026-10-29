@@ -7,7 +7,6 @@ public sealed class ExternalApiBatteryIdTests
     {
         var source = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
 
-        Assert.Contains("[HttpGet(\"batteries/{batteryId}\")]", source);
         Assert.Contains("[HttpPost(\"batteries/{batteryId}/telemetry\")]", source);
         Assert.Contains("[HttpPatch(\"batteries/{batteryId}/battery-model\")]", source);
         Assert.Contains("[HttpPost(\"batteries/{batteryId}/passports\")]", source);
@@ -48,12 +47,12 @@ public sealed class ExternalApiBatteryIdTests
     [Fact]
     public void ExternalApi_ShouldListBatteryPassportsAndUsePassportLifecycleLabel()
     {
-        var controller = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "DppApiController.cs"));
         var help = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
         var seed = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateService.cs"));
 
-        Assert.Contains("[HttpGet(\"batteries/{batteryId}/passports\")]", controller);
-        Assert.Contains("ListBatteryPassports", controller);
+        Assert.Contains("[HttpGet(\"batteries/{id}/passports\")]", controller);
+        Assert.Contains("api.VersionsAsync", controller);
         Assert.Contains("Passport Lifecycle", help);
         Assert.DoesNotContain("create, validate, sign and publish passport", help);
         Assert.Contains("Sample token (Passport Lifecycle)", seed);

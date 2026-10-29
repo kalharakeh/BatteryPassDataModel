@@ -128,7 +128,6 @@ public sealed class ApplicationAuditCoverageTests
     {
         var clusterAdmin = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
         var externalApi = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
-        var passportsApi = File.ReadAllText(RepoFile("web", "Controllers", "PassportsApiController.cs"));
         var snapshot = File.ReadAllText(RepoFile("web", "Services", "BatteryPassportSnapshotService.cs"));
 
         Assert.Contains("\"battery.updated\"", clusterAdmin);
@@ -136,10 +135,6 @@ public sealed class ApplicationAuditCoverageTests
         Assert.Contains("\"battery.operations.updated\"", externalApi);
         Assert.Contains("\"battery.model.updated\"", externalApi);
         Assert.Contains("\"battery.software.updated\"", externalApi);
-        Assert.Contains("\"passport.created\"", passportsApi);
-        Assert.Contains("\"passport.updated\"", passportsApi);
-        Assert.Contains("\"passport.archived\"", passportsApi);
-        Assert.Contains("\"passport.validated\"", passportsApi);
         Assert.Contains("\"passport.created\"", snapshot);
         Assert.Contains("\"battery.passport.created\"", snapshot);
     }

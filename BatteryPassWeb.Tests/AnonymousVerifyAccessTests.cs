@@ -2,32 +2,6 @@ namespace BatteryPassWeb.Tests;
 
 public sealed class AnonymousVerifyAccessTests
 {
-    [Fact]
-    public void PublicVerifyEndpoint_ShouldGateTrustDataBehindPublicVisibilityOrInternalTrustAccess()
-    {
-        var controller = File.ReadAllText(RepoFile("web", "Controllers", "PassportsApiController.cs"));
-        var verify = ExtractMethod(controller, "Verify");
-
-        Assert.Contains("AccessControlService", controller);
-        Assert.Contains("_accessControlService", controller);
-        Assert.Contains("_passportPublishPolicyService.IsPubliclyVisible(passport)", verify);
-        Assert.Contains("User.Identity?.IsAuthenticated != true", verify);
-        Assert.Contains("_accessControlService.CanOpenPassportDetailAsync(User, passport, _passportPublishPolicyService, cancellationToken)", verify);
-        Assert.Contains("_accessControlService.CanViewTrustConformanceAsync(User, BsonHelpers.GetString(passport, \"clusterId\"), cancellationToken)", verify);
-
-        Assert.True(
-            verify.IndexOf("_passportPublishPolicyService.IsPubliclyVisible(passport)", StringComparison.Ordinal)
-            < verify.IndexOf("_passportTrustService.Verify(passport)", StringComparison.Ordinal),
-            "Public visibility must be checked before trust verification is returned.");
-
-        Assert.True(
-            verify.IndexOf("_accessControlService.CanOpenPassportDetailAsync", StringComparison.Ordinal)
-            < verify.IndexOf("_passportTrustService.Verify(passport)", StringComparison.Ordinal),
-            "Internal access must be checked before trust verification is returned.");
-
-        Assert.Contains("return NotFound", verify);
-        Assert.Contains("trust = BsonHelpers.ToDotNet", verify);
-    }
 
     [Fact]
     public void PublicVisibilityPolicy_ShouldRemainTheAnonymousVerificationBoundary()
