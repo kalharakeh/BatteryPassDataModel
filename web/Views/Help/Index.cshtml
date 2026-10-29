@@ -21,7 +21,18 @@
                 <code>@Model.BasePath</code>
             </div>
             <div>
-                <p class="mb-1 text-secondary small">Sample Battery ID for these tokens</p>
+                <p class="mb-1 text-secondary small">Example battery ID for reading</p>
+                @if (!string.IsNullOrWhiteSpace(Model.ExampleBatteryId))
+                {
+                    <span class="bp-id-copy-row"><code class="bp-id-value">@Model.ExampleBatteryId</code>@await Html.PartialAsync("_CopyIdButton", Model.ExampleBatteryId)</span>
+                }
+                else
+                {
+                    <span class="text-secondary small">No battery passport is published yet.</span>
+                }
+            </div>
+            <div>
+                <p class="mb-1 text-secondary small">Sample Battery ID for writing and passport actions</p>
                 <span class="bp-id-copy-row"><code class="bp-id-value">@Model.SampleBatteryId</code>@await Html.PartialAsync("_CopyIdButton", Model.SampleBatteryId)</span>
             </div>
             <div>
@@ -110,9 +121,9 @@
                         </tr>
                         <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">GET</span></td>
-                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/clusters/{clusterId}/batteries</code><small>Battery IDs in one cluster</small></span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/clusters/{clusterId}/batteries</code><small>Batteries of one cluster, with their passports</small></span></td>
                             <td><span class="bp-help-access-pill">Read</span></td>
-                            <td>List batteries before reading or patching one.</td>
+                            <td>List a cluster's batteries before reading one. Drafts are listed for global tokens only.</td>
                             <td class="bp-action-cell">
                                 <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-cluster-batteries" aria-expanded="false" aria-controls="api-detail-cluster-batteries" aria-label="Show cluster batteries endpoint details" title="Show cluster batteries endpoint details" data-tooltip="Details">
                                     <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
@@ -132,9 +143,9 @@
                         </tr>
                         <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">GET</span></td>
-                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}</code><small>Latest passport snapshot</small></span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{id}</code><small>The published passport, as this token may see it</small></span></td>
                             <td><span class="bp-help-access-pill">Read</span></td>
-                            <td>Read the complete battery passport response.</td>
+                            <td>Read a battery's whole passport by its battery ID, passport ID or serial number.</td>
                             <td class="bp-action-cell">
                                 <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-battery" aria-expanded="false" aria-controls="api-detail-battery" aria-label="Show full battery endpoint details" title="Show full battery endpoint details" data-tooltip="Details">
                                     <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
@@ -143,9 +154,9 @@
                         </tr>
                         <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">GET</span></td>
-                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/section/{sectionName}</code><small>One named section</small></span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{id}/section/{section}</code><small>One section of the passport</small></span></td>
                             <td><span class="bp-help-access-pill">Read</span></td>
-                            <td>Keep responses focused on one passport area.</td>
+                            <td>Keep responses to one part of the passport.</td>
                             <td class="bp-action-cell">
                                 <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-section" aria-expanded="false" aria-controls="api-detail-section" aria-label="Show section endpoint details" title="Show section endpoint details" data-tooltip="Details">
                                     <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
@@ -154,9 +165,9 @@
                         </tr>
                         <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">GET</span></td>
-                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/values?path=...</code><small>Alias or exact document paths</small></span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{id}/values?path=...</code><small>By key, attribute number or path</small></span></td>
                             <td><span class="bp-help-access-pill">Read</span></td>
-                            <td>Pull a small set of named values.</td>
+                            <td>Pull a few values, each with when and where it came from.</td>
                             <td class="bp-action-cell">
                                 <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-values" aria-expanded="false" aria-controls="api-detail-values" aria-label="Show values endpoint details" title="Show values endpoint details" data-tooltip="Details">
                                     <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
@@ -165,9 +176,9 @@
                         </tr>
                         <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">GET</span></td>
-                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/paths?section=full</code><small>Discover readable path names</small></span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{id}/paths</code><small>What this token can read</small></span></td>
                             <td><span class="bp-help-access-pill">Read</span></td>
-                            <td>Find reusable paths before calling values.</td>
+                            <td>List the attributes with a value before asking for some of them.</td>
                             <td class="bp-action-cell">
                                 <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-paths" aria-expanded="false" aria-controls="api-detail-paths" aria-label="Show readable paths endpoint details" title="Show readable paths endpoint details" data-tooltip="Details">
                                     <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
@@ -242,9 +253,9 @@
                         </tr>
                         <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">GET</span></td>
-                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/passports</code><small>Passport history</small></span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{id}/passports</code><small>Passport versions</small></span></td>
                             <td><span class="bp-help-access-pill">Read</span></td>
-                            <td>List non-archived passport snapshots for a Battery ID.</td>
+                            <td>List the battery's published versions, newest first.</td>
                             <td class="bp-action-cell">
                                 <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-passport-list" aria-expanded="false" aria-controls="api-detail-passport-list" aria-label="Show passport list endpoint details" title="Show passport list endpoint details" data-tooltip="Details">
                                     <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
@@ -309,12 +320,12 @@
                 </article>
 
                 <article id="api-detail-clusters" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Clusters</span><h3>List the clusters available to the token.</h3><p>Returns cluster IDs and names for the current token scope. Global tokens include every registered cluster.</p></div>
+                    <div><span class="bp-summary-title">Clusters</span><h3>List the clusters available to the token.</h3><p>Returns cluster IDs and names for the token's clusters. A global token is the team's token: it lists every registered cluster.</p></div>
                     <pre class="bp-help-pre"><code>GET @Model.BasePath/clusters</code></pre>
                 </article>
 
                 <article id="api-detail-cluster-batteries" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Cluster batteries</span><h3>List battery IDs in one cluster.</h3><p>Use this before reading, patching, or creating passports when an integration only knows the cluster ID.</p></div>
+                    <div><span class="bp-summary-title">Cluster batteries</span><h3>List the batteries of one cluster.</h3><p>Each battery with its battery ID, serial number, family, model and current passport (passport ID, version and status). A cluster token lists its own clusters' batteries that have a published passport; a global token lists every battery, drafts included.</p></div>
                     <pre class="bp-help-pre"><code>GET @Model.BasePath/clusters/demo-cluster/batteries</code></pre>
                 </article>
 
@@ -339,34 +350,52 @@
                 </article>
 
                 <article id="api-detail-battery" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Full battery</span><h3>Read the latest passport snapshot.</h3><p>Returns app metadata, aspects, registry data, schema versions, and validation details for the requested Battery ID.</p></div>
-                    <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/@Model.SampleBatteryId</code></pre>
+                    <div><span class="bp-summary-title">Full battery</span><h3>Read the published passport.</h3><p>Find the battery by its battery ID (the current version), a passport ID (that version) or its serial number. The passport comes in its BatteryPass-Ready v2.0.1 form, cut to what the token may see, as on the passport pages: public data for every token; a battery's own cluster also sees its purchaser and shared data; a global token sees everything. Drafts aren't served.</p></div>
+                    <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/{id}</code></pre>
                 </article>
 
                 <article id="api-detail-section" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Sections</span><h3>Read one passport section only.</h3><p>Supported section names: <code>general</code>, <code>materialComposition</code>, <code>performance</code>, <code>circularity</code>, <code>supplyChain</code>, <code>carbonFootprint</code>, <code>compliance</code>, <code>operations</code>, <code>display</code>, <code>full</code>.</p></div>
-                    <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/@Model.SampleBatteryId/section/performance
-GET @Model.BasePath/batteries/@Model.SampleBatteryId/section/circularity</code></pre>
+                    <div><span class="bp-summary-title">Sections</span><h3>Read one passport section only.</h3><p>Sections, as the schema names them: @foreach (var name in BatteryPassWeb.Dpp.Api.PassportApi.Sections) { <code>@name</code> } A section the token sees nothing of comes back empty.</p></div>
+                    <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/{id}/section/performanceAndDurability
+GET @Model.BasePath/batteries/{id}/section/circularityAndResourceEfficiency</code></pre>
                 </article>
 
                 <article id="api-detail-values" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
                     <div>
                         <span class="bp-summary-title">Values</span>
                         <h3>Read one or more specific values.</h3>
-                        <p>Aliases include <code>ratedEnergy</code>, <code>ratedCapacity</code>, <code>ratedMaximumPower</code>, <code>nominalVoltage</code>, <code>nickelMass</code>, <code>currentConsumptionKwh</code>, <code>currentChargeLevelPct</code>, <code>currentVoltageV</code>, <code>currentCurrentA</code>, <code>softwareVersion</code>, <code>softwareReleaseDate</code>, <code>softwareLatestUpdate</code>, <code>locationOfUse</code>, <code>contactPerson</code>, and <code>isActive</code>.</p>
-                        <p>Need the full set of readable values? Open <a id="supported-values-link" href="@($"{Model.BasePath}/batteries/{Model.SampleBatteryId}/paths?section=full")&amp;includeContainers=true" target="_blank" rel="noopener noreferrer"><code>@Model.BasePath/batteries/@Model.SampleBatteryId/paths?section=full&amp;includeContainers=true</code></a> in a new tab.</p>
+                        <p>Name each value by its key (<code>stateOfChargeSoC</code>), its attribute number (<code>%2363</code> for #63, or <code>63</code>), its E code (<code>E1</code>) or its path in the passport (<code>batteryPassportData.performanceAndDurability.stateOfChargeSoC</code>). Each answer gives the value in the passport's own form, its unit, and when and where it came from. A value the token may not see, or the passport doesn't have, comes back with <code>"exists": false</code>.</p>
+                        @if (!string.IsNullOrWhiteSpace(Model.ExampleBatteryId))
+                        {
+                            <p>To see which values a battery has for this token, open <a id="supported-values-link" href="@($"{Model.BasePath}/batteries/{Model.ExampleBatteryId}/paths")" target="_blank" rel="noopener noreferrer"><code>@Model.BasePath/batteries/@Model.ExampleBatteryId/paths</code></a> in a new tab.</p>
+                        }
+                        else
+                        {
+                            <p>To see which values a battery has for this token, use <code>/paths</code>.</p>
+                        }
                     </div>
                     <div class="bp-help-code-grid">
-                        <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=ratedEnergy&amp;path=ratedCapacity
-GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=nickelMass
-GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=aspects.circularity.payload</code></pre>
+                        <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/{id}/values?path=stateOfChargeSoC&amp;path=%2311
+GET @Model.BasePath/batteries/{id}/values?path=batteryMass</code></pre>
                         <pre class="bp-help-pre"><code>{
-  "message": "Values read successfully",
+  "message": "Values read successfully.",
   "data": {
     "values": [
-      { "requestPath": "ratedEnergy", "value": 102 },
-      { "requestPath": "ratedCapacity", "value": 218 },
-      { "requestPath": "nickelMass", "value": 138.7 }
+      {
+        "request": "stateOfChargeSoC",
+        "attribute": "#63",
+        "unit": "%",
+        "exists": true,
+        "value": { "percentUnit": "%", "percentageValue": 76 },
+        "generatedAt": "2026-10-29T08:55:00Z",
+        "source": "battery system"
+      },
+      {
+        "request": "#11",
+        "attribute": "#11",
+        "exists": true,
+        "value": "VPC8C05-6788"
+      }
     ]
   }
 }</code></pre>
@@ -374,19 +403,9 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=aspects.circula
                 </article>
 
                 <article id="api-detail-paths" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Readable paths</span><h3>Discover paths, then reuse them with values.</h3><p>Query options: <code>section</code> and <code>includeContainers=true</code>. Copy any item from the returned <code>paths</code> array and pass it as a repeated <code>path</code> query parameter to <code>/values</code>.</p></div>
-                    <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/@Model.SampleBatteryId/paths
-GET @Model.BasePath/batteries/@Model.SampleBatteryId/paths?section=performance
-GET @Model.BasePath/batteries/@Model.SampleBatteryId/paths?section=materialComposition&amp;includeContainers=true
-
-# Example: read values returned from /paths?section=performance
-GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=aspects.performanceAndDurability.payload.batteryTechicalProperties.ratedEnergy&amp;path=aspects.performanceAndDurability.payload.batteryTechicalProperties.ratedCapacity
-
-# Example: read an indexed array value discovered by /paths
-GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=aspects.materialComposition.payload.batteryMaterials.0.batteryMaterialMass
-
-# Example: read operations objects discovered by /paths?section=operations
-GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.locationOfUse&amp;path=app.operations.contactPerson</code></pre>
+                    <div><span class="bp-summary-title">Readable values</span><h3>List what this token can read, then ask for some of it.</h3><p>Every attribute of the battery's passport that has a value this token may see: its number, key, name, section, path and unit. Add <code>?section=</code> with a section's name to list one section only.</p></div>
+                    <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/{id}/paths
+GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code></pre>
                 </article>
 
                 <article id="api-detail-telemetry" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
@@ -460,8 +479,8 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 </article>
 
                 <article id="api-detail-passport-list" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Passport list</span><h3>List battery passport snapshots.</h3><p>Returns non-archived passports for the Battery ID with Passport ID, status, created date, and latest marker.</p></div>
-                    <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/@Model.SampleBatteryId/passports</code></pre>
+                    <div><span class="bp-summary-title">Passport versions</span><h3>List the battery's published versions.</h3><p>Newest first, each with its passport ID, version number, status (active or archived), when it was published and last updated, and whether its signature still holds.</p></div>
+                    <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/{id}/passports</code></pre>
                 </article>
 
                 <article id="api-detail-validate" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
@@ -501,12 +520,12 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                         <option value="listClusters">List accessible clusters</option>
                         <option value="listClusterBatteries">List cluster batteries</option>
                         <option value="createBattery">Create battery</option>
-                        <option value="readSection">Read section</option>
-                        <option value="readSectionPerformance">Read section: Performance</option>
+                        <option value="readSection">Read section: Identifiers and product data</option>
+                        <option value="readSectionPerformance">Read section: Performance and durability</option>
                         <option value="readSectionCircularity">Read section: Circularity</option>
-                        <option value="readValuesAliases">Read values: ratedEnergy, ratedCapacity, nickelMass</option>
-                        <option value="readPathsAll">List readable paths (full)</option>
-                        <option value="readBatteryPassports">List battery passports</option>
+                        <option value="readValuesAliases">Read values: state of charge, serial number, mass</option>
+                        <option value="readPathsAll">List readable values</option>
+                        <option value="readBatteryPassports">List passport versions</option>
                         <option value="readHistory24h">Read telemetry history 24h</option>
                         <option value="writeTelemetryPoint">Write telemetry point</option>
                         <option value="writeTelemetrySeries">Write telemetry series</option>
@@ -534,7 +553,7 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 </label>
                 <label class="bp-help-sticky-id-field">Battery ID
                     <span class="bp-help-sticky-id-control">
-                        <input id="tester-battery-id" class="bp-id-value" value="@Model.SampleBatteryId" />
+                        <input id="tester-battery-id" class="bp-id-value" value="@(string.IsNullOrWhiteSpace(Model.ExampleBatteryId) ? Model.SampleBatteryId : Model.ExampleBatteryId)" />
                         <button type="button" class="bp-copy-id-button" aria-label="Copy Battery ID" title="Copy Battery ID" data-tooltip="Copy Battery ID" data-copy-id-button data-copy-target="#tester-battery-id">
                             <svg class="bp-copy-id-icon" viewBox="0 0 24 24" aria-hidden="true">
                                 <rect x="9" y="9" width="10" height="10" rx="2" />
@@ -733,31 +752,31 @@ GET @Model.BasePath/batteries/@Model.SampleBatteryId/values?path=app.operations.
                 },
                 readSection: {
                     method: 'GET',
-                    pathTemplate: `${basePath}/batteries/{batteryId}/section/general`,
+                    pathTemplate: `${basePath}/batteries/{batteryId}/section/identifiersAndProductData`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
                 readSectionPerformance: {
                     method: 'GET',
-                    pathTemplate: `${basePath}/batteries/{batteryId}/section/performance`,
+                    pathTemplate: `${basePath}/batteries/{batteryId}/section/performanceAndDurability`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
                 readSectionCircularity: {
                     method: 'GET',
-                    pathTemplate: `${basePath}/batteries/{batteryId}/section/circularity`,
+                    pathTemplate: `${basePath}/batteries/{batteryId}/section/circularityAndResourceEfficiency`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
                 readValuesAliases: {
                     method: 'GET',
-                    pathTemplate: `${basePath}/batteries/{batteryId}/values?path=ratedEnergy&path=ratedCapacity&path=nickelMass`,
+                    pathTemplate: `${basePath}/batteries/{batteryId}/values?path=stateOfChargeSoC&path=%2311&path=batteryMass`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
                 readPathsAll: {
                     method: 'GET',
-                    pathTemplate: `${basePath}/batteries/{batteryId}/paths?section=full`,
+                    pathTemplate: `${basePath}/batteries/{batteryId}/paths`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },

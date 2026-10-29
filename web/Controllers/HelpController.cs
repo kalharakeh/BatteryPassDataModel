@@ -1,4 +1,5 @@
 using BatteryPassWeb.Configuration;
+using BatteryPassWeb.Dpp.Pages;
 using BatteryPassWeb.Models.ViewModels;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -16,14 +17,17 @@ public class HelpController : Controller
     private readonly BatteryIdService _batteryIdService;
     private readonly AccessControlService _accessControlService;
     private readonly BatteryPassOptions _options;
+    private readonly BatteryPages _batteryPages;
 
     public HelpController(
         ExternalApiRepository externalApiRepository,
         PassportRepository passportRepository,
         BatteryIdService batteryIdService,
         AccessControlService accessControlService,
-        IOptions<BatteryPassOptions> options)
+        IOptions<BatteryPassOptions> options,
+        BatteryPages batteryPages)
     {
+        _batteryPages = batteryPages;
         _externalApiRepository = externalApiRepository;
         _passportRepository = passportRepository;
         _batteryIdService = batteryIdService;
@@ -46,6 +50,7 @@ public class HelpController : Controller
             BasePath = "/api/external/v1",
             PublicBaseUrl = RequestBaseUrl(),
             SampleBatteryId = sampleIds.BatteryId,
+            ExampleBatteryId = (await _batteryPages.ListAsync(null, cancellationToken)).Rows.FirstOrDefault(row => !row.IsDraft)?.Identifier ?? string.Empty,
             SamplePassportId = sampleIds.PassportId,
             SampleReadToken = _options.EnableDemoData && _options.EnablePublicDemoReadToken && readTokenDocument != null
                 ? ExternalApiInitializer.SampleReadTokenValue

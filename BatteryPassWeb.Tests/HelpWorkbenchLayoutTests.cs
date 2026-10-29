@@ -164,11 +164,25 @@ public sealed class HelpWorkbenchLayoutTests
     }
 
     [Fact]
+    public void HelpPage_ShouldOfferAPublishedBatteryForTheReadingCalls()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "HelpController.cs"));
+
+        Assert.Contains("Example battery ID for reading", markup);
+        Assert.Contains("No battery passport is published yet.", markup);
+        Assert.Contains("value=\"@(string.IsNullOrWhiteSpace(Model.ExampleBatteryId) ? Model.SampleBatteryId : Model.ExampleBatteryId)\"", markup);
+        Assert.Contains("Rows.FirstOrDefault(row => !row.IsDraft)?.Identifier", controller);
+        Assert.Contains("BatteryPassWeb.Dpp.Api.PassportApi.Sections", markup);
+        Assert.DoesNotContain("<code>materialComposition</code>", markup);
+    }
+
+    [Fact]
     public void HelpWorkbenchValuesTemplate_ShouldTargetValuesEndpoint()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
 
-        Assert.Contains("/values?path=ratedEnergy&path=ratedCapacity&path=nickelMass", markup);
+        Assert.Contains("/values?path=stateOfChargeSoC&path=%2311&path=batteryMass", markup);
         Assert.Contains("Values read successfully", markup);
     }
 
@@ -246,7 +260,7 @@ public sealed class HelpWorkbenchLayoutTests
 
         Assert.Contains("id=\"supported-values-link\"", markup);
         Assert.Contains("target=\"_blank\"", markup);
-        Assert.Contains("/paths?section=full&amp;includeContainers=true", markup);
+        Assert.Contains("/batteries/{Model.ExampleBatteryId}/paths", markup);
         Assert.Contains("openSupportedValues", markup);
     }
 
@@ -255,9 +269,9 @@ public sealed class HelpWorkbenchLayoutTests
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
 
-        Assert.Contains("Copy any item from", markup);
-        Assert.Contains("/values?path=aspects.performanceAndDurability.payload.batteryTechicalProperties.ratedEnergy&amp;path=aspects.performanceAndDurability.payload.batteryTechicalProperties.ratedCapacity", markup);
-        Assert.Contains("/values?path=app.operations.locationOfUse&amp;path=app.operations.contactPerson", markup);
+        Assert.Contains("its attribute number (<code>%2363</code> for #63", markup);
+        Assert.Contains("/values?path=stateOfChargeSoC&amp;path=%2311", markup);
+        Assert.Contains("/paths?section=performanceAndDurability", markup);
     }
 
     [Fact]
