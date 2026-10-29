@@ -1,0 +1,74 @@
+using System.Security.Claims;
+using BatteryPassWeb.Services;
+
+namespace BatteryPassWeb.Dpp.Access;
+
+/// <summary>
+/// Who is reading (design 5.2): a sign-in or an API token as a <see cref="Reader"/>, with its app-wide roles and the
+/// clusters it belongs to. Pages, the API and document downloads all ask here, then apply <see cref="AudienceRules"/>.
+/// </summary>
+public sealed class DppReaders(ClusterRepository clusters)
+{
+    /// <summary>The app-wide roles the team gives on the Users page, as readers. Any other role gives nothing extra.</summary>
+    public static IReadOnlyDictionary<string, ReaderRole> AppRoles { get; } = new Dictionary<string, ReaderRole>(StringComparer.OrdinalIgnoreCase)
+    {
+        [AccessControlService.RoleAdmin] = ReaderRole.Team,
+        [AccessControlService.RoleNotifiedBody] = ReaderRole.NotifiedBody,
+        [AccessControlService.RoleMarketSurveillanceAuthority] = ReaderRole.MarketSurveillance,
+        [AccessControlService.RoleCommission] = ReaderRole.Commission,
+        [AccessControlService.RoleLiRepair] = ReaderRole.LiRepair,
+        [AccessControlService.RoleLiRecycling] = ReaderRole.LiRecycling,
+        [AccessControlService.RoleLiTreatment] = ReaderRole.LiTreatment,
+    };
+
+    /// <summary>
+    /// The signed-in user as a reader: their app-wide role, and a cluster user or cluster admin of each cluster they are
+    /// a member of. Read from the memberships on every request, so a membership removed by an admin counts at once.
+    /// </summary>
+    public async Task<Reader> ForAsync(ClaimsPrincipal user, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+        var email = AccessControlService.CurrentEmail(user).Trim().ToLowerInvariant();
+        if (user.Identity?.IsAuthenticated != true || email.Length == 0)
+        {
+            return Reader.Anonymous;
+        }
+
+        var roles = user.FindAll(ClaimTypes.Role)
+            .Select(claim => AppRoles.TryGetValue(claim.Value, out var role) ? role : (ReaderRole?)null)
+            .OfType<ReaderRole>()
+            .ToHashSet();
+        var clusterIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var membership in await clusters.GetClusterMembershipsForUserAsync(email, cancellationToken))
+        {
+            var clusterId = BsonHelpers.GetString(membership, "clusterId");
+            if (clusterId.Length == 0)
+            {
+                continue;
+            }
+
+            clusterIds.Add(ClusterRepository.NormalizeClusterId(clusterId));
+            roles.Add(BsonHelpers.GetString(membership, "role").Equals(AccessControlService.RoleClusterAdmin, StringComparison.OrdinalIgnoreCase)
+                ? ReaderRole.ClusterAdmin
+                : ReaderRole.ClusterUser);
+        }
+
+        return new Reader(roles, clusterIds, email);
+    }
+
+    /// <summary>
+    /// An API token as a reader (design 5.2). A token for named clusters reads like a cluster user of those clusters. A
+    /// global token is the team's token, issued only for Scania's own systems, so it reads like the team.
+    /// </summary>
+    public static Reader For(ExternalApiTokenContext token)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        var who = $"api-token:{token.TokenId}";
+        return token.GlobalAccess
+            ? Reader.With(who, ReaderRole.Team)
+            : new Reader(
+                new HashSet<ReaderRole> { ReaderRole.ClusterUser },
+                token.ClusterIds.Where(id => !string.IsNullOrWhiteSpace(id)).Select(ClusterRepository.NormalizeClusterId).ToHashSet(StringComparer.Ordinal),
+                who);
+    }
+}

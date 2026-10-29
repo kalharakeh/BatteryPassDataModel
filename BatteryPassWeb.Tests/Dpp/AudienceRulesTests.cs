@@ -6,9 +6,9 @@ namespace BatteryPassWeb.Tests.Dpp;
 /// <summary>Design 5.2's role matrix, over every attribute.</summary>
 public sealed class AudienceRulesTests
 {
-    private const string OwnCluster = "cluster-test";
+    internal const string OwnCluster = "cluster-test";
 
-    private static readonly string[] ReaderKinds =
+    internal static readonly string[] ReaderKinds =
     [
         "anonymous", "own-cluster-user", "own-cluster-admin", "other-cluster", "team", "notified-body",
         "market-surveillance", "commission", "li-repair", "li-recycling", "li-treatment",
@@ -61,7 +61,7 @@ public sealed class AudienceRulesTests
     }
 
     // Design 5.2 written out per reader; the shared rows by attribute number, from design 5.1.
-    private static bool Expected(string kind, AttributeDefinition attribute) => kind switch
+    internal static bool Expected(string kind, AttributeDefinition attribute) => kind switch
     {
         "team" or "market-surveillance" => true,
         "anonymous" or "other-cluster" => attribute.Audience == Audience.Public,
@@ -74,7 +74,7 @@ public sealed class AudienceRulesTests
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
     };
 
-    private static Reader ReaderFor(string kind) => kind switch
+    internal static Reader ReaderFor(string kind) => kind switch
     {
         "anonymous" => Reader.Anonymous,
         "own-cluster-user" => Reader.With("user@example.com", ReaderRole.ClusterUser, OwnCluster),
