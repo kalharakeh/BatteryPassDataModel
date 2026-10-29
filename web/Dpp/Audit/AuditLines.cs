@@ -202,6 +202,13 @@ public sealed class AuditLines(DppStore store, DocumentStore documents, Attribut
 
                 record = owner;
                 break;
+            case BatteryPages.ClusterChangedEvent:
+                icon = AuditIcon.Edit;
+                words.Add(new(" moved battery "));
+                words.Add(new(record?.Name ?? entityId, Strong: true));
+                words.Add(new(" to another cluster"));
+                change = After(message, " moved from ") is { } move ? move.Replace(" to ", " → ", StringComparison.Ordinal) : null;
+                break;
             case PackCreationService.AuditEventType:
                 icon = AuditIcon.Add;
                 words.Add(new(" created battery "));
@@ -476,7 +483,7 @@ public sealed class AuditLines(DppStore store, DocumentStore documents, Attribut
     private static string NameFrom(string message, string suffix)
     {
         var text = message.EndsWith(suffix, StringComparison.Ordinal) ? message[..^suffix.Length] : message.Split(suffix, 2)[0];
-        foreach (var prefix in new[] { "Battery family ", "Battery model ", "Batch ", "Manufacturing site ", "Economic operator " })
+        foreach (var prefix in new[] { "Battery family ", "Battery model ", "Batch ", "Manufacturing site ", "Economic operator ", "Battery " })
         {
             if (text.StartsWith(prefix, StringComparison.Ordinal))
             {
@@ -584,7 +591,7 @@ public sealed class AuditLines(DppStore store, DocumentStore documents, Attribut
             foreach (var pack in packs)
             {
                 var name = pack.Values.TryGetValue(serial, out var value) && Plain(value.Value) is { Length: > 0 } text ? text : pack.Id;
-                result.names[("dpp-pack", pack.Id)] = new("battery", name, null, null);
+                result.names[("dpp-pack", pack.Id)] = new("battery", name, BatteryPages.BatteryHref(pack.Id), null);
             }
 
             return result;

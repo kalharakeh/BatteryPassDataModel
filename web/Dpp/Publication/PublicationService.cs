@@ -30,6 +30,22 @@ public sealed class PublicationService(
     public const string PublishedEvent = "dpp.published";
     public const string BlockedEvent = "dpp.publish-blocked";
 
+    /// <summary>
+    /// The checks the pack's passport would meet if it were published now, without publishing anything (the battery
+    /// page shows them); null when the pack, or a record it links to, is missing.
+    /// </summary>
+    public async Task<PublicationReport?> CheckAsync(string packId, CancellationToken cancellationToken = default)
+    {
+        var sources = await store.LoadSourcesAsync(packId, cancellationToken);
+        if (sources is null)
+        {
+            return null;
+        }
+
+        var header = new PassportHeader(identifiers.NewPassportIdentifier(), DppStatuses.Active, clock.GetUtcNow().UtcDateTime);
+        return checks.Check(PassportAssembler.Assemble(sources, header));
+    }
+
     public Task<PublicationResult> PublishAsync(ChangeSender sender, string packId, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(sender);

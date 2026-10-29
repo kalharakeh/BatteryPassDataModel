@@ -47,6 +47,7 @@ public sealed record RecordEditorView(
         TargetKind.Batch => "Batch",
         TargetKind.Site => "Manufacturing site",
         TargetKind.Operator => "Economic operator",
+        TargetKind.Pack => "Battery",
         _ => "Record",
     };
 

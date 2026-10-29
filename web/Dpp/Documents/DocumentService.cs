@@ -35,7 +35,8 @@ public sealed class DocumentService(
     public const string UploadedEvent = "dpp.document-uploaded";
     public const string DeniedEvent = "dpp.document-denied";
 
-    private const string Accidents = "informationOnAccidents";
+    /// <summary>#92: a pack's accident reports.</summary>
+    public const string Accidents = "informationOnAccidents";
 
     /// <summary>Uploads the file for a restricted document of a model or batch and links the attribute to it.</summary>
     public async Task<DocumentUploadResult> UploadAsync(ChangeSender sender, TargetKind owner, string ownerId, string property, DocumentUpload upload, CancellationToken cancellationToken = default)

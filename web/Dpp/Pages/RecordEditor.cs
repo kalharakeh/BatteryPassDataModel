@@ -28,6 +28,9 @@ public sealed record EditorPost(
     /// <summary>The fields edited on the page; null when the page sent no stamp, so every field counts as edited.</summary>
     public IReadOnlySet<string>? Edited { get; init; }
 
+    /// <summary>When the typed values were measured (live values, design 7.3); the save time when null.</summary>
+    public DateTime? MeasuredAtUtc { get; init; }
+
     public bool WasEdited(string property) => Edited is null || Edited.Contains(property);
 }
 
@@ -181,10 +184,15 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
     {
         (TargetKind.Site, "identifiersAndProductData") => "The manufacturer and the place where the batteries are made.",
         (TargetKind.Operator, "identifiersAndProductData") => "The economic operator that places the batteries on the market.",
+        (TargetKind.Pack, "identifiersAndProductData") => "This battery's own values. The serial number, manufacturing date and warranty are fixed once its passport is published.",
+        (TargetKind.Pack, "performanceAndDurability") => "Measured on the battery. Its battery system sends them; type them here before it does, for example the end-of-line values, or to correct one.",
         _ => SectionTexts[section].Note,
     };
 
-    /// <summary>The attributes the team edits on a model, batch, site or operator, in catalogue order.</summary>
+    /// <summary>
+    /// The attributes the team edits on a model, batch, site or operator, in catalogue order; for a pack, the values the
+    /// team types (#11, #13, #17, #19). A pack's live values have their own form (<see cref="LiveAttributes"/>).
+    /// </summary>
     public static IReadOnlyList<AttributeDefinition> AttributesOf(TargetKind kind) => AttributeCatalog.All
         .Where(attribute => kind switch
         {
@@ -192,9 +200,24 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
             TargetKind.Batch => attribute.Storage == StorageLocation.Batch,
             TargetKind.Site => attribute.Storage == StorageLocation.Site,
             TargetKind.Operator => attribute.Storage == StorageLocation.Operator,
-            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "packs have their own page"),
+            TargetKind.Pack => IsTypedPackValue(attribute),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
         })
         .ToArray();
+
+    /// <summary>
+    /// The live values (#63, #83, #87): the battery system feeds them, and the team types them too, for example the
+    /// end-of-line values a draft needs before publication (design 7.1). They change in place, without a new version.
+    /// </summary>
+    public static IReadOnlyList<AttributeDefinition> LiveAttributes { get; } = AttributeCatalog.All
+        .Where(attribute => attribute.Change == ChangeRule.Live && attribute.Editors.HasFlag(AttributeEditors.BatterySystemFeed))
+        .ToArray();
+
+    // #6 and #92 are the app's, #22 changes only through the status change (step 4), the live values have their own form.
+    private static bool IsTypedPackValue(AttributeDefinition attribute) =>
+        attribute.Storage == StorageLocation.Pack
+        && attribute.Editors.HasFlag(AttributeEditors.Team)
+        && attribute.Change is ChangeRule.Fixed or ChangeRule.IfProviderChanges;
 
     /// <summary>How many of the record's attributes have a value.</summary>
     public static int CountFilled(TargetKind kind, IReadOnlyDictionary<string, AttributeValue> stored) =>
@@ -220,10 +243,15 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
     /// can tell the fields edited on the page from those it only showed. A page left open then never undoes a newer
     /// value saved by someone else, an upload or a feed.
     /// </summary>
-    public string Stamp(TargetKind kind, IReadOnlyDictionary<string, AttributeValue> stored, string? name)
+    public string Stamp(TargetKind kind, IReadOnlyDictionary<string, AttributeValue> stored, string? name) =>
+        Stamp(AttributesOf(kind), stored, name);
+
+    /// <summary>The stamp of a form that shows only these <paramref name="attributes"/> (e.g. a pack's live values).</summary>
+    public string Stamp(IReadOnlyList<AttributeDefinition> attributes, IReadOnlyDictionary<string, AttributeValue> stored, string? name)
     {
+        ArgumentNullException.ThrowIfNull(attributes);
         ArgumentNullException.ThrowIfNull(stored);
-        var parts = AttributesOf(kind)
+        var parts = attributes
             .Select(forms.For)
             .Where(form => form.Kind is not (FormKind.Upload or FormKind.Fixed))
             .Select(form => $"{form.Attribute.Property}:{Fingerprint(FormValues.Show(form, stored.GetValueOrDefault(form.Attribute.Property)?.Value))}");
@@ -241,8 +269,13 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
     /// nothing is removed.
     /// </summary>
     /// <param name="field">Gives the posted text of a field name, or null when it wasn't posted.</param>
-    public EditorPost Read(TargetKind kind, IReadOnlyDictionary<string, AttributeValue> stored, Func<string, string?> field, string? stamp = null)
+    public EditorPost Read(TargetKind kind, IReadOnlyDictionary<string, AttributeValue> stored, Func<string, string?> field, string? stamp = null) =>
+        Read(AttributesOf(kind), stored, field, stamp);
+
+    /// <summary>Reads a form that shows only these <paramref name="attributes"/>, by the rules above.</summary>
+    public EditorPost Read(IReadOnlyList<AttributeDefinition> attributes, IReadOnlyDictionary<string, AttributeValue> stored, Func<string, string?> field, string? stamp = null)
     {
+        ArgumentNullException.ThrowIfNull(attributes);
         ArgumentNullException.ThrowIfNull(stored);
         ArgumentNullException.ThrowIfNull(field);
         var shown = ParseStamp(stamp);
@@ -252,7 +285,7 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
         var edited = new HashSet<string>(StringComparer.Ordinal);
         var removals = new HashSet<string>(StringComparer.Ordinal);
         var conflicts = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var attribute in AttributesOf(kind))
+        foreach (var attribute in attributes)
         {
             var form = forms.For(attribute);
             var count = form.Kind == FormKind.Rows && int.TryParse(field(form.RowCountField), out var posted) ? posted : 0;
@@ -354,17 +387,29 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
     /// The editor's sections. Without <paramref name="post"/> the fields show the stored values; with it, what was typed,
     /// so a refused value can be corrected in place.
     /// </summary>
-    public async Task<IReadOnlyList<EditorSection>> SectionsAsync(
+    public Task<IReadOnlyList<EditorSection>> SectionsAsync(
         TargetKind kind,
         string id,
         IReadOnlyDictionary<string, AttributeValue> stored,
         EditorPost? post = null,
         IReadOnlyDictionary<string, Refusal>? refusals = null,
+        CancellationToken cancellationToken = default) =>
+        SectionsAsync(kind, id, AttributesOf(kind), stored, post, refusals, cancellationToken);
+
+    /// <summary>The sections of a form that shows only these <paramref name="attributes"/> of the record.</summary>
+    public async Task<IReadOnlyList<EditorSection>> SectionsAsync(
+        TargetKind kind,
+        string id,
+        IReadOnlyList<AttributeDefinition> attributes,
+        IReadOnlyDictionary<string, AttributeValue> stored,
+        EditorPost? post = null,
+        IReadOnlyDictionary<string, Refusal>? refusals = null,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(attributes);
         ArgumentNullException.ThrowIfNull(stored);
         var fields = new List<EditorField>();
-        foreach (var attribute in AttributesOf(kind))
+        foreach (var attribute in attributes)
         {
             var form = forms.For(attribute);
             var value = stored.GetValueOrDefault(attribute.Property)?.Value;
@@ -412,7 +457,8 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
             id,
             post.Changed.ToDictionary(entry => entry.Key, entry => (JsonNode?)entry.Value.DeepClone(), StringComparer.Ordinal),
             "form",
-            Removals: post.Removals.ToArray());
+            post.MeasuredAtUtc,
+            post.Removals.ToArray());
         var preview = await pipeline.SaveAsync(sender, changes, preview: true, cancellationToken);
         if (!preview.Found)
         {

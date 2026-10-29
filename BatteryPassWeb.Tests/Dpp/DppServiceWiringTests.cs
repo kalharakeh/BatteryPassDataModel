@@ -22,6 +22,7 @@ public sealed class DppServiceWiringTests
             .AddSingleton(Options.Create(new BatteryPassOptions { AppBaseUrl = DocumentTesting.BaseUrl }))
             .AddSingleton<MongoContext>()
             .AddSingleton<ApplicationAuditService>()
+            .AddSingleton<ClusterRepository>()
             .AddSingleton(new DemoSigningKeyService(ECDsa.Create(ECCurve.NamedCurves.nistP256)))
             .AddDpp()
             .BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
@@ -36,6 +37,7 @@ public sealed class DppServiceWiringTests
         Assert.Same(provider.GetRequiredService<PublicationService>(), Assert.Single(provider.GetServices<IPackChangeListener>()));
         Assert.NotNull(provider.GetRequiredService<RecordEditor>());
         Assert.Same(provider.GetRequiredService<AttributeForms>(), provider.GetRequiredService<RecordEditor>().Forms);
+        Assert.NotNull(provider.GetRequiredService<BatteryPages>());
     }
 
     [Fact]

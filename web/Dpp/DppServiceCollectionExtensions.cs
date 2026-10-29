@@ -17,7 +17,7 @@ public static class DppServiceCollectionExtensions
 {
     /// <summary>
     /// Registers the V3 passport services (design section 3). They need MongoContext, ApplicationAuditService,
-    /// DemoSigningKeyService and the BatteryPassOptions (APP_BASE_URL for document links).
+    /// DemoSigningKeyService, ClusterRepository and the BatteryPassOptions (APP_BASE_URL for document links).
     /// </summary>
     public static IServiceCollection AddDpp(this IServiceCollection services)
     {
@@ -41,6 +41,7 @@ public static class DppServiceCollectionExtensions
         services.AddSingleton<AttributeForms>();
         services.AddSingleton<RecordEditor>();
         services.AddSingleton<ProductDataPages>();
+        services.AddSingleton<BatteryPages>();
         services.AddSingleton<AuditLines>();
         return services;
     }
