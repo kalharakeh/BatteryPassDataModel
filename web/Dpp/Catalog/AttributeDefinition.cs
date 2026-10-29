@@ -79,6 +79,7 @@ public enum StorageLocation
 /// <param name="Section">"dppHeader", or a section of batteryPassportData in the v2.0.1 schema.</param>
 /// <param name="Property">The v2.0.1 property name. Property names are unique across sections.</param>
 /// <param name="Unit">The file's unit for this battery category, or null.</param>
+/// <param name="Code">For an attribute added beyond the file (decision 28), its label such as "E1"; null for the file's own.</param>
 public sealed record AttributeDefinition(
     int Number,
     string Name,
@@ -91,10 +92,17 @@ public sealed record AttributeDefinition(
     ChangeRule Change,
     string? Unit,
     Requirement Requirement,
-    bool MandatoryFromFeb2027)
+    bool MandatoryFromFeb2027,
+    string? Code = null)
 {
     public const string HeaderSection = "dppHeader";
     public const string DataRoot = "batteryPassportData";
+
+    /// <summary>How pages and messages name the attribute: "#21" for the file's attributes, "E1" for an extension.</summary>
+    public string Label => Code ?? $"#{Number}";
+
+    /// <summary>Added beyond the V3 file and the v2.0.1 schema (decision 28): its form and checks don't come from the schema.</summary>
+    public bool IsExtension => Code is not null;
 
     /// <summary>Dotted path in the assembled passport, e.g. batteryPassportData.performanceAndDurability.capacityFade.</summary>
     public string Path => Section == HeaderSection ? $"{HeaderSection}.{Property}" : $"{DataRoot}.{Section}.{Property}";

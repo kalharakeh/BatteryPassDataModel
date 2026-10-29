@@ -40,7 +40,7 @@ public sealed class SchemaCoverageTests
     [Fact]
     public void EveryCatalogueAttribute_ShouldExistInTheFullSchema()
     {
-        Assert.All(AttributeCatalog.All, a => Assert.NotNull(Schemas.FindProperty(a.Section, a.Property)));
+        Assert.All(AttributeCatalog.FileAttributes, a => Assert.NotNull(Schemas.FindProperty(a.Section, a.Property)));
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public sealed class SchemaCoverageTests
     {
         var inSchema = Sections.SelectMany(section =>
             Schemas.FullDocument["$defs"]![section]!["properties"]!.AsObject().Select(p => $"{section}.{p.Key}"));
-        var known = AttributeCatalog.All.Select(a => $"{a.Section}.{a.Property}").Concat(LeftOut);
+        var known = AttributeCatalog.FileAttributes.Select(a => $"{a.Section}.{a.Property}").Concat(LeftOut);
 
         Assert.Equal(known.Order(StringComparer.Ordinal), inSchema.Order(StringComparer.Ordinal));
     }
@@ -67,7 +67,7 @@ public sealed class SchemaCoverageTests
     [MemberData(nameof(SectionNames))]
     public void FullSchemaRequired_ShouldBeTheMandatoryAttributes(string section)
     {
-        var mandatory = AttributeCatalog.All
+        var mandatory = AttributeCatalog.FileAttributes
             .Where(a => a.Section == section && a.Requirement != Requirement.Conditional)
             .Select(a => a.Property);
 
@@ -80,7 +80,7 @@ public sealed class SchemaCoverageTests
     [MemberData(nameof(SectionNames))]
     public void Feb2027SchemaRequired_ShouldBeTheMandatoryAttributesDueByFeb2027(string section)
     {
-        var dueByFeb2027 = AttributeCatalog.All
+        var dueByFeb2027 = AttributeCatalog.FileAttributes
             .Where(a => a.Section == section && a.Requirement != Requirement.Conditional && a.MandatoryFromFeb2027)
             .Select(a => a.Property);
 
@@ -92,7 +92,7 @@ public sealed class SchemaCoverageTests
     [Fact]
     public void Feb2027Schema_ShouldRequireTheSectionsThatHaveFeb2027Attributes()
     {
-        var expected = AttributeCatalog.All
+        var expected = AttributeCatalog.FileAttributes
             .Where(a => a.Section != AttributeDefinition.HeaderSection && a.MandatoryFromFeb2027)
             .Select(a => a.Section)
             .Distinct();

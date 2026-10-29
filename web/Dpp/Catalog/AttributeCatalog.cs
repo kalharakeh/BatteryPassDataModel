@@ -8,8 +8,9 @@ using R = BatteryPassWeb.Dpp.Catalog.Requirement;
 namespace BatteryPassWeb.Dpp.Catalog;
 
 /// <summary>
-/// The 73 attributes of the V3 file (design Appendix A) with their v2.0.1 schema names.
-/// LongListComplianceTests keeps this list in step with the file, SchemaCoverageTests with the schema.
+/// The 73 attributes of the V3 file (design Appendix A) with their v2.0.1 schema names, and the four extreme-temperature
+/// times added beyond the file by decision 28 (E1–E4). LongListComplianceTests keeps <see cref="FileAttributes"/> in
+/// step with the file, SchemaCoverageTests with the schema.
 /// </summary>
 public static class AttributeCatalog
 {
@@ -28,7 +29,8 @@ public static class AttributeCatalog
     /// <summary>Live values: also the battery-system feed (decision 8, J-10).</summary>
     private const E Live = E.BatterySystemFeed | E.Team | E.BatteryClusterAdmins;
 
-    public static IReadOnlyList<AttributeDefinition> All { get; } =
+    /// <summary>The 73 attributes of the V3 file.</summary>
+    public static IReadOnlyList<AttributeDefinition> FileAttributes { get; } =
     [
         new(1, "DPP Schema version", Hdr, "dppSchemaVersion", L.PassportSystem, A.Public, G.None, E.System, C.Fixed, null, R.MandatoryEspr, true),
         new(2, "DPP Status", Hdr, "dppStatus", L.PassportSystem, A.Public, G.None, E.System | E.Team | E.MarketSurveillance, C.Lifecycle, null, R.MandatoryEspr, true),
@@ -105,13 +107,29 @@ public static class AttributeCatalog
         new(92, "Information on accidents", Performance, "informationOnAccidents", L.Pack, A.Purchaser, G.None, PurchaserEditors, C.Live, null, R.Mandatory, true),
     ];
 
+    /// <summary>
+    /// Decision 28: the extreme-temperature times of the Polarion dynamic attribute list (DIN DKE 99100, 6.7.7.5–6.7.7.8),
+    /// added beyond the file. Kept like #87: live pack values from the BMS, seen by the purchaser and market surveillance.
+    /// Whole seconds. They never block publication. Numbers 1001–1004 only keep them apart; pages show E1–E4.
+    /// </summary>
+    public static IReadOnlyList<AttributeDefinition> Extensions { get; } =
+    [
+        new(1001, "Time spent in extreme temperatures above boundary", Performance, "timeSpentInExtremeTemperaturesAboveBoundary", L.Pack, A.Purchaser, G.None, Live, C.Live, "s", R.Conditional, false, "E1"),
+        new(1002, "Time spent in extreme temperatures below boundary", Performance, "timeSpentInExtremeTemperaturesBelowBoundary", L.Pack, A.Purchaser, G.None, Live, C.Live, "s", R.Conditional, false, "E2"),
+        new(1003, "Time spent charging during extreme temperatures above boundary", Performance, "timeSpentChargingDuringExtremeTemperaturesAboveBoundary", L.Pack, A.Purchaser, G.None, Live, C.Live, "s", R.Conditional, false, "E3"),
+        new(1004, "Time spent charging during extreme temperatures below boundary", Performance, "timeSpentChargingDuringExtremeTemperaturesBelowBoundary", L.Pack, A.Purchaser, G.None, Live, C.Live, "s", R.Conditional, false, "E4"),
+    ];
+
+    /// <summary>Every attribute the app keeps: the file's, then the extensions.</summary>
+    public static IReadOnlyList<AttributeDefinition> All { get; } = [.. FileAttributes, .. Extensions];
+
     private static readonly Dictionary<int, AttributeDefinition> ByNumberIndex = All.ToDictionary(a => a.Number);
     private static readonly Dictionary<string, AttributeDefinition> ByPropertyIndex = All.ToDictionary(a => a.Property, StringComparer.Ordinal);
 
     public static AttributeDefinition ByNumber(int number) =>
         ByNumberIndex.TryGetValue(number, out var attribute)
             ? attribute
-            : throw new KeyNotFoundException($"The catalogue has no attribute #{number}.");
+            : throw new KeyNotFoundException($"The catalogue has no attribute {number}.");
 
     public static AttributeDefinition? FindByProperty(string property) => ByPropertyIndex.GetValueOrDefault(property);
 }

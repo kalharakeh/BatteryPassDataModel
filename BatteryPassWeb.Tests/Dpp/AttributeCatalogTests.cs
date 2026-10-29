@@ -8,15 +8,15 @@ public sealed class AttributeCatalogTests
     [Fact]
     public void Catalogue_ShouldHave73UniqueAttributes()
     {
-        Assert.Equal(73, AttributeCatalog.All.Count);
-        Assert.Equal(73, AttributeCatalog.All.Select(a => a.Number).Distinct().Count());
-        Assert.Equal(73, AttributeCatalog.All.Select(a => a.Property).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(73, AttributeCatalog.FileAttributes.Count);
+        Assert.Equal(73, AttributeCatalog.FileAttributes.Select(a => a.Number).Distinct().Count());
+        Assert.Equal(73, AttributeCatalog.FileAttributes.Select(a => a.Property).Distinct(StringComparer.Ordinal).Count());
     }
 
     [Fact]
     public void Audiences_ShouldMatchTheDesign()
     {
-        var counts = AttributeCatalog.All.GroupBy(a => a.Audience).ToDictionary(g => g.Key, g => g.Count());
+        var counts = AttributeCatalog.FileAttributes.GroupBy(a => a.Audience).ToDictionary(g => g.Key, g => g.Count());
 
         Assert.Equal(54, counts[Audience.Public]);
         Assert.Equal(10, counts[Audience.Purchaser]);
@@ -27,7 +27,7 @@ public sealed class AttributeCatalogTests
     [Fact]
     public void Levels_ShouldMatchTheDesign()
     {
-        var counts = AttributeCatalog.All.GroupBy(a => a.Level).ToDictionary(g => g.Key, g => g.Count());
+        var counts = AttributeCatalog.FileAttributes.GroupBy(a => a.Level).ToDictionary(g => g.Key, g => g.Count());
 
         Assert.Equal(5, counts[AttributeLevel.PassportSystem]);
         Assert.Equal(12, counts[AttributeLevel.Pack]);
@@ -69,19 +69,19 @@ public sealed class AttributeCatalogTests
     }
 
     [Fact]
-    public void TheBatterySystemFeed_ShouldWriteOnlyStateOfChargeCyclesAndTemperature()
+    public void TheBatterySystemFeed_ShouldWriteOnlyStateOfChargeCyclesTemperatureAndTheExtremeTemperatureTimes()
     {
-        var fed = AttributeCatalog.All.Where(a => a.Editors.HasFlag(AttributeEditors.BatterySystemFeed)).Select(a => a.Number);
+        var fed = AttributeCatalog.All.Where(a => a.Editors.HasFlag(AttributeEditors.BatterySystemFeed)).Select(a => a.Label);
 
-        Assert.Equal([63, 83, 87], fed);
+        Assert.Equal(["#63", "#83", "#87", "E1", "E2", "E3", "E4"], fed); // E1–E4: decision 28
     }
 
     [Fact]
-    public void TheLiveSet_ShouldBeStateOfChargeCyclesTemperatureAndAccidents()
+    public void TheLiveSet_ShouldBeStateOfChargeCyclesTemperatureAccidentsAndTheExtremeTemperatureTimes()
     {
-        var live = AttributeCatalog.All.Where(a => a.Change == ChangeRule.Live).Select(a => a.Number);
+        var live = AttributeCatalog.All.Where(a => a.Change == ChangeRule.Live).Select(a => a.Label);
 
-        Assert.Equal([63, 83, 87, 92], live);
+        Assert.Equal(["#63", "#83", "#87", "#92", "E1", "E2", "E3", "E4"], live); // E1–E4: decision 28
     }
 
     [Theory]

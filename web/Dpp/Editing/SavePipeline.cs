@@ -152,7 +152,7 @@ public sealed class SavePipeline(
             var attribute = AttributeCatalog.FindByProperty(key)!;
             if (sender.Kind != SenderKind.Team)
             {
-                results.Add(new KeyResult(key, KeyOutcome.Rejected, $"#{attribute.Number} is removed only by the team; an empty value never overwrites"));
+                results.Add(new KeyResult(key, KeyOutcome.Rejected, $"{attribute.Label} is removed only by the team; an empty value never overwrites"));
             }
             else if (changes.Values.ContainsKey(key))
             {
@@ -282,22 +282,22 @@ public sealed class SavePipeline(
 
         if (attribute.Storage == StorageLocation.System || attribute.Editors == AttributeEditors.System)
         {
-            return (KeyOutcome.Rejected, $"#{attribute.Number} is set by the app", null);
+            return (KeyOutcome.Rejected, $"{attribute.Label} is set by the app", null);
         }
 
         if (!BelongsTo(attribute.Storage, target))
         {
-            return (KeyOutcome.Rejected, $"#{attribute.Number} is stored on the {RecordName(attribute.Storage)}, not on the {target.ToString().ToLowerInvariant()}", null);
+            return (KeyOutcome.Rejected, $"{attribute.Label} is stored on the {RecordName(attribute.Storage)}, not on the {target.ToString().ToLowerInvariant()}", null);
         }
 
         if (target == TargetKind.Pack && (attribute.Change is ChangeRule.OnStatusChange or ChangeRule.RestatedOnStatusChange))
         {
-            return (KeyOutcome.Rejected, $"#{attribute.Number} changes only through the status change", null);
+            return (KeyOutcome.Rejected, $"{attribute.Label} changes only through the status change", null);
         }
 
         if (!EditRights.MayEdit(sender, attribute, packClusterId))
         {
-            return (KeyOutcome.Rejected, $"#{attribute.Number} can't be changed by this sender", null);
+            return (KeyOutcome.Rejected, $"{attribute.Label} can't be changed by this sender", null);
         }
 
         if (!checkValue)
@@ -320,7 +320,7 @@ public sealed class SavePipeline(
         // Restricted documents are served by the app behind access checks; a link elsewhere would publish them.
         if (DppLinks.RestrictedDocumentProperties.Contains(attribute.Property) && !links.IsAppUrl(value["url"]?.GetValue<string>() ?? string.Empty))
         {
-            return (KeyOutcome.Rejected, $"#{attribute.Number} must link to a file uploaded to the app", null);
+            return (KeyOutcome.Rejected, $"{attribute.Label} must link to a file uploaded to the app", null);
         }
 
         return (KeyOutcome.Saved, string.Empty, value);

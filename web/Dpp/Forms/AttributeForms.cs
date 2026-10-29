@@ -78,9 +78,15 @@ public sealed class AttributeForms
 
     private static AttributeForm Build(JsonNode document, AttributeDefinition attribute)
     {
-        var node = OfficialSchemas.FindProperty(document, attribute.Section, attribute.Property)
-            ?? throw new InvalidOperationException($"#{attribute.Number} {attribute.Property} is not in the schema.");
         var noConstants = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (attribute.IsExtension)
+        {
+            // Beyond the schema (decision 28): a whole number of seconds, shown as "seconds" (the catalogue's unit is "s").
+            return new AttributeForm(attribute, FormKind.Single, [new FormInput(string.Empty, attribute.Name, InputKind.Integer, false, [], "seconds")], noConstants);
+        }
+
+        var node = OfficialSchemas.FindProperty(document, attribute.Section, attribute.Property)
+            ?? throw new InvalidOperationException($"{attribute.Label} {attribute.Property} is not in the schema.");
 
         if (DppLinks.RestrictedDocumentProperties.Contains(attribute.Property))
         {

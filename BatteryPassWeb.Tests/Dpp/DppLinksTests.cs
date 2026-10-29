@@ -49,7 +49,7 @@ public sealed class DppLinksTests
     [Fact]
     public void RestrictedDocuments_ShouldBeTheDocumentAttributesThatArentPublic()
     {
-        var documents = AttributeCatalog.All.Where(a =>
+        var documents = AttributeCatalog.FileAttributes.Where(a =>
             DppStoreTesting.Schemas.FullDocument["$defs"]![a.Section]!["properties"]![a.Property]!["$ref"]?.GetValue<string>() == "#/$defs/RelatedResource");
 
         Assert.Equal(

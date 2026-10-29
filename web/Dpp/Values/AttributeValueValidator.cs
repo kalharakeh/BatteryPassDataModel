@@ -17,8 +17,26 @@ public sealed partial class AttributeValueValidator(OfficialSchemas schemas)
     public IReadOnlyList<SchemaIssue> Validate(AttributeDefinition attribute, JsonNode? value)
     {
         ArgumentNullException.ThrowIfNull(attribute);
+        if (attribute.IsExtension)
+        {
+            return ExtensionIssues(value).ToArray();
+        }
+
         var issues = schemas.CheckProperty(attribute.Section, attribute.Property, value);
         return issues.Count > 0 ? issues : AppRuleIssues(attribute, value).ToArray();
+    }
+
+    /// <summary>An extension (decision 28) has no schema entry: it is a whole number of seconds, not below zero.</summary>
+    private static IEnumerable<SchemaIssue> ExtensionIssues(JsonNode? value)
+    {
+        if (value is not JsonValue number || number.GetValueKind() != JsonValueKind.Number || !long.TryParse(number.ToJsonString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var seconds))
+        {
+            yield return new SchemaIssue(string.Empty, "type: must be a whole number of seconds");
+        }
+        else if (seconds < 0)
+        {
+            yield return new SchemaIssue(string.Empty, "minimum: must not be below 0");
+        }
     }
 
     private IEnumerable<SchemaIssue> AppRuleIssues(AttributeDefinition attribute, JsonNode? value)

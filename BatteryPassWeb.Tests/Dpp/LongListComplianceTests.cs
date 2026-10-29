@@ -36,7 +36,7 @@ public sealed partial class LongListComplianceTests
     public void Catalogue_ShouldHaveExactlyTheFilesAttributes()
     {
         Assert.Equal(73, Rows.Value.Count);
-        Assert.Equal(Rows.Value.Select(r => r.No).Order(), AttributeCatalog.All.Select(a => a.Number).Order());
+        Assert.Equal(Rows.Value.Select(r => r.No).Order(), AttributeCatalog.FileAttributes.Select(a => a.Number).Order());
     }
 
     [Theory]

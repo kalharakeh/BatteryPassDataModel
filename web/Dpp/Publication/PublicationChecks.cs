@@ -32,11 +32,11 @@ public sealed class PublicationChecks(OfficialSchemas schemas)
 
             if (attribute.MandatoryFromFeb2027)
             {
-                blocking.Add($"#{attribute.Number} {attribute.Name} is missing");
+                blocking.Add($"{attribute.Label} {attribute.Name} is missing");
             }
             else
             {
-                warnings.Add($"#{attribute.Number} {attribute.Name} is missing (required later, not by Feb 2027)");
+                warnings.Add($"{attribute.Label} {attribute.Name} is missing (required later, not by Feb 2027)");
             }
         }
 

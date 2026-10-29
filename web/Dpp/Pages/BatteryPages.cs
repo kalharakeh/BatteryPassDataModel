@@ -445,8 +445,8 @@ public sealed class BatteryPages(
 
     /// <summary>The attribute a report line such as "#21 Battery mass is missing" is about.</summary>
     private static AttributeDefinition? Numbered(string item) =>
-        Regex.Match(item, @"^#(\d+) ") is { Success: true } match && int.TryParse(match.Groups[1].Value, out var number)
-            ? AttributeCatalog.All.FirstOrDefault(attribute => attribute.Number == number)
+        Regex.Match(item, @"^(#\d+|E\d+) ") is { Success: true } match
+            ? AttributeCatalog.All.FirstOrDefault(attribute => attribute.Label == match.Groups[1].Value)
             : null;
 
     private enum Record

@@ -16,7 +16,7 @@ public sealed class PassportAssemblerTests
     {
         var sources = DppTestSeed.Load().Sources;
 
-        foreach (var attribute in AttributeCatalog.All.Where(a => a.Storage != StorageLocation.System))
+        foreach (var attribute in AttributeCatalog.FileAttributes.Where(a => a.Storage != StorageLocation.System))
         {
             var record = attribute.Storage switch
             {

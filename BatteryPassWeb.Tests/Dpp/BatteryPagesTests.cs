@@ -19,7 +19,7 @@ public sealed class BatteryPagesTests(MongoFixture mongo)
     public void ABattery_ShouldTypeItsOwnValuesAndItsLiveValuesInTwoForms()
     {
         Assert.Equal([11, 13, 17, 19], RecordEditor.AttributesOf(TargetKind.Pack).Select(attribute => attribute.Number));
-        Assert.Equal([63, 83, 87], RecordEditor.LiveAttributes.Select(attribute => attribute.Number));
+        Assert.Equal(["#63", "#83", "#87", "E1", "E2", "E3", "E4"], RecordEditor.LiveAttributes.Select(attribute => attribute.Label)); // E1–E4: decision 28
         Assert.Equal([13], BatteryPages.ValueAttributes(published: true).Select(attribute => attribute.Number));
         Assert.Equal([11, 13, 17, 19], BatteryPages.ValueAttributes(published: false).Select(attribute => attribute.Number));
     }

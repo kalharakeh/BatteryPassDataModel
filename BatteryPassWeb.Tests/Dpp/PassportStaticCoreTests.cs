@@ -11,7 +11,7 @@ public sealed class PassportStaticCoreTests
     {
         var core = PassportStaticCore.Extract(SeedPassport());
 
-        Assert.Equal([2, 4, 63, 83, 87, 92], PassportStaticCore.NotSigned.Select(a => a.Number));
+        Assert.Equal(["#2", "#4", "#63", "#83", "#87", "#92", "E1", "E2", "E3", "E4"], PassportStaticCore.NotSigned.Select(a => a.Label)); // E1–E4: decision 28
         Assert.All(PassportStaticCore.NotSigned, attribute => Assert.Null(Find(core, attribute)));
         Assert.All(
             AttributeCatalog.All.Except(PassportStaticCore.NotSigned),

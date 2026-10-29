@@ -319,7 +319,7 @@ public sealed class AuditLines(DppStore store, DocumentStore documents, Attribut
         {
             var property = BsonHelpers.GetString(key, "key");
             var attribute = AttributeCatalog.FindByProperty(property);
-            var label = attribute is null ? property : $"{attribute.Name} (#{attribute.Number})";
+            var label = attribute is null ? property : $"{attribute.Name} ({attribute.Label})";
             var detail = BsonHelpers.GetString(key, "message");
             return Outcome(key) switch
             {

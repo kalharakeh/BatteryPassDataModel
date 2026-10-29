@@ -12,9 +12,12 @@
     var definition = field.Attribute;
     var refusalId = $"refusal-{definition.Property}";
 
-    // A unit in brackets, unless the name already says it ("Expected lifetime in calendar years").
+    // A unit in brackets, unless the name already says it as a word ("Expected lifetime in calendar years"). A whole-word
+    // match, so "V" isn't found inside "voltage" or "s" inside "spent".
     string WithUnit(string label, string? unit) =>
-        unit is null || label.Contains(unit, StringComparison.OrdinalIgnoreCase) ? label : $"{label} ({unit})";
+        unit is null || System.Text.RegularExpressions.Regex.IsMatch(label, $@"(?<![\p{{L}}\p{{N}}]){System.Text.RegularExpressions.Regex.Escape(unit)}(?![\p{{L}}\p{{N}}])", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+            ? label
+            : $"{label} ({unit})";
 
     var required = definition.Requirement != Requirement.Conditional;
     var hint = form.Kind switch
@@ -106,7 +109,7 @@
 
 <div class="bp-attr-row@(field.Refusal is null ? string.Empty : " is-invalid")@(field.IsMissing ? " is-missing" : string.Empty)">
     <div class="bp-attr-label">
-        <strong><span class="bp-attr-number">#@definition.Number</span> @WithUnit(definition.Name, form.Kind == FormKind.Single ? form.Inputs[0].Unit : null)</strong>
+        <strong><span class="bp-attr-number">@definition.Label</span> @WithUnit(definition.Name, form.Kind == FormKind.Single ? form.Inputs[0].Unit : null)</strong>
         @if (field.Marker != "Required by Feb 2027")
         {
             <em class="bp-field-marker">@field.Marker</em>

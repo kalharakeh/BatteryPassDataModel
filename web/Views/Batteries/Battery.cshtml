@@ -212,7 +212,7 @@
                             <strong>@group.Record</strong>
                             <a href="@group.Href">Fill in</a>
                         </div>
-                        <span>@string.Join(", ", group.Attributes.Select(attribute => $"#{attribute.Number} {attribute.Name}"))</span>
+                        <span>@string.Join(", ", group.Attributes.Select(attribute => $"{attribute.Label} {attribute.Name}"))</span>
                     </li>
                 }
             </ul>
@@ -232,7 +232,7 @@
             {
                 <details>
                     <summary>@Words.Count(publication.NeededLater.Count, "value") needed only after February 2027</summary>
-                    <p class="mb-0">@string.Join(", ", publication.NeededLater.Select(attribute => $"#{attribute.Number} {attribute.Name}"))</p>
+                    <p class="mb-0">@string.Join(", ", publication.NeededLater.Select(attribute => $"{attribute.Label} {attribute.Name}"))</p>
                 </details>
             }
             @if (publication.Files.Count == 0)
