@@ -297,6 +297,21 @@ public sealed class ClusterRepository
             cancellationToken);
     }
 
+    /// <summary>Deletes an account and every cluster membership it has (decision 30).</summary>
+    public async Task DeleteUserAsync(string email, CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email))
+        {
+            return;
+        }
+
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        await _mongoContext.Database.GetCollection<BsonDocument>("clusterMemberships")
+            .DeleteManyAsync(Builders<BsonDocument>.Filter.Eq("email", normalizedEmail), cancellationToken);
+        await _mongoContext.Database.GetCollection<BsonDocument>("users")
+            .DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("email", normalizedEmail), cancellationToken);
+    }
+
     public async Task DeleteClusterMembershipAsync(string email, string clusterId, CancellationToken cancellationToken = default)
     {
         if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(clusterId))

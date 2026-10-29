@@ -513,6 +513,15 @@
                                                     </div>
                                                 </form>
                                             </section>
+                                            <section class="bp-user-drawer-panel">
+                                                <h3>Delete account</h3>
+                                                <p class="text-secondary">Removes the account and its cluster memberships. It can't be undone; the audit log keeps what the account did.</p>
+                                                <form method="post" action="/admin/clusters/delete-account">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="email" value="@user.Email" />
+                                                    <button type="submit" class="bp-danger-button bp-button-compact" data-confirm-action data-confirm-title="Delete account" data-confirm-message="Delete the account @user.Email and its cluster memberships? It can't be undone." data-confirm-submit="Delete account">Delete account</button>
+                                                </form>
+                                            </section>
                                         </div>
                                     </td>
                                 </tr>

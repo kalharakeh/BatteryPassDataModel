@@ -458,6 +458,54 @@ public class AdminController : Controller
         return Redirect($"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}");
     }
 
+    /// <summary>
+    /// Deletes an account and its cluster memberships (decision 30). Your own account and the last team account stay,
+    /// so the team can always sign in.
+    /// </summary>
+    [HttpPost("clusters/delete-account")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteAccount(CancellationToken cancellationToken)
+    {
+        var email = Text(Request.Form, "email").Trim().ToLowerInvariant();
+        var back = $"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}";
+        if (email.Length == 0)
+        {
+            return Redirect("/admin/clusters?tab=users");
+        }
+
+        if (string.Equals(email, AccessControlService.CurrentEmail(User), StringComparison.OrdinalIgnoreCase))
+        {
+            TempData["ErrorMessage"] = "You can't delete your own account.";
+            return Redirect(back);
+        }
+
+        var account = await _clusterRepository.GetUserByEmailAsync(email, cancellationToken);
+        if (account is null)
+        {
+            TempData["ErrorMessage"] = "No account has this email.";
+            return Redirect("/admin/clusters?tab=users");
+        }
+
+        static bool IsTeam(BsonDocument user) =>
+            user.GetValue("roles", new BsonArray()) is BsonArray roles && roles.Any(role => role.IsString && role.AsString == AccessControlService.RoleAdmin);
+        if (IsTeam(account) && (await _clusterRepository.ListUsersAsync(cancellationToken)).Count(IsTeam) <= 1)
+        {
+            TempData["ErrorMessage"] = "This is the last team account, so it stays.";
+            return Redirect(back);
+        }
+
+        await _clusterRepository.DeleteUserAsync(email, cancellationToken);
+        await AppendAdminAuditAsync(
+            "account.deleted",
+            "User account deleted with its cluster memberships.",
+            new BsonDocument { ["email"] = email },
+            "account",
+            email,
+            cancellationToken);
+        TempData["StatusMessage"] = $"The account {email} is deleted.";
+        return Redirect("/admin/clusters?tab=users");
+    }
+
     [HttpPost("api/tokens/create")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateApiToken(CancellationToken cancellationToken)
