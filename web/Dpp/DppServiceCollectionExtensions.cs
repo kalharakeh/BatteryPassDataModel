@@ -47,6 +47,7 @@ public static class DppServiceCollectionExtensions
         services.AddSingleton<DppReaders>();
         services.AddSingleton<ReaderPages>();
         services.AddSingleton<PassportApi>();
+        services.AddSingleton<BatteryApi>();
         services.AddSingleton<PassportPages>();
         services.AddSingleton<AuditLines>();
         return services;

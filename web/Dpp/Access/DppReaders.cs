@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Services;
 
 namespace BatteryPassWeb.Dpp.Access;
@@ -70,5 +71,22 @@ public sealed class DppReaders(ClusterRepository clusters)
                 new HashSet<ReaderRole> { ReaderRole.ClusterUser },
                 token.ClusterIds.Where(id => !string.IsNullOrWhiteSpace(id)).Select(ClusterRepository.NormalizeClusterId).ToHashSet(StringComparer.Ordinal),
                 who);
+    }
+
+    /// <summary>
+    /// An API token as the sender of a change (design 6.1, J-10), with the same name as its reader: a global token is the
+    /// team's; a token for named clusters is a battery system of those clusters, which changes only the live values of
+    /// their batteries.
+    /// </summary>
+    public static ChangeSender SenderFor(ExternalApiTokenContext token)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        var who = For(token).Who;
+        return token.GlobalAccess
+            ? ChangeSender.Team(who)
+            : new ChangeSender(
+                SenderKind.BatterySystemFeed,
+                who,
+                token.ClusterIds.Where(id => !string.IsNullOrWhiteSpace(id)).Select(ClusterRepository.NormalizeClusterId).ToHashSet(StringComparer.OrdinalIgnoreCase));
     }
 }

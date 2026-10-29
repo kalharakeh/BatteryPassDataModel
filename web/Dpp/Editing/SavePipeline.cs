@@ -384,8 +384,10 @@ public sealed class SavePipeline(
         _ => throw new ArgumentOutOfRangeException(nameof(target), target, null),
     };
 
-    /// <summary>Each key's outcome, and for a saved or removed value the one it replaced, so the history shows before and after.</summary>
-    /// <summary>Each key's outcome, with the value it replaced and, when saved, the new value (both as JSON text).</summary>
+    /// <summary>
+    /// Each key's outcome, with the value it replaced and, when saved, the new value (both as JSON text) and when it was
+    /// generated, e.g. measured by the battery system: the live values' history is read from here (step 3c-2).
+    /// </summary>
     private static BsonDocument AuditMetadata(
         IReadOnlyList<KeyResult> results,
         IReadOnlyDictionary<string, AttributeValue> before,
@@ -409,6 +411,7 @@ public sealed class SavePipeline(
             if (result.Outcome == KeyOutcome.Saved && after.TryGetValue(result.Key, out var value) && value.Value is not null)
             {
                 entry["value"] = value.Value.ToJsonString();
+                entry["generatedAt"] = value.GeneratedAtUtc.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
             }
 
             return entry;

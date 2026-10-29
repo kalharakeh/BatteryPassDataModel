@@ -119,6 +119,7 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
         "form" => "form",
         "upload" => "upload",
         "feed" => "battery system",
+        "api" => "API",
         "seed" => "test data",
         _ => source,
     };
