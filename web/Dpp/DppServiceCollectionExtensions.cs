@@ -1,6 +1,8 @@
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
+using BatteryPassWeb.Dpp.Forms;
 using BatteryPassWeb.Dpp.Identifiers;
+using BatteryPassWeb.Dpp.Pages;
 using BatteryPassWeb.Dpp.Publication;
 using BatteryPassWeb.Dpp.Schemas;
 using BatteryPassWeb.Dpp.Signing;
@@ -35,6 +37,8 @@ public static class DppServiceCollectionExtensions
         services.AddSingleton<DppLinks>();
         services.AddSingleton<DocumentStore>();
         services.AddSingleton<DocumentService>();
+        services.AddSingleton<AttributeForms>();
+        services.AddSingleton<RecordEditor>();
         return services;
     }
 }
