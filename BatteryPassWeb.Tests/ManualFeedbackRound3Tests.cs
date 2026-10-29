@@ -1,10 +1,8 @@
-using BatteryPassWeb.Controllers;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
 using MongoDB.Bson;
 using System.Globalization;
-using System.Reflection;
 
 namespace BatteryPassWeb.Tests;
 
@@ -136,35 +134,6 @@ public sealed class ManualFeedbackRound3Tests
     }
 
     [Fact]
-    public void BatterySave_ShouldParseDecimalInputsInvariantlyAndPreserveLockedArrayValues()
-    {
-        var previousCulture = CultureInfo.CurrentCulture;
-        var previousUiCulture = CultureInfo.CurrentUICulture;
-        CultureInfo.CurrentCulture = new CultureInfo("de-DE");
-        CultureInfo.CurrentUICulture = new CultureInfo("de-DE");
-        try
-        {
-            var document = BuildEditableSaveDocument();
-            var form = new FormCollection(new Dictionary<string, StringValues>
-            {
-                ["materialNickel"] = "52.74"
-            });
-
-            InvokeApplyPassportForm(document, form);
-
-            Assert.Equal(52.74, ReadMaterialMass(document, "Nickel"), precision: 2);
-            Assert.Equal(42.5, ReadCarbonStage(document, "RawMaterialExtraction"), precision: 2);
-            Assert.Equal(18.25, ReadRecycledShare(document, "Nickel", "preConsumerShare"), precision: 2);
-            Assert.Equal(12.75, ReadRecycledShare(document, "Nickel", "postConsumerShare"), precision: 2);
-        }
-        finally
-        {
-            CultureInfo.CurrentCulture = previousCulture;
-            CultureInfo.CurrentUICulture = previousUiCulture;
-        }
-    }
-
-    [Fact]
     public void ConformancePage_ShouldRouteFixActionsToBatteryEditInsteadOfPassportSnapshotEdit()
     {
         var view = File.ReadAllText(RepoFile("web", "Views", "Admin", "Conformance.cshtml"));
@@ -261,103 +230,4 @@ public sealed class ManualFeedbackRound3Tests
         };
     }
 
-    private static BsonDocument BuildEditableSaveDocument() =>
-        new()
-        {
-            ["passportId"] = "did:web:acme.battery.pass:test",
-            ["app"] = new BsonDocument
-            {
-                ["display"] = new BsonDocument
-                {
-                    ["serialNumber"] = "SN-SOUTH-002",
-                    ["modelNumber"] = "CP13M-SOUTH-002"
-                },
-                ["product"] = new BsonDocument()
-            },
-            ["aspects"] = new BsonDocument
-            {
-                ["generalProductInformation"] = new BsonDocument
-                {
-                    ["payload"] = new BsonDocument
-                    {
-                        ["manufacturingDate"] = "2026-05-01T00:00:00.000Z"
-                    }
-                },
-                ["materialComposition"] = new BsonDocument
-                {
-                    ["payload"] = new BsonDocument
-                    {
-                        ["batteryMaterials"] = new BsonArray
-                        {
-                            new BsonDocument
-                            {
-                                ["batteryMaterialName"] = "Nickel",
-                                ["batteryMaterialMass"] = 52.74
-                            }
-                        }
-                    }
-                },
-                ["carbonFootprintForBatteries"] = new BsonDocument
-                {
-                    ["payload"] = new BsonDocument
-                    {
-                        ["batteryCarbonFootprint"] = 84.2,
-                        ["carbonFootprintPerformanceClass"] = "B",
-                        ["carbonFootprintPerLifecycleStage"] = new BsonArray
-                        {
-                            new BsonDocument
-                            {
-                                ["lifecycleStage"] = "RawMaterialExtraction",
-                                ["carbonFootprint"] = 42.5
-                            }
-                        }
-                    }
-                },
-                ["circularity"] = new BsonDocument
-                {
-                    ["payload"] = new BsonDocument
-                    {
-                        ["recycledContent"] = new BsonArray
-                        {
-                            new BsonDocument
-                            {
-                                ["recycledMaterial"] = "Nickel",
-                                ["preConsumerShare"] = 18.25,
-                                ["postConsumerShare"] = 12.75
-                            }
-                        }
-                    }
-                }
-            }
-        };
-
-    private static void InvokeApplyPassportForm(BsonDocument document, IFormCollection form)
-    {
-        var method = typeof(AdminController).GetMethod(
-            "ApplyPassportForm",
-            BindingFlags.NonPublic | BindingFlags.Static);
-        Assert.NotNull(method);
-        method.Invoke(null, [document, form, "2026-05-21T12:00:00.000Z"]);
-    }
-
-    private static double ReadMaterialMass(BsonDocument document, string material) =>
-        document["aspects"]["materialComposition"]["payload"]["batteryMaterials"]
-            .AsBsonArray
-            .OfType<BsonDocument>()
-            .Single(row => row["batteryMaterialName"].AsString == material)["batteryMaterialMass"]
-            .ToDouble();
-
-    private static double ReadCarbonStage(BsonDocument document, string stage) =>
-        document["aspects"]["carbonFootprintForBatteries"]["payload"]["carbonFootprintPerLifecycleStage"]
-            .AsBsonArray
-            .OfType<BsonDocument>()
-            .Single(row => row["lifecycleStage"].AsString == stage)["carbonFootprint"]
-            .ToDouble();
-
-    private static double ReadRecycledShare(BsonDocument document, string material, string field) =>
-        document["aspects"]["circularity"]["payload"]["recycledContent"]
-            .AsBsonArray
-            .OfType<BsonDocument>()
-            .Single(row => row["recycledMaterial"].AsString == material)[field]
-            .ToDouble();
 }

@@ -18,8 +18,6 @@ public sealed class ProductTemplateWorkflowLayoutTests
         var service = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateService.cs"));
         var dataCompletionSource = File.ReadAllText(RepoFile("web", "Services", "DataCompletionPolicyService.cs"));
 
-        Assert.Contains("ProductTemplateService", source);
-        Assert.Contains("GetPolicyForPassportAsync", source);
         Assert.Contains("batteryProductTemplateVersions", service);
         Assert.DoesNotContain("batteryProductTemplateSoftwareVersions", service);
         Assert.Contains("productVersion", service);
@@ -84,12 +82,10 @@ public sealed class ProductTemplateWorkflowLayoutTests
     public void AdminAndClusterAdmin_ShouldExposeEditableFieldPolicy()
     {
         var sharedEdit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
-        var adminController = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
         var program = File.ReadAllText(RepoFile("web", "Program.cs"));
 
         Assert.Contains("FieldEditableByKey", sharedEdit);
         Assert.Contains("FieldVisibleByKey", sharedEdit);
-        Assert.Contains("EditableFieldPolicyService", adminController);
         Assert.Contains("AddSingleton<EditableFieldPolicyService>", program);
     }
 
@@ -112,8 +108,6 @@ public sealed class ProductTemplateWorkflowLayoutTests
         Assert.Contains("data-field-key", edit);
         Assert.Contains("has-missing-fields", edit);
         Assert.Contains("markMissingRequiredFields", edit);
-        Assert.Contains("puttingIntoService", File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs")));
-        Assert.Contains("return Redirect(AdminBatteriesUrl", File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs")));
         Assert.Contains("applyProductTemplateSelection", edit);
         Assert.Contains("updateProductVersionOptions", edit);
         Assert.DoesNotContain("updateSoftwareOptions(productVersion", edit);

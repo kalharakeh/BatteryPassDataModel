@@ -73,7 +73,6 @@ public sealed class DocumentAccessControlTests
     public void AdminEditPassport_ShouldExposeAndPersistDocumentVisibility()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
-        var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
         var model = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "PassportViewModel.cs"));
         var factory = File.ReadAllText(RepoFile("web", "Services", "PassportViewModelFactory.cs"));
 
@@ -82,8 +81,6 @@ public sealed class DocumentAccessControlTests
         Assert.Contains("document_co2StudyReference_visibility", markup);
         Assert.Contains("Public document", markup);
         Assert.Contains("Private / privileged", markup);
-        Assert.Contains("NormalizeDocumentVisibility", controller);
-        Assert.Contains("documentNode[\"visibility\"]", controller);
         Assert.Contains("Visibility", model);
         Assert.Contains("document.GetValue(\"visibility\"", factory);
     }

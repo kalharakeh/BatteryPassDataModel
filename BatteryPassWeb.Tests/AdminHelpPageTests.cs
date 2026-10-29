@@ -39,7 +39,7 @@ public sealed class AdminHelpPageTests
         Assert.Contains("_AdminTabs", markup);
         Assert.Contains("Administration tabs", tabs);
         Assert.Contains("bp-tab-active", tabs);
-        Assert.Contains("href=\"@($\"/admin/clusters?tab=batteries{batteryQuerySuffix}\")\"", tabs);
+        Assert.Contains("href=\"/admin/batteries\"", tabs);
         Assert.Contains("href=\"/admin/help\"", tabs);
         Assert.DoesNotContain("Back to main admin page", markup);
         Assert.DoesNotContain("bp-page-return-row", markup);
@@ -173,13 +173,9 @@ public sealed class AdminHelpPageTests
     [Fact]
     public void AdminPages_ShouldLinkToAdminHelp()
     {
-        var index = File.ReadAllText(RepoFile("web", "Views", "Admin", "Index.cshtml"));
-        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
         var edit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
         var conformance = File.ReadAllText(RepoFile("web", "Views", "Admin", "Conformance.cshtml"));
 
-        Assert.Contains("/admin/help", index);
-        Assert.Contains("/admin/help", clusters);
         Assert.Contains("/admin/help", edit);
         Assert.Contains("/admin/help", conformance);
     }

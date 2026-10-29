@@ -52,7 +52,6 @@ public sealed class CopyIdButtonLayoutTests
         {
             RepoFile("web", "Views", "Passport", "Battery.cshtml"),
             RepoFile("web", "Views", "Admin", "Clusters.cshtml"),
-            RepoFile("web", "Views", "Admin", "BatteryPassports.cshtml"),
             RepoFile("web", "Views", "Admin", "Conformance.cshtml"),
             RepoFile("web", "Views", "Admin", "Audit.cshtml"),
             RepoFile("web", "Views", "Admin", "Revisions.cshtml"),

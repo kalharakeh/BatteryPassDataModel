@@ -26,14 +26,6 @@ public sealed class TrustDirtyStateTests
     }
 
     [Fact]
-    public void AdminController_ShouldMarkCanonicalSavesDirty()
-    {
-        var source = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
-
-        Assert.Contains("MarkCanonicalDirtyAsync(passportId", source);
-    }
-
-    [Fact]
     public void ExternalApiAcceptance_ShouldOnlyWriteOperationalFieldsWithoutCallingDirtyMarker()
     {
         var controller = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));

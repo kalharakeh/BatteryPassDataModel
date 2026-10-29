@@ -7,8 +7,6 @@ namespace BatteryPassWeb.Services;
 public enum BatteryTableScope
 {
     Registry,
-    AdminBatteries,
-    AdminPassports,
     ClusterAdminPassports
 }
 
@@ -201,7 +199,7 @@ public sealed class BatteryTableService
             }
 
             var row = _batteryRepository.ToSummary(battery, history, ResolveClusterLabel(battery, clusterNamesById));
-            ApplyActions(row, scope, isGlobalAdmin, returnUrl);
+            ApplyActions(row, scope, returnUrl);
             rows.Add(row);
         }
 
@@ -211,10 +209,13 @@ public sealed class BatteryTableService
             .ToList();
     }
 
-    private static void ApplyActions(BatterySummaryViewModel row, BatteryTableScope scope, bool isGlobalAdmin, string returnUrl)
+    private static void ApplyActions(BatterySummaryViewModel row, BatteryTableScope scope, string returnUrl)
     {
+        // The team's own battery pages live under /admin/batteries (plan 2d-2); these rows only link to the public
+        // pages and, on the cluster-admin page, to the cluster-admin actions.
         var escapedBatteryId = Uri.EscapeDataString(row.BatteryId);
         var escapedReturnUrl = Uri.EscapeDataString(returnUrl);
+        var clusterAdminScope = scope == BatteryTableScope.ClusterAdminPassports;
         row.ReturnUrl = returnUrl;
         row.SummaryUrl = string.IsNullOrWhiteSpace(row.LatestPassportId)
             ? string.Empty
@@ -222,30 +223,22 @@ public sealed class BatteryTableService
         row.DetailUrl = string.IsNullOrWhiteSpace(row.LatestPassportId)
             ? string.Empty
             : $"/{escapedBatteryId}/latest";
-        row.HistoryUrl = isGlobalAdmin
-            ? $"/admin/batteries/{escapedBatteryId}/passports?returnUrl={escapedReturnUrl}"
-            : scope == BatteryTableScope.ClusterAdminPassports
-                ? $"/cluster-admin/batteries/{escapedBatteryId}/passports?returnUrl={escapedReturnUrl}"
-                : $"/{escapedBatteryId}";
-        row.EditUrl = isGlobalAdmin
-            ? $"/admin/batteries/{escapedBatteryId}/edit"
-            : string.IsNullOrWhiteSpace(row.LatestPassportId)
-                ? string.Empty
-                : $"/cluster-admin/passports/{Uri.EscapeDataString(row.LatestPassportId)}/edit";
-        row.CreatePassportUrl = isGlobalAdmin
-            ? $"/admin/batteries/{escapedBatteryId}/passports/create"
-            : $"/cluster-admin/batteries/{escapedBatteryId}/passports/create";
-        row.ConformanceUrl = string.IsNullOrWhiteSpace(row.LatestPassportId)
+        row.HistoryUrl = clusterAdminScope
+            ? $"/cluster-admin/batteries/{escapedBatteryId}/passports?returnUrl={escapedReturnUrl}"
+            : $"/{escapedBatteryId}";
+        row.EditUrl = !clusterAdminScope || string.IsNullOrWhiteSpace(row.LatestPassportId)
             ? string.Empty
-            : isGlobalAdmin
-                ? $"/admin/passports/{Uri.EscapeDataString(row.LatestPassportId)}/conformance"
-                : $"/cluster-admin/passports/{Uri.EscapeDataString(row.LatestPassportId)}/conformance";
+            : $"/cluster-admin/passports/{Uri.EscapeDataString(row.LatestPassportId)}/edit";
+        row.CreatePassportUrl = clusterAdminScope
+            ? $"/cluster-admin/batteries/{escapedBatteryId}/passports/create"
+            : string.Empty;
+        row.ConformanceUrl = !clusterAdminScope || string.IsNullOrWhiteSpace(row.LatestPassportId)
+            ? string.Empty
+            : $"/cluster-admin/passports/{Uri.EscapeDataString(row.LatestPassportId)}/conformance";
         row.CanViewHistory = true;
-        row.CanEditBattery = isGlobalAdmin || (scope == BatteryTableScope.ClusterAdminPassports && !string.IsNullOrWhiteSpace(row.EditUrl));
-        row.CanCreatePassport = (isGlobalAdmin || scope == BatteryTableScope.ClusterAdminPassports)
-            && CanCreateBatteryPassport(row);
-        row.CanOpenConformance = (isGlobalAdmin || scope == BatteryTableScope.ClusterAdminPassports)
-            && !string.IsNullOrWhiteSpace(row.ConformanceUrl);
+        row.CanEditBattery = !string.IsNullOrWhiteSpace(row.EditUrl);
+        row.CanCreatePassport = clusterAdminScope && CanCreateBatteryPassport(row);
+        row.CanOpenConformance = !string.IsNullOrWhiteSpace(row.ConformanceUrl);
         row.ShowNewPassportRequired = row.NewPassportRequired && !IsDraftStatus(row.LatestPassportStatus);
         row.DisplayStatus = row.ShowNewPassportRequired ? "New passport needed" : row.LatestPassportStatus;
     }
@@ -313,17 +306,6 @@ public sealed class BatteryTableService
         row.PassportCount == 0
         || row.NewPassportRequired && !IsDraftStatus(row.LatestPassportStatus);
 
-    private static string BatterySearchRedirectPath(string batteryId, bool isGlobalAdmin, bool isClusterAdmin)
-    {
-        var escapedBatteryId = Uri.EscapeDataString(batteryId);
-        if (isGlobalAdmin)
-        {
-            return $"/admin/batteries/{escapedBatteryId}/passports";
-        }
-
-        return isClusterAdmin ? $"/{escapedBatteryId}" : $"/{escapedBatteryId}/latest";
-    }
-
     private static string ResolveClusterLabel(BsonDocument battery, IReadOnlyDictionary<string, string> clusterNamesById)
     {
         var clusterId = BsonHelpers.GetString(battery, "clusterId");
@@ -355,28 +337,6 @@ public sealed class BatteryTableService
         var querySuffix = string.IsNullOrWhiteSpace(query) ? string.Empty : $"?q={Uri.EscapeDataString(query)}";
         return scope switch
         {
-            BatteryTableScope.AdminBatteries => new BatteryTablePageViewModel
-            {
-                Query = query,
-                SearchAction = "/admin/clusters",
-                SearchPlaceholder = "Search by battery ID, passport ID, serial, family, or cluster",
-                ScopeLabel = "Search and manage all registered batteries.",
-                EmptyLabel = "No batteries are currently available.",
-                ReturnUrl = $"/admin/clusters?tab=batteries{(string.IsNullOrWhiteSpace(query) ? string.Empty : $"&q={Uri.EscapeDataString(query)}")}",
-                ShowCreateBattery = true,
-                ShowHelp = true
-            },
-            BatteryTableScope.AdminPassports => new BatteryTablePageViewModel
-            {
-                Query = query,
-                SearchAction = "/admin/passports",
-                SearchPlaceholder = "Search by battery ID, passport ID, serial, family, or cluster",
-                ScopeLabel = "Search and manage batteries through their passport history.",
-                EmptyLabel = "No batteries are currently available.",
-                ReturnUrl = $"/admin/passports{querySuffix}",
-                ShowCreateBattery = true,
-                ShowHelp = true
-            },
             BatteryTableScope.ClusterAdminPassports => new BatteryTablePageViewModel
             {
                 Query = query,

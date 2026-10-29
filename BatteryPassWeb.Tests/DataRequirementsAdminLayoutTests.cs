@@ -15,8 +15,6 @@ public sealed class DataRequirementsAdminLayoutTests
     {
         var source = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
 
-        Assert.Contains("DataCompletionPolicyService", source);
-        Assert.Contains("GetPolicyForPassportAsync", source);
         Assert.DoesNotContain("[HttpPost(\"data-requirements/save\")]", source);
         Assert.DoesNotContain("SaveDataRequirements", source);
     }

@@ -3,28 +3,10 @@ namespace BatteryPassWeb.Tests;
 public sealed class BatteryAdminWorkflowTests
 {
     [Fact]
-    public void AdminController_ShouldExposeBatteryCreationAndPassportSnapshotActions()
-    {
-        var source = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
-
-        Assert.Contains("[HttpGet(\"batteries/new\")]", source);
-        Assert.Contains("[HttpPost(\"batteries/create\")]", source);
-        Assert.Contains("[HttpPost(\"batteries/{batteryId}/passports/create\")]", source);
-        Assert.Contains("CreateBattery", source);
-        Assert.Contains("CreateBatteryPassport", source);
-        Assert.Contains("CreatePassportSnapshotAsync", source);
-        Assert.Contains("Battery Family and serial number are locked", source);
-    }
-
-    [Fact]
     public void BatteryCreatePage_ShouldPreviewGeneratedBatteryId()
     {
-        var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
         var view = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
 
-        Assert.Contains("[HttpGet(\"batteries/id-preview\")]", controller);
-        Assert.Contains("PreviewBatteryId", controller);
-        Assert.Contains("CreateBatteryId(product.ProductName, serialNumber)", controller);
         Assert.Contains("Battery ID preview", view);
         Assert.Contains("data-battery-id-preview", view);
         Assert.Contains("/admin/batteries/id-preview", view);
@@ -46,14 +28,8 @@ public sealed class BatteryAdminWorkflowTests
     [Fact]
     public void AdminBatteryEdit_ShouldEditBatteryAndReturnToBatteryListWithPendingSnapshot()
     {
-        var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
         var view = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
 
-        Assert.Contains("[HttpGet(\"batteries/{batteryId}/edit\")]", controller);
-        Assert.Contains("[HttpPost(\"batteries/{batteryId}/save\")]", controller);
-        Assert.Contains("SaveBattery", controller);
-        Assert.Contains("app.snapshot.newPassportRequired", controller);
-        Assert.Contains("/admin/clusters?tab=batteries", controller);
         Assert.Contains("battery-edit", view);
         Assert.Contains("readonly", view);
         Assert.Contains("New passport", view);
@@ -66,8 +42,6 @@ public sealed class BatteryAdminWorkflowTests
         var creationService = File.ReadAllText(RepoFile("web", "Services", "BatteryCreationService.cs"));
 
         Assert.Contains("Battery cluster is required.", creationService);
-        Assert.Contains("UpdateNewPassportRequiredAsync", controller);
-        Assert.Contains("ClearNewPassportRequiredAsync", controller);
         Assert.DoesNotContain("snapshot[\"newPassportRequired\"] = true;", controller);
     }
 
@@ -78,13 +52,9 @@ public sealed class BatteryAdminWorkflowTests
         var help = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
         var conformance = File.ReadAllText(RepoFile("web", "Views", "Admin", "Conformance.cshtml"));
 
-        Assert.Contains("private static string AdminBatteriesUrl", controller);
-        Assert.Contains("return Redirect(AdminBatteriesUrl(q));", controller);
-        Assert.Contains("TempData[\"StatusMessage\"] = $\"Passport {passportId} saved.\";", controller);
-        Assert.Contains("return Redirect(AdminBatteriesUrl());", controller);
         Assert.Contains("\"passports\" => \"batteries\"", controller);
         Assert.DoesNotContain("href=\"/admin/clusters?tab=passports\"", help);
-        Assert.Contains("href=\"/admin/clusters?tab=batteries\"", help);
+        Assert.Contains("href=\"/admin/batteries\"", help);
         Assert.Contains("Back to battery list", conformance);
     }
 
@@ -112,30 +82,21 @@ public sealed class BatteryAdminWorkflowTests
     public void AdminBatteryActions_ShouldUseUnifiedIconButtons()
     {
         var clusters = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
-        var history = File.ReadAllText(RepoFile("web", "Views", "Admin", "BatteryPassports.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.Contains("bp-action-button", css);
         Assert.Contains("bp-action-icon", css);
-        Assert.Contains("data-action-icon=\"history\"", clusters);
         Assert.Contains("data-action-icon=\"edit\"", clusters);
         Assert.Contains("data-action-icon=\"conformance\"", clusters);
         Assert.Contains("data-action-icon=\"create-passport\"", clusters);
-        Assert.Contains("data-action-icon=\"summary\"", history);
-        Assert.Contains("data-action-icon=\"detail\"", history);
-        Assert.Contains("data-action-icon=\"audit\"", history);
-        Assert.Contains("data-action-icon=\"archive\"", history);
         Assert.DoesNotContain("&#9776;", clusters);
         Assert.DoesNotContain("&#9998;", clusters);
         Assert.DoesNotContain("&#10003;", clusters);
-        Assert.DoesNotContain(">A</a>", history);
-        Assert.DoesNotContain(">X</button>", history);
     }
 
     [Fact]
     public void FollowupBatteryCreate_ShouldRequireClusterAndUniqueSerial()
     {
-        var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
         var creationService = File.ReadAllText(RepoFile("web", "Services", "BatteryCreationService.cs"));
         var repository = File.ReadAllText(RepoFile("web", "Services", "BatteryRepository.cs"));
         var view = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
@@ -143,7 +104,6 @@ public sealed class BatteryAdminWorkflowTests
         Assert.Contains("Battery cluster is required.", creationService);
         Assert.Contains("Battery serial number already exists.", creationService);
         Assert.Contains("GetBySerialNumberAsync", creationService);
-        Assert.Contains("_batteryCreationService.CreateBatteryAsync", controller);
         Assert.Contains("GetBySerialNumberAsync", repository);
         Assert.Contains("name=\"clusterId\" required", view);
         Assert.Contains("is-policy-locked", view);
@@ -158,9 +118,7 @@ public sealed class BatteryAdminWorkflowTests
         var deltaService = File.ReadAllText(RepoFile("web", "Services", "BatteryPassportDeltaService.cs"));
         var table = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
 
-        Assert.Contains("CreatePassportSnapshotAsync", controller);
         Assert.Contains("CreatePassportSnapshotAsync", clusterAdminController);
-        Assert.Contains("Redirect($\"/admin/batteries/{Uri.EscapeDataString", controller);
         Assert.Contains("Redirect($\"/cluster-admin/passports", clusterAdminController);
         Assert.DoesNotContain("return Redirect($\"/admin/passports/{Uri.EscapeDataString(passportId)}/edit\")", controller);
         Assert.Contains("NumericBsonEquals", deltaService);

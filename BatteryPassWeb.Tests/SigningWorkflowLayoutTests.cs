@@ -16,18 +16,11 @@ public sealed class SigningWorkflowLayoutTests
     [Fact]
     public void AdminController_ShouldExposeSignPublishAuditAndRevisionRoutes()
     {
-        var source = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
         var workflow = File.ReadAllText(RepoFile("web", "Services", "PassportTrustWorkflowService.cs"));
 
-        Assert.Contains("[HttpPost(\"passports/{passportId}/sign\")]", source);
-        Assert.Contains("[HttpPost(\"passports/{passportId}/publish\")]", source);
-        Assert.Contains("[HttpGet(\"passports/{passportId}/audit\")]", source);
-        Assert.Contains("[HttpGet(\"passports/{passportId}/revisions\")]", source);
-        Assert.Contains("PassportTrustWorkflowService", source);
         Assert.Contains("CreateSignedRevisionAsync", workflow);
         Assert.Contains("UpdateTrustSignatureAsync", workflow);
         Assert.Contains("AppendAuditEventAsync", workflow);
-        Assert.Contains("PublishPassportAsync", source);
     }
 
     [Fact]
@@ -152,7 +145,6 @@ public sealed class SigningWorkflowLayoutTests
         var audit = File.ReadAllText(RepoFile("web", "Views", "Admin", "Audit.cshtml"));
         var auditRow = File.ReadAllText(RepoFile("web", "Views", "Shared", "_AuditEventRow.cshtml"));
         var revisions = File.ReadAllText(RepoFile("web", "Views", "Admin", "Revisions.cshtml"));
-        var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.Contains("Audit trail", audit);
@@ -171,9 +163,6 @@ public sealed class SigningWorkflowLayoutTests
         Assert.Contains("Proof diagnostics", revisions);
         Assert.Contains("Latest trust state", revisions);
         Assert.Contains("passport.TrustIsDirty", revisions);
-        Assert.Contains("passport.updated", controller);
-        Assert.Contains("BuildChangeMetadata", controller);
-        Assert.Contains("changedFields", controller);
         Assert.Contains(".bp-ledger", css);
         Assert.Contains(".bp-ledger-timeline", css);
         Assert.Contains(".bp-revision-card", css);
@@ -184,12 +173,10 @@ public sealed class SigningWorkflowLayoutTests
     {
         var access = File.ReadAllText(RepoFile("web", "Services", "AccessControlService.cs"));
         var clusterController = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
-        var adminHistory = File.ReadAllText(RepoFile("web", "Views", "Admin", "BatteryPassports.cshtml"));
 
         Assert.Contains("CanViewBatteryHistoryAsync", access);
         Assert.Contains("CanEditLatestBatteryPassportAsync", access);
         Assert.Contains("isLatestForBattery", clusterController);
-        Assert.Contains("readonly history", adminHistory, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string RepoFile(params string[] parts)

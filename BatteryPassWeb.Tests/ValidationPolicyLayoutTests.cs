@@ -15,8 +15,6 @@ public sealed class ValidationPolicyLayoutTests
     {
         var source = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
 
-        Assert.Contains("PassportPublishPolicyService", source);
-        Assert.Contains("SanitizeTrustClaimsForDraftSave", source);
         Assert.DoesNotContain("validation[\"isValid\"] = true", source);
         Assert.DoesNotContain("verification[\"signedAt\"] = now", source);
     }

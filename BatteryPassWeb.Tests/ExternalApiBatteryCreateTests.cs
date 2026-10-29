@@ -7,12 +7,6 @@ public sealed class ExternalApiBatteryCreateTests
     {
         var source = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
 
-        Assert.Contains("BatteryCreationService", source);
-        Assert.Contains("_batteryCreationService.CreateBatteryAsync", source);
-        Assert.Contains("CustomizeBatteryBeforeInsert", source);
-        Assert.Contains("ApplyBatteryEditableFormValues(form, editablePolicy, forCreation: true)", source);
-        Assert.Contains("ApplyPassportForm(battery, filteredForm, createNow)", source);
-        Assert.Contains("new BatteryCreationActor(CurrentActor(), \"admin\", \"admin-ui\")", source);
         Assert.DoesNotContain("await _batteryRepository.CreateBatteryAsync(battery, cancellationToken);", source);
     }
 

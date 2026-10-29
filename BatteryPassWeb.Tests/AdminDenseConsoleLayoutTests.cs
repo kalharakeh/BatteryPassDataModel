@@ -60,41 +60,7 @@ public sealed class AdminDenseConsoleLayoutTests
         Assert.DoesNotContain("<th class=\"px-4 py-3\">Model</th>", passports);
         Assert.DoesNotContain("@row.ModelNumber", passports);
         Assert.Contains("_batteryRepository.ToSummary", service);
-        Assert.Contains("BatterySearchRedirectPath", service);
         Assert.Contains("serial", service, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public void AdminBatteryClusterAssignments_ShouldUseDenseBatteryIdentityRowsAndAssignmentOnlyControls()
-    {
-        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
-        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
-        var batteryTabStart = clusters.IndexOf("selectedTab == \"battery\"", StringComparison.Ordinal);
-        var clusterTabStart = clusters.IndexOf("selectedTab == \"clusters\"", StringComparison.Ordinal);
-        var batteryTab = clusters.Substring(batteryTabStart, clusterTabStart - batteryTabStart);
-
-        Assert.True(batteryTabStart >= 0);
-        Assert.True(clusterTabStart > batteryTabStart);
-        Assert.Contains("bp-admin-cluster-assignment-table", batteryTab);
-        Assert.Contains("bp-console-table", batteryTab);
-        Assert.Contains("Battery ID", batteryTab);
-        Assert.Contains("Battery Family", batteryTab);
-        Assert.Contains("Battery Model", batteryTab);
-        Assert.Contains("Battery serial number", batteryTab);
-        Assert.Contains("@passport.BatteryId", batteryTab);
-        Assert.Contains("@passport.BatteryFamily", batteryTab);
-        Assert.Contains("bp-battery-id-cell", batteryTab);
-        Assert.Contains("bp-cluster-assignment-form", batteryTab);
-        Assert.Contains("aria-label=\"Save cluster assignment\"", batteryTab);
-        Assert.Contains("title=\"Save cluster assignment\"", batteryTab);
-        Assert.DoesNotContain("<th class=\"bp-action-cell\">Actions</th>", batteryTab);
-        Assert.DoesNotContain("aria-label=\"Summary report\"", batteryTab);
-        Assert.DoesNotContain("aria-label=\"Detailed report\"", batteryTab);
-        Assert.DoesNotContain("aria-label=\"Edit passport snapshot\"", batteryTab);
-        Assert.DoesNotContain("<th class=\"px-3 py-3\">Battery</th>", batteryTab);
-        Assert.DoesNotContain("class=\"bp-secondary-button\">Save</button>", batteryTab);
-        Assert.Contains(".bp-cluster-assignment-form", css);
-        Assert.Contains(".bp-admin-cluster-assignment-table", css);
     }
 
     [Fact]
@@ -241,7 +207,7 @@ public sealed class AdminDenseConsoleLayoutTests
         Assert.Contains("bp-tab-row", tabs);
         Assert.Contains("Administration tabs", tabs);
         Assert.Contains("bp-tab-active", tabs);
-        Assert.Contains("tab=batteries", tabs);
+        Assert.Contains("href=\"/admin/batteries\"", tabs);
         Assert.Contains("href=\"/admin/clusters?tab=api-token-management\"", tabs);
         Assert.Contains("bp-admin-help-reference-console", help);
         Assert.Contains("bp-admin-help-reference-toolbar", help);

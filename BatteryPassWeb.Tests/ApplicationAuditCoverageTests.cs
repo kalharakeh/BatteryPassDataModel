@@ -116,11 +116,9 @@ public sealed class ApplicationAuditCoverageTests
     [Fact]
     public void PassportAuditPages_ShouldUseExpandedBatteryTimeline()
     {
-        var admin = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
         var clusterAdmin = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
         var auditView = File.ReadAllText(RepoFile("web", "Views", "Admin", "Audit.cshtml"));
 
-        Assert.Contains("ListPassportTimelineEventsAsync", admin);
         Assert.Contains("ListPassportTimelineEventsAsync", clusterAdmin);
         Assert.Contains("_AuditEventRow", auditView);
     }
@@ -128,13 +126,11 @@ public sealed class ApplicationAuditCoverageTests
     [Fact]
     public void BatteryAndPassportWritePaths_ShouldAppendMeaningfulAuditEvents()
     {
-        var admin = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
         var clusterAdmin = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
         var externalApi = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
         var passportsApi = File.ReadAllText(RepoFile("web", "Controllers", "PassportsApiController.cs"));
         var snapshot = File.ReadAllText(RepoFile("web", "Services", "BatteryPassportSnapshotService.cs"));
 
-        Assert.Contains("\"battery.updated\"", admin);
         Assert.Contains("\"battery.updated\"", clusterAdmin);
         Assert.Contains("\"battery.telemetry.written\"", externalApi);
         Assert.Contains("\"battery.operations.updated\"", externalApi);

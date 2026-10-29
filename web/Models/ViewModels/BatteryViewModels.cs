@@ -51,7 +51,7 @@ public sealed class BatteryPassportHistoryPageViewModel
     public bool CanCreatePassport { get; init; }
     public string StatusMessage { get; init; } = string.Empty;
     public string ErrorMessage { get; init; } = string.Empty;
-    public string ReturnUrl { get; init; } = "/admin/clusters?tab=batteries";
+    public string ReturnUrl { get; init; } = "/cluster-admin/passports";
     public string ReturnLabel { get; init; } = "Back to Batteries";
 }
 

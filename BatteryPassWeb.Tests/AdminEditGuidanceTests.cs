@@ -12,15 +12,6 @@ public sealed class AdminEditGuidanceTests
     }
 
     [Fact]
-    public void AdminController_ShouldLoadDataRequirementsForEditForms()
-    {
-        var source = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
-
-        Assert.Contains("DataRequirements = dataRequirements", source);
-        Assert.Contains("BuildFieldRequirementDictionary", source);
-    }
-
-    [Fact]
     public void EditPassportView_ShouldRenderRequiredOptionalMarkersAndGuidance()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));

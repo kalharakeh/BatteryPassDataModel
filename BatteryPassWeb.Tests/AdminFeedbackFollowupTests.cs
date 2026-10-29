@@ -233,7 +233,6 @@ public sealed class AdminFeedbackFollowupTests
     {
         var table = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
         var registry = File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml"));
-        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
 
         var expectedOrder = new[]
         {
@@ -259,7 +258,6 @@ public sealed class AdminFeedbackFollowupTests
         Assert.Contains("New passport needed", table);
         Assert.DoesNotContain("Latest passport status", table);
         Assert.Contains("bp-battery-table-toolbar", registry);
-        Assert.Contains("bp-battery-table-toolbar", clusters);
     }
 
     [Fact]

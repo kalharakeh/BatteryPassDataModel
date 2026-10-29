@@ -4,9 +4,6 @@
     var selectedTab = Model.SelectedTab;
     var credentialTab = Model.SelectedCredentialTab;
     var clustersById = Model.Clusters.ToDictionary(cluster => cluster.ClusterId, cluster => cluster, StringComparer.OrdinalIgnoreCase);
-    var query = Model.PassportsQuery ?? string.Empty;
-    var querySuffix = string.IsNullOrWhiteSpace(query) ? string.Empty : $"&q={Uri.EscapeDataString(query)}";
-    ViewData["AdminBatteriesQuerySuffix"] = querySuffix;
     var clusterCreateName = TempData["ClusterCreateName"]?.ToString() ?? string.Empty;
     var clusterCreateId = TempData["ClusterCreateId"]?.ToString() ?? string.Empty;
     var globalAccessOptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -106,109 +103,6 @@
     }
     @* data-generated-token-modal data-generated-token-copy data-generated-token-ok navigator.clipboard.writeText *@
     @await Html.PartialAsync("_GeneratedCredentialModal", Model.GeneratedCredential)
-
-    @if (selectedTab == "batteries")
-    {
-        <section class="bp-card bp-battery-table-toolbar mt-4">
-            <div class="d-flex justify-content-between flex-wrap gap-3 align-items-end">
-                <form action="@Model.BatteryTable.SearchAction" class="bp-search-form mb-0">
-                    <input type="hidden" name="tab" value="batteries" />
-                    <input
-                        name="q"
-                        value="@Model.BatteryTable.Query"
-                        placeholder="@Model.BatteryTable.SearchPlaceholder" />
-                    <button type="submit">Search</button>
-                </form>
-                <div class="bp-battery-toolbar-actions d-flex flex-wrap gap-2">
-                    <a href="/admin/help" class="bp-secondary-button bp-battery-toolbar-help">Help</a>
-                    <a href="/admin/batteries/new" class="bp-primary-button">Create battery</a>
-                </div>
-            </div>
-        </section>
-
-        @await Html.PartialAsync("_BatteryTable", Model.BatteryTable)
-    }
-
-    @if (selectedTab == "battery")
-    {
-        <section class="bp-card bp-table-card mt-4">
-            <div class="bp-table-scroll">
-                <table class="table table-hover align-middle bp-console-table bp-admin-cluster-assignment-table bp-mobile-card-table">
-                    <thead>
-                        <tr>
-                            <th>Battery ID</th>
-                            <th>Battery Family</th>
-                            <th>Battery Model</th>
-                            <th>Battery serial number</th>
-                            <th>Current cluster</th>
-                            <th>Assign</th>
-                            <th>Updated</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (Model.Passports.Count == 0)
-                        {
-                            <tr>
-                                <td class="text-secondary" colspan="7">No battery cluster assignments found.</td>
-                            </tr>
-                        }
-                        else
-                        {
-                            @for (var assignmentIndex = 0; assignmentIndex < Model.Passports.Count; assignmentIndex++)
-                            {
-                                var passport = Model.Passports[assignmentIndex];
-                                var updated = string.IsNullOrWhiteSpace(passport.UpdatedDate)
-                                    ? string.Empty
-                                    : passport.UpdatedDate.Length >= 10
-                                        ? passport.UpdatedDate.Substring(0, 10)
-                                        : passport.UpdatedDate;
-                                <tr>
-                                    <td data-label="Battery ID"><span class="bp-battery-id-cell bp-id-copy-row"><span class="bp-id-value">@passport.BatteryId</span>@await Html.PartialAsync("_CopyIdButton", passport.BatteryId)</span></td>
-                                    <td data-label="Battery Family">@passport.BatteryFamily</td>
-                                    <td data-label="Battery Model">@passport.BatteryVersion</td>
-                                    <td data-label="Battery serial number">@passport.BatterySerialNumber</td>
-                                    <td data-label="Current cluster">
-                                        <p class="mb-0">@passport.ClusterLabel</p>
-                                        @if (!string.IsNullOrWhiteSpace(passport.ClusterId))
-                                        {
-                                            <p class="mb-0 small text-secondary">@passport.ClusterId</p>
-                                        }
-                                    </td>
-                                    <td data-label="Assign">
-                                        <form method="post" action="/admin/clusters/assign-passport" class="bp-cluster-assignment-form">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="passportId" value="@passport.PassportId" />
-                                            <span class="bp-select-shell">
-                                                <select name="clusterId" class="form-select form-select-sm" aria-label="Cluster for @passport.BatteryId">
-                                                    @foreach (var cluster in Model.Clusters)
-                                                    {
-                                                        if (passport.ClusterId == cluster.ClusterId)
-                                                        {
-                                                            <option value="@cluster.ClusterId" selected>@cluster.Name</option>
-                                                        }
-                                                        else
-                                                        {
-                                                            <option value="@cluster.ClusterId">@cluster.Name</option>
-                                                        }
-                                                    }
-                                                </select>
-                                            </span>
-                                            <button type="submit" class="bp-action-button" aria-label="Save cluster assignment" title="Save cluster assignment" data-tooltip="Save cluster assignment" data-action-icon="save-assignment">
-                                                <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                    <path d="M20 6 9 17l-5-5" />
-                                                </svg>
-                                            </button>
-                                        </form>
-                                    </td>
-                                    <td data-label="Updated">@updated</td>
-                                </tr>
-                            }
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </section>
-    }
 
     @if (selectedTab == "clusters")
     {

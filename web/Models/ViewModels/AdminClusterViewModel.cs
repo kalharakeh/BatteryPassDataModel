@@ -5,13 +5,9 @@ namespace BatteryPassWeb.Models.ViewModels;
 
 public sealed class AdminClusterViewModel
 {
-    public string SelectedTab { get; init; } = "passports";
+    public string SelectedTab { get; init; } = "clusters";
     public string SelectedCredentialTab { get; init; } = "api-tokens";
-    public string PassportsQuery { get; init; } = string.Empty;
-    public BatteryTablePageViewModel BatteryTable { get; init; } = new();
     public IReadOnlyList<ClusterViewModel> Clusters { get; init; } = [];
-    public IReadOnlyList<BatterySummaryViewModel> Batteries { get; init; } = [];
-    public IReadOnlyList<PassportSummaryViewModel> Passports { get; init; } = [];
     public IReadOnlyList<UserViewModel> Users { get; init; } = [];
     public IReadOnlyList<ClusterMembershipViewModel> Memberships { get; init; } = [];
     public IReadOnlyList<ApiTokenViewModel> ApiTokens { get; init; } = [];

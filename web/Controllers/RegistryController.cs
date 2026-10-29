@@ -180,12 +180,7 @@ public class RegistryController : Controller
     private static string BatterySearchRedirectPath(string batteryId, bool isAdmin, bool isClusterAdmin)
     {
         var escapedBatteryId = Uri.EscapeDataString(batteryId);
-        if (isAdmin)
-        {
-            return $"/admin/batteries/{escapedBatteryId}/passports";
-        }
-
-        return isClusterAdmin ? $"/{escapedBatteryId}" : $"/{escapedBatteryId}/latest";
+        return isAdmin || isClusterAdmin ? $"/{escapedBatteryId}" : $"/{escapedBatteryId}/latest";
     }
 
     private BatteryPassportHistoryRowViewModel ToHistoryRow(BsonDocument passport)

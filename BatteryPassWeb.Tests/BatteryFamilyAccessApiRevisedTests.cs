@@ -98,12 +98,10 @@ public sealed class BatteryFamilyAccessApiRevisedTests
     [Fact]
     public void ValidateSignPublish_ShouldUseSharedAutoRepublishWorkflow()
     {
-        var admin = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
         var api = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
         var repository = File.ReadAllText(RepoFile("web", "Services", "PassportRepository.cs"));
         var workflow = File.ReadAllText(RepoFile("web", "Services", "PassportTrustWorkflowService.cs"));
 
-        Assert.Contains("PassportTrustWorkflowService", admin);
         Assert.Contains("PassportTrustWorkflowService", api);
         Assert.Contains("ShouldAutoPublishAfterSign", workflow);
         Assert.Contains("AutoPublished", workflow);
@@ -133,9 +131,7 @@ public sealed class BatteryFamilyAccessApiRevisedTests
         var registry = File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml"));
         var batteryTable = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
         var adminClusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
-        var batteryPassports = File.ReadAllText(RepoFile("web", "Views", "Admin", "BatteryPassports.cshtml"));
         var repository = File.ReadAllText(RepoFile("web", "Services", "PassportRepository.cs"));
-        var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
 
         Assert.Contains("_BatteryTable", registry);
         Assert.Contains("aria-label=\"Summary report\"", batteryTable);
@@ -146,12 +142,8 @@ public sealed class BatteryFamilyAccessApiRevisedTests
         Assert.Contains("title=\"Passport history\"", batteryTable);
         Assert.Contains("title=\"Create passport\"", batteryTable);
         Assert.Contains("title=\"Conformance\"", batteryTable);
-        Assert.Contains("title=\"Archive\"", batteryPassports);
-        Assert.Contains("title=\"Unarchive\"", batteryPassports);
         Assert.Contains("bp-confirm-modal", adminClusters);
-        Assert.Contains("data-confirm-action", batteryPassports);
         Assert.Contains("UnarchivePassportAsync", repository);
-        Assert.Contains("[HttpPost(\"passports/unarchive\")]", controller);
     }
 
     [Fact]

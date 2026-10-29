@@ -17,12 +17,7 @@ public sealed class ConformanceLayoutTests
     {
         var source = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
 
-        Assert.Contains("[HttpGet(\"passports/{passportId}/conformance\")]", source);
-        Assert.Contains("[HttpPost(\"passports/{passportId}/validate\")]", source);
-        Assert.Contains("ProductTemplateService", source);
-        Assert.Contains("GetPolicyForPassportAsync", source);
         Assert.DoesNotContain("[HttpPost(\"passports/{passportId}/complete-required-data\")]", source);
-        Assert.Contains("ConformanceViewModel", source);
     }
 
     [Fact]
@@ -250,25 +245,16 @@ public sealed class ConformanceLayoutTests
     [Fact]
     public void AdminController_ShouldComputePassportReadinessForConformance()
     {
-        var source = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
         var program = File.ReadAllText(RepoFile("web", "Program.cs"));
 
-        Assert.Contains("PassportReadinessService", source);
-        Assert.Contains("_passportReadinessService.Evaluate", source);
-        Assert.Contains("GroupedBlockingIssues", source);
         Assert.Contains("AddSingleton<PassportReadinessService>", program);
     }
 
     [Fact]
     public void AdminAndApiControllers_ShouldAppendEvidenceValidationSection()
     {
-        var admin = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
         var api = File.ReadAllText(RepoFile("web", "Controllers", "PassportsApiController.cs"));
 
-        Assert.Contains("PassportEvidenceService", admin);
-        Assert.Contains("_passportEvidenceService.Evaluate", admin);
-        Assert.Contains("AppendValidationSection", admin);
-        Assert.Contains("EvidencePack", admin);
 
         Assert.Contains("PassportEvidenceService", api);
         Assert.Contains("_passportEvidenceService.Evaluate", api);

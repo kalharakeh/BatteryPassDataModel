@@ -136,17 +136,12 @@ public sealed class AdminFeedbackImplementationTests
     [Fact]
     public void PassportCreation_ShouldBeGuardedWhenNoNewPassportIsNeeded()
     {
-        var adminController = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
         var clusterAdminController = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
         var historyModel = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "BatteryViewModels.cs"));
-        var adminHistoryView = File.ReadAllText(RepoFile("web", "Views", "Admin", "BatteryPassports.cshtml"));
         var externalApi = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
 
-        Assert.Contains("CanCreateBatteryPassport", adminController);
-        Assert.Contains("No new passport is needed", adminController);
         Assert.Contains("CanCreateBatteryPassport", clusterAdminController);
         Assert.Contains("CanCreatePassport", historyModel);
-        Assert.Contains("Model.CanCreatePassport", adminHistoryView);
         Assert.Contains("ClearNewPassportRequiredAsync", externalApi);
     }
 

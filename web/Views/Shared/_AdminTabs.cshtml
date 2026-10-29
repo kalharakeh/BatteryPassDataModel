@@ -1,7 +1,6 @@
 @model string
 @{
     var activeTab = Model ?? string.Empty;
-    var batteryQuerySuffix = ViewData["AdminBatteriesQuerySuffix"] as string ?? string.Empty;
     string TabClass(string tab) => activeTab.Equals(tab, StringComparison.OrdinalIgnoreCase) ? "bp-tab bp-tab-active" : "bp-tab";
     bool IsSelected(string tab) => activeTab.Equals(tab, StringComparison.OrdinalIgnoreCase);
 }
@@ -9,8 +8,7 @@
 <form class="bp-admin-mobile-tab-form mt-4" aria-label="Administration section">
     <label for="bp-admin-mobile-tab-select">Admin section</label>
     <select id="bp-admin-mobile-tab-select" data-admin-mobile-tab-select>
-        <option value="@($"/admin/clusters?tab=batteries{batteryQuerySuffix}")" selected="@IsSelected("batteries")">Batteries</option>
-        <option value="/admin/clusters?tab=battery" selected="@IsSelected("battery")">Battery cluster assignments</option>
+        <option value="/admin/batteries" selected="@IsSelected("batteries")">Batteries</option>
         <option value="/admin/clusters?tab=clusters" selected="@IsSelected("clusters")">Registered clusters</option>
         <option value="/admin/clusters?tab=users" selected="@IsSelected("users")">Users</option>
         <option value="/admin/clusters?tab=api-token-management" selected="@IsSelected("api-token-management")">API Token Management</option>
@@ -22,8 +20,7 @@
 </form>
 
 <nav class="bp-tab-row mt-4" aria-label="Administration tabs">
-    <a class="@TabClass("batteries")" href="@($"/admin/clusters?tab=batteries{batteryQuerySuffix}")">Batteries</a>
-    <a class="@TabClass("battery")" href="/admin/clusters?tab=battery">Battery cluster assignments</a>
+    <a class="@TabClass("batteries")" href="/admin/batteries">Batteries</a>
     <a class="@TabClass("clusters")" href="/admin/clusters?tab=clusters">Registered clusters</a>
     <a class="@TabClass("users")" href="/admin/clusters?tab=users">Users</a>
     <a class="@TabClass("api-token-management")" href="/admin/clusters?tab=api-token-management">API Token Management</a>

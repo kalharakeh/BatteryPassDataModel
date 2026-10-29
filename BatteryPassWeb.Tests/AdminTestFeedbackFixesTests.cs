@@ -7,8 +7,6 @@ public sealed class AdminTestFeedbackFixesTests
     {
         var program = File.ReadAllText(RepoFile("web", "Program.cs"));
         var registry = File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml"));
-        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
-        var adminPassports = File.ReadAllText(RepoFile("web", "Views", "Admin", "Passports.cshtml"));
         var clusterPassports = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "Passports.cshtml"));
 
         Assert.True(File.Exists(RepoFile("web", "Services", "BatteryTableService.cs")));
@@ -16,11 +14,8 @@ public sealed class AdminTestFeedbackFixesTests
         Assert.Contains("AddSingleton<BatteryTableService>", program);
         Assert.Contains("BatteryTablePageViewModel", File.ReadAllText(RepoFile("web", "Models", "ViewModels", "BatteryViewModels.cs")));
         Assert.Contains("BatteryTableService", File.ReadAllText(RepoFile("web", "Controllers", "RegistryController.cs")));
-        Assert.Contains("BatteryTableService", File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs")));
         Assert.Contains("BatteryTableService", File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs")));
         Assert.Contains("_BatteryTable", registry);
-        Assert.Contains("_BatteryTable", clusters);
-        Assert.Contains("_BatteryTable", adminPassports);
         Assert.Contains("_BatteryTable", clusterPassports);
     }
 
@@ -28,7 +23,6 @@ public sealed class AdminTestFeedbackFixesTests
     public void SharedBatteryTable_ShouldIncludeClusterNewPassportAndRoleAwareActions()
     {
         var table = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
-        var history = File.ReadAllText(RepoFile("web", "Views", "Admin", "BatteryPassports.cshtml"));
 
         Assert.Contains("<th>Cluster</th>", table);
         Assert.Contains("New passport needed", table);
@@ -37,8 +31,6 @@ public sealed class AdminTestFeedbackFixesTests
         Assert.Contains("row.CanOpenConformance", table);
         Assert.Contains("row.HistoryUrl", table);
         Assert.Contains("row.ReturnUrl", table);
-        Assert.Contains("returnUrl", history);
-        Assert.Contains("Back to Registry", history);
     }
 
     [Fact]
@@ -69,7 +61,6 @@ public sealed class AdminTestFeedbackFixesTests
     public void BatteryCreateAndEdit_ShouldRenderPolicyLockedFieldsAndClusterSelector()
     {
         var edit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
-        var adminController = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
         var policy = File.ReadAllText(RepoFile("web", "Services", "EditableFieldPolicyService.cs"));
         var delta = File.ReadAllText(RepoFile("web", "Services", "BatteryPassportDeltaService.cs"));
 
@@ -78,10 +69,6 @@ public sealed class AdminTestFeedbackFixesTests
         Assert.Contains("is-locked-field", edit);
         Assert.Contains("Battery mass", edit);
         Assert.DoesNotContain(">Weight kg", edit);
-        Assert.Contains("ApplyBatteryEditableFormValues", adminController);
-        Assert.Contains("IsEditableAtCreation", adminController);
-        Assert.Contains("IsEditableAfterCreation", adminController);
-        Assert.Contains("Rejected locked field", adminController);
         Assert.Contains("\"general.batteryMass\"", policy);
         Assert.Contains("aspects.generalProductInformation.payload.batteryMass", policy);
         Assert.Contains("OperationalFieldKeys", delta);

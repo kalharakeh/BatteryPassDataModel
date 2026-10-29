@@ -41,9 +41,7 @@ public sealed class MobileThemeSessionLayoutTests
         Assert.Contains("bp-mobile-identity", layout);
         Assert.Contains("bp-admin-mobile-tab-form", adminTabs);
         Assert.Contains("data-admin-mobile-tab-select", adminTabs);
-        Assert.Contains("bp-admin-cluster-assignment-table bp-mobile-card-table", clusters);
         Assert.Contains("bp-cluster-management-table bp-mobile-card-table", clusters);
-        Assert.Contains("data-label=\"Assign\"", clusters);
         Assert.Contains("data-label=\"Cluster ID\"", clusters);
         Assert.Contains("bp-admin-help-workflow-table bp-mobile-card-table", adminHelp);
         Assert.Contains("bp-admin-help-status-table bp-mobile-card-table", adminHelp);
@@ -92,12 +90,9 @@ public sealed class MobileThemeSessionLayoutTests
     public void GlobalAdminMobileToolbar_ShouldAvoidDuplicateHelpButtonAndAlignCreateAction()
     {
         var adminTabs = File.ReadAllText(RepoFile("web", "Views", "Shared", "_AdminTabs.cshtml"));
-        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.Contains("<option value=\"/admin/help\"", adminTabs);
-        Assert.Contains("bp-battery-toolbar-actions", clusters);
-        Assert.Contains("bp-battery-toolbar-help", clusters);
         Assert.Contains(".bp-battery-toolbar-actions", css);
         Assert.Contains(".bp-battery-toolbar-help", css);
         Assert.Contains("display: none;", css);

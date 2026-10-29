@@ -172,9 +172,6 @@ public sealed class PassportCanonicalDataTests
     {
         var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
 
-        Assert.Contains("NormalizeBatteryPassportIdentifier", controller);
-        Assert.Contains("NormalizeBatteryCategory", controller);
-        Assert.Contains("NormalizeManufacturerSerialNumber", controller);
         Assert.DoesNotContain("generalPayload[\"batteryPassportIdentifier\"] = $\"urn:acme:", controller);
         Assert.DoesNotContain("generalPayload[\"batteryCategory\"] = BatteryImageCatalog.CategoryForImageUrl", controller);
     }
