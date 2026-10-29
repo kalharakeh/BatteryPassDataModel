@@ -14,9 +14,10 @@
     var editorError = (TempData[ProductDataController.EditorErrorKey] ?? ViewData[ProductDataController.EditorErrorKey]) as string;
     var editorInfo = TempData[ProductDataController.EditorInfoKey] as string;
 
-    // A batch's page is already titled with its year and site; its editor is simply its passport values.
-    var eyebrow = Model.Kind == TargetKind.Batch ? Model.KindLabel : $"{Model.KindLabel} · passport values";
-    var title = Model.Kind == TargetKind.Batch ? "Passport values" : Model.Name;
+    // A batch's and a battery's pages are already titled; their editor is simply their passport values.
+    var titled = Model.Kind is TargetKind.Batch or TargetKind.Pack;
+    var eyebrow = titled ? Model.KindLabel : $"{Model.KindLabel} · passport values";
+    var title = titled ? "Passport values" : Model.Name;
 
     // Whose values these are: the batch page says it in its heading.
     var scope = Model.Kind switch
@@ -24,8 +25,16 @@
         TargetKind.Model => "Every battery of this model shares these values.",
         TargetKind.Site => "Every battery made at this site shares these values.",
         TargetKind.Operator => "Every battery this operator places on the market shares these values.",
+        TargetKind.Pack => "Only this battery has these values; the others come from its model, batch, site and operator.",
         _ => null,
     };
+    var publishedNote = Model.Kind == TargetKind.Pack
+        ? Model.PublishedPassports > 0
+            ? "Its passport is published: saving a change publishes a new version, and you're asked first."
+            : "Its passport is a draft: saving changes the draft only."
+        : Model.PublishedPassports > 0
+            ? $"Used by {Words.Count(Model.PublishedPassports, "published passport")}: saving a change publishes new versions, and you're asked first."
+            : "No published passport uses it yet.";
 }
 
 <section class="bp-card bp-console-form-card bp-editor-card mt-4" id="editor">
@@ -48,9 +57,7 @@
                     <span class="bp-done-mark" aria-hidden="true">✓</span>
                     <span>Every value the passport needs by Feb 2027 is filled in.</span>
                 }
-                <span>@(Model.PublishedPassports > 0
-                    ? $"Used by {Words.Count(Model.PublishedPassports, "published passport")}: saving a change publishes new versions, and you're asked first."
-                    : "No published passport uses it yet.")</span>
+                <span>@publishedNote</span>
             </p>
         </div>
         <div class="bp-editor-progress" data-completeness>
@@ -79,7 +86,7 @@
     }
 
     <div class="bp-editor-tools">
-        @if (Model.Kind != TargetKind.Batch)
+        @if (Model.Kind is TargetKind.Model or TargetKind.Site or TargetKind.Operator)
         {
             <label class="bp-editor-name">
                 <span>Name <em class="bp-field-marker">Not passport data</em></span>
@@ -133,7 +140,7 @@
                     <div class="bp-attr-list">
                         @foreach (var field in group.Fields)
                         {
-                            @await Html.PartialAsync("_EditorField", new EditorFieldView(Model, field))
+                            @await Html.PartialAsync("~/Views/ProductData/_EditorField.cshtml", new EditorFieldView(Model, field))
                         }
                     </div>
                 </section>
@@ -185,6 +192,8 @@
     </form>
 }
 
+@if (Model.Removal.Action.Length > 0)
+{
 <details class="bp-card bp-remove-record mt-4">
     <summary>Remove this @kindWord</summary>
     @if (Model.Removal.Blocked is { } blocked)
@@ -200,6 +209,7 @@
         </form>
     }
 </details>
+}
 
 <div class="bp-modal" data-upload-guard-modal hidden>
     <div class="bp-modal-backdrop" data-upload-dismiss></div>

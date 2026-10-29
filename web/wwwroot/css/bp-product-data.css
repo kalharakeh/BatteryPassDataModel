@@ -1634,3 +1634,318 @@ dialog.bp-dialog::backdrop {
 [data-theme="dark"] .bp-auditlog-more summary {
   color: #7ab6ff;
 }
+
+/* ==== Batteries (step 2d-2) ======================================================================================== */
+
+/* The list: search and "Create battery" beside the heading's text, then one quiet table. */
+.bp-batteries-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bp-batteries-search {
+  display: flex;
+  flex: 1 1 420px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  max-width: 640px;
+}
+
+.bp-batteries-search input {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+
+.bp-batteries-clear {
+  font-weight: 600;
+}
+
+.bp-batteries-count {
+  margin: 0;
+  padding: 14px 16px 10px;
+  color: #52637a;
+}
+
+.bp-batteries-muted,
+.bp-battery-id {
+  color: #6b7a90;
+}
+
+.bp-batteries-table td small,
+.bp-battery-id {
+  display: block;
+  font-size: 0.82rem;
+}
+
+.bp-battery-id {
+  overflow-wrap: anywhere;
+}
+
+.bp-battery-link {
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.bp-battery-link:hover,
+.bp-battery-link:focus-visible {
+  text-decoration: underline;
+}
+
+/* "Published · version 2" is done, so it is the only green tag; "Draft" stays a plain outlined tag. */
+main .bp-field-marker.is-published {
+  border-color: #b7dfc4;
+  color: #166534;
+}
+
+/* The battery page's heading: its serial number, status and the records its values come from. */
+.bp-battery-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+
+.bp-battery-title h1 {
+  margin-bottom: 4px;
+}
+
+.bp-battery-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px 28px;
+  margin: 18px 0 0;
+}
+
+.bp-battery-facts dt {
+  margin-bottom: 2px;
+  color: #6b7a90;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.bp-battery-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The battery ID is long: it gets two columns where there is room. */
+@media (min-width: 721px) {
+  .bp-battery-facts .bp-battery-fact-wide {
+    grid-column: span 2;
+  }
+}
+
+.bp-battery-facts .bp-id-copy-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bp-text-button {
+  margin-left: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--bp-primary);
+  font-weight: 600;
+}
+
+.bp-text-button:hover,
+.bp-text-button:focus-visible {
+  text-decoration: underline;
+}
+
+/* One card per part of the battery: publication, live values, accident reports, versions. */
+.bp-battery-card h2 {
+  margin: 2px 0 4px;
+  font-size: 1.25rem;
+  font-weight: 650;
+}
+
+.bp-battery-card > p,
+.bp-battery-card-head p {
+  max-width: 900px;
+  color: #52637a;
+}
+
+.bp-battery-card .bp-status-line {
+  margin: 14px 0 0;
+}
+
+.bp-battery-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
+/* What the passport still needs, under the record that holds it. */
+.bp-missing-groups {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bp-missing-groups li {
+  display: grid;
+  gap: 2px;
+  padding: 10px 14px;
+  border: 1px solid #e6ebf1;
+  border-radius: 12px;
+}
+
+.bp-missing-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+}
+
+.bp-missing-group-head a {
+  font-weight: 600;
+}
+
+.bp-missing-groups li > span {
+  color: #52637a;
+}
+
+.bp-battery-checks {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #e6ebf1;
+}
+
+.bp-battery-checks summary {
+  width: fit-content;
+  color: #52637a;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bp-battery-checks details p,
+.bp-battery-checks details ul {
+  margin-top: 8px;
+}
+
+.bp-file-checks {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bp-file-checks li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding: 6px 0;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.bp-file-checks li:last-child {
+  border-bottom: 0;
+}
+
+.bp-battery-fixed-note {
+  margin: 8px 4px 0;
+  color: #6b7a90;
+  font-size: 0.9rem;
+}
+
+/* The live values: the editor's fields, each with when its value was measured and where it came from. */
+.bp-live-form {
+  margin-top: 14px;
+}
+
+.bp-live-meta {
+  margin: -6px 0 0;
+  color: #6b7a90;
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+.bp-live-save {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #e6ebf1;
+}
+
+.bp-live-save label {
+  display: grid;
+  gap: 6px;
+}
+
+.bp-accident-upload {
+  margin-top: 16px;
+}
+
+/* A new battery: where it comes from, then its own values. */
+.bp-new-battery-part + .bp-new-battery-part {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #e6ebf1;
+}
+
+.bp-new-battery-part h2 {
+  margin: 0 0 4px;
+  font-size: 1.25rem;
+  font-weight: 650;
+}
+
+.bp-new-battery-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px 24px;
+  margin-top: 12px;
+}
+
+.bp-new-battery-choices label {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
+.bp-new-battery-choices label > span {
+  font-weight: 600;
+}
+
+[data-theme="dark"] :is(.bp-batteries-count, .bp-batteries-muted, .bp-battery-id, .bp-battery-facts dt, .bp-battery-card > p,
+  .bp-battery-card-head p, .bp-missing-groups li > span, .bp-battery-checks summary, .bp-battery-fixed-note, .bp-live-meta) {
+  color: var(--bp-muted);
+}
+
+[data-theme="dark"] :is(.bp-missing-groups li, .bp-battery-checks, .bp-file-checks li, .bp-live-save, .bp-new-battery-part + .bp-new-battery-part) {
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
+[data-theme="dark"] main .bp-field-marker.is-published {
+  border-color: rgba(134, 239, 172, 0.35);
+  color: #86efac;
+}
+
+@media (max-width: 720px) {
+  .bp-batteries-tools,
+  .bp-batteries-search {
+    align-items: stretch;
+  }
+
+  .bp-live-meta {
+    text-align: left;
+  }
+}

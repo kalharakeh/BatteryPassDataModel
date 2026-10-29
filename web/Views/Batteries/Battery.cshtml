@@ -1,0 +1,453 @@
+@using System.Globalization
+@using BatteryPassWeb.Controllers
+@using BatteryPassWeb.Dpp.Identifiers
+@using BatteryPassWeb.Dpp.Pages
+@using BatteryPassWeb.Dpp.Store
+@inject IIdentifierScheme Identifiers
+@model BatteryPage
+@{
+    ViewData["Title"] = $"Battery {Model.SerialNumber}";
+    var href = BatteryPages.BatteryHref(Model.Pack.Id);
+    var sources = Model.Sources;
+    var publication = Model.Publication;
+    var english = CultureInfo.GetCultureInfo("en-GB");
+    string When(DateTime utc) => TimeZoneInfo.ConvertTimeFromUtc(utc, TimeZoneInfo.Local).ToString("d MMM yyyy, HH:mm", english);
+    string Value(string property) => Model.Pack.Values.GetValueOrDefault(property)?.Value?.ToString() ?? "—";
+
+    // "2026-09" as "September 2026", and an ISO 8601 period such as "P3Y6M" as "3 years 6 months".
+    string Month(string text) => DateTime.TryParseExact(text, "yyyy-MM", CultureInfo.InvariantCulture, DateTimeStyles.None, out var month)
+        ? month.ToString("MMMM yyyy", english)
+        : text;
+    string Period(string text)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(text, @"^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?$");
+        if (!match.Success || text == "P")
+        {
+            return text;
+        }
+
+        var parts = new[] { (match.Groups[1].Value, "year"), (match.Groups[2].Value, "month"), (match.Groups[3].Value, "day") }
+            .Where(part => part.Item1.Length > 0)
+            .Select(part => Words.Count(int.Parse(part.Item1, CultureInfo.InvariantCulture), part.Item2));
+        return string.Join(" ", parts);
+    }
+    var card = (TempData[BatteriesController.CardKey] ?? ViewData[BatteriesController.CardKey]) as string;
+    var cardStatus = (TempData[BatteriesController.CardStatusKey] ?? ViewData[BatteriesController.CardStatusKey]) as string;
+    var cardError = (TempData[BatteriesController.CardErrorKey] ?? ViewData[BatteriesController.CardErrorKey]) as string;
+    var cardInfo = (TempData[BatteriesController.CardInfoKey] ?? ViewData[BatteriesController.CardInfoKey]) as string;
+    var testIds = Identifiers.IsTestIdentifier(Model.Identifier) || Model.Versions.Any(row => Identifiers.IsTestIdentifier(row.Version.DigitalProductPassportId));
+    var liveFields = Model.Live.Sections.SelectMany(section => section.Fields).ToArray();
+    var filesChanged = publication.Files.Count(file => !file.Unchanged);
+
+    async Task CardMessagesAsync(string name)
+    {
+        if (card != name)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(cardStatus))
+        {
+            <p class="alert alert-success bp-status-line is-done" role="status">
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" /></svg>
+                <span>@cardStatus</span>
+            </p>
+        }
+        if (!string.IsNullOrWhiteSpace(cardInfo))
+        {
+            <p class="alert alert-secondary bp-status-line is-info" role="status"><span>@cardInfo</span></p>
+        }
+        if (!string.IsNullOrWhiteSpace(cardError))
+        {
+            <p class="alert alert-danger bp-status-line is-problem" role="alert">
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4.5v4.5M8 11.5v.5" /></svg>
+                <span>@cardError</span>
+            </p>
+        }
+        await Task.CompletedTask;
+    }
+
+    static string Size(long bytes) => bytes < 1024
+        ? $"{bytes} bytes"
+        : bytes < 1048576 ? $"{(bytes / 1024.0).ToString("0.#", CultureInfo.InvariantCulture)} KB" : $"{(bytes / 1048576.0).ToString("0.#", CultureInfo.InvariantCulture)} MB";
+
+    static string Source(string? source) => source switch
+    {
+        "form" => "typed on this page",
+        "upload" => "from an upload",
+        "feed" => "from the battery system",
+        "system" => "set by the app",
+        "seed" => "test data",
+        _ => source ?? "not recorded",
+    };
+}
+
+<main class="bp-page bp-admin-page">
+    <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
+    <nav class="bp-breadcrumb" aria-label="Breadcrumb">
+        <a href="/admin/batteries">Batteries</a>
+        <span aria-current="page">@Model.SerialNumber</span>
+    </nav>
+
+    <header class="bp-page-heading bp-battery-heading">
+        <span class="bp-summary-title">Battery</span>
+        <div class="bp-battery-title">
+            <h1>@Model.SerialNumber</h1>
+            @if (publication.Active is { } current)
+            {
+                <span class="bp-field-marker is-published">Published · version @current.Number</span>
+            }
+            else
+            {
+                <span class="bp-field-marker">Draft · only your team sees it</span>
+            }
+        </div>
+        <p class="mb-0">
+            Model <a href="@ProductDataPages.FamilyHref(sources.Model.FamilyId, sources.Model.Id)">@sources.Model.Name</a> of @Model.Family.Name,
+            made at @sources.Site.Name in @sources.Batch.Year.
+        </p>
+        <dl class="bp-battery-facts">
+            <div class="bp-battery-fact-wide">
+                <dt>Battery ID <span class="bp-attr-number">#6</span></dt>
+                <dd><span class="bp-id-copy-row"><span class="bp-id-value">@Model.Identifier</span>@await Html.PartialAsync("_CopyIdButton", Model.Identifier)</span></dd>
+            </div>
+            <div>
+                <dt>Batch</dt>
+                <dd><a href="/admin/batches/@Uri.EscapeDataString(sources.Batch.Id)">@Model.BatchLabel</a></dd>
+            </div>
+            <div>
+                <dt>Economic operator</dt>
+                <dd><a href="@ProductDataPages.SitesHref("operator", sources.Operator.Id)">@sources.Operator.Name</a></dd>
+            </div>
+            <div>
+                <dt>Cluster</dt>
+                <dd>
+                    <span class="@(Model.Pack.ClusterId is null ? "bp-batteries-muted" : null)">@Model.ClusterLabel</span>
+                    <button type="button" class="bp-text-button" data-open-dialog="cluster-dialog">Change</button>
+                </dd>
+            </div>
+            @if (publication.IsPublished)
+            {
+                <div>
+                    <dt>Serial number <span class="bp-attr-number">#11</span></dt>
+                    <dd>@Value("batterySerialNumber")</dd>
+                </div>
+                <div>
+                    <dt>Manufacturing date <span class="bp-attr-number">#17</span></dt>
+                    <dd>@Month(Value("manufacturingDate"))</dd>
+                </div>
+                <div>
+                    <dt>Warranty <span class="bp-attr-number">#19</span></dt>
+                    <dd>@Period(Value("warrantyPeriod"))</dd>
+                </div>
+            }
+        </dl>
+        @{ await CardMessagesAsync("cluster"); }
+    </header>
+
+    @await Html.PartialAsync("~/Views/ProductData/_Messages.cshtml")
+    @if (testIds)
+    {
+        <p class="alert alert-secondary bp-status-line is-info mt-3" role="note">
+            <span>Test identifiers: this battery's IDs start with TEST-. Real ones come once the identifier scheme is chosen (design 10).</span>
+        </p>
+    }
+
+    <dialog id="cluster-dialog" class="bp-modal-panel bp-dialog" aria-labelledby="cluster-dialog-title">
+        <form method="post" action="@href/cluster">
+            @Html.AntiForgeryToken()
+            <h2 id="cluster-dialog-title">Change the cluster</h2>
+            <p class="bp-help-text">The customer the battery belongs to. Its members see its purchaser data. The passport doesn't change.</p>
+            <label class="bp-product-version-selected-field">
+                <span>Cluster</span>
+                <select name="clusterId">
+                    <option value="" selected="@(Model.Pack.ClusterId is null)">No cluster yet</option>
+                    @foreach (var cluster in Model.Clusters)
+                    {
+                        <option value="@cluster.Id" selected="@(string.Equals(cluster.Id, Model.Pack.ClusterId, StringComparison.OrdinalIgnoreCase))">@cluster.Name</option>
+                    }
+                </select>
+            </label>
+            <div class="bp-dialog-actions">
+                <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
+                <button type="submit" class="bp-primary-button">Save cluster</button>
+            </div>
+        </form>
+    </dialog>
+
+    <section class="bp-card bp-console-form-card bp-battery-card mt-4" id="publication">
+        <div class="bp-battery-card-head">
+            <div>
+                <span class="bp-summary-title">Publication</span>
+                @if (publication.Active is { } active)
+                {
+                    <h2>Published since @When(active.PublishedAtUtc)</h2>
+                    <p class="mb-0">Version @active.Number is live. A change to its values publishes a new version, and you're asked first; live values and accident reports update it in place.</p>
+                }
+                else if (publication.Ready)
+                {
+                    <h2>Ready to publish</h2>
+                    <p class="mb-0">Every value the passport needs by February 2027 is there. Publishing makes version 1, signs it and shows it to its readers.</p>
+                }
+                else
+                {
+                    <h2>Not ready to publish yet</h2>
+                    <p class="mb-0"><span class="bp-missing-note">@Words.Count(publication.MissingCount, "value") missing</span> that the passport needs by February 2027.</p>
+                }
+            </div>
+            @if (!publication.IsPublished && publication.Ready)
+            {
+                <button type="button" class="bp-primary-button text-nowrap" data-open-dialog="publish-dialog">Publish passport</button>
+            }
+        </div>
+        @{ await CardMessagesAsync("publication"); }
+
+        @if (publication.Missing.Count > 0)
+        {
+            <ul class="bp-missing-groups">
+                @foreach (var group in publication.Missing)
+                {
+                    <li>
+                        <div class="bp-missing-group-head">
+                            <strong>@group.Record</strong>
+                            <a href="@group.Href">Fill in</a>
+                        </div>
+                        <span>@string.Join(", ", group.Attributes.Select(attribute => $"#{attribute.Number} {attribute.Name}"))</span>
+                    </li>
+                }
+            </ul>
+        }
+        @if (publication.Problems.Count > 0)
+        {
+            <ul class="bp-missing-groups">
+                @foreach (var problem in publication.Problems)
+                {
+                    <li><span class="text-danger">@problem</span></li>
+                }
+            </ul>
+        }
+
+        <div class="bp-battery-checks">
+            @if (publication.NeededLater.Count > 0)
+            {
+                <details>
+                    <summary>@Words.Count(publication.NeededLater.Count, "value") needed only after February 2027</summary>
+                    <p class="mb-0">@string.Join(", ", publication.NeededLater.Select(attribute => $"#{attribute.Number} {attribute.Name}"))</p>
+                </details>
+            }
+            @if (publication.Files.Count == 0)
+            {
+                <p class="mb-0 bp-batteries-muted">No uploaded files yet.</p>
+            }
+            else
+            {
+                <details open="@(filesChanged > 0)">
+                    <summary>
+                        @if (filesChanged == 0)
+                        {
+                            <span class="bp-done-note">Uploaded files: @publication.Files.Count of @publication.Files.Count unchanged</span>
+                        }
+                        else
+                        {
+                            <span class="bp-missing-note">Uploaded files: @filesChanged changed since upload</span>
+                        }
+                    </summary>
+                    <ul class="bp-file-checks">
+                        @foreach (var file in publication.Files)
+                        {
+                            <li>
+                                <span>@file.Document.FileName · @file.Owner</span>
+                                @if (file.Unchanged)
+                                {
+                                    <span class="bp-done-note">Unchanged</span>
+                                }
+                                else
+                                {
+                                    <span class="bp-missing-note">Changed or missing: its SHA-256 no longer matches</span>
+                                }
+                            </li>
+                        }
+                    </ul>
+                    <small class="bp-field-help">Each file is checked against the SHA-256 fingerprint taken when it was uploaded.</small>
+                </details>
+            }
+        </div>
+    </section>
+
+    @if (!publication.IsPublished && publication.Ready)
+    {
+        <dialog id="publish-dialog" class="bp-modal-panel bp-dialog" aria-labelledby="publish-dialog-title">
+            <form method="post" action="@href/publish">
+                @Html.AntiForgeryToken()
+                <h2 id="publish-dialog-title">Publish this passport?</h2>
+                <p class="bp-help-text">
+                    Version 1 gets its passport ID and signature, and its readers see it: everyone the public values,
+                    the cluster and authorities theirs. The serial number, manufacturing date and warranty can't change after this.
+                </p>
+                <div class="bp-dialog-actions">
+                    <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
+                    <button type="submit" class="bp-primary-button">Publish version 1</button>
+                </div>
+            </form>
+        </dialog>
+    }
+
+    <div id="values">
+        @await Html.PartialAsync("~/Views/ProductData/_RecordEditor.cshtml", Model.Values)
+    </div>
+    @if (publication.IsPublished)
+    {
+        <p class="bp-battery-fixed-note">The serial number, manufacturing date and warranty are fixed now that the passport is published; they're shown at the top.</p>
+    }
+
+    <section class="bp-card bp-console-form-card bp-battery-card mt-4" id="live">
+        <span class="bp-summary-title">Live values</span>
+        <h2>Measured on the battery</h2>
+        <p class="mb-0">
+            Its battery system sends these; type them here before it does, for example the end-of-line values, or to
+            correct one. They change the passport in place, without a new version.
+        </p>
+        @{ await CardMessagesAsync("live"); }
+        <form method="post" action="@Model.Live.SaveAction" class="bp-live-form">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="@ProductDataController.StampField" value="@Model.Live.Stamp" />
+            <div class="bp-attr-list">
+                @foreach (var field in liveFields)
+                {
+                    @await Html.PartialAsync("~/Views/ProductData/_EditorField.cshtml", new EditorFieldView(Model.Live, field))
+                    @if (Model.Pack.Values.GetValueOrDefault(field.Attribute.Property) is { } stored)
+                    {
+                        <p class="bp-live-meta">Last value @When(stored.GeneratedAtUtc), @Source(stored.Source)@(string.IsNullOrEmpty(stored.Who) ? string.Empty : $" by {stored.Who}").</p>
+                    }
+                }
+            </div>
+            <div class="bp-live-save">
+                <label>
+                    <span>Measured at <span class="bp-attr-optional">(optional; now if empty)</span></span>
+                    <input type="datetime-local" name="@BatteriesController.MeasuredAtField" />
+                </label>
+                <button type="submit" class="bp-primary-button">Save live values</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="bp-card bp-console-form-card bp-battery-card mt-4" id="accidents">
+        <span class="bp-summary-title">Accident reports <span class="bp-attr-number">#92</span></span>
+        <h2>@(Model.AccidentReports.Count == 0 ? "No accidents reported" : Words.Count(Model.AccidentReports.Count, "accident report"))</h2>
+        <p class="mb-0">The passport links to the battery's accident page, which lists these reports or says none were reported. Seen only by the battery's cluster, market surveillance and your team.</p>
+        @{ await CardMessagesAsync("accidents"); }
+        @if (Model.AccidentReports.Count > 0)
+        {
+            <ul class="bp-file-checks">
+                @foreach (var report in Model.AccidentReports)
+                {
+                    <li>
+                        <span><strong>@report.Title</strong> · @report.FileName · @Size(report.Length)</span>
+                        <span class="bp-batteries-muted">@When(report.UploadedAtUtc) by @report.UploadedBy</span>
+                    </li>
+                }
+            </ul>
+        }
+        <form method="post" action="@href/accidents" enctype="multipart/form-data" class="bp-attr-upload bp-accident-upload">
+            @Html.AntiForgeryToken()
+            <div class="bp-attr-file">
+                <label class="bp-secondary-button bp-button-compact bp-document-smart-upload position-relative text-nowrap mb-0">
+                    Choose file
+                    <input type="file" name="file" class="bp-document-hidden-file" accept="application/pdf,image/png,image/jpeg" data-upload-file />
+                </label>
+                <span class="bp-help-text" data-upload-chosen>No file chosen</span>
+            </div>
+            <div class="bp-attr-parts">
+                <label>
+                    <span>Title (optional)</span>
+                    <input type="text" name="title" placeholder="e.g. Collision on 12 Oct 2026" />
+                </label>
+                <label>
+                    <span>Language (optional)</span>
+                    <select name="language">
+                        <option value=""></option>
+                        @foreach (var language in Model.Values.Languages)
+                        {
+                            <option value="@language">@language</option>
+                        }
+                    </select>
+                </label>
+            </div>
+            <div class="bp-live-save">
+                <small class="bp-field-help">PDF, PNG or JPEG, checked by its content.</small>
+                <button type="submit" class="bp-secondary-button" data-upload-button>Add report</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="bp-card bp-console-form-card bp-battery-card mt-4" id="versions">
+        <span class="bp-summary-title">Versions</span>
+        @if (Model.Versions.Count == 0)
+        {
+            <h2>No versions yet</h2>
+            <p class="mb-0">Publishing makes version 1. Each later change to its values makes a new version; the older ones stay readable by their passport ID.</p>
+        }
+        else
+        {
+            <h2>@Words.Count(Model.Versions.Count, "version")</h2>
+            <div class="bp-table-scroll">
+                <table class="table align-middle bp-console-table bp-mobile-card-table bp-versions-table">
+                    <thead>
+                        <tr>
+                            <th>Version</th>
+                            <th>Passport ID <span class="bp-attr-number">#5</span></th>
+                            <th>Status</th>
+                            <th>Published</th>
+                            <th>Signature</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.Versions)
+                        {
+                            <tr>
+                                <td data-label="Version">@row.Version.Number</td>
+                                <td data-label="Passport ID"><span class="bp-id-copy-row"><span class="bp-id-value">@row.Version.DigitalProductPassportId</span>@await Html.PartialAsync("_CopyIdButton", row.Version.DigitalProductPassportId)</span></td>
+                                <td data-label="Status">@(row.Version.DppStatus == DppStatuses.Active ? "Active" : "Archived")</td>
+                                <td data-label="Published">@When(row.Version.PublishedAtUtc) <small class="bp-batteries-muted d-block">by @row.Version.PublishedBy</small></td>
+                                <td data-label="Signature">
+                                    @if (row.SignatureHolds)
+                                    {
+                                        <span class="bp-done-note">Verified</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="bp-missing-note">Doesn't match</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    @if (!publication.IsPublished)
+    {
+    <details class="bp-card bp-remove-record mt-4" id="remove" open="@(card == "remove")">
+        <summary>Remove this battery</summary>
+        @{ await CardMessagesAsync("remove"); }
+        @if (Model.Removal.Blocked is { } blocked)
+        {
+            <p class="mb-0 mt-2">It can't be removed: @blocked</p>
+        }
+        else
+        {
+            <form method="post" action="@Model.Removal.Action" class="d-flex flex-wrap align-items-center gap-3 mt-2">
+                @Html.AntiForgeryToken()
+                <span>It's a draft, so nothing has been published. Removing it deletes it with its accident reports; this can't be undone.</span>
+                <button type="submit" class="bp-danger-button bp-button-compact text-nowrap">Remove draft battery</button>
+            </form>
+        }
+    </details>
+    }
+</main>
+
+@section Scripts {
+    <script src="~/js/bp-record-editor.js" asp-append-version="true"></script>
+}

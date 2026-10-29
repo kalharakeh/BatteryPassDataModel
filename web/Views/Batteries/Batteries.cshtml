@@ -1,0 +1,101 @@
+@using BatteryPassWeb.Dpp.Pages
+@model BatteriesPage
+@{
+    ViewData["Title"] = "Batteries";
+}
+
+<main class="bp-page bp-admin-page">
+    <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
+    <div>
+        <h1 class="mb-1">Administration</h1>
+        <p class="text-secondary mb-0">Manage batteries, battery families, sites and operators, registered clusters, user memberships, credentials, and audit history.</p>
+    </div>
+
+    @await Html.PartialAsync("_AdminTabs", "batteries")
+    @await Html.PartialAsync("~/Views/ProductData/_Messages.cshtml")
+
+    <section class="bp-card bp-product-template-hero bp-console-form-card bp-batteries-hero mt-4">
+        <div>
+            <span class="bp-summary-title">Batteries</span>
+            <h2>Batteries and their passports</h2>
+            <p class="mb-0">
+                One passport per battery. A new battery is a draft, seen only by your team, until its passport is published.
+            </p>
+        </div>
+        <div class="bp-batteries-tools mt-3">
+            <form method="get" action="/admin/batteries" class="bp-batteries-search" role="search">
+                <label class="visually-hidden" for="battery-search">Search batteries</label>
+                <input id="battery-search" type="search" name="q" value="@Model.Query" placeholder="Passport ID, battery ID, serial or cluster" />
+                <button type="submit" class="bp-secondary-button">Search</button>
+                @if (Model.Query.Length > 0)
+                {
+                    <a href="/admin/batteries" class="bp-batteries-clear">Show all</a>
+                }
+            </form>
+            <a href="/admin/batteries/new" class="bp-primary-button text-nowrap">Create battery</a>
+        </div>
+    </section>
+
+    @if (Model.Total == 0)
+    {
+        <div class="bp-card mt-4">No batteries yet. Use Create battery to add the first; it starts as a draft.</div>
+    }
+    else if (Model.Rows.Count == 0)
+    {
+        <div class="bp-card mt-4">No battery matches “@Model.Query”. Search by passport ID, battery ID, serial number or cluster, or <a href="/admin/batteries">show all</a>.</div>
+    }
+    else
+    {
+        <section class="bp-card bp-table-card bp-batteries-card mt-4">
+            <p class="bp-batteries-count">
+                @(Model.Query.Length > 0 ? $"{Words.Count(Model.Rows.Count, "battery", "batteries")} of {Model.Total} match “{Model.Query}”." : $"{Words.Count(Model.Total, "battery", "batteries")}.")
+            </p>
+            <div class="bp-table-scroll">
+                <table class="table align-middle bp-console-table bp-batteries-table bp-mobile-card-table">
+                    <thead>
+                        <tr>
+                            <th>Serial number</th>
+                            <th>Model</th>
+                            <th>Batch</th>
+                            <th>Cluster</th>
+                            <th>Passport</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.Rows)
+                        {
+                            <tr>
+                                <td data-label="Serial number">
+                                    <a href="@BatteryPages.BatteryHref(row.PackId)" class="bp-battery-link">@row.SerialNumber</a>
+                                    <small class="bp-battery-id" title="Battery ID (#6)">@row.Identifier</small>
+                                </td>
+                                <td data-label="Model">@row.ModelName <small class="bp-batteries-muted">@row.FamilyName</small></td>
+                                <td data-label="Batch">@row.BatchLabel</td>
+                                <td data-label="Cluster">
+                                    @if (row.ClusterId is null)
+                                    {
+                                        <span class="bp-batteries-muted">No cluster yet</span>
+                                    }
+                                    else
+                                    {
+                                        @row.ClusterLabel
+                                    }
+                                </td>
+                                <td data-label="Passport">
+                                    @if (row.Active is { } active)
+                                    {
+                                        <span class="bp-field-marker is-published">Published · version @active.Number</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="bp-field-marker">Draft</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+</main>
