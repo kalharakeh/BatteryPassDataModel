@@ -198,6 +198,22 @@ public sealed class PassportControllerTests(MongoFixture mongo)
         Assert.Contains("placeholder=\"Serial number, battery ID or passport ID\"", home, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void TheTabs_ShouldWrapOntoRowsInsteadOfScrollingSideways()
+    {
+        // Owner's change after 3b's check: a team member sees 11 tabs, so they wrap rather than scroll (site.css untouched).
+        Assert.Contains("<ul class=\"nav nav-tabs bp-tabs\" id=\"passport-tabs\" role=\"tablist\" style=\"flex-wrap:wrap;overflow-x:visible\">", View("_PassportTabs"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheHomePageScript_ShouldHaveNoApostropheInsideASingleQuotedText()
+    {
+        // 'the battery's …' ends the text at the apostrophe and the browser drops the whole script (the QR icon did nothing).
+        var home = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Home", "Index.cshtml"));
+
+        Assert.DoesNotMatch(new Regex(@"\('[^'\r\n]*[A-Za-z]'[A-Za-z]"), home);
+    }
+
     /// <summary>The seed pack, published, with a member of its cluster and a member of another cluster.</summary>
     private async Task<PublicationRig> RigAsync()
     {
