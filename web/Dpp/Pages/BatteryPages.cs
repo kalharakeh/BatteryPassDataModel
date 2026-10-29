@@ -108,6 +108,7 @@ public sealed class BatteryPages(
     ApplicationAuditService audit)
 {
     public const string ClusterChangedEvent = "dpp.pack-cluster-changed";
+    public const string ModulesSetEvent = "dpp.pack-modules-set";
 
     public static string BatteryHref(string packId) => $"/admin/batteries/{Uri.EscapeDataString(packId)}";
 
@@ -363,6 +364,54 @@ public sealed class BatteryPages(
                 ["from"] = pack.ClusterId is null ? MongoDB.Bson.BsonNull.Value : pack.ClusterId,
                 ["to"] = wanted is null ? MongoDB.Bson.BsonNull.Value : wanted,
             },
+            entityType: "dpp-pack",
+            entityId: packId,
+            cancellationToken: cancellationToken);
+        return null;
+    }
+
+    /// <summary>The battery's module list as the team typed it (decision 31). Null when it was saved.</summary>
+    public Task<string?> SetModulesAsync(string who, string packId, string? text, CancellationToken cancellationToken = default) =>
+        SaveModulesAsync(who, packId, _ => ModuleList.FromText(text), "typed", cancellationToken);
+
+    /// <summary>The battery's module list from the battery system's JSON export of this battery (decision 31). Null when it was saved.</summary>
+    public Task<string?> ImportModulesAsync(string who, string packId, byte[] export, CancellationToken cancellationToken = default) =>
+        SaveModulesAsync(who, packId, serial => serial is null
+            ? ([], "type the battery's serial number first; the export is matched to it")
+            : ModuleList.FromExport(export, serial), "from the battery system's export", cancellationToken);
+
+    /// <summary>
+    /// The module list isn't passport data (decision 31), so no new version is made; the change is logged with the old
+    /// and the new count.
+    /// </summary>
+    private async Task<string?> SaveModulesAsync(
+        string who,
+        string packId,
+        Func<string?, (IReadOnlyList<BatteryModule> Modules, string? Problem)> read,
+        string how,
+        CancellationToken cancellationToken)
+    {
+        var pack = await store.GetAsync<BatteryPack>(packId, cancellationToken);
+        if (pack is null)
+        {
+            return "the battery was not found";
+        }
+
+        var serial = Text(pack, "batterySerialNumber");
+        var (modules, problem) = read(serial);
+        if (problem is not null)
+        {
+            return problem;
+        }
+
+        await store.SetPackModulesAsync(packId, modules, cancellationToken);
+        await audit.AppendApplicationAuditEventAsync(
+            ModulesSetEvent,
+            who,
+            "Team",
+            "form",
+            $"Modules of battery {serial ?? packId} set {how}: {Words.Count(modules.Count, "module")}",
+            new MongoDB.Bson.BsonDocument { ["from"] = pack.Modules.Count, ["to"] = modules.Count },
             entityType: "dpp-pack",
             entityId: packId,
             cancellationToken: cancellationToken);

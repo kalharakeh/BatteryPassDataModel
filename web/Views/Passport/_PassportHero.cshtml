@@ -62,6 +62,13 @@
                 <div><dt>Battery family</dt><dd>@(Model.FamilyName ?? "-")</dd></div>
                 <div><dt>Battery serial number</dt><dd>@Model.Text(11)</dd></div>
                 <div><dt>Battery model</dt><dd>@Model.Text(10)</dd></div>
+                @if (Model.ModuleCount > 0 || Model.ModuleDescription is not null)
+                {
+                    <div class="bp-passport-modules"><dt>Modules</dt><dd>@(Model.ModuleCount > 0 ? Model.ModuleCount.ToString(System.Globalization.CultureInfo.InvariantCulture) : "-")@if (Model.ModuleDescription is { } moduleDescription)
+                    {
+                        <small class="d-block">@moduleDescription</small>
+                    }</dd></div>
+                }
                 <div><dt>Category</dt><dd>@Model.Text(20)</dd></div>
                 <div><dt>Passport status</dt><dd>@Model.Text(2)</dd></div>
                 <div><dt>Weight</dt><dd>@Model.Text(21)</dd></div>

@@ -83,6 +83,42 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
         return Redirect(BatteryPages.BatteryHref(packId));
     }
 
+    /// <summary>The largest JSON export taken for the module list; the battery system's are a few kilobytes.</summary>
+    public const long MaxExportBytes = 1024 * 1024;
+
+    [HttpPost("{packId}/modules")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetModules(string packId, [FromForm] string? modules, CancellationToken cancellationToken)
+    {
+        var problem = await pages.SetModulesAsync(Who, packId, modules, cancellationToken);
+        Card("modules", problem is null ? "Modules saved. The passport didn't change: modules aren't passport data." : null, problem is null ? null : $"The modules weren't saved: {problem}.");
+        return Redirect($"{BatteryPages.BatteryHref(packId)}#modules");
+    }
+
+    [HttpPost("{packId}/modules/from-export")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ImportModules(string packId, IFormFile? file, CancellationToken cancellationToken)
+    {
+        string? problem;
+        if (file is null || file.Length == 0)
+        {
+            problem = "choose the battery system's JSON export first";
+        }
+        else if (file.Length > MaxExportBytes)
+        {
+            problem = "the file is larger than an export (1 MB)";
+        }
+        else
+        {
+            using var buffer = new MemoryStream();
+            await file.CopyToAsync(buffer, cancellationToken);
+            problem = await pages.ImportModulesAsync(Who, packId, buffer.ToArray(), cancellationToken);
+        }
+
+        Card("modules", problem is null ? "Modules filled from the export. The passport didn't change: modules aren't passport data." : null, problem is null ? null : $"The modules weren't filled: {problem}.");
+        return Redirect($"{BatteryPages.BatteryHref(packId)}#modules");
+    }
+
     [HttpPost("{packId}/publish")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Publish(string packId, CancellationToken cancellationToken)

@@ -56,4 +56,18 @@ public static class AudienceRules
             _ => false,
         };
     }
+
+    /// <summary>
+    /// Whether the reader may see app data kept for the battery's purchaser, such as its module IDs (decision 31): the
+    /// team, market surveillance and the battery's cluster, the same readers as a purchaser attribute's.
+    /// </summary>
+    public static bool MaySeePurchaserData(Reader reader, IReadOnlyCollection<string> batteryClusterIds)
+    {
+        ArgumentNullException.ThrowIfNull(reader);
+        ArgumentNullException.ThrowIfNull(batteryClusterIds);
+        return reader.Roles.Contains(ReaderRole.Team)
+            || reader.Roles.Contains(ReaderRole.MarketSurveillance)
+            || ((reader.Roles.Contains(ReaderRole.ClusterUser) || reader.Roles.Contains(ReaderRole.ClusterAdmin))
+                && batteryClusterIds.Any(reader.ClusterIds.Contains));
+    }
 }

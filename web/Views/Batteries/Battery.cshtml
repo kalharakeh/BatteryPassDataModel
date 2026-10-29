@@ -348,6 +348,63 @@
         </form>
     </section>
 
+    <section class="bp-card bp-console-form-card bp-battery-card mt-4" id="modules">
+        <span class="bp-summary-title">Modules <em class="bp-field-marker">Not passport data</em></span>
+        <h2>@(Model.Pack.Modules.Count == 0 ? "No modules listed" : Words.Count(Model.Pack.Modules.Count, "module"))</h2>
+        <p class="mb-0">
+            The public summary shows how many modules the battery has, with the model's
+            <a href="@ProductDataPages.FamilyHref(sources.Model.FamilyId, sources.Model.Id)#modules">module description</a>@(string.IsNullOrWhiteSpace(sources.Model.ModuleDescription) ? " (not typed yet)" : string.Empty).
+            The module IDs are seen only by the battery's cluster, market surveillance and your team.
+        </p>
+        @{ await CardMessagesAsync("modules"); }
+        @if (Model.Pack.Modules.Count > 0)
+        {
+            <div class="bp-table-scroll">
+                <table class="table align-middle bp-console-table bp-mobile-card-table bp-module-table mb-0">
+                    <thead><tr><th>Position</th><th>Serial number</th><th>Connectivity ID</th></tr></thead>
+                    <tbody>
+                        @foreach (var module in Model.Pack.Modules)
+                        {
+                            <tr>
+                                <td data-label="Position">@module.Position</td>
+                                <td data-label="Serial number">@(module.SerialNumber ?? "—")</td>
+                                <td data-label="Connectivity ID">@(module.ConnectivityId ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        <form method="post" action="@href/modules/from-export" enctype="multipart/form-data" class="bp-attr-upload bp-module-upload">
+            @Html.AntiForgeryToken()
+            <div class="bp-attr-file">
+                <label class="bp-secondary-button bp-button-compact bp-document-smart-upload position-relative text-nowrap mb-0">
+                    Choose file
+                    <input type="file" name="file" class="bp-document-hidden-file" accept="application/json,.json" data-upload-file />
+                </label>
+                <span class="bp-help-text" data-upload-chosen>No file chosen</span>
+            </div>
+            <div class="bp-live-save">
+                <small class="bp-field-help">The battery system's JSON export of this battery. It replaces the list.</small>
+                <button type="submit" class="bp-secondary-button" data-upload-button>Fill from export</button>
+            </div>
+        </form>
+        <details class="bp-module-edit" open="@(card == "modules" && !string.IsNullOrWhiteSpace(cardError))">
+            <summary>Type or correct the list</summary>
+            <form method="post" action="@href/modules">
+                @Html.AntiForgeryToken()
+                <label>
+                    <span>One module per line: position; serial number; connectivity ID. One of the IDs may be empty. An empty list clears it.</span>
+                    <textarea name="modules" rows="@Math.Clamp(Model.Pack.Modules.Count + 2, 4, 14)" spellcheck="false" placeholder="1; ; MD-A9ASVW8">@ModuleList.ToText(Model.Pack.Modules)</textarea>
+                </label>
+                <div class="bp-live-save">
+                    <span></span>
+                    <button type="submit" class="bp-secondary-button">Save modules</button>
+                </div>
+            </form>
+        </details>
+    </section>
+
     <section class="bp-card bp-console-form-card bp-battery-card mt-4" id="accidents">
         <span class="bp-summary-title">Accident reports <span class="bp-attr-number">#92</span></span>
         <h2>@(Model.AccidentReports.Count == 0 ? "No accidents reported" : Words.Count(Model.AccidentReports.Count, "accident report"))</h2>

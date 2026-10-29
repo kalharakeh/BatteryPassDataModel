@@ -9,6 +9,29 @@
 <main class="bp-page">
     <partial name="_PassportHero" model="Model" view-data="ViewData" />
     <partial name="_PassportTabs" model="Model" />
+    @if (Model.Modules is { Count: > 0 } modules)
+    {
+        <section class="bp-card mt-4 bp-passport-module-list" aria-labelledby="modules-title">
+            <span class="bp-summary-title">Modules</span>
+            <h2 id="modules-title" class="h5">@Words.Count(modules.Count, "module")</h2>
+            <p class="text-secondary">Seen only by the battery's cluster, market surveillance and the manufacturer's team.</p>
+            <div class="bp-table-scroll">
+                <table class="table align-middle bp-console-table bp-mobile-card-table mb-0">
+                    <thead><tr><th>Position</th><th>Serial number</th><th>Connectivity ID</th></tr></thead>
+                    <tbody>
+                        @foreach (var module in modules)
+                        {
+                            <tr>
+                                <td data-label="Position">@module.Position</td>
+                                <td data-label="Serial number">@(module.SerialNumber ?? "-")</td>
+                                <td data-label="Connectivity ID">@(module.ConnectivityId ?? "-")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
     @if (ViewData["LiveHistory"] is IReadOnlyList<BatteryPassWeb.Dpp.Api.LiveHistoryEntry> { Count: > 0 } history)
     {
         <partial name="_LiveHistory" model="history" />

@@ -37,6 +37,9 @@ public sealed class BatteryModel : IDppRecord
     public required string Name { get; set; }
 
     public Dictionary<string, AttributeValue> Values { get; init; } = new(StringComparer.Ordinal);
+
+    /// <summary>What the model's modules are, in a few words (decision 31). App data, not passport data; null when not typed.</summary>
+    public string? ModuleDescription { get; set; }
 }
 
 /// <summary>Manufacturer identifier and information, and the manufacturing place (#12, #15, #16).</summary>
@@ -91,4 +94,17 @@ public sealed class BatteryPack : IDppRecord
 
     /// <summary>Pack attributes, the live values and the pack's own re-stated values.</summary>
     public Dictionary<string, AttributeValue> Values { get; init; } = new(StringComparer.Ordinal);
+
+    /// <summary>The pack's modules, by position (decision 31). App data, not passport data; empty until listed.</summary>
+    public List<BatteryModule> Modules { get; set; } = [];
+}
+
+/// <summary>One module of a pack, as the battery system's export lists it: its position and its IDs (decision 31).</summary>
+public sealed class BatteryModule
+{
+    public int Position { get; init; }
+
+    public string? SerialNumber { get; init; }
+
+    public string? ConnectivityId { get; init; }
 }

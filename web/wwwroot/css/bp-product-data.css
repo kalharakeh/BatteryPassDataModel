@@ -1994,3 +1994,44 @@ main .bp-field-marker.is-published {
 [data-theme="dark"] :is(.bp-signature-details summary, .bp-signature-details dt) {
   color: var(--bp-muted);
 }
+
+/* ==== Modules: the battery's list and the model's description (decision 31) ========================================== */
+
+.bp-module-table {
+  margin-top: 12px;
+}
+
+.bp-module-upload {
+  margin-top: 14px;
+}
+
+.bp-module-edit {
+  margin-top: 12px;
+}
+
+.bp-module-edit summary {
+  width: fit-content;
+  color: #52637a;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bp-module-edit label,
+.bp-module-description {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.bp-module-edit textarea {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.9rem;
+}
+
+.bp-passport-modules small {
+  color: #52637a;
+}
+
+[data-theme="dark"] :is(.bp-module-edit summary, .bp-passport-modules small) {
+  color: var(--bp-muted);
+}

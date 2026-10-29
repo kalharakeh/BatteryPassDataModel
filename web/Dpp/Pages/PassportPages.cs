@@ -55,6 +55,15 @@ public sealed record PassportPage(
 
     /// <summary>The first line of a public value in words, or "-".</summary>
     public string Text(int number) => Value(number)?.Lines.FirstOrDefault()?.Text ?? "-";
+
+    /// <summary>How many modules the battery has (decision 31): app data, public, not part of the signed passport.</summary>
+    public int ModuleCount { get; init; }
+
+    /// <summary>The model's module description (decision 31); null when not typed.</summary>
+    public string? ModuleDescription { get; init; }
+
+    /// <summary>The battery's modules with their IDs, on the detail page for the battery's purchaser's readers; null otherwise.</summary>
+    public IReadOnlyList<BatteryModule>? Modules { get; init; }
 }
 
 /// <summary>Where a published passport is: its version, and the battery's ID (#6) and serial number (#11).</summary>
@@ -228,7 +237,12 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
             sections,
             audiences,
             Chart(everyone, CarbonStages, "kgCO2EquivalentPerKilowattHourValue", "kgCO2-eq/kWh"),
-            Chart(everyone, RecycledShares, "percentageValue", "%"));
+            Chart(everyone, RecycledShares, "percentageValue", "%"))
+        {
+            ModuleCount = sources.Pack.Modules.Count,
+            ModuleDescription = sources.Model.ModuleDescription,
+            Modules = detail && AudienceRules.MaySeePurchaserData(who, clusters) ? sources.Pack.Modules : null,
+        };
     }
 
     /// <summary>The attributes' values in the cut passport, in catalogue order; the detail page adds each value's origin.</summary>

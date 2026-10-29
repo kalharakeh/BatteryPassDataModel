@@ -179,6 +179,26 @@ public sealed class DppStore
         return result.MatchedCount == 1;
     }
 
+    /// <summary>Replaces a pack's module list (decision 31). False when the pack doesn't exist.</summary>
+    public async Task<bool> SetPackModulesAsync(string packId, IReadOnlyList<BatteryModule> modules, CancellationToken cancellationToken = default)
+    {
+        var result = await Collection<BatteryPack>().UpdateOneAsync(
+            pack => pack.Id == packId,
+            Builders<BatteryPack>.Update.Set(pack => pack.Modules, modules.ToList()),
+            cancellationToken: cancellationToken);
+        return result.MatchedCount == 1;
+    }
+
+    /// <summary>Sets or clears a model's module description (decision 31). False when the model doesn't exist.</summary>
+    public async Task<bool> SetModelModuleDescriptionAsync(string modelId, string? description, CancellationToken cancellationToken = default)
+    {
+        var result = await Collection<BatteryModel>().UpdateOneAsync(
+            model => model.Id == modelId,
+            Builders<BatteryModel>.Update.Set(model => model.ModuleDescription, description),
+            cancellationToken: cancellationToken);
+        return result.MatchedCount == 1;
+    }
+
     /// <summary>How many packs belong to this cluster.</summary>
     public async Task<long> CountPacksInClusterAsync(string clusterId, CancellationToken cancellationToken = default)
     {

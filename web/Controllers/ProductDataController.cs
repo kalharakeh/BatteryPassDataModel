@@ -206,6 +206,28 @@ public sealed class ProductDataController(ProductDataPages pages, RecordEditor e
             cancellationToken);
     }
 
+    [HttpPost("models/{modelId}/module-description")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetModuleDescription(string modelId, [FromForm] string? description, CancellationToken cancellationToken)
+    {
+        var model = await store.GetAsync<BatteryModel>(modelId, cancellationToken);
+        if (model is null)
+        {
+            return NotFound();
+        }
+
+        if (await pages.SetModuleDescriptionAsync(Who, model, description, cancellationToken) is { } problem)
+        {
+            TempData[ErrorKey] = $"The module description wasn't saved: {problem}.";
+        }
+        else
+        {
+            TempData[StatusKey] = "Module description saved. The passport didn't change: it isn't passport data.";
+        }
+
+        return Redirect($"{ProductDataPages.FamilyHref(model.FamilyId, modelId)}#modules");
+    }
+
     [HttpPost("models/{modelId}/batches")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateBatch(string modelId, [FromForm] int? year, [FromForm] string? siteId, CancellationToken cancellationToken)

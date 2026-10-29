@@ -115,6 +115,7 @@ public sealed class ProductDataPages(
     public const string CreatedEvent = "dpp.record-created";
     public const string RenamedEvent = "dpp.record-renamed";
     public const string PictureEvent = "dpp.family-picture-set";
+    public const string ModuleDescriptionEvent = "dpp.model-module-description-set";
     public const string RemovedEvent = "dpp.record-removed";
 
     public async Task<FamiliesPage> FamiliesAsync(CancellationToken cancellationToken = default)
@@ -484,6 +485,29 @@ public sealed class ProductDataPages(
         var fileId = await documents.UploadFileAsync(Path.GetFileName(fileName), content, cancellationToken);
         await store.SetFamilyPictureAsync(familyId, fileId, contentType, cancellationToken);
         await AuditAsync(PictureEvent, who, $"Picture of battery family {familyId} set", "dpp-family", familyId, cancellationToken);
+        return null;
+    }
+
+    /// <summary>
+    /// Sets or clears a model's module description (decision 31). App data, not passport data: no new version. Returns
+    /// the problem, or null when it was saved or nothing changed.
+    /// </summary>
+    public async Task<string?> SetModuleDescriptionAsync(string who, BatteryModel model, string? description, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        var wanted = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        if (wanted?.Length > ModuleList.MaxDescriptionLength)
+        {
+            return $"keep it to {ModuleList.MaxDescriptionLength} characters";
+        }
+
+        if (wanted == model.ModuleDescription)
+        {
+            return null;
+        }
+
+        await store.SetModelModuleDescriptionAsync(model.Id, wanted, cancellationToken);
+        await AuditAsync(ModuleDescriptionEvent, who, $"Module description of battery model {model.Name} {(wanted is null ? "cleared" : "set")}", "dpp-model", model.Id, cancellationToken);
         return null;
     }
 

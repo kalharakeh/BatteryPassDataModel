@@ -129,6 +129,21 @@
         </form>
     </section>
 
+    @if (selected is not null)
+    {
+        <section class="bp-card bp-product-editor-section bp-console-form-card mt-4" id="modules">
+            <form method="post" action="/admin/models/@selected.Id/module-description" class="bp-module-description">
+                @Html.AntiForgeryToken()
+                <label for="module-description">Module description of @selected.Name <em class="bp-field-marker">Not passport data</em></label>
+                <textarea id="module-description" name="description" rows="2" maxlength="@ModuleList.MaxDescriptionLength" placeholder="e.g. 8 lithium-ion modules, 2 strings of 4">@selected.ModuleDescription</textarea>
+                <div class="bp-live-save">
+                    <small class="bp-field-help">Shown on the public summary of this model's batteries, with each battery's module count. Each battery's modules are listed on its own page.</small>
+                    <button type="submit" class="bp-secondary-button bp-button-compact text-nowrap">Save description</button>
+                </div>
+            </form>
+        </section>
+    }
+
     @if (Model.ModelEditor is { } modelEditor)
     {
         @await Html.PartialAsync("_RecordEditor", modelEditor)
