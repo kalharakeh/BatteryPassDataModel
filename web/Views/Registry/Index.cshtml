@@ -1,24 +1,66 @@
-@model BatteryPassWeb.Models.ViewModels.BatteryTablePageViewModel
+@using BatteryPassWeb.Dpp.Pages
+@model RegistryPage
 @{
     ViewData["Title"] = "Scania Passport Registry";
 }
 <main class="bp-page bp-admin-page bp-registry-page">
+    <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
     <header class="bp-console-header">
         <div>
             <h1>Scania Passport Registry</h1>
-            <p class="text-secondary mb-0">@Model.ScopeLabel</p>
+            <p class="text-secondary mb-0">@Model.Scope</p>
         </div>
     </header>
 
     <section class="bp-console-toolbar bp-battery-table-toolbar">
-        <form action="@Model.SearchAction" class="bp-search-form">
-            <input
-                name="q"
-                value="@Model.Query"
-                placeholder="@Model.SearchPlaceholder" />
+        <form action="/registry" class="bp-search-form" role="search">
+            <input name="q" value="@Model.Query" placeholder="Serial number, battery ID or passport ID" aria-label="Search the registry" />
             <button type="submit">Search</button>
         </form>
     </section>
 
-    @await Html.PartialAsync("_BatteryTable", Model)
+    <section class="bp-card bp-console-form-card bp-product-editor-section mt-4">
+        @if (Model.Rows.Count == 0)
+        {
+            <p class="mb-0">@(string.IsNullOrWhiteSpace(Model.Query) ? "No batteries to show." : "No battery you may open matches this search.")</p>
+        }
+        else
+        {
+            <p class="text-secondary">@Words.Count(Model.Rows.Count, "battery", "batteries").</p>
+            <div class="bp-table-scroll">
+                <table class="table align-middle bp-console-table bp-mobile-card-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Serial number</th>
+                            <th>Model</th>
+                            <th>Batch</th>
+                            @if (Model.ShowClusters)
+                            {
+                                <th>Cluster</th>
+                            }
+                            <th>Passport</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.Rows)
+                        {
+                            <tr>
+                                <td data-label="Serial number">
+                                    <a href="/dpp/@Uri.EscapeDataString(row.Identifier)/detail"><strong>@row.SerialNumber</strong></a>
+                                    <small class="d-block text-secondary">@row.Identifier</small>
+                                </td>
+                                <td data-label="Model">@row.ModelName <small class="d-block text-secondary">@row.FamilyName</small></td>
+                                <td data-label="Batch">@row.BatchLabel</td>
+                                @if (Model.ShowClusters)
+                                {
+                                    <td data-label="Cluster">@row.ClusterLabel</td>
+                                }
+                                <td data-label="Passport">Version @row.Active!.Number <small class="d-block text-secondary">updated @ValueWords.Time(row.Active.LastUpdatedUtc)</small></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
 </main>

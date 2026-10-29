@@ -113,13 +113,15 @@ public sealed class AdminFeedbackFollowupTests
     [Fact]
     public void RegistryController_ShouldPreserveBatteryIdentityFieldsForNormalUsers()
     {
-        var source = File.ReadAllText(RepoFile("web", "Controllers", "RegistryController.cs"));
+        // The Registry lists the new model's batteries (decision 30); the old table stays only for the cluster admins'
+        // pages until 3d.
+        var registry = File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml"));
         var batteryTable = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
         var service = File.ReadAllText(RepoFile("web", "Services", "BatteryTableService.cs"));
 
-        Assert.Contains("BatterySummaryViewModel", source);
+        Assert.Contains("@row.SerialNumber", registry);
+        Assert.Contains("@row.Identifier", registry);
         Assert.Contains("_batteryRepository.ToSummary", service);
-        Assert.Contains("BatteryPassportHistoryRowViewModel", source);
         Assert.Contains("LatestPassportStatus", batteryTable);
     }
 

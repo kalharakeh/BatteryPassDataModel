@@ -12,7 +12,7 @@ public sealed class BatteryRouteAndRegistryTests
         var controller = File.ReadAllText(RepoFile("web", "Controllers", "RegistryController.cs"));
         var view = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
 
-        Assert.Contains("BatteryTableService", controller);
+        Assert.Contains("batteries.ListAsync", controller); // the new model's batteries, cut per reader (decision 30)
         Assert.Contains("BatteryTablePageViewModel", File.ReadAllText(RepoFile("web", "Models", "ViewModels", "BatteryViewModels.cs")));
         Assert.Contains("PassportCount", view);
         Assert.Contains("passports", view);

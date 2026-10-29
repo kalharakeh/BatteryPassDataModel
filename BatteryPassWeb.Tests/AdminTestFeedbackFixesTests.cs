@@ -13,9 +13,9 @@ public sealed class AdminTestFeedbackFixesTests
         Assert.True(File.Exists(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml")));
         Assert.Contains("AddSingleton<BatteryTableService>", program);
         Assert.Contains("BatteryTablePageViewModel", File.ReadAllText(RepoFile("web", "Models", "ViewModels", "BatteryViewModels.cs")));
-        Assert.Contains("BatteryTableService", File.ReadAllText(RepoFile("web", "Controllers", "RegistryController.cs")));
+        Assert.Contains("RegistryList.Build", File.ReadAllText(RepoFile("web", "Controllers", "RegistryController.cs"))); // decision 30
         Assert.Contains("BatteryTableService", File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs")));
-        Assert.Contains("_BatteryTable", registry);
+        Assert.DoesNotContain("_BatteryTable", registry);
         Assert.Contains("_BatteryTable", clusterPassports);
     }
 

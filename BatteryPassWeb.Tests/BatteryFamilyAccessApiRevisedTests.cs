@@ -127,7 +127,7 @@ public sealed class BatteryFamilyAccessApiRevisedTests
         var adminClusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
         var repository = File.ReadAllText(RepoFile("web", "Services", "PassportRepository.cs"));
 
-        Assert.Contains("_BatteryTable", registry);
+        Assert.Contains("/detail", registry); // the Registry opens each battery's detail page (decision 30)
         Assert.Contains("aria-label=\"Summary report\"", batteryTable);
         Assert.Contains("title=\"Summary report\"", batteryTable);
         Assert.Contains("aria-label=\"Detailed report\"", batteryTable);

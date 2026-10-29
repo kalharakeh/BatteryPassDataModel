@@ -25,7 +25,7 @@ public sealed class AdminDenseConsoleLayoutTests
 
         Assert.Contains("bp-registry-page", registry);
         Assert.Contains("bp-console-toolbar", registry);
-        Assert.Contains("_BatteryTable", registry);
+        Assert.Contains("bp-console-table", registry); // the Registry's own table on the new model (decision 30)
         Assert.Contains("bp-table-card", batteryTable);
         Assert.Contains("bp-console-table", batteryTable);
         Assert.Contains("bp-battery-id-cell", batteryTable);

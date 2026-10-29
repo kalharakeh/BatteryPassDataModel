@@ -49,9 +49,8 @@ public sealed class ValidationPolicyLayoutTests
 
         Assert.Contains("pages.LocateAsync", home);
 
-        Assert.Contains("PassportPublishPolicyService", registry);
-        Assert.Contains("SearchDocumentsAsync", registry);
-        Assert.Contains("CanOpenPassportSummaryAsync", registry);
+        Assert.Contains("readers.ForAsync", registry); // the Registry lists per reader, published batteries only (decision 30)
+        Assert.Contains("!row.IsDraft", File.ReadAllText(RepoFile("web", "Dpp", "Pages", "RegistryList.cs")));
 
         Assert.Contains("pages.SummaryAsync", passport);
         Assert.Contains("pages.DetailAsync", passport);
