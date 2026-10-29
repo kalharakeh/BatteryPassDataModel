@@ -26,12 +26,12 @@ public sealed partial class AttributeValueValidator(OfficialSchemas schemas)
         return issues.Count > 0 ? issues : AppRuleIssues(attribute, value).ToArray();
     }
 
-    /// <summary>An extension (decision 28) has no schema entry: it is a whole number of seconds, not below zero.</summary>
+    /// <summary>An extension (decision 28) has no schema entry: it is a whole number of minutes, not below zero.</summary>
     private static IEnumerable<SchemaIssue> ExtensionIssues(JsonNode? value)
     {
         if (value is not JsonValue number || number.GetValueKind() != JsonValueKind.Number || !long.TryParse(number.ToJsonString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var seconds))
         {
-            yield return new SchemaIssue(string.Empty, "type: must be a whole number of seconds");
+            yield return new SchemaIssue(string.Empty, "type: must be a whole number of minutes");
         }
         else if (seconds < 0)
         {

@@ -1,0 +1,35 @@
+@{
+    ViewData["Title"] = "Help";
+    var signedIn = User.Identity?.IsAuthenticated == true;
+}
+<main class="bp-page bp-help-page">
+    <header class="bp-console-header">
+        <div>
+            <h1>Help</h1>
+            <p class="text-secondary mb-0">How to find a battery passport, and what you can see in it.</p>
+        </div>
+    </header>
+
+    @await Html.PartialAsync("_HelpTabs", "guide")
+
+    <section class="bp-card mt-4">
+        <h2 class="h5">Find a battery's passport</h2>
+        <p>On the <a href="/">home page</a>, type the battery's serial number, battery ID or passport ID, or scan the QR code on the battery. @(signedIn ? "The Registry also lists the batteries you may open." : "Signed in, the Registry also lists the batteries you may open.")</p>
+    </section>
+
+    <section class="bp-card mt-4">
+        <h2 class="h5">What you can see</h2>
+        <ul class="mb-0">
+            <li><strong>Everyone:</strong> the public summary, with the battery's public values, its document links and its family's picture.</li>
+            <li><strong>The battery's cluster</strong> (its users and admins) and <strong>market surveillance:</strong> also the purchaser values, such as state of charge, temperature, battery status and accident reports.</li>
+            <li><strong>Repairers, recyclers and treatment facilities</strong> with a legitimate interest, and the Commission: also the shared values meant for them.</li>
+            <li><strong>Notified bodies, market surveillance and the Commission:</strong> also the authorities' values, such as test reports.</li>
+        </ul>
+        <p class="mt-2 mb-0">Signed in, the passport's detail page shows one section per group you belong to. Each value says when it was measured or entered, and how.</p>
+    </section>
+
+    <section class="bp-card mt-4">
+        <h2 class="h5">Need access?</h2>
+        <p class="mb-0">If you should see more than you do, ask your cluster admin or the manufacturer's team. Cluster admins add users and API tokens for their clusters under <strong>Cluster admin</strong>.</p>
+    </section>
+</main>

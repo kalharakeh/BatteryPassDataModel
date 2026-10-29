@@ -163,7 +163,7 @@ public sealed class AdminFeedbackImplementationTests
         Assert.Contains("\"readwritesign\"", adminController.ToLowerInvariant());
         Assert.Contains("\"readwritesign\"", clusterAdminController.ToLowerInvariant());
         Assert.Contains("value=\"readWriteSign\"", adminView);
-        Assert.Contains("value=\"readWriteSign\"", clusterTokenView);
+        Assert.DoesNotContain("value=\"readWriteSign\"", clusterTokenView); // a cluster token only reads or sends live values (decision 30)
         Assert.Contains("@Model.BasePath/clusters", helpView);
     }
 

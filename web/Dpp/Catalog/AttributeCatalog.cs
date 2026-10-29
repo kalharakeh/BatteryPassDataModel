@@ -110,14 +110,14 @@ public static class AttributeCatalog
     /// <summary>
     /// Decision 28: the extreme-temperature times of the Polarion dynamic attribute list (DIN DKE 99100, 6.7.7.5–6.7.7.8),
     /// added beyond the file. Kept like #87: live pack values from the BMS, seen by the purchaser and market surveillance.
-    /// Whole seconds. They never block publication. Numbers 1001–1004 only keep them apart; pages show E1–E4.
+    /// Whole minutes (decision 28, amended). They never block publication. Numbers 1001–1004 only keep them apart; pages show E1–E4.
     /// </summary>
     public static IReadOnlyList<AttributeDefinition> Extensions { get; } =
     [
-        new(1001, "Time spent in extreme temperatures above boundary", Performance, "timeSpentInExtremeTemperaturesAboveBoundary", L.Pack, A.Purchaser, G.None, Live, C.Live, "s", R.Conditional, false, "E1"),
-        new(1002, "Time spent in extreme temperatures below boundary", Performance, "timeSpentInExtremeTemperaturesBelowBoundary", L.Pack, A.Purchaser, G.None, Live, C.Live, "s", R.Conditional, false, "E2"),
-        new(1003, "Time spent charging during extreme temperatures above boundary", Performance, "timeSpentChargingDuringExtremeTemperaturesAboveBoundary", L.Pack, A.Purchaser, G.None, Live, C.Live, "s", R.Conditional, false, "E3"),
-        new(1004, "Time spent charging during extreme temperatures below boundary", Performance, "timeSpentChargingDuringExtremeTemperaturesBelowBoundary", L.Pack, A.Purchaser, G.None, Live, C.Live, "s", R.Conditional, false, "E4"),
+        new(1001, "Time spent in extreme temperatures above boundary", Performance, "timeSpentInExtremeTemperaturesAboveBoundary", L.Pack, A.Purchaser, G.None, Live, C.Live, "min", R.Conditional, false, "E1"),
+        new(1002, "Time spent in extreme temperatures below boundary", Performance, "timeSpentInExtremeTemperaturesBelowBoundary", L.Pack, A.Purchaser, G.None, Live, C.Live, "min", R.Conditional, false, "E2"),
+        new(1003, "Time spent charging during extreme temperatures above boundary", Performance, "timeSpentChargingDuringExtremeTemperaturesAboveBoundary", L.Pack, A.Purchaser, G.None, Live, C.Live, "min", R.Conditional, false, "E3"),
+        new(1004, "Time spent charging during extreme temperatures below boundary", Performance, "timeSpentChargingDuringExtremeTemperaturesBelowBoundary", L.Pack, A.Purchaser, G.None, Live, C.Live, "min", R.Conditional, false, "E4"),
     ];
 
     /// <summary>Every attribute the app keeps: the file's, then the extensions.</summary>

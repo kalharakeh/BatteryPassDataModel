@@ -7,7 +7,7 @@ namespace BatteryPassWeb.Dpp.Assembly;
 
 /// <summary>
 /// The part of a passport a version signs (design 4.3): everything except #2 (DPP status), #4 (last update) and the
-/// live set (#63, #83, #87, #92), which change without a new version.
+/// live set (#63, #83, #87, #92 and E1–E4), which change without a new version.
 /// </summary>
 public static class PassportStaticCore
 {

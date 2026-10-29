@@ -81,8 +81,8 @@ public sealed class AttributeForms
         var noConstants = new Dictionary<string, string>(StringComparer.Ordinal);
         if (attribute.IsExtension)
         {
-            // Beyond the schema (decision 28): a whole number of seconds, shown as "seconds" (the catalogue's unit is "s").
-            return new AttributeForm(attribute, FormKind.Single, [new FormInput(string.Empty, attribute.Name, InputKind.Integer, false, [], "seconds")], noConstants);
+            // Beyond the schema (decision 28): a whole number of minutes, shown as "minutes" (the catalogue's unit is "min").
+            return new AttributeForm(attribute, FormKind.Single, [new FormInput(string.Empty, attribute.Name, InputKind.Integer, false, [], "minutes")], noConstants);
         }
 
         var node = OfficialSchemas.FindProperty(document, attribute.Section, attribute.Property)

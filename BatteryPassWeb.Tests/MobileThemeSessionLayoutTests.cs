@@ -92,7 +92,7 @@ public sealed class MobileThemeSessionLayoutTests
         var adminTabs = File.ReadAllText(RepoFile("web", "Views", "Shared", "_AdminTabs.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        Assert.Contains("<option value=\"/admin/help\"", adminTabs);
+        Assert.Contains("<option value=\"/help/team\"", adminTabs);
         Assert.Contains(".bp-battery-toolbar-actions", css);
         Assert.Contains(".bp-battery-toolbar-help", css);
         Assert.Contains("display: none;", css);

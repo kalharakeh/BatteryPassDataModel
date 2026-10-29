@@ -18,7 +18,7 @@ public sealed class ValueWordsTests
     [InlineData(81, "12", "12 years")]
     [InlineData(82, "4000", "4,000")]
     [InlineData(63, """{"percentUnit":"%","percentageValue":76}""", "76 %")]
-    [InlineData(1001, "3600", "3,600 seconds")]
+    [InlineData(1001, "3600", "3,600 minutes")]
     [InlineData(11, "\"VPC8C05-6788\"", "VPC8C05-6788")]
     public void ASingleValue_ShouldReadAsOneLine(int number, string json, string expected)
     {

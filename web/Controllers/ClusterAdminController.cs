@@ -707,7 +707,11 @@ public class ClusterAdminController : Controller
         }
 
         var name = Text(Request.Form, "name", "Cluster API token");
-        var accessMode = ParseTokenMode(Text(Request.Form, "accessMode", "read"));
+        // A cluster token reads its clusters' batteries or also sends their live values; creating and publishing are the
+        // team's (decision 29), so nothing above read + write is given here.
+        var accessMode = ParseTokenMode(Text(Request.Form, "accessMode", "read")) == ExternalTokenAccessMode.Read
+            ? ExternalTokenAccessMode.Read
+            : ExternalTokenAccessMode.ReadWrite;
         var actor = AccessControlService.CurrentEmail(User);
         var (tokenDocument, tokenValue) = await _externalApiRepository.CreateTokenAsync(
             name,

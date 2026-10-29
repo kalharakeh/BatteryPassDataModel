@@ -29,8 +29,24 @@ public class HelpController : Controller
         _options = options.Value;
     }
 
+    /// <summary>The guide for everyone: finding a passport and what each role sees.</summary>
     [AllowAnonymous]
     [HttpGet("")]
+    public IActionResult Guide() => View("Guide");
+
+    /// <summary>The team's workflow help (it used to be /admin/help, which now forwards here).</summary>
+    [Authorize(Policy = "AdminOnly")]
+    [HttpGet("team")]
+    public IActionResult Team([FromQuery] string? status, [FromQuery] string? error)
+    {
+        ViewData["StatusMessage"] = string.IsNullOrWhiteSpace(status) ? string.Empty : Uri.UnescapeDataString(status);
+        ViewData["ErrorMessage"] = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error);
+        return View("~/Views/Admin/Help.cshtml");
+    }
+
+    /// <summary>The API reference and request workbench.</summary>
+    [AllowAnonymous]
+    [HttpGet("api")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
         var readTokenDocument = await _externalApiRepository.GetTokenByIdAsync(ExternalApiInitializer.SampleReadTokenId, cancellationToken);

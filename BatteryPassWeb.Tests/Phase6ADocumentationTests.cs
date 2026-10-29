@@ -46,10 +46,8 @@ public sealed class Phase6ADocumentationTests
         Assert.Contains("Changed since signing", guide);
         Assert.Contains("sign the passport again", guide, StringComparison.OrdinalIgnoreCase);
 
-        Assert.Contains("Document evidence", help);
-        Assert.Contains("Evidence readiness", help);
-        Assert.Contains("document hash", help, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("sign again", help, StringComparison.OrdinalIgnoreCase);
+        // The team's help no longer describes the old evidence-readiness step: publishing checks and signs (decision 30).
+        Assert.DoesNotContain("Evidence readiness", help);
     }
 
     [Fact]

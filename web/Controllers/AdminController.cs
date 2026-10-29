@@ -48,13 +48,9 @@ public class AdminController : Controller
         return Redirect("/admin/batteries");
     }
 
+    /// <summary>The team's help moved into the one Help area (decision 30).</summary>
     [HttpGet("help")]
-    public IActionResult Help([FromQuery] string? status, [FromQuery] string? error)
-    {
-        ViewData["StatusMessage"] = string.IsNullOrWhiteSpace(status) ? string.Empty : Uri.UnescapeDataString(status);
-        ViewData["ErrorMessage"] = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error);
-        return View();
-    }
+    public IActionResult Help() => Redirect("/help/team");
 
     [HttpGet("audit")]
     public async Task<IActionResult> AuditLog(

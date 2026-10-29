@@ -1,0 +1,15 @@
+@using BatteryPassWeb.Services
+@model string
+@{
+    // One Help area with three tabs: the guide for everyone, the team's workflow, and the API.
+    string TabClass(string tab) => string.Equals(Model, tab, StringComparison.OrdinalIgnoreCase) ? "bp-tab bp-tab-active" : "bp-tab";
+    var isTeam = User.IsInRole(AccessControlService.RoleAdmin);
+}
+<nav class="bp-tab-row mt-3" aria-label="Help sections">
+    <a class="@TabClass("guide")" href="/help">Guide</a>
+    @if (isTeam)
+    {
+        <a class="@TabClass("team")" href="/help/team">Team</a>
+    }
+    <a class="@TabClass("api")" href="/help/api">API</a>
+</nav>

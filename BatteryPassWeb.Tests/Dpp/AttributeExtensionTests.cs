@@ -33,7 +33,7 @@ public sealed class AttributeExtensionTests(MongoFixture mongo)
             Assert.True(attribute.IsExtension);
             Assert.Equal((temperature.Section, StorageLocation.Pack, ChangeRule.Live, temperature.Audience, temperature.Editors),
                 (attribute.Section, attribute.Storage, attribute.Change, attribute.Audience, attribute.Editors));
-            Assert.Equal(("s", Requirement.Conditional, false), (attribute.Unit, attribute.Requirement, attribute.MandatoryFromFeb2027));
+            Assert.Equal(("min", Requirement.Conditional, false), (attribute.Unit, attribute.Requirement, attribute.MandatoryFromFeb2027)); // minutes: decision 28, amended
         });
         Assert.Equal(73, AttributeCatalog.FileAttributes.Count);
         Assert.Equal(AttributeCatalog.FileAttributes.Concat(AttributeCatalog.Extensions), AttributeCatalog.All);
@@ -49,13 +49,13 @@ public sealed class AttributeExtensionTests(MongoFixture mongo)
     }
 
     [Fact]
-    public void AnExtension_ShouldBeEnteredAsWholeSeconds()
+    public void AnExtension_ShouldBeEnteredAsWholeMinutes()
     {
         var form = AttributeFormsTests.Forms.For(AttributeCatalog.Extensions[0]);
 
         Assert.Equal(FormKind.Single, form.Kind);
         var input = Assert.Single(form.Inputs);
-        Assert.Equal((string.Empty, InputKind.Integer, "seconds", false), (input.Path, input.Kind, input.Unit, input.Required));
+        Assert.Equal((string.Empty, InputKind.Integer, "minutes", false), (input.Path, input.Kind, input.Unit, input.Required));
     }
 
     [Theory]
@@ -65,7 +65,7 @@ public sealed class AttributeExtensionTests(MongoFixture mongo)
     [InlineData("1.5", false)]
     [InlineData("\"3600\"", false)]
     [InlineData("""{"value":3600}""", false)]
-    public void AnExtensionValue_ShouldBeAWholeNumberOfSecondsNotBelowZero(string json, bool valid)
+    public void AnExtensionValue_ShouldBeAWholeNumberOfMinutesNotBelowZero(string json, bool valid)
     {
         var issues = new AttributeValueValidator(Schemas).Validate(AttributeCatalog.Extensions[0], JsonNode.Parse(json));
 

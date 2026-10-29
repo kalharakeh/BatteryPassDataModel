@@ -21,6 +21,17 @@ public class HomeController(PassportPages pages) : Controller
         return View();
     }
 
+    /// <summary>
+    /// Where a signed-in user lands when their role may not open a page. It used to be the sign-in page, which sent a
+    /// signed-in user straight back: an endless redirect.
+    /// </summary>
+    [HttpGet("not-allowed")]
+    public IActionResult NotAllowed()
+    {
+        Response.StatusCode = StatusCodes.Status403Forbidden;
+        return View();
+    }
+
     [HttpGet("search")]
     public async Task<IActionResult> Search([FromQuery] string? q, CancellationToken cancellationToken)
     {

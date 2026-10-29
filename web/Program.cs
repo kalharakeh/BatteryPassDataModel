@@ -129,7 +129,7 @@ builder.Services
     .AddCookie(options =>
     {
         options.LoginPath = "/login";
-        options.AccessDeniedPath = "/login";
+        options.AccessDeniedPath = "/not-allowed";
         options.Cookie.Name = "battery-pass-demo-session";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;

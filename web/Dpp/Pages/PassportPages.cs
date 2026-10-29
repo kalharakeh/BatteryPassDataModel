@@ -88,7 +88,7 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
     private static readonly (Audience Audience, string Key, string Title, string Note)[] AudienceTexts =
     [
         (Audience.Purchaser, "purchaser", "Purchaser", "Seen by the battery's cluster and market surveillance."),
-        (Audience.Shared, "shared", "Shared", "Seen by the battery's cluster, market surveillance, the Commission and, per value, repairers and recyclers with a legitimate interest."),
+        (Audience.Shared, "shared", "Shared", "Seen by the battery's cluster, market surveillance, the Commission and, per value, repairers, recyclers and treatment facilities with a legitimate interest."),
         (Audience.Authorities, "authorities", "Authorities", "Seen by notified bodies, market surveillance and the Commission."),
     ];
 
@@ -116,7 +116,8 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
     /// <summary>What a reader-facing source is called on the detail page.</summary>
     public static string SourceWord(string source) => source switch
     {
-        "form" => "form",
+        "form" => "typed in the app",
+        "system" => "set by the app",
         "upload" => "upload",
         "feed" => "battery system",
         "api" => "API",

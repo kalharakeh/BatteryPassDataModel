@@ -3,15 +3,17 @@ namespace BatteryPassWeb.Tests;
 public sealed class AdminHelpPageTests
 {
     [Fact]
-    public void AdminController_ShouldExposeAdminHelpRoute()
+    public void AdminHelp_ShouldForwardToTheTeamTabOfTheOneHelpArea()
     {
-        var source = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+        var admin = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
+        var help = File.ReadAllText(RepoFile("web", "Controllers", "HelpController.cs"));
 
-        Assert.Contains("[HttpGet(\"help\")]", source);
-        Assert.Contains("IActionResult Help([FromQuery] string? status, [FromQuery] string? error)", source);
-        Assert.Contains("ViewData[\"StatusMessage\"]", source);
-        Assert.Contains("ViewData[\"ErrorMessage\"]", source);
-        Assert.Contains("return View();", source);
+        Assert.Contains("[HttpGet(\"help\")]", admin);
+        Assert.Contains("Redirect(\"/help/team\")", admin);
+        Assert.Contains("[HttpGet(\"team\")]", help);
+        Assert.Contains("View(\"~/Views/Admin/Help.cshtml\")", help);
+        Assert.Contains("ViewData[\"StatusMessage\"]", help);
+        Assert.Contains("ViewData[\"ErrorMessage\"]", help);
     }
 
     [Fact]
@@ -22,11 +24,12 @@ public sealed class AdminHelpPageTests
         Assert.Contains("Admin workflow help", markup);
         Assert.Contains("Create battery ID", markup);
         Assert.Contains("Fill battery information", markup);
-        Assert.Contains("Validate passport", markup);
-        Assert.Contains("Sign passport", markup);
+        Assert.Contains("Set up product data", markup);
         Assert.Contains("Publish passport", markup);
         Assert.Contains("Edit after publishing", markup);
-        Assert.Contains("Move from dirty back to clean", markup);
+        Assert.DoesNotContain("Validate passport", markup); // publishing checks and signs in one step (decision 30)
+        Assert.DoesNotContain("Sign passport", markup);
+        Assert.DoesNotContain("Move from dirty back to clean", markup);
     }
 
     [Fact]
@@ -40,7 +43,7 @@ public sealed class AdminHelpPageTests
         Assert.Contains("Administration tabs", tabs);
         Assert.Contains("bp-tab-active", tabs);
         Assert.Contains("href=\"/admin/batteries\"", tabs);
-        Assert.Contains("href=\"/admin/help\"", tabs);
+        Assert.Contains("href=\"/help/team\"", tabs);
         Assert.DoesNotContain("Back to main admin page", markup);
         Assert.DoesNotContain("bp-page-return-row", markup);
         Assert.DoesNotContain("bp-page-return-link", markup);
@@ -51,27 +54,20 @@ public sealed class AdminHelpPageTests
     }
 
     [Fact]
-    public void AdminHelpView_ShouldDescribeRequiredOptionalDataAndTrustStates()
+    public void AdminHelpView_ShouldDescribeRequiredOptionalDataAndTheNewStates()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
 
         Assert.Contains("Required data", markup);
         Assert.Contains("Optional data", markup);
-        Assert.Contains("validated", markup);
-        Assert.Contains("signed", markup);
-        Assert.Contains("published", markup);
-        Assert.Contains("Dirty", markup);
-        Assert.Contains("Clean", markup);
-        Assert.Contains("HTTP telemetry does not make the passport dirty", markup);
-        Assert.Contains("zero blocking validation errors", markup);
-        Assert.Contains("current valid signature proof", markup);
+        Assert.Contains("Required by Feb 2027", markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Archived version", markup);
         Assert.Contains("Public discovery", markup);
-        Assert.Contains("published, signed, clean, and verifiable", markup);
-        Assert.Contains("Draft, dirty, unsigned, or unpublished passports stay visible to admins", markup);
+        Assert.Contains("Drafts stay visible to the team only", markup);
         Assert.Contains("Battery families tab", markup);
-        Assert.Contains("saved product policy", markup);
-        Assert.Contains("Trust &amp; conformance tab is visible only", markup);
-        Assert.Contains("general admins or local cluster admins", markup);
+        Assert.Contains("signs it and makes it public", markup);
+        Assert.DoesNotContain("Dirty", markup);
+        Assert.DoesNotContain("Trust &amp; conformance", markup);
     }
 
     [Fact]
@@ -93,7 +89,7 @@ public sealed class AdminHelpPageTests
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.Contains("First-time passport checklist", markup);
-        Assert.Contains("Dirty recovery checklist", markup);
+        Assert.DoesNotContain("Dirty recovery checklist", markup);
         Assert.Contains("What public users can see", markup);
         Assert.Contains("What admins can see", markup);
         Assert.Contains("Open battery families", markup);
