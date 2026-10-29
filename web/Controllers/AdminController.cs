@@ -1,5 +1,6 @@
 using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Dpp.Audit;
+using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Models.Trust;
 using BatteryPassWeb.Models.ViewModels;
 using BatteryPassWeb.Services;
@@ -23,19 +24,22 @@ public class AdminController : Controller
     private readonly ExternalApiRepository _externalApiRepository;
     private readonly ApplicationAuditService _applicationAuditService;
     private readonly ApplicationSettingsService _applicationSettingsService;
+    private readonly DppStore _dppStore;
 
     public AdminController(
         PassportRepository passportRepository,
         ClusterRepository clusterRepository,
         ExternalApiRepository externalApiRepository,
         ApplicationAuditService applicationAuditService,
-        ApplicationSettingsService applicationSettingsService)
+        ApplicationSettingsService applicationSettingsService,
+        DppStore dppStore)
     {
         _passportRepository = passportRepository;
         _clusterRepository = clusterRepository;
         _externalApiRepository = externalApiRepository;
         _applicationAuditService = applicationAuditService;
         _applicationSettingsService = applicationSettingsService;
+        _dppStore = dppStore;
     }
 
     [HttpGet("")]
@@ -275,10 +279,11 @@ public class AdminController : Controller
     {
         var clusterId = Text(Request.Form, "clusterId");
         var passportCount = await _passportRepository.CountPassportsByClusterAsync(clusterId, cancellationToken);
+        var batteryCount = await _dppStore.CountPacksInClusterAsync(clusterId, cancellationToken);
         var membershipCount = await _clusterRepository.CountMembershipsByClusterAsync(clusterId, cancellationToken);
-        if (passportCount > 0 || membershipCount > 0)
+        if (passportCount > 0 || batteryCount > 0 || membershipCount > 0)
         {
-            TempData["ErrorMessage"] = $"Cluster {clusterId} has {passportCount} linked passport(s) and {membershipCount} linked user membership(s). Use force delete only after confirming linked data removal.";
+            TempData["ErrorMessage"] = $"Cluster {clusterId} has {passportCount} linked passport(s), {batteryCount} linked battery(ies) and {membershipCount} linked user membership(s). Use force delete only after confirming linked data removal.";
             return Redirect("/admin/clusters?tab=clusters");
         }
 
@@ -306,6 +311,7 @@ public class AdminController : Controller
         }
 
         await _passportRepository.ClearPassportClusterAsync(clusterId, cancellationToken);
+        var batteriesCleared = await _dppStore.ClearClusterAsync(clusterId, cancellationToken);
         await _clusterRepository.DeleteClusterAsync(clusterId, cancellationToken);
         await AppendAdminAuditAsync(
             "cluster.deleted",
@@ -313,7 +319,8 @@ public class AdminController : Controller
             new BsonDocument
             {
                 ["clusterId"] = clusterId,
-                ["forceDelete"] = true
+                ["forceDelete"] = true,
+                ["batteriesCleared"] = batteriesCleared
             },
             "cluster",
             clusterId,

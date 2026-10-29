@@ -86,7 +86,7 @@ public sealed class VersioningTests(MongoFixture mongo)
         var rig = await PublicationTesting.PublishedRigAsync(mongo);
         await PublicationServiceTests.RemoveStoredValueAsync(rig, "thirdPartyServiceProvider"); // e.g. data damaged outside the app
 
-        var result = await rig.Pipeline.SaveAsync(PublicationTesting.Team, PackChange(rig, ("warrantyPeriod", "\"P10Y\"")));
+        var result = await rig.Pipeline.SaveAsync(PublicationTesting.Team, new ChangeSet(TargetKind.Model, "model-test", Values(("ratedCapacity", "210")), "form"));
 
         Assert.True(result.Saved); // the save itself stands
         var version = Assert.Single(await rig.Store.ListVersionsAsync(rig.PackId));

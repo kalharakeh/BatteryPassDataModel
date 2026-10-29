@@ -1,6 +1,8 @@
+using System.Text.RegularExpressions;
 using BatteryPassWeb.Dpp.Assembly;
 using BatteryPassWeb.Dpp.Values;
 using BatteryPassWeb.Services;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace BatteryPassWeb.Dpp.Store;
@@ -148,6 +150,59 @@ public sealed class DppStore
         }
 
         return await Collection<BatteryPack>().Find(Builders<BatteryPack>.Filter.Eq(SerialNumberField, serialNumber)).ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// True when another pack already has this serial number (#11), ignoring case and surrounding spaces, as the old
+    /// battery pages judged it. <paramref name="exceptPackId"/> is the pack being corrected, which may keep its own.
+    /// </summary>
+    public async Task<bool> SerialNumberTakenAsync(string serialNumber, string? exceptPackId = null, CancellationToken cancellationToken = default)
+    {
+        var wanted = serialNumber?.Trim();
+        if (_database is null || string.IsNullOrEmpty(wanted))
+        {
+            return false;
+        }
+
+        var sameSerial = Builders<BatteryPack>.Filter.Regex(SerialNumberField, new BsonRegularExpression($@"^\s*{Regex.Escape(wanted)}\s*$", "i"));
+        var filter = exceptPackId is null ? sameSerial : sameSerial & Builders<BatteryPack>.Filter.Ne("_id", exceptPackId);
+        return await Collection<BatteryPack>().Find(filter).Limit(1).AnyAsync(cancellationToken);
+    }
+
+    /// <summary>Moves a pack to another cluster, or to none; false when no pack has that id. The cluster isn't passport data.</summary>
+    public async Task<bool> SetPackClusterAsync(string packId, string? clusterId, CancellationToken cancellationToken = default)
+    {
+        var result = await Collection<BatteryPack>().UpdateOneAsync(
+            pack => pack.Id == packId,
+            Builders<BatteryPack>.Update.Set(pack => pack.ClusterId, clusterId),
+            cancellationToken: cancellationToken);
+        return result.MatchedCount == 1;
+    }
+
+    /// <summary>How many packs belong to this cluster.</summary>
+    public async Task<long> CountPacksInClusterAsync(string clusterId, CancellationToken cancellationToken = default)
+    {
+        if (_database is null || string.IsNullOrWhiteSpace(clusterId))
+        {
+            return 0;
+        }
+
+        return await Collection<BatteryPack>().CountDocumentsAsync(pack => pack.ClusterId == clusterId, cancellationToken: cancellationToken);
+    }
+
+    /// <summary>Takes every pack of this cluster out of it (they then have no cluster); returns how many.</summary>
+    public async Task<long> ClearClusterAsync(string clusterId, CancellationToken cancellationToken = default)
+    {
+        if (_database is null || string.IsNullOrWhiteSpace(clusterId))
+        {
+            return 0;
+        }
+
+        var result = await Collection<BatteryPack>().UpdateManyAsync(
+            pack => pack.ClusterId == clusterId,
+            Builders<BatteryPack>.Update.Set(pack => pack.ClusterId, null),
+            cancellationToken: cancellationToken);
+        return result.ModifiedCount;
     }
 
     /// <summary>The pack with this unique product identifier (#6), if any.</summary>

@@ -84,6 +84,11 @@ public sealed class SavePipeline(
         }
 
         var evaluation = Evaluate(sender, changes.Target, target.ClusterId, changes.Values);
+        if (changes.Target == TargetKind.Pack)
+        {
+            evaluation = await CheckPackRulesAsync(changes.TargetId, evaluation, cancellationToken);
+        }
+
         var removals = await EvaluateRemovalsAsync(sender, changes, target, cancellationToken);
         var results = evaluation.Results.Concat(removals).ToArray();
         var removed = removals.Where(result => result.Outcome == KeyOutcome.Removed).Select(result => result.Key).ToArray();
@@ -157,6 +162,10 @@ public sealed class SavePipeline(
             {
                 results.Add(new KeyResult(key, KeyOutcome.Ignored, "no value to remove"));
             }
+            else if (changes.Target == TargetKind.Pack && IsFixedPackValue(attribute) && await store.GetLatestVersionNumberAsync(changes.TargetId, cancellationToken) > 0)
+            {
+                results.Add(new KeyResult(key, KeyOutcome.Rejected, FixedOncePublished));
+            }
             else if (attribute.Requirement != Requirement.Conditional && attribute.MandatoryFromFeb2027
                 && (published ??= await UsedByPublishedPassportAsync(changes.Target, changes.TargetId, cancellationToken)))
             {
@@ -169,6 +178,62 @@ public sealed class SavePipeline(
         }
 
         return results;
+    }
+
+    /// <summary>Why a pack's fixed value (#11, #17, #19) is refused after publication.</summary>
+    public const string FixedOncePublished = "fixed once the passport is published";
+
+    /// <summary>Why a serial number (#11) another battery already has is refused.</summary>
+    public const string SerialNumberTaken = "another battery already has this serial number";
+
+    /// <summary>
+    /// A pack's own fixed values (#11, #17, #19): the team corrects them while the passport is a draft; once a version
+    /// is published they stay as they are (parity check, design 14). #6 is the app's and never changes.
+    /// </summary>
+    public static bool IsFixedPackValue(AttributeDefinition attribute)
+    {
+        ArgumentNullException.ThrowIfNull(attribute);
+        return attribute.Storage == StorageLocation.Pack && attribute.Change == ChangeRule.Fixed && attribute.Editors.HasFlag(AttributeEditors.Team);
+    }
+
+    /// <summary>
+    /// The rules for a pack's own values: its fixed values can't change once a version has been published, and no two
+    /// batteries share a serial number (ignoring case). A refused key doesn't block the others (J-12).
+    /// </summary>
+    private async Task<Evaluation> CheckPackRulesAsync(string packId, Evaluation evaluation, CancellationToken cancellationToken)
+    {
+        var results = evaluation.Results.ToList();
+        var accepted = new Dictionary<string, JsonNode>(evaluation.Accepted, StringComparer.Ordinal);
+        bool? published = null;
+        for (var index = 0; index < results.Count; index++)
+        {
+            var result = results[index];
+            if (result.Outcome != KeyOutcome.Saved || AttributeCatalog.FindByProperty(result.Key) is not { } attribute)
+            {
+                continue;
+            }
+
+            string? refusal = null;
+            if (IsFixedPackValue(attribute) && (published ??= await store.GetLatestVersionNumberAsync(packId, cancellationToken) > 0))
+            {
+                refusal = FixedOncePublished;
+            }
+            else if (attribute.Number == 11
+                && accepted[result.Key] is JsonValue serial
+                && serial.TryGetValue<string>(out var text)
+                && await store.SerialNumberTakenAsync(text, packId, cancellationToken))
+            {
+                refusal = SerialNumberTaken;
+            }
+
+            if (refusal is not null)
+            {
+                results[index] = result with { Outcome = KeyOutcome.Rejected, Message = refusal };
+                accepted.Remove(result.Key);
+            }
+        }
+
+        return new Evaluation(results, accepted);
     }
 
     private async Task<bool> UsedByPublishedPassportAsync(TargetKind target, string id, CancellationToken cancellationToken)

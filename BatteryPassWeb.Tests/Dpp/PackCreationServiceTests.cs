@@ -57,7 +57,7 @@ public sealed class PackCreationServiceTests(MongoFixture mongo)
         var (_, service, seed) = await ServiceAsync();
 
         var first = await service.CreateAsync(Team, NewPack(seed, ("batterySerialNumber", "\"VPC9-0002\"")));
-        var second = await service.CreateAsync(Team, NewPack(seed, ("batterySerialNumber", "\"VPC9-0002\"")));
+        var second = await service.CreateAsync(Team, NewPack(seed, ("batterySerialNumber", "\"VPC9-0012\"")));
 
         Assert.NotEqual(
             first.Pack!.Values["uniqueProductIdentifier"].Value.GetValue<string>(),

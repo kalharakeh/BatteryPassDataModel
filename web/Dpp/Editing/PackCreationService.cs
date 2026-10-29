@@ -68,6 +68,15 @@ public sealed class PackCreationService(
             return new PackCreationResult(null, evaluation.Results, "the battery serial number (#11) is required");
         }
 
+        // Linked successor packs (step 4) will be the one exception (design 8.2).
+        if (await store.SerialNumberTakenAsync(evaluation.Accepted["batterySerialNumber"].GetValue<string>(), cancellationToken: cancellationToken))
+        {
+            var keys = evaluation.Results
+                .Select(result => result.Key == "batterySerialNumber" ? result with { Outcome = KeyOutcome.Rejected, Message = SavePipeline.SerialNumberTaken } : result)
+                .ToArray();
+            return new PackCreationResult(null, keys, "some values were rejected; nothing was saved");
+        }
+
         var now = clock.GetUtcNow().UtcDateTime;
         var pack = new BatteryPack
         {
