@@ -39,6 +39,7 @@ public static class DppServiceCollectionExtensions
         services.AddSingleton<DocumentService>();
         services.AddSingleton<AttributeForms>();
         services.AddSingleton<RecordEditor>();
+        services.AddSingleton<ProductDataPages>();
         return services;
     }
 }

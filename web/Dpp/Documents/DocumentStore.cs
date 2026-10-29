@@ -106,6 +106,34 @@ public sealed class DocumentStore
             .ToListAsync(cancellationToken);
     }
 
+    /// <summary>Deletes every document of a removed record, with its stored file.</summary>
+    public async Task DeleteOwnedAsync(TargetKind ownerKind, string ownerId, CancellationToken cancellationToken = default)
+    {
+        if (_database is null)
+        {
+            return;
+        }
+
+        foreach (var document in await Collection().Find(d => d.OwnerKind == ownerKind && d.OwnerId == ownerId).ToListAsync(cancellationToken))
+        {
+            await DeleteFileAsync(document.FileId, cancellationToken);
+            await Collection().DeleteOneAsync(d => d.Id == document.Id, cancellationToken);
+        }
+    }
+
+    /// <summary>Deletes a stored file; a file that is already gone is fine.</summary>
+    public async Task DeleteFileAsync(string fileId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await Files().DeleteAsync(ObjectId.Parse(fileId), cancellationToken);
+        }
+        catch (GridFSFileNotFoundException)
+        {
+            // already gone
+        }
+    }
+
     public Task<byte[]> DownloadAsync(DppDocument document, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(document);

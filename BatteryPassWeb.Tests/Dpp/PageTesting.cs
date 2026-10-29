@@ -48,4 +48,12 @@ internal static class PageTesting
     }
 
     public static Func<string, string?> Field(IReadOnlyDictionary<string, string> form) => name => form.GetValueOrDefault(name);
+
+    public static ProductDataPages Pages(PublicationRig rig) => new(
+        rig.Store,
+        Editor(rig),
+        new DocumentStore(rig.Context),
+        new ApplicationAuditService(rig.Context),
+        Options.Create(new BatteryPassOptions { AppBaseUrl = DocumentTesting.BaseUrl }),
+        rig.Clock);
 }

@@ -395,6 +395,14 @@ public sealed class DppStore
         return result.MatchedCount == 1;
     }
 
+    /// <summary>Deletes one record; false when no record has that id. Callers check first that nothing uses it.</summary>
+    public async Task<bool> DeleteAsync<T>(string id, CancellationToken cancellationToken = default)
+        where T : class, IDppRecord
+    {
+        var result = await Collection<T>().DeleteOneAsync(Builders<T>.Filter.Eq("_id", id), cancellationToken);
+        return result.DeletedCount == 1;
+    }
+
     /// <summary>Points a family at its new picture (decision 20); false when no family has that id.</summary>
     public async Task<bool> SetFamilyPictureAsync(string familyId, string fileId, string contentType, CancellationToken cancellationToken = default)
     {

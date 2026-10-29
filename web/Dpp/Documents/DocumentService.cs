@@ -213,19 +213,11 @@ public sealed class DocumentService(
             return (null, $"the file is larger than the {limit}-byte upload limit");
         }
 
-        ReadOnlySpan<byte> content = upload.Content;
-        var contentType = content.StartsWith("%PDF-"u8) ? "application/pdf"
-            : content.StartsWith(PngSignature) ? "image/png"
-            : content.StartsWith(JpegSignature) ? "image/jpeg"
-            : null;
+        var contentType = FileTypes.Detect(upload.Content);
         return contentType is null
             ? (null, "only PDF, PNG and JPEG files are accepted, recognised by their content")
             : (contentType, null);
     }
-
-    private static ReadOnlySpan<byte> PngSignature => [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
-
-    private static ReadOnlySpan<byte> JpegSignature => [0xFF, 0xD8, 0xFF];
 
     private JsonObject DocumentLink(string contentType, string documentId, string title, string? language)
     {
