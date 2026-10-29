@@ -91,7 +91,7 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     public async Task<IActionResult> SetModules(string packId, [FromForm] string? modules, CancellationToken cancellationToken)
     {
         var problem = await pages.SetModulesAsync(Who, packId, modules, cancellationToken);
-        Card("modules", problem is null ? "Modules saved. The passport didn't change: modules aren't passport data." : null, problem is null ? null : $"The modules weren't saved: {problem}.");
+        Card("module-list", problem is null ? "Modules saved. The passport didn't change: modules aren't passport data." : null, problem is null ? null : $"The modules weren't saved: {problem}.");
         return Redirect($"{BatteryPages.BatteryHref(packId)}#modules");
     }
 

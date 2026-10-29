@@ -389,8 +389,9 @@
                 <button type="submit" class="bp-secondary-button" data-upload-button>Fill from export</button>
             </div>
         </form>
-        <details class="bp-module-edit" open="@(card == "modules" && !string.IsNullOrWhiteSpace(cardError))">
+        <details class="bp-module-edit" open="@(card == "module-list")">
             <summary>Type or correct the list</summary>
+            @{ await CardMessagesAsync("module-list"); }
             <form method="post" action="@href/modules">
                 @Html.AntiForgeryToken()
                 <label>
