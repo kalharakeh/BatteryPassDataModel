@@ -19,6 +19,11 @@ public sealed class BatteryFamily : IDppRecord
     public required string Id { get; init; }
 
     public required string Name { get; set; }
+
+    /// <summary>The family's picture (decision 20): a file in the dpp_files bucket, shown on the public summary. Not passport data.</summary>
+    public string? PictureFileId { get; set; }
+
+    public string? PictureContentType { get; set; }
 }
 
 /// <summary>The 32 model attributes, plus the starting values of the 5 re-stated ones (#59, #69, #74, #79, #81).</summary>

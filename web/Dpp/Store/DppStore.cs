@@ -283,6 +283,120 @@ public sealed class DppStore
         return clusters.OfType<string>().Distinct(StringComparer.Ordinal).ToArray();
     }
 
+    /// <summary>Every record of one kind. Families, sites and operators are few; the pages sort them by name.</summary>
+    public async Task<IReadOnlyList<T>> ListAsync<T>(CancellationToken cancellationToken = default)
+        where T : class, IDppRecord
+    {
+        if (_database is null)
+        {
+            return [];
+        }
+
+        return await Collection<T>().Find(Builders<T>.Filter.Empty).ToListAsync(cancellationToken);
+    }
+
+    /// <summary>The records with these ids; ids that don't exist are left out.</summary>
+    public async Task<IReadOnlyList<T>> GetManyAsync<T>(IEnumerable<string> ids, CancellationToken cancellationToken = default)
+        where T : class, IDppRecord
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        var wanted = ids.Distinct(StringComparer.Ordinal).ToArray();
+        if (_database is null || wanted.Length == 0)
+        {
+            return [];
+        }
+
+        return await Collection<T>().Find(Builders<T>.Filter.In("_id", wanted)).ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<BatteryModel>> ListModelsAsync(string familyId, CancellationToken cancellationToken = default)
+    {
+        if (_database is null)
+        {
+            return [];
+        }
+
+        return await Collection<BatteryModel>().Find(model => model.FamilyId == familyId).SortBy(model => model.Name).ToListAsync(cancellationToken);
+    }
+
+    /// <summary>A model's batches, newest year first.</summary>
+    public async Task<IReadOnlyList<ProductionBatch>> ListBatchesAsync(string modelId, CancellationToken cancellationToken = default)
+    {
+        if (_database is null)
+        {
+            return [];
+        }
+
+        return await Collection<ProductionBatch>().Find(batch => batch.ModelId == modelId).SortByDescending(batch => batch.Year).ToListAsync(cancellationToken);
+    }
+
+    /// <summary>The active versions of these packs: one per published pack, none for a draft.</summary>
+    public async Task<IReadOnlyList<PassportVersion>> ListActiveVersionsAsync(IEnumerable<string> packIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(packIds);
+        var ids = packIds.Distinct(StringComparer.Ordinal).ToArray();
+        if (_database is null || ids.Length == 0)
+        {
+            return [];
+        }
+
+        var versions = await Collection<PassportVersion>()
+            .Find(version => ids.Contains(version.PackId) && version.DppStatus == DppStatuses.Active)
+            .ToListAsync(cancellationToken);
+        return versions.GroupBy(version => version.PackId).Select(group => group.MaxBy(version => version.Number)!).ToArray();
+    }
+
+    /// <summary>For each of these batches: how many packs it has, and how many of them are published.</summary>
+    public async Task<IReadOnlyDictionary<string, (int Packs, int Published)>> CountPacksByBatchAsync(IEnumerable<string> batchIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(batchIds);
+        var ids = batchIds.Distinct(StringComparer.Ordinal).ToArray();
+        var counts = ids.ToDictionary(id => id, _ => (Packs: 0, Published: 0), StringComparer.Ordinal);
+        if (_database is null || ids.Length == 0)
+        {
+            return counts;
+        }
+
+        var packs = await Collection<BatteryPack>()
+            .Find(pack => ids.Contains(pack.BatchId))
+            .Project(pack => new { pack.Id, pack.BatchId })
+            .ToListAsync(cancellationToken);
+        var published = (await ListActiveVersionsAsync(packs.Select(pack => pack.Id), cancellationToken))
+            .Select(version => version.PackId)
+            .ToHashSet(StringComparer.Ordinal);
+        foreach (var pack in packs)
+        {
+            var (total, live) = counts[pack.BatchId];
+            counts[pack.BatchId] = (total + 1, live + (published.Contains(pack.Id) ? 1 : 0));
+        }
+
+        return counts;
+    }
+
+    /// <summary>Renames a family, model, site or operator; false when no record has that id.</summary>
+    public async Task<bool> RenameAsync<T>(string id, string name, CancellationToken cancellationToken = default)
+        where T : class, IDppRecord
+    {
+        if (typeof(T) != typeof(BatteryFamily) && typeof(T) != typeof(BatteryModel) && typeof(T) != typeof(ManufacturingSite) && typeof(T) != typeof(EconomicOperator))
+        {
+            throw new ArgumentException($"{typeof(T).Name} has no name.");
+        }
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        var result = await Collection<T>().UpdateOneAsync(Builders<T>.Filter.Eq("_id", id), Builders<T>.Update.Set("Name", name.Trim()), cancellationToken: cancellationToken);
+        return result.MatchedCount == 1;
+    }
+
+    /// <summary>Points a family at its new picture (decision 20); false when no family has that id.</summary>
+    public async Task<bool> SetFamilyPictureAsync(string familyId, string fileId, string contentType, CancellationToken cancellationToken = default)
+    {
+        var result = await Collection<BatteryFamily>().UpdateOneAsync(
+            family => family.Id == familyId,
+            Builders<BatteryFamily>.Update.Set(family => family.PictureFileId, fileId).Set(family => family.PictureContentType, contentType),
+            cancellationToken: cancellationToken);
+        return result.MatchedCount == 1;
+    }
+
     private IMongoCollection<T> Collection<T>() => RequireDatabase().GetCollection<T>(CollectionName<T>());
 
     private IMongoDatabase RequireDatabase() =>

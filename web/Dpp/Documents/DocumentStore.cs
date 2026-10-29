@@ -109,8 +109,12 @@ public sealed class DocumentStore
     public Task<byte[]> DownloadAsync(DppDocument document, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(document);
-        return Files().DownloadAsBytesAsync(ObjectId.Parse(document.FileId), cancellationToken: cancellationToken);
+        return DownloadFileAsync(document.FileId, cancellationToken);
     }
+
+    /// <summary>The bytes of a stored file by its id: a document's FileId, or a family picture.</summary>
+    public Task<byte[]> DownloadFileAsync(string fileId, CancellationToken cancellationToken = default) =>
+        Files().DownloadAsBytesAsync(ObjectId.Parse(fileId), cancellationToken: cancellationToken);
 
     private IMongoCollection<DppDocument> Collection() => RequireDatabase().GetCollection<DppDocument>(Records);
 
