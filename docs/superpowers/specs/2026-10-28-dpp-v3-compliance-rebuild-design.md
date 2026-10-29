@@ -116,7 +116,7 @@ Every stored value carries **when the information was generated** (measurement t
 - **Publication** makes version 1: a new #5, DPP status "active", #4 set to the publication time, and the static core signed (4.3).
 - **Static change** to a published pack, meaning any change outside the live set, including a status change: a new version is published with a new #5. The previous version becomes "archived" and stays retrievable by its own #5. The first #5 always resolves to version 1, as the file requires (#5).
 - **Live update:** changes the current version in place and sets #4. No new version; the file allows this exception for dynamic data (#5).
-- **Model, batch or site change** after publication: the editor lists the packs with an active passport that it affects and asks for confirmation. On save, each of them gets a new version. Inactive, invalid and marked-for-deletion passports are left as they are.
+- **Model, batch or site change** after publication: the editor lists the packs with an active passport that it affects and asks for confirmation. On save, each of them gets a new version. Inactive, invalid and marked-for-deletion passports are left as they are. Uploading a document to such a model or batch asks too: the upload goes through only once the team ticks "Publish new versions".
 - **Transfer** between clusters: no new version, because the cluster is not passport data.
 
 #4 changes only when something is made available to readers: at publication and on live updates, not on draft edits. The file defines it as the time the update was "first made available to third parties".
@@ -192,11 +192,11 @@ Every change set, whatever its source, runs these steps in order:
 1. **Find the target:** the pack (or model, batch, site, operator). Not found: rejected.
 2. **Known attribute?** A key that isn't in the catalogue is ignored and reported as "not in the attribute list". It is never stored.
 3. **May this sender change it, for this pack?** If not: rejected and reported.
-4. **Valid?** Type, unit, range and allowed values (Appendices A and B). If not: rejected and reported.
-5. **Empty never overwrites.** A missing or empty value leaves the stored value as it is. The BMS export sends many empty values.
+4. **Valid?** Type, unit, range and allowed values (Appendices A and B). Physical quantities can't be negative (#21, #57, #64–#67, #70, #78, #81, #82, #85; temperatures inside them can), an app rule kept from before V3. If not: rejected and reported.
+5. **Empty never overwrites.** A missing or empty value leaves the stored value as it is. The BMS export sends many empty values. **The team's editors are the exception (decision 24):** a field the team empties on the page removes its value, unless a published passport built from the record needs it by February 2027 (then it is refused: change it instead). Uploads and feeds can't remove values.
 6. **Rules across attributes:** a status change needs its re-stated values, and only the transitions of 7.4 are allowed.
 7. **Apply:** the live set in place; anything else into the draft or, for a published pack, into a new version (4.2).
-8. **Record:** an audit entry and an upload log entry with the result per key.
+8. **Record:** an audit entry and an upload log entry with the result per key and, for a saved or removed value, the value it replaced.
 
 A change set is all-or-nothing per pack: if step 6 fails, nothing is saved for that pack. Keys rejected in steps 2–4 are reported but don't block the rest (J-12).
 
@@ -368,7 +368,12 @@ Each attribute holds one document per owner (model, batch or pack).
 - **Detail page** (logged in): the public data plus one section per audience the reader may see (purchaser, shared, authorities). Each value shows when it was generated and where it came from. The purchaser section includes the repair history (7.9).
 - **Team editors:** family (name and picture), model, site, batch, operator and pack; publication; versions; documents.
 - **Cluster pages:** cluster users get a read-only list and detail of their packs. Cluster admins also get the live-value form, the status change, the accident page, transfer requests and the upload page.
-- Layout and wording go through a separate mock-up step before the page work starts.
+- **Team editor rules (decisions 24–26, 29 Oct 2026):**
+  - **Only what was edited on the page counts.** The page carries a stamp of what each field showed; a save changes only the fields edited there, so a page left open never undoes a newer value saved by a colleague, an upload or a feed. A field edited on both sides is refused, with the typed value kept, and saves on the next try. The record's name follows the same rule.
+  - **Removing a value:** empty its field (decision 24). **Removing a record:** families, models, batches, sites and operators can be removed while nothing uses them; otherwise the page says why they stay (decision 25). **A new model** can start from a copy of any model's typed values (decision 26).
+  - **Names** of families, of models within a family, of sites and of operators are unique, ignoring case.
+  - **Unsaved edits** are never lost silently: leaving the page, Cancel edits and uploading a document (which reloads the page) ask first.
+- **Layout:** the team editors reuse today's admin pages: their layout, styles and shared page parts (decision 23), with a calmer finish (decision 27): one card per thing, small outlined tags in sentence case instead of uppercase pills, orange only for "missing" and green only for "done", thin progress bars, messages as a slim line, one heading scale and gentle motion. After a save the editor returns to the section and place where Save was pressed and confirms it in the save bar. The finish lives in the team pages' own stylesheet; `site.css` is not changed. Only screens with no counterpart today (the batch page, sites and operators, the republish question and restricted documents) get a mock-up before the page work starts: `docs/mockups/dpp-v3-team-pages-new-screens.html`.
 
 ## 13. Kept and removed
 
@@ -388,19 +393,24 @@ Each attribute holds one document per owner (model, batch or pack).
 |---|---|
 | 1. Data foundation | The catalogue; schema copies; the new records (family, model, site, batch, operator, pack) and their database mapping; checks per value; the assembler; compliance and schema tests; a test seed. Built beside today's app: nothing is removed yet. |
 | 2. Team editing and publication | The store's repositories, tested against a throwaway MongoDB (EphemeralMongo, decision 22), and the passport-version and document records; the save pipeline with the form as first entry point, turning bare values into the schema's form; team editors, including the family picture; the identifier service with test IDs; documents (links and uploads); publication checks; signing of the static core; versions and archiving |
-| 3. Access, pages and switch-over | The 9 app roles: today's 7, with `legitimateInterest` split into the 3 LI roles (5.2 shows 10 kinds of reader, counting anonymous readers and other clusters); the visibility filter on pages, API, exports and documents; the public summary and the detail page; `/api/passports` team-only. Then the switch-over: remove the v1.2 model, the old pages and API endpoints (including telemetry and operations), demo values and extras, and reset the data. |
+| 3. Access, pages and switch-over | The 9 app roles: today's 7, with `legitimateInterest` split into the 3 LI roles (5.2 shows 10 kinds of reader, counting anonymous readers and other clusters); the visibility filter on pages, API, exports and documents; the public summary and the detail page; `/api/passports` team-only. Then the switch-over: remove the v1.2 model, the remaining old pages (the team pages were replaced in 2d) and API endpoints (including telemetry and operations), demo values and extras, and reset the data. |
 | 4. Purchaser editing and lifecycle | Cluster-admin editing; the status change with re-stated values; repairs and the repair history; successor passports; waste, deletion and invalid; transfers |
 | 5. Live data and uploads | The upload page with preview; the external API upload endpoint; the native and BMS2_ACO adapters; the upload log |
-| 6. Go-live readiness | The identifier scheme switch (once O-1 is decided); help pages and test pack rewritten; manual checks over the role matrix; data reset on the hosted environment |
+| 6. Go-live readiness | The identifier scheme switch (once O-1 is decided); help pages and test pack rewritten; manual checks over the role matrix; the deployment to AWS (see "Where it runs") |
 
 Each step ends with all tests passing and a working app. Appendix C shows which workbook rows each step closes.
 
-Step 2 is planned in four parts, each ending with a working app:
+Step 2 is planned in four parts (2d in two plans), each ending with a working app:
 
 - **2a, store and save pipeline:** the repositories (tested against a throwaway MongoDB), turning bare values into the schema's form, who may change what, the save pipeline with preview and a change log, test identifiers and pack creation. Backend only; every pack is a draft.
 - **2b, publication and versions:** the publication checks, passport IDs (#5), signing of the static core, versions and archiving.
 - **2c, documents:** public links, and uploaded files behind access checks, including the audience rule of 5.2 and #92's accident reports. Backend only: the download route and the accident page arrive with step 3's roles.
-- **2d, the team's editing pages:** after a layout mock-up (section 12), including the family picture.
+- **2d, the team's editing pages:** on today's admin page layout, with a mock-up for the new screens only (section 12, decision 23). The new pages replace the old team pages in place, under the existing menu entries ("Battery families", "Batteries"); "Editable fields" goes and sites and operators get one permanent entry. No temporary menus, preview entries or duplicates (decision 23). 2d removes the admin actions, views and view models only the replaced pages used; the old services they shared with the cluster-admin pages and the API (`ProductTemplateService`, `EditableFieldPolicyService`, `DataCompletionPolicyService`, the battery and passport views those pages also render) stay until steps 3 and 4. Two plans:
+  - **2d-1, product data:** the form built from the official schema for every attribute shape; the families page and family page (name, picture, models, the model editor), batches, and sites and operators; public document links and restricted uploads; the republish question when a change reaches published passports, also for uploads; the team editor rules of section 12 (decisions 24–26); and, from the parity check of 29 Oct 2026, non-negative quantities, the value before each change in the audit entry and the new record types in the audit log's filter. Replaces "Battery families" and removes "Editable fields".
+  - **2d-2, batteries:** the batteries list, creating a battery, the battery page (its values, live values, cluster, publication checks, publishing, versions, accident reports). Replaces "Batteries". Its first task removes the old battery and passport admin actions, whose routes would otherwise clash with the new ones. It also restores what the old pages enforced and nothing in this design removes (parity check of 29 Oct 2026): the serial number, manufacturer and economic operator (#11, #17, #19) fixed once the passport is published, still correctable while a draft (6.1); a duplicate serial number refused at creation (step 4 exempts linked successor packs, 8.2); a battery's cluster must exist; deleting a cluster also counts its new packs; the batteries list search by passport ID, battery ID, serial number or cluster; removing a draft pack, e.g. one made in the wrong batch. Optional: the Conformance page checks stored files against their SHA-256; the "Battery cluster assignments" list folds into the batteries list.
+  The public pages and the API follow in step 3.
+
+**Where it runs (agreed 28 Oct 2026):** until the cut-over, the new version runs only on the product owner's PC, against the Atlas database `battery_pass_v3` (a launcher outside the repository sets `MONGODB_URI` and `MONGODB_DB` for its own process; any new configuration or launch profile must set `MONGODB_DB`, because the app falls back to `battery_pass_demo`). The live app on Elastic Beanstalk (branch `security/demo-api-hardening`, database `battery_pass_demo`) is not changed. Step 3's switch-over and reset run only against `battery_pass_v3`. Nothing in the rebuild touches the running app or its data. When all steps are done, the new version is deployed to AWS connected to `battery_pass_v3`, if that adds no cost; if it would, the old database is reset to match the new app instead.
 
 ## 15. Judgement calls
 
