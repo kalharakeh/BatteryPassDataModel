@@ -23,7 +23,8 @@ Terms used:
 - **Pack:** one battery, the subject of one passport (decision 16).
 - **MSA:** market surveillance authorities.
 - **LI roles:** the three legitimate-interest roles of decision 6. **LI-repair** covers repair, repurposing and remanufacturing operators. **LI-recycling** covers recyclers and battery treatment operators. **LI-treatment** covers authorised treatment facilities and WEEE treatment facilities.
-- **Live set:** the four attributes that change in place without a new passport version: #63 state of charge, #83 full cycles, #87 temperature, #92 accident information.
+- **Live set:** the attributes that change in place without a new passport version: #63 state of charge, #83 full cycles, #87 temperature, #92 accident information, and the four extreme-temperature times E1–E4 (decision 28).
+- **E1–E4:** four live values added beyond the file by decision 28, from the Polarion dynamic attribute list (DIN DKE 99100, 6.7.7.5–6.7.7.8). Appendix A lists them after the file's attributes.
 
 ## 1. What changes for each user
 
@@ -134,7 +135,7 @@ Today's signing (ECDSA over a canonical snapshot, `PassportTrustService`) stays;
 | Audience | Attributes | Who sees it (the team always sees everything) |
 |---|---|---|
 | Public | 54 | Everyone, no login |
-| Purchaser | 10: #22, #59, #63, #69, #74, #79, #81, #83, #87, #92 | The battery's cluster and market surveillance |
+| Purchaser | 10: #22, #59, #63, #69, #74, #79, #81, #83, #87, #92, plus E1–E4 (decision 28) | The battery's cluster and market surveillance |
 | Shared | 5: #43, #45, #46, #47, #48 | The battery's cluster, market surveillance, the Commission, and the LI roles the file names for that attribute |
 | Authorities | 4: #7, #12, #13, #29 | Notified bodies, market surveillance and the Commission |
 
@@ -164,7 +165,7 @@ Rules:
 - **The file wins over the schema.** The schema carries its own, coarser read rights (for example "authorities"). Where they differ, the file's wording is used: for example, purchaser data goes to market surveillance only, not to notified bodies or the Commission.
 - **All versions alike.** Archived, inactive, invalid and marked-for-deletion versions are filtered the same way as active ones.
 - **Repair history** (7.9) isn't passport data. It is shown with the battery status, to the same readers.
-- **API tokens.** A cluster token reads like a cluster user of its clusters and writes only the live set #63, #83, #87 (J-10). A team token has the team's rights and is issued only for Scania's own systems. `/api/passports`, the list of all passports, is team-only.
+- **API tokens.** A cluster token reads like a cluster user of its clusters and writes only the measured live values #63, #83, #87 and E1–E4 (J-10). A team token has the team's rights and is issued only for Scania's own systems. `/api/passports`, the list of all passports, is team-only.
 - **Documents follow their attribute.** A restricted file is served only through an access-checked link, never a public storage address.
 
 ## 6. Editing
@@ -178,7 +179,7 @@ Rules:
 | Pack creation: #6 (issued by the app), operator (#7, #14), #11, #13, #17, #19, batch, cluster | Team | At creation; #13 again if the service provider changes |
 | Battery status #22 with the re-stated #59, #69, #74, #79, #81 | Team and the battery's cluster admins | Only through the status change (7.4) |
 | Repair history (not passport data) | Team and the battery's cluster admins | Through the status change (7.9) |
-| #63, #83, #87 | Battery-system feed, team, battery's cluster admins | Any time |
+| #63, #83, #87, E1–E4 | Battery-system feed, team, battery's cluster admins | Any time |
 | #92 accident information | Team and the battery's cluster admins | Any time, by form with a file upload |
 | A pack's cluster | Team directly; the battery's cluster admins by transfer (7.8) | Any time |
 | DPP status #2 | The app; the team ("invalid", "marked-for-deletion"); market surveillance ("invalid") | 7.6, 7.7 |
@@ -306,9 +307,12 @@ Sample: `battery-passport_VPC8C05-6788_2026-10-27T10-02-59.928Z.json`.
 | `stateOfCharge.raw` | #63 |
 | `equivalentChargeAndDischargeCycles` | #83. One full charge plus one full discharge counts as one cycle (the export team confirms, 8.5). |
 | A new field with the latest measured pack temperature in °C (8.5) | #87 |
+| `timeSpentInExtremeHighTemperature.raw` | E1, in seconds (decision 28) |
+| `timeSpentInExtremeLowTemperature.raw` | E2, in seconds |
+| `timeSpentChargingInExtremeTemperature.raw` | E3 and E4, in seconds. Polarion says it is always zero, because charging in extreme temperatures is prevented. A value above zero can't be split into above and below: the upload reports it and leaves E3 and E4 unchanged (8.5, item 7). |
 | `productionDate` | #17 as year and month (decision 18), accepted from the team only |
 | `remainingCapacityAh` | Suggests #59 at the next status change; not stored |
-| Everything else: energy and Ah totals, the other cycle fields, histograms, time in extreme temperatures, deep-discharge events, service date, CAN payload, IP address, exporter, parent and child devices | Ignored: not in the file. The exporter's name and e-mail are not stored. |
+| Everything else: energy and Ah totals, the other cycle fields, histograms, deep-discharge events, service date, CAN payload, IP address, exporter, parent and child devices | Ignored: not in the file. The exporter's name and e-mail are not stored. |
 
 In the sample, every field the passport needs is empty; only energy and Ah totals are filled. The request to the export team is in 8.5.
 
@@ -324,6 +328,7 @@ Today's telemetry collection and the external API's `POST /telemetry`, `PATCH /o
 4. Give a measurement time per value, or confirm that all values are read at `exportedAt`.
 5. Optional: fill `remainingCapacityAh`. The app uses it only to suggest the capacity fade at a status change.
 6. Leave out what the passport doesn't need: the IP address, the CAN payload, and the exporter's name and e-mail.
+7. Fill `timeSpentInExtremeHighTemperature`, `timeSpentInExtremeLowTemperature` and `timeSpentChargingInExtremeTemperature` (decision 28). Optional: split the charging time into above and below the boundary, as DIN DKE 99100 does. Ideally the boundaries match the idle-state temperature range the passport publishes (#88, #89).
 
 ## 9. Documents
 
@@ -395,7 +400,7 @@ Each attribute holds one document per owner (model, batch or pack).
 | 2. Team editing and publication | The store's repositories, tested against a throwaway MongoDB (EphemeralMongo, decision 22), and the passport-version and document records; the save pipeline with the form as first entry point, turning bare values into the schema's form; team editors, including the family picture; the identifier service with test IDs; documents (links and uploads); publication checks; signing of the static core; versions and archiving |
 | 3. Access, pages and switch-over | The 9 app roles: today's 7, with `legitimateInterest` split into the 3 LI roles (5.2 shows 10 kinds of reader, counting anonymous readers and other clusters); the visibility filter on pages, API, exports and documents; the public summary and the detail page; `/api/passports` team-only. Then the switch-over: remove the v1.2 model, the remaining old pages (the team pages were replaced in 2d) and API endpoints (including telemetry and operations), demo values and extras, and reset the data. |
 | 4. Purchaser editing and lifecycle | Cluster-admin editing; the status change with re-stated values; repairs and the repair history; successor passports; waste, deletion and invalid; transfers |
-| 5. Live data and uploads | The upload page with preview; the external API upload endpoint; the native and BMS2_ACO adapters; the upload log |
+| 5. Live data and uploads | The upload page with preview; the external API upload endpoint; the native and BMS2_ACO adapters, including E1–E4 (decision 28); the upload log |
 | 6. Go-live readiness | The identifier scheme switch (once O-1 is decided); help pages and test pack rewritten; manual checks over the role matrix; the deployment to AWS (see "Where it runs") |
 
 Each step ends with all tests passing and a working app. Appendix C shows which workbook rows each step closes.
@@ -407,7 +412,7 @@ Step 2 is planned in four parts (2d in two plans), each ending with a working ap
 - **2c, documents:** public links, and uploaded files behind access checks, including the audience rule of 5.2 and #92's accident reports. Backend only: the download route and the accident page arrive with step 3's roles.
 - **2d, the team's editing pages:** on today's admin page layout, with a mock-up for the new screens only (section 12, decision 23). The new pages replace the old team pages in place, under the existing menu entries ("Battery families", "Batteries"); "Editable fields" goes and sites and operators get one permanent entry. No temporary menus, preview entries or duplicates (decision 23). 2d removes the admin actions, views and view models only the replaced pages used; the old services they shared with the cluster-admin pages and the API (`ProductTemplateService`, `EditableFieldPolicyService`, `DataCompletionPolicyService`, the battery and passport views those pages also render) stay until steps 3 and 4. Two plans:
   - **2d-1, product data:** the form built from the official schema for every attribute shape; the families page and family page (name, picture, models, the model editor), batches, and sites and operators; public document links and restricted uploads; the republish question when a change reaches published passports, also for uploads; the team editor rules of section 12 (decisions 24–26); and, from the parity check of 29 Oct 2026, non-negative quantities, the value before each change in the audit entry and the new record types in the audit log's filter. Replaces "Battery families" and removes "Editable fields".
-  - **2d-2, batteries:** the batteries list, creating a battery, the battery page (its values, live values, cluster, publication checks, publishing, versions, accident reports). Replaces "Batteries". Its first task removes the old battery and passport admin actions, whose routes would otherwise clash with the new ones. It also restores what the old pages enforced and nothing in this design removes (parity check of 29 Oct 2026): the serial number, manufacturer and economic operator (#11, #17, #19) fixed once the passport is published, still correctable while a draft (6.1); a duplicate serial number refused at creation (step 4 exempts linked successor packs, 8.2); a battery's cluster must exist; deleting a cluster also counts its new packs; the batteries list search by passport ID, battery ID, serial number or cluster; removing a draft pack, e.g. one made in the wrong batch. Optional: the Conformance page checks stored files against their SHA-256; the "Battery cluster assignments" list folds into the batteries list.
+  - **2d-2, batteries:** the batteries list, creating a battery, the battery page (its values, live values including E1–E4 of decision 28, cluster, publication checks, publishing, versions, accident reports). Replaces "Batteries". Its first task removes the old battery and passport admin actions, whose routes would otherwise clash with the new ones. It also restores what the old pages enforced and nothing in this design removes (parity check of 29 Oct 2026): the serial number, manufacturer and economic operator (#11, #17, #19) fixed once the passport is published, still correctable while a draft (6.1); a duplicate serial number refused at creation (step 4 exempts linked successor packs, 8.2); a battery's cluster must exist; deleting a cluster also counts its new packs; the batteries list search by passport ID, battery ID, serial number or cluster; removing a draft pack, e.g. one made in the wrong batch. Optional: the Conformance page checks stored files against their SHA-256; the "Battery cluster assignments" list folds into the batteries list.
   The public pages and the API follow in step 3.
 
 **Where it runs (agreed 28 Oct 2026):** until the cut-over, the new version runs only on the product owner's PC, against the Atlas database `battery_pass_v3` (a launcher outside the repository sets `MONGODB_URI` and `MONGODB_DB` for its own process; any new configuration or launch profile must set `MONGODB_DB`, because the app falls back to `battery_pass_demo`). The live app on Elastic Beanstalk (branch `security/demo-api-hardening`, database `battery_pass_demo`) is not changed. Step 3's switch-over and reset run only against `battery_pass_v3`. Nothing in the rebuild touches the running app or its data. When all steps are done, the new version is deployed to AWS connected to `battery_pass_v3`, if that adds no cost; if it would, the old database is reset to match the new app instead.
@@ -427,7 +432,7 @@ Choices this design makes where the file and the 21 decisions don't decide. Plea
 | J-7 | LI roles are app-wide; the team checks the legitimate interest when granting the role | The app has no way to check an interest per battery |
 | J-8 | Only the team can undo "invalid" | Keeps a market surveillance finding from being reversed by mistake |
 | J-9 | Conditional attributes never block publication; the editor shows their condition | Avoids extra yes/no switches that aren't in the file |
-| J-10 | Cluster API tokens write only #63, #83 and #87 | Machines feed live data; status changes and accident reports need a person |
+| J-10 | Cluster API tokens write only #63, #83, #87 and E1–E4 | Machines feed live data; status changes and accident reports need a person |
 | J-11 | Capacity fade can be suggested from a measured remaining capacity, which isn't stored | Helps the status change without adding an attribute |
 | J-12 | A change set is all-or-nothing per pack; keys rejected for type, rights or validity are reported but don't block the rest | One bad key in a feed shouldn't drop good live values |
 | J-13 | The old passport stays "active", with its new status, until the successor is published or linked | The file makes it "inactive" once linked to the new passport |
@@ -535,6 +540,15 @@ One row per attribute of the file. Generated from the file and the schema; the c
 | 88 | Temperature range idle state, lower boundary | Model | Public | Team (model) | Fixed | Integer (°C) | M | yes | `performanceAndDurability.temperatureRangeIdleStateLowerBoundary` |
 | 89 | Temperature range idle state, upper boundary | Model | Public | Team (model) | Fixed | Integer (°C) | M | yes | `performanceAndDurability.temperatureRangeIdleStateUpperBoundary` |
 | 92 | Information on accidents | Pack | Purchaser + MSA | Team + battery's cluster admins (form, with file upload) | Live (in place) | Document link | M | yes | `performanceAndDurability.informationOnAccidents` |
+
+**Added beyond the file (decision 28).** From the Polarion dynamic attribute list (DIN DKE 99100). Not in the V3 file or the v2.0.1 schema; the schema allows extra fields, so the passport still validates. They never block publication.
+
+| # | Attribute | Level | Who sees it | Who enters it | Changes | Format (unit) | DIN DKE | Feb 27 | Passport property |
+|---|---|---|---|---|---|---|---|---|---|
+| E1 | Time spent in extreme temperatures above boundary | Pack | Purchaser + MSA | Battery-system feed (API/upload) + team + battery's cluster admins | Live (in place) | Integer (s) | 6.7.7.5 | — | `performanceAndDurability.timeSpentInExtremeTemperaturesAboveBoundary` |
+| E2 | Time spent in extreme temperatures below boundary | Pack | Purchaser + MSA | Battery-system feed (API/upload) + team + battery's cluster admins | Live (in place) | Integer (s) | 6.7.7.6 | — | `performanceAndDurability.timeSpentInExtremeTemperaturesBelowBoundary` |
+| E3 | Time spent charging during extreme temperatures above boundary | Pack | Purchaser + MSA | Battery-system feed (API/upload) + team + battery's cluster admins | Live (in place) | Integer (s) | 6.7.7.7 | — | `performanceAndDurability.timeSpentChargingDuringExtremeTemperaturesAboveBoundary` |
+| E4 | Time spent charging during extreme temperatures below boundary | Pack | Purchaser + MSA | Battery-system feed (API/upload) + team + battery's cluster admins | Live (in place) | Integer (s) | 6.7.7.8 | — | `performanceAndDurability.timeSpentChargingDuringExtremeTemperaturesBelowBoundary` |
 
 ## Appendix B — Schema notes
 
