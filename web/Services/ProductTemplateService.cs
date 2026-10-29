@@ -780,7 +780,7 @@ public sealed class ProductTemplateService
         await _clusterRepository.UpsertUserAsync("notified.body@example.test", "Notified Body", [AccessControlService.RoleNotifiedBody], passwordHash, cancellationToken);
         await _clusterRepository.UpsertUserAsync("msa@example.test", "Market Surveillance Authorities", [AccessControlService.RoleMarketSurveillanceAuthority], passwordHash, cancellationToken);
         await _clusterRepository.UpsertUserAsync("commission@example.test", "Commission", [AccessControlService.RoleCommission], passwordHash, cancellationToken);
-        await _clusterRepository.UpsertUserAsync("legitimate.interest@example.test", "Person with Legitimate Interest", [AccessControlService.RoleLegitimateInterest], passwordHash, cancellationToken);
+        await _clusterRepository.UpsertUserAsync("legitimate.interest@example.test", "Legitimate interest: repair", [AccessControlService.RoleLiRepair], passwordHash, cancellationToken);
         foreach (var (clusterId, definition) in FixedClusters)
         {
             await _clusterRepository.UpsertClusterAsync(clusterId, definition.Name, cancellationToken);

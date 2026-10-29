@@ -11,7 +11,15 @@ public sealed class AccessControlService
     public const string RoleNotifiedBody = "notifiedBody";
     public const string RoleMarketSurveillanceAuthority = "marketSurveillanceAuthority";
     public const string RoleCommission = "commission";
-    public const string RoleLegitimateInterest = "legitimateInterest";
+    public const string RoleLiRepair = "liRepair";
+    public const string RoleLiRecycling = "liRecycling";
+    public const string RoleLiTreatment = "liTreatment";
+
+    /// <summary>
+    /// The three legitimate-interest roles of decision 6 (design 5.2), in place of the single "legitimateInterest" role,
+    /// which no longer gives anything beyond public data.
+    /// </summary>
+    public static IReadOnlyList<string> LegitimateInterestRoles { get; } = [RoleLiRepair, RoleLiRecycling, RoleLiTreatment];
 
     private readonly ClusterRepository _clusterRepository;
 
@@ -24,6 +32,8 @@ public sealed class AccessControlService
 
     public static bool IsClusterAdmin(ClaimsPrincipal user) => user.IsInRole(RoleClusterAdmin) || user.IsInRole(RoleAdmin);
 
+    public static bool HasLegitimateInterestRole(ClaimsPrincipal user) => LegitimateInterestRoles.Any(user.IsInRole);
+
     public static string DisplayRoleLabel(ClaimsPrincipal user)
     {
         if (user.IsInRole(RoleAdmin)) return "Global Admin";
@@ -31,7 +41,9 @@ public sealed class AccessControlService
         if (user.IsInRole(RoleCommission)) return "Commission";
         if (user.IsInRole(RoleMarketSurveillanceAuthority)) return "Market Surveillance Authorities";
         if (user.IsInRole(RoleNotifiedBody)) return "Notified Body";
-        if (user.IsInRole(RoleLegitimateInterest)) return "Person with Legitimate Interest";
+        if (user.IsInRole(RoleLiRepair)) return "Legitimate interest: repair, repurposing, remanufacturing";
+        if (user.IsInRole(RoleLiRecycling)) return "Legitimate interest: recycling and battery treatment";
+        if (user.IsInRole(RoleLiTreatment)) return "Legitimate interest: authorised or WEEE treatment";
         if (user.IsInRole(RoleNormalUser)) return "Normal User";
         return "Cluster Member";
     }
@@ -45,7 +57,9 @@ public sealed class AccessControlService
             RoleCommission => "Commission",
             RoleMarketSurveillanceAuthority => "Market Surveillance Authorities",
             RoleNotifiedBody => "Notified Body",
-            RoleLegitimateInterest => "Person with Legitimate Interest",
+            RoleLiRepair => "Legitimate interest: repair, repurposing, remanufacturing",
+            RoleLiRecycling => "Legitimate interest: recycling and battery treatment",
+            RoleLiTreatment => "Legitimate interest: authorised or WEEE treatment",
             RoleNormalUser => "Normal User",
             _ => "Cluster Member"
         };
@@ -59,13 +73,13 @@ public sealed class AccessControlService
         || user.IsInRole(RoleNotifiedBody)
         || user.IsInRole(RoleMarketSurveillanceAuthority)
         || user.IsInRole(RoleCommission)
-        || user.IsInRole(RoleLegitimateInterest);
+        || HasLegitimateInterestRole(user);
 
     public static bool HasGlobalReportReadRole(ClaimsPrincipal user) =>
         user.IsInRole(RoleNotifiedBody)
         || user.IsInRole(RoleMarketSurveillanceAuthority)
         || user.IsInRole(RoleCommission)
-        || user.IsInRole(RoleLegitimateInterest);
+        || HasLegitimateInterestRole(user);
 
     public static bool HasAllClusterReadScope(ClaimsPrincipal user) =>
         IsAdmin(user) || HasGlobalReportReadRole(user);

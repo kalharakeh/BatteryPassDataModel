@@ -117,7 +117,7 @@ public sealed class BatteryFamilyAccessApiRevisedTests
         Assert.Contains("Notified Body", source);
         Assert.Contains("Market Surveillance Authorities", source);
         Assert.Contains("Commission", source);
-        Assert.Contains("Person with Legitimate Interest", source);
+        Assert.Contains("Legitimate interest: repair, repurposing, remanufacturing", source);
         Assert.Contains("CanViewTrustConformanceAsync", source);
         Assert.Contains("marketSurveillanceAuthority", source);
         Assert.Contains("commission", source);

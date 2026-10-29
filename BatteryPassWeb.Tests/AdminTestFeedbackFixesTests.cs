@@ -49,7 +49,9 @@ public sealed class AdminTestFeedbackFixesTests
         Assert.Contains("Notified Body", adminUsers);
         Assert.Contains("Market Surveillance Authorities", adminUsers);
         Assert.Contains("Commission", adminUsers);
-        Assert.Contains("Person with Legitimate Interest", adminUsers);
+        Assert.Contains("Legitimate interest: repair, repurposing, remanufacturing", adminUsers);
+        Assert.Contains("Legitimate interest: recycling and battery treatment", adminUsers);
+        Assert.Contains("Legitimate interest: authorised or WEEE treatment", adminUsers);
         Assert.Contains("Notified Body", clusterUsers);
         Assert.Contains("NormalizeClusterMembershipRole", clusterRepository);
         Assert.Contains("CreateIndexOptions { Unique = true", clusterRepository);

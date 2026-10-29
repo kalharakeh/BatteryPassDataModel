@@ -42,7 +42,9 @@ public sealed class AdminFeedbackImplementationTests
         Assert.Contains("[\"notifiedBody\"]", clustersView);
         Assert.Contains("[\"marketSurveillanceAuthority\"]", clustersView);
         Assert.Contains("[\"commission\"]", clustersView);
-        Assert.Contains("[\"legitimateInterest\"]", clustersView);
+        Assert.Contains("[\"liRepair\"]", clustersView);
+        Assert.Contains("[\"liRecycling\"]", clustersView);
+        Assert.Contains("[\"liTreatment\"]", clustersView);
     }
 
     [Fact]

@@ -28,7 +28,9 @@ public sealed class PublicVisibilityPolicyTests
         Assert.Contains("RoleNotifiedBody", source);
         Assert.Contains("RoleMarketSurveillanceAuthority", source);
         Assert.Contains("RoleCommission", source);
-        Assert.Contains("RoleLegitimateInterest", source);
+        Assert.Contains("RoleLiRepair", source);
+        Assert.Contains("RoleLiRecycling", source);
+        Assert.Contains("RoleLiTreatment", source);
         Assert.Contains("CanSeeDraftPassports", source);
         Assert.Contains("CanSeeSignedPassports", source);
         Assert.Contains("HasGlobalReportReadRole", source);

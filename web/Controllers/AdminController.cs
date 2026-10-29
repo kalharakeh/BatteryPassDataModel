@@ -900,7 +900,9 @@ public class AdminController : Controller
             AccessControlService.RoleNotifiedBody => AccessControlService.RoleNotifiedBody,
             AccessControlService.RoleMarketSurveillanceAuthority => AccessControlService.RoleMarketSurveillanceAuthority,
             AccessControlService.RoleCommission => AccessControlService.RoleCommission,
-            AccessControlService.RoleLegitimateInterest => AccessControlService.RoleLegitimateInterest,
+            AccessControlService.RoleLiRepair => AccessControlService.RoleLiRepair,
+            AccessControlService.RoleLiRecycling => AccessControlService.RoleLiRecycling,
+            AccessControlService.RoleLiTreatment => AccessControlService.RoleLiTreatment,
             _ => AccessControlService.RoleNormalUser
         };
     }

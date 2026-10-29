@@ -14,7 +14,9 @@
         "notifiedBody" => "Notified Body",
         "marketSurveillanceAuthority" => "Market Surveillance Authorities",
         "commission" => "Commission",
-        "legitimateInterest" => "Person with Legitimate Interest",
+        "liRepair" => "Legitimate interest: repair, repurposing, remanufacturing",
+        "liRecycling" => "Legitimate interest: recycling and battery treatment",
+        "liTreatment" => "Legitimate interest: authorised or WEEE treatment",
         _ => clusterMembershipRoleOptions.TryGetValue(role, out var label) ? label : "Normal User"
     };
     string MembershipCountLabel(int count) => $"{count} {(count == 1 ? "membership" : "memberships")}";
