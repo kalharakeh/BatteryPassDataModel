@@ -127,14 +127,9 @@ public sealed class ApplicationAuditCoverageTests
     public void BatteryAndPassportWritePaths_ShouldAppendMeaningfulAuditEvents()
     {
         var clusterAdmin = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
-        var externalApi = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
         var snapshot = File.ReadAllText(RepoFile("web", "Services", "BatteryPassportSnapshotService.cs"));
 
         Assert.Contains("\"battery.updated\"", clusterAdmin);
-        Assert.Contains("\"battery.telemetry.written\"", externalApi);
-        Assert.Contains("\"battery.operations.updated\"", externalApi);
-        Assert.Contains("\"battery.model.updated\"", externalApi);
-        Assert.Contains("\"battery.software.updated\"", externalApi);
         Assert.Contains("\"passport.created\"", snapshot);
         Assert.Contains("\"battery.passport.created\"", snapshot);
     }

@@ -14,7 +14,7 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace BatteryPassWeb.Tests.Dpp;
 
-/// <summary>The external API's reading endpoints (step 3c-1) and the team-only passports list, called with real tokens.</summary>
+/// <summary>The external API's reading endpoints (steps 3c-1 and 3c-2) and the team-only passports list, called with real tokens.</summary>
 [Collection(MongoCollection.Name)]
 public sealed class DppApiControllerTests(MongoFixture mongo)
 {
@@ -27,22 +27,13 @@ public sealed class DppApiControllerTests(MongoFixture mongo)
 
         Assert.Equal("api/external/v1", type.GetCustomAttribute<RouteAttribute>()?.Template);
         Assert.Null(type.GetCustomAttribute<AuthorizeAttribute>());
-        var actions = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        var actions = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Where(action => action.GetCustomAttribute<HttpGetAttribute>() is not null)
+            .ToArray();
         Assert.Equal(
-            ["batteries/{id}", "batteries/{id}/passports", "batteries/{id}/paths", "batteries/{id}/section/{sectionName}", "batteries/{id}/values", "clusters", "clusters/{clusterId}/batteries"],
+            ["batches", "batteries/{id}", "batteries/{id}/live-values/history", "batteries/{id}/passports", "batteries/{id}/paths", "batteries/{id}/section/{sectionName}", "batteries/{id}/values", "clusters", "clusters/{clusterId}/batteries", "operators"],
             actions.Select(action => action.GetCustomAttribute<HttpGetAttribute>()!.Template).Order());
         Assert.All(actions, action => Assert.Equal(SecurityRateLimitPolicyNames.ExternalApiRead, action.GetCustomAttribute<EnableRateLimitingAttribute>()?.PolicyName));
-    }
-
-    [Fact]
-    public void TheOldController_ShouldKeepOnlyItsWritingEndpointsUntil3c2()
-    {
-        var gets = typeof(ExternalApiController).GetMethods()
-            .Select(method => method.GetCustomAttribute<HttpGetAttribute>()?.Template)
-            .OfType<string>()
-            .ToArray();
-
-        Assert.Equal(["batteries/{batteryId}/telemetry/history"], gets);
     }
 
     [Theory]
@@ -231,9 +222,9 @@ public sealed class DppApiControllerTests(MongoFixture mongo)
         };
     }
 
-    private static ExternalApiRepository Repository(PublicationRig rig) => new(rig.Context, new ExternalApiSecurityService(Key));
+    internal static ExternalApiRepository Repository(PublicationRig rig) => new(rig.Context, new ExternalApiSecurityService(Key));
 
-    private static DppApiController Controller(PublicationRig rig, string? token)
+    internal static DppApiController Controller(PublicationRig rig, string? token)
     {
         var http = new DefaultHttpContext();
         if (token is not null)
@@ -241,7 +232,7 @@ public sealed class DppApiControllerTests(MongoFixture mongo)
             http.Request.Headers.Authorization = "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes(token + ":"));
         }
 
-        return new DppApiController(Repository(rig), new ClusterRepository(rig.Context), PassportApiTests.Api(rig))
+        return new DppApiController(Repository(rig), new ClusterRepository(rig.Context), PassportApiTests.Api(rig), BatteryApiTests.Api(rig))
         {
             ControllerContext = new ControllerContext { HttpContext = http },
         };
@@ -264,7 +255,7 @@ public sealed class DppApiControllerTests(MongoFixture mongo)
         },
     };
 
-    private static JsonElement Json(ObjectResult result) => JsonSerializer.SerializeToElement(result.Value);
+    internal static JsonElement Json(ObjectResult result) => JsonSerializer.SerializeToElement(result.Value);
 
     private static JsonElement Data(IActionResult result)
     {

@@ -13,31 +13,6 @@ public sealed class TrustDirtyStateTests
         Assert.Contains("TrustState.Dirty", source);
     }
 
-    [Fact]
-    public void ExternalApiController_ShouldWriteBatteryModelChangesToBatteryRecord()
-    {
-        var source = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
-
-        Assert.Contains("UpdateBatteryModel", source);
-        Assert.Contains("BatteryTemplateUpdateService", source);
-        Assert.Contains("ApplyBatteryModelAsync", source);
-        Assert.Contains("newPassportRequired =", source);
-        Assert.Contains("CreateBatteryPassport", source);
-    }
-
-    [Fact]
-    public void ExternalApiAcceptance_ShouldOnlyWriteOperationalFieldsWithoutCallingDirtyMarker()
-    {
-        var controller = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
-
-        Assert.Contains("app.operations.latestTelemetry", controller);
-        Assert.Contains("app.operations.locationOfUse", controller);
-        Assert.Contains("app.operations.contactPerson", controller);
-        Assert.Contains("UpdateBatteryModel", controller);
-        Assert.DoesNotContain("MarkCanonicalDirtyAsync", controller);
-        Assert.DoesNotContain("trust.isDirty", controller);
-    }
-
     private static string RepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

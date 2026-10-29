@@ -68,12 +68,11 @@ public sealed class HelpWorkbenchLayoutTests
         var markup = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
 
         Assert.Contains("id=\"tester-battery-id\"", markup);
-        Assert.Contains("id=\"tester-passport-id\"", markup);
+        Assert.DoesNotContain("id=\"tester-passport-id\"", markup);
         Assert.Contains("id=\"tester-token\"", markup);
         Assert.Contains("const getWorkbenchContext", markup);
         Assert.Contains("resolveTemplatePath(template.pathTemplate", markup);
         Assert.Contains("batteryIdEl?.addEventListener", markup);
-        Assert.Contains("passportIdEl?.addEventListener", markup);
         Assert.Contains("tokenPresetEl?.addEventListener('change'", markup);
         Assert.DoesNotContain("tokenPresetEl.value = template.tokenPreset;", markup);
     }
@@ -92,15 +91,9 @@ public sealed class HelpWorkbenchLayoutTests
         Assert.Contains("bp-help-sticky-id-field", workbenchMarkup);
         Assert.Contains("bp-help-sticky-id-control", workbenchMarkup);
         Assert.Contains("id=\"tester-battery-id\"", workbenchMarkup);
-        Assert.Contains("id=\"tester-passport-id\"", workbenchMarkup);
-        Assert.DoesNotContain("id=\"tester-battery-id\" class=\"bp-id-value\" value=\"@Model.SampleBatteryId\" readonly", workbenchMarkup);
-        Assert.DoesNotContain("id=\"tester-passport-id\" class=\"bp-id-value\" value=\"@Model.SamplePassportId\" readonly", workbenchMarkup);
+        Assert.DoesNotContain("id=\"tester-battery-id\" class=\"bp-id-value\" value=\"@Model.ExampleBatteryId\" readonly", workbenchMarkup);
         Assert.Contains("data-copy-target=\"#tester-battery-id\"", workbenchMarkup);
-        Assert.Contains("data-copy-target=\"#tester-passport-id\"", workbenchMarkup);
         Assert.Contains("Copy Battery ID", workbenchMarkup);
-        Assert.Contains("Copy Passport ID", workbenchMarkup);
-        Assert.DoesNotContain("Html.PartialAsync(\"_CopyIdButton\", Model.SampleBatteryId)", workbenchMarkup);
-        Assert.DoesNotContain("Html.PartialAsync(\"_CopyIdButton\", Model.SamplePassportId)", workbenchMarkup);
 
         Assert.Contains(".bp-help-sticky-id-field", css);
         Assert.Contains(".bp-help-sticky-id-control", css);
@@ -164,14 +157,16 @@ public sealed class HelpWorkbenchLayoutTests
     }
 
     [Fact]
-    public void HelpPage_ShouldOfferAPublishedBatteryForTheReadingCalls()
+    public void HelpPage_ShouldOfferAPublishedBatteryForTheCalls()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
         var controller = File.ReadAllText(RepoFile("web", "Controllers", "HelpController.cs"));
 
-        Assert.Contains("Example battery ID for reading", markup);
+        Assert.Contains("Example battery ID", markup);
         Assert.Contains("No battery passport is published yet.", markup);
-        Assert.Contains("value=\"@(string.IsNullOrWhiteSpace(Model.ExampleBatteryId) ? Model.SampleBatteryId : Model.ExampleBatteryId)\"", markup);
+        Assert.Contains("id=\"tester-battery-id\" class=\"bp-id-value\" value=\"@Model.ExampleBatteryId\"", markup);
+        Assert.DoesNotContain("SampleBatteryId", markup);
+        Assert.DoesNotContain("SampleBatteryId", controller);
         Assert.Contains("Rows.FirstOrDefault(row => !row.IsDraft)?.Identifier", controller);
         Assert.Contains("BatteryPassWeb.Dpp.Api.PassportApi.Sections", markup);
         Assert.DoesNotContain("<code>materialComposition</code>", markup);
@@ -190,7 +185,7 @@ public sealed class HelpWorkbenchLayoutTests
     public void HelpWorkbench_ShouldExposeRunnableTemplateForEveryExternalApiEndpoint()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
-        var controller = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
+        var controller = File.ReadAllText(RepoFile("web", "Controllers", "DppApiController.cs"));
         var initializer = File.ReadAllText(RepoFile("web", "Services", "ExternalApiInitializer.cs"));
         var helpController = File.ReadAllText(RepoFile("web", "Controllers", "HelpController.cs"));
         var helpModel = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "ExternalApiHelpViewModel.cs"));
@@ -214,15 +209,13 @@ public sealed class HelpWorkbenchLayoutTests
             "readSection",
             "readValuesAliases",
             "readPathsAll",
-            "writeTelemetryPoint",
-            "readHistory24h",
-            "patchOperations",
-            "patchBatteryModel",
-            "patchSoftwareVersion",
-            "createPassport",
-            "validatePassport",
-            "signPassport",
-            "publishPassport"
+            "writeLiveValues",
+            "previewLiveValues",
+            "readLiveHistory24h",
+            "listBatches",
+            "listOperators",
+            "createBattery",
+            "publishBattery"
         };
         foreach (var templateKey in workbenchTemplateKeys)
         {
@@ -234,7 +227,6 @@ public sealed class HelpWorkbenchLayoutTests
         Assert.Contains("SampleLifecycleToken", helpModel);
         Assert.Contains("const sampleLifecycleToken", markup);
         Assert.Contains("'sample-lifecycle': canUsePrivilegedDemoTokens ? sampleLifecycleToken : ''", markup);
-        Assert.Contains("tokenPreset: 'sample-lifecycle'", markup);
         Assert.Contains("SAMPLEBATTERYPASSPORTLIFECYC001", initializer);
     }
 
@@ -272,18 +264,6 @@ public sealed class HelpWorkbenchLayoutTests
         Assert.Contains("its attribute number (<code>%2363</code> for #63", markup);
         Assert.Contains("/values?path=stateOfChargeSoC&amp;path=%2311", markup);
         Assert.Contains("/paths?section=performanceAndDurability", markup);
-    }
-
-    [Fact]
-    public void HelpController_ShouldResolveSampleBatteryCompatibleWithSampleReadToken()
-    {
-        var source = File.ReadAllText(RepoFile("web", "Controllers", "HelpController.cs"));
-
-        Assert.Contains("PassportRepository", source);
-        Assert.Contains("ResolveSampleIdsAsync", source);
-        Assert.Contains("SampleBatteryId", source);
-        Assert.Contains("BsonHelpers.GetString(passport, \"batteryId\")", source);
-        Assert.DoesNotContain("SamplePassportId = ExternalApiInitializer.SamplePassportId,", source);
     }
 
     [Fact]

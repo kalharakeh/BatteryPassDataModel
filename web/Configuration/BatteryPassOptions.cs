@@ -14,7 +14,6 @@ public sealed class BatteryPassOptions
     public const int DefaultFileUploadRateLimitPerWindow = 10;
     public const int DefaultMaxAuthorizationHeaderBytes = 4096;
     public const long DefaultMaxJsonBodyBytes = 1_048_576;
-    public const int DefaultMaxTelemetryPoints = 250;
     public const long DefaultMaxUploadBytes = 10_485_760;
 
     public string MongoDbUri { get; set; } = string.Empty;
@@ -43,7 +42,6 @@ public sealed class BatteryPassOptions
     public int FileUploadRateLimitPerWindow { get; set; } = DefaultFileUploadRateLimitPerWindow;
     public int MaxAuthorizationHeaderBytes { get; set; } = DefaultMaxAuthorizationHeaderBytes;
     public long MaxJsonBodyBytes { get; set; } = DefaultMaxJsonBodyBytes;
-    public int MaxTelemetryPoints { get; set; } = DefaultMaxTelemetryPoints;
     public long MaxUploadBytes { get; set; } = DefaultMaxUploadBytes;
 
     public static int NormalizeSessionTimeoutMinutes(int minutes)

@@ -62,7 +62,7 @@ public sealed class BatteryFamilyAccessApiRevisedTests
     {
         var modelSource = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateModels.cs"));
         var serviceSource = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateService.cs"));
-        var apiSource = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
+        var apiSource = File.ReadAllText(RepoFile("web", "Controllers", "DppApiController.cs"));
 
         Assert.Contains("string SoftwareVersion", modelSource);
         Assert.Contains("string SoftwareReleaseDate", modelSource);
@@ -76,18 +76,14 @@ public sealed class BatteryFamilyAccessApiRevisedTests
     [Fact]
     public void ExternalApi_ShouldUseTokensOnlyAndExposeBatteryVersionValidateSign()
     {
-        var api = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
+        var api = File.ReadAllText(RepoFile("web", "Controllers", "DppApiController.cs"));
         var repository = File.ReadAllText(RepoFile("web", "Services", "ExternalApiRepository.cs"));
         var initializer = File.ReadAllText(RepoFile("web", "Services", "ExternalApiInitializer.cs"));
 
         Assert.Contains("ExternalTokenAccessMode.Sign", repository);
         Assert.Contains("ExternalTokenRequirement.Sign", api);
-        Assert.Contains("ValidateTokenForRequirementAsync", api);
-        Assert.Contains("[HttpPatch(\"batteries/{batteryId}/battery-model\")]", api);
-        Assert.Contains("[HttpPost(\"batteries/{batteryId}/passports\")]", api);
-        Assert.Contains("[HttpPost(\"passports/{passportId}/validate\")]", api);
-        Assert.Contains("[HttpPost(\"passports/{passportId}/sign\")]", api);
-        Assert.Contains("[HttpPost(\"passports/{passportId}/publish\")]", api);
+        Assert.Contains("tokens.ValidateTokenAsync", api);
+        Assert.Contains("[HttpPost(\"batteries/{id}/publish\")]", api);
         Assert.DoesNotContain("X-Battery-Secret", api);
         Assert.DoesNotContain("ValidateBatterySecretAsync", api);
         Assert.DoesNotContain("UpsertBatterySecretAsync", repository);
@@ -98,11 +94,9 @@ public sealed class BatteryFamilyAccessApiRevisedTests
     [Fact]
     public void ValidateSignPublish_ShouldUseSharedAutoRepublishWorkflow()
     {
-        var api = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
         var repository = File.ReadAllText(RepoFile("web", "Services", "PassportRepository.cs"));
         var workflow = File.ReadAllText(RepoFile("web", "Services", "PassportTrustWorkflowService.cs"));
 
-        Assert.Contains("PassportTrustWorkflowService", api);
         Assert.Contains("ShouldAutoPublishAfterSign", workflow);
         Assert.Contains("AutoPublished", workflow);
         Assert.Contains("registryInfo.hasBeenPublished", repository);

@@ -46,9 +46,6 @@ var maxAuthorizationHeaderBytes = ParsePositiveIntSetting(
 var maxJsonBodyBytes = ParsePositiveLongSetting(
     EnvironmentOrConfig(builder.Configuration, "MAX_JSON_BODY_BYTES", "MaxJsonBodyBytes"),
     BatteryPassOptions.DefaultMaxJsonBodyBytes);
-var maxTelemetryPoints = ParsePositiveIntSetting(
-    EnvironmentOrConfig(builder.Configuration, "MAX_TELEMETRY_POINTS", "MaxTelemetryPoints"),
-    BatteryPassOptions.DefaultMaxTelemetryPoints);
 var maxUploadBytes = ParsePositiveLongSetting(
     EnvironmentOrConfig(builder.Configuration, "MAX_UPLOAD_BYTES", "MaxUploadBytes"),
     BatteryPassOptions.DefaultMaxUploadBytes);
@@ -119,7 +116,6 @@ builder.Services.Configure<BatteryPassOptions>(options =>
     options.FileUploadRateLimitPerWindow = fileUploadRateLimitPerWindow;
     options.MaxAuthorizationHeaderBytes = maxAuthorizationHeaderBytes;
     options.MaxJsonBodyBytes = maxJsonBodyBytes;
-    options.MaxTelemetryPoints = maxTelemetryPoints;
     options.MaxUploadBytes = maxUploadBytes;
 });
 
@@ -236,7 +232,6 @@ builder.Services.AddSingleton<BatteryAuditService>();
 builder.Services.AddSingleton<ApplicationAuditService>();
 builder.Services.AddSingleton<ApplicationSettingsService>();
 builder.Services.AddSingleton<AuthenticationSessionService>();
-builder.Services.AddSingleton<BatteryCreationService>();
 builder.Services.AddSingleton<PassportTrustWorkflowService>();
 builder.Services.AddSingleton<AccessControlService>();
 builder.Services.AddSingleton<PassportQrCodeService>();
@@ -250,7 +245,6 @@ builder.Services.AddSingleton<AuthService>();
 builder.Services.AddHttpClient<IEmailSender, PowerAutomateEmailSender>();
 builder.Services.AddSingleton<ExternalApiSecurityService>();
 builder.Services.AddSingleton<ExternalApiRepository>();
-builder.Services.AddSingleton<BatteryTelemetryRepository>();
 builder.Services.AddSingleton<ExternalApiInitializer>();
 builder.Services.AddDpp();
 

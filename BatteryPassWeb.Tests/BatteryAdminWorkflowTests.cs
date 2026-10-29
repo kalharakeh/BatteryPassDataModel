@@ -39,9 +39,7 @@ public sealed class BatteryAdminWorkflowTests
     public void AdminBatteryCreate_ShouldRequireClusterAndSnapshotShouldClearPendingFlag()
     {
         var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
-        var creationService = File.ReadAllText(RepoFile("web", "Services", "BatteryCreationService.cs"));
 
-        Assert.Contains("Battery cluster is required.", creationService);
         Assert.DoesNotContain("snapshot[\"newPassportRequired\"] = true;", controller);
     }
 
@@ -97,13 +95,9 @@ public sealed class BatteryAdminWorkflowTests
     [Fact]
     public void FollowupBatteryCreate_ShouldRequireClusterAndUniqueSerial()
     {
-        var creationService = File.ReadAllText(RepoFile("web", "Services", "BatteryCreationService.cs"));
         var repository = File.ReadAllText(RepoFile("web", "Services", "BatteryRepository.cs"));
         var view = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
 
-        Assert.Contains("Battery cluster is required.", creationService);
-        Assert.Contains("Battery serial number already exists.", creationService);
-        Assert.Contains("GetBySerialNumberAsync", creationService);
         Assert.Contains("GetBySerialNumberAsync", repository);
         Assert.Contains("name=\"clusterId\" required", view);
         Assert.Contains("is-policy-locked", view);

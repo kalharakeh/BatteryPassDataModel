@@ -140,11 +140,9 @@ public sealed class AdminFeedbackImplementationTests
     {
         var clusterAdminController = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
         var historyModel = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "BatteryViewModels.cs"));
-        var externalApi = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
 
         Assert.Contains("CanCreateBatteryPassport", clusterAdminController);
         Assert.Contains("CanCreatePassport", historyModel);
-        Assert.Contains("ClearNewPassportRequiredAsync", externalApi);
     }
 
     [Fact]

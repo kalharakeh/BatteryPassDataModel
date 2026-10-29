@@ -80,17 +80,6 @@ public sealed class BatterySnapshotWorkflowTests
     }
 
     [Fact]
-    public void TelemetryRepository_ShouldUseBatteryIdInsteadOfPassportId()
-    {
-        var source = File.ReadAllText(RepoFile("web", "Services", "BatteryTelemetryRepository.cs"));
-
-        Assert.Contains("batteryId", source);
-        Assert.Contains("AppendTelemetryAsync(string batteryId", source);
-        Assert.Contains("ReadHistoryAsync(string batteryId", source);
-        Assert.DoesNotContain("Ascending(\"passportId\")", source);
-    }
-
-    [Fact]
     public void PassportViewModel_ShouldExposeBatteryIdAndHistoricalState()
     {
         var model = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "PassportViewModel.cs"));

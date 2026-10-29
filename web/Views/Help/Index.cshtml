@@ -6,7 +6,7 @@
     <header class="bp-console-header">
         <div>
             <h1>API help</h1>
-            <p class="text-secondary mb-0">Read passport data, update operational values, and run token-protected trust actions.</p>
+            <p class="text-secondary mb-0">Read passports, send a battery's live values, and create and publish batteries with a team token.</p>
         </div>
     </header>
 
@@ -21,7 +21,7 @@
                 <code>@Model.BasePath</code>
             </div>
             <div>
-                <p class="mb-1 text-secondary small">Example battery ID for reading</p>
+                <p class="mb-1 text-secondary small">Example battery ID</p>
                 @if (!string.IsNullOrWhiteSpace(Model.ExampleBatteryId))
                 {
                     <span class="bp-id-copy-row"><code class="bp-id-value">@Model.ExampleBatteryId</code>@await Html.PartialAsync("_CopyIdButton", Model.ExampleBatteryId)</span>
@@ -30,14 +30,6 @@
                 {
                     <span class="text-secondary small">No battery passport is published yet.</span>
                 }
-            </div>
-            <div>
-                <p class="mb-1 text-secondary small">Sample Battery ID for writing and passport actions</p>
-                <span class="bp-id-copy-row"><code class="bp-id-value">@Model.SampleBatteryId</code>@await Html.PartialAsync("_CopyIdButton", Model.SampleBatteryId)</span>
-            </div>
-            <div>
-                <p class="mb-1 text-secondary small">Sample Passport ID for trust actions</p>
-                <span class="bp-id-copy-row"><code class="bp-id-value">@Model.SamplePassportId</code>@await Html.PartialAsync("_CopyIdButton", Model.SamplePassportId)</span>
             </div>
             <div>
                 <p class="mb-1 text-secondary small">Sample read token</p>
@@ -131,10 +123,32 @@
                             </td>
                         </tr>
                         <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">GET</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batches</code><small>Batches a new battery can be made in</small></span></td>
+                            <td><span class="bp-help-access-pill">Team, read</span></td>
+                            <td>Find the batch ID for a new battery: family, model, year and manufacturing site.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-batches" aria-expanded="false" aria-controls="api-detail-batches" aria-label="Show batches endpoint details" title="Show batches endpoint details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">GET</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/operators</code><small>Economic operators</small></span></td>
+                            <td><span class="bp-help-access-pill">Team, read</span></td>
+                            <td>Find the economic operator ID for a new battery.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-batches" aria-expanded="false" aria-controls="api-detail-batches" aria-label="Show operators endpoint details" title="Show operators endpoint details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">POST</span></td>
-                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries</code><small>Create battery record</small></span></td>
-                            <td><span class="bp-help-access-pill">Read-write</span></td>
-                            <td>Create a Battery ID after validating family, model, software, serial, and cluster scope.</td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries</code><small>Create a draft battery</small></span></td>
+                            <td><span class="bp-help-access-pill">Team, read-write</span></td>
+                            <td>Create a battery in a batch, with its serial number; the app issues its battery ID.</td>
                             <td class="bp-action-cell">
                                 <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-create-battery" aria-expanded="false" aria-controls="api-detail-create-battery" aria-label="Show battery creation endpoint details" title="Show battery creation endpoint details" data-tooltip="Details">
                                     <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
@@ -154,7 +168,7 @@
                         </tr>
                         <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">GET</span></td>
-                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{id}/section/{section}</code><small>One section of the passport</small></span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{id}/section/{sectionName}</code><small>One section of the passport</small></span></td>
                             <td><span class="bp-help-access-pill">Read</span></td>
                             <td>Keep responses to one part of the passport.</td>
                             <td class="bp-action-cell">
@@ -187,66 +201,22 @@
                         </tr>
                         <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">POST</span></td>
-                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/telemetry</code><small>Write operational points</small></span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{id}/live-values</code><small>Live values, measured at one moment</small></span></td>
                             <td><span class="bp-help-access-pill">Read-write</span></td>
-                            <td>Append current consumption, charge, voltage, or current.</td>
+                            <td>Send state of charge, cycles, temperature and the extreme-temperature times from the battery system.</td>
                             <td class="bp-action-cell">
-                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-telemetry" aria-expanded="false" aria-controls="api-detail-telemetry" aria-label="Show telemetry endpoint details" title="Show telemetry endpoint details" data-tooltip="Details">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-live-values" aria-expanded="false" aria-controls="api-detail-live-values" aria-label="Show live values endpoint details" title="Show live values endpoint details" data-tooltip="Details">
                                     <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
                                 </button>
                             </td>
                         </tr>
                         <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">GET</span></td>
-                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/telemetry/history?hours=24</code><small>Recent operational history</small></span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{id}/live-values/history?hours=24</code><small>Saved live values, newest first</small></span></td>
                             <td><span class="bp-help-access-pill">Read</span></td>
-                            <td>Review telemetry history for 1 to 168 hours.</td>
+                            <td>Review the live values saved in the last 1 to 168 hours.</td>
                             <td class="bp-action-cell">
-                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-history" aria-expanded="false" aria-controls="api-detail-history" aria-label="Show telemetry history endpoint details" title="Show telemetry history endpoint details" data-tooltip="Details">
-                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
-                                </button>
-                            </td>
-                        </tr>
-                        <tr class="bp-help-doc-item">
-                            <td><span class="bp-help-method">PATCH</span></td>
-                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/operations</code><small>Writable operations metadata</small></span></td>
-                            <td><span class="bp-help-access-pill">Read-write</span></td>
-                            <td>Patch site, contact, or active-state metadata.</td>
-                            <td class="bp-action-cell">
-                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-operations" aria-expanded="false" aria-controls="api-detail-operations" aria-label="Show operations endpoint details" title="Show operations endpoint details" data-tooltip="Details">
-                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
-                                </button>
-                            </td>
-                        </tr>
-                        <tr class="bp-help-doc-item">
-                            <td><span class="bp-help-method">PATCH</span></td>
-                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/battery-model</code><small>New passport required</small></span></td>
-                            <td><span class="bp-help-access-pill">Read-write</span></td>
-                            <td>Move a battery to another saved Battery Model.</td>
-                            <td class="bp-action-cell">
-                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-model" aria-expanded="false" aria-controls="api-detail-model" aria-label="Show battery model endpoint details" title="Show battery model endpoint details" data-tooltip="Details">
-                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
-                                </button>
-                            </td>
-                        </tr>
-                        <tr class="bp-help-doc-item">
-                            <td><span class="bp-help-method">PATCH</span></td>
-                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/software-version</code><small>New passport may be required</small></span></td>
-                            <td><span class="bp-help-access-pill">Read-write</span></td>
-                            <td>Move a battery to a software version defined for its Battery Model.</td>
-                            <td class="bp-action-cell">
-                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-model" aria-expanded="false" aria-controls="api-detail-model" aria-label="Show software version endpoint details" title="Show software version endpoint details" data-tooltip="Details">
-                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
-                                </button>
-                            </td>
-                        </tr>
-                        <tr class="bp-help-doc-item">
-                            <td><span class="bp-help-method">POST</span></td>
-                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{batteryId}/passports</code><small>Create a passport snapshot</small></span></td>
-                            <td><span class="bp-help-access-pill">Passport Lifecycle</span></td>
-                            <td>Create the next passport revision for a Battery ID.</td>
-                            <td class="bp-action-cell">
-                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-passports" aria-expanded="false" aria-controls="api-detail-passports" aria-label="Show passport creation endpoint details" title="Show passport creation endpoint details" data-tooltip="Details">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-history" aria-expanded="false" aria-controls="api-detail-history" aria-label="Show live value history endpoint details" title="Show live value history endpoint details" data-tooltip="Details">
                                     <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
                                 </button>
                             </td>
@@ -264,31 +234,9 @@
                         </tr>
                         <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">POST</span></td>
-                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/passports/{passportId}/validate</code><small>Validation gate</small></span></td>
-                            <td><span class="bp-help-access-pill">Passport Lifecycle</span></td>
-                            <td>Run trust validation before signing.</td>
-                            <td class="bp-action-cell">
-                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-validate" aria-expanded="false" aria-controls="api-detail-validate" aria-label="Show validate endpoint details" title="Show validate endpoint details" data-tooltip="Details">
-                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
-                                </button>
-                            </td>
-                        </tr>
-                        <tr class="bp-help-doc-item">
-                            <td><span class="bp-help-method">POST</span></td>
-                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/passports/{passportId}/sign</code><small>Proof creation</small></span></td>
-                            <td><span class="bp-help-access-pill">Passport Lifecycle</span></td>
-                            <td>Create the signed proof for the current passport core.</td>
-                            <td class="bp-action-cell">
-                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-sign" aria-expanded="false" aria-controls="api-detail-sign" aria-label="Show sign endpoint details" title="Show sign endpoint details" data-tooltip="Details">
-                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
-                                </button>
-                            </td>
-                        </tr>
-                        <tr class="bp-help-doc-item">
-                            <td><span class="bp-help-method">POST</span></td>
-                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/passports/{passportId}/publish</code><small>Public registry gate</small></span></td>
-                            <td><span class="bp-help-access-pill">Passport Lifecycle</span></td>
-                            <td>Publish only after validation and signing are current.</td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{id}/publish</code><small>Publish, or publish a new version</small></span></td>
+                            <td><span class="bp-help-access-pill">Team, Passport Lifecycle</span></td>
+                            <td>Check, sign and publish a battery's passport in one step.</td>
                             <td class="bp-action-cell">
                                 <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-publish" aria-expanded="false" aria-controls="api-detail-publish" aria-label="Show publish endpoint details" title="Show publish endpoint details" data-tooltip="Details">
                                     <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
@@ -308,11 +256,13 @@
                         <pre class="bp-help-pre"><code>Authorization: Basic &lt;base64(token:)&gt;</code></pre>
                         <ul>
                             <li><code>200 OK</code>: Request succeeded.</li>
-                            <li><code>201 Created</code>: Telemetry point(s) were stored.</li>
+                            <li><code>201 Created</code>: A draft battery was created.</li>
                             <li><code>400 Bad Request</code>: Invalid input.</li>
                             <li><code>401 Unauthorized</code>: Missing or invalid API token.</li>
-                            <li><code>403 Forbidden</code>: Token scope/access is not allowed, or Sign token is required/invalid.</li>
-                            <li><code>404 Not Found</code>: Battery passport or requested section/path does not exist.</li>
+                            <li><code>403 Forbidden</code>: The token lacks the access the call needs: write or Passport Lifecycle access, a team token, or the battery's cluster.</li>
+                            <li><code>404 Not Found</code>: No battery or published passport this token may use has this ID.</li>
+                            <li><code>409 Conflict</code>: The passport can't be published yet (see <code>blocking</code>), or a serial number names more than one battery.</li>
+                            <li><code>422 Unprocessable Entity</code>: No live value could be saved; each key says why.</li>
                             <li><code>500 Server Error</code>: Unexpected server-side failure.</li>
                             <li><code>503 Service Unavailable</code>: Backend dependency is unavailable.</li>
                         </ul>
@@ -329,23 +279,27 @@
                     <pre class="bp-help-pre"><code>GET @Model.BasePath/clusters/demo-cluster/batteries</code></pre>
                 </article>
 
+                <article id="api-detail-batches" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
+                    <div><span class="bp-summary-title">Batches and operators</span><h3>Find the batch and economic operator for a new battery.</h3><p>A team (global) token lists the batches a battery can be made in, each with its family, model, year and manufacturing site, and the economic operators that place batteries on the market, as the team's New battery page offers them.</p></div>
+                    <pre class="bp-help-pre"><code>GET @Model.BasePath/batches
+GET @Model.BasePath/operators</code></pre>
+                </article>
+
                 <article id="api-detail-create-battery" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
                     <div>
                         <span class="bp-summary-title">Battery creation</span>
-                        <h3>Create a battery record and receive its generated Battery ID.</h3>
-                        <p>Requires a read-write token scoped to the submitted cluster. The API validates Battery Family, Battery Model, software version, globally unique serial number, and cluster access before inserting the battery. Created records are audit logged with source <code>external-api</code> and the token ID.</p>
-                        <p>Create the battery record first, then create a passport snapshot with <code>POST @Model.BasePath/batteries/{batteryId}/passports</code> when a passport is needed.</p>
+                        <h3>Create a draft battery and receive its battery ID.</h3>
+                        <p>For team (global) tokens with read-write access, as on the team's pages. Name the batch (which gives the model and manufacturing site) and the economic operator by their IDs, optionally the cluster, and give the battery's own values by key: <code>batterySerialNumber</code> (#11) is required; <code>thirdPartyServiceProvider</code> (#13), <code>manufacturingDate</code> (#17, year and month) and <code>warrantyPeriod</code> (#19) are optional. The values go through the same checks as on the pages, and a serial number another battery has is refused. The app issues the battery ID (#6). The battery stays a draft, seen by the team only, until it is published.</p>
                     </div>
                     <pre class="bp-help-pre"><code>POST @Model.BasePath/batteries
 {
-  "batteryFamily": "Compact 7M",
-  "productId": "compact-7m",
-  "batteryModel": "2.0",
-  "productVersion": "2.0",
-  "softwareVersion": "4.0",
-  "serialNumber": "SN-API-REPLACE-ME",
+  "batchId": "BATCH-ID",
+  "operatorId": "OPERATOR-ID",
   "clusterId": "demo-cluster",
-  "displayName": "API created battery"
+  "values": {
+    "batterySerialNumber": "SN-API-REPLACE-ME",
+    "manufacturingDate": "2026-09"
+  }
 }</code></pre>
                 </article>
 
@@ -408,74 +362,29 @@ GET @Model.BasePath/batteries/{id}/values?path=batteryMass</code></pre>
 GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code></pre>
                 </article>
 
-                <article id="api-detail-telemetry" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Telemetry write</span><h3>Append one or more operational points.</h3><p>Supports a single object, an array, <code>{ "points": [...] }</code>, or a <code>series</code> object for one or more variables. Series points are sorted by timestamp; malformed points are ignored and reported without breaking the request when at least one valid point remains.</p></div>
-                    <pre class="bp-help-pre"><code>{
-  "points": [
-    {
-      "currentConsumptionKwh": 154.6,
-      "currentChargeLevelPct": 82.1,
-      "currentVoltageV": 401.7,
-      "currentCurrentA": 49.2,
-      "measuredAt": "2026-05-05T10:15:00Z"
-    }
-  ]
-}
-
+                <article id="api-detail-live-values" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
+                    <div>
+                        <span class="bp-summary-title">Live values</span>
+                        <h3>Send live values measured at one moment.</h3>
+                        <p>The battery system's call. <code>values</code> holds the live values by key; a bare number is enough, and the app adds the unit. <code>measuredAt</code> is when they were measured (ISO 8601 with its offset); without it, the time of the call is used. A cluster token changes the published batteries of its own clusters; a team token any battery, drafts included. Each value is checked on its own: one refused value doesn't stop the others, and an empty value never overwrites. Add <code>?preview=true</code> to check without saving.</p>
+                        <p>The live values:</p>
+                        <ul>@foreach (var live in BatteryPassWeb.Dpp.Api.BatteryApi.LiveSet) { <li><code>@live.Property</code> (@live.Label, @live.Name@(live.Unit is null ? "" : $", in {live.Unit}"))</li> }</ul>
+                        <p>Any other attribute is refused here: static values change on the team's pages.</p>
+                    </div>
+                    <pre class="bp-help-pre"><code>POST @Model.BasePath/batteries/{id}/live-values
 {
-  "series": {
-    "currentConsumptionKwh": [
-      { "measuredAt": "2026-05-20T09:00:00Z", "value": 163.4 },
-      { "measuredAt": "2026-05-20T09:05:00Z", "value": 164.1 }
-    ],
-    "currentVoltageV": [
-      { "measuredAt": "2026-05-20T09:00:00Z", "value": 398.4 },
-      { "measuredAt": "2026-05-20T09:05:00Z", "value": 399.1 }
-    ]
+  "measuredAt": "2026-10-27T10:02:59Z",
+  "values": {
+    "stateOfChargeSoC": 76,
+    "numberOfFullChargingAndDischargingCycles": 412,
+    "temperatureInformation": 23
   }
 }</code></pre>
                 </article>
 
                 <article id="api-detail-history" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Telemetry history</span><h3>Read recent telemetry history.</h3><p>The <code>hours</code> value must be in <code>1..168</code>.</p></div>
-                    <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/@Model.SampleBatteryId/telemetry/history?hours=24</code></pre>
-                </article>
-
-                <article id="api-detail-operations" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Operations patch</span><h3>Patch writable operations metadata.</h3><p>Writable fields are <code>locationOfUse</code>, <code>contactPerson</code>, and <code>isActive</code>.</p></div>
-                    <pre class="bp-help-pre"><code>{
-  "isActive": true,
-  "locationOfUse": {
-    "siteName": "Factory 4",
-    "address": "Main street 7",
-    "city": "Berlin",
-    "country": "DE",
-    "latitude": 52.52,
-    "longitude": 13.41
-  },
-  "contactPerson": {
-    "name": "Anna Becker",
-    "email": "anna@example.test",
-    "phone": "+49 30 1234"
-  }
-}</code></pre>
-                </article>
-
-                <article id="api-detail-model" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div>
-                        <span class="bp-summary-title">Battery Model</span>
-                        <h3>Battery ID, family, and software parameters</h3>
-                        <p>Product Template is the internal implementation name for Battery Family. In the UI and tester workflows, Product Template and Battery Family mean the same stored template concept.</p>
-                        <p>Each passport is created from a MongoDB Battery Family baseline. Battery families contain Battery Models, and each Battery Model carries software parameters such as software version, released date, and latest update values.</p>
-                        <p>The software-version endpoint accepts only a software version defined for the battery's current Battery Model and copies its release date and latest update metadata. Battery Model and software changes may require a new passport when they differ from the latest passport snapshot.</p>
-                    </div>
-                    <pre class="bp-help-pre"><code>{ "batteryModel": "2.0" }
-{ "softwareVersion": "4.0" }</code></pre>
-                </article>
-
-                <article id="api-detail-passports" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Passport snapshot</span><h3>Create a new passport snapshot.</h3><p>Create a new passport snapshot for the Battery ID after current battery data differs from the latest passport. This requires the Passport Lifecycle token. The response returns the new Passport ID; use that Passport ID for validate, sign, and publish.</p></div>
-                    <pre class="bp-help-pre"><code>POST @Model.BasePath/batteries/@Model.SampleBatteryId/passports</code></pre>
+                    <div><span class="bp-summary-title">Live value history</span><h3>Read the live values saved for a battery.</h3><p>Each saved live value, newest measurement first, with its unit, when it was measured and saved, and where it came from: the battery system, a form or an upload. <code>hours</code> counts back from now, from 1 to 168 (the default). Cut like the passport: only the live values this token may see.</p></div>
+                    <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/{id}/live-values/history?hours=24</code></pre>
                 </article>
 
                 <article id="api-detail-passport-list" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
@@ -483,19 +392,9 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                     <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/{id}/passports</code></pre>
                 </article>
 
-                <article id="api-detail-validate" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Validate</span><h3>Validate with the Passport Lifecycle token.</h3><p>Passport Lifecycle tokens can run trust actions only for their scoped clusters. If you just created a passport, replace the sample Passport ID with the Passport ID returned by create.</p></div>
-                    <pre class="bp-help-pre"><code>POST @Model.BasePath/passports/@Model.SamplePassportId/validate</code></pre>
-                </article>
-
-                <article id="api-detail-sign" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Sign</span><h3>Sign the current passport core.</h3><p>The first publication still requires explicit publish in the app. After a passport has been published once, later successful signs auto-publish the new revision.</p></div>
-                    <pre class="bp-help-pre"><code>POST @Model.BasePath/passports/@Model.SamplePassportId/sign</code></pre>
-                </article>
-
                 <article id="api-detail-publish" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Publish</span><h3>Publish after validation and signing.</h3><p>Publish with the Passport Lifecycle token after validation and signing are current.</p></div>
-                    <pre class="bp-help-pre"><code>POST @Model.BasePath/passports/@Model.SamplePassportId/publish</code></pre>
+                    <div><span class="bp-summary-title">Publish</span><h3>Publish a battery's passport.</h3><p>For team (global) tokens with Passport Lifecycle access. Checks the passport, signs it and publishes it in one step: a draft becomes version 1; for a published battery, a new version is published when its data changed since the current one, and nothing happens when it didn't. If something blocks publication, nothing is published and <code>blocking</code> lists what is missing.</p></div>
+                    <pre class="bp-help-pre"><code>POST @Model.BasePath/batteries/{id}/publish</code></pre>
                 </article>
                                 </div>
                             </td>
@@ -519,30 +418,25 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                         <option value="readFull">Read full battery</option>
                         <option value="listClusters">List accessible clusters</option>
                         <option value="listClusterBatteries">List cluster batteries</option>
-                        <option value="createBattery">Create battery</option>
                         <option value="readSection">Read section: Identifiers and product data</option>
                         <option value="readSectionPerformance">Read section: Performance and durability</option>
                         <option value="readSectionCircularity">Read section: Circularity</option>
                         <option value="readValuesAliases">Read values: state of charge, serial number, mass</option>
                         <option value="readPathsAll">List readable values</option>
                         <option value="readBatteryPassports">List passport versions</option>
-                        <option value="readHistory24h">Read telemetry history 24h</option>
-                        <option value="writeTelemetryPoint">Write telemetry point</option>
-                        <option value="writeTelemetrySeries">Write telemetry series</option>
-                        <option value="patchOperations">Patch operations metadata</option>
-                        <option value="patchBatteryModel">Patch Battery Model</option>
-                        <option value="patchSoftwareVersion">Patch Software Version</option>
-                        <option value="createPassport">Create passport snapshot</option>
-                        <option value="validatePassport">Validate passport</option>
-                        <option value="signPassport">Sign passport</option>
-                        <option value="publishPassport">Publish passport</option>
+                        <option value="writeLiveValues">Send live values</option>
+                        <option value="previewLiveValues">Check live values without saving</option>
+                        <option value="readLiveHistory24h">Read live value history 24h</option>
+                        <option value="listBatches">List batches (team token)</option>
+                        <option value="listOperators">List economic operators (team token)</option>
+                        <option value="createBattery">Create battery (team token)</option>
+                        <option value="publishBattery">Publish battery (team token)</option>
                     </select>
                 </label>
                 <label>HTTP method
                     <select id="tester-method">
                         <option>GET</option>
                         <option>POST</option>
-                        <option>PATCH</option>
                     </select>
                 </label>
                 <label>Auth format
@@ -553,7 +447,7 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                 </label>
                 <label class="bp-help-sticky-id-field">Battery ID
                     <span class="bp-help-sticky-id-control">
-                        <input id="tester-battery-id" class="bp-id-value" value="@(string.IsNullOrWhiteSpace(Model.ExampleBatteryId) ? Model.SampleBatteryId : Model.ExampleBatteryId)" />
+                        <input id="tester-battery-id" class="bp-id-value" value="@Model.ExampleBatteryId" />
                         <button type="button" class="bp-copy-id-button" aria-label="Copy Battery ID" title="Copy Battery ID" data-tooltip="Copy Battery ID" data-copy-id-button data-copy-target="#tester-battery-id">
                             <svg class="bp-copy-id-icon" viewBox="0 0 24 24" aria-hidden="true">
                                 <rect x="9" y="9" width="10" height="10" rx="2" />
@@ -562,19 +456,8 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                         </button>
                     </span>
                 </label>
-                <label class="bp-help-sticky-id-field">Passport ID
-                    <span class="bp-help-sticky-id-control">
-                        <input id="tester-passport-id" class="bp-id-value" value="@Model.SamplePassportId" />
-                        <button type="button" class="bp-copy-id-button" aria-label="Copy Passport ID" title="Copy Passport ID" data-tooltip="Copy Passport ID" data-copy-id-button data-copy-target="#tester-passport-id">
-                            <svg class="bp-copy-id-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <rect x="9" y="9" width="10" height="10" rx="2" />
-                                <path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" />
-                            </svg>
-                        </button>
-                    </span>
-                </label>
                 <label class="bp-span-all">Path
-                    <input id="tester-path" value="@Model.BasePath/batteries/@Model.SampleBatteryId" />
+                    <input id="tester-path" value="@Model.BasePath/batteries/@Model.ExampleBatteryId" />
                 </label>
                 <label>Token preset
                     <select id="tester-token-preset">
@@ -607,9 +490,9 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
 
             <div class="d-flex flex-wrap gap-2 mt-3">
                 <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="readFull">Read battery</button>
-                <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="readHistory24h">History 24h</button>
+                <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="readLiveHistory24h">History 24h</button>
                 <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="readValuesAliases">Read specific values</button>
-                <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="writeTelemetryPoint">Post telemetry</button>
+                <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="writeLiveValues">Send live values</button>
             </div>
 
             <div class="mt-3">
@@ -629,8 +512,7 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
     <script>
         (() => {
             const basePath = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.BasePath));
-            const sampleBatteryId = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleBatteryId));
-            const samplePassportId = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SamplePassportId));
+            const exampleBatteryId = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ExampleBatteryId));
             const sampleReadToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleReadToken));
             const sampleReadWriteToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleReadWriteToken));
             const sampleLifecycleToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleLifecycleToken));
@@ -690,7 +572,6 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
             const pathEl = document.getElementById('tester-path');
             const authFormatEl = document.getElementById('tester-auth-format');
             const batteryIdEl = document.getElementById('tester-battery-id');
-            const passportIdEl = document.getElementById('tester-passport-id');
             const tokenPresetEl = document.getElementById('tester-token-preset');
             const tokenEl = document.getElementById('tester-token');
             const bodyEl = document.getElementById('tester-body');
@@ -716,6 +597,15 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                 targetDocument.body.appendChild(pre);
             };
 
+            const liveValuesBody = JSON.stringify({
+                measuredAt: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
+                values: {
+                    stateOfChargeSoC: 76,
+                    numberOfFullChargingAndDischargingCycles: 412,
+                    temperatureInformation: 23
+                }
+            }, null, 2);
+
             const templates = {
                 readFull: {
                     method: 'GET',
@@ -734,21 +624,6 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                     pathTemplate: `${basePath}/clusters/demo-cluster/batteries`,
                     body: '',
                     tokenPreset: 'sample-read'
-                },
-                createBattery: {
-                    method: 'POST',
-                    pathTemplate: `${basePath}/batteries`,
-                    body: JSON.stringify({
-                        batteryFamily: 'Compact 7M',
-                        productId: 'compact-7m',
-                        batteryModel: '2.0',
-                        productVersion: '2.0',
-                        softwareVersion: '4.0',
-                        serialNumber: 'SN-API-REPLACE-ME',
-                        clusterId: 'demo-cluster',
-                        displayName: 'API created battery'
-                    }, null, 2),
-                    tokenPreset: 'sample-read-write'
                 },
                 readSection: {
                     method: 'GET',
@@ -786,103 +661,55 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                     body: '',
                     tokenPreset: 'sample-read'
                 },
-                readHistory24h: {
+                writeLiveValues: {
+                    method: 'POST',
+                    pathTemplate: `${basePath}/batteries/{batteryId}/live-values`,
+                    body: liveValuesBody,
+                    tokenPreset: 'sample-read-write'
+                },
+                previewLiveValues: {
+                    method: 'POST',
+                    pathTemplate: `${basePath}/batteries/{batteryId}/live-values?preview=true`,
+                    body: liveValuesBody,
+                    tokenPreset: 'sample-read-write'
+                },
+                readLiveHistory24h: {
                     method: 'GET',
-                    pathTemplate: `${basePath}/batteries/{batteryId}/telemetry/history?hours=24`,
+                    pathTemplate: `${basePath}/batteries/{batteryId}/live-values/history?hours=24`,
                     body: '',
                     tokenPreset: 'sample-read'
                 },
-                writeTelemetryPoint: {
-                    method: 'POST',
-                    pathTemplate: `${basePath}/batteries/{batteryId}/telemetry`,
-                    body: JSON.stringify({
-                        points: [
-                            {
-                                currentConsumptionKwh: 163.4,
-                                currentChargeLevelPct: 79.8,
-                                currentVoltageV: 398.4,
-                                currentCurrentA: 52.3
-                            }
-                        ]
-                    }, null, 2),
-                    tokenPreset: 'sample-read-write'
+                listBatches: {
+                    method: 'GET',
+                    pathTemplate: `${basePath}/batches`,
+                    body: '',
+                    tokenPreset: 'custom'
                 },
-                writeTelemetrySeries: {
+                listOperators: {
+                    method: 'GET',
+                    pathTemplate: `${basePath}/operators`,
+                    body: '',
+                    tokenPreset: 'custom'
+                },
+                createBattery: {
                     method: 'POST',
-                    pathTemplate: `${basePath}/batteries/{batteryId}/telemetry`,
+                    pathTemplate: `${basePath}/batteries`,
                     body: JSON.stringify({
-                        series: {
-                            currentConsumptionKwh: [
-                                { measuredAt: '2026-05-20T09:00:00Z', value: 163.4 },
-                                { measuredAt: '2026-05-20T09:05:00Z', value: 164.1 }
-                            ],
-                            currentChargeLevelPct: [
-                                { measuredAt: '2026-05-20T09:00:00Z', value: 79.8 }
-                            ],
-                            currentVoltageV: [
-                                { measuredAt: '2026-05-20T09:00:00Z', value: 398.4 },
-                                { measuredAt: '2026-05-20T09:05:00Z', value: 399.1 }
-                            ]
+                        batchId: 'BATCH-ID',
+                        operatorId: 'OPERATOR-ID',
+                        clusterId: 'demo-cluster',
+                        values: {
+                            batterySerialNumber: 'SN-API-REPLACE-ME',
+                            manufacturingDate: new Date().toISOString().slice(0, 7)
                         }
                     }, null, 2),
-                    tokenPreset: 'sample-read-write'
+                    tokenPreset: 'custom'
                 },
-                patchOperations: {
-                    method: 'PATCH',
-                    pathTemplate: `${basePath}/batteries/{batteryId}/operations`,
-                    body: JSON.stringify({
-                        isActive: true,
-                        locationOfUse: {
-                            siteName: 'Sample Site',
-                            city: 'Berlin',
-                            country: 'DE'
-                        },
-                        contactPerson: {
-                            name: 'Sample Contact',
-                            email: 'sample@example.test'
-                        }
-                    }, null, 2),
-                    tokenPreset: 'sample-read-write'
-                },
-                patchBatteryModel: {
-                    method: 'PATCH',
-                    pathTemplate: `${basePath}/batteries/{batteryId}/battery-model`,
-                    body: JSON.stringify({
-                        batteryModel: '2.0'
-                    }, null, 2),
-                    tokenPreset: 'sample-read-write'
-                },
-                patchSoftwareVersion: {
-                    method: 'PATCH',
-                    pathTemplate: `${basePath}/batteries/{batteryId}/software-version`,
-                    body: JSON.stringify({
-                        softwareVersion: '4.0'
-                    }, null, 2),
-                    tokenPreset: 'sample-read-write'
-                },
-                createPassport: {
+                publishBattery: {
                     method: 'POST',
-                    pathTemplate: `${basePath}/batteries/{batteryId}/passports`,
+                    pathTemplate: `${basePath}/batteries/{batteryId}/publish`,
                     body: '',
-                    tokenPreset: 'sample-lifecycle'
-                },
-                validatePassport: {
-                    method: 'POST',
-                    pathTemplate: `${basePath}/passports/{passportId}/validate`,
-                    body: '',
-                    tokenPreset: 'sample-lifecycle'
-                },
-                signPassport: {
-                    method: 'POST',
-                    pathTemplate: `${basePath}/passports/{passportId}/sign`,
-                    body: '',
-                    tokenPreset: 'sample-lifecycle'
-                },
-                publishPassport: {
-                    method: 'POST',
-                    pathTemplate: `${basePath}/passports/{passportId}/publish`,
-                    body: '',
-                    tokenPreset: 'sample-lifecycle'
+                    tokenPreset: 'custom'
                 }
             };
 
@@ -975,14 +802,11 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
             };
 
             const getWorkbenchContext = () => ({
-                batteryId: (batteryIdEl?.value || sampleBatteryId).trim() || sampleBatteryId,
-                passportId: (passportIdEl?.value || samplePassportId).trim() || samplePassportId
+                batteryId: (batteryIdEl?.value || exampleBatteryId).trim() || exampleBatteryId
             });
 
             const resolveTemplatePath = (pathTemplate, context = getWorkbenchContext()) => {
-                return (pathTemplate || '')
-                    .replaceAll('{batteryId}', context.batteryId)
-                    .replaceAll('{passportId}', context.passportId);
+                return (pathTemplate || '').replaceAll('{batteryId}', context.batteryId);
             };
 
             const setTokenFromPreset = () => {
@@ -1180,8 +1004,7 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
             document.getElementById('tester-reset')?.addEventListener('click', () => {
                 templateSelect.value = 'readFull';
                 authFormatEl.value = 'base64';
-                batteryIdEl.value = sampleBatteryId;
-                passportIdEl.value = samplePassportId;
+                batteryIdEl.value = exampleBatteryId;
                 tokenPresetEl.value = 'sample-read';
                 tokenEl.value = sampleReadToken;
                 applyTemplate('readFull');
@@ -1196,8 +1019,6 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
 
             batteryIdEl?.addEventListener('input', refreshTemplatePathFromContext);
             batteryIdEl?.addEventListener('change', refreshTemplatePathFromContext);
-            passportIdEl?.addEventListener('input', refreshTemplatePathFromContext);
-            passportIdEl?.addEventListener('change', refreshTemplatePathFromContext);
 
             document.querySelectorAll('.template-shortcut').forEach(button => {
                 button.addEventListener('click', () => {

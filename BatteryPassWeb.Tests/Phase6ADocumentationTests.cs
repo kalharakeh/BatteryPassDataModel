@@ -55,13 +55,7 @@ public sealed class Phase6ADocumentationTests
     [Fact]
     public void Guidance_ShouldMatchCurrentProductTemplateSoftwareAndUiWorkflow()
     {
-        var apiHelp = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
         var guide = File.ReadAllText(RepoFile("docs", "end-user-testing-guide.md"));
-
-        Assert.Contains("software parameters", apiHelp);
-        Assert.Contains("Battery Family baseline", apiHelp);
-        Assert.Contains("software-version endpoint", apiHelp);
-        Assert.Contains("Battery Model and software changes may require a new passport", apiHelp);
 
         Assert.Contains("software parameters", guide);
         Assert.Contains("Detailed report tabs", guide);

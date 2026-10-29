@@ -90,7 +90,6 @@ public sealed class ExternalApiInitializerTests
         Assert.DoesNotContain("Sample create, validate, sign and publish passport token", helpView);
         Assert.Contains("const sampleLifecycleToken", helpView);
         Assert.Contains("'sample-lifecycle': canUsePrivilegedDemoTokens ? sampleLifecycleToken : ''", helpView);
-        Assert.Contains("tokenPreset: 'sample-lifecycle'", helpView);
     }
 
     [Fact]

@@ -1,7 +1,3 @@
-using System.Reflection;
-using System.Text.Json;
-using BatteryPassWeb.Controllers;
-
 namespace BatteryPassWeb.Tests;
 
 public sealed class SecurityLimitsTests
@@ -25,7 +21,6 @@ public sealed class SecurityLimitsTests
         Assert.Contains("FileUploadRateLimitPerWindow", options);
         Assert.Contains("MaxAuthorizationHeaderBytes", options);
         Assert.Contains("MaxJsonBodyBytes", options);
-        Assert.Contains("MaxTelemetryPoints", options);
         Assert.Contains("MaxUploadBytes", options);
 
         Assert.Contains("Login", policyNames);
@@ -46,7 +41,6 @@ public sealed class SecurityLimitsTests
         Assert.Contains("\"EnableRateLimiting\": true", developmentSettings);
         Assert.Contains("ENABLE_RATE_LIMITING=true", envExample);
         Assert.Contains("MAX_JSON_BODY_BYTES=1048576", envExample);
-        Assert.Contains("MAX_TELEMETRY_POINTS=250", envExample);
         Assert.Contains("MAX_UPLOAD_BYTES=10485760", envExample);
     }
 
@@ -55,7 +49,7 @@ public sealed class SecurityLimitsTests
     {
         var loginController = File.ReadAllText(RepoFile("web", "Controllers", "LoginController.cs"));
         var authApiController = File.ReadAllText(RepoFile("web", "Controllers", "AuthApiController.cs"));
-        var externalApiController = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
+        var externalApiController = File.ReadAllText(RepoFile("web", "Controllers", "DppApiController.cs"));
         var filesApiController = File.ReadAllText(RepoFile("web", "Controllers", "FilesApiController.cs"));
 
         Assert.Contains("EnableRateLimiting(SecurityRateLimitPolicyNames.Login)", loginController);
@@ -64,30 +58,6 @@ public sealed class SecurityLimitsTests
         Assert.Contains("EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiWrite)", externalApiController);
         Assert.Contains("EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiLifecycle)", externalApiController);
         Assert.Contains("EnableRateLimiting(SecurityRateLimitPolicyNames.FileUpload)", filesApiController);
-    }
-
-    [Fact]
-    public void TelemetryParser_ShouldRejectPayloadsAboveConfiguredPointLimit()
-    {
-        var method = typeof(ExternalApiController).GetMethod(
-            "TryParseTelemetryPointsWithinLimit",
-            BindingFlags.NonPublic | BindingFlags.Static);
-
-        Assert.NotNull(method);
-
-        using var document = JsonDocument.Parse("""
-        [
-          { "measuredAt": "2026-05-20T09:00:00Z", "currentVoltageV": 398.4 },
-          { "measuredAt": "2026-05-20T09:01:00Z", "currentVoltageV": 399.1 },
-          { "measuredAt": "2026-05-20T09:02:00Z", "currentVoltageV": 399.7 }
-        ]
-        """);
-
-        object?[] args = [document.RootElement, 2, null!, ""];
-        var success = (bool)method!.Invoke(null, args)!;
-
-        Assert.False(success);
-        Assert.Contains("maximum of 2", args[3]!.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

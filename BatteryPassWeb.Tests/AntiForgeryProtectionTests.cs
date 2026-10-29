@@ -16,10 +16,10 @@ public sealed class AntiForgeryProtectionTests
     [Fact]
     public void ExternalApiTokenEndpoints_ShouldNotRequireBrowserAntiForgeryTokens()
     {
-        var externalApi = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
+        var externalApi = File.ReadAllText(RepoFile("web", "Controllers", "DppApiController.cs"));
 
         Assert.DoesNotContain("ValidateAntiForgeryToken", externalApi);
-        Assert.Contains("Authorization", externalApi);
+        Assert.Contains("ExternalApiCredentials.Token(Request)", externalApi);
         Assert.Contains("ValidateTokenAsync", externalApi);
     }
 
