@@ -118,6 +118,10 @@ public sealed class PassportControllerTests(MongoFixture mongo)
         Assert.Equal("image/png", png.ContentType);
         Assert.Equal("VPC8C05-6788-qr.png", png.FileDownloadName);
         Assert.IsType<NotFoundResult>(await Qr(draft).QrCode(PassportPagesTests.Identifier(draft), CancellationToken.None));
+        Assert.IsType<NotFoundResult>(await Qr(draft, email: "cluster@example.com").QrCode(PassportPagesTests.Identifier(draft), CancellationToken.None));
+        // The team gets a draft's code, to print labels before publishing (decision 30).
+        Assert.IsType<ContentResult>(await Qr(draft, email: "team@example.com", role: AccessControlService.RoleAdmin).QrCode(PassportPagesTests.Identifier(draft), CancellationToken.None));
+        Assert.IsType<FileContentResult>(await Qr(draft, email: "team@example.com", role: AccessControlService.RoleAdmin).Download(Uri.EscapeDataString(PassportPagesTests.Identifier(draft)), CancellationToken.None));
         Assert.IsType<NotFoundResult>(await Qr(rig, DocumentTesting.NoLinks).QrCode("VPC8C05-6788", CancellationToken.None));
     }
 
@@ -237,10 +241,10 @@ public sealed class PassportControllerTests(MongoFixture mongo)
             ControllerContext = new ControllerContext { HttpContext = Http(email, role) },
         };
 
-    private static QrController Qr(PublicationRig rig, BatteryPassWeb.Dpp.Documents.DppLinks? links = null) =>
-        new(PassportPagesTests.Pages(rig), links ?? DocumentTesting.Links, new PassportQrCodeService())
+    private static QrController Qr(PublicationRig rig, BatteryPassWeb.Dpp.Documents.DppLinks? links = null, string? email = null, string role = "member") =>
+        new(PassportPagesTests.Pages(rig), links ?? DocumentTesting.Links, new PassportQrCodeService(), rig.Store)
         {
-            ControllerContext = new ControllerContext { HttpContext = Http(null, "member") },
+            ControllerContext = new ControllerContext { HttpContext = Http(email, role) },
         };
 
     private static HomeController Home(PublicationRig rig, string? email) =>

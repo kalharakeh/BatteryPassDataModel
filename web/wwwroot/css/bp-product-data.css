@@ -1949,3 +1949,48 @@ main .bp-field-marker.is-published {
     text-align: left;
   }
 }
+
+/* ==== The team's battery page: where else to find it, and each version's signature ================================= */
+
+.bp-battery-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 18px;
+  margin: 10px 0 0;
+}
+
+.bp-battery-links a {
+  font-weight: 600;
+}
+
+.bp-signature-details {
+  margin-top: 4px;
+  font-size: 0.85rem;
+}
+
+.bp-signature-details summary {
+  width: fit-content;
+  color: #52637a;
+  cursor: pointer;
+}
+
+.bp-signature-details dl {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0;
+}
+
+.bp-signature-details dt {
+  color: #52637a;
+  font-weight: 600;
+}
+
+.bp-signature-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+[data-theme="dark"] :is(.bp-signature-details summary, .bp-signature-details dt) {
+  color: var(--bp-muted);
+}

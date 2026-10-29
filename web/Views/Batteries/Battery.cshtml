@@ -106,6 +106,23 @@
             Model <a href="@ProductDataPages.FamilyHref(sources.Model.FamilyId, sources.Model.Id)">@sources.Model.Name</a> of @Model.Family.Name,
             made at @sources.Site.Name in @sources.Batch.Year.
         </p>
+        @{
+            var batteryKey = Uri.EscapeDataString(Model.Identifier);
+        }
+        <nav class="bp-battery-links" aria-label="This battery elsewhere">
+            @if (publication.IsPublished)
+            {
+                <a href="/dpp/@batteryKey" target="_blank" rel="noreferrer">Public summary</a>
+                <a href="/dpp/@batteryKey/detail" target="_blank" rel="noreferrer">Detail page</a>
+            }
+            <a href="/qr/@batteryKey/svg" target="_blank" rel="noreferrer">QR code</a>
+            <a href="/qr/@batteryKey/download">Download QR code</a>
+            <a href="/admin/audit?q=@Uri.EscapeDataString(Model.Pack.Id)">Audit entries</a>
+            @if (!publication.IsPublished)
+            {
+                <span class="bp-batteries-muted">The QR code opens the public summary once the passport is published.</span>
+            }
+        </nav>
         <dl class="bp-battery-facts">
             <div class="bp-battery-fact-wide">
                 <dt>Battery ID <span class="bp-attr-number">#6</span></dt>
@@ -406,7 +423,7 @@
                         {
                             <tr>
                                 <td data-label="Version">@row.Version.Number</td>
-                                <td data-label="Passport ID"><span class="bp-id-copy-row"><span class="bp-id-value">@row.Version.DigitalProductPassportId</span>@await Html.PartialAsync("_CopyIdButton", row.Version.DigitalProductPassportId)</span></td>
+                                <td data-label="Passport ID"><span class="bp-id-copy-row"><a class="bp-id-value" href="/dpp/@Uri.EscapeDataString(row.Version.DigitalProductPassportId)/detail" target="_blank" rel="noreferrer">@row.Version.DigitalProductPassportId</a>@await Html.PartialAsync("_CopyIdButton", row.Version.DigitalProductPassportId)</span></td>
                                 <td data-label="Status">@(row.Version.DppStatus == DppStatuses.Active ? "Active" : "Archived")</td>
                                 <td data-label="Published">@When(row.Version.PublishedAtUtc) <small class="bp-batteries-muted d-block">by @row.Version.PublishedBy</small></td>
                                 <td data-label="Signature">
@@ -418,6 +435,16 @@
                                     {
                                         <span class="bp-missing-note">Doesn't match</span>
                                     }
+                                    <details class="bp-signature-details">
+                                        <summary>Details</summary>
+                                        <dl>
+                                            <div><dt>Signed</dt><dd>@When(row.Version.Proof.CreatedUtc)</dd></div>
+                                            <div><dt>Issuer</dt><dd>@row.Version.Proof.Issuer</dd></div>
+                                            <div><dt>Key</dt><dd>@row.Version.Proof.VerificationMethod</dd></div>
+                                            <div><dt>Method</dt><dd>@row.Version.Proof.Cryptosuite</dd></div>
+                                            <div><dt>Hash</dt><dd><code>@row.Version.Proof.Hash</code></dd></div>
+                                        </dl>
+                                    </details>
                                 </td>
                             </tr>
                         }

@@ -57,6 +57,20 @@ public sealed class ReviewFixesTests
     }
 
     [Fact]
+    public void TheTeamsBatteryPage_ShouldLinkItsPassportPagesQrCodeAndAuditEntries()
+    {
+        var page = Read("web", "Views", "Batteries", "Battery.cshtml");
+
+        Assert.Contains("href=\"/dpp/@batteryKey\"", page);
+        Assert.Contains("href=\"/dpp/@batteryKey/detail\"", page);
+        Assert.Contains("href=\"/qr/@batteryKey/svg\"", page);
+        Assert.Contains("href=\"/qr/@batteryKey/download\"", page);
+        Assert.Contains("href=\"/admin/audit?q=@Uri.EscapeDataString(Model.Pack.Id)\"", page);
+        Assert.Contains("/dpp/@Uri.EscapeDataString(row.Version.DigitalProductPassportId)/detail", page); // each version opens
+        Assert.Contains("@row.Version.Proof.Hash", page); // and shows its signature details
+    }
+
+    [Fact]
     public void TheSharedNote_ShouldNameTreatmentFacilities()
     {
         Assert.Contains("repairers, recyclers and treatment facilities", Read("web", "Dpp", "Pages", "PassportPages.cs"));

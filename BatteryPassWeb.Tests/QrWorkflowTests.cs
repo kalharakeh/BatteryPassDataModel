@@ -23,7 +23,7 @@ public sealed class QrWorkflowTests
         Assert.Contains("[HttpGet(\"{id}/svg\")]", source);
         Assert.Contains("[HttpGet(\"{id}/download\")]", source);
         Assert.Contains("PassportQrCodeService", source);
-        Assert.Contains("links.PassportUrl(battery.Identifier)", source);
+        Assert.Contains("links.PassportUrl(battery.Value.Identifier)", source);
         Assert.Contains("image/svg+xml", source);
     }
 
