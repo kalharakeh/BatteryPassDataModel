@@ -40,7 +40,7 @@ Terms used:
 | LI-repair | Public data and #43, #45, #46, #47, #48 | Nothing |
 | LI-recycling | Public data and #43, #45, #48 | Nothing |
 | LI-treatment | Public data and #48 | Nothing |
-| Battery system (BMS feed with a cluster API token) | — | Live values #63, #83, #87 for that cluster's packs |
+| Battery system (BMS feed with a cluster API token) | — | Live values #63, #83, #87 and E1–E4 for that cluster's packs |
 
 Biggest differences from today's app:
 
@@ -307,9 +307,9 @@ Sample: `battery-passport_VPC8C05-6788_2026-10-27T10-02-59.928Z.json`.
 | `stateOfCharge.raw` | #63 |
 | `equivalentChargeAndDischargeCycles` | #83. One full charge plus one full discharge counts as one cycle (the export team confirms, 8.5). |
 | A new field with the latest measured pack temperature in °C (8.5) | #87 |
-| `timeSpentInExtremeHighTemperature.raw` | E1, in seconds (decision 28) |
-| `timeSpentInExtremeLowTemperature.raw` | E2, in seconds |
-| `timeSpentChargingInExtremeTemperature.raw` | E3 and E4, in seconds. Polarion says it is always zero, because charging in extreme temperatures is prevented. A value above zero can't be split into above and below: the upload reports it and leaves E3 and E4 unchanged (8.5, item 7). |
+| `timeSpentInExtremeHighTemperature.raw` | E1, seconds converted to whole minutes (decision 28) |
+| `timeSpentInExtremeLowTemperature.raw` | E2, the same |
+| `timeSpentChargingInExtremeTemperature.raw` | E3 and E4, in whole minutes. Polarion says it is always zero, because charging in extreme temperatures is prevented. A value above zero can't be split into above and below: the upload reports it and leaves E3 and E4 unchanged (8.5, item 7). |
 | `productionDate` | #17 as year and month (decision 18), accepted from the team only |
 | `remainingCapacityAh` | Suggests #59 at the next status change; not stored |
 | Everything else: energy and Ah totals, the other cycle fields, histograms, deep-discharge events, service date, CAN payload, IP address, exporter, parent and child devices | Ignored: not in the file. The exporter's name and e-mail are not stored. |
@@ -372,7 +372,7 @@ Each attribute holds one document per owner (model, batch or pack).
 - **Public summary** (no login; opened from the QR code): the 54 public attributes grouped by the schema's sections, the public document links, the DPP status and the family's picture (decision 20). An inactive passport links to its successor. No cluster name.
 - **Detail page** (logged in): the public data plus one section per audience the reader may see (purchaser, shared, authorities). Each value shows when it was generated and where it came from. The purchaser section includes the repair history (7.9).
 - **Team editors:** family (name and picture), model, site, batch, operator and pack; publication; versions; documents.
-- **Cluster pages:** cluster users get a read-only list and detail of their packs. Cluster admins also get the live-value form, the status change, the accident page, transfer requests and the upload page.
+- **Cluster pages:** cluster users get a read-only list and detail of their packs: the Registry, rebuilt on the new model (decision 30), lists the batteries each signed-in reader may open. Cluster admins also get the live-value form, the status change, the accident page, transfer requests and the upload page.
 - **Team editor rules (decisions 24–26, 29 Oct 2026):**
   - **Only what was edited on the page counts.** The page carries a stamp of what each field showed; a save changes only the fields edited there, so a page left open never undoes a newer value saved by a colleague, an upload or a feed. A field edited on both sides is refused, with the typed value kept, and saves on the next try. The record's name follows the same rule.
   - **Removing a value:** empty its field (decision 24). **Removing a record:** families, models, batches, sites and operators can be removed while nothing uses them; otherwise the page says why they stay (decision 25). **A new model** can start from a copy of any model's typed values (decision 26).
@@ -422,7 +422,8 @@ Step 3 is planned in four parts (agreed with the product owner on 29 Oct 2026), 
 - **3b, public pages:** the public summary (no login, opened from the QR code, with the family's picture, decision 20) and the detail page (signed in: one section per audience the reader may see, each value with when and where it came from) replace today's passport pages in place, with the QR code and the home page's search. Today's look, with the new data underneath (decision 23).
 - **3c, the API:** `/api/passports` becomes team-only, on the new model. The external API keeps doing what it did, rebuilt on the new model and the new access rules (product owner, 29 Oct 2026): clusters, a cluster's batteries, a battery's passport, its sections and values, creating batteries, the live values in place of telemetry, a battery's live-value history in place of the telemetry history, and publication. Each answers only what the token may see or change (J-10 for cluster tokens). The history is read from the change log, which keeps every saved value; 3c adds each value's measurement time to its entry. The endpoints whose data isn't in the file go: operations (location of use, contact person, active or not), the battery-model label and the software version (8.4; decisions 2 and 9; product owner, 29 Oct 2026). Step 5 adds the bulk upload endpoint and the BMS adapter.
   Planned in two parts (product owner, 29 Oct 2026), each ending with a working app: **3c-1, reading** (clusters, a cluster's batteries, a battery's passport, its versions, sections, values and readable values; `/api/passports` team-only; the help page's documentation and workbench for these) and **3c-2, writing** (creating batteries, the live values and their history, publication; the removed endpoints; the rest of the help page). Between the two, the old write endpoints keep working on the old data. Creating batteries and publishing through the API is for team (global) tokens only, as on the pages (design 6.1); a cluster token reads and writes its batteries' live values. The four sample tokens stay until 3d's reset.
-- **3d, switch-over:** remove the v1.2 model, the remaining old pages (the cluster admins' "Managed passports" and the views only they use), the old services, the demo values and the extras (section 13, Appendix C); the help pages lose what was removed, and their rewrite stays in step 6. Then reset `battery_pass_v3`, asked again before it runs: the old data and the new test data (families, models, batches, sites, operators, batteries) go; clusters and API tokens stay. The product owner reviews the accounts and says which to keep; new accounts are set up with the new roles.
+- **Review batch (29 Oct 2026, decisions 30 and 31):** before 3d, on the same branch: the Registry rebuilt on the new model (it also replaces "Managed passports" for cluster admins), the team's battery page links, versions and draft QR, the live-value history on the detail page, conditions shown per attribute, deleting accounts, the "Not allowed" page, the module list per battery, E1–E4 in minutes, and the help pages and cluster token form tidied.
+- **3d, switch-over:** remove the v1.2 model, the remaining old pages (the cluster admins' "Managed passports" and the views only they use), the old services, the demo values and the extras (section 13, Appendix C); the help pages already lost the old workflow in the review batch, and their rewrite stays in step 6. Then reset `battery_pass_v3`, asked again before it runs: the old data and the new test data (families, models, batches, sites, operators, batteries) go; clusters and API tokens stay. The product owner reviews the accounts and says which to keep; new accounts are set up with the new roles.
 
 **Where it runs (agreed 28 Oct 2026):** until the cut-over, the new version runs only on the product owner's PC, against the Atlas database `battery_pass_v3` (a launcher outside the repository sets `MONGODB_URI` and `MONGODB_DB` for its own process; any new configuration or launch profile must set `MONGODB_DB`, because the app falls back to `battery_pass_demo`). The live app on Elastic Beanstalk (branch `security/demo-api-hardening`, database `battery_pass_demo`) is not changed. Step 3's switch-over and reset run only against `battery_pass_v3`. Nothing in the rebuild touches the running app or its data. When all steps are done, the new version is deployed to AWS connected to `battery_pass_v3`, if that adds no cost; if it would, the old database is reset to match the new app instead.
 
@@ -554,10 +555,10 @@ One row per attribute of the file. Generated from the file and the schema; the c
 
 | # | Attribute | Level | Who sees it | Who enters it | Changes | Format (unit) | DIN DKE | Feb 27 | Passport property |
 |---|---|---|---|---|---|---|---|---|---|
-| E1 | Time spent in extreme temperatures above boundary | Pack | Purchaser + MSA | Battery-system feed (API/upload) + team + battery's cluster admins | Live (in place) | Integer (s) | 6.7.7.5 | — | `performanceAndDurability.timeSpentInExtremeTemperaturesAboveBoundary` |
-| E2 | Time spent in extreme temperatures below boundary | Pack | Purchaser + MSA | Battery-system feed (API/upload) + team + battery's cluster admins | Live (in place) | Integer (s) | 6.7.7.6 | — | `performanceAndDurability.timeSpentInExtremeTemperaturesBelowBoundary` |
-| E3 | Time spent charging during extreme temperatures above boundary | Pack | Purchaser + MSA | Battery-system feed (API/upload) + team + battery's cluster admins | Live (in place) | Integer (s) | 6.7.7.7 | — | `performanceAndDurability.timeSpentChargingDuringExtremeTemperaturesAboveBoundary` |
-| E4 | Time spent charging during extreme temperatures below boundary | Pack | Purchaser + MSA | Battery-system feed (API/upload) + team + battery's cluster admins | Live (in place) | Integer (s) | 6.7.7.8 | — | `performanceAndDurability.timeSpentChargingDuringExtremeTemperaturesBelowBoundary` |
+| E1 | Time spent in extreme temperatures above boundary | Pack | Purchaser + MSA | Battery-system feed (API/upload) + team + battery's cluster admins | Live (in place) | Integer (min) | 6.7.7.5 | — | `performanceAndDurability.timeSpentInExtremeTemperaturesAboveBoundary` |
+| E2 | Time spent in extreme temperatures below boundary | Pack | Purchaser + MSA | Battery-system feed (API/upload) + team + battery's cluster admins | Live (in place) | Integer (min) | 6.7.7.6 | — | `performanceAndDurability.timeSpentInExtremeTemperaturesBelowBoundary` |
+| E3 | Time spent charging during extreme temperatures above boundary | Pack | Purchaser + MSA | Battery-system feed (API/upload) + team + battery's cluster admins | Live (in place) | Integer (min) | 6.7.7.7 | — | `performanceAndDurability.timeSpentChargingDuringExtremeTemperaturesAboveBoundary` |
+| E4 | Time spent charging during extreme temperatures below boundary | Pack | Purchaser + MSA | Battery-system feed (API/upload) + team + battery's cluster admins | Live (in place) | Integer (min) | 6.7.7.8 | — | `performanceAndDurability.timeSpentChargingDuringExtremeTemperaturesBelowBoundary` |
 
 ## Appendix B — Schema notes
 
@@ -629,7 +630,7 @@ How each row of `DPP_V3_vs_App_comparison_2026-10-28_v2.xlsx` is covered. Genera
 | X-05 | Software version | Removed (decision 9) | 3 | 13 |
 | X-06 | Software release date, software latest update | Removed; not in the file | 3 | 13 |
 | X-07 | Battery image | Kept: one picture per family, set by the team (decision 20) | 2 | 12 |
-| X-08 | Module count, product description | Removed; not in the file | 3 | 13 |
+| X-08 | Module count, product description | Kept as app data, not passport data: a module list per battery and a description per model (decision 31) | 3 | 4.1, 12 |
 | X-09 | Rated energy (kWh) | Removed; not in the file | 3 | 13 |
 | X-10 | Remaining capacity (%) | Removed; only used to suggest #59 at a status change | 3 | 7.4 |
 | X-11 | Remaining energy (kWh) | Removed; not in the file | 3 | 13 |
@@ -642,7 +643,7 @@ How each row of `DPP_V3_vs_App_comparison_2026-10-28_v2.xlsx` is covered. Genera
 | X-18 | Recycled content: primary-material share x4 | Removed; not in the file | 3 | 13 |
 | X-19 | Recycled content share verification | Removed; not in the file | 3 | 13 |
 | X-20 | Absolute carbon footprint | Removed; schema property not in V3 | 3 | App. B |
-| X-21 | Telemetry: current consumption, charge level, voltage, current (+ timestamp) | Removed with the telemetry and operations endpoints | 3 | 8.4 |
+| X-21 | Telemetry: current consumption, charge level, voltage, current (+ timestamp) | Replaced by the live values and their history (decision 29); the old telemetry data goes | 3 | 8.4 |
 | X-22 | Operational status (active / not active) | Removed with the telemetry and operations endpoints | 3 | 8.4 |
 | X-23 | Location of use (site, address, city, country, latitude, longitude) | Removed with the telemetry and operations endpoints | 3 | 8.4 |
 | X-24 | Contact person (name, e-mail, phone) | Removed with the telemetry and operations endpoints | 3 | 8.4 |
@@ -653,7 +654,7 @@ How each row of `DPP_V3_vs_App_comparison_2026-10-28_v2.xlsx` is covered. Genera
 | X-29 | Self-discharge: initial, current, evolution | Removed; not in the file | 3 | 13 |
 | X-30 | Remaining power capability, remaining round-trip efficiency | Removed; not in the file | 3 | 13 |
 | X-31 | Energy throughput, capacity throughput | Removed; not in the file | 3 | 13 |
-| X-32 | Time in extreme temperatures (4 values) | Removed; not in the file | 3 | 13 |
+| X-32 | Time in extreme temperatures (4 values) | Kept as E1–E4, live values beyond the file (decision 28) | 3, 5 | Appendix A |
 | X-33 | Power capability ratio, generic C-rate | Removed; not in the file | 3 | 13 |
 | X-34 | Duplicates under batteryCondition (powerFade, roundTripEfficiencyFade, roundTripEfficiencyat50PerCentCycleLife, remainingEnergy.remainingEnergyalue) | Removed; not in the file | 3 | 13 |
 
