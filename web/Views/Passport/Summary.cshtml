@@ -1,157 +1,99 @@
 @using System.Globalization
-@model BatteryPassWeb.Models.ViewModels.PassportSummaryPageViewModel
+@using BatteryPassWeb.Dpp.Pages
+@model PassportPage
 @{
-    ViewData["Title"] = "Passport Summary";
-    var passport = Model.Passport;
-    var qrBatteryId = string.IsNullOrWhiteSpace(passport.BatteryId) ? passport.PassportId : passport.BatteryId;
+    // The public summary (design 12): no sign-in, opened from the battery's QR code. Public data only.
+    ViewData["Title"] = $"Battery passport · {Model.Text(11)}";
+    ViewData["Detail"] = false;
+    var colours = new[] { "#22577a", "#38a3a5", "#f2a541", "#57cc99" };
+    var carbonTotal = Model.Carbon.Sum(part => part.Value);
+    var power = Model.Value(67);
 
-    string BuildConicGradient(IEnumerable<BatteryPassWeb.Models.ViewModels.ChartSegmentViewModel> segments)
+    string Pie()
     {
-        var start = 0d;
+        var start = 0m;
         var slices = new List<string>();
-        foreach (var segment in segments.Where(segment => segment.Value > 0))
+        for (var index = 0; index < Model.Carbon.Count; index++)
         {
-            var color = string.IsNullOrWhiteSpace(segment.Color) ? "#4f6f7d" : segment.Color;
-            var end = start + segment.Percentage;
-            slices.Add($"{color} {start.ToString("0.##", CultureInfo.InvariantCulture)}% {end.ToString("0.##", CultureInfo.InvariantCulture)}%");
+            var end = carbonTotal == 0 ? 0 : start + Model.Carbon[index].Value / carbonTotal * 100;
+            slices.Add($"{colours[index]} {start.ToString("0.##", CultureInfo.InvariantCulture)}% {end.ToString("0.##", CultureInfo.InvariantCulture)}%");
             start = end;
         }
 
-        if (slices.Count == 0)
-        {
-            slices.Add("#d1d5db 0% 100%");
-        }
-
-        return $"conic-gradient({string.Join(", ", slices)})";
+        return carbonTotal == 0 ? "conic-gradient(#d1d5db 0% 100%)" : $"conic-gradient({string.Join(", ", slices)})";
     }
 }
 <main class="bp-page">
-    <section class="bp-report-hero-card">
-        <div class="bp-report-hero-layout">
-            <article class="bp-report-hero-info bp-summary-identity-grid bp-report-identity-grid">
-                <section class="bp-summary-id-panel bp-report-identity-panel bp-report-identity-panel--battery bp-report-header bp-report-title-block">
-                    <span class="bp-summary-title">Battery</span>
-                    <h1>@(string.IsNullOrWhiteSpace(passport.BatterySerialNumber) ? passport.PassportId : passport.BatterySerialNumber)</h1>
-                    <p class="text-secondary">Cluster: @passport.ClusterLabel</p>
-                    <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
-                        @if (passport.IsHistoricalPassport)
-                        {
-                            <span class="bp-status-pill is-draft">Historical passport</span>
-                            <a href="@passport.LatestPassportUrl" class="bp-report-action" aria-label="Open latest passport" title="Open latest passport" data-tooltip="Open latest passport" data-action-icon="latest">
-                                <svg class="bp-report-action-icon bp-latest-passport-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="M12 5a7 7 0 1 1-6.32 4" />
-                                    <path d="M5 5v4h4" />
-                                    <path d="M12 8v4l3 2" />
-                                </svg>
-                            </a>
-                        }
-                        else
-                        {
-                            <span class="bp-status-pill is-published">Latest passport</span>
-                        }
-                    </div>
-                </section>
+    <partial name="_PassportHero" model="Model" view-data="ViewData" />
 
-                <section class="bp-summary-id-panel bp-report-identity-panel bp-report-identity-panel--identifiers">
-                    <span class="bp-summary-title">Identifiers</span>
-                    <p class="bp-passport-id"><span class="bp-id-label">Passport ID:</span><span class="bp-id-copy-row"><span class="bp-id-value">@passport.PassportId</span>@await Html.PartialAsync("_CopyIdButton", passport.PassportId)</span></p>
-                    <p class="bp-passport-id"><span class="bp-id-label">Battery ID:</span><span class="bp-id-copy-row"><span class="bp-id-value">@(string.IsNullOrWhiteSpace(passport.BatteryId) ? "-" : passport.BatteryId)</span>@await Html.PartialAsync("_CopyIdButton", passport.BatteryId)</span></p>
-                </section>
-
-                <section class="bp-summary-id-panel bp-summary-qr-panel bp-report-identity-panel bp-report-identity-panel--qr">
-                    <span class="bp-summary-title">QR code</span>
-                    <a class="bp-report-hero-qr"
-                       href="/qr/@Uri.EscapeDataString(qrBatteryId)/download"
-                       aria-label="Save battery code for @qrBatteryId">
-                        <img src="/qr/@Uri.EscapeDataString(qrBatteryId)/svg" alt="QR code for @qrBatteryId" />
-                    </a>
-                </section>
-
-                <dl class="bp-field-grid bp-report-hero-fields bp-summary-fields-panel">
-                    <div><dt>Battery Family</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatteryFamily) ? "-" : passport.BatteryFamily)</dd></div>
-                    <div><dt>Battery serial number</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatterySerialNumber) ? "-" : passport.BatterySerialNumber)</dd></div>
-                    <div><dt>Battery Model</dt><dd>@(string.IsNullOrWhiteSpace(passport.BatteryModel) ? "-" : passport.BatteryModel)</dd></div>
-                    <div><dt>Software version</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareVersion) ? "-" : passport.SoftwareVersion)</dd></div>
-                    <div><dt>Category</dt><dd>@passport.Category</dd></div>
-                    <div><dt>Battery status</dt><dd>@passport.BatteryStatus</dd></div>
-                    <div><dt>Passport status</dt><dd>@passport.PassportStatus</dd></div>
-                    <div><dt>Weight</dt><dd>@passport.WeightLabel</dd></div>
-                    <div><dt>Manufactured date</dt><dd>@passport.ManufacturedDate</dd></div>
-                    <div><dt>Manufactured by</dt><dd>@passport.ManufacturerName</dd></div>
-                    <div><dt>Cluster</dt><dd>@passport.ClusterLabel</dd></div>
-                </dl>
-            </article>
-
-            <aside class="bp-report-hero-media">
-                <div class="bp-image-wrap">
-                    <img src="@passport.BatteryImageUrl" alt="@passport.BatteryImageAlt" class="bp-battery-image" />
-                </div>
-                @if (Model.CanOpenDetail)
+    @if (power is not null || Model.Carbon.Count > 0 || Model.Recycled.Count > 0)
+    {
+        // One row on wide screens: power, carbon footprint and recycled content side by side; stacked on narrow ones.
+        <section class="bp-card bp-report-wide-section">
+            <span class="bp-summary-title">Summary report</span>
+            <div class="row g-4 mt-1">
+                @if (power is not null)
                 {
-                    <a class="bp-report-hero-cta" href="@Model.DetailActionUrl">View more about this passport -&gt;</a>
-                }
-                else
-                {
-                    <a class="bp-report-hero-cta bp-report-hero-cta-warning" href="@Model.DetailActionUrl">@Model.DetailAccessNotice</a>
-                }
-            </aside>
-        </div>
-    </section>
-
-    <section class="bp-card bp-report-wide-section">
-        <span class="bp-summary-title">Summary report</span>
-        <div class="bp-summary-section">
-            <div class="bp-summary-report-row bp-summary-report-row--power">
-                <h3 class="bp-subheading">Original Power</h3>
-                <p class="bp-number">@(passport.Performance.RatedMaximumPower > 0 ? passport.Performance.RatedMaximumPower : 380) kW</p>
-            </div>
-            <div class="bp-summary-report-row bp-summary-report-row--carbon">
-                <h3 class="bp-subheading">Carbon footprint</h3>
-                <div class="bp-pie-row">
-                    <div class="bp-pie" style="background:@BuildConicGradient(passport.CarbonFootprintSegments);"></div>
-                    <table class="bp-chart-value-legend" aria-label="Carbon footprint values">
-                        <tbody>
-                            @foreach (var segment in passport.CarbonFootprintSegments)
+                    <div class="col-12 col-md-6 col-xl-3 bp-summary-report-row bp-summary-report-row--power">
+                        <h3 class="bp-subheading">Original power capability</h3>
+                        <div class="bp-metric-grid mt-2" style="grid-template-columns: 1fr;">
+                            @foreach (var line in power.Lines)
                             {
-                                <tr>
-                                    <td><span class="bp-dot" style="background:@(string.IsNullOrWhiteSpace(segment.Color) ? "#4f6f7d" : segment.Color);"></span>@segment.Label</td>
-                                    <td>@segment.Value.ToString("0.#") @(segment.Unit)</td>
-                                </tr>
+                                <div class="bp-metric"><p>@(line.Label ?? "Power")</p><strong>@line.Text</strong></div>
                             }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="bp-summary-report-row bp-summary-report-row--recycled">
-                <h3 class="bp-subheading">Recycled content share</h3>
-                <div class="bp-donut-grid">
-                    @foreach (var chart in passport.RecycledContentCharts)
-                    {
-                        var preConsumer = chart.PreConsumerShare.ToString("0.##", CultureInfo.InvariantCulture);
-                        var postStart = chart.PreConsumerShare.ToString("0.##", CultureInfo.InvariantCulture);
-                        var postEnd = (chart.PreConsumerShare + chart.PostConsumerShare).ToString("0.##", CultureInfo.InvariantCulture);
-                        var donutBackground = $"conic-gradient(#08a348 0 {preConsumer}%, #df6b3b {postStart}% {postEnd}%, #d1d5db {postEnd}% 100%)";
-                        <div class="bp-donut-card">
-                            <p class="fw-semibold mb-2">@chart.Material</p>
-                            <div class="bp-donut" style="background:@donutBackground;">
-                                <div class="bp-donut-hole"></div>
-                            </div>
-                            <table class="bp-chart-value-legend mt-2" aria-label="Recycled content values for @chart.Material">
+                        </div>
+                    </div>
+                }
+                @if (Model.Carbon.Count > 0)
+                {
+                    <div class="col-12 col-md-6 col-xl-5 bp-summary-report-row bp-summary-report-row--carbon">
+                        <h3 class="bp-subheading">Carbon footprint</h3>
+                        @if (Model.Value(30) is { } perUnit)
+                        {
+                            <p class="text-secondary small mb-2">@perUnit.Lines[0].Text per functional unit</p>
+                        }
+                        <div class="bp-pie-row">
+                            <div class="bp-pie" style="width:140px;height:140px;background:@Pie();"></div>
+                            <table class="bp-chart-value-legend" style="flex:1 1 200px;width:auto;min-width:0;" aria-label="Carbon footprint per life-cycle stage">
                                 <tbody>
-                                    <tr>
-                                        <td><span class="bp-dot" style="background:#08a348"></span>Pre-consumer</td>
-                                        <td>@chart.PreConsumerShare.ToString("0.#")%</td>
-                                    </tr>
-                                    <tr>
-                                        <td><span class="bp-dot" style="background:#df6b3b"></span>Post-consumer</td>
-                                        <td>@chart.PostConsumerShare.ToString("0.#")%</td>
-                                    </tr>
+                                    @for (var index = 0; index < Model.Carbon.Count; index++)
+                                    {
+                                        <tr>
+                                            <td><span class="bp-dot" style="background:@colours[index]"></span>@Model.Carbon[index].Label</td>
+                                            <td>@ValueWords.Number(Model.Carbon[index].Value) @Model.Carbon[index].Unit</td>
+                                        </tr>
+                                    }
                                 </tbody>
                             </table>
                         </div>
-                    }
-                </div>
+                    </div>
+                }
+                @if (Model.Recycled.Count > 0)
+                {
+                    <div class="col-12 col-xl-4 bp-summary-report-row bp-summary-report-row--recycled">
+                        <h3 class="bp-subheading">Recycled content share</h3>
+                        <div class="row g-2 mt-1">
+                            @foreach (var share in Model.Recycled)
+                            {
+                                var percent = Math.Clamp(share.Value, 0, 100).ToString("0.##", CultureInfo.InvariantCulture);
+                                <div class="col-6 col-sm-3 col-xl-6">
+                                    <div class="bp-donut-card d-flex align-items-center gap-2">
+                                        <div class="bp-donut flex-shrink-0 m-0" style="width:48px;height:48px;background:conic-gradient(#08a348 0 @(percent)%, #d1d5db @(percent)% 100%);" aria-hidden="true">
+                                            <div class="bp-donut-hole" style="width:26px;height:26px;"></div>
+                                        </div>
+                                        <div class="lh-sm">
+                                            <span class="d-block small text-secondary">@share.Label</span>
+                                            <strong>@ValueWords.Number(share.Value) %</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
             </div>
-        </div>
-    </section>
+        </section>
+    }
+
+    <partial name="_PassportTabs" model="Model" />
 </main>

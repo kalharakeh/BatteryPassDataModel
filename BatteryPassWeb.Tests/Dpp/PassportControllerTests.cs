@@ -1,0 +1,235 @@
+using System.Reflection;
+using System.Security.Claims;
+using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
+using BatteryPassWeb.Controllers;
+using BatteryPassWeb.Dpp.Access;
+using BatteryPassWeb.Dpp.Catalog;
+using BatteryPassWeb.Dpp.Editing;
+using BatteryPassWeb.Dpp.Pages;
+using BatteryPassWeb.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+
+namespace BatteryPassWeb.Tests.Dpp;
+
+/// <summary>
+/// The passport pages, the QR code and the home page's search (step 3b), in place of today's: /dpp/{id} for everyone,
+/// /dpp/{id}/detail for signed-in readers.
+/// </summary>
+[Collection(MongoCollection.Name)]
+public sealed class PassportControllerTests(MongoFixture mongo)
+{
+    private const string OwnClusterUser = "user@example.com";
+
+    private static string View(string name) => File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Passport", $"{name}.cshtml"));
+
+    [Fact]
+    public void ThePages_ShouldBeOpenToEveryoneAndOnlyRead()
+    {
+        var type = typeof(PassportController);
+
+        Assert.NotNull(type.GetCustomAttribute<AllowAnonymousAttribute>());
+        Assert.Equal("dpp", type.GetCustomAttribute<RouteAttribute>()?.Template);
+        Assert.Equal("{id}", type.GetMethod(nameof(PassportController.Summary))!.GetCustomAttribute<HttpGetAttribute>()?.Template);
+        Assert.Equal("{id}/detail", type.GetMethod(nameof(PassportController.Detail))!.GetCustomAttribute<HttpGetAttribute>()?.Template);
+        Assert.NotNull(typeof(QrController).GetCustomAttribute<AllowAnonymousAttribute>());
+        Assert.False(File.Exists(Path.Combine(Path.GetDirectoryName(DppTestFiles.RepoFile("web", "Views", "Passport", "Summary.cshtml"))!, "Battery.cshtml")));
+    }
+
+    [Fact]
+    public async Task TheSummary_ShouldOpenWithoutSigningInByTheBatteryIdAsTheQrCodeCarriesIt()
+    {
+        var rig = await RigAsync();
+
+        var view = Assert.IsType<ViewResult>(await Pages(rig, null).Summary(Uri.EscapeDataString(PassportPagesTests.Identifier(rig)), CancellationToken.None));
+
+        var page = Assert.IsType<PassportPage>(view.Model);
+        Assert.Null(view.ViewName);
+        Assert.Empty(page.Audiences);
+        Assert.False(page.ReaderSeesMore);
+        Assert.All(page.Sections.SelectMany(section => section.Values), value => Assert.Equal(Audience.Public, value.Attribute.Audience));
+    }
+
+    [Fact]
+    public async Task AnUnknownIdOrADraft_ShouldSayNotAvailable()
+    {
+        var draft = await PublicationTesting.RigAsync(mongo);
+
+        foreach (var result in new[]
+        {
+            await Pages(draft, null).Summary(PassportPagesTests.Identifier(draft), CancellationToken.None),
+            await Pages(draft, null).Summary("VPC8C05-0000", CancellationToken.None),
+            await Pages(draft, "team@example.com", AccessControlService.RoleAdmin).Detail(PassportPagesTests.Identifier(draft), CancellationToken.None),
+        })
+        {
+            var view = Assert.IsType<ViewResult>(result);
+            Assert.Equal("~/Views/Dpp/NotAvailable.cshtml", view.ViewName);
+            Assert.Equal(StatusCodes.Status404NotFound, view.StatusCode);
+            Assert.Equal("passport", view.ViewData["Subject"]);
+        }
+    }
+
+    [Fact]
+    public async Task TheDetailPage_ShouldAskToSignInFirst()
+    {
+        var rig = await RigAsync();
+
+        Assert.IsType<ChallengeResult>(await Pages(rig, null).Detail(PassportPagesTests.Identifier(rig), CancellationToken.None));
+        Assert.IsType<ChallengeResult>(await Pages(rig, null).Detail("no-such-passport", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task TheDetailPage_ShouldShowTheBatterysClusterItsSectionsAndStayOutOfCaches()
+    {
+        var rig = await RigAsync();
+        var controller = Pages(rig, OwnClusterUser);
+
+        var view = Assert.IsType<ViewResult>(await controller.Detail(PassportPagesTests.Identifier(rig), CancellationToken.None));
+
+        var page = Assert.IsType<PassportPage>(view.Model);
+        Assert.Equal(["purchaser", "shared"], page.Audiences.Select(section => section.Key));
+        Assert.Equal("private, no-store", controller.Response.Headers.CacheControl.ToString());
+    }
+
+    [Fact]
+    public async Task AnotherClustersUser_ShouldGetThePublicDataOnly()
+    {
+        var rig = await RigAsync();
+
+        var page = Assert.IsType<PassportPage>(Assert.IsType<ViewResult>(await Pages(rig, "other@example.com").Detail(PassportPagesTests.Identifier(rig), CancellationToken.None)).Model);
+
+        Assert.Empty(page.Audiences);
+        Assert.False(page.ReaderSeesMore);
+    }
+
+    [Fact]
+    public async Task TheQrCode_ShouldBeDrawnForAPublishedBatteryOnly()
+    {
+        var rig = await RigAsync();
+        var draft = await PublicationTesting.RigAsync(mongo);
+
+        var svg = Assert.IsType<ContentResult>(await Qr(rig).QrCode("VPC8C05-6788", CancellationToken.None));
+        var png = Assert.IsType<FileContentResult>(await Qr(rig).Download(Uri.EscapeDataString(PassportPagesTests.Identifier(rig)), CancellationToken.None));
+
+        Assert.StartsWith("image/svg+xml", svg.ContentType, StringComparison.Ordinal);
+        Assert.Contains("<svg", svg.Content, StringComparison.Ordinal);
+        Assert.Equal("image/png", png.ContentType);
+        Assert.Equal("VPC8C05-6788-qr.png", png.FileDownloadName);
+        Assert.IsType<NotFoundResult>(await Qr(draft).QrCode(PassportPagesTests.Identifier(draft), CancellationToken.None));
+        Assert.IsType<NotFoundResult>(await Qr(rig, DocumentTesting.NoLinks).QrCode("VPC8C05-6788", CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData("https://passport.example.com/dpp/urn:x-battery-pass:TEST-0f3a", "urn:x-battery-pass:TEST-0f3a")]
+    [InlineData("https://passport.example.com/dpp/urn%3Ax-battery-pass%3ATEST-0f3a/detail", "urn:x-battery-pass:TEST-0f3a")]
+    [InlineData("urn:x-battery-pass:TEST-0f3a", "urn:x-battery-pass:TEST-0f3a")]
+    [InlineData(" VPC8C05-6788 ", "VPC8C05-6788")]
+    [InlineData("https://passport.example.com/?q=VPC8C05-6788", "VPC8C05-6788")]
+    [InlineData("https://passport.example.com/BAT-1/latest/summary", "BAT-1")]
+    [InlineData("", "")]
+    public void TheSearch_ShouldReadTheIdOutOfWhatWasTypedOrScanned(string typed, string expected)
+    {
+        Assert.Equal(expected, HomeController.IdFromSearch(typed));
+    }
+
+    [Fact]
+    public async Task TheSearch_ShouldOpenTheSummaryOrWhenSignedInTheDetailPage()
+    {
+        var rig = await RigAsync();
+        var identifier = PassportPagesTests.Identifier(rig);
+
+        var anonymous = Assert.IsType<RedirectResult>(await Home(rig, null).Search("VPC8C05-6788", CancellationToken.None));
+        var signedIn = Assert.IsType<RedirectResult>(await Home(rig, OwnClusterUser).Search($"{DocumentTesting.BaseUrl}{PassportPages.SummaryHref(identifier)}", CancellationToken.None));
+        var unknown = Assert.IsType<RedirectToActionResult>(await Home(rig, null).Search("VPC8C05-0000", CancellationToken.None));
+
+        Assert.Equal(PassportPages.SummaryHref(identifier), anonymous.Url);
+        Assert.Equal(PassportPages.DetailHref(identifier), signedIn.Url);
+        Assert.Equal("Index", unknown.ActionName);
+        Assert.Equal("1", unknown.RouteValues!["notFound"]);
+    }
+
+    [Fact]
+    public async Task TheSearch_ShouldOpenAnArchivedVersionAtItsOwnPassportId()
+    {
+        var rig = await RigAsync();
+        var first = (await rig.Store.GetActiveVersionAsync(rig.PackId))!;
+        await rig.Pipeline.SaveAsync(
+            PublicationTesting.Team,
+            new ChangeSet(TargetKind.Model, "model-test", new Dictionary<string, JsonNode?> { ["batteryMass"] = JsonValue.Create(520) }, "form"));
+
+        var result = Assert.IsType<RedirectResult>(await Home(rig, null).Search(first.DigitalProductPassportId, CancellationToken.None));
+
+        Assert.Equal(PassportPages.SummaryHref(first.DigitalProductPassportId), result.Url);
+    }
+
+    [Fact]
+    public void TheViews_ShouldKeepTodaysLookWithTheNewData()
+    {
+        var hero = View("_PassportHero");
+        var tabs = View("_PassportTabs");
+        var summary = View("Summary");
+        var detail = View("Detail");
+
+        Assert.DoesNotContain("Cluster", hero, StringComparison.Ordinal);
+        Assert.DoesNotContain("Battery status", hero, StringComparison.Ordinal);
+        Assert.Contains("Test passport: this battery's IDs start with TEST-.", hero, StringComparison.Ordinal);
+        Assert.Contains("Model.PictureHref", hero, StringComparison.Ordinal);
+        Assert.Contains("Open the current version", hero, StringComparison.Ordinal);
+        Assert.Contains("Model.Audiences", tabs, StringComparison.Ordinal);
+        Assert.Contains("@(origin.Measured ? \"Measured\" : \"Entered\") @ValueWords.Time(origin.GeneratedAtUtc) · @PassportPages.SourceWord(origin.Source)", tabs, StringComparison.Ordinal);
+        Assert.Contains("are on the <a href=\"@PassportPages.DetailHref(Model.Identifier)\">current version</a>", tabs, StringComparison.Ordinal);
+        Assert.Contains("ViewData[\"Detail\"] = false;", summary, StringComparison.Ordinal);
+        Assert.Contains("ViewData[\"Detail\"] = true;", detail, StringComparison.Ordinal);
+        Assert.DoesNotContain("chart.js", summary + detail, StringComparison.OrdinalIgnoreCase);
+        var links = Regex.Matches(tabs, "<a href=\"@part.Href\"[^>]*>").Select(match => match.Value).ToArray();
+        Assert.All(links, link => Assert.Contains("target=\"_blank\" rel=\"noreferrer\"", link, StringComparison.Ordinal));
+        Assert.NotEmpty(links);
+    }
+
+    [Fact]
+    public void TheHomePage_ShouldSearchTheNewPassportsWithoutTheOldSample()
+    {
+        var home = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Home", "Index.cshtml"));
+
+        Assert.DoesNotContain("sample", home, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("DID", home, StringComparison.Ordinal);
+        Assert.Contains("placeholder=\"Serial number, battery ID or passport ID\"", home, StringComparison.Ordinal);
+    }
+
+    /// <summary>The seed pack, published, with a member of its cluster and a member of another cluster.</summary>
+    private async Task<PublicationRig> RigAsync()
+    {
+        var rig = await PublicationTesting.PublishedRigAsync(mongo);
+        var clusters = new ClusterRepository(rig.Context);
+        await clusters.UpsertClusterMembershipAsync(OwnClusterUser, BatteryTesting.North, "member");
+        await clusters.UpsertClusterMembershipAsync("other@example.com", BatteryTesting.South, "member");
+        return rig;
+    }
+
+    private static HttpContext Http(string? email, string role) => new DefaultHttpContext
+    {
+        User = email is null
+            ? new ClaimsPrincipal(new ClaimsIdentity())
+            : new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Email, email), new Claim(ClaimTypes.Role, role)], "test")),
+    };
+
+    private static PassportController Pages(PublicationRig rig, string? email, string role = "member") =>
+        new(new DppReaders(new ClusterRepository(rig.Context)), PassportPagesTests.Pages(rig))
+        {
+            ControllerContext = new ControllerContext { HttpContext = Http(email, role) },
+        };
+
+    private static QrController Qr(PublicationRig rig, BatteryPassWeb.Dpp.Documents.DppLinks? links = null) =>
+        new(PassportPagesTests.Pages(rig), links ?? DocumentTesting.Links, new PassportQrCodeService())
+        {
+            ControllerContext = new ControllerContext { HttpContext = Http(null, "member") },
+        };
+
+    private static HomeController Home(PublicationRig rig, string? email) =>
+        new(PassportPagesTests.Pages(rig))
+        {
+            ControllerContext = new ControllerContext { HttpContext = Http(email, "member") },
+        };
+}

@@ -22,16 +22,6 @@ public sealed class ManualFeedbackRound3Tests
     }
 
     [Fact]
-    public void AnonymousSampleDetail_ShouldRedirectToSummaryWithAccessMessageInsteadOfNotFound()
-    {
-        var source = File.ReadAllText(RepoFile("web", "Controllers", "PassportController.cs"));
-
-        Assert.Contains("RedirectToPublicSummaryWithAccessNotice", source);
-        Assert.Contains("FallbackSamplePassport(decodedPassportId)", source);
-        Assert.Contains("access=detail-required", source);
-    }
-
-    [Fact]
     public void SummaryReport_ShouldStackMainMetricRowsVertically()
     {
         var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));

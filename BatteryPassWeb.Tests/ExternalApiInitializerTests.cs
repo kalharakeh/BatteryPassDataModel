@@ -140,20 +140,6 @@ public sealed class ExternalApiInitializerTests
     }
 
     [Fact]
-    public void LandingSearchSample_ShouldUseGeneratedDemoBatteryIdInsteadOfLegacyDid()
-    {
-        var homeController = File.ReadAllText(RepoFile("web", "Controllers", "HomeController.cs"));
-        var landing = File.ReadAllText(RepoFile("web", "Views", "Home", "Index.cshtml"));
-
-        Assert.Contains("BatteryIdService", homeController);
-        Assert.Contains("ExternalApiInitializer.CreateSampleBatteryId", homeController);
-        Assert.DoesNotContain("sample-customer-north-001", homeController);
-        Assert.Contains("sample battery ID", landing);
-        Assert.Contains("public sample passport", landing, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("return Redirect($\"/{Uri.EscapeDataString(routeBatteryId)}/latest\")", homeController);
-    }
-
-    [Fact]
     public void LegacySampleDid_ShouldResolveToGeneratedDemoBattery()
     {
         var resolver = File.ReadAllText(RepoFile("web", "Services", "BatteryRouteResolutionService.cs"));

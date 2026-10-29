@@ -1,100 +1,40 @@
 using System.Text;
+using BatteryPassWeb.Dpp.Documents;
+using BatteryPassWeb.Dpp.Pages;
 using BatteryPassWeb.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BatteryPassWeb.Controllers;
 
+/// <summary>
+/// The QR code of a battery with a published passport (design 10). It carries the public summary's address with the
+/// battery ID (#6), built from APP_BASE_URL, so a printed code doesn't depend on where the page was opened. The
+/// address takes the same IDs as the passport pages.
+/// </summary>
+[AllowAnonymous]
 [Route("qr")]
-public sealed class QrController : Controller
+public sealed class QrController(PassportPages pages, DppLinks links, PassportQrCodeService qrCodes) : Controller
 {
-    private readonly BatteryRepository _batteryRepository;
-    private readonly PassportRepository _passportRepository;
-    private readonly PassportPublishPolicyService _passportPublishPolicyService;
-    private readonly AccessControlService _accessControlService;
-    private readonly PassportQrCodeService _passportQrCodeService;
-    private readonly BatteryIdService _batteryIdService;
-
-    public QrController(
-        BatteryRepository batteryRepository,
-        PassportRepository passportRepository,
-        PassportPublishPolicyService passportPublishPolicyService,
-        AccessControlService accessControlService,
-        PassportQrCodeService passportQrCodeService,
-        BatteryIdService batteryIdService)
+    [HttpGet("{id}/svg")]
+    public async Task<IActionResult> QrCode(string id, CancellationToken cancellationToken)
     {
-        _batteryRepository = batteryRepository;
-        _passportRepository = passportRepository;
-        _passportPublishPolicyService = passportPublishPolicyService;
-        _accessControlService = accessControlService;
-        _passportQrCodeService = passportQrCodeService;
-        _batteryIdService = batteryIdService;
+        var battery = await BatteryAsync(id, cancellationToken);
+        return battery is null
+            ? NotFound()
+            : Content(qrCodes.GenerateSvg(links.PassportUrl(battery.Identifier)), "image/svg+xml", Encoding.UTF8);
     }
 
-    [HttpGet("{batteryId}/svg")]
-    public async Task<IActionResult> QrCode(string batteryId, CancellationToken cancellationToken)
+    [HttpGet("{id}/download")]
+    public async Task<IActionResult> Download(string id, CancellationToken cancellationToken)
     {
-        var decodedBatteryId = Uri.UnescapeDataString(batteryId);
-        if (!await CanAccessQrAsync(decodedBatteryId, cancellationToken))
-        {
-            return NotFound();
-        }
-
-        var payload = _passportQrCodeService.BuildPayloadUrl(Request, decodedBatteryId);
-        var svg = _passportQrCodeService.GenerateSvg(payload);
-        return Content(svg, "image/svg+xml", Encoding.UTF8);
+        var battery = await BatteryAsync(id, cancellationToken);
+        return battery is null
+            ? NotFound()
+            : File(qrCodes.GeneratePng(links.PassportUrl(battery.Identifier)), "image/png", Path.ChangeExtension(qrCodes.BuildFileName(battery.SerialNumber), ".png"));
     }
 
-    [HttpGet("{batteryId}/download")]
-    public async Task<IActionResult> Download(string batteryId, CancellationToken cancellationToken)
-    {
-        var decodedBatteryId = Uri.UnescapeDataString(batteryId);
-        if (!await CanAccessQrAsync(decodedBatteryId, cancellationToken))
-        {
-            return NotFound();
-        }
-
-        var payload = _passportQrCodeService.BuildPayloadUrl(Request, decodedBatteryId);
-        var fileName = _passportQrCodeService.BuildFileName(decodedBatteryId);
-        var png = _passportQrCodeService.GeneratePng(payload);
-        return File(png, "image/png", Path.ChangeExtension(fileName, ".png"));
-    }
-
-    private async Task<bool> CanAccessQrAsync(string batteryId, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(batteryId))
-        {
-            return false;
-        }
-
-        var sampleBatteryId = ExternalApiInitializer.CreateSampleBatteryId(_batteryIdService);
-        if (batteryId.Equals(sampleBatteryId, StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        var battery = await _batteryRepository.GetByBatteryIdAsync(batteryId, cancellationToken);
-        if (battery == null)
-        {
-            return false;
-        }
-
-        var latestPublicPassport = await _passportRepository.GetLatestPublicByBatteryIdAsync(
-            batteryId,
-            _passportPublishPolicyService,
-            cancellationToken);
-        if (latestPublicPassport != null)
-        {
-            return true;
-        }
-
-        if (User.Identity?.IsAuthenticated != true)
-        {
-            return false;
-        }
-
-        return await _accessControlService.CanOpenPassportDetailAsync(
-            User,
-            BsonHelpers.GetString(battery, "clusterId"),
-            cancellationToken);
-    }
+    /// <summary>The battery of a published passport; null for a draft, an unknown ID, or while APP_BASE_URL isn't set.</summary>
+    private async Task<PassportLocation?> BatteryAsync(string id, CancellationToken cancellationToken) =>
+        links.IsConfigured ? await pages.LocateAsync(Uri.UnescapeDataString(id), cancellationToken) : null;
 }

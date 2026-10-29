@@ -201,18 +201,6 @@ public sealed class ConformanceLayoutTests
     }
 
     [Fact]
-    public void PassportSummary_ShouldHideTrustStateWhileDetailConditionallyShowsItInTrustTab()
-    {
-        var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
-        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
-
-        Assert.DoesNotContain("passport.TrustState", summary);
-        Assert.Contains("Model.CanViewTrustConformance", detail);
-        Assert.Contains("tab-trust", detail);
-        Assert.Contains("passport.TrustState", detail);
-    }
-
-    [Fact]
     public void AdminPages_ShouldLinkToConformance()
     {
         var edit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));

@@ -57,38 +57,21 @@ public sealed class ValidationPolicyLayoutTests
         var home = File.ReadAllText(RepoFile("web", "Controllers", "HomeController.cs"));
         var registry = File.ReadAllText(RepoFile("web", "Controllers", "RegistryController.cs"));
         var passport = File.ReadAllText(RepoFile("web", "Controllers", "PassportController.cs"));
+        var pages = File.ReadAllText(RepoFile("web", "Dpp", "Pages", "PassportPages.cs"));
 
-        Assert.Contains("BatteryRouteResolutionService", home);
-        Assert.Contains("ResolveAsync", home);
-        Assert.Contains("BatteryRouteTargetKind.Battery", home);
-        Assert.Contains("BatteryRouteTargetKind.Passport", home);
+        Assert.Contains("pages.LocateAsync", home);
 
         Assert.Contains("PassportPublishPolicyService", registry);
         Assert.Contains("SearchDocumentsAsync", registry);
         Assert.Contains("CanOpenPassportSummaryAsync", registry);
 
-        Assert.Contains("PassportPublishPolicyService", passport);
-        Assert.Contains("CanOpenPassportSummaryAsync", passport);
-        Assert.Contains("CanOpenPassportDetailAsync", passport);
-        Assert.Contains("return NotFound();", passport);
+        Assert.Contains("pages.SummaryAsync", passport);
+        Assert.Contains("pages.DetailAsync", passport);
+        Assert.Contains("PassportFilter.Cut", pages);
+        Assert.Contains("reader.VersionAsync", pages);
 
         var access = File.ReadAllText(RepoFile("web", "Services", "AccessControlService.cs"));
         Assert.Contains("IsPubliclyVisible", access);
-    }
-
-    [Fact]
-    public void HomeSearch_ShouldLetGeneralAdminsFindDraftAndUnpublishedPassports()
-    {
-        var home = File.ReadAllText(RepoFile("web", "Controllers", "HomeController.cs"));
-        var searchView = File.ReadAllText(RepoFile("web", "Views", "Home", "Search.cshtml"));
-        var searchModel = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "SearchPageViewModel.cs"));
-
-        Assert.Contains("ExtractIdFromQrPayload", home);
-        Assert.Contains("BatteryRouteResolutionService", home);
-        Assert.Contains("Redirect($\"/{Uri.EscapeDataString(routeBatteryId)}/latest\")", home);
-        Assert.Contains("IsAdminSearch", searchModel);
-        Assert.Contains("Model.IsAdminSearch", searchView);
-        Assert.Contains("No battery passport ID was found", searchView);
     }
 
     private static string RepoFile(params string[] parts)

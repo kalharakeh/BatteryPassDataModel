@@ -1,0 +1,103 @@
+@using BatteryPassWeb.Dpp.Pages
+@model PassportPage
+@{
+    // The battery card of both passport pages (today's look, decision 23), with the new data underneath.
+    var detail = ViewData["Detail"] is true;
+    var manufacturer = Model.Value(15)?.Lines.FirstOrDefault(line => line.Label == "Name")?.Text ?? "-";
+    var signedIn = User.Identity?.IsAuthenticated == true;
+    var detailHref = PassportPages.DetailHref(Model.Address);
+    var signIn = $"/login?next={Uri.EscapeDataString(detailHref)}";
+}
+@if (Model.IsTest)
+{
+    <p class="bp-warning">Test passport: this battery's IDs start with TEST-. Real ones come once the identifier scheme is chosen.</p>
+}
+<section class="bp-report-hero-card">
+    <div class="bp-report-hero-layout">
+        <article class="bp-report-hero-info bp-summary-identity-grid bp-report-identity-grid">
+            <section class="bp-summary-id-panel bp-report-identity-panel bp-report-identity-panel--battery bp-report-header bp-report-title-block">
+                <span class="bp-summary-title">Battery</span>
+                <h1>@Model.Text(11)</h1>
+                <p class="text-secondary">Model: @Model.Text(10)</p>
+                <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
+                    @if (Model.IsCurrent)
+                    {
+                        <span class="bp-status-pill is-active">Active</span>
+                    }
+                    else
+                    {
+                        <span class="bp-status-pill is-inactive">Archived</span>
+                        @if (Model.Current is not null)
+                        {
+                            <a href="@(detail ? PassportPages.DetailHref(Model.Identifier) : PassportPages.SummaryHref(Model.Identifier))" class="bp-report-action" aria-label="Open the current version" title="Open the current version" data-tooltip="Open the current version" data-action-icon="latest">
+                                <svg class="bp-report-action-icon bp-latest-passport-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 5a7 7 0 1 1-6.32 4" />
+                                    <path d="M5 5v4h4" />
+                                    <path d="M12 8v4l3 2" />
+                                </svg>
+                            </a>
+                        }
+                    }
+                </div>
+                @if (!Model.IsCurrent && Model.Current is not null)
+                {
+                    <p class="text-secondary small mt-2 mb-0">An older version of this passport. <a href="@(detail ? PassportPages.DetailHref(Model.Identifier) : PassportPages.SummaryHref(Model.Identifier))">Open the current version</a></p>
+                }
+            </section>
+
+            <section class="bp-summary-id-panel bp-report-identity-panel bp-report-identity-panel--identifiers">
+                <span class="bp-summary-title">Identifiers</span>
+                <p class="bp-passport-id"><span class="bp-id-label">Passport ID:</span><span class="bp-id-copy-row"><span class="bp-id-value">@Model.Version.DigitalProductPassportId</span>@await Html.PartialAsync("_CopyIdButton", Model.Version.DigitalProductPassportId)</span></p>
+                <p class="bp-passport-id"><span class="bp-id-label">Battery ID:</span><span class="bp-id-copy-row"><span class="bp-id-value">@Model.Identifier</span>@await Html.PartialAsync("_CopyIdButton", Model.Identifier)</span></p>
+            </section>
+
+            <section class="bp-summary-id-panel bp-summary-qr-panel bp-report-identity-panel bp-report-identity-panel--qr">
+                <span class="bp-summary-title">QR code</span>
+                <a class="bp-report-hero-qr" href="@PassportPages.QrDownloadHref(Model.Identifier)" aria-label="Save the QR code of battery @Model.Text(11)">
+                    <img src="@PassportPages.QrHref(Model.Identifier)" alt="QR code of battery @Model.Text(11)" />
+                </a>
+            </section>
+
+            <dl class="bp-field-grid bp-report-hero-fields bp-summary-fields-panel">
+                <div><dt>Battery family</dt><dd>@(Model.FamilyName ?? "-")</dd></div>
+                <div><dt>Battery serial number</dt><dd>@Model.Text(11)</dd></div>
+                <div><dt>Battery model</dt><dd>@Model.Text(10)</dd></div>
+                <div><dt>Category</dt><dd>@Model.Text(20)</dd></div>
+                <div><dt>Passport status</dt><dd>@Model.Text(2)</dd></div>
+                <div><dt>Weight</dt><dd>@Model.Text(21)</dd></div>
+                <div><dt>Manufactured date</dt><dd>@Model.Text(17)</dd></div>
+                <div><dt>Manufactured by</dt><dd>@manufacturer</dd></div>
+                <div><dt>Last updated</dt><dd>@Model.Text(4)</dd></div>
+                @if (detail)
+                {
+                    <div><dt>Signature</dt><dd>@(Model.SignatureHolds ? "Verified" : "Doesn't match the signed passport")</dd></div>
+                }
+            </dl>
+        </article>
+
+        <aside class="bp-report-hero-media">
+            @if (Model.PictureHref is not null)
+            {
+                <div class="bp-image-wrap">
+                    <img src="@Model.PictureHref" alt="Picture of the @Model.FamilyName battery family" class="bp-battery-image" />
+                </div>
+            }
+            @if (detail)
+            {
+                <a class="bp-report-hero-cta" href="@PassportPages.SummaryHref(Model.Address)">&lt;- Back to summary</a>
+            }
+            else if (signedIn && Model.ReaderSeesMore)
+            {
+                <a class="bp-report-hero-cta" href="@detailHref">View more about this passport -&gt;</a>
+            }
+            else if (signedIn)
+            {
+                <a class="bp-report-hero-cta bp-report-hero-cta-warning" href="@(signIn)&switchAccount=true">Your account sees the public data only. Sign in with another account to see more.</a>
+            }
+            else
+            {
+                <a class="bp-report-hero-cta bp-report-hero-cta-warning" href="@signIn">Sign in to see more about this passport.</a>
+            }
+        </aside>
+    </div>
+</section>

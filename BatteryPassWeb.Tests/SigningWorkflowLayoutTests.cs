@@ -109,34 +109,18 @@ public sealed class SigningWorkflowLayoutTests
     public void PassportSummaryShouldHideTrustDataAndDetailShouldRenderPrivilegedTrustTab()
     {
         var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
-        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
-        var detailModel = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "PassportDetailViewModel.cs"));
-        var controller = File.ReadAllText(RepoFile("web", "Controllers", "PassportController.cs"));
+        var hero = File.ReadAllText(RepoFile("web", "Views", "Passport", "_PassportHero.cshtml"));
         var access = File.ReadAllText(RepoFile("web", "Services", "AccessControlService.cs"));
 
         Assert.DoesNotContain("Public verification", summary);
-        Assert.DoesNotContain("passport.Trust", summary);
-        Assert.DoesNotContain("passport.IsValid", summary);
+        Assert.DoesNotContain("SignatureHolds", summary);
         Assert.DoesNotContain("Conformance", summary);
-        Assert.DoesNotContain("Verified", summary);
-        Assert.DoesNotContain("Unverified", summary);
-        Assert.Contains("CanViewTrustConformance", detailModel);
+        Assert.Contains("@if (detail)", hero);
+        Assert.Contains("<div><dt>Signature</dt><dd>@(Model.SignatureHolds ? \"Verified\" : \"Doesn't match the signed passport\")</dd></div>", hero);
         Assert.Contains("CanViewTrustConformanceAsync", access);
         Assert.Contains("if (IsAdmin(user))", access);
         Assert.Contains("GetAdministeredClusterIdsForUserAsync", access);
         Assert.Contains("managedClusterIds.Contains", access);
-        Assert.Contains("CanViewTrustConformanceAsync(User, passport.ClusterId", controller);
-        Assert.Contains("Model.CanViewTrustConformance", detail);
-        Assert.Contains("Trust & conformance", detail);
-        Assert.Contains("data-bs-target=\"#tab-trust\"", detail);
-        Assert.Contains("id=\"tab-trust\"", detail);
-        Assert.Contains("Verification evidence", detail);
-        Assert.Contains("passport.TrustLatestHash", detail);
-        Assert.Contains("passport.TrustIssuer", detail);
-        Assert.Contains("passport.TrustVerificationMethod", detail);
-        Assert.Contains("passport.TrustLatestRevisionId", detail);
-        Assert.Contains("passport.TrustProofStatus", detail);
-        Assert.Contains("passport.TrustState", detail);
     }
 
     [Fact]

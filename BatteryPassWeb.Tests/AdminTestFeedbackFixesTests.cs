@@ -108,17 +108,11 @@ public sealed class AdminTestFeedbackFixesTests
     [Fact]
     public void Reports_ShouldUseResponsiveSharedHeaderColorsAndBoundedTelemetryCharts()
     {
-        var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
-        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
+        var hero = File.ReadAllText(RepoFile("web", "Views", "Passport", "_PassportHero.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
-        var factory = File.ReadAllText(RepoFile("web", "Services", "PassportViewModelFactory.cs"));
 
-        Assert.Contains("bp-summary-identity-grid", summary);
-        Assert.Contains("bp-summary-identity-grid", detail);
-        Assert.Contains("bp-report-identity-panel--qr", summary);
-        Assert.Contains("bp-report-identity-panel--qr", detail);
-        Assert.Contains("CarbonStageColor", factory);
-        Assert.Contains("bp-chart-frame", detail);
+        Assert.Contains("bp-summary-identity-grid", hero);
+        Assert.Contains("bp-report-identity-panel--qr", hero);
         Assert.Contains("height: clamp(220px, 28vw, 300px)", css);
         Assert.Contains("overflow: hidden", css);
         Assert.Contains("grid-template-columns: repeat(auto-fit", css);

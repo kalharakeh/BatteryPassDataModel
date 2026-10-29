@@ -46,52 +46,17 @@ public sealed class PassportSoftwarePresentationTests
     }
 
     [Fact]
-    public void PassportSummary_ShouldIncludeSoftwareVersion()
-    {
-        var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
-
-        Assert.Contains("Battery Model", summary);
-        Assert.Contains("passport.BatteryModel", summary);
-        Assert.Contains("Software version", summary);
-        Assert.Contains("passport.SoftwareVersion", summary);
-    }
-
-    [Fact]
-    public void PassportDetail_ShouldRenderSoftwareParametersInGeneralTab()
-    {
-        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
-
-        Assert.DoesNotContain("data-bs-target=\"#tab-software\"", detail);
-        Assert.DoesNotContain("id=\"tab-software\"", detail);
-        Assert.Contains("passport.BatteryFamily", detail);
-        Assert.Contains("passport.BatteryModel", detail);
-        Assert.Contains("passport.SoftwareVersion", detail);
-        Assert.Contains("passport.SoftwareReleaseDate", detail);
-        Assert.Contains("passport.SoftwareLatestUpdate", detail);
-        Assert.DoesNotContain("bp-software-panel", detail);
-    }
-
-    [Fact]
     public void PassportDetailTabs_ShouldStayOnSingleScrollableRow()
     {
-        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
+        var tabs = File.ReadAllText(RepoFile("web", "Views", "Passport", "_PassportTabs.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        Assert.Contains("class=\"nav nav-tabs bp-tabs\"", detail);
+        Assert.Contains("class=\"nav nav-tabs bp-tabs\"", tabs);
         Assert.Contains("flex-wrap: nowrap;", css);
         Assert.Contains("overflow-x: auto;", css);
         Assert.Contains(".bp-tabs .nav-item", css);
         Assert.Contains("flex: 0 0 auto;", css);
         Assert.Contains("white-space: nowrap;", css);
-    }
-
-    [Fact]
-    public void PassportDetailGeneralTab_ShouldRenderCurrentSoftwareVersionAsCompactField()
-    {
-        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
-
-        Assert.Contains("<div><dt>Software version</dt><dd>@(string.IsNullOrWhiteSpace(passport.SoftwareVersion) ? \"-\" : passport.SoftwareVersion)</dd></div>", detail);
-        Assert.DoesNotContain("bp-software-version-card", detail);
     }
 
     private static string RepoFile(params string[] parts)
