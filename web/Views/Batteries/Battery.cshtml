@@ -342,7 +342,7 @@
                 @foreach (var report in Model.AccidentReports)
                 {
                     <li>
-                        <span><a href="@ReaderPages.DocumentHref(report.Id)"><strong>@report.Title</strong></a> · @report.FileName · @Size(report.Length)</span>
+                        <span><a href="@ReaderPages.DocumentHref(report.Id)" target="_blank" rel="noreferrer"><strong>@report.Title</strong></a> · @report.FileName · @Size(report.Length)</span>
                         <span class="bp-batteries-muted">@When(report.UploadedAtUtc) by @report.UploadedBy</span>
                     </li>
                 }

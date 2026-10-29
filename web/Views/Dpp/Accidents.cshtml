@@ -42,7 +42,7 @@
                         @foreach (var report in Model.Reports)
                         {
                             <tr>
-                                <td data-label="Report"><a href="@ReaderPages.DocumentHref(report.Id)">@report.Title</a></td>
+                                <td data-label="Report"><a href="@ReaderPages.DocumentHref(report.Id)" target="_blank" rel="noreferrer">@report.Title</a></td>
                                 <td data-label="Added">@Day(report.UploadedAtUtc)</td>
                                 <td data-label="File">@ReaderPages.FileKind(report.ContentType) · @Size(report.Length)</td>
                             </tr>

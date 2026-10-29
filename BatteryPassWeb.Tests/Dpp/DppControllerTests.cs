@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 using BatteryPassWeb.Controllers;
 using BatteryPassWeb.Dpp.Access;
 using BatteryPassWeb.Dpp.Documents;
@@ -150,7 +151,21 @@ public sealed class DppControllerTests(MongoFixture mongo)
 
         Assert.Contains("ReaderPages.AccidentsHref(Model.Pack.Id)", battery, StringComparison.Ordinal);
         Assert.Contains("ReaderPages.DocumentHref(report.Id)", battery, StringComparison.Ordinal);
-        Assert.Contains("<a href=\"@ReaderPages.DocumentHref(document.Id)\">Open the file</a>", field, StringComparison.Ordinal);
+        Assert.Contains("<a href=\"@ReaderPages.DocumentHref(document.Id)\" target=\"_blank\" rel=\"noreferrer\">Open the file</a>", field, StringComparison.Ordinal);
+    }
+
+    /// <summary>A file opens in a new tab, so the page it was opened from stays where it was (product owner, 29 Oct 2026).</summary>
+    [Theory]
+    [InlineData("Batteries", "Battery.cshtml")]
+    [InlineData("Dpp", "Accidents.cshtml")]
+    [InlineData("ProductData", "_EditorField.cshtml")]
+    public void EveryFileLink_ShouldOpenInANewTab(string folder, string file)
+    {
+        var view = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", folder, file));
+        var links = Regex.Matches(view, @"<a [^>]*ReaderPages\.DocumentHref\([^>]*>").Select(match => match.Value).ToArray();
+
+        Assert.NotEmpty(links);
+        Assert.All(links, link => Assert.Contains("target=\"_blank\" rel=\"noreferrer\"", link, StringComparison.Ordinal));
     }
 
     /// <summary>The seed pack, published or not, with a member of its cluster and a member of another cluster.</summary>
