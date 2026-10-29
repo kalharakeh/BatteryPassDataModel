@@ -231,6 +231,34 @@ public sealed class HelpWorkbenchLayoutTests
     }
 
     [Fact]
+    public void HelpWorkbench_ShouldGroupTheCallsBuildLiveValuesAndAnswerInPlainWords()
+    {
+        var markup = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
+        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "bp-api-help.css"));
+        var workbench = markup[markup.IndexOf("Request workbench", StringComparison.Ordinal)..];
+
+        Assert.Contains("<link rel=\"stylesheet\" href=\"~/css/bp-api-help.css\"", markup);
+        Assert.Contains("<optgroup label=\"Reading\">", workbench);
+        Assert.Contains("<optgroup label=\"Live values\">", workbench);
+        Assert.Contains("<optgroup label=\"Team token: create and publish\">", workbench);
+        Assert.Contains("id=\"tester-method-tag\"", workbench);
+        Assert.Contains("@foreach (var live in BatteryPassWeb.Dpp.Api.BatteryApi.LiveSet)", workbench);
+        Assert.Contains("data-live-key=\"@live.Property\"", workbench);
+        Assert.Contains("<span class=\"bp-wb-unit\">@live.Unit</span>", workbench);
+        Assert.Contains("id=\"tester-measured-now\"", workbench);
+        Assert.Contains("const renderAnswer", workbench);
+        Assert.Contains("<summary>Show JSON</summary>", workbench);
+        Assert.Contains("<summary>Show request</summary>", workbench);
+        Assert.True(
+            workbench.IndexOf("<summary>Show request</summary>", StringComparison.Ordinal) < workbench.IndexOf("id=\"tester-auth-format\"", StringComparison.Ordinal),
+            "The auth format belongs under Show request.");
+        Assert.DoesNotContain("template-shortcut", workbench);
+        Assert.DoesNotContain("tester-load-template", workbench);
+        Assert.DoesNotContain(">s</span>", workbench);
+        Assert.Contains(".bp-wb-tag.is-done", css);
+    }
+
+    [Fact]
     public void HelpDocumentation_ShouldExplainExternalApiHttpCodes()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));

@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "External API Help";
 }
+<link rel="stylesheet" href="~/css/bp-api-help.css" asp-append-version="true" />
 <main class="bp-page bp-admin-page bp-help-page bp-api-help-page">
     <header class="bp-console-header">
         <div>
@@ -404,50 +405,48 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
             </div>
         </section>
 
-        <section class="bp-card bp-help-tester-card bp-api-help-section-card">
+        <section class="bp-card bp-help-tester-card bp-api-help-section-card bp-wb">
             <div class="bp-api-help-doc-heading">
                 <div>
                     <span class="bp-summary-title">Sandbox</span>
                     <h2>Request workbench</h2>
+                    <p class="bp-wb-hint mb-0">Choose a call, check the battery ID and the token, and send it. The answer is shown in plain words first.</p>
                 </div>
             </div>
 
-            <div class="bp-form-grid">
-                <label>Template
-                    <select id="tester-template">
-                        <option value="readFull">Read full battery</option>
-                        <option value="listClusters">List accessible clusters</option>
-                        <option value="listClusterBatteries">List cluster batteries</option>
-                        <option value="readSection">Read section: Identifiers and product data</option>
-                        <option value="readSectionPerformance">Read section: Performance and durability</option>
-                        <option value="readSectionCircularity">Read section: Circularity</option>
-                        <option value="readValuesAliases">Read values: state of charge, serial number, mass</option>
-                        <option value="readPathsAll">List readable values</option>
-                        <option value="readBatteryPassports">List passport versions</option>
-                        <option value="writeLiveValues">Send live values</option>
-                        <option value="previewLiveValues">Check live values without saving</option>
-                        <option value="readLiveHistory24h">Read live value history 24h</option>
-                        <option value="listBatches">List batches (team token)</option>
-                        <option value="listOperators">List economic operators (team token)</option>
-                        <option value="createBattery">Create battery (team token)</option>
-                        <option value="publishBattery">Publish battery (team token)</option>
-                    </select>
-                </label>
-                <label>HTTP method
-                    <select id="tester-method">
-                        <option>GET</option>
-                        <option>POST</option>
-                    </select>
-                </label>
-                <label>Auth format
-                    <select id="tester-auth-format">
-                        <option value="base64">Basic &lt;base64(token:)&gt;</option>
-                        <option value="raw">Basic &lt;token&gt;</option>
-                    </select>
+            <div class="bp-form-grid bp-wb-grid">
+                <label>Call
+                    <span class="bp-wb-call-control">
+                        <select id="tester-template">
+                            <optgroup label="Reading">
+                                <option value="readFull">Read full battery</option>
+                                <option value="listClusters">List accessible clusters</option>
+                                <option value="listClusterBatteries">List cluster batteries</option>
+                                <option value="readSection">Read section: Identifiers and product data</option>
+                                <option value="readSectionPerformance">Read section: Performance and durability</option>
+                                <option value="readSectionCircularity">Read section: Circularity</option>
+                                <option value="readValuesAliases">Read values: state of charge, serial number, mass</option>
+                                <option value="readPathsAll">List readable values</option>
+                                <option value="readBatteryPassports">List passport versions</option>
+                            </optgroup>
+                            <optgroup label="Live values">
+                                <option value="writeLiveValues">Send live values</option>
+                                <option value="previewLiveValues">Check live values without saving</option>
+                                <option value="readLiveHistory24h">Read live value history 24h</option>
+                            </optgroup>
+                            <optgroup label="Team token: create and publish">
+                                <option value="listBatches">List batches</option>
+                                <option value="listOperators">List economic operators</option>
+                                <option value="createBattery">Create battery</option>
+                                <option value="publishBattery">Publish battery</option>
+                            </optgroup>
+                        </select>
+                        <span id="tester-method-tag" class="bp-wb-tag" title="HTTP method, set by the call">GET</span>
+                    </span>
                 </label>
                 <label class="bp-help-sticky-id-field">Battery ID
                     <span class="bp-help-sticky-id-control">
-                        <input id="tester-battery-id" class="bp-id-value" value="@Model.ExampleBatteryId" />
+                        <input id="tester-battery-id" class="bp-id-value" value="@Model.ExampleBatteryId" spellcheck="false" />
                         <button type="button" class="bp-copy-id-button" aria-label="Copy Battery ID" title="Copy Battery ID" data-tooltip="Copy Battery ID" data-copy-id-button data-copy-target="#tester-battery-id">
                             <svg class="bp-copy-id-icon" viewBox="0 0 24 24" aria-hidden="true">
                                 <rect x="9" y="9" width="10" height="10" rx="2" />
@@ -456,54 +455,101 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                         </button>
                     </span>
                 </label>
-                <label class="bp-span-all">Path
-                    <input id="tester-path" value="@Model.BasePath/batteries/@Model.ExampleBatteryId" />
-                </label>
-                <label>Token preset
+                <label>Token
                     <select id="tester-token-preset">
                         <option value="sample-read">Sample read token</option>
                         <option value="sample-read-write">Sample read-write token</option>
                         <option value="sample-lifecycle">Sample Passport Lifecycle token</option>
-                        <option value="custom">Custom token</option>
+                        <option value="custom">Your own token</option>
                     </select>
                     @if (!Model.CanUsePrivilegedDemoTokens)
                     {
-                        <small class="text-secondary">@Model.PrivilegedDemoTokenMessage</small>
+                        <small class="bp-wb-hint">@Model.PrivilegedDemoTokenMessage</small>
                     }
                 </label>
-                <label class="bp-span-2">Token value
-                    <input id="tester-token" value="@Model.SampleReadToken" />
-                </label>
-                <label class="bp-span-all">Body JSON
-                    <textarea id="tester-body" rows="9"></textarea>
-                </label>
-                <label class="bp-span-all">Constructed HTTP request
-                    <textarea id="tester-raw-request" class="bp-help-request-editor" rows="12"></textarea>
+                <label>Token value
+                    <input id="tester-token" value="@Model.SampleReadToken" autocomplete="off" spellcheck="false" />
+                    <small id="tester-team-note" class="bp-wb-hint" hidden>This call needs a team (global) token: paste one from API Token Management.</small>
                 </label>
             </div>
 
-            <div class="d-flex flex-wrap gap-2 mt-3">
-                <button id="tester-load-template" type="button" class="bp-secondary-button">Load template</button>
+            <fieldset id="tester-live-form" class="bp-fieldset bp-wb-live" hidden>
+                <legend>Live values</legend>
+                <p class="bp-wb-hint">Fill in the values to send; empty fields are left out. The units come from the attribute list.</p>
+                <div class="bp-wb-live-grid">
+                    @foreach (var live in BatteryPassWeb.Dpp.Api.BatteryApi.LiveSet)
+                    {
+                        <label>
+                            <span><span class="bp-wb-code">@live.Label</span> @live.Name</span>
+                            <span class="bp-wb-unit-control">
+                                <input type="number" step="any" inputmode="decimal" data-live-key="@live.Property" aria-label="@live.Label @live.Name" />
+                                @if (live.Unit is not null)
+                                {
+                                    <span class="bp-wb-unit">@live.Unit</span>
+                                }
+                            </span>
+                        </label>
+                    }
+                    <label>
+                        <span>Measured at</span>
+                        <span class="bp-wb-unit-control">
+                            <input id="tester-measured-at" type="datetime-local" step="1" aria-label="Measured at" disabled />
+                            <span class="bp-wb-now"><input id="tester-measured-now" type="checkbox" checked aria-label="Measured now" /> Now</span>
+                        </span>
+                    </label>
+                </div>
+            </fieldset>
+
+            <div id="tester-body-field" class="bp-form-grid bp-wb-body">
+                <label class="bp-span-all">Body (JSON)
+                    <textarea id="tester-body" rows="8" spellcheck="false"></textarea>
+                    <small id="tester-body-note" class="bp-wb-hint" hidden>Built from the live value fields; you can still edit it.</small>
+                </label>
+            </div>
+
+            <div class="bp-wb-actions">
                 <button id="tester-send" type="button" class="bp-primary-button">Send request</button>
                 <button id="tester-reset" type="button" class="bp-secondary-button">Reset</button>
             </div>
 
-            <div class="d-flex flex-wrap gap-2 mt-3">
-                <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="readFull">Read battery</button>
-                <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="readLiveHistory24h">History 24h</button>
-                <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="readValuesAliases">Read specific values</button>
-                <button type="button" class="bp-secondary-button bp-button-compact template-shortcut" data-template="writeLiveValues">Send live values</button>
+            <div class="bp-wb-answer" aria-live="polite">
+                <div class="bp-wb-answer-head">
+                    <h3>Answer</h3>
+                    <span id="tester-status" class="bp-wb-tag">-</span>
+                </div>
+                <p id="tester-message" class="bp-wb-message" hidden></p>
+                <div id="tester-summary"></div>
+                <details class="bp-wb-more">
+                    <summary>Show JSON</summary>
+                    <pre id="tester-response" class="bp-help-pre"><code>{}</code></pre>
+                </details>
             </div>
 
-            <div class="mt-3">
-                <p class="mb-1"><strong>Status:</strong> <span id="tester-status">-</span></p>
-                <pre id="tester-response" class="bp-help-pre"><code>{}</code></pre>
-            </div>
-
-            <div class="mt-3">
-                <p class="mb-1"><strong>cURL preview</strong></p>
+            <details class="bp-wb-more">
+                <summary>Show request</summary>
+                <div class="bp-form-grid bp-wb-request-grid">
+                    <label>HTTP method
+                        <select id="tester-method">
+                            <option>GET</option>
+                            <option>POST</option>
+                        </select>
+                    </label>
+                    <label>Auth format
+                        <select id="tester-auth-format">
+                            <option value="base64">Basic &lt;base64(token:)&gt;</option>
+                            <option value="raw">Basic &lt;token&gt;</option>
+                        </select>
+                    </label>
+                    <label class="bp-span-all">Path
+                        <input id="tester-path" value="@Model.BasePath/batteries/@Model.ExampleBatteryId" spellcheck="false" />
+                    </label>
+                    <label class="bp-span-all">Constructed HTTP request
+                        <textarea id="tester-raw-request" class="bp-help-request-editor" rows="10" spellcheck="false"></textarea>
+                    </label>
+                </div>
+                <p class="mb-1 mt-3"><strong>cURL</strong></p>
                 <pre id="tester-curl" class="bp-help-pre"><code></code></pre>
-            </div>
+            </details>
         </section>
     </div>
 </main>
@@ -973,6 +1019,7 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                 pathEl.value = resolveTemplatePath(template.pathTemplate, getWorkbenchContext());
                 bodyEl.value = template.body;
                 syncRawRequestFromControls();
+                showCallParts(templateKey);
             };
 
             const refreshTemplatePathFromContext = () => {
@@ -985,8 +1032,10 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                 syncRawRequestFromControls();
             };
 
-            const setStatus = (text) => {
+            const setStatus = (text, ok) => {
                 statusEl.innerText = text;
+                statusEl.classList.toggle('is-done', ok === true);
+                statusEl.classList.toggle('is-refused', ok === false);
             };
 
             const setResponse = (value) => {
@@ -997,19 +1046,19 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                 applyTemplate(templateSelect.value);
             });
 
-            document.getElementById('tester-load-template')?.addEventListener('click', () => {
-                applyTemplate(templateSelect.value);
-            });
-
             document.getElementById('tester-reset')?.addEventListener('click', () => {
                 templateSelect.value = 'readFull';
                 authFormatEl.value = 'base64';
                 batteryIdEl.value = exampleBatteryId;
                 tokenPresetEl.value = 'sample-read';
                 tokenEl.value = sampleReadToken;
+                liveInputs.forEach(input => { input.value = ''; });
+                measuredNowEl.checked = true;
+                measuredAtEl.disabled = true;
                 applyTemplate('readFull');
                 setStatus('-');
                 setResponse('{}');
+                renderAnswer(null);
             });
 
             tokenPresetEl?.addEventListener('change', () => {
@@ -1019,18 +1068,6 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
 
             batteryIdEl?.addEventListener('input', refreshTemplatePathFromContext);
             batteryIdEl?.addEventListener('change', refreshTemplatePathFromContext);
-
-            document.querySelectorAll('.template-shortcut').forEach(button => {
-                button.addEventListener('click', () => {
-                    const key = button.getAttribute('data-template');
-                    if (!key) {
-                        return;
-                    }
-
-                    templateSelect.value = key;
-                    applyTemplate(key);
-                });
-            });
 
             [methodEl, pathEl, authFormatEl, tokenEl, bodyEl].forEach(element => {
                 element?.addEventListener('input', syncRawRequestFromControls);
@@ -1045,7 +1082,7 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
             document.getElementById('tester-send')?.addEventListener('click', async () => {
                 const parsed = parseRawRequest(rawRequestEl.value);
                 if (!parsed || !parsed.absoluteUrl) {
-                    setStatus('Validation failed');
+                    setStatus('Validation failed', false);
                     setResponse('Constructed HTTP request is invalid.');
                     return;
                 }
@@ -1063,18 +1100,171 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                     });
 
                     const text = await httpResponse.text();
-                    setStatus(`${httpResponse.status} ${httpResponse.statusText}`);
+                    setStatus(`${httpResponse.status} ${httpResponse.statusText}`, httpResponse.ok);
                     try {
-                        setResponse(JSON.stringify(JSON.parse(text), null, 2));
+                        const answer = JSON.parse(text);
+                        setResponse(JSON.stringify(answer, null, 2));
+                        renderAnswer(answer);
                     } catch {
                         setResponse(text);
+                        renderAnswer(null);
                     }
                 } catch (error) {
-                    setStatus('Request failed');
+                    setStatus('Request failed', false);
                     setResponse(String(error));
+                    renderAnswer(null);
                 } finally {
                     updateCurlPreview();
                 }
+            });
+
+            // The answer in plain words: the API's message, then a table of what came back. The JSON stays under "Show JSON".
+            const messageEl = document.getElementById('tester-message');
+            const summaryEl = document.getElementById('tester-summary');
+            const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+            const plainValue = (value) => {
+                if (value === null || value === undefined) {
+                    return '-';
+                }
+
+                if (typeof value !== 'object') {
+                    return String(value);
+                }
+
+                const parts = Object.entries(value)
+                    .filter(([key, part]) => part !== null && typeof part !== 'object' && !/unit$/i.test(key))
+                    .map(([, part]) => String(part));
+                return parts.length > 0 ? parts.join(', ') : JSON.stringify(value);
+            };
+            const answerTag = (text, kind) => `<span class="bp-wb-tag${kind ? ` is-${kind}` : ''}">${escapeHtml(text)}</span>`;
+            const answerTable = (heads, rows) => `<div class="bp-table-scroll"><table class="table bp-console-table bp-wb-table"><thead><tr>${heads.map(head => `<th>${escapeHtml(head)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${row.map((cell, index) => `<td data-label="${escapeHtml(heads[index])}">${cell}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+            const code = (text) => text ? `<code>${escapeHtml(text)}</code>` : '-';
+            const factWords = {
+                batteryId: 'Battery ID', passportId: 'Passport ID', serialNumber: 'Serial number', clusterId: 'Cluster', clusterName: 'Cluster name',
+                version: 'Version', dppStatus: 'Status', signatureVerified: 'Signature holds', unchanged: 'Unchanged', preview: 'Preview only',
+                saved: 'Saved', measuredAt: 'Measured at', hours: 'Hours', section: 'Section', globalAccess: 'Team token', publishPath: 'Publish with'
+            };
+            const outcomeWords = { saved: ['Saved', 'done'], kept: ['Kept (empty)', ''], ignored: ['Ignored', ''], removed: ['Removed', ''], rejected: ['Refused', 'refused'] };
+
+            const renderAnswer = (body) => {
+                summaryEl.innerHTML = '';
+                messageEl.hidden = true;
+                if (!body || typeof body !== 'object') {
+                    return;
+                }
+
+                if (body.message) {
+                    messageEl.textContent = body.message;
+                    messageEl.hidden = false;
+                }
+
+                const data = body.data && typeof body.data === 'object' ? body.data : {};
+                const values = Array.isArray(data.values) ? data.values : null;
+                const parts = [];
+                if (values && values.length > 0 && 'outcome' in values[0]) {
+                    parts.push(answerTable(['Value', 'Key', 'Result', 'Why'], values.map(value => {
+                        const [word, kind] = outcomeWords[value.outcome] || [value.outcome, ''];
+                        return [escapeHtml(value.attribute || '-'), code(value.key), answerTag(word, kind), escapeHtml(value.message || '')];
+                    })));
+                } else if (values && values.length > 0 && 'measuredAt' in values[0]) {
+                    parts.push(answerTable(['Measured', 'Value', 'Name', 'Reading', 'Unit', 'Source'], values.map(value =>
+                        [escapeHtml(value.measuredAt), escapeHtml(value.attribute), escapeHtml(value.name), escapeHtml(plainValue(value.value)), escapeHtml(value.unit || '-'), escapeHtml(value.source)])));
+                } else if (values && values.length > 0 && 'exists' in values[0]) {
+                    parts.push(answerTable(['Asked', 'Value', 'Name', 'Reading', 'Unit', 'Came from'], values.map(value =>
+                        [code(value.request), escapeHtml(value.attribute || '-'), escapeHtml(value.name || ''), value.exists ? escapeHtml(plainValue(value.value)) : answerTag('Not available', ''), escapeHtml(value.unit || '-'),
+                            escapeHtml([value.source, value.generatedAt].filter(Boolean).join(', ') || '-')])));
+                } else if (values) {
+                    parts.push('<p class="bp-wb-hint">No values in this answer.</p>');
+                } else if (Array.isArray(data.batteries)) {
+                    parts.push(answerTable(['Battery ID', 'Serial number', 'Model', 'Status'], data.batteries.map(battery =>
+                        [code(battery.batteryId), escapeHtml(battery.serialNumber), escapeHtml(battery.batteryModel), answerTag(battery.dppStatus, battery.dppStatus === 'active' ? 'done' : '')])));
+                } else if (Array.isArray(data.batches)) {
+                    parts.push(answerTable(['Batch ID', 'Family', 'Model', 'Year', 'Manufacturing site'], data.batches.map(batch =>
+                        [code(batch.batchId), escapeHtml(batch.batteryFamily), escapeHtml(batch.batteryModel), escapeHtml(batch.year), escapeHtml(batch.manufacturingSite)])));
+                } else if (Array.isArray(data.operators)) {
+                    parts.push(answerTable(['Operator ID', 'Name'], data.operators.map(item => [code(item.operatorId), escapeHtml(item.name)])));
+                } else if (Array.isArray(data.clusters)) {
+                    parts.push(answerTable(['Cluster ID', 'Name'], data.clusters.map(cluster => [code(cluster.clusterId), escapeHtml(cluster.name)])));
+                } else if (Array.isArray(data.passports)) {
+                    parts.push(answerTable(['Version', 'Passport ID', 'Status', 'Published', 'Signature'], data.passports.map(version =>
+                        [escapeHtml(version.version), code(version.passportId), answerTag(version.dppStatus, version.dppStatus === 'active' ? 'done' : ''), escapeHtml(version.publishedAt), version.signatureVerified ? answerTag('Holds', 'done') : answerTag('Broken', 'refused')])));
+                } else if (Array.isArray(data.attributes)) {
+                    parts.push(answerTable(['Value', 'Key', 'Name', 'Unit'], data.attributes.map(attribute =>
+                        [escapeHtml(attribute.attribute), code(attribute.key), escapeHtml(attribute.name), escapeHtml(attribute.unit || '-')])));
+                }
+
+                if (Array.isArray(data.blocking) && data.blocking.length > 0) {
+                    parts.push(`<p class="bp-wb-list-title">What blocks publication</p><ul class="bp-wb-list">${data.blocking.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`);
+                }
+
+                if (Array.isArray(data.warnings) && data.warnings.length > 0) {
+                    parts.push(`<p class="bp-wb-list-title">Warnings</p><ul class="bp-wb-list">${data.warnings.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`);
+                }
+
+                const facts = Object.entries(data).filter(([, value]) => value !== null && typeof value !== 'object');
+                if (facts.length > 0) {
+                    parts.unshift(`<dl class="bp-wb-facts">${facts.map(([key, value]) => `<div><dt>${escapeHtml(factWords[key] || key)}</dt><dd>${escapeHtml(value === true ? 'yes' : value === false ? 'no' : value)}</dd></div>`).join('')}</dl>`);
+                }
+
+                summaryEl.innerHTML = parts.join('');
+            };
+
+            // The live value fields build the body of the two live-value calls.
+            const liveCalls = ['writeLiveValues', 'previewLiveValues'];
+            const teamCalls = ['listBatches', 'listOperators', 'createBattery', 'publishBattery'];
+            const liveForm = document.getElementById('tester-live-form');
+            const liveInputs = Array.from(document.querySelectorAll('[data-live-key]'));
+            const measuredAtEl = document.getElementById('tester-measured-at');
+            const measuredNowEl = document.getElementById('tester-measured-now');
+            const bodyField = document.getElementById('tester-body-field');
+            const bodyNote = document.getElementById('tester-body-note');
+            const methodTag = document.getElementById('tester-method-tag');
+            const teamNote = document.getElementById('tester-team-note');
+            const sampleLiveValues = { stateOfChargeSoC: 76, numberOfFullChargingAndDischargingCycles: 412, temperatureInformation: 23 };
+
+            const isoSeconds = (date) => date.toISOString().replace(/\.\d{3}Z$/, 'Z');
+            const buildLiveBody = () => {
+                const values = {};
+                liveInputs.forEach(input => {
+                    const text = (input.value || '').trim();
+                    if (text !== '' && !Number.isNaN(Number(text))) {
+                        values[input.getAttribute('data-live-key')] = Number(text);
+                    }
+                });
+                const measuredAt = measuredNowEl.checked || !measuredAtEl.value
+                    ? isoSeconds(new Date())
+                    : isoSeconds(new Date(measuredAtEl.value));
+                bodyEl.value = JSON.stringify({ measuredAt, values }, null, 2);
+                syncRawRequestFromControls();
+            };
+
+            const showCallParts = (templateKey) => {
+                const live = liveCalls.includes(templateKey);
+                liveForm.hidden = !live;
+                bodyNote.hidden = !live;
+                bodyField.hidden = (templates[templateKey]?.method || 'GET') === 'GET';
+                methodTag.textContent = templates[templateKey]?.method || 'GET';
+                teamNote.hidden = !teamCalls.includes(templateKey);
+                if (live) {
+                    if (liveInputs.every(input => !input.value)) {
+                        liveInputs.forEach(input => {
+                            const sample = sampleLiveValues[input.getAttribute('data-live-key')];
+                            input.value = sample === undefined ? '' : String(sample);
+                        });
+                    }
+                    buildLiveBody();
+                }
+            };
+
+            liveInputs.forEach(input => input.addEventListener('input', buildLiveBody));
+            measuredAtEl?.addEventListener('input', buildLiveBody);
+            measuredNowEl?.addEventListener('change', () => {
+                measuredAtEl.disabled = measuredNowEl.checked;
+                if (!measuredNowEl.checked && !measuredAtEl.value) {
+                    const local = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
+                    measuredAtEl.value = local.toISOString().slice(0, 19);
+                }
+                buildLiveBody();
             });
 
             applyTemplate(templateSelect.value);

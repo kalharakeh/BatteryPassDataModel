@@ -1,0 +1,242 @@
+/* The API help page's request workbench (step 3c-2). The palette, fonts, buttons and inputs come from site.css; this
+   file, loaded only on the help page, lays the workbench out: the call, battery and token first, the live value
+   fields when they apply, then the answer in plain words, with the JSON and the raw request folded away. Quiet outlined
+   tags, green only for "done", as on the team pages (decision 27). */
+
+.bp-wb .bp-wb-hint {
+  color: var(--bp-muted);
+  font-size: 0.82rem;
+  font-weight: 400;
+}
+
+/* The card has no padding of its own (site.css pads its form grids): the other parts keep the same 16px edge. */
+.bp-wb > :is(.bp-wb-live, .bp-wb-actions, .bp-wb-answer, .bp-wb-more) {
+  margin-left: 16px;
+  margin-right: 16px;
+}
+
+.bp-wb > .bp-wb-more:last-child {
+  margin-bottom: 16px;
+}
+
+.bp-wb > .bp-wb-body {
+  padding-top: 0;
+}
+
+/* A field keeps its own height when the field beside it is taller (a list with a hint under it). */
+.bp-wb-grid > label {
+  align-content: start;
+}
+
+@media (min-width: 900px) {
+  .bp-wb-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bp-wb-request-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.bp-wb-call-control,
+.bp-wb-unit-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bp-wb-call-control select {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Small outlined tags in sentence case; green only for a call that worked or a value that was saved. */
+.bp-wb-tag {
+  display: inline-block;
+  flex: none;
+  padding: 1px 8px;
+  border: 1px solid #d6dee8;
+  border-radius: 999px;
+  color: #405367;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bp-wb-tag.is-done {
+  border-color: #b7dfc4;
+  color: #166534;
+}
+
+.bp-wb-tag.is-refused {
+  border-color: #f1b8bf;
+  color: var(--bp-danger);
+}
+
+.bp-wb-live {
+  margin-top: 0;
+  margin-bottom: 14px;
+}
+
+.bp-wb-live .bp-wb-hint {
+  margin-bottom: 10px;
+}
+
+.bp-wb-live-grid {
+  display: grid;
+  gap: 10px 16px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.bp-wb-live-grid label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.bp-wb-live-grid input[type="number"],
+.bp-wb-live-grid input[type="datetime-local"] {
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.92rem;
+}
+
+.bp-wb-live-grid input:disabled {
+  background: #eef2f6;
+  color: #5c6c7d;
+}
+
+.bp-wb-code {
+  color: var(--bp-muted);
+  font-weight: 700;
+}
+
+.bp-wb-unit {
+  min-width: 2.5em;
+  color: var(--bp-muted);
+  font-weight: 600;
+}
+
+.bp-wb-now {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bp-wb-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 0;
+}
+
+.bp-wb-answer {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--bp-border);
+}
+
+.bp-wb-answer-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bp-wb-answer-head h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.bp-wb-message {
+  margin: 8px 0 0;
+}
+
+.bp-wb-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 12px 0 0;
+  font-size: 0.85rem;
+}
+
+.bp-wb-facts dt {
+  color: var(--bp-muted);
+  font-weight: 600;
+}
+
+.bp-wb-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.bp-wb-table {
+  margin: 12px 0 0;
+  font-size: 0.85rem;
+}
+
+.bp-wb-table td {
+  overflow-wrap: anywhere;
+}
+
+.bp-wb-list-title {
+  margin: 12px 0 4px;
+  font-weight: 700;
+}
+
+.bp-wb-list {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.bp-wb-more {
+  margin-top: 14px;
+}
+
+.bp-wb-more > summary {
+  width: fit-content;
+  color: var(--bp-primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bp-wb-more > summary:focus-visible {
+  outline: 2px solid var(--bp-primary);
+  outline-offset: 2px;
+}
+
+.bp-wb-more[open] > summary {
+  margin-bottom: 10px;
+}
+
+[data-theme="dark"] .bp-wb-tag {
+  border-color: var(--bp-border);
+  color: var(--bp-text);
+}
+
+[data-theme="dark"] .bp-wb-tag.is-done {
+  border-color: #2f6b45;
+  color: #86efac;
+}
+
+[data-theme="dark"] .bp-wb-tag.is-refused {
+  border-color: #7a2b35;
+}
+
+[data-theme="dark"] .bp-wb-live-grid :is(input[type="number"], input[type="datetime-local"]) {
+  border-color: var(--bp-border);
+  background: var(--bp-surface);
+  color: var(--bp-text);
+}
+
+[data-theme="dark"] .bp-wb-live-grid input:disabled {
+  background: var(--bp-bg);
+  color: var(--bp-muted);
+}
