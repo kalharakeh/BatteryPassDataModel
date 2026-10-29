@@ -117,7 +117,6 @@ public class AdminController : Controller
     private readonly PassportEvidenceService _passportEvidenceService;
     private readonly DataCompletionPolicyService _dataCompletionPolicyService;
     private readonly EditableFieldPolicyService _editableFieldPolicyService;
-    private readonly LocalAdminEditableFieldPolicyService _localAdminEditableFieldPolicyService;
     private readonly ProductTemplateService _productTemplateService;
     private readonly PassportTrustService _passportTrustService;
     private readonly AuditRevisionService _auditRevisionService;
@@ -144,7 +143,6 @@ public class AdminController : Controller
         PassportEvidenceService passportEvidenceService,
         DataCompletionPolicyService dataCompletionPolicyService,
         EditableFieldPolicyService editableFieldPolicyService,
-        LocalAdminEditableFieldPolicyService localAdminEditableFieldPolicyService,
         ProductTemplateService productTemplateService,
         PassportTrustService passportTrustService,
         AuditRevisionService auditRevisionService,
@@ -170,7 +168,6 @@ public class AdminController : Controller
         _passportEvidenceService = passportEvidenceService;
         _dataCompletionPolicyService = dataCompletionPolicyService;
         _editableFieldPolicyService = editableFieldPolicyService;
-        _localAdminEditableFieldPolicyService = localAdminEditableFieldPolicyService;
         _productTemplateService = productTemplateService;
         _passportTrustService = passportTrustService;
         _auditRevisionService = auditRevisionService;
@@ -967,127 +964,23 @@ public class AdminController : Controller
         });
     }
 
-    [HttpGet("products/new")]
-    public async Task<IActionResult> NewProduct([FromQuery] string? error, CancellationToken cancellationToken)
-    {
-        await _productTemplateService.EnsureDefaultTemplatesAsync(CurrentActor(), cancellationToken);
-        var starter = BatteryProductTemplateCatalog.DefaultProduct with
-        {
-            ProductId = string.Empty,
-            ProductName = string.Empty,
-            Description = string.Empty
-        };
-        var dataRequirements = DataCompletionPolicyService.CreateDefaultPolicy();
-        return View("Product", BuildProductEditModel(starter, dataRequirements, string.Empty, error));
-    }
-
-    [HttpGet("products/{productId}")]
-    public async Task<IActionResult> Product(string productId, [FromQuery] string? status, [FromQuery] string? error, CancellationToken cancellationToken)
-    {
-        await _productTemplateService.EnsureDefaultTemplatesAsync(CurrentActor(), cancellationToken);
-        var product = await _productTemplateService.GetProductAsync(productId, cancellationToken);
-        if (product == null)
-        {
-            return NotFound();
-        }
-
-        var dataRequirements = await _dataCompletionPolicyService.GetProductPolicyAsync(product.ProductId, cancellationToken);
-        return View("Product", BuildProductEditModel(product, dataRequirements, status, error));
-    }
-
-    [HttpPost("products/save")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SaveProduct(CancellationToken cancellationToken)
-    {
-        var form = Request.Form;
-        var productId = Text(form, "productId").Trim().ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(productId))
-        {
-            return Redirect($"/admin/products/new?error={Uri.EscapeDataString("Product ID is required.")}");
-        }
-
-        var existing = await _productTemplateService.GetProductAsync(productId, cancellationToken)
-            ?? BatteryProductTemplateCatalog.FindProduct(productId)
-            ?? (BatteryProductTemplateCatalog.DefaultProduct with { ProductId = productId });
-        var product = BuildProductTemplateFromForm(form, existing);
-        await _productTemplateService.SaveProductAsync(product, CurrentActor(), cancellationToken);
-        await AppendAdminAuditAsync(
-            "product.saved",
-            "Battery family template saved.",
-            new BsonDocument
-            {
-                ["productId"] = product.ProductId,
-                ["productName"] = product.ProductName,
-                ["versionCount"] = product.ProductVersions.Count
-            },
-            "product",
-            product.ProductId,
-            cancellationToken);
-        return Redirect($"/admin/products/{Uri.EscapeDataString(product.ProductId)}?status={Uri.EscapeDataString("Battery family saved. Push a Battery Model when you want matching batteries to receive safe template changes.")}");
-    }
-
-    [HttpPost("products/{productId}/versions/{productVersion}/push")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> PushProductVersionTemplate(string productId, string productVersion, CancellationToken cancellationToken)
-    {
-        var result = await _productTemplateService.PushProductVersionAsync(productId, productVersion, CurrentActor(), cancellationToken);
-        await AppendAdminAuditAsync(
-            "product.version.pushed",
-            "Battery Model template pushed to matching batteries.",
-            new BsonDocument
-            {
-                ["productId"] = productId,
-                ["productVersion"] = productVersion,
-                ["matchedBatteries"] = result.MatchedBatteries,
-                ["updatedBatteries"] = result.UpdatedBatteries,
-                ["skippedBatteries"] = result.SkippedBatteries
-            },
-            "product",
-            productId,
-            cancellationToken);
-        var message = $"Battery Model push finished: {result.UpdatedBatteries} of {result.MatchedBatteries} matching batteries updated. Manual overrides were preserved.";
-        return Redirect($"/admin/products/{Uri.EscapeDataString(productId)}?status={Uri.EscapeDataString(message)}");
-    }
-
-    [HttpPost("product-templates/reset")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ResetProductTemplateDemo(CancellationToken cancellationToken)
-    {
-        try
-        {
-            var result = await _productTemplateService.ResetTemplateDemoAsync(CurrentActor(), cancellationToken);
-            await AppendAdminAuditAsync(
-                "product.demoReset",
-                "Product template demo data reset.",
-                new BsonDocument
-                {
-                    ["batteryCount"] = result.BatteryCount,
-                    ["passportCount"] = result.PassportCount
-                },
-                "product",
-                "demo-reset",
-                cancellationToken);
-            TempData["StatusMessage"] = $"Product template demo reset completed: seeded {result.BatteryCount} batteries and {result.PassportCount} passport snapshots from MongoDB product templates.";
-            return Redirect("/admin/clusters?tab=products");
-        }
-        catch (Exception exception) when (IsTrustPersistenceFailure(exception))
-        {
-            TempData["ErrorMessage"] = $"{TrustWorkflowServiceErrorMessage} {exception.Message}";
-            return Redirect("/admin/clusters?tab=products");
-        }
-        catch (InvalidOperationException exception)
-        {
-            TempData["ErrorMessage"] = exception.Message;
-            return Redirect("/admin/clusters?tab=products");
-        }
-    }
-
     [HttpGet("clusters")]
     public async Task<IActionResult> Clusters([FromQuery] string? tab, [FromQuery] string? q, CancellationToken cancellationToken)
     {
         if (tab?.Equals("passports", StringComparison.OrdinalIgnoreCase) == true)
         {
             return Redirect(AdminBatteriesUrl(q));
+        }
+
+        // The battery families moved to their own pages, and the attribute catalogue replaced the editable-fields tab.
+        if (tab?.Equals("products", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return Redirect("/admin/families");
+        }
+
+        if (tab?.Equals("local-editable-fields", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return Redirect("/admin/clusters");
         }
 
         var selectedTab = NormalizeTab(tab);
@@ -1110,8 +1003,6 @@ public class AdminController : Controller
         var needsPassports = selectedTab is "battery" or "api-token-management";
         var needsUsers = selectedTab is "users" or "clusters";
         var needsCredentials = selectedTab == "api-token-management";
-        var needsProducts = selectedTab == "products";
-        var needsLocalEditablePolicy = selectedTab == "local-editable-fields";
         var batteryTable = needsBatteries
             ? await _batteryTableService.BuildAsync(User, BatteryTableScope.AdminBatteries, q, cancellationToken)
             : new BatteryTablePageViewModel();
@@ -1132,12 +1023,6 @@ public class AdminController : Controller
         IReadOnlyList<BsonDocument> apiTokens = needsCredentials
             ? await _externalApiRepository.ListTokensAsync(cancellationToken)
             : Array.Empty<BsonDocument>();
-        IReadOnlyList<BatteryProductTemplate> productTemplates = needsProducts
-            ? await _productTemplateService.ListProductsAsync(cancellationToken)
-            : Array.Empty<BatteryProductTemplate>();
-        var localEditableFieldPolicy = needsLocalEditablePolicy
-            ? await _editableFieldPolicyService.GetPolicyAsync(cancellationToken)
-            : EditableFieldPolicyService.CreateDefaultPolicy();
 
         var model = new AdminClusterViewModel
         {
@@ -1214,8 +1099,6 @@ public class AdminController : Controller
                     LastUsedAt = BsonHelpers.GetString(token, "lastUsedAt")
                 };
             }).OrderBy(token => token.Name, StringComparer.OrdinalIgnoreCase).ToList(),
-            ProductTemplates = BuildProductTemplateSummaries(productTemplates),
-            LocalEditableFieldPolicy = localEditableFieldPolicy,
             SamplePassportId = ExternalApiInitializer.SamplePassportId,
             SampleReadToken = await ResolveTokenValueAsync(ExternalApiInitializer.SampleReadTokenId, ExternalApiInitializer.SampleReadTokenValue, cancellationToken),
             SampleReadWriteToken = await ResolveTokenValueAsync(ExternalApiInitializer.SampleReadWriteTokenId, ExternalApiInitializer.SampleReadWriteTokenValue, cancellationToken),
@@ -1814,53 +1697,6 @@ public class AdminController : Controller
         return Redirect("/admin/clusters?tab=api-token-management");
     }
 
-    [HttpPost("local-editable-fields/save")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SaveLocalEditableFields(CancellationToken cancellationToken)
-    {
-        var creationKeys = FormKeys("editableAtCreationFieldKeys");
-        var afterCreationKeys = FormKeys("editableAfterCreationFieldKeys");
-        var visibleKeys = FormKeys("visibleToClusterAdminFieldKeys");
-        var localAdminKeys = FormKeys("editableByLocalAdminFieldKeys");
-        var allKeys = creationKeys
-            .Concat(afterCreationKeys)
-            .Concat(visibleKeys)
-            .Concat(localAdminKeys)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Select(fieldKey => new EditableFieldPermission(
-                fieldKey,
-                creationKeys.Contains(fieldKey),
-                afterCreationKeys.Contains(fieldKey),
-                localAdminKeys.Contains(fieldKey),
-                visibleKeys.Contains(fieldKey)))
-            .ToList();
-
-        await _editableFieldPolicyService.SavePolicyAsync(allKeys, CurrentActor(), cancellationToken);
-        await _localAdminEditableFieldPolicyService.SavePolicyAsync(localAdminKeys.ToList(), CurrentActor(), cancellationToken);
-        await AppendAdminAuditAsync(
-            "editablePolicy.updated",
-            "Editable field policy updated.",
-            new BsonDocument
-            {
-                ["editableAtCreationCount"] = creationKeys.Count,
-                ["editableAfterCreationCount"] = afterCreationKeys.Count,
-                ["visibleToClusterAdminCount"] = visibleKeys.Count,
-                ["editableByLocalAdminCount"] = localAdminKeys.Count,
-                ["editableByLocalAdminFieldKeys"] = new BsonArray(localAdminKeys.Select(fieldKey => (BsonValue)fieldKey))
-            },
-            "editablePolicy",
-            "battery-fields",
-            cancellationToken);
-        TempData["StatusMessage"] = "Editable fields updated.";
-        return Redirect("/admin/clusters?tab=local-editable-fields");
-    }
-
-    private HashSet<string> FormKeys(string name) =>
-        Request.Form[name]
-            .Select(value => value?.Trim() ?? string.Empty)
-            .Where(value => !string.IsNullOrWhiteSpace(value))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
     private static string NormalizeTab(string? value)
     {
         return value?.ToLowerInvariant() switch
@@ -1871,8 +1707,6 @@ public class AdminController : Controller
             "clusters" => "clusters",
             "users" => "users",
             "api-token-management" or "api-tokens" => "api-token-management",
-            "local-editable-fields" => "local-editable-fields",
-            "products" => "products",
             _ => "batteries"
         };
     }
@@ -2376,52 +2210,6 @@ public class AdminController : Controller
             .ToList();
     }
 
-    private static ProductTemplateEditViewModel BuildProductEditModel(
-        BatteryProductTemplate product,
-        DataCompletionPolicySnapshot dataRequirements,
-        string? status,
-        string? error)
-    {
-        var productVersions = BuildProductVersionEditModels(product.ProductVersions.Count == 0
-            ? [product.LatestProductVersion]
-            : product.ProductVersions);
-        var currentVersion = productVersions.FirstOrDefault();
-
-        return new ProductTemplateEditViewModel
-        {
-            ProductId = product.ProductId,
-            ProductName = product.ProductName,
-            Description = product.Description,
-            ImageUrl = product.ImageUrl,
-            ModuleCount = product.ModuleCount,
-            BatteryMassKg = currentVersion?.BatteryMassKg ?? product.BatteryMassKg,
-            RatedEnergyKwh = currentVersion?.RatedEnergyKwh ?? product.RatedEnergyKwh,
-            RatedCapacityAh = currentVersion?.RatedCapacityAh ?? product.RatedCapacityAh,
-            RatedMaximumPowerKw = currentVersion?.RatedMaximumPowerKw ?? product.RatedMaximumPowerKw,
-            NominalVoltageV = currentVersion?.NominalVoltageV ?? product.NominalVoltageV,
-            ExpectedLifetimeYears = currentVersion?.ExpectedLifetimeYears ?? product.ExpectedLifetimeYears,
-            ExpectedCycles = currentVersion?.ExpectedCycles ?? product.ExpectedCycles,
-            SupplyChainIndex = currentVersion?.SupplyChainIndex ?? product.SupplyChainIndex,
-            CarbonFootprint = currentVersion?.CarbonFootprint ?? product.CarbonFootprint,
-            PerformanceClass = currentVersion?.PerformanceClass ?? product.PerformanceClass,
-            MaterialMassesKg = currentVersion?.MaterialMassesKg ?? product.MaterialMassesKg,
-            CarbonStages = currentVersion?.CarbonStages ?? product.CarbonStages,
-            RecycledContent = currentVersion?.RecycledContent ?? product.RecycledContent.ToDictionary(
-                pair => pair.Key,
-                pair => new ProductTemplateRecycledContentViewModel
-                {
-                    PreConsumerShare = pair.Value.PreConsumerShare,
-                    PostConsumerShare = pair.Value.PostConsumerShare
-                },
-                StringComparer.OrdinalIgnoreCase),
-            DataRequirements = dataRequirements,
-            StatusMessage = string.IsNullOrWhiteSpace(status) ? string.Empty : Uri.UnescapeDataString(status),
-            ErrorMessage = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error),
-            ProductVersions = productVersions,
-            BaseProductCatalog = BuildProductTemplateFormCatalog(BatteryProductTemplateCatalog.DefaultProducts)
-        };
-    }
-
     private static IReadOnlyList<ProductVersionEditViewModel> BuildProductVersionEditModels(IEnumerable<BatteryProductVersion> productVersions)
     {
         return productVersions
@@ -2479,239 +2267,6 @@ public class AdminController : Controller
             .ToList();
     }
 
-    private static BatteryProductTemplate BuildProductTemplateFromForm(IFormCollection form, BatteryProductTemplate existing)
-    {
-        var requiredFieldKeys = form["requiredFieldKeys"]
-            .Select(value => value ?? string.Empty)
-            .Where(value => !string.IsNullOrWhiteSpace(value))
-            .ToList();
-
-        var productVersions = ReadProductVersions(form, existing, requiredFieldKeys);
-        var latestProductVersion = productVersions.FirstOrDefault() ?? existing.LatestProductVersion;
-
-        return existing with
-        {
-            ProductId = Text(form, "productId", existing.ProductId).Trim().ToLowerInvariant(),
-            ProductName = Text(form, "productName", existing.ProductName),
-            Description = Text(form, "description", existing.Description),
-            ImageUrl = BatteryImageCatalog.NormalizeKnownImageUrl(Text(form, "imageUrl", existing.ImageUrl), string.Empty),
-            ModuleCount = (int)Math.Max(1, Number(form, "moduleCount", existing.ModuleCount)),
-            BatteryMassKg = latestProductVersion.BatteryMassKg,
-            RatedEnergyKwh = latestProductVersion.RatedEnergyKwh,
-            RatedCapacityAh = latestProductVersion.RatedCapacityAh,
-            RatedMaximumPowerKw = latestProductVersion.RatedMaximumPowerKw,
-            NominalVoltageV = latestProductVersion.NominalVoltageV,
-            ExpectedLifetimeYears = latestProductVersion.ExpectedLifetimeYears,
-            ExpectedCycles = latestProductVersion.ExpectedCycles,
-            SupplyChainIndex = latestProductVersion.SupplyChainIndex,
-            CarbonFootprint = latestProductVersion.CarbonFootprint,
-            PerformanceClass = latestProductVersion.PerformanceClass,
-            MaterialMassesKg = latestProductVersion.MaterialMassesKg,
-            CarbonStages = latestProductVersion.CarbonStages,
-            RecycledContent = latestProductVersion.RecycledContent,
-            RequiredFieldKeys = latestProductVersion.RequiredFieldKeys,
-            ProductVersions = productVersions
-        };
-    }
-
-    private static IReadOnlyList<BatteryProductVersion> ReadProductVersions(
-        IFormCollection form,
-        BatteryProductTemplate existing,
-        IReadOnlyList<string> requiredFieldKeys)
-    {
-        var payloadJson = Text(form, "productVersionsJson");
-        if (!string.IsNullOrWhiteSpace(payloadJson))
-        {
-            try
-            {
-                var payloads = JsonSerializer.Deserialize<List<ProductVersionFormPayload>>(
-                    payloadJson,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? [];
-                var parsed = payloads
-                    .Select(payload => BuildProductVersionFromPayload(payload, existing, requiredFieldKeys))
-                    .Where(version => !string.IsNullOrWhiteSpace(version.Version))
-                    .GroupBy(version => version.Version, StringComparer.OrdinalIgnoreCase)
-                    .Select(group => group.First())
-                    .OrderBy(version => version.Version, VersionStringComparer.Descending)
-                    .ToList();
-                if (parsed.Count > 0)
-                {
-                    return parsed;
-                }
-            }
-            catch (JsonException)
-            {
-                // Fall back to the visible form fields below so a malformed client payload does not drop edits.
-            }
-        }
-
-        var softwareVersions = ReadSoftwareVersionsFromForm(form, existing.LatestProductVersion);
-        var highestSoftwareVersion = HighestSoftwareVersion(softwareVersions, existing.LatestProductVersion);
-        var productVersion = new BatteryProductVersion(
-            Text(form, "productVersion", existing.LatestProductVersion.Version),
-            Number(form, "batteryMassKg", existing.LatestProductVersion.BatteryMassKg),
-            Number(form, "ratedEnergyKwh", existing.LatestProductVersion.RatedEnergyKwh),
-            Number(form, "ratedCapacityAh", existing.LatestProductVersion.RatedCapacityAh),
-            Number(form, "ratedMaximumPowerKw", existing.LatestProductVersion.RatedMaximumPowerKw),
-            Number(form, "nominalVoltageV", existing.LatestProductVersion.NominalVoltageV),
-            Number(form, "expectedLifetimeYears", existing.LatestProductVersion.ExpectedLifetimeYears),
-            Number(form, "expectedCycles", existing.LatestProductVersion.ExpectedCycles),
-            BatteryPassCanonicalDataCatalog.NormalizeSupplyChainIndex(Number(form, "supplyChainIndex", existing.LatestProductVersion.SupplyChainIndex)),
-            BatteryPassCanonicalDataCatalog.NormalizeCarbonFootprint(Number(form, "carbonFootprint", existing.LatestProductVersion.CarbonFootprint)),
-            BatteryPassCanonicalDataCatalog.NormalizePerformanceClass(Text(form, "performanceClass", existing.LatestProductVersion.PerformanceClass)),
-            ReadNumberMap(form, "materialName", "materialMass", existing.LatestProductVersion.MaterialMassesKg),
-            ReadNumberMap(form, "carbonStage", "carbonStageValue", existing.LatestProductVersion.CarbonStages),
-            ReadRecycledContentMap(form, existing.LatestProductVersion.RecycledContent),
-            highestSoftwareVersion.SoftwareVersion,
-            highestSoftwareVersion.SoftwareReleaseDate,
-            highestSoftwareVersion.SoftwareLatestUpdate,
-            existing.LatestProductVersion.TemplateDocuments,
-            requiredFieldKeys)
-        {
-            SoftwareVersions = softwareVersions
-        };
-
-        return [productVersion];
-    }
-
-    private static BatteryProductVersion BuildProductVersionFromPayload(
-        ProductVersionFormPayload payload,
-        BatteryProductTemplate existing,
-        IReadOnlyList<string> requiredFieldKeys)
-    {
-        var fallback = existing.ProductVersions.FirstOrDefault(version =>
-                version.Version.Equals(payload.Version ?? string.Empty, StringComparison.OrdinalIgnoreCase))
-            ?? existing.LatestProductVersion;
-        var templateDocuments = ToTemplateDocuments(payload.TemplateDocuments, fallback.TemplateDocuments);
-        var softwareVersions = NormalizeSoftwareVersions(
-            payload.SoftwareVersions?.Select(row => new BatteryProductSoftwareVersion(
-                row.SoftwareVersion?.Trim() ?? string.Empty,
-                DateOnly(row.SoftwareReleaseDate ?? string.Empty),
-                DateOnly(row.SoftwareLatestUpdate ?? string.Empty))).ToList(),
-            fallback);
-        var highestSoftwareVersion = HighestSoftwareVersion(softwareVersions, fallback);
-
-        return new BatteryProductVersion(
-            payload.Version?.Trim() ?? fallback.Version,
-            payload.BatteryMassKg,
-            payload.RatedEnergyKwh,
-            payload.RatedCapacityAh,
-            payload.RatedMaximumPowerKw,
-            payload.NominalVoltageV,
-            payload.ExpectedLifetimeYears,
-            payload.ExpectedCycles,
-            BatteryPassCanonicalDataCatalog.NormalizeSupplyChainIndex(payload.SupplyChainIndex),
-            BatteryPassCanonicalDataCatalog.NormalizeCarbonFootprint(payload.CarbonFootprint),
-            BatteryPassCanonicalDataCatalog.NormalizePerformanceClass(payload.PerformanceClass ?? fallback.PerformanceClass),
-            payload.MaterialMassesKg?.Count > 0 ? payload.MaterialMassesKg : fallback.MaterialMassesKg,
-            payload.CarbonStages?.Count > 0 ? payload.CarbonStages : fallback.CarbonStages,
-            ToRecycledContent(payload.RecycledContent, fallback.RecycledContent),
-            highestSoftwareVersion.SoftwareVersion,
-            highestSoftwareVersion.SoftwareReleaseDate,
-            highestSoftwareVersion.SoftwareLatestUpdate,
-            templateDocuments,
-            payload.RequiredFieldKeys is null
-                ? requiredFieldKeys
-                : payload.RequiredFieldKeys
-                    .Where(value => !string.IsNullOrWhiteSpace(value))
-                    .Select(value => value.Trim())
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList())
-        {
-            SoftwareVersions = softwareVersions
-        };
-    }
-
-    private static IReadOnlyList<BatteryProductSoftwareVersion> ReadSoftwareVersionsFromForm(
-        IFormCollection form,
-        BatteryProductVersion fallback)
-    {
-        var versions = form["softwareVersion"];
-        var releases = form["softwareReleaseDate"];
-        var updates = form["softwareLatestUpdate"];
-        var rows = new List<BatteryProductSoftwareVersion>();
-        for (var index = 0; index < versions.Count; index++)
-        {
-            rows.Add(new BatteryProductSoftwareVersion(
-                versions[index]?.Trim() ?? string.Empty,
-                DateOnly(index < releases.Count ? releases[index] ?? string.Empty : string.Empty),
-                DateOnly(index < updates.Count ? updates[index] ?? string.Empty : string.Empty)));
-        }
-
-        return NormalizeSoftwareVersions(rows, fallback);
-    }
-
-    private static IReadOnlyList<BatteryProductSoftwareVersion> NormalizeSoftwareVersions(
-        IReadOnlyList<BatteryProductSoftwareVersion>? requested,
-        BatteryProductVersion fallback)
-    {
-        var rows = requested?
-            .Where(row => !string.IsNullOrWhiteSpace(row.SoftwareVersion))
-            .Select(row => new BatteryProductSoftwareVersion(
-                row.SoftwareVersion.Trim(),
-                DateOnly(row.SoftwareReleaseDate),
-                DateOnly(row.SoftwareLatestUpdate)))
-            .ToList() ?? [];
-
-        if (rows.Count == 0)
-        {
-            rows.AddRange(fallback.SoftwareVersions.Count == 0
-                ? [new BatteryProductSoftwareVersion(fallback.SoftwareVersion, fallback.SoftwareReleaseDate, fallback.SoftwareLatestUpdate)]
-                : fallback.SoftwareVersions);
-        }
-
-        return rows
-            .GroupBy(row => row.SoftwareVersion, StringComparer.OrdinalIgnoreCase)
-            .Select(group => group.First())
-            .OrderByDescending(row => row.SoftwareVersion, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-    }
-
-    private static BatteryProductSoftwareVersion HighestSoftwareVersion(
-        IReadOnlyList<BatteryProductSoftwareVersion> rows,
-        BatteryProductVersion fallback) =>
-        rows
-            .Where(row => !string.IsNullOrWhiteSpace(row.SoftwareVersion))
-            .OrderByDescending(row => row.SoftwareVersion, StringComparer.OrdinalIgnoreCase)
-            .FirstOrDefault()
-        ?? new BatteryProductSoftwareVersion(fallback.SoftwareVersion, fallback.SoftwareReleaseDate, fallback.SoftwareLatestUpdate);
-
-    private static IReadOnlyList<ProductTemplateDocumentSeed> ToTemplateDocuments(
-        List<ProductTemplateDocumentFormPayload>? payload,
-        IReadOnlyList<ProductTemplateDocumentSeed> fallback)
-    {
-        if (payload == null)
-        {
-            return fallback;
-        }
-
-        var documents = payload
-            .Where(document => !string.IsNullOrWhiteSpace(document.DocumentKey))
-            .Select(document => new ProductTemplateDocumentSeed(
-                document.DocumentKey?.Trim() ?? string.Empty,
-                document.Label?.Trim() ?? string.Empty,
-                document.FileName?.Trim() ?? string.Empty,
-                string.IsNullOrWhiteSpace(document.Visibility) ? "private" : document.Visibility.Trim()))
-            .ToList();
-
-        return documents.Count == 0 ? fallback : documents;
-    }
-
-    private static IReadOnlyDictionary<string, ProductTemplateRecycledContent> ToRecycledContent(
-        Dictionary<string, ProductTemplateRecycledContentFormPayload>? payload,
-        IReadOnlyDictionary<string, ProductTemplateRecycledContent> fallback)
-    {
-        if (payload == null || payload.Count == 0)
-        {
-            return fallback;
-        }
-
-        return payload.ToDictionary(
-            pair => pair.Key,
-            pair => new ProductTemplateRecycledContent(pair.Value.PreConsumerShare, pair.Value.PostConsumerShare),
-            StringComparer.OrdinalIgnoreCase);
-    }
-
     private static IReadOnlyList<ProductTemplateFormCatalogItemViewModel> BuildProductTemplateFormCatalog(IEnumerable<BatteryProductTemplate> products)
     {
         return products
@@ -2747,100 +2302,6 @@ public class AdminController : Controller
                 LatestProductVersion = product.LatestProductVersion.Version
             })
             .ToList();
-    }
-
-    private static IReadOnlyDictionary<string, double> ReadNumberMap(
-        IFormCollection form,
-        string nameKey,
-        string valueKey,
-        IReadOnlyDictionary<string, double> fallback)
-    {
-        var names = form[nameKey];
-        var values = form[valueKey];
-        if (names.Count == 0 || values.Count == 0)
-        {
-            return fallback;
-        }
-
-        var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-        for (var index = 0; index < names.Count; index++)
-        {
-            var name = names[index]?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                continue;
-            }
-
-            var fallbackValue = fallback.TryGetValue(name, out var existingValue) ? existingValue : 0;
-            result[name] = double.TryParse(index < values.Count ? values[index] : string.Empty, out var parsed)
-                ? parsed
-                : fallbackValue;
-        }
-
-        return result.Count == 0 ? fallback : result;
-    }
-
-    private static IReadOnlyDictionary<string, ProductTemplateRecycledContent> ReadRecycledContentMap(
-        IFormCollection form,
-        IReadOnlyDictionary<string, ProductTemplateRecycledContent> fallback)
-    {
-        var result = new Dictionary<string, ProductTemplateRecycledContent>(StringComparer.OrdinalIgnoreCase);
-        foreach (var material in new[] { "Nickel", "Cobalt", "Lithium", "Lead" })
-        {
-            var fallbackValue = fallback.TryGetValue(material, out var existing)
-                ? existing
-                : new ProductTemplateRecycledContent(0, 0);
-            result[material] = new ProductTemplateRecycledContent(
-                Number(form, $"recycled{material}Pre", fallbackValue.PreConsumerShare),
-                Number(form, $"recycled{material}Post", fallbackValue.PostConsumerShare));
-        }
-
-        return result;
-    }
-
-    private sealed class ProductVersionFormPayload
-    {
-        public string? Version { get; init; }
-        public double BatteryMassKg { get; init; }
-        public double RatedEnergyKwh { get; init; }
-        public double RatedCapacityAh { get; init; }
-        public double RatedMaximumPowerKw { get; init; }
-        public double NominalVoltageV { get; init; }
-        public double ExpectedLifetimeYears { get; init; }
-        public double ExpectedCycles { get; init; }
-        public double SupplyChainIndex { get; init; }
-        public double CarbonFootprint { get; init; }
-        public string? PerformanceClass { get; init; }
-        public Dictionary<string, double>? MaterialMassesKg { get; init; }
-        public Dictionary<string, double>? CarbonStages { get; init; }
-        public Dictionary<string, ProductTemplateRecycledContentFormPayload>? RecycledContent { get; init; }
-        public string? SoftwareVersion { get; init; }
-        public string? SoftwareReleaseDate { get; init; }
-        public string? SoftwareLatestUpdate { get; init; }
-        public List<ProductSoftwareVersionFormPayload>? SoftwareVersions { get; init; }
-        public List<ProductTemplateDocumentFormPayload>? TemplateDocuments { get; init; }
-        public List<string>? RequiredFieldKeys { get; init; }
-    }
-
-    private sealed class ProductSoftwareVersionFormPayload
-    {
-        public string? SoftwareVersion { get; init; }
-        public string? SoftwareReleaseDate { get; init; }
-        public string? SoftwareLatestUpdate { get; init; }
-    }
-
-    private sealed class ProductTemplateRecycledContentFormPayload
-    {
-        public double PreConsumerShare { get; init; }
-        public double PostConsumerShare { get; init; }
-    }
-
-    private sealed class ProductTemplateDocumentFormPayload
-    {
-        public string? DocumentKey { get; init; }
-        public string? Label { get; init; }
-        public string? FileName { get; init; }
-        public string? Visibility { get; init; }
     }
 
     private sealed class VersionStringComparer : IComparer<string>

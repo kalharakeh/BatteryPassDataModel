@@ -40,8 +40,7 @@ public sealed class BatteryFamilyAccessApiRevisedTests
             RepoFile("web", "Views", "Passport", "Summary.cshtml"),
             RepoFile("web", "Views", "Passport", "Detail.cshtml"),
             RepoFile("web", "Views", "Admin", "EditPassport.cshtml"),
-            RepoFile("web", "Views", "Admin", "Clusters.cshtml"),
-            RepoFile("web", "Views", "Admin", "Product.cshtml")
+            RepoFile("web", "Views", "Admin", "Clusters.cshtml")
         };
 
         var text = string.Join(Environment.NewLine, files.Select(File.ReadAllText));
@@ -64,7 +63,6 @@ public sealed class BatteryFamilyAccessApiRevisedTests
         var modelSource = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateModels.cs"));
         var serviceSource = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateService.cs"));
         var apiSource = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
-        var productView = File.ReadAllText(RepoFile("web", "Views", "Admin", "Product.cshtml"));
 
         Assert.Contains("string SoftwareVersion", modelSource);
         Assert.Contains("string SoftwareReleaseDate", modelSource);
@@ -73,9 +71,6 @@ public sealed class BatteryFamilyAccessApiRevisedTests
         Assert.Contains("record BatteryProductSoftwareVersion", modelSource);
         Assert.DoesNotContain("batteryProductTemplateSoftwareVersions", serviceSource);
         Assert.DoesNotContain("[HttpPatch(\"batteries/{passportId}/software\")]", apiSource);
-        Assert.Contains("data-software-version-row", productView);
-        Assert.Contains("data-add-software-version", productView);
-        Assert.Contains("Add software version", productView);
     }
 
     [Fact]

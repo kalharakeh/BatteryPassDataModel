@@ -7,22 +7,6 @@
     var query = Model.PassportsQuery ?? string.Empty;
     var querySuffix = string.IsNullOrWhiteSpace(query) ? string.Empty : $"&q={Uri.EscapeDataString(query)}";
     ViewData["AdminBatteriesQuerySuffix"] = querySuffix;
-    var editableAtCreationKeys = Model.LocalEditableFieldPolicy.PermissionByKey.Values
-        .Where(permission => permission.EditableAtCreation)
-        .Select(permission => permission.FieldKey)
-        .ToHashSet(StringComparer.OrdinalIgnoreCase);
-    var editableAfterCreationKeys = Model.LocalEditableFieldPolicy.PermissionByKey.Values
-        .Where(permission => permission.EditableAfterCreation)
-        .Select(permission => permission.FieldKey)
-        .ToHashSet(StringComparer.OrdinalIgnoreCase);
-    var visibleToClusterAdminKeys = Model.LocalEditableFieldPolicy.PermissionByKey.Values
-        .Where(permission => permission.VisibleToClusterAdmin)
-        .Select(permission => permission.FieldKey)
-        .ToHashSet(StringComparer.OrdinalIgnoreCase);
-    var editableByLocalAdminKeys = Model.LocalEditableFieldPolicy.PermissionByKey.Values
-        .Where(permission => permission.EditableByLocalAdmin)
-        .Select(permission => permission.FieldKey)
-        .ToHashSet(StringComparer.OrdinalIgnoreCase);
     var clusterCreateName = TempData["ClusterCreateName"]?.ToString() ?? string.Empty;
     var clusterCreateId = TempData["ClusterCreateId"]?.ToString() ?? string.Empty;
     var globalAccessOptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -640,128 +624,6 @@
         </div>
     }
 
-    @if (selectedTab == "local-editable-fields")
-    {
-        var localEditableSectionIndex = 0;
-        <section class="bp-card bp-policy-console mt-4">
-            <div class="d-flex justify-content-between flex-wrap gap-3 align-items-start">
-                <div>
-                    <h2 class="h5 mb-1">Editable fields</h2>
-                    <p class="text-secondary mb-0">Choose which battery parameters can be edited at creation, after creation, shown to cluster admins, and edited by cluster admins.</p>
-                </div>
-                @if (!string.IsNullOrWhiteSpace(Model.LocalEditableFieldPolicy.UpdatedAt))
-                {
-                    <p class="bp-policy-meta mb-0">Updated @Model.LocalEditableFieldPolicy.UpdatedAt by @Model.LocalEditableFieldPolicy.UpdatedBy</p>
-                }
-            </div>
-            <form method="post" action="/admin/local-editable-fields/save" class="bp-local-editable-policy-form mt-3">
-                @Html.AntiForgeryToken()
-                <div class="bp-local-editable-policy-summary">
-                    <span class="bp-user-count-pill">@Model.LocalEditableFieldPolicy.Sections.Count sections</span>
-                    <span class="bp-user-count-pill">@Model.LocalEditableFieldPolicy.EditableAtCreationCount creation</span>
-                    <span class="bp-user-count-pill">@Model.LocalEditableFieldPolicy.EditableAfterCreationCount after creation</span>
-                    <span class="bp-user-count-pill">@Model.LocalEditableFieldPolicy.VisibleToClusterAdminCount shown to cluster admin</span>
-                    <span class="bp-user-count-pill">@Model.LocalEditableFieldPolicy.EditableByLocalAdminCount editable by cluster admin</span>
-                </div>
-                <div class="bp-table-card p-0">
-                    <div class="bp-table-scroll">
-                        <table class="table align-middle mb-0 bp-console-table bp-local-editable-policy-table bp-mobile-card-table">
-                            <thead>
-                                <tr>
-                                    <th>Section</th>
-                                    <th>Total fields</th>
-                                    <th>Editable</th>
-                                    <th>After creation</th>
-                                    <th>Shown</th>
-                                    <th>Cluster admin</th>
-                                    <th>Examples</th>
-                                    <th class="bp-action-cell">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var policySection in Model.LocalEditableFieldPolicy.Sections.OrderBy(policySection => policySection.SortOrder))
-                                {
-                                    var sectionIndex = localEditableSectionIndex++;
-                                    var drawerId = $"local-editable-section-{sectionIndex}";
-                                    var orderedFields = policySection.Fields.OrderBy(field => field.SortOrder).ToList();
-                                    var sectionCreationCount = orderedFields.Count(field => editableAtCreationKeys.Contains(field.FieldKey));
-                                    var sectionAfterCreationCount = orderedFields.Count(field => editableAfterCreationKeys.Contains(field.FieldKey));
-                                    var sectionVisibleCount = orderedFields.Count(field => visibleToClusterAdminKeys.Contains(field.FieldKey));
-                                    var sectionLocalAdminCount = orderedFields.Count(field => editableByLocalAdminKeys.Contains(field.FieldKey));
-                                    var examples = string.Join(", ", orderedFields.Take(2).Select(field => field.Label));
-                                    <tr>
-                                        <td class="bp-local-editable-section-cell" data-label="Section">
-                                            <strong>@policySection.Label</strong>
-                                            <span>@policySection.SectionKey</span>
-                                        </td>
-                                        <td data-label="Total fields"><span class="bp-user-count-pill">@policySection.Fields.Count fields</span></td>
-                                        <td data-label="Editable"><span class="bp-local-editable-state-pill @(sectionCreationCount > 0 ? "is-on" : string.Empty)">@sectionCreationCount creation</span></td>
-                                        <td data-label="After creation"><span class="bp-local-editable-state-pill @(sectionAfterCreationCount > 0 ? "is-on" : string.Empty)">@sectionAfterCreationCount after</span></td>
-                                        <td data-label="Shown"><span class="bp-local-editable-state-pill @(sectionVisibleCount > 0 ? "is-on" : string.Empty)">@sectionVisibleCount shown</span></td>
-                                        <td data-label="Cluster admin"><span class="bp-local-editable-state-pill @(sectionLocalAdminCount > 0 ? "is-on" : string.Empty)">@sectionLocalAdminCount editable</span></td>
-                                        <td data-label="Examples"><span class="bp-local-editable-examples">@examples</span></td>
-                                        <td class="bp-action-cell" data-label="Actions">
-                                            <button type="button" class="bp-action-button bp-local-editable-drawer-toggle" data-local-editable-drawer-toggle aria-expanded="false" aria-controls="@drawerId" aria-label="Open @policySection.Label fields" title="Open @policySection.Label fields" data-tooltip="Open fields">
-                                                <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                    <path d="m6 9 6 6 6-6" />
-                                                </svg>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <tr id="@drawerId" class="bp-local-editable-drawer-row" hidden>
-                                        <td colspan="8">
-                                            <div class="bp-local-editable-field-grid">
-                                                @foreach (var field in orderedFields)
-                                                {
-                                                    var isEditableAtCreation = editableAtCreationKeys.Contains(field.FieldKey);
-                                                    var isEditableAfterCreation = editableAfterCreationKeys.Contains(field.FieldKey);
-                                                    var isVisibleToClusterAdmin = visibleToClusterAdminKeys.Contains(field.FieldKey);
-                                                    var isEditableByLocalAdmin = editableByLocalAdminKeys.Contains(field.FieldKey);
-                                                    <label class="bp-local-editable-field-card">
-                                                        <span class="bp-local-editable-field-copy">
-                                                            <strong>@field.Label</strong>
-                                                            <span>@field.Guidance</span>
-                                                            <code>@field.FieldKey</code>
-                                                        </span>
-                                                        <span class="bp-local-editable-toggle-group" data-editable-policy-row>
-                                                            <span class="bp-local-editable-toggle-wrap">
-                                                                <span class="bp-local-editable-toggle-label">Creation</span>
-                                                                <input class="bp-local-editable-field-toggle" type="checkbox" name="editableAtCreationFieldKeys" value="@field.FieldKey" checked="@isEditableAtCreation" aria-label="@field.Label editable at creation" data-editable-policy-creation />
-                                                                <span class="bp-local-editable-toggle-shell" aria-hidden="true"></span>
-                                                            </span>
-                                                            <span class="bp-local-editable-toggle-wrap">
-                                                                <span class="bp-local-editable-toggle-label">After</span>
-                                                                <input class="bp-local-editable-field-toggle" type="checkbox" name="editableAfterCreationFieldKeys" value="@field.FieldKey" checked="@isEditableAfterCreation" aria-label="@field.Label editable after creation" data-editable-policy-after />
-                                                                <span class="bp-local-editable-toggle-shell" aria-hidden="true"></span>
-                                                            </span>
-                                                            <span class="bp-local-editable-toggle-wrap">
-                                                                <span class="bp-local-editable-toggle-label">Show</span>
-                                                                <input class="bp-local-editable-field-toggle" type="checkbox" name="visibleToClusterAdminFieldKeys" value="@field.FieldKey" checked="@isVisibleToClusterAdmin" aria-label="@field.Label Show for Cluster Admin" title="Show for Cluster Admin" data-editable-policy-visible />
-                                                                <span class="bp-local-editable-toggle-shell" aria-hidden="true"></span>
-                                                            </span>
-                                                            <span class="bp-local-editable-toggle-wrap">
-                                                                <span class="bp-local-editable-toggle-label">Edit</span>
-                                                                <input class="bp-local-editable-field-toggle" type="checkbox" name="editableByLocalAdminFieldKeys" value="@field.FieldKey" checked="@isEditableByLocalAdmin" aria-label="@field.Label editable by cluster admins" data-editable-policy-local />
-                                                                <span class="bp-local-editable-toggle-shell" aria-hidden="true"></span>
-                                                            </span>
-                                                        </span>
-                                                    </label>
-                                                }
-                                            </div>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="bp-local-editable-policy-actions">
-                    <button type="submit" class="bp-primary-button">Save editable fields</button>
-                </div>
-            </form>
-        </section>
-    }
-
     @if (selectedTab == "api-token-management")
     {
         var activeTokenCount = Model.ApiTokens.Count(token => token.IsActive);
@@ -995,51 +857,6 @@
 
     }
 
-    @if (selectedTab == "products")
-    {
-        <section class="bp-card bp-product-template-hero mt-4">
-            <div>
-                <span class="bp-summary-title">Battery families</span>
-                <h2>Battery families and version parameters</h2>
-                <p class="mb-0">
-                    Battery families hold the shared battery data, required/optional policy, battery image,
-                    software release dates, and signed evidence references used when creating passports.
-                    Editing a family does not silently change batteries. Use a Battery Model push when you are ready.
-                </p>
-            </div>
-            <div class="bp-product-template-actions">
-                <a href="/admin/products/new" class="bp-secondary-button">Add battery family</a>
-                <form method="post" action="/admin/product-templates/reset">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="bp-secondary-button">Reset battery-family passports</button>
-                </form>
-            </div>
-        </section>
-
-        <section class="bp-product-template-grid mt-4">
-            @foreach (var product in Model.ProductTemplates)
-            {
-                <article class="bp-card bp-product-template-card">
-                    <div class="bp-product-template-card-media">
-                        <img src="@product.ImageUrl" alt="@product.ProductName battery family image" />
-                    </div>
-                    <div class="bp-product-template-card-body">
-                        <span class="bp-summary-title">@product.ProductId</span>
-                        <h3>@product.ProductName</h3>
-                        <p>@product.Description</p>
-                        <dl class="bp-product-template-meta">
-                            <div><dt>Modules</dt><dd>@product.ModuleCount</dd></div>
-                            <div><dt>Battery Models</dt><dd>@product.BatteryVersionCount</dd></div>
-                            <div><dt>Required fields</dt><dd>@product.RequiredFieldCount</dd></div>
-                            <div><dt>Template documents</dt><dd>@product.DocumentCount</dd></div>
-                        </dl>
-                        <a href="/admin/products/@Uri.EscapeDataString(product.ProductId)" class="bp-primary-button">Edit family</a>
-                    </div>
-                </article>
-            }
-        </section>
-    }
-
     <div class="bp-confirm-modal" data-confirm-modal hidden>
         <div class="bp-confirm-modal-backdrop" data-confirm-cancel></div>
         <section class="bp-confirm-modal-panel" role="dialog" aria-modal="true" aria-labelledby="bp-confirm-title">
@@ -1112,57 +929,6 @@
                     drawer.scrollIntoView({ block: 'center' });
                 }
             }
-
-            document.querySelectorAll('[data-local-editable-drawer-toggle]').forEach((button) => {
-                button.addEventListener('click', () => {
-                    const drawerId = button.getAttribute('aria-controls');
-                    const drawer = drawerId ? document.getElementById(drawerId) : null;
-                    if (!drawer) {
-                        return;
-                    }
-
-                    const expanded = button.getAttribute('aria-expanded') === 'true';
-                    button.setAttribute('aria-expanded', expanded ? 'false' : 'true');
-                    drawer.hidden = expanded;
-                });
-            });
-
-            document.querySelectorAll('[data-editable-policy-row]').forEach((row) => {
-                const creation = row.querySelector('[data-editable-policy-creation]');
-                const afterCreation = row.querySelector('[data-editable-policy-after]');
-                const visibleToClusterAdmin = row.querySelector('[data-editable-policy-visible]');
-                const localAdmin = row.querySelector('[data-editable-policy-local]');
-                if (!creation || !afterCreation || !visibleToClusterAdmin || !localAdmin) {
-                    return;
-                }
-
-                creation.addEventListener('change', () => {
-                    if (!creation.checked) {
-                        afterCreation.checked = false;
-                        visibleToClusterAdmin.checked = false;
-                        localAdmin.checked = false;
-                    }
-                });
-                afterCreation.addEventListener('change', () => {
-                    if (afterCreation.checked) {
-                        creation.checked = true;
-                    } else {
-                        localAdmin.checked = false;
-                    }
-                });
-                visibleToClusterAdmin.addEventListener('change', () => {
-                    if (!visibleToClusterAdmin.checked) {
-                        localAdmin.checked = false;
-                    }
-                });
-                localAdmin.addEventListener('change', () => {
-                    if (localAdmin.checked) {
-                        creation.checked = true;
-                        afterCreation.checked = true;
-                        visibleToClusterAdmin.checked = true;
-                    }
-                });
-            });
 
             const tokenSearch = document.querySelector('[data-token-search]');
             const tokenRows = Array.from(document.querySelectorAll('[data-token-row]'));

@@ -38,7 +38,7 @@
             </nav>
             <nav class="bp-admin-help-primary-actions" aria-label="Primary admin actions">
                 <a href="/admin/passports/new" class="bp-primary-button">Create battery ID</a>
-                <a href="/admin/clusters?tab=products" class="bp-secondary-button">Open battery families</a>
+                <a href="/admin/families" class="bp-secondary-button">Open battery families</a>
                 <a href="/admin/clusters?tab=batteries" class="bp-secondary-button">Open batteries</a>
             </nav>
         </div>
@@ -105,25 +105,11 @@
                         <td class="bp-action-cell"><button type="button" class="bp-action-button bp-admin-help-detail-toggle" data-admin-help-detail-target="admin-detail-recover" aria-expanded="false" aria-controls="admin-detail-recover" aria-label="Show dirty recovery details" title="Show dirty recovery details" data-tooltip="Details"><svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></button></td>
                     </tr>
                     <tr>
-                        <td><span class="bp-admin-help-workflow-name"><strong>Battery Model push</strong><small>Apply shared model updates.</small></span></td>
-                        <td>Battery Family model data or software parameters changed.</td>
-                        <td><a href="/admin/clusters?tab=products">Battery families</a></td>
-                        <td>Matching batteries update, overrides are preserved, changed passports become dirty.</td>
-                        <td class="bp-action-cell"><button type="button" class="bp-action-button bp-admin-help-detail-toggle" data-admin-help-detail-target="admin-detail-model-push" aria-expanded="false" aria-controls="admin-detail-model-push" aria-label="Show Battery Model push details" title="Show Battery Model push details" data-tooltip="Details"><svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></button></td>
-                    </tr>
-                    <tr>
                         <td><span class="bp-admin-help-workflow-name"><strong>API Token Management</strong><small>External credentials and signing.</small></span></td>
                         <td>An integration needs read, write, validate, sign, or publish access.</td>
                         <td><a href="/admin/clusters?tab=api-token-management">API Token Management</a></td>
                         <td>Token Value is captured by the external system and scope is correct.</td>
                         <td class="bp-action-cell"><button type="button" class="bp-action-button bp-admin-help-detail-toggle" data-admin-help-detail-target="admin-detail-tokens" aria-expanded="false" aria-controls="admin-detail-tokens" aria-label="Show API token management details" title="Show API token management details" data-tooltip="Details"><svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></button></td>
-                    </tr>
-                    <tr>
-                        <td><span class="bp-admin-help-workflow-name"><strong>Local editable fields</strong><small>Global local-admin policy.</small></span></td>
-                        <td>Cluster admins need a controlled edit surface.</td>
-                        <td><a href="/admin/clusters?tab=local-editable-fields">Local editable fields</a></td>
-                        <td>MongoDB policy controls what local admins can render and save.</td>
-                        <td class="bp-action-cell"><button type="button" class="bp-action-button bp-admin-help-detail-toggle" data-admin-help-detail-target="admin-detail-local-fields" aria-expanded="false" aria-controls="admin-detail-local-fields" aria-label="Show local editable fields details" title="Show local editable fields details" data-tooltip="Details"><svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></button></td>
                     </tr>
                     <tr class="bp-admin-help-detail-row" data-admin-help-detail-row hidden>
                         <td colspan="5">
@@ -132,7 +118,7 @@
                 <div class="bp-admin-help-detail-copy"><span class="bp-summary-title">First-time passport checklist</span><h3>Create a trusted passport from scratch</h3><p>Create battery ID, choose Battery Family and Battery Model, and save the draft copied from the template.</p></div>
                 <ol class="bp-admin-help-detail-list">
                     <li>Review copied battery family data and fill battery-specific information in every admin section.</li>
-                    <li>Open <a href="/admin/clusters?tab=products">battery families</a> to confirm required and optional fields for that battery family.</li>
+                    <li>Open <a href="/admin/families">battery families</a> to confirm required and optional fields for that battery family.</li>
                     <li>Validate passport, resolve every blocker, sign when blockers are zero, then publish when the gate says publishing is ready.</li>
                 </ol>
             </article>
@@ -169,19 +155,9 @@
                 <div class="bp-admin-help-detail-copy"><span class="bp-summary-title">Dirty recovery checklist</span><h3>Return edited data to clean trust</h3><p>Use this after any signed core data changes.</p></div>
                 <ol class="bp-admin-help-detail-list"><li>Save the admin edit. Draft save is always allowed.</li><li>Open conformance and confirm the passport is dirty or not publishable.</li><li>Validate passport again, fix blockers, sign again, then publish again when the latest proof is current.</li></ol>
             </article>
-            <article id="admin-detail-model-push" class="bp-admin-help-detail-panel" data-admin-help-detail-panel hidden>
-                <div class="bp-admin-help-detail-copy"><span class="bp-summary-title">Battery Model push</span><h3>Update matching batteries safely</h3><p>Open battery families and edit shared Battery Model data or software release date and latest update values. The app updates fields that still match the previous template baseline while preserving manual battery overrides.</p></div>
-                <div class="bp-admin-help-detail-grid">
-                    <section class="bp-admin-help-detail-card"><h4>Software parameters</h4><p>New passports copy Battery Model plus software version, release date, and latest update values from the selected battery family. The public summary and Detailed report General tab show these software parameters.</p></section>
-                    <section class="bp-admin-help-detail-card"><h4>Battery Model API changes</h4><p>Battery Model and software API changes require a new passport snapshot when the values differ from the latest passport. The software-version endpoint copies release date and latest update values from the selected Battery Model. Telemetry remains operational and does not require signing.</p></section>
-                </div>
-            </article>
             <article id="admin-detail-tokens" class="bp-admin-help-detail-panel" data-admin-help-detail-panel hidden>
                 <div class="bp-admin-help-detail-copy"><span class="bp-summary-title">External systems</span><h3>Use scoped credentials.</h3><p>Open API Token Management to create or regenerate external API tokens. The generated Token Value is the secret credential used in the Authorization header and is shown only at create/regenerate time.</p></div>
                 <p>Cluster scope on each token controls which batteries the external system can read, write, validate, sign, or publish.</p>
-            </article>
-            <article id="admin-detail-local-fields" class="bp-admin-help-detail-panel" data-admin-help-detail-panel hidden>
-                <div class="bp-admin-help-detail-copy"><span class="bp-summary-title">Local editable fields</span><h3>Keep local edit access narrow.</h3><p>Select the passport fields local admins may edit across all batteries. The saved MongoDB policy controls both what the cluster-admin edit form renders and what its save action accepts.</p></div>
             </article>
                             </div>
                         </td>
@@ -199,8 +175,8 @@
         </div>
         <div class="bp-admin-help-policy-note">
             <strong>Completion policy</strong>
-            <span>The <strong>Battery families tab</strong> controls required/optional switches per Battery Model. Validation, signing, publishing, edit guidance, and conformance checklists read the saved product policy and product-version policy.</span>
-            <a href="/admin/clusters?tab=products" class="bp-secondary-button bp-button-compact">Open battery families</a>
+            <span>The <strong>Battery families tab</strong> holds each battery model's passport values and its batches; the V3 attribute list decides which values are required, and by when.</span>
+            <a href="/admin/families" class="bp-secondary-button bp-button-compact">Open battery families</a>
         </div>
         <section id="status-dictionary" aria-label="Status dictionary">
             <div class="bp-table-scroll">
@@ -249,20 +225,6 @@
         </ul>
     </section>
 
-    <details class="bp-card bp-admin-help-demo-reset bp-admin-help-maintenance-reset" id="maintenance-reset">
-        <summary>
-            <span class="bp-summary-title">Maintenance</span>
-            <strong>Battery family reset</strong>
-            <small>Restore one unassigned demonstrator plus six clustered customer batteries.</small>
-        </summary>
-        <div class="bp-admin-help-maintenance-body">
-            <p>This guarded reset recreates Compact 7M, Compact 13M, and Core battery families with Battery Models, software parameters, evidence files, clusters, users, and passport records.</p>
-            <form method="post" action="/admin/product-templates/reset">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="bp-secondary-button bp-button-accent">Reset battery-family passports</button>
-            </form>
-        </div>
-    </details>
 </main>
 
 @section Scripts {

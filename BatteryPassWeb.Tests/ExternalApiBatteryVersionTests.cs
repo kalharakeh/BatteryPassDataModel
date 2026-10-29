@@ -68,28 +68,6 @@ public sealed class ExternalApiBatteryVersionTests
     }
 
     [Fact]
-    public void ProductTemplateEditor_ShouldShowPerModelSoftwareVersionRows()
-    {
-        var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Product.cshtml"));
-
-        Assert.Contains("data-software-version-list", markup);
-        Assert.Contains("name=\"softwareVersion\"", markup);
-        Assert.Contains("name=\"softwareReleaseDate\"", markup);
-        Assert.Contains("name=\"softwareLatestUpdate\"", markup);
-        Assert.Contains("data-add-software-version", markup);
-        Assert.Contains("data-remove-software-version", markup);
-    }
-
-    [Fact]
-    public void ProductTemplateEditor_ShouldUseCleanImageLabelsWithoutRepeatedCategory()
-    {
-        var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Product.cshtml"));
-
-        Assert.Contains("@imageOption.Label</option>", markup);
-        Assert.DoesNotContain("@imageOption.Label (@imageOption.Category)", markup);
-    }
-
-    [Fact]
     public void PassportViewModelFactory_ShouldExposeSoftwareVersionAsBatteryVersionParameter()
     {
         var source = File.ReadAllText(RepoFile("web", "Services", "PassportViewModelFactory.cs"));

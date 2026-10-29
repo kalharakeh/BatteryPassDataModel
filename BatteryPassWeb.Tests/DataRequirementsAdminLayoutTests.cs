@@ -17,7 +17,6 @@ public sealed class DataRequirementsAdminLayoutTests
 
         Assert.Contains("DataCompletionPolicyService", source);
         Assert.Contains("GetPolicyForPassportAsync", source);
-        Assert.Contains("GetProductPolicyAsync", source);
         Assert.DoesNotContain("[HttpPost(\"data-requirements/save\")]", source);
         Assert.DoesNotContain("SaveDataRequirements", source);
     }
@@ -30,9 +29,7 @@ public sealed class DataRequirementsAdminLayoutTests
         var model = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "AdminClusterViewModel.cs"));
         var adminClusterModel = model[..model.IndexOf("public sealed class ProductTemplateSummaryViewModel", StringComparison.Ordinal)];
 
-        Assert.Contains("Battery families", markup);
-        Assert.Contains("tab=products", tabs);
-        Assert.Contains("Required fields", markup);
+        Assert.Contains("href=\"/admin/families\"", tabs);
         Assert.DoesNotContain("tab=data-requirements", markup);
         Assert.DoesNotContain("tab=data-requirements", tabs);
         Assert.DoesNotContain("selectedTab == \"data-requirements\"", markup);
@@ -45,11 +42,6 @@ public sealed class DataRequirementsAdminLayoutTests
     [Fact]
     public void ProductTemplateEditor_ShouldRemainRequirementSourceOfTruth()
     {
-        var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Product.cshtml"));
-
-        Assert.Contains("Template completion policy", markup);
-        Assert.Contains("Required and optional parameters", markup);
-        Assert.Contains("name=\"requiredFieldKeys\"", markup);
         Assert.Contains("Battery families tab", File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml")));
     }
 

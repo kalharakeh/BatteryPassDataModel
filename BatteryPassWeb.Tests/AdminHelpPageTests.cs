@@ -40,7 +40,6 @@ public sealed class AdminHelpPageTests
         Assert.Contains("Administration tabs", tabs);
         Assert.Contains("bp-tab-active", tabs);
         Assert.Contains("href=\"@($\"/admin/clusters?tab=batteries{batteryQuerySuffix}\")\"", tabs);
-        Assert.Contains("href=\"/admin/clusters?tab=local-editable-fields\"", tabs);
         Assert.Contains("href=\"/admin/help\"", tabs);
         Assert.DoesNotContain("Back to main admin page", markup);
         Assert.DoesNotContain("bp-page-return-row", markup);
@@ -70,7 +69,6 @@ public sealed class AdminHelpPageTests
         Assert.Contains("published, signed, clean, and verifiable", markup);
         Assert.Contains("Draft, dirty, unsigned, or unpublished passports stay visible to admins", markup);
         Assert.Contains("Battery families tab", markup);
-        Assert.Contains("required/optional switches", markup);
         Assert.Contains("saved product policy", markup);
         Assert.Contains("Trust &amp; conformance tab is visible only", markup);
         Assert.Contains("general admins or local cluster admins", markup);
@@ -82,7 +80,7 @@ public sealed class AdminHelpPageTests
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
 
         Assert.Contains("Open battery families", markup);
-        Assert.Contains("/admin/clusters?tab=products", markup);
+        Assert.Contains("/admin/families", markup);
         Assert.DoesNotContain("Parameter-by-parameter fill list", markup);
         Assert.DoesNotContain("bp-admin-help-parameter-grid", markup);
         Assert.DoesNotContain("bp-admin-help-parameter-list", markup);
@@ -96,7 +94,6 @@ public sealed class AdminHelpPageTests
 
         Assert.Contains("First-time passport checklist", markup);
         Assert.Contains("Dirty recovery checklist", markup);
-        Assert.Contains("Battery Model push", markup);
         Assert.Contains("What public users can see", markup);
         Assert.Contains("What admins can see", markup);
         Assert.Contains("Open battery families", markup);
@@ -171,23 +168,6 @@ public sealed class AdminHelpPageTests
         Assert.Contains(".bp-admin-help-detail-row", css);
         Assert.Contains(".bp-admin-help-detail-panel", css);
         Assert.Contains(".bp-admin-help-status-table", css);
-    }
-
-    [Fact]
-    public void AdminHelpView_ShouldKeepResetInMaintenanceDisclosureAfterPrimaryGuide()
-    {
-        var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
-        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
-
-        Assert.Contains("bp-admin-help-maintenance-reset", markup);
-        Assert.Contains("<summary>", markup);
-        Assert.Contains("Maintenance", markup);
-        Assert.True(
-            markup.IndexOf("bp-admin-help-maintenance-reset", StringComparison.Ordinal) >
-            markup.IndexOf("id=\"ready-checklist\"", StringComparison.Ordinal),
-            "The reset action should be available, but it should not dominate the first help screen.");
-
-        Assert.Contains(".bp-admin-help-maintenance-reset", css);
     }
 
     [Fact]

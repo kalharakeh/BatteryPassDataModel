@@ -155,7 +155,7 @@ public sealed class AdminDenseConsoleLayoutTests
         var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
         var usersTabStart = clusters.IndexOf("selectedTab == \"users\"", StringComparison.Ordinal);
-        var nextTabStart = clusters.IndexOf("selectedTab == \"local-editable-fields\"", StringComparison.Ordinal);
+        var nextTabStart = clusters.IndexOf("selectedTab == \"api-token-management\"", StringComparison.Ordinal);
         var usersTab = clusters.Substring(usersTabStart, nextTabStart - usersTabStart);
 
         Assert.True(usersTabStart >= 0);
@@ -228,54 +228,6 @@ public sealed class AdminDenseConsoleLayoutTests
         Assert.Contains(".bp-local-admin-nav", css);
         Assert.Contains(".bp-console-split", css);
         Assert.Contains(".bp-edit-grid", css);
-    }
-
-    [Fact]
-    public void AdminLocalEditableFields_ShouldUseConsolePolicyLayout()
-    {
-        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
-        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
-        var localEditableStart = clusters.IndexOf("selectedTab == \"local-editable-fields\"", StringComparison.Ordinal);
-        var apiTokenStart = clusters.IndexOf("selectedTab == \"api-token-management\"", StringComparison.Ordinal);
-        var localEditableTab = clusters.Substring(localEditableStart, apiTokenStart - localEditableStart);
-
-        Assert.True(localEditableStart >= 0);
-        Assert.True(apiTokenStart > localEditableStart);
-        Assert.Contains("Editable fields", localEditableTab);
-        Assert.Contains("name=\"editableAtCreationFieldKeys\"", localEditableTab);
-        Assert.Contains("name=\"editableAfterCreationFieldKeys\"", localEditableTab);
-        Assert.Contains("name=\"editableByLocalAdminFieldKeys\"", localEditableTab);
-        Assert.DoesNotContain("Local editable fields", localEditableTab);
-        Assert.Contains("bp-policy-console", clusters);
-        Assert.Contains("bp-local-editable-policy-table", localEditableTab);
-        Assert.Contains("bp-console-table", localEditableTab);
-        Assert.Contains("<th>Section</th>", localEditableTab);
-        Assert.Contains("<th>Total fields</th>", localEditableTab);
-        Assert.Contains("<th>Editable</th>", localEditableTab);
-        Assert.Contains("<th>After creation</th>", localEditableTab);
-        Assert.Contains("<th>Cluster admin</th>", localEditableTab);
-        Assert.Contains("<th>Examples</th>", localEditableTab);
-        Assert.Contains("bp-local-editable-drawer-row", localEditableTab);
-        Assert.Contains("data-local-editable-drawer-toggle", localEditableTab);
-        Assert.Contains("aria-expanded=\"false\"", localEditableTab);
-        Assert.Contains("class=\"bp-local-editable-drawer-row\" hidden", localEditableTab);
-        Assert.DoesNotContain("sectionIndex == 0 ? \"true\" : \"false\"", localEditableTab);
-        Assert.DoesNotContain("hidden=\"@(sectionIndex != 0)\"", localEditableTab);
-        Assert.Contains("policySection.Fields.Count", localEditableTab);
-        Assert.Contains("sectionCreationCount", localEditableTab);
-        Assert.Contains("sectionAfterCreationCount", localEditableTab);
-        Assert.Contains("sectionLocalAdminCount", localEditableTab);
-        Assert.Contains("bp-local-editable-field-toggle", localEditableTab);
-        Assert.DoesNotContain("name=\"editableFieldKeys\"", localEditableTab);
-        Assert.Contains("/admin/local-editable-fields/save", localEditableTab);
-        Assert.DoesNotContain("bp-policy-section-grid", localEditableTab);
-        Assert.DoesNotContain("bp-requirement-grid", localEditableTab);
-        Assert.Contains("bp-policy-meta", clusters);
-        Assert.Contains(".bp-policy-console", css);
-        Assert.Contains(".bp-local-editable-policy-table", css);
-        Assert.Contains(".bp-local-editable-drawer-row", css);
-        Assert.Contains(".bp-local-editable-field-grid", css);
-        Assert.Contains(".bp-local-editable-field-toggle", css);
     }
 
     [Fact]

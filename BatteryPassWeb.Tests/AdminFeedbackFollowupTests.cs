@@ -6,18 +6,6 @@ namespace BatteryPassWeb.Tests;
 public sealed class AdminFeedbackFollowupTests
 {
     [Fact]
-    public void BatteryFamilyResetButtons_ShouldUseBatteryFamilyCopy()
-    {
-        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
-        var help = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
-
-        Assert.Contains("Reset battery-family passports", clusters);
-        Assert.Contains("Reset battery-family passports", help);
-        Assert.DoesNotContain("Reset template passports", clusters);
-        Assert.DoesNotContain("Reset battery family passports", help);
-    }
-
-    [Fact]
     public void PassportReportHero_ShouldNotShowPassportStatusAbovePassportId()
     {
         var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));

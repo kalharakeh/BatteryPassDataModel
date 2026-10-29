@@ -49,17 +49,12 @@ public sealed class AdminFeedbackImplementationTests
     public void EditableFields_ShouldSeparateClusterAdminVisibilityFromEditability()
     {
         var policy = File.ReadAllText(RepoFile("web", "Services", "EditableFieldPolicyService.cs"));
-        var adminController = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
         var clusterAdminController = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
-        var adminView = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
         var sharedEditView = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
         var editModel = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "EditPassportViewModel.cs"));
 
         Assert.Contains("VisibleToClusterAdmin", policy);
         Assert.Contains("VisibleToClusterAdminCount", policy);
-        Assert.Contains("visibleToClusterAdminFieldKeys", adminController);
-        Assert.Contains("visibleToClusterAdminFieldKeys", adminView);
-        Assert.Contains("Show for Cluster Admin", adminView);
         Assert.Contains("EditableFieldPolicyService", clusterAdminController);
         Assert.Contains("FieldVisibleByKey", editModel);
         Assert.Contains("data-visible-field-policy", sharedEditView);

@@ -91,16 +91,12 @@ public sealed class AdminTestFeedbackFixesTests
     public void ProductEditor_ShouldManagePerModelSoftwareVersions()
     {
         var models = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateModels.cs"));
-        var productView = File.ReadAllText(RepoFile("web", "Views", "Admin", "Product.cshtml"));
         var edit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
         var updateService = File.ReadAllText(RepoFile("web", "Services", "BatteryTemplateUpdateService.cs"));
 
         Assert.Contains("BatteryProductSoftwareVersion", models);
         Assert.Contains("IReadOnlyList<BatteryProductSoftwareVersion> SoftwareVersions", models);
         Assert.Contains("HighestSoftwareVersion", models);
-        Assert.Contains("data-add-software-version", productView);
-        Assert.Contains("data-remove-software-version", productView);
-        Assert.Contains("softwareVersionRows", productView);
         Assert.Contains("data-product-software-version-select", edit);
         Assert.Contains("selectedVersion.SoftwareVersions", updateService);
     }

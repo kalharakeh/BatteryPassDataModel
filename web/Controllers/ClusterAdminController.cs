@@ -50,7 +50,6 @@ public class ClusterAdminController : Controller
     private readonly ApplicationAuditService _applicationAuditService;
     private readonly PassportEvidenceService _passportEvidenceService;
     private readonly EditableFieldPolicyService _editableFieldPolicyService;
-    private readonly LocalAdminEditableFieldPolicyService _localAdminEditableFieldPolicyService;
     private readonly PassportTrustWorkflowService _passportTrustWorkflowService;
 
     public ClusterAdminController(
@@ -75,7 +74,6 @@ public class ClusterAdminController : Controller
         ApplicationAuditService applicationAuditService,
         PassportEvidenceService passportEvidenceService,
         EditableFieldPolicyService editableFieldPolicyService,
-        LocalAdminEditableFieldPolicyService localAdminEditableFieldPolicyService,
         PassportTrustWorkflowService passportTrustWorkflowService)
     {
         _passportRepository = passportRepository;
@@ -99,7 +97,6 @@ public class ClusterAdminController : Controller
         _applicationAuditService = applicationAuditService;
         _passportEvidenceService = passportEvidenceService;
         _editableFieldPolicyService = editableFieldPolicyService;
-        _localAdminEditableFieldPolicyService = localAdminEditableFieldPolicyService;
         _passportTrustWorkflowService = passportTrustWorkflowService;
     }
 

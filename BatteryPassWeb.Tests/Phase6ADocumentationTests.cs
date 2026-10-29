@@ -3,30 +3,6 @@ namespace BatteryPassWeb.Tests;
 public sealed class Phase6ADocumentationTests
 {
     [Fact]
-    public void AdminController_ShouldExposeAdminOnlyProductTemplateReset()
-    {
-        var source = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
-
-        Assert.Contains("ProductTemplateService", source);
-        Assert.Contains("[HttpPost(\"product-templates/reset\")]", source);
-        Assert.Contains("ResetProductTemplateDemo", source);
-        Assert.Contains("_productTemplateService.ResetTemplateDemoAsync", source);
-        Assert.Contains("Product template demo reset completed", source);
-    }
-
-    [Fact]
-    public void AdminHelp_ShouldShowCompactProductTemplateResetAction()
-    {
-        var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
-        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
-
-        Assert.Contains("Battery family reset", markup);
-        Assert.Contains("/admin/product-templates/reset", markup);
-        Assert.Contains("bp-admin-help-demo-reset", markup);
-        Assert.Contains(".bp-admin-help-demo-reset", css);
-    }
-
-    [Fact]
     public void SampleAccounts_ShouldDocumentEveryProductTemplatePassport()
     {
         var docs = File.ReadAllText(RepoFile("docs", "sample-cluster-test-accounts.md"));
@@ -80,18 +56,12 @@ public sealed class Phase6ADocumentationTests
     public void Guidance_ShouldMatchCurrentProductTemplateSoftwareAndUiWorkflow()
     {
         var apiHelp = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
-        var adminHelp = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
         var guide = File.ReadAllText(RepoFile("docs", "end-user-testing-guide.md"));
 
         Assert.Contains("software parameters", apiHelp);
         Assert.Contains("Battery Family baseline", apiHelp);
         Assert.Contains("software-version endpoint", apiHelp);
         Assert.Contains("Battery Model and software changes may require a new passport", apiHelp);
-
-        Assert.Contains("Software parameters", adminHelp);
-        Assert.Contains("Detailed report General tab", adminHelp);
-        Assert.Contains("Battery Model and software API changes require a new passport", adminHelp);
-        Assert.Contains("release date and latest update values", adminHelp);
 
         Assert.Contains("software parameters", guide);
         Assert.Contains("Detailed report tabs", guide);
@@ -104,7 +74,6 @@ public sealed class Phase6ADocumentationTests
     public void Documentation_ShouldExplainVersionedTemplatesCredentialsAndResetAccounts()
     {
         var apiHelp = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
-        var adminHelp = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
         var guide = File.ReadAllText(RepoFile("docs", "end-user-testing-guide.md"));
         var qa = File.ReadAllText(RepoFile("docs", "qa-test-pack.md"));
         var accounts = File.ReadAllText(RepoFile("docs", "sample-cluster-test-accounts.md"));
@@ -120,7 +89,6 @@ public sealed class Phase6ADocumentationTests
         Assert.Contains("CP7M-NORTH-002", accounts);
         Assert.Contains("CP13M-SOUTH-002", accounts);
         Assert.Contains("CORE-FLEET-002", accounts);
-        Assert.Contains("Local editable fields", adminHelp);
         Assert.Contains("Token Value", apiHelp);
         Assert.Contains("Passport Lifecycle token", apiHelp);
         Assert.DoesNotContain("create, validate, sign and publish passport token", apiHelp);

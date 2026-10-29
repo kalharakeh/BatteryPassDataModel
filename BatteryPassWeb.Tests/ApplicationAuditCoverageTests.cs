@@ -162,7 +162,6 @@ public sealed class ApplicationAuditCoverageTests
         Assert.Contains("\"cluster.user.saved\"", admin);
         Assert.Contains("\"apiToken.created\"", admin);
         Assert.Contains("\"apiToken.regenerated\"", admin);
-        Assert.Contains("\"editablePolicy.updated\"", admin);
         Assert.Contains("\"apiToken.created\"", clusterAdmin);
         Assert.Contains("\"cluster.user.saved\"", clusterAdmin);
         Assert.Contains("\"security.passwordReset.requested\"", login);
