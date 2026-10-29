@@ -1,0 +1,228 @@
+@using BatteryPassWeb.Dpp.Pages
+@model FamilyPage
+@{
+    var selected = Model.SelectedModel;
+    ViewData["Title"] = selected is null ? Model.Family.Name : $"{selected.Name} · {Model.Family.Name}";
+    var familyId = Uri.EscapeDataString(Model.Family.Id);
+    var hasPicture = Model.Family.PictureFileId is not null;
+    var here = ProductDataPages.FamilyHref(Model.Family.Id, selected?.Id);
+}
+
+<main class="bp-page bp-admin-page">
+    <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
+    <nav class="bp-breadcrumb" aria-label="Breadcrumb">
+        <a href="/admin/families">Battery families</a>
+        @if (selected is null)
+        {
+            <span aria-current="page">@Model.Family.Name</span>
+        }
+        else
+        {
+            <a href="@ProductDataPages.FamilyHref(Model.Family.Id)">@Model.Family.Name</a>
+            <span aria-current="page">@selected.Name</span>
+        }
+    </nav>
+
+    <section class="bp-card bp-console-form-card bp-product-editor-hero">
+        <div class="d-grid gap-3">
+            <div>
+                <span class="bp-summary-title">Battery family</span>
+                <h1>@Model.Family.Name</h1>
+                <p class="mb-0">
+                    The family's battery models, each with its passport values and its batches. Batteries take their model
+                    and batch values from here.
+                </p>
+            </div>
+            <div class="bp-family-identity">
+                <form method="post" action="/admin/families/@familyId/name" class="bp-family-identity-field">
+                    @Html.AntiForgeryToken()
+                    <label for="family-name">Family name <em class="bp-field-marker">Not passport data</em></label>
+                    <div class="d-flex gap-2">
+                        <input id="family-name" type="text" name="name" value="@Model.Family.Name" required />
+                        <button type="submit" class="bp-secondary-button bp-button-compact text-nowrap">Rename</button>
+                    </div>
+                </form>
+                <form method="post" action="/admin/families/@familyId/picture" enctype="multipart/form-data" class="bp-family-identity-field" data-upload-row>
+                    @Html.AntiForgeryToken()
+                    <span>Picture, shown on the public summary (PNG or JPEG)</span>
+                    <div class="d-flex gap-2">
+                        <input type="text" readonly value="@(hasPicture ? "A picture is set" : "No picture yet")" aria-label="Current picture" data-upload-name />
+                        <label class="bp-secondary-button bp-button-compact bp-document-smart-upload position-relative text-nowrap flex-shrink-0 mb-0">
+                            Choose picture
+                            <input type="file" name="picture" class="bp-document-hidden-file" accept="image/png,image/jpeg" data-upload-file />
+                        </label>
+                        <button type="submit" class="bp-secondary-button bp-button-compact text-nowrap" data-upload-button>Save picture</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="bp-product-editor-preview">
+            @if (hasPicture)
+            {
+                <img src="/dpp/families/@familyId/picture" alt="@Model.Family.Name battery family picture" />
+            }
+            else
+            {
+                <span class="bp-help-text text-center">No picture yet</span>
+            }
+        </div>
+    </section>
+
+    @await Html.PartialAsync("_Messages")
+
+    <section class="bp-card bp-product-version-console bp-console-form-card mt-4">
+        <div class="bp-product-version-console-header">
+            <div>
+                <h2>Battery models</h2>
+                <p class="bp-help-text mb-0">Choose a model to edit its passport values and its batches.</p>
+            </div>
+        </div>
+
+        @if (Model.Models.Count > 0)
+        {
+            <div class="bp-product-version-tab-rail bp-product-version-chip-rail">
+                @foreach (var chip in Model.Models)
+                {
+                    var isSelected = chip.Model.Id == selected?.Id;
+                    <article class="bp-product-version-tab bp-product-version-chip @(isSelected ? "is-active" : string.Empty)">
+                        <a class="bp-product-version-tab-main" aria-current="@(isSelected ? "page" : null)" href="@(ProductDataPages.FamilyHref(Model.Family.Id, chip.Model.Id))#editor">
+                            <strong>@chip.Model.Name</strong>
+                        </a>
+                        <small class="bp-chip-meta"
+                               title="@(chip.Missing > 0 ? $"{Words.Count(chip.Missing, "value")} needed by Feb 2027 {Words.Is(chip.Missing)} missing" : "Every value needed by Feb 2027 is filled in")">
+                            <span class="@(chip.Missing > 0 ? "bp-missing-note" : "bp-done-note")">@(chip.Missing > 0 ? $"{chip.Missing} missing" : "Complete")</span>
+                            <span>@chip.Filled of @chip.Total filled</span>
+                        </small>
+                    </article>
+                }
+            </div>
+        }
+
+        <form method="post" action="/admin/families/@familyId/models" class="bp-product-version-selected-panel bp-add-model">
+            @Html.AntiForgeryToken()
+            <label class="bp-product-version-selected-field">
+                <span>@(Model.Models.Count == 0 ? "First battery model" : "New battery model")</span>
+                <input type="text" name="name" placeholder="Model name, e.g. EXB-NMC-120" required />
+            </label>
+            @if (Model.CopySources.Count > 0)
+            {
+                <label class="bp-product-version-selected-field">
+                    <span>Start from</span>
+                    <select name="copyFrom">
+                        <option value="">Empty</option>
+                        @foreach (var group in Model.CopySources.GroupBy(source => source.FamilyName))
+                        {
+                            <optgroup label="@group.Key">
+                                @foreach (var source in group)
+                                {
+                                    <option value="@source.Model.Id">Copy of @source.Model.Name</option>
+                                }
+                            </optgroup>
+                        }
+                    </select>
+                </label>
+            }
+            <div class="bp-product-version-selected-actions">
+                <button type="submit" class="bp-secondary-button bp-button-compact text-nowrap">Add model</button>
+            </div>
+        </form>
+    </section>
+
+    @if (Model.ModelEditor is { } modelEditor)
+    {
+        @await Html.PartialAsync("_RecordEditor", modelEditor)
+    }
+
+    @if (selected is not null)
+    {
+        <section class="bp-card bp-product-editor-section bp-console-form-card mt-4" id="batches">
+            <div class="bp-product-section-heading">
+                <div>
+                    <h2>Batches of @selected.Name</h2>
+                    <p class="bp-help-text mb-0">One per calendar year and manufacturing site: carbon footprint, recycled content, the declaration of conformity and test reports.</p>
+                </div>
+            </div>
+            @if (Model.Batches.Count == 0)
+            {
+                <p class="mb-0">No batches yet.</p>
+            }
+            else
+            {
+                <div class="bp-table-scroll">
+                    <table class="table table-hover align-middle bp-console-table mb-0">
+                        <thead>
+                            <tr><th>Year</th><th>Manufacturing site</th><th>Values</th><th>Batteries</th><th class="bp-action-cell">Actions</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in Model.Batches)
+                            {
+                                <tr>
+                                    <td>@row.Batch.Year</td>
+                                    <td>@row.SiteName</td>
+                                    <td>@await Html.PartialAsync("_Completeness", new Completeness(row.Filled, row.Total, row.Missing))</td>
+                                    <td>@row.Packs (@row.Published published)</td>
+                                    <td class="bp-action-cell"><a class="bp-secondary-button bp-button-compact text-nowrap" href="/admin/batches/@Uri.EscapeDataString(row.Batch.Id)#editor">Edit batch</a></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            @if (Model.Sites.Count == 0)
+            {
+                <div class="bp-product-version-selected-panel">
+                    <div class="bp-product-version-selected-meta">
+                        <strong>Add a manufacturing site first</strong>
+                        <span>A batch is made at a manufacturing site, and there is none yet. You'll come back here after adding it.</span>
+                    </div>
+                    <div class="bp-product-version-selected-actions">
+                        <a class="bp-secondary-button bp-button-compact text-nowrap" href="/admin/sites-and-operators?returnTo=@Uri.EscapeDataString(here + "#batches")">Add a manufacturing site</a>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <form method="post" action="/admin/models/@Uri.EscapeDataString(selected.Id)/batches" class="bp-product-version-selected-panel">
+                    @Html.AntiForgeryToken()
+                    <label class="bp-product-version-selected-field">
+                        <span>Year of the new batch</span>
+                        <input type="text" inputmode="numeric" pattern="[0-9]{4}" name="year" value="@DateTime.UtcNow.Year" required />
+                    </label>
+                    <label class="bp-product-version-selected-field">
+                        <span>Manufacturing site</span>
+                        <select name="siteId" required>
+                            <option value="">Choose a site…</option>
+                            @foreach (var site in Model.Sites)
+                            {
+                                <option value="@site.Id">@site.Name</option>
+                            }
+                        </select>
+                    </label>
+                    <div class="bp-product-version-selected-actions">
+                        <button type="submit" class="bp-secondary-button bp-button-compact text-nowrap">Add batch</button>
+                    </div>
+                </form>
+            }
+        </section>
+    }
+
+    <details class="bp-card bp-remove-record mt-4">
+        <summary>Remove this battery family</summary>
+        @if (Model.Removal.Blocked is { } blocked)
+        {
+            <p class="mb-0 mt-2">It can't be removed: @blocked</p>
+        }
+        else
+        {
+            <form method="post" action="@Model.Removal.Action" class="d-flex flex-wrap align-items-center gap-3 mt-2">
+                @Html.AntiForgeryToken()
+                <span>It has no models. Removing it deletes its name and picture; this can't be undone.</span>
+                <button type="submit" class="bp-danger-button bp-button-compact text-nowrap">Remove battery family</button>
+            </form>
+        }
+    </details>
+</main>
+
+@section Scripts {
+    <script src="~/js/bp-record-editor.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,10 @@
+@using BatteryPassWeb.Dpp.Pages
+@model Completeness
+<span class="bp-completeness">
+    <progress class="bp-progress is-small" value="@Model.Filled" max="@Model.Total" aria-hidden="true"></progress>
+    <span>@Model.Filled of @Model.Total filled</span>
+    @if (Model.Missing > 0)
+    {
+        <span class="bp-missing-note">@Model.Missing missing for Feb 2027</span>
+    }
+</span>

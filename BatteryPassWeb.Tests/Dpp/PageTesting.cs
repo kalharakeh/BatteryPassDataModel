@@ -1,16 +1,22 @@
 using System.Globalization;
+using System.Security.Claims;
 using BatteryPassWeb.Configuration;
+using BatteryPassWeb.Controllers;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Forms;
 using BatteryPassWeb.Dpp.Pages;
 using BatteryPassWeb.Dpp.Values;
 using BatteryPassWeb.Services;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 
 namespace BatteryPassWeb.Tests.Dpp;
 
-/// <summary>The team-page services around a publication rig, and forms filled in the way the page shows them.</summary>
+/// <summary>The team-page services around a publication rig, and forms posted the way a browser would.</summary>
 internal static class PageTesting
 {
     public static RecordEditor Editor(PublicationRig rig) =>
@@ -56,4 +62,30 @@ internal static class PageTesting
         new ApplicationAuditService(rig.Context),
         Options.Create(new BatteryPassOptions { AppBaseUrl = DocumentTesting.BaseUrl }),
         rig.Clock);
+
+    /// <summary>The controller as a signed-in team member (role "admin") would reach it, with the given form posted.</summary>
+    public static ProductDataController Controller(PublicationRig rig, IReadOnlyDictionary<string, string>? form = null)
+    {
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.Email, "team@example.com"), new Claim(ClaimTypes.Role, AccessControlService.RoleAdmin)],
+                "test")),
+        };
+        http.Request.Form = new FormCollection((form ?? new Dictionary<string, string>()).ToDictionary(entry => entry.Key, entry => new StringValues(entry.Value)));
+        return new ProductDataController(Pages(rig), Editor(rig), rig.Store, Documents(rig))
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, new NoTempDataStorage()),
+        };
+    }
+
+    private sealed class NoTempDataStorage : ITempDataProvider
+    {
+        public IDictionary<string, object> LoadTempData(HttpContext context) => new Dictionary<string, object>();
+
+        public void SaveTempData(HttpContext context, IDictionary<string, object> values)
+        {
+        }
+    }
 }

@@ -1,0 +1,78 @@
+@using BatteryPassWeb.Dpp.Pages
+@model FamiliesPage
+@{
+    ViewData["Title"] = "Battery families";
+}
+
+<main class="bp-page bp-admin-page">
+    <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
+    <div>
+        <h1 class="mb-1">Administration</h1>
+        <p class="text-secondary mb-0">Manage battery families, sites and operators, batteries, cluster assignments, registered clusters, user memberships, credentials, and audit history.</p>
+    </div>
+
+    @await Html.PartialAsync("_AdminTabs", "products")
+    @await Html.PartialAsync("_Messages")
+
+    <section class="bp-card bp-product-template-hero bp-console-form-card mt-4">
+        <div>
+            <span class="bp-summary-title">Battery families</span>
+            <h2>Battery families, models and batches</h2>
+            <p class="mb-0">
+                A family groups battery models. Each model holds its passport values; each batch (one per calendar year
+                and manufacturing site) holds the carbon footprint, recycled content and conformity documents.
+            </p>
+        </div>
+        <form method="post" action="/admin/families" class="bp-add-family mt-3">
+            @Html.AntiForgeryToken()
+            <label class="bp-product-version-selected-field">
+                <span>New battery family</span>
+                <input type="text" name="name" placeholder="Family name, e.g. Compact 7M" required />
+            </label>
+            <button type="submit" class="bp-primary-button text-nowrap">Add battery family</button>
+        </form>
+    </section>
+
+    @if (Model.Families.Count == 0)
+    {
+        <div class="bp-card mt-4">No battery families yet. Add the first one above, then its models, their batches and the family picture.</div>
+    }
+    else
+    {
+        <section class="bp-product-template-grid mt-4">
+            @foreach (var row in Model.Families)
+            {
+                <article class="bp-card bp-product-template-card">
+                    <div class="bp-product-template-card-media">
+                        @if (row.Family.PictureFileId is not null)
+                        {
+                            <img src="/dpp/families/@Uri.EscapeDataString(row.Family.Id)/picture" alt="@row.Family.Name battery family picture" />
+                        }
+                        else
+                        {
+                            <span class="bp-help-text text-center">No picture yet</span>
+                        }
+                    </div>
+                    <div class="bp-product-template-card-body">
+                        <h3>@row.Family.Name</h3>
+                        <dl class="bp-product-template-meta">
+                            <div><dt>Battery models</dt><dd>@row.Models</dd></div>
+                            <div><dt>Batches</dt><dd>@row.Batches</dd></div>
+                            <div><dt>Batteries</dt><dd>@row.Packs</dd></div>
+                            <div><dt>Published</dt><dd>@row.Published</dd></div>
+                        </dl>
+                        @if (row.Missing > 0)
+                        {
+                            <span class="bp-missing-note">@row.Missing missing for Feb 2027</span>
+                        }
+                        else if (row.Models > 0)
+                        {
+                            <span class="bp-done-note">Complete for Feb 2027</span>
+                        }
+                        <a href="@ProductDataPages.FamilyHref(row.Family.Id)" class="bp-secondary-button">Edit family</a>
+                    </div>
+                </article>
+            }
+        </section>
+    }
+</main>

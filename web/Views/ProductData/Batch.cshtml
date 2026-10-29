@@ -1,0 +1,30 @@
+@using BatteryPassWeb.Dpp.Pages
+@model BatchPage
+@{
+    ViewData["Title"] = $"Batch {Model.Batch.Year} · {Model.Site.Name} · {Model.Model.Name}";
+}
+
+<main class="bp-page bp-admin-page">
+    <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
+    <nav class="bp-breadcrumb" aria-label="Breadcrumb">
+        <a href="/admin/families">Battery families</a>
+        <a href="@ProductDataPages.FamilyHref(Model.Family.Id)">@Model.Family.Name</a>
+        <a href="@ProductDataPages.FamilyHref(Model.Family.Id, Model.Model.Id)#batches">@Model.Model.Name</a>
+        <span aria-current="page">Batch @Model.Batch.Year · @Model.Site.Name</span>
+    </nav>
+    <header class="bp-page-heading">
+        <span class="bp-summary-title">Batch</span>
+        <h1>@Model.Batch.Year · @Model.Site.Name</h1>
+        <p class="mb-0">
+            Model @Model.Model.Name of @Model.Family.Name. Every battery of this model made at @Model.Site.Name in
+            @Model.Batch.Year shares these values.
+        </p>
+    </header>
+
+    @await Html.PartialAsync("_Messages")
+    @await Html.PartialAsync("_RecordEditor", Model.Editor)
+</main>
+
+@section Scripts {
+    <script src="~/js/bp-record-editor.js" asp-append-version="true"></script>
+}

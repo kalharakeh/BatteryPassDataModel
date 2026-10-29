@@ -1,0 +1,216 @@
+@using BatteryPassWeb.Controllers
+@using BatteryPassWeb.Dpp.Editing
+@using BatteryPassWeb.Dpp.Forms
+@using BatteryPassWeb.Dpp.Pages
+@model RecordEditorView
+@{
+    // A small record (a site or an operator) shows its few fields in one column, without a side menu.
+    var withMenu = Model.Total > 5;
+    var fields = Model.Sections.SelectMany(section => section.Fields).ToArray();
+    var later = fields.Any(field => field.Marker == "Required later");
+    var conditional = fields.Any(field => field.Marker == "Conditional");
+    var kindWord = Model.KindLabel.ToLowerInvariant();
+    var editorStatus = (TempData[ProductDataController.EditorStatusKey] ?? ViewData[ProductDataController.EditorStatusKey]) as string;
+    var editorError = (TempData[ProductDataController.EditorErrorKey] ?? ViewData[ProductDataController.EditorErrorKey]) as string;
+    var editorInfo = TempData[ProductDataController.EditorInfoKey] as string;
+
+    // A batch's page is already titled with its year and site; its editor is simply its passport values.
+    var eyebrow = Model.Kind == TargetKind.Batch ? Model.KindLabel : $"{Model.KindLabel} · passport values";
+    var title = Model.Kind == TargetKind.Batch ? "Passport values" : Model.Name;
+}
+
+<section class="bp-card bp-console-form-card bp-editor-card mt-4" id="editor">
+    <div class="bp-editor-top">
+        <div class="bp-editor-heading">
+            <span class="bp-summary-title">@eyebrow</span>
+            <h2 class="bp-editor-title">@title</h2>
+            <p class="bp-editor-summary">
+                @if (Model.Missing > 0)
+                {
+                    <span class="bp-missing-dot" aria-hidden="true"></span>
+                    <span><strong>@Words.Count(Model.Missing, "value")</strong> the passport needs by Feb 2027 @Words.Is(Model.Missing) missing.</span>
+                }
+                else
+                {
+                    <span class="bp-done-mark" aria-hidden="true">✓</span>
+                    <span>Every value the passport needs by Feb 2027 is filled in.</span>
+                }
+                <span>@(Model.PublishedPassports > 0
+                    ? $"Used by {Words.Count(Model.PublishedPassports, "published passport")}: saving a change publishes new versions, and you're asked first."
+                    : "No published passport uses it yet.")</span>
+            </p>
+        </div>
+        <div class="bp-editor-progress" data-completeness>
+            <progress class="bp-progress" value="@Model.Filled" max="@Model.Total" aria-label="Values filled in">@Model.Filled of @Model.Total</progress>
+            <span>@Model.Filled of @Model.Total filled</span>
+        </div>
+    </div>
+
+    @if (editorStatus is not null)
+    {
+        <p class="alert alert-success bp-status-line bp-editor-status is-done" role="status">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" /></svg>
+            <span>@editorStatus</span>
+        </p>
+    }
+    @if (editorInfo is not null)
+    {
+        <p class="alert alert-secondary bp-status-line bp-editor-status is-info" role="status"><span>@editorInfo</span></p>
+    }
+    @if (editorError is not null)
+    {
+        <p class="alert alert-danger bp-status-line bp-editor-status is-problem" role="alert">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4.5v4.5M8 11.5v.5" /></svg>
+            <span>@editorError</span>
+        </p>
+    }
+
+    <div class="bp-editor-tools">
+        @if (Model.Kind != TargetKind.Batch)
+        {
+            <label class="bp-editor-name">
+                <span>Name <em class="bp-field-marker">Not passport data</em></span>
+                <input type="text" name="name" value="@Model.Name" form="record-editor" required />
+            </label>
+        }
+        <div class="bp-editor-legend">
+            <span>Values without a marker are required by Feb 2027.</span>
+            @if (later)
+            {
+                <span><em class="bp-field-marker">Required later</em> only after Feb 2027.</span>
+            }
+            @if (conditional)
+            {
+                <span><em class="bp-field-marker">Conditional</em> only if it applies to this battery.</span>
+            }
+            <span>Empty a field to remove its value.</span>
+        </div>
+        @if (Model.Missing > 0)
+        {
+            <label class="bp-editor-switch">
+                <input type="checkbox" role="switch" data-missing-only />
+                <span>Show only missing values</span>
+            </label>
+        }
+    </div>
+
+    <form method="post" action="@Model.SaveAction" class="@(withMenu ? "bp-edit-grid" : "d-grid") bp-editor-body" id="record-editor" data-record-editor data-cancel-href="@Model.CancelHref">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="@ProductDataController.StampField" value="@Model.Stamp" />
+        @if (withMenu)
+        {
+            <nav class="bp-edit-nav" aria-label="@Model.KindLabel sections">
+                @foreach (var group in Model.Sections)
+                {
+                    <button type="button" class="bp-edit-nav-button@(group.Missing > 0 ? " has-missing-values" : string.Empty)" data-section-target="@group.Id" aria-pressed="false"
+                            title="@(group.Missing > 0 ? $"{group.Title}: {Words.Count(group.Missing, "value")} needed by Feb 2027 {Words.Is(group.Missing)} missing" : group.Title)">
+                        <span class="bp-edit-nav-label">@group.Title</span>
+                        <span class="bp-edit-nav-count">@(group.Missing > 0 ? $"{group.Missing} missing" : $"{group.Filled} of {group.Fields.Count} filled")</span>
+                    </button>
+                }
+            </nav>
+        }
+
+        <div class="bp-edit-form">
+            @foreach (var group in Model.Sections)
+            {
+                <section id="@group.Id" class="bp-card bp-edit-section bp-console-form-card@(group.Missing == 0 ? " has-no-missing" : string.Empty)" data-section-title="@group.Title">
+                    <h3 class="bp-edit-section-title">@group.Title</h3>
+                    <p class="bp-template-sync-note">@group.Note</p>
+                    <div class="bp-attr-list">
+                        @foreach (var field in group.Fields)
+                        {
+                            @await Html.PartialAsync("_EditorField", new EditorFieldView(Model, field))
+                        }
+                    </div>
+                </section>
+            }
+
+            <div class="bp-product-editor-savebar">
+                <span class="bp-savebar-text" data-save-status>Only the values you change are saved.</span>
+                <div class="bp-savebar-actions">
+                    <button type="button" class="bp-secondary-button" data-cancel-edits data-cancel-href="@Model.CancelHref">Cancel edits</button>
+                    <button type="submit" class="bp-primary-button">Save @kindWord</button>
+                </div>
+            </div>
+        </div>
+
+        @if (Model.Confirm.Count > 0)
+        {
+            <div class="bp-modal" data-confirm-modal>
+                <div class="bp-modal-backdrop"></div>
+                <div class="bp-modal-panel" role="dialog" aria-modal="true" aria-labelledby="confirm-publish-title">
+                    <h2 id="confirm-publish-title" class="h5 mb-2">Save and publish new versions?</h2>
+                    <p class="mb-2">
+                        This change is part of <strong>@Words.Count(Model.Confirm.Count, "published passport")</strong>. Each one gets a new
+                        signed version; the current version is archived and stays readable.
+                    </p>
+                    <ul class="mb-3">
+                        @foreach (var passport in Model.Confirm.Take(10))
+                        {
+                            <li>@passport.SerialNumber · @(passport.ClusterId ?? "no cluster") · version @passport.CurrentVersion → @(passport.CurrentVersion + 1)</li>
+                        }
+                        @if (Model.Confirm.Count > 10)
+                        {
+                            <li class="text-secondary">and @(Model.Confirm.Count - 10) more</li>
+                        }
+                    </ul>
+                    <div class="d-flex justify-content-end flex-wrap gap-2">
+                        <button type="button" class="bp-secondary-button" data-confirm-stay>Keep editing</button>
+                        <button type="submit" class="bp-primary-button" name="confirmed" value="true">Save and publish @Words.Count(Model.Confirm.Count, "version")</button>
+                    </div>
+                </div>
+            </div>
+        }
+    </form>
+</section>
+
+@foreach (var field in fields.Where(field => field.Form.Kind == FormKind.Upload))
+{
+    <form id="upload-@field.Attribute.Property" method="post" enctype="multipart/form-data" action="@Model.UploadAction(field.Attribute.Property)" data-upload-form>
+        @Html.AntiForgeryToken()
+    </form>
+}
+
+<details class="bp-card bp-remove-record mt-4">
+    <summary>Remove this @kindWord</summary>
+    @if (Model.Removal.Blocked is { } blocked)
+    {
+        <p class="mb-0 mt-2">It can't be removed: @blocked</p>
+    }
+    else
+    {
+        <form method="post" action="@Model.Removal.Action" class="d-flex flex-wrap align-items-center gap-3 mt-2">
+            @Html.AntiForgeryToken()
+            <span>Nothing uses it yet. Removing it deletes its values@(Model.Kind is TargetKind.Model or TargetKind.Batch ? " and uploaded documents" : string.Empty); this can't be undone.</span>
+            <button type="submit" class="bp-danger-button bp-button-compact text-nowrap">Remove @kindWord</button>
+        </form>
+    }
+</details>
+
+<div class="bp-modal" data-upload-guard-modal hidden>
+    <div class="bp-modal-backdrop" data-upload-dismiss></div>
+    <div class="bp-modal-panel" role="dialog" aria-modal="true" aria-labelledby="upload-guard-title" aria-describedby="upload-guard-description">
+        <h2 id="upload-guard-title" class="h5 mb-2">Save your edits before uploading?</h2>
+        <p id="upload-guard-description" class="mb-3">
+            Uploading a file reloads the page, which discards the values you've typed but not saved. Save them first,
+            then choose the file again, or upload now and discard them.
+        </p>
+        <div class="d-flex justify-content-end flex-wrap gap-2">
+            <button type="button" class="bp-secondary-button" data-upload-stay>Keep editing</button>
+            <button type="button" class="bp-danger-button" data-upload-discard>Discard edits and upload</button>
+        </div>
+    </div>
+</div>
+
+<div class="bp-modal" data-cancel-modal hidden>
+    <div class="bp-modal-backdrop" data-cancel-dismiss></div>
+    <div class="bp-modal-panel" role="dialog" aria-modal="true" aria-labelledby="cancel-edits-title" aria-describedby="cancel-edits-description">
+        <h2 id="cancel-edits-title" class="h5 mb-2">Discard unsaved edits?</h2>
+        <p id="cancel-edits-description" class="mb-3">You have unsaved changes. Leaving this page will discard them.</p>
+        <div class="d-flex justify-content-end flex-wrap gap-2">
+            <button type="button" class="bp-secondary-button" data-cancel-stay>Keep editing</button>
+            <button type="button" class="bp-danger-button" data-cancel-discard>Discard changes</button>
+        </div>
+    </div>
+</div>
