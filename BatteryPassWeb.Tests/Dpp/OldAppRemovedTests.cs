@@ -50,6 +50,13 @@ public sealed class OldAppRemovedTests(MongoFixture mongo)
     }
 
     [Fact]
+    public void TheOldNextJsApp_ShouldBeGone()
+    {
+        Assert.False(Directory.Exists(Path.Combine(RepoRoot, "web-next-legacy")));
+        Assert.DoesNotContain("web-next-legacy", File.ReadAllText(Path.Combine(RepoRoot, ".ebignore")), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TheV12DataModel_ShouldStayInTheRepositoryAsReferenceButNotBeRead()
     {
         Assert.True(Directory.Exists(Path.Combine(RepoRoot, "BatteryPass", "io.BatteryPass.GeneralProductInformation")));

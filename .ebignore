@@ -1,5 +1,4 @@
 # Elastic Beanstalk source bundle guardrails
-web-next-legacy/
 **/node_modules/
 **/.next/
 
