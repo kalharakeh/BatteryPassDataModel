@@ -23,6 +23,7 @@ public sealed record DemoResult(IReadOnlyList<string> Done, IReadOnlyList<string
 /// <summary>
 /// The demo data (decision 32). Seeding makes the catalogue's records through the app's own creation, save and
 /// publication paths, so values are checked, logged and signed as usual, and marks each record it makes as demo data.
+/// Clearing removes only marked records; a marked record that real data uses stays, loses its mark and is listed.
 /// </summary>
 public sealed class DemoDataService(
     MongoContext mongo,
@@ -33,6 +34,7 @@ public sealed class DemoDataService(
     SavePipeline pipeline,
     PublicationService publication,
     DocumentService documents,
+    DocumentStore documentStore,
     DppLinks links,
     BatteryApi api,
     ClusterRepository clusters,
@@ -42,6 +44,7 @@ public sealed class DemoDataService(
     TimeProvider clock)
 {
     public const string SeededEvent = "demo.seeded";
+    public const string ClearedEvent = "demo.cleared";
     public const string Mark = "IsDemo";
     public const string AccountMark = "isDemo";
     public const string NoPassword = "Set DEMO_USERS_PASSWORD to create the demo accounts.";
@@ -59,6 +62,19 @@ public sealed class DemoDataService(
     public async Task<bool> HasDemoDataAsync(CancellationToken cancellationToken = default) =>
         mongo.Database is not null
         && await Collection(DppStore.Packs).CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq(Mark, true), cancellationToken: cancellationToken) > 0;
+
+    /// <summary>Clears the demo data, then seeds it again.</summary>
+    public async Task<DemoResult> ResetAsync(string who, CancellationToken cancellationToken = default)
+    {
+        if (!links.IsConfigured)
+        {
+            return new DemoResult([], [DppLinks.NotConfigured], []);
+        }
+
+        var cleared = await ClearAsync(who, cancellationToken);
+        var seeded = await SeedAsync(who, cancellationToken);
+        return new DemoResult([.. cleared.Done, .. seeded.Done], [.. cleared.Notes, .. seeded.Notes], seeded.Tokens);
+    }
 
     public async Task<DemoResult> SeedAsync(string who, CancellationToken cancellationToken = default)
     {
@@ -208,6 +224,90 @@ public sealed class DemoDataService(
         return new DemoResult(done, notes, demoTokens);
     }
 
+    public async Task<DemoResult> ClearAsync(string who, CancellationToken cancellationToken = default)
+    {
+        var notes = new List<string>();
+        var removed = new Dictionary<string, int>(StringComparer.Ordinal);
+        void Count(string what) => removed[what] = removed.GetValueOrDefault(what) + 1;
+
+        // Batteries first: nothing real can depend on a demo battery. Their versions and documents go with them.
+        foreach (var packId in await DemoIdsAsync(DppStore.Packs, cancellationToken))
+        {
+            await Collection(DppStore.Versions).DeleteManyAsync(Builders<BsonDocument>.Filter.Eq("PackId", packId), cancellationToken);
+            await documentStore.DeleteOwnedAsync(TargetKind.Pack, packId, cancellationToken);
+            await store.DeleteAsync<BatteryPack>(packId, cancellationToken);
+            Count("batteries");
+        }
+
+        await ClearUnlessUsedAsync<ProductionBatch>(DppStore.Batches, "batches", (DppStore.Packs, "BatchId"), "real batteries", TargetKind.Batch, notes, Count, cancellationToken);
+        await ClearUnlessUsedAsync<EconomicOperator>(DppStore.Operators, "operators", (DppStore.Packs, "OperatorId"), "real batteries", null, notes, Count, cancellationToken);
+        await ClearUnlessUsedAsync<BatteryModel>(DppStore.Models, "models", (DppStore.Batches, "ModelId"), "real batches", TargetKind.Model, notes, Count, cancellationToken);
+        await ClearUnlessUsedAsync<ManufacturingSite>(DppStore.Sites, "sites", (DppStore.Batches, "SiteId"), "real batches", null, notes, Count, cancellationToken);
+        foreach (var family in await Collection(DppStore.Families).Find(Builders<BsonDocument>.Filter.Eq(Mark, true)).ToListAsync(cancellationToken))
+        {
+            var id = family["_id"].AsString;
+            var used = await Collection(DppStore.Models).CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq("FamilyId", id), cancellationToken: cancellationToken);
+            if (used > 0)
+            {
+                await Unmark(DppStore.Families, id, cancellationToken);
+                notes.Add($"Kept {BsonName(family)}: {used} real models use it, so it is no longer marked as demo data.");
+                continue;
+            }
+
+            if (family.GetValue("PictureFileId", BsonNull.Value) is { IsString: true } picture)
+            {
+                await documentStore.DeleteFileAsync(picture.AsString, cancellationToken);
+            }
+
+            await store.DeleteAsync<BatteryFamily>(id, cancellationToken);
+            Count("families");
+        }
+
+        var demoTokens = Builders<BsonDocument>.Filter.Eq(AccountMark, true);
+        removed["API tokens"] = (int)(await Collection("apiTokens").DeleteManyAsync(demoTokens, cancellationToken)).DeletedCount;
+        foreach (var user in await Collection("users").Find(Builders<BsonDocument>.Filter.Eq(AccountMark, true)).ToListAsync(cancellationToken))
+        {
+            await clusters.DeleteUserAsync(BsonHelpers.GetString(user, "email"), cancellationToken);
+            Count("accounts");
+        }
+
+        foreach (var cluster in await Collection("clusters").Find(Builders<BsonDocument>.Filter.Eq(AccountMark, true)).ToListAsync(cancellationToken))
+        {
+            var clusterId = BsonHelpers.GetString(cluster, "clusterId");
+            var uses = new List<string>();
+            var packs = await Collection(DppStore.Packs).CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq("ClusterId", clusterId), cancellationToken: cancellationToken);
+            var members = await Collection("clusterMemberships").CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq("clusterId", clusterId), cancellationToken: cancellationToken);
+            var realTokens = await Collection("apiTokens").CountDocumentsAsync(
+                Builders<BsonDocument>.Filter.Or(Builders<BsonDocument>.Filter.Eq("autoClusterId", clusterId), Builders<BsonDocument>.Filter.AnyEq("clusterIds", clusterId)),
+                cancellationToken: cancellationToken);
+            if (packs > 0) uses.Add($"{packs} real batteries");
+            if (members > 0) uses.Add($"{members} real accounts");
+            if (realTokens > 0) uses.Add($"{realTokens} real API tokens");
+            if (uses.Count > 0)
+            {
+                await MarkAccountRecordAsync("clusters", Builders<BsonDocument>.Filter.Eq("clusterId", clusterId), cancellationToken, false);
+                notes.Add($"Kept cluster {clusterId}: {string.Join(", ", uses)} use it, so it is no longer marked as demo data.");
+                continue;
+            }
+
+            await clusters.DeleteClusterAsync(clusterId, cancellationToken);
+            Count("clusters");
+        }
+
+        var done = removed.Where(entry => entry.Value > 0).Select(entry => $"{entry.Value} {entry.Key} removed").ToList();
+        if (done.Count == 0 && notes.Count == 0)
+        {
+            done.Add("There was no demo data to clear.");
+        }
+
+        var metadata = new BsonDocument(removed.Select(entry => new BsonElement(entry.Key.Replace(' ', '_'), entry.Value)))
+        {
+            ["kept"] = notes.Count,
+        };
+        await audit.AppendApplicationAuditEventAsync(ClearedEvent, who, "admin", "admin-ui", "Demo data cleared.", metadata, "demo", "demo-data", cancellationToken: cancellationToken);
+        return new DemoResult(done, notes, []);
+    }
+
     private async Task<int> SeedAccountsAsync(DemoCatalogue catalogue, List<string> notes, CancellationToken cancellationToken)
     {
         var password = options.Value.DemoUsersPassword;
@@ -300,6 +400,38 @@ public sealed class DemoDataService(
         }
     }
 
+    private async Task ClearUnlessUsedAsync<T>(
+        string collection,
+        string plural,
+        (string Collection, string Field) usedBy,
+        string usersWord,
+        TargetKind? documentsOf,
+        List<string> notes,
+        Action<string> count,
+        CancellationToken cancellationToken)
+        where T : class, IDppRecord
+    {
+        foreach (var record in await Collection(collection).Find(Builders<BsonDocument>.Filter.Eq(Mark, true)).ToListAsync(cancellationToken))
+        {
+            var id = record["_id"].AsString;
+            var used = await Collection(usedBy.Collection).CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq(usedBy.Field, id), cancellationToken: cancellationToken);
+            if (used > 0)
+            {
+                await Unmark(collection, id, cancellationToken);
+                notes.Add($"Kept {BsonName(record)}: {used} {usersWord} use it, so it is no longer marked as demo data.");
+                continue;
+            }
+
+            if (documentsOf is { } owner)
+            {
+                await documentStore.DeleteOwnedAsync(owner, id, cancellationToken);
+            }
+
+            await store.DeleteAsync<T>(id, cancellationToken);
+            count(plural);
+        }
+    }
+
     private async Task SaveAsync(ChangeSender team, TargetKind kind, string id, JsonObject values, CancellationToken cancellationToken)
     {
         var result = await pipeline.SaveAsync(team, new ChangeSet(kind, id, Values(values), "form"), cancellationToken: cancellationToken);
@@ -352,9 +484,20 @@ public sealed class DemoDataService(
 
     private IMongoCollection<BsonDocument> Collection(string name) => Database.GetCollection<BsonDocument>(name);
 
+    private async Task<List<string>> DemoIdsAsync(string collection, CancellationToken cancellationToken) =>
+        (await Collection(collection).Find(Builders<BsonDocument>.Filter.Eq(Mark, true)).Project(Builders<BsonDocument>.Projection.Include("_id")).ToListAsync(cancellationToken))
+        .Select(document => document["_id"].AsString)
+        .ToList();
+
     private Task MarkAsync(string collection, string id, CancellationToken cancellationToken) =>
         Collection(collection).UpdateOneAsync(Builders<BsonDocument>.Filter.Eq("_id", id), Builders<BsonDocument>.Update.Set(Mark, true), cancellationToken: cancellationToken);
 
-    private Task MarkAccountRecordAsync(string collection, FilterDefinition<BsonDocument> filter, CancellationToken cancellationToken) =>
-        Collection(collection).UpdateOneAsync(filter, Builders<BsonDocument>.Update.Set(AccountMark, true), cancellationToken: cancellationToken);
+    private Task Unmark(string collection, string id, CancellationToken cancellationToken) =>
+        Collection(collection).UpdateOneAsync(Builders<BsonDocument>.Filter.Eq("_id", id), Builders<BsonDocument>.Update.Set(Mark, false), cancellationToken: cancellationToken);
+
+    private Task MarkAccountRecordAsync(string collection, FilterDefinition<BsonDocument> filter, CancellationToken cancellationToken, bool isDemo = true) =>
+        Collection(collection).UpdateOneAsync(filter, Builders<BsonDocument>.Update.Set(AccountMark, isDemo), cancellationToken: cancellationToken);
+
+    private static string BsonName(BsonDocument record) =>
+        record.GetValue("Name", BsonNull.Value) is { IsString: true } name ? name.AsString : record["_id"].AsString;
 }
