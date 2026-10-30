@@ -50,27 +50,23 @@ public sealed class SecurityLimitsTests
         var loginController = File.ReadAllText(RepoFile("web", "Controllers", "LoginController.cs"));
         var authApiController = File.ReadAllText(RepoFile("web", "Controllers", "AuthApiController.cs"));
         var externalApiController = File.ReadAllText(RepoFile("web", "Controllers", "DppApiController.cs"));
-        var filesApiController = File.ReadAllText(RepoFile("web", "Controllers", "FilesApiController.cs"));
 
         Assert.Contains("EnableRateLimiting(SecurityRateLimitPolicyNames.Login)", loginController);
         Assert.Contains("EnableRateLimiting(SecurityRateLimitPolicyNames.Login)", authApiController);
         Assert.Contains("EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiRead)", externalApiController);
         Assert.Contains("EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiWrite)", externalApiController);
         Assert.Contains("EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiLifecycle)", externalApiController);
-        Assert.Contains("EnableRateLimiting(SecurityRateLimitPolicyNames.FileUpload)", filesApiController);
     }
 
     [Fact]
     public void FileUpload_ShouldCheckConfiguredFileSizeBeforeBuffering()
     {
-        var controller = File.ReadAllText(RepoFile("web", "Controllers", "FilesApiController.cs"));
+        // The old files API went with step 3d-1; uploads go through the documents service, behind the request size limit.
+        var program = File.ReadAllText(RepoFile("web", "Program.cs"));
+        var documents = File.ReadAllText(RepoFile("web", "Dpp", "Documents", "DocumentService.cs"));
 
-        Assert.Contains("MaxUploadBytes", controller);
-        Assert.Contains("StatusCodes.Status413PayloadTooLarge", controller);
-        Assert.True(
-            controller.IndexOf("file.Length > _options.MaxUploadBytes", StringComparison.Ordinal)
-            < controller.IndexOf("new MemoryStream", StringComparison.Ordinal),
-            "Upload size should be checked before buffering the uploaded file.");
+        Assert.Contains("return options.MaxUploadBytes + 65_536;", program);
+        Assert.Contains("options.Value.MaxUploadBytes", documents);
     }
 
     private static string RepoFile(params string[] parts)

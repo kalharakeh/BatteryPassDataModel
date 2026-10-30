@@ -1,7 +1,6 @@
 using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Dpp.Audit;
 using BatteryPassWeb.Dpp.Store;
-using BatteryPassWeb.Models.Trust;
 using BatteryPassWeb.Models.ViewModels;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -19,7 +18,6 @@ namespace BatteryPassWeb.Controllers;
 [Route("admin")]
 public class AdminController : Controller
 {
-    private readonly PassportRepository _passportRepository;
     private readonly ClusterRepository _clusterRepository;
     private readonly ExternalApiRepository _externalApiRepository;
     private readonly ApplicationAuditService _applicationAuditService;
@@ -27,14 +25,12 @@ public class AdminController : Controller
     private readonly DppStore _dppStore;
 
     public AdminController(
-        PassportRepository passportRepository,
         ClusterRepository clusterRepository,
         ExternalApiRepository externalApiRepository,
         ApplicationAuditService applicationAuditService,
         ApplicationSettingsService applicationSettingsService,
         DppStore dppStore)
     {
-        _passportRepository = passportRepository;
         _clusterRepository = clusterRepository;
         _externalApiRepository = externalApiRepository;
         _applicationAuditService = applicationAuditService;
@@ -185,9 +181,6 @@ public class AdminController : Controller
                     LastUsedAt = BsonHelpers.GetString(token, "lastUsedAt")
                 };
             }).OrderBy(token => token.Name, StringComparer.OrdinalIgnoreCase).ToList(),
-            SamplePassportId = ExternalApiInitializer.SamplePassportId,
-            SampleReadToken = await ResolveTokenValueAsync(ExternalApiInitializer.SampleReadTokenId, ExternalApiInitializer.SampleReadTokenValue, cancellationToken),
-            SampleReadWriteToken = await ResolveTokenValueAsync(ExternalApiInitializer.SampleReadWriteTokenId, ExternalApiInitializer.SampleReadWriteTokenValue, cancellationToken),
             StatusMessage = TempData["StatusMessage"]?.ToString() ?? string.Empty,
             ErrorMessage = TempData["ErrorMessage"]?.ToString() ?? string.Empty,
             GeneratedCredential = TempData["GeneratedCredential"]?.ToString() ?? string.Empty,
@@ -274,12 +267,11 @@ public class AdminController : Controller
     public async Task<IActionResult> DeleteCluster(CancellationToken cancellationToken)
     {
         var clusterId = Text(Request.Form, "clusterId");
-        var passportCount = await _passportRepository.CountPassportsByClusterAsync(clusterId, cancellationToken);
         var batteryCount = await _dppStore.CountPacksInClusterAsync(clusterId, cancellationToken);
         var membershipCount = await _clusterRepository.CountMembershipsByClusterAsync(clusterId, cancellationToken);
-        if (passportCount > 0 || batteryCount > 0 || membershipCount > 0)
+        if (batteryCount > 0 || membershipCount > 0)
         {
-            TempData["ErrorMessage"] = $"Cluster {clusterId} has {passportCount} linked passport(s), {batteryCount} linked battery(ies) and {membershipCount} linked user membership(s). Use force delete only after confirming linked data removal.";
+            TempData["ErrorMessage"] = $"Cluster {clusterId} has {batteryCount} linked battery(ies) and {membershipCount} linked user membership(s). Use force delete only after confirming linked data removal.";
             return Redirect("/admin/clusters?tab=clusters");
         }
 
@@ -306,7 +298,6 @@ public class AdminController : Controller
             return Redirect("/admin/clusters?tab=clusters");
         }
 
-        await _passportRepository.ClearPassportClusterAsync(clusterId, cancellationToken);
         var batteriesCleared = await _dppStore.ClearClusterAsync(clusterId, cancellationToken);
         await _clusterRepository.DeleteClusterAsync(clusterId, cancellationToken);
         await AppendAdminAuditAsync(
@@ -975,17 +966,6 @@ public class AdminController : Controller
             entityType,
             entityId,
             cancellationToken: cancellationToken);
-    }
-
-    private async Task<string> ResolveTokenValueAsync(string tokenId, string fallback, CancellationToken cancellationToken)
-    {
-        var tokenDocument = await _externalApiRepository.GetTokenByIdAsync(tokenId, cancellationToken);
-        if (tokenDocument == null)
-        {
-            return fallback;
-        }
-
-        return fallback;
     }
 
     private static string Text(IFormCollection form, string key, string? fallback = "")

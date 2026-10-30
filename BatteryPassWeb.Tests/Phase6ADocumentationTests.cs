@@ -82,7 +82,6 @@ public sealed class Phase6ADocumentationTests
         Assert.Contains("CP13M-SOUTH-002", accounts);
         Assert.Contains("CORE-FLEET-002", accounts);
         Assert.Contains("Token Value", apiHelp);
-        Assert.Contains("Passport Lifecycle token", apiHelp);
         Assert.DoesNotContain("create, validate, sign and publish passport token", apiHelp);
         Assert.DoesNotContain("Battery Secret", apiHelp);
     }

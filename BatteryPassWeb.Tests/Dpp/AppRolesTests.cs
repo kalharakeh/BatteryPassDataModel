@@ -72,10 +72,8 @@ public sealed class AppRolesTests
         var old = User("legitimateInterest");
 
         Assert.False(AccessControlService.HasLegitimateInterestRole(old));
-        Assert.False(AccessControlService.HasGlobalReportReadRole(old));
-        Assert.False(AccessControlService.CanSeeSignedPassports(old));
         Assert.Equal("Cluster Member", AccessControlService.DisplayRoleLabel(old));
-        Assert.All(LiRoles, role => Assert.True(AccessControlService.HasGlobalReportReadRole(User(role))));
+        Assert.All(LiRoles, role => Assert.True(AccessControlService.HasLegitimateInterestRole(User(role))));
     }
 
     private static ClaimsPrincipal User(string role) =>

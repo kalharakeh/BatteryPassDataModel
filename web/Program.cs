@@ -75,9 +75,6 @@ builder.Services.Configure<BatteryPassOptions>(options =>
     options.ExternalApiEncryptionKey = Environment.GetEnvironmentVariable("EXTERNAL_API_ENCRYPTION_KEY")
         ?? builder.Configuration["BatteryPass:ExternalApiEncryptionKey"]
         ?? string.Empty;
-    options.IdGenerationSecret = Environment.GetEnvironmentVariable("ID_GENERATION_SECRET")
-        ?? builder.Configuration["BatteryPass:IdGenerationSecret"]
-        ?? string.Empty;
     options.PowerAutomateResetWebhookUrl = Environment.GetEnvironmentVariable("POWER_AUTOMATE_RESET_WEBHOOK_URL")
         ?? builder.Configuration["BatteryPass:PowerAutomateResetWebhookUrl"]
         ?? string.Empty;
@@ -95,15 +92,6 @@ builder.Services.Configure<BatteryPassOptions>(options =>
     options.RequireHttpsRedirection = DeploymentSecurityConfiguration.ParseRequireHttpsRedirection(
         Environment.GetEnvironmentVariable("REQUIRE_HTTPS_REDIRECTION")
             ?? builder.Configuration["BatteryPass:RequireHttpsRedirection"]);
-    options.EnableDemoData = ParseFeatureFlag(
-        Environment.GetEnvironmentVariable("ENABLE_DEMO_DATA")
-            ?? builder.Configuration["BatteryPass:EnableDemoData"]);
-    options.EnablePublicDemoReadToken = ParseFeatureFlag(
-        Environment.GetEnvironmentVariable("ENABLE_PUBLIC_DEMO_READ_TOKEN")
-            ?? builder.Configuration["BatteryPass:EnablePublicDemoReadToken"]);
-    options.EnableDemoWriteSignTesting = ParseFeatureFlag(
-        Environment.GetEnvironmentVariable("ENABLE_DEMO_WRITE_SIGN_TESTING")
-            ?? builder.Configuration["BatteryPass:EnableDemoWriteSignTesting"]);
     options.EnableDemoAdminFallback = ParseFeatureFlag(
         Environment.GetEnvironmentVariable("ENABLE_DEMO_ADMIN_FALLBACK")
             ?? builder.Configuration["BatteryPass:EnableDemoAdminFallback"]);
@@ -204,43 +192,13 @@ builder.Services.AddHttpsRedirection(options =>
     options.RedirectStatusCode = StatusCodes.Status307TemporaryRedirect;
 });
 builder.Services.AddSingleton<MongoContext>();
-builder.Services.AddSingleton<PassportRepository>();
-builder.Services.AddSingleton<BatteryRepository>();
-builder.Services.AddSingleton<BatteryTableService>();
-builder.Services.AddSingleton<BatteryPassportSnapshotService>();
-builder.Services.AddSingleton<BatteryPassportDeltaService>();
-builder.Services.AddSingleton<BatteryTemplateUpdateService>();
-builder.Services.AddSingleton<BatteryRouteResolutionService>();
 builder.Services.AddSingleton<ClusterRepository>();
-builder.Services.AddSingleton<PassportViewModelFactory>();
-builder.Services.AddSingleton<SchemaRegistryService>();
-builder.Services.AddSingleton<JsonSchemaValidationService>();
-builder.Services.AddSingleton<PassportValidationService>();
-builder.Services.AddSingleton<PassportPublishPolicyService>();
-builder.Services.AddSingleton<PassportReadinessService>();
-builder.Services.AddSingleton<PassportEvidenceService>();
-builder.Services.AddSingleton<DataCompletionPolicyService>();
-builder.Services.AddSingleton<EditableFieldPolicyService>();
-builder.Services.AddSingleton<ProductTemplateService>();
-builder.Services.AddSingleton<DemoRequiredDataCompletionService>();
-builder.Services.AddSingleton<PassportDataNormalizationService>();
-builder.Services.AddSingleton<CanonicalPassportSnapshotService>();
 builder.Services.AddSingleton<DemoSigningKeyService>();
-builder.Services.AddSingleton<PassportTrustService>();
-builder.Services.AddSingleton<AuditRevisionService>();
-builder.Services.AddSingleton<BatteryAuditService>();
 builder.Services.AddSingleton<ApplicationAuditService>();
 builder.Services.AddSingleton<ApplicationSettingsService>();
 builder.Services.AddSingleton<AuthenticationSessionService>();
-builder.Services.AddSingleton<PassportTrustWorkflowService>();
 builder.Services.AddSingleton<AccessControlService>();
 builder.Services.AddSingleton<PassportQrCodeService>();
-builder.Services.AddSingleton(provider =>
-{
-    var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<BatteryPassOptions>>().Value;
-    var environment = provider.GetRequiredService<IWebHostEnvironment>();
-    return new BatteryIdService(options.IdGenerationSecret, environment.IsDevelopment());
-});
 builder.Services.AddSingleton<AuthService>();
 builder.Services.AddHttpClient<IEmailSender, PowerAutomateEmailSender>();
 builder.Services.AddSingleton<ExternalApiSecurityService>();

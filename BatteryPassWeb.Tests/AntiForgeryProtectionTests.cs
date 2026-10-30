@@ -5,10 +5,8 @@ public sealed class AntiForgeryProtectionTests
     [Fact]
     public void CookieAuthenticatedJsonMutationApis_ShouldRequireAntiForgeryTokens()
     {
-        var filesApi = File.ReadAllText(RepoFile("web", "Controllers", "FilesApiController.cs"));
         var authApi = File.ReadAllText(RepoFile("web", "Controllers", "AuthApiController.cs"));
 
-        AssertMethodHasAttribute(filesApi, "Upload", "ValidateAntiForgeryToken");
         AssertMethodHasAttribute(authApi, "Login", "ValidateAntiForgeryToken");
         AssertMethodHasAttribute(authApi, "Logout", "ValidateAntiForgeryToken");
     }
@@ -21,16 +19,6 @@ public sealed class AntiForgeryProtectionTests
         Assert.DoesNotContain("ValidateAntiForgeryToken", externalApi);
         Assert.Contains("ExternalApiCredentials.Token(Request)", externalApi);
         Assert.Contains("ValidateTokenAsync", externalApi);
-    }
-
-    [Fact]
-    public void ExistingFileUploadJavascript_ShouldSendAntiForgeryHeader()
-    {
-        var editPassport = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
-
-        Assert.Contains("@Html.AntiForgeryToken()", editPassport);
-        Assert.Contains("fetch('/api/files'", editPassport);
-        Assert.Contains("'RequestVerificationToken': token", editPassport);
     }
 
     private static void AssertMethodHasAttribute(string source, string methodName, string attribute)

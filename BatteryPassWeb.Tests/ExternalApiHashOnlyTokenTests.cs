@@ -56,10 +56,7 @@ public sealed class ExternalApiHashOnlyTokenTests
         Assert.Contains("TempData[\"GeneratedCredential\"] = newToken", admin);
         Assert.Contains("TempData[\"GeneratedCredential\"] = tokenValue", clusterAdmin);
         Assert.Contains("GeneratedCredential", clusterAdmin);
-        Assert.Contains("SampleReadToken = _options.EnableDemoData", help);
-        Assert.Contains("ExternalApiInitializer.SampleReadTokenValue", help);
-        Assert.Contains("ExternalApiInitializer.SampleReadWriteTokenValue", help);
-        Assert.Contains("ExternalApiInitializer.SampleLifecycleTokenValue", help);
+        Assert.DoesNotContain("SampleReadToken", help);
 
         Assert.DoesNotContain("TryRevealToken", admin);
         Assert.DoesNotContain("TryRevealToken", help);

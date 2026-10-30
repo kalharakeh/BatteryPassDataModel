@@ -10,7 +10,6 @@ public sealed class MobileThemeSessionLayoutTests
     public void MobileCss_ShouldAddMobileOnlyNavigationTouchAndTableGuardrails()
     {
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
-        var sharedBatteryTable = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
 
         Assert.Contains("@media (max-width: 767px)", css);
         Assert.Contains(".bp-header-nav-row::after", css);
@@ -22,9 +21,6 @@ public sealed class MobileThemeSessionLayoutTests
         Assert.Contains(".bp-id-copy-row", css);
         Assert.Contains("grid-template-columns: minmax(0, 1fr) 44px;", css);
 
-        Assert.Contains("bp-mobile-card-table", sharedBatteryTable);
-        Assert.Contains("data-label=\"Battery ID\"", sharedBatteryTable);
-        Assert.Contains("data-label=\"Actions\"", sharedBatteryTable);
     }
 
     [Fact]
@@ -60,7 +56,6 @@ public sealed class MobileThemeSessionLayoutTests
         Assert.True(File.Exists(partialPath));
 
         var clusterTabs = File.ReadAllText(partialPath);
-        var passports = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "Passports.cshtml"));
         var users = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "Users.cshtml"));
         var apiTokens = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "ApiTokens.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
@@ -70,16 +65,14 @@ public sealed class MobileThemeSessionLayoutTests
         Assert.Contains("bp-admin-mobile-tab-form", clusterTabs);
         Assert.Contains("Cluster admin section", clusterTabs);
         Assert.Contains("data-admin-mobile-tab-select", clusterTabs);
-        Assert.Contains("value=\"/cluster-admin/passports\"", clusterTabs);
+        Assert.DoesNotContain("/cluster-admin/passports", clusterTabs);
         Assert.Contains("value=\"/cluster-admin/users\"", clusterTabs);
         Assert.Contains("value=\"/cluster-admin/api-tokens\"", clusterTabs);
         Assert.Contains("aria-label=\"Local admin tabs\"", clusterTabs);
         Assert.Contains("bp-tab-row", clusterTabs);
-        Assert.Contains("Managed passports", clusterTabs);
         Assert.Contains("API token management", clusterTabs);
         Assert.True(mobileFormIndex >= 0);
         Assert.True(localNavIndex > mobileFormIndex);
-        Assert.Contains("@await Html.PartialAsync(\"_ClusterAdminTabs\", \"passports\")", passports);
         Assert.Contains("@await Html.PartialAsync(\"_ClusterAdminTabs\", \"users\")", users);
         Assert.Contains("@await Html.PartialAsync(\"_ClusterAdminTabs\", \"api-tokens\")", apiTokens);
         Assert.Contains(".bp-admin-page .bp-tab-row", css);

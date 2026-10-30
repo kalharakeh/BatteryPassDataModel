@@ -90,7 +90,6 @@ public sealed class QrWorkflowTests
     public void LandingPage_ShouldOpenQrScannerFromInlineSearchIcon()
     {
         var landing = File.ReadAllText(RepoFile("web", "Views", "Home", "Index.cshtml"));
-        var search = File.ReadAllText(RepoFile("web", "Views", "Home", "Search.cshtml"));
         var home = File.ReadAllText(RepoFile("web", "Controllers", "HomeController.cs"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
@@ -121,8 +120,6 @@ public sealed class QrWorkflowTests
         Assert.Contains("ViewData[\"SearchNotFound\"]", home);
         Assert.Contains("return RedirectToAction(nameof(Index));", home);
         Assert.Contains("notFound = \"1\"", home);
-        Assert.DoesNotContain("data-qr-scanner", search);
-        Assert.DoesNotContain("data-qr-trigger", search);
         Assert.Contains(".bp-search-input-shell", css);
         Assert.Contains(".bp-qr-trigger", css);
         Assert.Contains(".bp-qr-trigger-icon", css);

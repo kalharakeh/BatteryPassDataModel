@@ -34,39 +34,6 @@
                     <span class="text-secondary small">No battery passport is published yet.</span>
                 }
             </div>
-            <div>
-                <p class="mb-1 text-secondary small">Sample read token</p>
-                @if (!string.IsNullOrWhiteSpace(Model.SampleReadToken))
-                {
-                    <code>@Model.SampleReadToken</code>
-                }
-                else
-                {
-                    <span class="text-secondary small">Demo read token disabled.</span>
-                }
-            </div>
-            <div>
-                <p class="mb-1 text-secondary small">Sample read-write token</p>
-                @if (Model.CanUsePrivilegedDemoTokens)
-                {
-                    <code>@Model.SampleReadWriteToken</code>
-                }
-                else
-                {
-                    <span class="text-secondary small">Available to an approved tester.</span>
-                }
-            </div>
-            <div>
-                <p class="mb-1 text-secondary small">Sample Passport Lifecycle token</p>
-                @if (Model.CanUsePrivilegedDemoTokens)
-                {
-                    <code>@Model.SampleLifecycleToken</code>
-                }
-                else
-                {
-                    <span class="text-secondary small">Available to an approved tester.</span>
-                }
-            </div>
         </div>
     </section>
 
@@ -457,20 +424,9 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                         </button>
                     </span>
                 </label>
-                <label>Token
-                    <select id="tester-token-preset">
-                        <option value="sample-read">Sample read token</option>
-                        <option value="sample-read-write">Sample read-write token</option>
-                        <option value="sample-lifecycle">Sample Passport Lifecycle token</option>
-                        <option value="custom">Your own token</option>
-                    </select>
-                    @if (!Model.CanUsePrivilegedDemoTokens)
-                    {
-                        <small class="bp-wb-hint">@Model.PrivilegedDemoTokenMessage</small>
-                    }
-                </label>
                 <label>Token value
-                    <input id="tester-token" value="@Model.SampleReadToken" autocomplete="off" spellcheck="false" />
+                    <input id="tester-token" value="" autocomplete="off" spellcheck="false" />
+                    <small class="bp-wb-hint">Paste a token from API Token Management. Its value is shown once, when it is created.</small>
                     <small id="tester-team-note" class="bp-wb-hint" hidden>This call needs a team (global) token: paste one from API Token Management.</small>
                 </label>
             </div>
@@ -561,10 +517,6 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
         (() => {
             const basePath = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.BasePath));
             const exampleBatteryId = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ExampleBatteryId));
-            const sampleReadToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleReadToken));
-            const sampleReadWriteToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleReadWriteToken));
-            const sampleLifecycleToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleLifecycleToken));
-            const canUsePrivilegedDemoTokens = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CanUsePrivilegedDemoTokens));
 
             const docSearch = document.getElementById('doc-search');
             const docItems = Array.from(document.querySelectorAll('.bp-help-doc-item'));
@@ -620,7 +572,6 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
             const pathEl = document.getElementById('tester-path');
             const authFormatEl = document.getElementById('tester-auth-format');
             const batteryIdEl = document.getElementById('tester-battery-id');
-            const tokenPresetEl = document.getElementById('tester-token-preset');
             const tokenEl = document.getElementById('tester-token');
             const bodyEl = document.getElementById('tester-body');
             const rawRequestEl = document.getElementById('tester-raw-request');
@@ -658,86 +609,72 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                 readFull: {
                     method: 'GET',
                     pathTemplate: `${basePath}/batteries/{batteryId}`,
-                    body: '',
-                    tokenPreset: 'sample-read'
+                    body: ''
                 },
                 listClusters: {
                     method: 'GET',
                     pathTemplate: `${basePath}/clusters`,
-                    body: '',
-                    tokenPreset: 'sample-read'
+                    body: ''
                 },
                 listClusterBatteries: {
                     method: 'GET',
                     pathTemplate: `${basePath}/clusters/demo-cluster/batteries`,
-                    body: '',
-                    tokenPreset: 'sample-read'
+                    body: ''
                 },
                 readSection: {
                     method: 'GET',
                     pathTemplate: `${basePath}/batteries/{batteryId}/section/identifiersAndProductData`,
-                    body: '',
-                    tokenPreset: 'sample-read'
+                    body: ''
                 },
                 readSectionPerformance: {
                     method: 'GET',
                     pathTemplate: `${basePath}/batteries/{batteryId}/section/performanceAndDurability`,
-                    body: '',
-                    tokenPreset: 'sample-read'
+                    body: ''
                 },
                 readSectionCircularity: {
                     method: 'GET',
                     pathTemplate: `${basePath}/batteries/{batteryId}/section/circularityAndResourceEfficiency`,
-                    body: '',
-                    tokenPreset: 'sample-read'
+                    body: ''
                 },
                 readValuesAliases: {
                     method: 'GET',
                     pathTemplate: `${basePath}/batteries/{batteryId}/values?path=stateOfChargeSoC&path=%2311&path=batteryMass`,
-                    body: '',
-                    tokenPreset: 'sample-read'
+                    body: ''
                 },
                 readPathsAll: {
                     method: 'GET',
                     pathTemplate: `${basePath}/batteries/{batteryId}/paths`,
-                    body: '',
-                    tokenPreset: 'sample-read'
+                    body: ''
                 },
                 readBatteryPassports: {
                     method: 'GET',
                     pathTemplate: `${basePath}/batteries/{batteryId}/passports`,
-                    body: '',
-                    tokenPreset: 'sample-read'
+                    body: ''
                 },
                 writeLiveValues: {
                     method: 'POST',
                     pathTemplate: `${basePath}/batteries/{batteryId}/live-values`,
-                    body: liveValuesBody,
-                    tokenPreset: 'sample-read-write'
+                    body: liveValuesBody
                 },
                 previewLiveValues: {
                     method: 'POST',
                     pathTemplate: `${basePath}/batteries/{batteryId}/live-values?preview=true`,
-                    body: liveValuesBody,
-                    tokenPreset: 'sample-read-write'
+                    body: liveValuesBody
                 },
                 readLiveHistory24h: {
                     method: 'GET',
                     pathTemplate: `${basePath}/batteries/{batteryId}/live-values/history?hours=24`,
-                    body: '',
-                    tokenPreset: 'sample-read'
+                    body: ''
                 },
                 listBatches: {
                     method: 'GET',
                     pathTemplate: `${basePath}/batches`,
-                    body: '',
-                    tokenPreset: 'custom'
+                    body: ''
                 },
                 listOperators: {
                     method: 'GET',
                     pathTemplate: `${basePath}/operators`,
-                    body: '',
-                    tokenPreset: 'custom'
+                    body: ''
                 },
                 createBattery: {
                     method: 'POST',
@@ -750,21 +687,13 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                             batterySerialNumber: 'SN-API-REPLACE-ME',
                             manufacturingDate: new Date().toISOString().slice(0, 7)
                         }
-                    }, null, 2),
-                    tokenPreset: 'custom'
+                    }, null, 2)
                 },
                 publishBattery: {
                     method: 'POST',
                     pathTemplate: `${basePath}/batteries/{batteryId}/publish`,
-                    body: '',
-                    tokenPreset: 'custom'
+                    body: ''
                 }
-            };
-
-            const tokenByPreset = {
-                'sample-read': sampleReadToken,
-                'sample-read-write': canUsePrivilegedDemoTokens ? sampleReadWriteToken : '',
-                'sample-lifecycle': canUsePrivilegedDemoTokens ? sampleLifecycleToken : ''
             };
 
             const utf8ToBase64 = (value) => {
@@ -787,7 +716,7 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
 
                 renderJsonWindow(targetWindow, 'Readable battery paths', 'Loading readable values...');
 
-                const authorization = `Basic ${utf8ToBase64(`${sampleReadToken}:`)}`;
+                const authorization = `Basic ${utf8ToBase64(`${tokenEl.value.trim()}:`)}`;
                 try {
                     const httpResponse = await fetch(link.href, {
                         headers: {
@@ -855,15 +784,6 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
 
             const resolveTemplatePath = (pathTemplate, context = getWorkbenchContext()) => {
                 return (pathTemplate || '').replaceAll('{batteryId}', context.batteryId);
-            };
-
-            const setTokenFromPreset = () => {
-                const presetValue = tokenPresetEl.value;
-                if (presetValue === 'custom') {
-                    return;
-                }
-
-                tokenEl.value = tokenByPreset[presetValue] || '';
             };
 
             const buildRawRequest = () => {
@@ -972,7 +892,6 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                 if (authorization.toLowerCase().startsWith('basic ')) {
                     const payload = authorization.slice(6).trim();
                     const decodedToken = decodeBase64Token(payload);
-                    tokenPresetEl.value = 'custom';
                     if (decodedToken) {
                         authFormatEl.value = 'base64';
                         tokenEl.value = decodedToken;
@@ -1052,8 +971,6 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                 templateSelect.value = 'readFull';
                 authFormatEl.value = 'base64';
                 batteryIdEl.value = exampleBatteryId;
-                tokenPresetEl.value = 'sample-read';
-                tokenEl.value = sampleReadToken;
                 liveInputs.forEach(input => { input.value = ''; });
                 measuredNowEl.checked = true;
                 measuredAtEl.disabled = true;
@@ -1061,11 +978,6 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                 setStatus('-');
                 setResponse('{}');
                 renderAnswer(null);
-            });
-
-            tokenPresetEl?.addEventListener('change', () => {
-                setTokenFromPreset();
-                syncRawRequestFromControls();
             });
 
             batteryIdEl?.addEventListener('input', refreshTemplatePathFromContext);

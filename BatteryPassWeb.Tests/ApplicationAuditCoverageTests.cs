@@ -71,24 +71,13 @@ public sealed class ApplicationAuditCoverageTests
     public void AuditPages_ShouldUseAdminShellAndSharedCompactRows()
     {
         var globalAuditView = File.ReadAllText(RepoFile("web", "Views", "Admin", "AuditLog.cshtml"));
-        var passportAuditView = File.ReadAllText(RepoFile("web", "Views", "Admin", "Audit.cshtml"));
-        var partialPath = RepoFileOrEmpty("web", "Views", "Shared", "_AuditEventRow.cshtml");
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.DoesNotContain("Back to batteries", globalAuditView);
         Assert.Contains("<h1 class=\"mb-1\">Administration</h1>", globalAuditView);
         Assert.Contains("_AdminTabs", globalAuditView);
-        Assert.True(File.Exists(partialPath), "_AuditEventRow.cshtml should render the shared compact audit row.");
-
-        var partial = File.ReadAllText(partialPath);
-        Assert.Contains("bp-audit-event-row", partial);
-        Assert.Contains("bp-audit-event-main", partial);
-        Assert.Contains("bp-audit-event-facts", partial);
-        Assert.Contains("bp-audit-event-chip", partial);
         Assert.Contains("_AuditLine", globalAuditView);
-        Assert.Contains("_AuditEventRow", passportAuditView);
         Assert.DoesNotContain("bp-ledger-event ", globalAuditView);
-        Assert.DoesNotContain("bp-ledger-event ", passportAuditView);
         Assert.Contains(".bp-audit-event-row", css);
         Assert.Contains("grid-template-columns: minmax(128px, 150px) minmax(300px, 0.46fr) minmax(360px, 0.54fr)", css);
         Assert.Contains("border: 1px solid #c5d4e6", css);
@@ -111,27 +100,6 @@ public sealed class ApplicationAuditCoverageTests
         Assert.Contains(".bp-audit-filter-grid input[type=\"date\"]", css);
         Assert.Contains("flex-wrap: wrap;", css);
         Assert.Contains(".bp-audit-filter-grid {\n    grid-template-columns: 1fr;", css);
-    }
-
-    [Fact]
-    public void PassportAuditPages_ShouldUseExpandedBatteryTimeline()
-    {
-        var clusterAdmin = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
-        var auditView = File.ReadAllText(RepoFile("web", "Views", "Admin", "Audit.cshtml"));
-
-        Assert.Contains("ListPassportTimelineEventsAsync", clusterAdmin);
-        Assert.Contains("_AuditEventRow", auditView);
-    }
-
-    [Fact]
-    public void BatteryAndPassportWritePaths_ShouldAppendMeaningfulAuditEvents()
-    {
-        var clusterAdmin = File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs"));
-        var snapshot = File.ReadAllText(RepoFile("web", "Services", "BatteryPassportSnapshotService.cs"));
-
-        Assert.Contains("\"battery.updated\"", clusterAdmin);
-        Assert.Contains("\"passport.created\"", snapshot);
-        Assert.Contains("\"battery.passport.created\"", snapshot);
     }
 
     [Fact]

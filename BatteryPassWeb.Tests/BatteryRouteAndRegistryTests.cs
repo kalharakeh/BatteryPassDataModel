@@ -7,45 +7,6 @@ public sealed class BatteryRouteAndRegistryTests
     private static readonly string TestSourceFile = CurrentSourceFile();
 
     [Fact]
-    public void Registry_ShouldUseBatteryRowsAndPassportCounts()
-    {
-        var controller = File.ReadAllText(RepoFile("web", "Controllers", "RegistryController.cs"));
-        var view = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
-
-        Assert.Contains("batteries.ListAsync", controller); // the new model's batteries, cut per reader (decision 30)
-        Assert.Contains("BatteryTablePageViewModel", File.ReadAllText(RepoFile("web", "Models", "ViewModels", "BatteryViewModels.cs")));
-        Assert.Contains("PassportCount", view);
-        Assert.Contains("passports", view);
-        Assert.Contains("@row.BatteryId", view);
-        Assert.Contains("@row.BatteryModel", view);
-        Assert.DoesNotContain("@row.PassportId</span></td>", view);
-    }
-
-    [Fact]
-    public void RegistrySearch_ShouldSupportPassportBatterySerialAndAllClusterReadSearch()
-    {
-        var controller = File.ReadAllText(RepoFile("web", "Services", "BatteryTableService.cs"));
-        var repository = File.ReadAllText(RepoFile("web", "Services", "BatteryRepository.cs"));
-        var view = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
-
-        Assert.Contains("ResolveSearchAsync", controller);
-        Assert.Contains("SearchByClusterAsync", repository);
-        Assert.Contains("HasAllClusterReadScope", controller);
-        Assert.Contains("Cluster search is not available for this role.", controller);
-        Assert.Contains("AccessMessage", view);
-    }
-
-    [Fact]
-    public void AccessControl_ShouldAllowClusterMembersToSeeSignedOrPublishedRegistryPassports()
-    {
-        var source = File.ReadAllText(RepoFile("web", "Services", "AccessControlService.cs"));
-
-        Assert.Contains("registryStatus.Equals(\"published\"", source);
-        Assert.Contains("registryStatus.Equals(\"signed\"", source);
-        Assert.Contains("passportPublishPolicyService.HasCurrentValidSignature(passport)", source);
-    }
-
-    [Fact]
     public void PassportReports_ShouldShowBatteryIdPassportIdAndHistoricalLatestState()
     {
         var hero = File.ReadAllText(RepoFile("web", "Views", "Passport", "_PassportHero.cshtml"));
@@ -82,23 +43,6 @@ public sealed class BatteryRouteAndRegistryTests
         Assert.Contains("bp-report-hero-cta bp-report-hero-cta-warning", hero);
         Assert.Contains("&switchAccount=true", hero);
         Assert.Contains("/login?next=", hero);
-    }
-
-    [Fact]
-    public void AdminBatteryList_ShouldUseCompactBatteryRowsWithoutEmbeddedHistory()
-    {
-        var view = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
-        var model = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "BatteryViewModels.cs"));
-        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
-
-        Assert.Contains("@row.PassportCount", view);
-        Assert.Contains("@row.PassportCount passports", view);
-        Assert.DoesNotContain("bp-passport-history-row", view);
-        Assert.DoesNotContain("data-battery-passport-history", view);
-        Assert.Contains("row.HistoryUrl", view);
-        Assert.Contains("NewPassportRequired", model);
-        Assert.Contains(".bp-admin-battery-table .bp-battery-id-cell", css);
-        Assert.Contains("max-width: none", css);
     }
 
     private static string RepoFile(params string[] parts)

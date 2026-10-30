@@ -2,36 +2,6 @@ namespace BatteryPassWeb.Tests;
 
 public sealed class AdminTestFeedbackFixesTests
 {
-    [Fact]
-    public void BatteryPages_ShouldUseSharedBatteryTableServiceAndPartial()
-    {
-        var program = File.ReadAllText(RepoFile("web", "Program.cs"));
-        var registry = File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml"));
-        var clusterPassports = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "Passports.cshtml"));
-
-        Assert.True(File.Exists(RepoFile("web", "Services", "BatteryTableService.cs")));
-        Assert.True(File.Exists(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml")));
-        Assert.Contains("AddSingleton<BatteryTableService>", program);
-        Assert.Contains("BatteryTablePageViewModel", File.ReadAllText(RepoFile("web", "Models", "ViewModels", "BatteryViewModels.cs")));
-        Assert.Contains("RegistryList.Build", File.ReadAllText(RepoFile("web", "Controllers", "RegistryController.cs"))); // decision 30
-        Assert.Contains("BatteryTableService", File.ReadAllText(RepoFile("web", "Controllers", "ClusterAdminController.cs")));
-        Assert.DoesNotContain("_BatteryTable", registry);
-        Assert.Contains("_BatteryTable", clusterPassports);
-    }
-
-    [Fact]
-    public void SharedBatteryTable_ShouldIncludeClusterNewPassportAndRoleAwareActions()
-    {
-        var table = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
-
-        Assert.Contains("<th>Cluster</th>", table);
-        Assert.Contains("New passport needed", table);
-        Assert.Contains("row.CanEditBattery", table);
-        Assert.Contains("row.CanCreatePassport", table);
-        Assert.Contains("row.CanOpenConformance", table);
-        Assert.Contains("row.HistoryUrl", table);
-        Assert.Contains("row.ReturnUrl", table);
-    }
 
     [Fact]
     public void UsersAndMemberships_ShouldUseAccessDropdownAndApprovedClusterRoles()
@@ -60,37 +30,6 @@ public sealed class AdminTestFeedbackFixesTests
     }
 
     [Fact]
-    public void BatteryCreateAndEdit_ShouldRenderPolicyLockedFieldsAndClusterSelector()
-    {
-        var edit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
-        var policy = File.ReadAllText(RepoFile("web", "Services", "EditableFieldPolicyService.cs"));
-        var delta = File.ReadAllText(RepoFile("web", "Services", "BatteryPassportDeltaService.cs"));
-
-        Assert.Contains("name=\"clusterId\"", edit);
-        Assert.Contains("data-editable-field-state", edit);
-        Assert.Contains("is-locked-field", edit);
-        Assert.Contains("Battery mass", edit);
-        Assert.DoesNotContain(">Weight kg", edit);
-        Assert.Contains("\"general.batteryMass\"", policy);
-        Assert.Contains("aspects.generalProductInformation.payload.batteryMass", policy);
-        Assert.Contains("OperationalFieldKeys", delta);
-    }
-
-    [Fact]
-    public void ProductEditor_ShouldManagePerModelSoftwareVersions()
-    {
-        var models = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateModels.cs"));
-        var edit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
-        var updateService = File.ReadAllText(RepoFile("web", "Services", "BatteryTemplateUpdateService.cs"));
-
-        Assert.Contains("BatteryProductSoftwareVersion", models);
-        Assert.Contains("IReadOnlyList<BatteryProductSoftwareVersion> SoftwareVersions", models);
-        Assert.Contains("HighestSoftwareVersion", models);
-        Assert.Contains("data-product-software-version-select", edit);
-        Assert.Contains("selectedVersion.SoftwareVersions", updateService);
-    }
-
-    [Fact]
     public void TokenPages_ShouldShowGeneratedCredentialModal()
     {
         var admin = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
@@ -116,21 +55,6 @@ public sealed class AdminTestFeedbackFixesTests
         Assert.Contains("height: clamp(220px, 28vw, 300px)", css);
         Assert.Contains("overflow: hidden", css);
         Assert.Contains("grid-template-columns: repeat(auto-fit", css);
-    }
-
-    [Fact]
-    public void FullReset_ShouldClearAndReseedCanonicalDemoState()
-    {
-        var productTemplateService = File.ReadAllText(RepoFile("web", "Services", "ProductTemplateService.cs"));
-
-        Assert.Contains("ClearDemoCollectionsAsync", productTemplateService);
-        Assert.Contains("\"users\"", productTemplateService);
-        Assert.Contains("\"clusters\"", productTemplateService);
-        Assert.Contains("\"clusterMemberships\"", productTemplateService);
-        Assert.Contains("\"externalApiTokens\"", productTemplateService);
-        Assert.Contains("\"editableFieldPolicies\"", productTemplateService);
-        Assert.Contains("\"batteryTelemetry\"", productTemplateService);
-        Assert.DoesNotContain("string.Empty, \"CP7M-DEMO-001\"", productTemplateService);
     }
 
     private static string RepoFile(params string[] parts)

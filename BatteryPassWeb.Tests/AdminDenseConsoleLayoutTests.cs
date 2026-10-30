@@ -20,47 +20,14 @@ public sealed class AdminDenseConsoleLayoutTests
     public void Registry_ShouldUseDenseConsoleTableAndToolbar()
     {
         var registry = File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml"));
-        var batteryTable = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.Contains("bp-registry-page", registry);
         Assert.Contains("bp-console-toolbar", registry);
         Assert.Contains("bp-console-table", registry); // the Registry's own table on the new model (decision 30)
-        Assert.Contains("bp-table-card", batteryTable);
-        Assert.Contains("bp-console-table", batteryTable);
-        Assert.Contains("bp-battery-id-cell", batteryTable);
-        Assert.Contains("bp-status-pill", batteryTable);
-        Assert.Contains("bp-action-cell", batteryTable);
         Assert.Contains(".bp-console-table", css);
         Assert.Contains(".bp-battery-id-cell", css);
         Assert.Contains("white-space: nowrap", css);
-    }
-
-    [Fact]
-    public void LocalAdminPassports_ShouldUseBatteryIdentityColumnsAndIconActions()
-    {
-        var passports = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "Passports.cshtml"));
-        var batteryTable = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
-        var service = File.ReadAllText(RepoFile("web", "Services", "BatteryTableService.cs"));
-
-        Assert.Contains("_BatteryTable", passports);
-        Assert.Contains("Battery ID", batteryTable);
-        Assert.Contains("<th>Passports</th>", batteryTable);
-        Assert.Contains("<th>Status</th>", batteryTable);
-        Assert.Contains("<th>Family</th>", batteryTable);
-        Assert.Contains("<th>Model</th>", batteryTable);
-        Assert.Contains("Battery serial number", batteryTable);
-        Assert.Contains("LatestPassportStatus", batteryTable);
-        Assert.Contains("@row.BatteryFamily", batteryTable);
-        Assert.Contains("@row.BatteryModel", batteryTable);
-        Assert.Contains("@row.BatterySerialNumber", batteryTable);
-        Assert.Contains("bp-console-table", batteryTable);
-        Assert.Contains("bp-battery-id-cell", batteryTable);
-        Assert.Contains("aria-label=\"Edit battery\"", batteryTable);
-        Assert.DoesNotContain("<th class=\"px-4 py-3\">Model</th>", passports);
-        Assert.DoesNotContain("@row.ModelNumber", passports);
-        Assert.Contains("_batteryRepository.ToSummary", service);
-        Assert.Contains("serial", service, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -176,20 +143,16 @@ public sealed class AdminDenseConsoleLayoutTests
     [Fact]
     public void LocalAdminEditAndUsers_ShouldShareDenseConsoleStructure()
     {
-        var edit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
         var users = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "Users.cshtml"));
         var tokens = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "ApiTokens.cshtml"));
         var localTabs = File.ReadAllText(RepoFile("web", "Views", "Shared", "_ClusterAdminTabs.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.Contains("_ClusterAdminTabs", users);
-        Assert.DoesNotContain("bp-local-admin-nav", edit);
         Assert.Contains("_ClusterAdminTabs", tokens);
         Assert.Contains("bp-local-admin-nav", localTabs);
         Assert.Contains("bp-user-management-table", users);
         Assert.DoesNotContain("bp-console-split", users);
-        Assert.Contains("bp-edit-grid", edit);
-        Assert.Contains("bp-field-shell", edit);
         Assert.Contains("bp-console-table", tokens);
         Assert.Contains(".bp-local-admin-nav", css);
         Assert.Contains(".bp-console-split", css);

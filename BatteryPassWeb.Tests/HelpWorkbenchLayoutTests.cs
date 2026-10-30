@@ -73,8 +73,8 @@ public sealed class HelpWorkbenchLayoutTests
         Assert.Contains("const getWorkbenchContext", markup);
         Assert.Contains("resolveTemplatePath(template.pathTemplate", markup);
         Assert.Contains("batteryIdEl?.addEventListener", markup);
-        Assert.Contains("tokenPresetEl?.addEventListener('change'", markup);
-        Assert.DoesNotContain("tokenPresetEl.value = template.tokenPreset;", markup);
+        Assert.DoesNotContain("tester-token-preset", markup);
+        Assert.Contains("Paste a token from API Token Management.", markup);
     }
 
     [Fact]
@@ -121,31 +121,6 @@ public sealed class HelpWorkbenchLayoutTests
     }
 
     [Fact]
-    public void HelpWorkbench_ShouldOnlyExposePrivilegedDemoTokensToApprovedTesters()
-    {
-        var markup = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
-        var controller = File.ReadAllText(RepoFile("web", "Controllers", "HelpController.cs"));
-        var helpModel = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "ExternalApiHelpViewModel.cs"));
-
-        Assert.Contains("CanUsePrivilegedDemoTokens", helpModel);
-        Assert.Contains("DemoWriteSignTestingEnabled", helpModel);
-        Assert.Contains("PrivilegedDemoTokenMessage", helpModel);
-        Assert.Contains("AccessControlService", controller);
-        Assert.Contains("CanUsePrivilegedDemoTokensAsync", controller);
-        Assert.Contains("CanAdministerClusterAsync(User, ExternalApiInitializer.SampleApiClusterId", controller);
-        Assert.Contains("EnablePublicDemoReadToken", controller);
-        Assert.Contains("EnableDemoWriteSignTesting", controller);
-        Assert.DoesNotContain("SampleReadWriteToken = readWriteTokenDocument != null", controller);
-        Assert.DoesNotContain("SampleLifecycleToken = lifecycleTokenDocument != null", controller);
-
-        Assert.Contains("@if (Model.CanUsePrivilegedDemoTokens)", markup);
-        Assert.Contains("approved tester", markup, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("const canUsePrivilegedDemoTokens", markup);
-        Assert.Contains("sample-read-write': canUsePrivilegedDemoTokens ? sampleReadWriteToken : ''", markup);
-        Assert.Contains("sample-lifecycle': canUsePrivilegedDemoTokens ? sampleLifecycleToken : ''", markup);
-    }
-
-    [Fact]
     public void HelpController_ShouldAllowAnonymousReadOnlyWorkbench()
     {
         var action = typeof(BatteryPassWeb.Controllers.HelpController).GetMethod(nameof(BatteryPassWeb.Controllers.HelpController.Index));
@@ -186,9 +161,6 @@ public sealed class HelpWorkbenchLayoutTests
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
         var controller = File.ReadAllText(RepoFile("web", "Controllers", "DppApiController.cs"));
-        var initializer = File.ReadAllText(RepoFile("web", "Services", "ExternalApiInitializer.cs"));
-        var helpController = File.ReadAllText(RepoFile("web", "Controllers", "HelpController.cs"));
-        var helpModel = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "ExternalApiHelpViewModel.cs"));
 
         var documentedRouteFragments = System.Text.RegularExpressions.Regex
             .Matches(controller, "\\[Http(?:Get|Post|Patch)\\(\"([^\"]+)\"\\)\\]")
@@ -223,11 +195,6 @@ public sealed class HelpWorkbenchLayoutTests
             Assert.Contains($"{templateKey}: {{", markup);
         }
 
-        Assert.Contains("SampleLifecycleTokenId", helpController);
-        Assert.Contains("SampleLifecycleToken", helpModel);
-        Assert.Contains("const sampleLifecycleToken", markup);
-        Assert.Contains("'sample-lifecycle': canUsePrivilegedDemoTokens ? sampleLifecycleToken : ''", markup);
-        Assert.Contains("SAMPLEBATTERYPASSPORTLIFECYC001", initializer);
     }
 
     [Fact]

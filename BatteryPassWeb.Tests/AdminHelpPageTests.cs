@@ -167,16 +167,6 @@ public sealed class AdminHelpPageTests
     }
 
     [Fact]
-    public void AdminPages_ShouldLinkToAdminHelp()
-    {
-        var edit = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
-        var conformance = File.ReadAllText(RepoFile("web", "Views", "Admin", "Conformance.cshtml"));
-
-        Assert.Contains("/admin/help", edit);
-        Assert.Contains("/admin/help", conformance);
-    }
-
-    [Fact]
     public void AdminHelpCss_ShouldDefineWorkflowLayout()
     {
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));

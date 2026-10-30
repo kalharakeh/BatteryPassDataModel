@@ -18,19 +18,14 @@ public sealed class AdminFeedbackFollowupTests
     public void ReportActions_ShouldUseConsistentIconButtonsWithDesignedTooltips()
     {
         var registry = File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml"));
-        var batteryTable = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
         var hero = File.ReadAllText(RepoFile("web", "Views", "Passport", "_PassportHero.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        var combined = string.Join(Environment.NewLine, registry, batteryTable, hero);
+        var combined = string.Join(Environment.NewLine, registry, hero);
         Assert.Contains("bp-report-action", combined);
-        Assert.Contains("data-tooltip=\"Summary report\"", batteryTable);
-        Assert.Contains("data-tooltip=\"Detailed report\"", batteryTable);
         Assert.Contains("View more about this passport", hero);
         Assert.Contains("Back to summary", hero);
         Assert.Contains("bp-report-action-icon", combined);
-        Assert.DoesNotContain("<span aria-hidden=\"true\">S</span>", batteryTable);
-        Assert.DoesNotContain("<span aria-hidden=\"true\">D</span>", batteryTable);
         Assert.Contains(".bp-report-action::after", css);
         Assert.Contains("top: calc(-100% -", css);
     }
@@ -111,70 +106,12 @@ public sealed class AdminFeedbackFollowupTests
     }
 
     [Fact]
-    public void RegistryController_ShouldPreserveBatteryIdentityFieldsForNormalUsers()
-    {
-        // The Registry lists the new model's batteries (decision 30); the old table stays only for the cluster admins'
-        // pages until 3d.
-        var registry = File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml"));
-        var batteryTable = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
-        var service = File.ReadAllText(RepoFile("web", "Services", "BatteryTableService.cs"));
-
-        Assert.Contains("@row.SerialNumber", registry);
-        Assert.Contains("@row.Identifier", registry);
-        Assert.Contains("_batteryRepository.ToSummary", service);
-        Assert.Contains("LatestPassportStatus", batteryTable);
-    }
-
-    [Fact]
-    public void RemovedNameAndModelNumber_ShouldNotBlockPassportValidationOrCreation()
-    {
-        var policy = DataCompletionPolicyService.CreateDefaultPolicy();
-        var fields = policy.Sections.SelectMany(section => section.Fields).ToList();
-        var document = new BsonDocument
-        {
-            ["passportId"] = "did:web:acme.battery.pass:identity-without-model",
-            ["registryInfo"] = new BsonDocument
-            {
-                ["registryId"] = "registry-001",
-                ["status"] = "draft"
-            },
-            ["app"] = new BsonDocument
-            {
-                ["display"] = new BsonDocument
-                {
-                    ["serialNumber"] = "SERIAL-1",
-                    ["manufacturerName"] = "ACME Batteries",
-                    ["facilityId"] = "FAC-1"
-                },
-                ["product"] = new BsonDocument
-                {
-                    ["productId"] = "compact-7m",
-                    ["productVersion"] = "1.0",
-                    ["softwareVersion"] = "2.0"
-                }
-            }
-        };
-
-        var summary = new PassportValidationService(new SchemaRegistryService(), new JsonSchemaValidationService())
-            .Validate(document, policy);
-        var issuePaths = summary.Sections.SelectMany(section => section.Issues).Select(issue => issue.Path).ToList();
-
-        Assert.DoesNotContain(fields, field => field.FieldKey == "general.name");
-        Assert.DoesNotContain(fields, field => field.FieldKey == "general.modelNumber");
-        Assert.DoesNotContain("app.display.name", issuePaths);
-        Assert.DoesNotContain("app.display.modelNumber", issuePaths);
-    }
-
-    [Fact]
     public void PublicSearchEmptyCopy_ShouldSayActivePublicPassport()
     {
         var home = File.ReadAllText(RepoFile("web", "Views", "Home", "Index.cshtml"));
-        var search = File.ReadAllText(RepoFile("web", "Views", "Home", "Search.cshtml"));
 
         Assert.Contains("No published battery passport was found", home);
-        Assert.Contains("No active public battery passport was found", search);
         Assert.DoesNotContain("No published, verified battery passport ID was found", home);
-        Assert.DoesNotContain("No published, verified battery passport ID was found", search);
     }
 
     [Fact]
@@ -203,38 +140,6 @@ public sealed class AdminFeedbackFollowupTests
         Assert.Contains(".bp-report-identity-panel--qr", css);
         Assert.Contains("@media (max-width: 1180px)", css);
         Assert.Contains("@media (max-width: 760px)", css);
-    }
-
-    [Fact]
-    public void FollowupSharedBatteryTable_ShouldUseCompactColumnsAndStatusCell()
-    {
-        var table = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
-        var registry = File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml"));
-
-        var expectedOrder = new[]
-        {
-            "<th>Battery serial number</th>",
-            "<th>Battery ID</th>",
-            "<th>Family</th>",
-            "<th>Model</th>",
-            "<th>Cluster</th>",
-            "<th>Passports</th>",
-            "<th>Status</th>",
-            "<th>Updated</th>",
-            "<th class=\"bp-action-cell\">Actions</th>"
-        };
-        var previousIndex = -1;
-        foreach (var heading in expectedOrder)
-        {
-            var index = table.IndexOf(heading, StringComparison.Ordinal);
-            Assert.True(index > previousIndex, $"{heading} should appear after the previous compact table column.");
-            previousIndex = index;
-        }
-
-        Assert.Contains("row.DisplayStatus", table);
-        Assert.Contains("New passport needed", table);
-        Assert.DoesNotContain("Latest passport status", table);
-        Assert.Contains("bp-battery-table-toolbar", registry);
     }
 
     [Fact]

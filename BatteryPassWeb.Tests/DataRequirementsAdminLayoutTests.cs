@@ -2,13 +2,6 @@ namespace BatteryPassWeb.Tests;
 
 public sealed class DataRequirementsAdminLayoutTests
 {
-    [Fact]
-    public void Program_ShouldRegisterDataCompletionPolicyService()
-    {
-        var source = File.ReadAllText(RepoFile("web", "Program.cs"));
-
-        Assert.Contains("AddSingleton<DataCompletionPolicyService>", source);
-    }
 
     [Fact]
     public void AdminController_ShouldUseProductScopedRequirementsInsteadOfGlobalAdminSave()
@@ -17,24 +10,6 @@ public sealed class DataRequirementsAdminLayoutTests
 
         Assert.DoesNotContain("[HttpPost(\"data-requirements/save\")]", source);
         Assert.DoesNotContain("SaveDataRequirements", source);
-    }
-
-    [Fact]
-    public void AdminWorkspace_ShouldNotRenderGlobalDataRequirementsTab()
-    {
-        var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
-        var tabs = File.ReadAllText(RepoFile("web", "Views", "Shared", "_AdminTabs.cshtml"));
-        var model = File.ReadAllText(RepoFile("web", "Models", "ViewModels", "AdminClusterViewModel.cs"));
-        var adminClusterModel = model[..model.IndexOf("public sealed class ProductTemplateSummaryViewModel", StringComparison.Ordinal)];
-
-        Assert.Contains("href=\"/admin/families\"", tabs);
-        Assert.DoesNotContain("tab=data-requirements", markup);
-        Assert.DoesNotContain("tab=data-requirements", tabs);
-        Assert.DoesNotContain("selectedTab == \"data-requirements\"", markup);
-        Assert.DoesNotContain("Save data requirements", markup);
-        Assert.DoesNotContain("Model.DataRequirements", markup);
-
-        Assert.DoesNotContain("DataRequirements", adminClusterModel);
     }
 
     [Fact]
