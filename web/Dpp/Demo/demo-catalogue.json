@@ -1,0 +1,1005 @@
+{
+  "clusters": [
+    {
+      "id": "demo-north",
+      "name": "Demo North Operations"
+    },
+    {
+      "id": "demo-south",
+      "name": "Demo South Operations"
+    },
+    {
+      "id": "demo-fleet",
+      "name": "Demo Fleet Operations"
+    }
+  ],
+  "accounts": [
+    {
+      "email": "demo.notified-body@example.test",
+      "name": "Demo notified body",
+      "role": "notifiedBody"
+    },
+    {
+      "email": "demo.msa@example.test",
+      "name": "Demo market surveillance",
+      "role": "marketSurveillanceAuthority"
+    },
+    {
+      "email": "demo.commission@example.test",
+      "name": "Demo Commission",
+      "role": "commission"
+    },
+    {
+      "email": "demo.repair@example.test",
+      "name": "Demo repair shop",
+      "role": "liRepair"
+    },
+    {
+      "email": "demo.recycling@example.test",
+      "name": "Demo recycler",
+      "role": "liRecycling"
+    },
+    {
+      "email": "demo.treatment@example.test",
+      "name": "Demo treatment facility",
+      "role": "liTreatment"
+    },
+    {
+      "email": "demo.north.admin@example.test",
+      "name": "Demo north cluster admin",
+      "role": "member",
+      "cluster": "demo-north",
+      "clusterRole": "clusterAdmin"
+    },
+    {
+      "email": "demo.north.user@example.test",
+      "name": "Demo north user",
+      "role": "member",
+      "cluster": "demo-north",
+      "clusterRole": "member"
+    },
+    {
+      "email": "demo.south.admin@example.test",
+      "name": "Demo south cluster admin",
+      "role": "member",
+      "cluster": "demo-south",
+      "clusterRole": "clusterAdmin"
+    },
+    {
+      "email": "demo.south.user@example.test",
+      "name": "Demo south user",
+      "role": "member",
+      "cluster": "demo-south",
+      "clusterRole": "member"
+    },
+    {
+      "email": "demo.fleet.admin@example.test",
+      "name": "Demo fleet cluster admin",
+      "role": "member",
+      "cluster": "demo-fleet",
+      "clusterRole": "clusterAdmin"
+    },
+    {
+      "email": "demo.fleet.user@example.test",
+      "name": "Demo fleet user",
+      "role": "member",
+      "cluster": "demo-fleet",
+      "clusterRole": "member"
+    }
+  ],
+  "families": [
+    {
+      "key": "compact",
+      "name": "Compact",
+      "picture": "compact.png"
+    },
+    {
+      "key": "core",
+      "name": "Core",
+      "picture": "core.png"
+    }
+  ],
+  "models": [
+    {
+      "key": "compact-7m",
+      "family": "compact",
+      "name": "Compact 7M",
+      "modules": 7,
+      "moduleDescription": "Seven liquid-cooled NMC modules in one pack housing, with the battery management unit at the front.",
+      "documents": {
+        "dismantlingInformation": "Dismantling manual",
+        "partNumbersForComponents": "Part numbers for components",
+        "informationOnSourcesOfSpareParts": "Sources of spare parts",
+        "safetyMeasures": "Safety measures"
+      },
+      "values": {
+        "batteryCategory": {
+          "batteryCategoryValue": "industrial/non-stationary battery"
+        },
+        "batteryMass": {
+          "gramKilogramUnit": "kg",
+          "gramKilogramValue": 320
+        },
+        "separateCollectionSymbol": {
+          "contentType": "image/svg+xml",
+          "url": "https://www.example.com/battery/symbols/separate-collection.svg",
+          "language": "en-GB",
+          "resourceTitle": "Separate collection symbol"
+        },
+        "symbolsForCadmiumAndLead": {
+          "contentType": "image/svg+xml",
+          "url": "https://www.example.com/battery/symbols/cd-pb.svg",
+          "language": "en-GB",
+          "resourceTitle": "Symbols for cadmium and lead"
+        },
+        "extinguishingAgent": {
+          "agentFireClass": "B",
+          "extinguishingAgent": "Water"
+        },
+        "meaningOfLabelsAndSymbols": "The crossed-out wheeled bin means the battery must be collected separately from other waste.",
+        "informationOfDueDiligenceReport": {
+          "contentType": "application/pdf",
+          "url": "https://www.example.com/demo/due-diligence-report.pdf",
+          "language": "en-GB",
+          "resourceTitle": "Due diligence report"
+        },
+        "batteryChemistry": {
+          "chemicalCodeValue": "Li-ion NMC"
+        },
+        "criticalRawMaterials": [
+          "Cobalt",
+          "Lithium",
+          "Natural graphite",
+          "Nickel"
+        ],
+        "materialsUsedInCathodeAnodeAndElectrolyte": [
+          "Cathode: lithium nickel manganese cobalt oxide (NMC 811)",
+          "Anode: graphite",
+          "Electrolyte: LiPF6 in carbonate solvents"
+        ],
+        "hazardousSubstancesAndTheirImpact": [
+          {
+            "chemicalName": "Lithium hexafluorophosphate",
+            "identifierType": "CAS No",
+            "identifier": "21324-40-3",
+            "concentration": 1.2,
+            "hazardPhrases": [
+              "H301",
+              "H314",
+              "H372"
+            ],
+            "precautionaryPhrases": [
+              "P260",
+              "P280",
+              "P301+P310"
+            ],
+            "substanceLocation": "Electrolyte"
+          }
+        ],
+        "informationOnTheRoleOfEndUsersInContributingToWastePrevention": {
+          "contentType": "text/html",
+          "url": "https://www.example.com/battery/waste-prevention",
+          "language": "en-GB",
+          "resourceTitle": "Your role in waste prevention"
+        },
+        "informationOnTheRoleOfEndUsersInContributingToTheSeparateCollectionOfWasteBatteries": {
+          "contentType": "text/html",
+          "url": "https://www.example.com/battery/separate-collection",
+          "language": "en-GB",
+          "resourceTitle": "Your role in separate collection"
+        },
+        "informationOnBatteryCollectionPreparationForSecondLifeAndOnTreatmentAtEndOfLife": {
+          "contentType": "application/pdf",
+          "url": "https://www.example.com/battery/collection-and-treatment.pdf",
+          "language": "en-GB",
+          "resourceTitle": "Collection, second life and treatment"
+        },
+        "ratedCapacity": {
+          "amperehourMiliamperehourValue": 140,
+          "ampereHourMiliamperehourUnit": "Ah"
+        },
+        "capacityFade": {
+          "percentUnit": "%",
+          "percentageValue": 0
+        },
+        "minimumVoltage": {
+          "voltValue": 320,
+          "voltUnit": "V"
+        },
+        "maximumVoltage": {
+          "voltValue": 460,
+          "voltUnit": "V"
+        },
+        "nominalVoltage": {
+          "voltValue": 400,
+          "voltUnit": "V",
+          "temperatureRangeLowerBoundaryValue": -20,
+          "temperatureRangeLowerBoundaryUnit": "°C",
+          "temperatureRangeUpperBoundaryValue": 45,
+          "temperatureRangeUpperBoundaryUnit": "°C"
+        },
+        "originalPowerCapability": {
+          "wattValueAt80PercentStateOfCharge": 171000,
+          "wattValueAt20PercentStateOfCharge": 126000,
+          "wattUnit": "W"
+        },
+        "powerFade": {
+          "percentUnit": "%",
+          "percentageValue": 0
+        },
+        "maximumPermittedBatteryPower": {
+          "wattValue": 180000,
+          "wattUnit": "W"
+        },
+        "initialRoundTripEnergyEfficiency": {
+          "percentUnit": "%",
+          "percentageValue": 93
+        },
+        "roundTripEnergyEfficiencyAt50PerCentOfCycleLife": {
+          "percentUnit": "%",
+          "percentageValue": 90
+        },
+        "energyRoundTripEfficiencyFade": {
+          "percentUnit": "%",
+          "percentageValue": 0
+        },
+        "initialInternalResistanceOfBatteryCellAndPackModuleRecommended": {
+          "ohmValueForBatteryPack": 1,
+          "ohmValueForBatteryCell": 1,
+          "ohmUnit": "Ohm"
+        },
+        "internalResistanceIncreaseOfPackCellAndModuleRecommended": {
+          "internalResistanceIncreaseValueForBatteryPack": 0,
+          "percentUnit": "%"
+        },
+        "expectedLifetimeInCalendarYears": 10,
+        "expectedLifetimeNumberOfChargeDischargeCycles": 3000,
+        "cycleLifeReferenceTest": "IEC 62660-1",
+        "cRateOfRelevantCycleLifeTest": {
+          "amperePerAmpereHourValue": 0.5,
+          "amperePerAmpereHourUnit": "A/Ah"
+        },
+        "temperatureRangeIdleStateLowerBoundary": {
+          "degreeCelsiusUnit": "°C",
+          "celsiusValue": -20
+        },
+        "temperatureRangeIdleStateUpperBoundary": {
+          "degreeCelsiusUnit": "°C",
+          "celsiusValue": 45
+        }
+      }
+    },
+    {
+      "key": "compact-13m",
+      "family": "compact",
+      "name": "Compact 13M",
+      "modules": 13,
+      "moduleDescription": "Thirteen liquid-cooled NMC modules in two rows, with the battery management unit at the front.",
+      "documents": {
+        "dismantlingInformation": "Dismantling manual",
+        "partNumbersForComponents": "Part numbers for components",
+        "informationOnSourcesOfSpareParts": "Sources of spare parts",
+        "safetyMeasures": "Safety measures"
+      },
+      "values": {
+        "batteryCategory": {
+          "batteryCategoryValue": "industrial/non-stationary battery"
+        },
+        "batteryMass": {
+          "gramKilogramUnit": "kg",
+          "gramKilogramValue": 565
+        },
+        "separateCollectionSymbol": {
+          "contentType": "image/svg+xml",
+          "url": "https://www.example.com/battery/symbols/separate-collection.svg",
+          "language": "en-GB",
+          "resourceTitle": "Separate collection symbol"
+        },
+        "symbolsForCadmiumAndLead": {
+          "contentType": "image/svg+xml",
+          "url": "https://www.example.com/battery/symbols/cd-pb.svg",
+          "language": "en-GB",
+          "resourceTitle": "Symbols for cadmium and lead"
+        },
+        "extinguishingAgent": {
+          "agentFireClass": "B",
+          "extinguishingAgent": "Water"
+        },
+        "meaningOfLabelsAndSymbols": "The crossed-out wheeled bin means the battery must be collected separately from other waste.",
+        "informationOfDueDiligenceReport": {
+          "contentType": "application/pdf",
+          "url": "https://www.example.com/demo/due-diligence-report.pdf",
+          "language": "en-GB",
+          "resourceTitle": "Due diligence report"
+        },
+        "batteryChemistry": {
+          "chemicalCodeValue": "Li-ion NMC"
+        },
+        "criticalRawMaterials": [
+          "Cobalt",
+          "Lithium",
+          "Natural graphite",
+          "Nickel"
+        ],
+        "materialsUsedInCathodeAnodeAndElectrolyte": [
+          "Cathode: lithium nickel manganese cobalt oxide (NMC 811)",
+          "Anode: graphite",
+          "Electrolyte: LiPF6 in carbonate solvents"
+        ],
+        "hazardousSubstancesAndTheirImpact": [
+          {
+            "chemicalName": "Lithium hexafluorophosphate",
+            "identifierType": "CAS No",
+            "identifier": "21324-40-3",
+            "concentration": 1.2,
+            "hazardPhrases": [
+              "H301",
+              "H314",
+              "H372"
+            ],
+            "precautionaryPhrases": [
+              "P260",
+              "P280",
+              "P301+P310"
+            ],
+            "substanceLocation": "Electrolyte"
+          }
+        ],
+        "informationOnTheRoleOfEndUsersInContributingToWastePrevention": {
+          "contentType": "text/html",
+          "url": "https://www.example.com/battery/waste-prevention",
+          "language": "en-GB",
+          "resourceTitle": "Your role in waste prevention"
+        },
+        "informationOnTheRoleOfEndUsersInContributingToTheSeparateCollectionOfWasteBatteries": {
+          "contentType": "text/html",
+          "url": "https://www.example.com/battery/separate-collection",
+          "language": "en-GB",
+          "resourceTitle": "Your role in separate collection"
+        },
+        "informationOnBatteryCollectionPreparationForSecondLifeAndOnTreatmentAtEndOfLife": {
+          "contentType": "application/pdf",
+          "url": "https://www.example.com/battery/collection-and-treatment.pdf",
+          "language": "en-GB",
+          "resourceTitle": "Collection, second life and treatment"
+        },
+        "ratedCapacity": {
+          "amperehourMiliamperehourValue": 260,
+          "ampereHourMiliamperehourUnit": "Ah"
+        },
+        "capacityFade": {
+          "percentUnit": "%",
+          "percentageValue": 0
+        },
+        "minimumVoltage": {
+          "voltValue": 576,
+          "voltUnit": "V"
+        },
+        "maximumVoltage": {
+          "voltValue": 828,
+          "voltUnit": "V"
+        },
+        "nominalVoltage": {
+          "voltValue": 720,
+          "voltUnit": "V",
+          "temperatureRangeLowerBoundaryValue": -20,
+          "temperatureRangeLowerBoundaryUnit": "°C",
+          "temperatureRangeUpperBoundaryValue": 45,
+          "temperatureRangeUpperBoundaryUnit": "°C"
+        },
+        "originalPowerCapability": {
+          "wattValueAt80PercentStateOfCharge": 304000,
+          "wattValueAt20PercentStateOfCharge": 224000,
+          "wattUnit": "W"
+        },
+        "powerFade": {
+          "percentUnit": "%",
+          "percentageValue": 0
+        },
+        "maximumPermittedBatteryPower": {
+          "wattValue": 320000,
+          "wattUnit": "W"
+        },
+        "initialRoundTripEnergyEfficiency": {
+          "percentUnit": "%",
+          "percentageValue": 93
+        },
+        "roundTripEnergyEfficiencyAt50PerCentOfCycleLife": {
+          "percentUnit": "%",
+          "percentageValue": 90
+        },
+        "energyRoundTripEfficiencyFade": {
+          "percentUnit": "%",
+          "percentageValue": 0
+        },
+        "initialInternalResistanceOfBatteryCellAndPackModuleRecommended": {
+          "ohmValueForBatteryPack": 1,
+          "ohmValueForBatteryCell": 1,
+          "ohmUnit": "Ohm"
+        },
+        "internalResistanceIncreaseOfPackCellAndModuleRecommended": {
+          "internalResistanceIncreaseValueForBatteryPack": 0,
+          "percentUnit": "%"
+        },
+        "expectedLifetimeInCalendarYears": 10,
+        "expectedLifetimeNumberOfChargeDischargeCycles": 3000,
+        "cycleLifeReferenceTest": "IEC 62660-1",
+        "cRateOfRelevantCycleLifeTest": {
+          "amperePerAmpereHourValue": 0.5,
+          "amperePerAmpereHourUnit": "A/Ah"
+        },
+        "temperatureRangeIdleStateLowerBoundary": {
+          "degreeCelsiusUnit": "°C",
+          "celsiusValue": -20
+        },
+        "temperatureRangeIdleStateUpperBoundary": {
+          "degreeCelsiusUnit": "°C",
+          "celsiusValue": 45
+        }
+      }
+    },
+    {
+      "key": "core",
+      "family": "core",
+      "name": "Core",
+      "modules": 10,
+      "moduleDescription": "Ten liquid-cooled NMC modules around a central cooling plate, with the battery management unit on top.",
+      "documents": {
+        "dismantlingInformation": "Dismantling manual",
+        "partNumbersForComponents": "Part numbers for components",
+        "informationOnSourcesOfSpareParts": "Sources of spare parts",
+        "safetyMeasures": "Safety measures"
+      },
+      "values": {
+        "batteryCategory": {
+          "batteryCategoryValue": "industrial/non-stationary battery"
+        },
+        "batteryMass": {
+          "gramKilogramUnit": "kg",
+          "gramKilogramValue": 470
+        },
+        "separateCollectionSymbol": {
+          "contentType": "image/svg+xml",
+          "url": "https://www.example.com/battery/symbols/separate-collection.svg",
+          "language": "en-GB",
+          "resourceTitle": "Separate collection symbol"
+        },
+        "symbolsForCadmiumAndLead": {
+          "contentType": "image/svg+xml",
+          "url": "https://www.example.com/battery/symbols/cd-pb.svg",
+          "language": "en-GB",
+          "resourceTitle": "Symbols for cadmium and lead"
+        },
+        "extinguishingAgent": {
+          "agentFireClass": "B",
+          "extinguishingAgent": "Water"
+        },
+        "meaningOfLabelsAndSymbols": "The crossed-out wheeled bin means the battery must be collected separately from other waste.",
+        "informationOfDueDiligenceReport": {
+          "contentType": "application/pdf",
+          "url": "https://www.example.com/demo/due-diligence-report.pdf",
+          "language": "en-GB",
+          "resourceTitle": "Due diligence report"
+        },
+        "batteryChemistry": {
+          "chemicalCodeValue": "Li-ion NMC"
+        },
+        "criticalRawMaterials": [
+          "Cobalt",
+          "Lithium",
+          "Natural graphite",
+          "Nickel"
+        ],
+        "materialsUsedInCathodeAnodeAndElectrolyte": [
+          "Cathode: lithium nickel manganese cobalt oxide (NMC 811)",
+          "Anode: graphite",
+          "Electrolyte: LiPF6 in carbonate solvents"
+        ],
+        "hazardousSubstancesAndTheirImpact": [
+          {
+            "chemicalName": "Lithium hexafluorophosphate",
+            "identifierType": "CAS No",
+            "identifier": "21324-40-3",
+            "concentration": 1.2,
+            "hazardPhrases": [
+              "H301",
+              "H314",
+              "H372"
+            ],
+            "precautionaryPhrases": [
+              "P260",
+              "P280",
+              "P301+P310"
+            ],
+            "substanceLocation": "Electrolyte"
+          }
+        ],
+        "informationOnTheRoleOfEndUsersInContributingToWastePrevention": {
+          "contentType": "text/html",
+          "url": "https://www.example.com/battery/waste-prevention",
+          "language": "en-GB",
+          "resourceTitle": "Your role in waste prevention"
+        },
+        "informationOnTheRoleOfEndUsersInContributingToTheSeparateCollectionOfWasteBatteries": {
+          "contentType": "text/html",
+          "url": "https://www.example.com/battery/separate-collection",
+          "language": "en-GB",
+          "resourceTitle": "Your role in separate collection"
+        },
+        "informationOnBatteryCollectionPreparationForSecondLifeAndOnTreatmentAtEndOfLife": {
+          "contentType": "application/pdf",
+          "url": "https://www.example.com/battery/collection-and-treatment.pdf",
+          "language": "en-GB",
+          "resourceTitle": "Collection, second life and treatment"
+        },
+        "ratedCapacity": {
+          "amperehourMiliamperehourValue": 220,
+          "ampereHourMiliamperehourUnit": "Ah"
+        },
+        "capacityFade": {
+          "percentUnit": "%",
+          "percentageValue": 0
+        },
+        "minimumVoltage": {
+          "voltValue": 512,
+          "voltUnit": "V"
+        },
+        "maximumVoltage": {
+          "voltValue": 736,
+          "voltUnit": "V"
+        },
+        "nominalVoltage": {
+          "voltValue": 640,
+          "voltUnit": "V",
+          "temperatureRangeLowerBoundaryValue": -20,
+          "temperatureRangeLowerBoundaryUnit": "°C",
+          "temperatureRangeUpperBoundaryValue": 45,
+          "temperatureRangeUpperBoundaryUnit": "°C"
+        },
+        "originalPowerCapability": {
+          "wattValueAt80PercentStateOfCharge": 266000,
+          "wattValueAt20PercentStateOfCharge": 196000,
+          "wattUnit": "W"
+        },
+        "powerFade": {
+          "percentUnit": "%",
+          "percentageValue": 0
+        },
+        "maximumPermittedBatteryPower": {
+          "wattValue": 280000,
+          "wattUnit": "W"
+        },
+        "initialRoundTripEnergyEfficiency": {
+          "percentUnit": "%",
+          "percentageValue": 93
+        },
+        "roundTripEnergyEfficiencyAt50PerCentOfCycleLife": {
+          "percentUnit": "%",
+          "percentageValue": 90
+        },
+        "energyRoundTripEfficiencyFade": {
+          "percentUnit": "%",
+          "percentageValue": 0
+        },
+        "initialInternalResistanceOfBatteryCellAndPackModuleRecommended": {
+          "ohmValueForBatteryPack": 1,
+          "ohmValueForBatteryCell": 1,
+          "ohmUnit": "Ohm"
+        },
+        "internalResistanceIncreaseOfPackCellAndModuleRecommended": {
+          "internalResistanceIncreaseValueForBatteryPack": 0,
+          "percentUnit": "%"
+        },
+        "expectedLifetimeInCalendarYears": 10,
+        "expectedLifetimeNumberOfChargeDischargeCycles": 3500,
+        "cycleLifeReferenceTest": "IEC 62660-1",
+        "cRateOfRelevantCycleLifeTest": {
+          "amperePerAmpereHourValue": 0.5,
+          "amperePerAmpereHourUnit": "A/Ah"
+        },
+        "temperatureRangeIdleStateLowerBoundary": {
+          "degreeCelsiusUnit": "°C",
+          "celsiusValue": -20
+        },
+        "temperatureRangeIdleStateUpperBoundary": {
+          "degreeCelsiusUnit": "°C",
+          "celsiusValue": 45
+        }
+      }
+    }
+  ],
+  "sites": [
+    {
+      "key": "plant-north",
+      "name": "Demo plant North",
+      "values": {
+        "uniqueManufacturerIdentifier": "urn:x-demo:manufacturer:plant-north",
+        "manufacturerInformation": {
+          "name": "Scania Industrial Batteries (demo)",
+          "registeredTradeNameOrRegisteredTrademark": "Scania Industrial Batteries",
+          "postalAddress": "Demo Street 1, 111 11 Stockholm, Sweden",
+          "webAddress": "https://www.example.com",
+          "eMailAddress": "batteries@example.com"
+        },
+        "manufacturingPlace": "Demo plant North, Stockholm, Sweden"
+      }
+    },
+    {
+      "key": "plant-south",
+      "name": "Demo plant South",
+      "values": {
+        "uniqueManufacturerIdentifier": "urn:x-demo:manufacturer:plant-south",
+        "manufacturerInformation": {
+          "name": "Scania Industrial Batteries (demo)",
+          "registeredTradeNameOrRegisteredTrademark": "Scania Industrial Batteries",
+          "postalAddress": "Demo Street 1, 111 11 Stockholm, Sweden",
+          "webAddress": "https://www.example.com",
+          "eMailAddress": "batteries@example.com"
+        },
+        "manufacturingPlace": "Demo plant South, Malmo, Sweden"
+      }
+    }
+  ],
+  "operators": [
+    {
+      "key": "batteries",
+      "name": "Scania Industrial Batteries (demo)",
+      "values": {
+        "economicOperatorId": "urn:x-demo:operator:industrial-batteries",
+        "economicOperatorInformation": {
+          "name": "Scania Industrial Batteries (demo)",
+          "registeredTradeNameOrRegisteredTrademark": "Scania Industrial Batteries",
+          "postalAddress": "Demo Street 1, 111 11 Stockholm, Sweden",
+          "webAddress": "https://www.example.com",
+          "eMailAddress": "batteries@example.com"
+        }
+      }
+    },
+    {
+      "key": "fleet",
+      "name": "Demo Fleet Services AB",
+      "values": {
+        "economicOperatorId": "urn:x-demo:operator:fleet-services",
+        "economicOperatorInformation": {
+          "name": "Demo Fleet Services AB",
+          "registeredTradeNameOrRegisteredTrademark": "Demo Fleet Services",
+          "postalAddress": "Fleet Road 2, 222 22 Lund, Sweden",
+          "webAddress": "https://fleet.example.com",
+          "eMailAddress": "fleet@example.com"
+        }
+      }
+    }
+  ],
+  "batches": [
+    {
+      "key": "compact-7m",
+      "model": "compact-7m",
+      "site": "plant-north",
+      "year": 2026,
+      "testReport": "Compact 7M test report 2026",
+      "values": {
+        "batteryModelIdentifier": "CP7M",
+        "carbonFootprintLabel": {
+          "contentType": "image/png",
+          "url": "https://www.example.com/demo/compact-7m/carbon-footprint-label.png",
+          "language": "en-GB",
+          "resourceTitle": "Carbon footprint label"
+        },
+        "euDeclarationOfConformity": {
+          "contentType": "application/pdf",
+          "url": "https://www.example.com/demo/compact-7m/eu-declaration-of-conformity.pdf",
+          "language": "en-GB",
+          "resourceTitle": "EU declaration of conformity"
+        },
+        "batteryCarbonFootprintPerFunctionalUnit": {
+          "kgCO2EquivalentPerKilowattHourValue": 64,
+          "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh"
+        },
+        "contributionOfRawMaterialAcquisitionAndPreProcessingLifecycleStage": {
+          "kgCO2EquivalentPerKilowattHourValue": 34,
+          "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh"
+        },
+        "contributionOfMainProductProductionLifecycleStage": {
+          "kgCO2EquivalentPerKilowattHourValue": 21,
+          "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh"
+        },
+        "contributionOfDistributionLifecycleStage": {
+          "kgCO2EquivalentPerKilowattHourValue": 3,
+          "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh"
+        },
+        "contributionOfEndOfLifeAndRecyclingLifecycleStage": {
+          "kgCO2EquivalentPerKilowattHourValue": 6,
+          "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh"
+        },
+        "carbonFootprintPerformanceClass": "Class B",
+        "webLinkToPublicCarbonFootprintStudy": "https://www.example.com/demo/compact-7m/carbon-footprint-study",
+        "nickelRecycledContentShare": {
+          "percentUnit": "%",
+          "percentageValue": 30
+        },
+        "cobaltRecycledContentShare": {
+          "percentUnit": "%",
+          "percentageValue": 26
+        },
+        "lithiumRecycledContentShare": {
+          "percentUnit": "%",
+          "percentageValue": 23
+        },
+        "leadRecycledContentShare": {
+          "percentUnit": "%",
+          "percentageValue": 35
+        },
+        "renewableContentShare": {
+          "percentUnit": "%",
+          "percentageValue": 38
+        }
+      }
+    },
+    {
+      "key": "compact-13m",
+      "model": "compact-13m",
+      "site": "plant-north",
+      "year": 2026,
+      "testReport": "Compact 13M test report 2026",
+      "values": {
+        "batteryModelIdentifier": "CP13M",
+        "carbonFootprintLabel": {
+          "contentType": "image/png",
+          "url": "https://www.example.com/demo/compact-13m/carbon-footprint-label.png",
+          "language": "en-GB",
+          "resourceTitle": "Carbon footprint label"
+        },
+        "euDeclarationOfConformity": {
+          "contentType": "application/pdf",
+          "url": "https://www.example.com/demo/compact-13m/eu-declaration-of-conformity.pdf",
+          "language": "en-GB",
+          "resourceTitle": "EU declaration of conformity"
+        },
+        "batteryCarbonFootprintPerFunctionalUnit": {
+          "kgCO2EquivalentPerKilowattHourValue": 67,
+          "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh"
+        },
+        "contributionOfRawMaterialAcquisitionAndPreProcessingLifecycleStage": {
+          "kgCO2EquivalentPerKilowattHourValue": 36,
+          "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh"
+        },
+        "contributionOfMainProductProductionLifecycleStage": {
+          "kgCO2EquivalentPerKilowattHourValue": 22,
+          "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh"
+        },
+        "contributionOfDistributionLifecycleStage": {
+          "kgCO2EquivalentPerKilowattHourValue": 3,
+          "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh"
+        },
+        "contributionOfEndOfLifeAndRecyclingLifecycleStage": {
+          "kgCO2EquivalentPerKilowattHourValue": 6,
+          "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh"
+        },
+        "carbonFootprintPerformanceClass": "Class B",
+        "webLinkToPublicCarbonFootprintStudy": "https://www.example.com/demo/compact-13m/carbon-footprint-study",
+        "nickelRecycledContentShare": {
+          "percentUnit": "%",
+          "percentageValue": 32
+        },
+        "cobaltRecycledContentShare": {
+          "percentUnit": "%",
+          "percentageValue": 28
+        },
+        "lithiumRecycledContentShare": {
+          "percentUnit": "%",
+          "percentageValue": 25
+        },
+        "leadRecycledContentShare": {
+          "percentUnit": "%",
+          "percentageValue": 37
+        },
+        "renewableContentShare": {
+          "percentUnit": "%",
+          "percentageValue": 38
+        }
+      }
+    },
+    {
+      "key": "core",
+      "model": "core",
+      "site": "plant-south",
+      "year": 2026,
+      "testReport": "Core test report 2026",
+      "values": {
+        "batteryModelIdentifier": "CORE",
+        "carbonFootprintLabel": {
+          "contentType": "image/png",
+          "url": "https://www.example.com/demo/core/carbon-footprint-label.png",
+          "language": "en-GB",
+          "resourceTitle": "Carbon footprint label"
+        },
+        "euDeclarationOfConformity": {
+          "contentType": "application/pdf",
+          "url": "https://www.example.com/demo/core/eu-declaration-of-conformity.pdf",
+          "language": "en-GB",
+          "resourceTitle": "EU declaration of conformity"
+        },
+        "batteryCarbonFootprintPerFunctionalUnit": {
+          "kgCO2EquivalentPerKilowattHourValue": 59,
+          "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh"
+        },
+        "contributionOfRawMaterialAcquisitionAndPreProcessingLifecycleStage": {
+          "kgCO2EquivalentPerKilowattHourValue": 31,
+          "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh"
+        },
+        "contributionOfMainProductProductionLifecycleStage": {
+          "kgCO2EquivalentPerKilowattHourValue": 20,
+          "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh"
+        },
+        "contributionOfDistributionLifecycleStage": {
+          "kgCO2EquivalentPerKilowattHourValue": 3,
+          "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh"
+        },
+        "contributionOfEndOfLifeAndRecyclingLifecycleStage": {
+          "kgCO2EquivalentPerKilowattHourValue": 5,
+          "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh"
+        },
+        "carbonFootprintPerformanceClass": "Class A",
+        "webLinkToPublicCarbonFootprintStudy": "https://www.example.com/demo/core/carbon-footprint-study",
+        "nickelRecycledContentShare": {
+          "percentUnit": "%",
+          "percentageValue": 40
+        },
+        "cobaltRecycledContentShare": {
+          "percentUnit": "%",
+          "percentageValue": 34
+        },
+        "lithiumRecycledContentShare": {
+          "percentUnit": "%",
+          "percentageValue": 30
+        },
+        "leadRecycledContentShare": {
+          "percentUnit": "%",
+          "percentageValue": 44
+        },
+        "renewableContentShare": {
+          "percentUnit": "%",
+          "percentageValue": 38
+        }
+      }
+    }
+  ],
+  "packs": [
+    {
+      "serial": "DEMO-C7M-0001",
+      "batch": "compact-7m",
+      "operator": "batteries",
+      "cluster": "demo-north",
+      "values": {
+        "batterySerialNumber": "DEMO-C7M-0001",
+        "thirdPartyServiceProvider": "Demo Passport Hosting AB",
+        "manufacturingDate": "2026-07",
+        "warrantyPeriod": "P8Y",
+        "stateOfChargeSoC": {
+          "percentUnit": "%",
+          "percentageValue": 76
+        },
+        "numberOfFullChargingAndDischargingCycles": 412,
+        "temperatureInformation": {
+          "degreeCelsiusUnit": "°C",
+          "celsiusValue": 23
+        }
+      },
+      "publish": true,
+      "newVersion": {
+        "thirdPartyServiceProvider": "Demo Passport Hosting AB, Nordic region"
+      },
+      "history": true,
+      "modules": 7,
+      "accident": "Coolant leak found at the 12-month service; module 4 replaced."
+    },
+    {
+      "serial": "DEMO-C7M-0002",
+      "batch": "compact-7m",
+      "operator": "batteries",
+      "cluster": "demo-north",
+      "values": {
+        "batterySerialNumber": "DEMO-C7M-0002",
+        "thirdPartyServiceProvider": "Demo Passport Hosting AB",
+        "manufacturingDate": "2026-07",
+        "warrantyPeriod": "P8Y",
+        "stateOfChargeSoC": {
+          "percentUnit": "%",
+          "percentageValue": 95
+        },
+        "numberOfFullChargingAndDischargingCycles": 3,
+        "temperatureInformation": {
+          "degreeCelsiusUnit": "°C",
+          "celsiusValue": 21
+        }
+      }
+    },
+    {
+      "serial": "DEMO-C13M-0001",
+      "batch": "compact-13m",
+      "operator": "batteries",
+      "cluster": "demo-south",
+      "values": {
+        "batterySerialNumber": "DEMO-C13M-0001",
+        "thirdPartyServiceProvider": "Demo Passport Hosting AB",
+        "manufacturingDate": "2026-07",
+        "warrantyPeriod": "P8Y",
+        "stateOfChargeSoC": {
+          "percentUnit": "%",
+          "percentageValue": 64
+        },
+        "numberOfFullChargingAndDischargingCycles": 655,
+        "temperatureInformation": {
+          "degreeCelsiusUnit": "°C",
+          "celsiusValue": 25
+        }
+      },
+      "publish": true,
+      "history": true,
+      "modules": 13
+    },
+    {
+      "serial": "DEMO-C13M-0002",
+      "batch": "compact-13m",
+      "operator": "batteries",
+      "cluster": "demo-south",
+      "values": {
+        "batterySerialNumber": "DEMO-C13M-0002",
+        "thirdPartyServiceProvider": "Demo Passport Hosting AB",
+        "stateOfChargeSoC": {
+          "percentUnit": "%",
+          "percentageValue": 90
+        },
+        "numberOfFullChargingAndDischargingCycles": 0,
+        "temperatureInformation": {
+          "degreeCelsiusUnit": "°C",
+          "celsiusValue": 20
+        }
+      }
+    },
+    {
+      "serial": "DEMO-CORE-0001",
+      "batch": "core",
+      "operator": "fleet",
+      "cluster": "demo-fleet",
+      "values": {
+        "batterySerialNumber": "DEMO-CORE-0001",
+        "thirdPartyServiceProvider": "Demo Passport Hosting AB",
+        "manufacturingDate": "2026-07",
+        "warrantyPeriod": "P8Y",
+        "stateOfChargeSoC": {
+          "percentUnit": "%",
+          "percentageValue": 58
+        },
+        "numberOfFullChargingAndDischargingCycles": 1210,
+        "temperatureInformation": {
+          "degreeCelsiusUnit": "°C",
+          "celsiusValue": 27
+        }
+      },
+      "publish": true,
+      "history": true,
+      "modules": 10,
+      "accident": "Collision during loading; the housing was inspected and found sound."
+    },
+    {
+      "serial": "DEMO-CORE-0002",
+      "batch": "core",
+      "operator": "fleet",
+      "cluster": "demo-fleet",
+      "values": {
+        "batterySerialNumber": "DEMO-CORE-0002",
+        "thirdPartyServiceProvider": "Demo Passport Hosting AB",
+        "stateOfChargeSoC": {
+          "percentUnit": "%",
+          "percentageValue": 88
+        },
+        "numberOfFullChargingAndDischargingCycles": 0,
+        "temperatureInformation": {
+          "degreeCelsiusUnit": "°C",
+          "celsiusValue": 19
+        }
+      }
+    }
+  ]
+}

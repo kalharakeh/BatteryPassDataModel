@@ -72,6 +72,8 @@ builder.Services.Configure<BatteryPassOptions>(options =>
     options.DemoAdminPassword = Environment.GetEnvironmentVariable("DEMO_ADMIN_PASSWORD")
         ?? builder.Configuration["BatteryPass:DemoAdminPassword"]
         ?? "Password123!";
+    options.DemoUsersPassword = Environment.GetEnvironmentVariable("DEMO_USERS_PASSWORD")
+        ?? builder.Configuration["BatteryPass:DemoUsersPassword"];
     options.ExternalApiEncryptionKey = Environment.GetEnvironmentVariable("EXTERNAL_API_ENCRYPTION_KEY")
         ?? builder.Configuration["BatteryPass:ExternalApiEncryptionKey"]
         ?? string.Empty;

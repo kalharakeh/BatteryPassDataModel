@@ -18,6 +18,9 @@ public sealed class BatteryFamily : IDppRecord
     [BsonId]
     public required string Id { get; init; }
 
+    /// <summary>Made by the demo data seed (decision 32); clearing the demo data removes it.</summary>
+    public bool IsDemo { get; set; }
+
     public required string Name { get; set; }
 
     /// <summary>The family's picture (decision 20): a file in the dpp_files bucket, shown on the public summary. Not passport data.</summary>
@@ -31,6 +34,9 @@ public sealed class BatteryModel : IDppRecord
 {
     [BsonId]
     public required string Id { get; init; }
+
+    /// <summary>Made by the demo data seed (decision 32); clearing the demo data removes it.</summary>
+    public bool IsDemo { get; set; }
 
     public required string FamilyId { get; init; }
 
@@ -48,6 +54,9 @@ public sealed class ManufacturingSite : IDppRecord
     [BsonId]
     public required string Id { get; init; }
 
+    /// <summary>Made by the demo data seed (decision 32); clearing the demo data removes it.</summary>
+    public bool IsDemo { get; set; }
+
     public required string Name { get; set; }
 
     public Dictionary<string, AttributeValue> Values { get; init; } = new(StringComparer.Ordinal);
@@ -58,6 +67,9 @@ public sealed class ProductionBatch : IDppRecord
 {
     [BsonId]
     public required string Id { get; init; }
+
+    /// <summary>Made by the demo data seed (decision 32); clearing the demo data removes it.</summary>
+    public bool IsDemo { get; set; }
 
     public required string ModelId { get; init; }
 
@@ -74,6 +86,9 @@ public sealed class EconomicOperator : IDppRecord
     [BsonId]
     public required string Id { get; init; }
 
+    /// <summary>Made by the demo data seed (decision 32); clearing the demo data removes it.</summary>
+    public bool IsDemo { get; set; }
+
     public required string Name { get; set; }
 
     public Dictionary<string, AttributeValue> Values { get; init; } = new(StringComparer.Ordinal);
@@ -84,6 +99,9 @@ public sealed class BatteryPack : IDppRecord
 {
     [BsonId]
     public required string Id { get; init; }
+
+    /// <summary>Made by the demo data seed (decision 32); clearing the demo data removes it.</summary>
+    public bool IsDemo { get; set; }
 
     public required string BatchId { get; init; }
 

@@ -22,6 +22,9 @@ public sealed class BatteryPassOptions
     public int SessionTimeoutMinutes { get; set; } = DefaultSessionTimeoutMinutes;
     public string DemoAdminEmail { get; set; } = "admin@example.test";
     public string DemoAdminPassword { get; set; } = "Password123!";
+
+    /// <summary>The demo accounts' password (decision 32, DEMO_USERS_PASSWORD); without it the demo data has no accounts.</summary>
+    public string? DemoUsersPassword { get; set; }
     public string ExternalApiEncryptionKey { get; set; } = string.Empty;
     public string PowerAutomateResetWebhookUrl { get; set; } = string.Empty;
     public string PowerAutomateResetWebhookSecret { get; set; } = string.Empty;
