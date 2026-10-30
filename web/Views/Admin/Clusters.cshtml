@@ -109,11 +109,34 @@
     }
     @* data-generated-token-modal data-generated-token-copy data-generated-token-ok navigator.clipboard.writeText *@
     @await Html.PartialAsync("_GeneratedCredentialModal", Model.GeneratedCredential)
+    @await Html.PartialAsync("_GeneratedCredentialsModal", Model.GeneratedCredentials)
 
     @if (selectedTab == "clusters")
     {
         var clusterRowIndex = 0;
         <div class="bp-management-shell bp-cluster-management-shell mt-4">
+            <section class="bp-card bp-console-form-card bp-demo-data-card" data-demo-data-card>
+                <div>
+                    <span class="bp-summary-title">Demo data</span>
+                    <h2 class="h5 mb-2">Demo data</h2>
+                    <p class="text-secondary mb-1">The Compact and Core families with six batteries in several states, three demo clusters, an account for every role but the team admin, and API tokens. Real data is never changed. Sign in with your own team account; the demo accounts cover the other roles.</p>
+                    <p class="mb-0" data-demo-data-state>@(Model.HasDemoData ? "The demo data is there." : "There is no demo data.")</p>
+                    @if (!Model.DemoAccountsPossible)
+                    {
+                        <p class="text-secondary mb-0" data-demo-data-no-accounts>@BatteryPassWeb.Dpp.Demo.DemoDataService.NoPassword</p>
+                    }
+                </div>
+                <div class="d-flex flex-wrap gap-2 align-items-end">
+                    <form method="post" action="/admin/demo-data/reset">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="bp-primary-button" data-confirm-action data-confirm-title="Reset demo data" data-confirm-message="Remove the demo data and make it again? Real data stays as it is. The new API tokens are shown once." data-confirm-submit="Reset demo data">Reset demo data</button>
+                    </form>
+                    <form method="post" action="/admin/demo-data/clear">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="bp-danger-button" data-confirm-action data-confirm-title="Clear demo data" data-confirm-message="Remove the demo data? Real data stays as it is, and a demo record that real data uses is kept." data-confirm-submit="Clear demo data">Clear demo data</button>
+                    </form>
+                </div>
+            </section>
             <section class="bp-card bp-cluster-create-strip bp-console-form-card">
                 <div>
                     <span class="bp-summary-title">Cluster setup</span>

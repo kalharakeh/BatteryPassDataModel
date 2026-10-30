@@ -1,5 +1,6 @@
 using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Dpp.Audit;
+using BatteryPassWeb.Dpp.Demo;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Models.ViewModels;
 using BatteryPassWeb.Services;
@@ -23,19 +24,22 @@ public class AdminController : Controller
     private readonly ApplicationAuditService _applicationAuditService;
     private readonly ApplicationSettingsService _applicationSettingsService;
     private readonly DppStore _dppStore;
+    private readonly DemoDataService _demoData;
 
     public AdminController(
         ClusterRepository clusterRepository,
         ExternalApiRepository externalApiRepository,
         ApplicationAuditService applicationAuditService,
         ApplicationSettingsService applicationSettingsService,
-        DppStore dppStore)
+        DppStore dppStore,
+        DemoDataService demoData)
     {
         _clusterRepository = clusterRepository;
         _externalApiRepository = externalApiRepository;
         _applicationAuditService = applicationAuditService;
         _applicationSettingsService = applicationSettingsService;
         _dppStore = dppStore;
+        _demoData = demoData;
     }
 
     [HttpGet("")]
@@ -184,6 +188,9 @@ public class AdminController : Controller
             StatusMessage = TempData["StatusMessage"]?.ToString() ?? string.Empty,
             ErrorMessage = TempData["ErrorMessage"]?.ToString() ?? string.Empty,
             GeneratedCredential = TempData["GeneratedCredential"]?.ToString() ?? string.Empty,
+            GeneratedCredentials = TempData["GeneratedCredentials"] is string tokens ? JsonSerializer.Deserialize<List<DemoToken>>(tokens) ?? [] : [],
+            HasDemoData = await _demoData.HasDemoDataAsync(cancellationToken),
+            DemoAccountsPossible = _demoData.AccountsPossible,
             SessionTimeoutMinutes = await _applicationSettingsService.GetSessionTimeoutMinutesAsync(cancellationToken)
         };
 
@@ -946,6 +953,46 @@ public class AdminController : Controller
     {
         var actor = AccessControlService.CurrentEmail(User);
         return string.IsNullOrWhiteSpace(actor) ? "admin" : actor;
+    }
+
+    /// <summary>Removes the demo data and makes it again (decision 32); the new tokens are shown once.</summary>
+    [HttpPost("demo-data/reset")]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> ResetDemoData(CancellationToken cancellationToken) =>
+        DemoDataAsync("Demo data reset", () => _demoData.ResetAsync(CurrentActor(), cancellationToken));
+
+    /// <summary>Removes the demo data and keeps the real data (decision 32).</summary>
+    [HttpPost("demo-data/clear")]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> ClearDemoData(CancellationToken cancellationToken) =>
+        DemoDataAsync("Demo data cleared", () => _demoData.ClearAsync(CurrentActor(), cancellationToken));
+
+    private async Task<IActionResult> DemoDataAsync(string heading, Func<Task<DemoResult>> run)
+    {
+        try
+        {
+            var result = await run();
+            var message = string.Join(" ", result.Notes);
+            if (result.Done.Count > 0)
+            {
+                TempData["StatusMessage"] = $"{heading}: {string.Join("; ", result.Done.Select(line => line.TrimEnd('.')))}. {message}".TrimEnd();
+            }
+            else
+            {
+                TempData["ErrorMessage"] = message;
+            }
+
+            if (result.Tokens.Count > 0)
+            {
+                TempData["GeneratedCredentials"] = JsonSerializer.Serialize(result.Tokens);
+            }
+        }
+        catch (InvalidOperationException exception)
+        {
+            TempData["ErrorMessage"] = $"The demo data couldn't be made: {exception.Message}";
+        }
+
+        return Redirect("/admin/clusters?tab=clusters");
     }
 
     private Task AppendAdminAuditAsync(

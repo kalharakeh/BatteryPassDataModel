@@ -1,3 +1,4 @@
+using BatteryPassWeb.Dpp.Demo;
 using BatteryPassWeb.Services;
 
 namespace BatteryPassWeb.Models.ViewModels;
@@ -13,6 +14,9 @@ public sealed class AdminClusterViewModel
     public string StatusMessage { get; init; } = string.Empty;
     public string ErrorMessage { get; init; } = string.Empty;
     public string GeneratedCredential { get; init; } = string.Empty;
+    public IReadOnlyList<DemoToken> GeneratedCredentials { get; init; } = [];
+    public bool HasDemoData { get; init; }
+    public bool DemoAccountsPossible { get; init; }
     public int SessionTimeoutMinutes { get; init; } = 180;
 }
 
