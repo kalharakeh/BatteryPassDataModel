@@ -207,6 +207,7 @@ builder.Services.AddSingleton<ExternalApiSecurityService>();
 builder.Services.AddSingleton<ExternalApiRepository>();
 builder.Services.AddSingleton<ExternalApiInitializer>();
 builder.Services.AddDpp();
+builder.Services.AddSingleton<BatteryPassWeb.Dpp.Demo.DemoDataService>();
 
 var app = builder.Build();
 var batteryPassOptions = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<BatteryPassOptions>>().Value;

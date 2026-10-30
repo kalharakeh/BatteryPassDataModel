@@ -1,0 +1,360 @@
+using System.Text;
+using System.Text.Json.Nodes;
+using BatteryPassWeb.Configuration;
+using BatteryPassWeb.Dpp.Api;
+using BatteryPassWeb.Dpp.Documents;
+using BatteryPassWeb.Dpp.Editing;
+using BatteryPassWeb.Dpp.Pages;
+using BatteryPassWeb.Dpp.Publication;
+using BatteryPassWeb.Dpp.Store;
+using BatteryPassWeb.Services;
+using Microsoft.Extensions.Options;
+using MongoDB.Bson;
+using MongoDB.Driver;
+
+namespace BatteryPassWeb.Dpp.Demo;
+
+/// <summary>A demo token's value, shown once after seeding and never stored or logged.</summary>
+public sealed record DemoToken(string Label, string Access, string Value);
+
+/// <summary>What a seed or a clear did, in plain lines, with notes for anything left as it was.</summary>
+public sealed record DemoResult(IReadOnlyList<string> Done, IReadOnlyList<string> Notes, IReadOnlyList<DemoToken> Tokens);
+
+/// <summary>
+/// The demo data (decision 32). Seeding makes the catalogue's records through the app's own creation, save and
+/// publication paths, so values are checked, logged and signed as usual, and marks each record it makes as demo data.
+/// </summary>
+public sealed class DemoDataService(
+    MongoContext mongo,
+    DppStore store,
+    ProductDataPages productData,
+    BatteryPages batteries,
+    PackCreationService packCreation,
+    SavePipeline pipeline,
+    PublicationService publication,
+    DocumentService documents,
+    DppLinks links,
+    BatteryApi api,
+    ClusterRepository clusters,
+    ExternalApiRepository tokens,
+    ApplicationAuditService audit,
+    IOptions<BatteryPassOptions> options,
+    TimeProvider clock)
+{
+    public const string SeededEvent = "demo.seeded";
+    public const string Mark = "IsDemo";
+    public const string AccountMark = "isDemo";
+    public const string NoPassword = "Set DEMO_USERS_PASSWORD to create the demo accounts.";
+
+    /// <summary>Hours between two demo live values; seven days fit the detail page's history (168 hours).</summary>
+    private const int HistoryStepHours = 6;
+    private const int HistoryPoints = 28;
+
+    private IMongoDatabase Database => mongo.Database ?? throw new InvalidOperationException("MongoDB is not configured (MONGODB_URI).");
+
+    /// <summary>True when the demo accounts can be made: DEMO_USERS_PASSWORD is set.</summary>
+    public bool AccountsPossible => !string.IsNullOrWhiteSpace(options.Value.DemoUsersPassword);
+
+    /// <summary>True when any demo battery is there; false without a database.</summary>
+    public async Task<bool> HasDemoDataAsync(CancellationToken cancellationToken = default) =>
+        mongo.Database is not null
+        && await Collection(DppStore.Packs).CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq(Mark, true), cancellationToken: cancellationToken) > 0;
+
+    public async Task<DemoResult> SeedAsync(string who, CancellationToken cancellationToken = default)
+    {
+        if (!links.IsConfigured)
+        {
+            return new DemoResult([], [DppLinks.NotConfigured], []);
+        }
+
+        if (await HasDemoDataAsync(cancellationToken))
+        {
+            return new DemoResult([], ["The demo data is already there: reset it or clear it first."], []);
+        }
+
+        var catalogue = DemoCatalogue.Load();
+        var team = ChangeSender.Team(who);
+        var notes = new List<string>();
+        var demoTokens = new List<DemoToken>();
+
+        foreach (var cluster in catalogue.Clusters)
+        {
+            if (await Collection("clusters").Find(Builders<BsonDocument>.Filter.Eq("clusterId", cluster.Id)).AnyAsync(cancellationToken))
+            {
+                notes.Add($"Cluster {cluster.Id} was already there as real data: the demo batteries use it, and it stays real.");
+                continue;
+            }
+
+            await clusters.UpsertClusterAsync(cluster.Id, cluster.Name, cancellationToken);
+            await MarkAccountRecordAsync("clusters", Builders<BsonDocument>.Filter.Eq("clusterId", cluster.Id), cancellationToken);
+        }
+
+        var accounts = await SeedAccountsAsync(catalogue, notes, cancellationToken);
+
+        var families = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var family in catalogue.Families)
+        {
+            var id = await productData.CreateFamilyAsync(who, family.Name, cancellationToken);
+            await MarkAsync(DppStore.Families, id, cancellationToken);
+            await productData.SetFamilyPictureAsync(who, id, family.Picture, DemoCatalogue.Picture(family.Picture), cancellationToken);
+            families[family.Key] = id;
+        }
+
+        var sites = await SeedNamedAsync(catalogue.Sites, TargetKind.Site, DppStore.Sites, name => productData.CreateSiteAsync(who, name, cancellationToken), team, cancellationToken);
+        var operators = await SeedNamedAsync(catalogue.Operators, TargetKind.Operator, DppStore.Operators, name => productData.CreateOperatorAsync(who, name, cancellationToken), team, cancellationToken);
+
+        var models = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var model in catalogue.Models)
+        {
+            var id = await productData.CreateModelAsync(who, families[model.Family], model.Name, cancellationToken: cancellationToken)
+                ?? throw new InvalidOperationException($"The demo model {model.Name} couldn't be made.");
+            await MarkAsync(DppStore.Models, id, cancellationToken);
+            await SaveAsync(team, TargetKind.Model, id, model.Values, cancellationToken);
+            foreach (var (property, title) in model.Documents)
+            {
+                await UploadAsync(team, TargetKind.Model, id, property, $"{title} - {model.Name}", cancellationToken);
+            }
+
+            var stored = await store.GetAsync<BatteryModel>(id, cancellationToken);
+            await productData.SetModuleDescriptionAsync(who, stored!, model.ModuleDescription, cancellationToken);
+            models[model.Key] = id;
+        }
+
+        var batches = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var batch in catalogue.Batches)
+        {
+            var (id, problem) = await productData.CreateBatchAsync(who, models[batch.Model], batch.Year, sites[batch.Site], cancellationToken);
+            if (id is null)
+            {
+                throw new InvalidOperationException($"The demo batch {batch.Key} couldn't be made: {problem}.");
+            }
+
+            await MarkAsync(DppStore.Batches, id, cancellationToken);
+            await SaveAsync(team, TargetKind.Batch, id, batch.Values, cancellationToken);
+            await UploadAsync(team, TargetKind.Batch, id, "resultsOfTestReportsProvingCompliance", batch.TestReport, cancellationToken);
+            batches[batch.Key] = id;
+        }
+
+        var published = 0;
+        foreach (var demo in catalogue.Packs)
+        {
+            var created = await packCreation.CreateAsync(team, new NewPack(batches[demo.Batch], operators[demo.Operator], demo.Cluster, Values(demo.Values), "form"), cancellationToken);
+            if (created.Pack is null)
+            {
+                var rejected = created.Keys.Where(key => key.Outcome == KeyOutcome.Rejected).Select(key => $"{key.Key} ({key.Message})");
+                notes.Add($"Battery {demo.Serial} wasn't made: {created.Problem} {string.Join("; ", rejected)}".TrimEnd() + ".");
+                continue;
+            }
+
+            var packId = created.Pack.Id;
+            await MarkAsync(DppStore.Packs, packId, cancellationToken);
+            if (demo.Modules > 0)
+            {
+                await batteries.ImportModulesAsync(who, packId, ModuleExport(demo.Serial, demo.Modules), cancellationToken);
+            }
+
+            if (demo.Publish)
+            {
+                var result = await publication.PublishAsync(team, packId, cancellationToken);
+                if (result.Version is null)
+                {
+                    throw new InvalidOperationException($"The demo battery {demo.Serial} couldn't be published: {result.Problem ?? string.Join("; ", result.Report?.Blocking ?? [])}.");
+                }
+
+                published++;
+                if (demo.History)
+                {
+                    await WriteHistoryAsync(team, packId, demo, cancellationToken);
+                }
+
+                if (demo.NewVersion is not null)
+                {
+                    await SaveAsync(team, TargetKind.Pack, packId, demo.NewVersion, cancellationToken);
+                }
+            }
+
+            if (demo.Accident is not null)
+            {
+                await documents.AddAccidentReportAsync(team, packId, new DocumentUpload("accident-report.pdf", DemoPdf.Make("Accident report", demo.Accident), demo.Accident, "en-GB"), cancellationToken);
+            }
+        }
+
+        demoTokens.AddRange(await SeedTokensAsync(who, catalogue, cancellationToken));
+
+        var done = new List<string>
+        {
+            $"{catalogue.Families.Count} families, {catalogue.Models.Count} models, {catalogue.Sites.Count} sites, {catalogue.Operators.Count} operators and {catalogue.Batches.Count} batches",
+            $"{catalogue.Packs.Count} batteries, {published} of them published",
+            $"{accounts} accounts and {demoTokens.Count} API tokens",
+        };
+        await audit.AppendApplicationAuditEventAsync(
+            SeededEvent,
+            who,
+            "admin",
+            "admin-ui",
+            "Demo data seeded.",
+            new BsonDocument
+            {
+                ["families"] = catalogue.Families.Count,
+                ["models"] = catalogue.Models.Count,
+                ["batteries"] = catalogue.Packs.Count,
+                ["published"] = published,
+                ["accounts"] = accounts,
+                ["tokens"] = demoTokens.Count,
+            },
+            "demo",
+            "demo-data",
+            cancellationToken: cancellationToken);
+        return new DemoResult(done, notes, demoTokens);
+    }
+
+    private async Task<int> SeedAccountsAsync(DemoCatalogue catalogue, List<string> notes, CancellationToken cancellationToken)
+    {
+        var password = options.Value.DemoUsersPassword;
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            notes.Add(NoPassword);
+            return 0;
+        }
+
+        var hash = BCrypt.Net.BCrypt.HashPassword(password);
+        var made = 0;
+        foreach (var account in catalogue.Accounts)
+        {
+            var byEmail = Builders<BsonDocument>.Filter.Eq("email", account.Email);
+            if (await Collection("users").Find(byEmail).AnyAsync(cancellationToken))
+            {
+                notes.Add($"Account {account.Email} was already there as real data: it stays as it is.");
+                continue;
+            }
+
+            await clusters.UpsertUserAsync(account.Email, account.Name, [account.Role], hash, cancellationToken);
+            await MarkAccountRecordAsync("users", byEmail, cancellationToken);
+            if (account.Cluster is not null)
+            {
+                await clusters.UpsertClusterMembershipAsync(account.Email, account.Cluster, account.ClusterRole ?? "member", cancellationToken);
+                await MarkAccountRecordAsync("clusterMemberships", Builders<BsonDocument>.Filter.And(byEmail, Builders<BsonDocument>.Filter.Eq("clusterId", account.Cluster)), cancellationToken);
+            }
+
+            made++;
+        }
+
+        return made;
+    }
+
+    /// <summary>Each demo cluster's read and read-write tokens, and one team token with full access; values shown once.</summary>
+    private async Task<List<DemoToken>> SeedTokensAsync(string who, DemoCatalogue catalogue, CancellationToken cancellationToken)
+    {
+        var made = new List<DemoToken>();
+        foreach (var cluster in catalogue.Clusters)
+        {
+            foreach (var (mode, access) in new[] { (ExternalTokenAccessMode.Read, "Read"), (ExternalTokenAccessMode.ReadWrite, "Read and write live values") })
+            {
+                var (document, value) = await tokens.CreateTokenAsync($"Demo {cluster.Name} ({access.ToLowerInvariant()})", mode, [cluster.Id], false, false, who, cancellationToken: cancellationToken);
+                await MarkAccountRecordAsync("apiTokens", Builders<BsonDocument>.Filter.Eq("_id", document["_id"]), cancellationToken);
+                made.Add(new DemoToken($"{cluster.Name}", access, value));
+            }
+        }
+
+        var (team, teamValue) = await tokens.CreateTokenAsync("Demo team (full access)", ExternalTokenAccessMode.Lifecycle, [], false, true, who, cancellationToken: cancellationToken);
+        await MarkAccountRecordAsync("apiTokens", Builders<BsonDocument>.Filter.Eq("_id", team["_id"]), cancellationToken);
+        made.Add(new DemoToken("Team, all clusters", "Full access", teamValue));
+        return made;
+    }
+
+    private async Task<Dictionary<string, string>> SeedNamedAsync(
+        IEnumerable<DemoNamed> records, TargetKind kind, string collection, Func<string, Task<string>> create, ChangeSender team, CancellationToken cancellationToken)
+    {
+        var ids = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var record in records)
+        {
+            var id = await create(record.Name);
+            await MarkAsync(collection, id, cancellationToken);
+            await SaveAsync(team, kind, id, record.Values, cancellationToken);
+            ids[record.Key] = id;
+        }
+
+        return ids;
+    }
+
+    /// <summary>Seven days of live values every six hours, oldest first, through the API's own write path.</summary>
+    private async Task WriteHistoryAsync(ChangeSender team, string packId, DemoPack demo, CancellationToken cancellationToken)
+    {
+        var pack = await store.GetAsync<BatteryPack>(packId, cancellationToken) ?? throw new InvalidOperationException($"The demo battery {demo.Serial} is missing.");
+        var now = clock.GetUtcNow().UtcDateTime;
+        var cycles = demo.Values["numberOfFullChargingAndDischargingCycles"]!.GetValue<int>() - HistoryPoints / 2;
+        for (var point = 0; point < HistoryPoints; point++)
+        {
+            var hoursAgo = HistoryStepHours * (HistoryPoints - 1 - point);
+            var values = new Dictionary<string, JsonNode?>(StringComparer.Ordinal)
+            {
+                ["stateOfChargeSoC"] = 55 + (int)Math.Round(30 * Math.Sin(point * Math.PI / 4)),
+                ["numberOfFullChargingAndDischargingCycles"] = cycles + point / 2,
+                ["temperatureInformation"] = 22 + (int)Math.Round(6 * Math.Sin(point * Math.PI / 2)),
+                ["timeSpentInExtremeTemperaturesAboveBoundary"] = 30 + point,
+                ["timeSpentInExtremeTemperaturesBelowBoundary"] = 12 + point / 4,
+                ["timeSpentChargingDuringExtremeTemperaturesAboveBoundary"] = 0,
+                ["timeSpentChargingDuringExtremeTemperaturesBelowBoundary"] = 0,
+            };
+            await api.WriteLiveValuesAsync(team, pack, values, now.AddHours(-hoursAgo), preview: false, cancellationToken);
+        }
+    }
+
+    private async Task SaveAsync(ChangeSender team, TargetKind kind, string id, JsonObject values, CancellationToken cancellationToken)
+    {
+        var result = await pipeline.SaveAsync(team, new ChangeSet(kind, id, Values(values), "form"), cancellationToken: cancellationToken);
+        var rejected = result.Keys.Where(key => key.Outcome == KeyOutcome.Rejected).Select(key => $"{key.Key}: {key.Message}").ToList();
+        if (!result.Saved || rejected.Count > 0)
+        {
+            throw new InvalidOperationException($"The demo {kind} values weren't all accepted: {string.Join("; ", rejected)}");
+        }
+    }
+
+    private async Task UploadAsync(ChangeSender team, TargetKind kind, string id, string property, string title, CancellationToken cancellationToken)
+    {
+        var fileName = $"{property}.pdf";
+        var result = await documents.UploadAsync(team, kind, id, property, new DocumentUpload(fileName, DemoPdf.Make(title, $"{kind} document for the demo data."), title, "en-GB"), cancellationToken);
+        if (result.Problem is not null)
+        {
+            throw new InvalidOperationException($"The demo document {title} couldn't be stored: {result.Problem}.");
+        }
+    }
+
+    private static Dictionary<string, JsonNode?> Values(JsonObject values) =>
+        values.ToDictionary(entry => entry.Key, entry => entry.Value?.DeepClone(), StringComparer.Ordinal);
+
+    /// <summary>An export-shaped file (decision 31) with this many modules for the battery.</summary>
+    private static byte[] ModuleExport(string serial, int modules)
+    {
+        var children = new JsonArray();
+        for (var position = 1; position <= modules; position++)
+        {
+            children.Add(new JsonObject
+            {
+                ["position"] = position,
+                ["serialNumber"] = $"{serial}-M{position:D2}",
+                ["connectivityId"] = $"CAN-{serial}-{position:D2}",
+            });
+        }
+
+        var export = new JsonObject
+        {
+            ["metadata"] = new JsonObject
+            {
+                ["identifiers"] = new JsonObject
+                {
+                    ["deviceIdentifiers"] = new JsonObject { ["serialNumber"] = serial, ["childrenIdentifiers"] = children },
+                },
+            },
+        };
+        return Encoding.UTF8.GetBytes(export.ToJsonString());
+    }
+
+    private IMongoCollection<BsonDocument> Collection(string name) => Database.GetCollection<BsonDocument>(name);
+
+    private Task MarkAsync(string collection, string id, CancellationToken cancellationToken) =>
+        Collection(collection).UpdateOneAsync(Builders<BsonDocument>.Filter.Eq("_id", id), Builders<BsonDocument>.Update.Set(Mark, true), cancellationToken: cancellationToken);
+
+    private Task MarkAccountRecordAsync(string collection, FilterDefinition<BsonDocument> filter, CancellationToken cancellationToken) =>
+        Collection(collection).UpdateOneAsync(filter, Builders<BsonDocument>.Update.Set(AccountMark, true), cancellationToken: cancellationToken);
+}
