@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\web\BatteryPassWeb.csproj" />
+    <ProjectReference Include="..\tools\V3Reset\V3Reset.csproj" />
   </ItemGroup>
 
   <ItemGroup>
