@@ -277,8 +277,10 @@ public sealed class DemoDataService(
             var uses = new List<string>();
             var packs = await Collection(DppStore.Packs).CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq("ClusterId", clusterId), cancellationToken: cancellationToken);
             var members = await Collection("clusterMemberships").CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq("clusterId", clusterId), cancellationToken: cancellationToken);
+            // The cluster's own tokens, which the app's start makes for every cluster, go with it and aren't real use.
+            var ownTokens = Builders<BsonDocument>.Filter.Eq("autoClusterId", clusterId);
             var realTokens = await Collection("apiTokens").CountDocumentsAsync(
-                Builders<BsonDocument>.Filter.Or(Builders<BsonDocument>.Filter.Eq("autoClusterId", clusterId), Builders<BsonDocument>.Filter.AnyEq("clusterIds", clusterId)),
+                Builders<BsonDocument>.Filter.And(Builders<BsonDocument>.Filter.AnyEq("clusterIds", clusterId), Builders<BsonDocument>.Filter.Not(ownTokens)),
                 cancellationToken: cancellationToken);
             if (packs > 0) uses.Add($"{packs} real batteries");
             if (members > 0) uses.Add($"{members} real accounts");
@@ -290,6 +292,7 @@ public sealed class DemoDataService(
                 continue;
             }
 
+            removed["API tokens"] += (int)(await Collection("apiTokens").DeleteManyAsync(ownTokens, cancellationToken)).DeletedCount;
             await clusters.DeleteClusterAsync(clusterId, cancellationToken);
             Count("clusters");
         }
@@ -342,7 +345,8 @@ public sealed class DemoDataService(
         return made;
     }
 
-    /// <summary>Each demo cluster's read and read-write tokens, and one team token with full access; values shown once.</summary>
+    /// <summary>Each demo cluster's read and read-write tokens, and one team token with full access; values shown once.
+    /// The cluster tokens are the cluster's own (autoClusterId), so the app's start adds no others for a demo cluster.</summary>
     private async Task<List<DemoToken>> SeedTokensAsync(string who, DemoCatalogue catalogue, CancellationToken cancellationToken)
     {
         var made = new List<DemoToken>();
@@ -350,7 +354,7 @@ public sealed class DemoDataService(
         {
             foreach (var (mode, access) in new[] { (ExternalTokenAccessMode.Read, "Read"), (ExternalTokenAccessMode.ReadWrite, "Read and write live values") })
             {
-                var (document, value) = await tokens.CreateTokenAsync($"Demo {cluster.Name} ({access.ToLowerInvariant()})", mode, [cluster.Id], false, false, who, cancellationToken: cancellationToken);
+                var (document, value) = await tokens.CreateTokenAsync($"{cluster.Name} ({access.ToLowerInvariant()})", mode, [cluster.Id], false, false, who, autoClusterId: cluster.Id, cancellationToken: cancellationToken);
                 await MarkAccountRecordAsync("apiTokens", Builders<BsonDocument>.Filter.Eq("_id", document["_id"]), cancellationToken);
                 made.Add(new DemoToken($"{cluster.Name}", access, value));
             }

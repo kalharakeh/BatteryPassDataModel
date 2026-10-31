@@ -96,8 +96,6 @@ public sealed class AdminFeedbackFollowupTests
         Assert.Contains("bp-user-management-table", clusterUsers);
         Assert.DoesNotContain("class=\"bp-tag\"", clusters);
         Assert.DoesNotContain("class=\"bp-tag\"", clusterUsers);
-        Assert.Contains("bp-token-console", clusters);
-        Assert.Contains("bp-token-cluster-chip-picker", clusters);
         Assert.Contains("bp-token-cluster-chip-picker", clusterTokens);
         Assert.Contains(".bp-confirm-modal", css);
         Assert.Contains(".bp-token-cluster-chip-picker", css);

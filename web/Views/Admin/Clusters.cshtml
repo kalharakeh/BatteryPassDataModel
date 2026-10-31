@@ -2,7 +2,6 @@
 @{
     ViewData["Title"] = "Administration";
     var selectedTab = Model.SelectedTab;
-    var credentialTab = Model.SelectedCredentialTab;
     var clustersById = Model.Clusters.ToDictionary(cluster => cluster.ClusterId, cluster => cluster, StringComparer.OrdinalIgnoreCase);
     var clusterCreateName = TempData["ClusterCreateName"]?.ToString() ?? string.Empty;
     var clusterCreateId = TempData["ClusterCreateId"]?.ToString() ?? string.Empty;
@@ -56,39 +55,6 @@
     };
     string ClusterName(string clusterId) => clustersById.TryGetValue(clusterId, out var cluster) ? cluster.Name : clusterId;
     string Count(int count, string one, string many) => $"{count} {(count == 1 ? one : many)}";
-    string TokenClusterPickerName(string name) => name.StartsWith("Default ", StringComparison.OrdinalIgnoreCase) ? name["Default ".Length..] : name;
-    string TokenDisplayName(BatteryPassWeb.Models.ViewModels.ApiTokenViewModel token)
-    {
-        var suffixes = token.AccessMode.Equals("readWriteSign", StringComparison.OrdinalIgnoreCase)
-            ? new[] { " - readwritesign", "-readwritesign" }
-            : token.AccessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase)
-                ? new[] { " - readwrite", "-readwrite" }
-                : token.AccessMode.Equals("read", StringComparison.OrdinalIgnoreCase)
-                    ? new[] { " - read", "-read" }
-                    : [];
-        var suffix = suffixes.FirstOrDefault(candidate => token.Name.EndsWith(candidate, StringComparison.OrdinalIgnoreCase));
-        return string.IsNullOrWhiteSpace(suffix) ? token.Name : token.Name[..^suffix.Length];
-    }
-    string AccessLabel(BatteryPassWeb.Models.ViewModels.ApiTokenViewModel token)
-    {
-        return token.AccessMode.Equals("readWriteSign", StringComparison.OrdinalIgnoreCase)
-            ? "Full access"
-            : token.AccessMode.Equals("sign", StringComparison.OrdinalIgnoreCase)
-                ? "Passport Lifecycle"
-                : token.AccessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase)
-                    ? "Read + write"
-                    : "Read";
-    }
-    string ScopeSummary(BatteryPassWeb.Models.ViewModels.ApiTokenViewModel token)
-    {
-        if (token.GlobalAccess)
-        {
-            return "Global";
-        }
-
-        var count = token.ClusterScopeNames.Count;
-        return $"{count} {(count == 1 ? "cluster" : "clusters")}";
-    }
     string GlobalAccessValue(IReadOnlyList<string> roles)
     {
         var role = roles.FirstOrDefault() ?? string.Empty;
@@ -527,229 +493,68 @@
         var activeTokenCount = Model.ApiTokens.Count(token => token.IsActive);
         var globalTokenCount = Model.ApiTokens.Count(token => token.GlobalAccess);
 
-        <section class="bp-card mt-4 bp-credential-management bp-token-console" data-credential-management>
-            <div class="bp-token-console-header">
-                <div>
-                    <span class="bp-summary-title">External integrations</span>
-                    <h2 class="h5 mb-1">API Token Management</h2>
-                    <p class="text-secondary mb-0">Create scoped API tokens for external integrations and keep active, inactive, and global tokens easy to scan.</p>
+        <section class="bp-card bp-console-form-card bp-tab-intro mt-4">
+            <div>
+                <h2>API tokens</h2>
+                <p>Tokens let other systems read passports and send live values. A token's value is shown once, when it is made or regenerated.</p>
+            </div>
+            <div class="bp-tab-intro-actions">
+                <span class="bp-counts">@Count(Model.ApiTokens.Count, "token", "tokens") · @activeTokenCount active · @globalTokenCount for all batteries</span>
+                <button type="button" class="bp-primary-button" data-open-dialog="create-token-dialog">Create token</button>
+            </div>
+        </section>
+
+        <dialog id="create-token-dialog" class="bp-modal-panel bp-dialog bp-dialog-wide bp-console-form-card" aria-labelledby="create-token-title">
+            <form method="post" action="/admin/api/tokens/create" class="bp-dialog-form">
+                @Html.AntiForgeryToken()
+                <h2 id="create-token-title">Create a token</h2>
+                <label>
+                    Name
+                    <input type="text" name="name" placeholder="e.g. North battery system" required />
+                </label>
+                <fieldset class="bp-choice-list">
+                    <legend>What it may do</legend>
+                    <label class="bp-choice"><input type="radio" name="accessMode" value="read" checked /><strong>Read</strong><small>Reads the passports of its batteries.</small></label>
+                    <label class="bp-choice"><input type="radio" name="accessMode" value="readWrite" /><strong>Read + write</strong><small>Also sends live values. For all batteries, it also creates batteries.</small></label>
+                    <label class="bp-choice"><input type="radio" name="accessMode" value="sign" /><strong>Passport lifecycle</strong><small>Reads, and for all batteries publishes passports.</small></label>
+                    <label class="bp-choice"><input type="radio" name="accessMode" value="readWriteSign" /><strong>Full access</strong><small>All of the above.</small></label>
+                </fieldset>
+                <fieldset class="bp-choice-list">
+                    <legend>Which batteries</legend>
+                    <div class="bp-choice">
+                        <input type="radio" name="globalAccess" value="off" id="token-scope-clusters" checked />
+                        <label for="token-scope-clusters"><strong>The batteries of these clusters</strong></label>
+                        <span class="bp-tags mt-1">
+                            @foreach (var cluster in Model.Clusters)
+                            {
+                                <label class="bp-checkbox-option"><input type="checkbox" name="clusterIds" value="@cluster.ClusterId" /> <span>@cluster.Name</span></label>
+                            }
+                        </span>
+                    </div>
+                    <label class="bp-choice"><input type="radio" name="globalAccess" value="on" /><strong>All batteries</strong><small>Acts as the team. Only a token for all batteries can create or publish batteries.</small></label>
+                </fieldset>
+                <div class="bp-dialog-actions">
+                    <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
+                    <button type="submit" class="bp-primary-button">Create token</button>
                 </div>
-                <div class="bp-token-console-summary" aria-label="API token summary">
-                    <span><strong>@Model.ApiTokens.Count</strong> tokens</span>
-                    <span><strong>@activeTokenCount</strong> active</span>
-                    <span><strong>@globalTokenCount</strong> global</span>
-                </div>
+            </form>
+        </dialog>
+
+        @await Html.PartialAsync("_ApiTokenList", new BatteryPassWeb.Models.ViewModels.ApiTokenListViewModel(Model.ApiTokens, "/admin/api/tokens", true, "No API tokens yet."))
+
+        <details class="bp-card bp-console-form-card mt-4 p-3" data-token-bulk-actions>
+            <summary class="fw-semibold">More: tokens for every cluster at once</summary>
+            <div class="d-flex flex-wrap gap-2 mt-3">
                 <form method="post" action="/admin/api/tokens/generate-per-cluster">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="bp-secondary-button bp-button-compact">Generate per-cluster tokens</button>
+                    <button type="submit" class="bp-secondary-button bp-button-compact">Make a read and a read + write token for every cluster</button>
                 </form>
                 <form method="post" action="/admin/api/tokens/cleanup-generated">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="bp-secondary-button bp-button-compact" data-confirm-action data-confirm-title="Clean up unused generated tokens" data-confirm-message="Delete unused duplicate tokens created by per-cluster generation? Custom tokens and used tokens are kept." data-confirm-submit="Clean up">Clean up unused generated tokens</button>
+                    <button type="submit" class="bp-secondary-button bp-button-compact" data-confirm-action data-confirm-title="Remove unused generated tokens" data-confirm-message="Delete the unused duplicate tokens made per cluster? Your own tokens and tokens in use are kept." data-confirm-submit="Remove">Remove the unused ones made this way</button>
                 </form>
             </div>
-
-            <form method="post" action="/admin/api/tokens/create" class="bp-token-create-strip bp-console-form-card">
-                @Html.AntiForgeryToken()
-                <div class="bp-token-create-topline">
-                    <label>
-                        Label
-                        <input type="text" name="name" placeholder="e.g. North battery system" required />
-                    </label>
-                    <label>
-                        Permission
-                        <span class="bp-select-shell">
-                            <select name="accessMode">
-                                <option value="read">Read</option>
-                                <option value="readWrite">Read + write</option>
-                                <option value="readWriteSign">Full access</option>
-                                <option value="sign">Passport Lifecycle</option>
-                            </select>
-                        </span>
-                        <small class="text-secondary">Full access and Passport Lifecycle create and publish batteries only with Global access, as the team.</small>
-                    </label>
-                    <fieldset class="bp-token-scope-select">
-                        <legend>Scope options</legend>
-                        <label class="bp-checkbox-option">
-                            <input type="checkbox" name="globalAccess" />
-                            <span>Global access</span>
-                        </label>
-                    </fieldset>
-                    <button type="submit" class="bp-primary-button">Create token</button>
-                </div>
-                <fieldset class="bp-token-cluster-chip-picker">
-                    <div class="bp-token-cluster-section-header">
-                        <legend>Linked clusters</legend>
-                        <span class="bp-token-cluster-count">@Model.Clusters.Count available</span>
-                    </div>
-                    <div class="bp-token-cluster-chip-grid">
-                        @foreach (var cluster in Model.Clusters)
-                        {
-                            <label>
-                                <input type="checkbox" name="clusterIds" value="@cluster.ClusterId" />
-                                <span>@TokenClusterPickerName(cluster.Name)</span>
-                            </label>
-                        }
-                    </div>
-                </fieldset>
-            </form>
-        </section>
-
-        <section class="bp-card bp-table-card mt-4" data-credential-panel="api-tokens">
-            <div class="bp-token-filter-toolbar">
-                <div>
-                    <span class="bp-summary-title">Issued tokens</span>
-                    <p class="mb-0 text-secondary">Search and manage integration tokens from one dense list.</p>
-                </div>
-                <label class="bp-token-search-field">
-                    <span>Search</span>
-                    <input type="search" placeholder="Token, scope, or access" data-token-search />
-                </label>
-            </div>
-                <div class="bp-table-scroll">
-                    <table class="table align-middle bp-console-table bp-credential-table bp-token-management-table bp-mobile-card-table">
-                        <colgroup>
-                            <col class="bp-token-name-column" />
-                            <col class="bp-token-id-column" />
-                            <col class="bp-token-access-column" />
-                            <col class="bp-token-scope-column" />
-                            <col class="bp-token-status-column" />
-                            <col class="bp-token-last-used-column" />
-                            <col class="bp-token-actions-column" />
-                        </colgroup>
-                        <thead>
-                            <tr>
-                                <th>Token</th>
-                                <th>Token ID</th>
-                                <th>Access</th>
-                                <th>Scope</th>
-                                <th>Status</th>
-                                <th>Last used</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (Model.ApiTokens.Count == 0)
-                            {
-                                <tr>
-                                    <td colspan="7" class="bp-table-empty">No API tokens have been created.</td>
-                                </tr>
-                            }
-                            else
-                            {
-                                <tr data-token-no-results hidden>
-                                    <td colspan="7" class="bp-table-empty">No tokens match the current search.</td>
-                                </tr>
-                            }
-                            @foreach (var token in Model.ApiTokens)
-                            {
-                                var accessLabel = AccessLabel(token);
-                                var tokenDisplayName = TokenDisplayName(token);
-                                var statusClass = token.IsActive ? "bp-status-pill is-active" : "bp-status-pill is-inactive";
-                                var searchText = $"{token.Name} {token.TokenId} {accessLabel} {token.ClusterIdsLabel} {(token.GlobalAccess ? "Global scope" : string.Empty)} {(token.IsActive ? "Active" : "Inactive")}";
-                                <tr data-token-row data-token-search-value="@searchText">
-                                    <td data-label="Token">
-                                        <p class="bp-credential-name">@tokenDisplayName</p>
-                                        @if (token.IsSample)
-                                        {
-                                            <p class="mb-0 small text-secondary">Sample token</p>
-                                        }
-                                    </td>
-                                    <td data-label="Token ID">
-                                        <span class="bp-token-id-cell bp-id-copy-row">
-                                            <code class="bp-id-value">@token.TokenId</code>
-                                            @await Html.PartialAsync("_CopyIdButton", token.TokenId)
-                                        </span>
-                                    </td>
-                                    <td data-label="Access"><span class="bp-access-pill">@accessLabel</span></td>
-                                    <td class="bp-token-scope-cell" data-label="Scope">
-                                        <details class="bp-token-scope-details">
-                                            <summary class="bp-token-scope-summary">@ScopeSummary(token)</summary>
-                                            <div class="bp-token-scope-list">
-                                                @if (token.GlobalAccess)
-                                                {
-                                                    <p>Global scope</p>
-                                                }
-                                                else if (token.ClusterScopeNames.Count == 0)
-                                                {
-                                                    <p>No clusters</p>
-                                                }
-                                                else
-                                                {
-                                                    <ul>
-                                                        @foreach (var clusterName in token.ClusterScopeNames)
-                                                        {
-                                                            <li>@clusterName</li>
-                                                        }
-                                                    </ul>
-                                                }
-                                                @if (token.AllowUnassigned && !token.GlobalAccess)
-                                                {
-                                                    <p class="bp-token-scope-note">Includes unassigned batteries</p>
-                                                }
-                                            </div>
-                                        </details>
-                                    </td>
-                                    <td data-label="Status"><span class="@statusClass">@(token.IsActive ? "Active" : "Inactive")</span></td>
-                                    <td data-label="Last used">@(string.IsNullOrWhiteSpace(token.LastUsedAt) ? "-" : token.LastUsedAt)</td>
-                                    <td class="bp-action-cell" data-label="Actions">
-                                        <div class="bp-icon-action-row">
-                                            <form method="post" action="/admin/api/tokens/regenerate">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="tokenId" value="@token.TokenId" />
-                                                <button type="submit" class="bp-action-button" aria-label="Regenerate token @token.Name" title="Regenerate token" data-tooltip="Regenerate">
-                                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                        <path d="M21 12a9 9 0 0 1-15.4 6.4" />
-                                                        <path d="M3 12a9 9 0 0 1 15.4-6.4" />
-                                                        <path d="M7 18H3v4" />
-                                                        <path d="M17 6h4V2" />
-                                                    </svg>
-                                                </button>
-                                            </form>
-                                            <form method="post" action="/admin/api/tokens/set-active">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="tokenId" value="@token.TokenId" />
-                                                <input type="hidden" name="isActive" value="@(token.IsActive ? "false" : "true")" />
-                                                @if (token.IsActive)
-                                                {
-                                                    <button type="submit" class="bp-action-button is-danger" aria-label="Deactivate token @token.Name" title="Deactivate token" data-tooltip="Deactivate">
-                                                        <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                            <path d="M18 6 6 18" />
-                                                            <path d="m6 6 12 12" />
-                                                        </svg>
-                                                    </button>
-                                                }
-                                                else
-                                                {
-                                                    <button type="submit" class="bp-action-button" aria-label="Activate token @token.Name" title="Activate token" data-tooltip="Activate">
-                                                        <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                            <path d="M20 6 9 17l-5-5" />
-                                                        </svg>
-                                                    </button>
-                                                }
-                                            </form>
-                                            <form method="post" action="/admin/api/tokens/delete">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="tokenId" value="@token.TokenId" />
-                                                <button type="submit" class="bp-action-button is-danger" aria-label="Delete token @token.Name" title="Delete token" data-tooltip="Delete" data-confirm-action data-confirm-title="Delete API token" data-confirm-message="Delete @token.Name? Existing integrations using this token will stop working." data-confirm-submit="Delete">
-                                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                        <path d="M3 6h18" />
-                                                        <path d="M8 6V4h8v2" />
-                                                        <path d="M6 6l1 15h10l1-15" />
-                                                        <path d="M10 11v6" />
-                                                        <path d="M14 11v6" />
-                                                    </svg>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-        </section>
-
+        </details>
     }
 
     @await Html.PartialAsync("_ConfirmModal")
@@ -757,41 +562,4 @@
 
 @section Scripts {
     <script src="~/js/bp-admin-pages.js" asp-append-version="true"></script>
-    <script>
-        (function () {
-            const tokenSearch = document.querySelector('[data-token-search]');
-            const tokenRows = Array.from(document.querySelectorAll('[data-token-row]'));
-            const tokenNoResults = document.querySelector('[data-token-no-results]');
-            tokenSearch?.addEventListener('input', () => {
-                const query = tokenSearch.value.trim().toLowerCase();
-                let visibleCount = 0;
-                tokenRows.forEach((row) => {
-                    const value = (row.dataset.tokenSearchValue || '').toLowerCase();
-                    const visible = query.length === 0 || value.includes(query);
-                    row.hidden = !visible;
-                    visibleCount += visible ? 1 : 0;
-                });
-                if (tokenNoResults) {
-                    tokenNoResults.hidden = query.length === 0 || visibleCount > 0;
-                }
-            });
-
-            const credentialTabs = Array.from(document.querySelectorAll('[data-credential-tab]'));
-            const credentialPanels = Array.from(document.querySelectorAll('[data-credential-panel]'));
-            credentialTabs.forEach((tab) => {
-                tab.addEventListener('click', () => {
-                    const selected = tab.dataset.credentialTab || 'api-tokens';
-                    credentialTabs.forEach((candidate) => {
-                        const active = candidate.dataset.credentialTab === selected;
-                        candidate.classList.toggle('bp-tab-active', active);
-                        candidate.setAttribute('aria-selected', active ? 'true' : 'false');
-                    });
-                    credentialPanels.forEach((panel) => {
-                        panel.hidden = panel.dataset.credentialPanel !== selected;
-                    });
-                    history.replaceState(null, '', `/admin/clusters?tab=${selected}`);
-                });
-            });
-        })();
-    </script>
 }

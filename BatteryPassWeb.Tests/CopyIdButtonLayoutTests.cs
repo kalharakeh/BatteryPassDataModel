@@ -42,7 +42,7 @@ public sealed class CopyIdButtonLayoutTests
     {
         var files = new[]
         {
-            RepoFile("web", "Views", "Admin", "Clusters.cshtml"),
+            RepoFile("web", "Views", "Shared", "_ApiTokenList.cshtml"),
             RepoFile("web", "Views", "Help", "Index.cshtml")
         };
 
