@@ -37,8 +37,7 @@ public sealed class MobileThemeSessionLayoutTests
         Assert.Contains("bp-mobile-identity", layout);
         Assert.Contains("bp-admin-mobile-tab-form", adminTabs);
         Assert.Contains("data-admin-mobile-tab-select", adminTabs);
-        Assert.Contains("bp-cluster-management-table bp-mobile-card-table", clusters);
-        Assert.Contains("data-label=\"Cluster ID\"", clusters);
+        Assert.Contains("<details class=\"bp-row\" data-cluster-row", clusters);
         Assert.Contains("bp-admin-help-workflow-table bp-mobile-card-table", adminHelp);
         Assert.Contains("bp-admin-help-status-table bp-mobile-card-table", adminHelp);
         Assert.Contains("bp-api-help-endpoint-table bp-mobile-card-table", apiHelp);

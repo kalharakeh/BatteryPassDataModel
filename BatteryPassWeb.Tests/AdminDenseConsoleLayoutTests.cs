@@ -38,7 +38,7 @@ public sealed class AdminDenseConsoleLayoutTests
         var clusterUsers = File.ReadAllText(RepoFile("web", "Views", "ClusterAdmin", "Users.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        Assert.Contains("Create Cluster", clusters);
+        Assert.Contains("Add cluster", clusters);
         Assert.Contains("Cluster ID already exists.", admin);
         Assert.Contains("Access", clusters);
         Assert.Contains("Global Admin", clusters);
@@ -49,37 +49,6 @@ public sealed class AdminDenseConsoleLayoutTests
         Assert.Contains(".bp-select-shell::after", css);
         Assert.Contains("bp-user-management-table", clusterUsers);
         Assert.DoesNotContain("bp-console-split", clusterUsers);
-    }
-
-    [Fact]
-    public void AdminRegisteredClusters_ShouldUseDenseProductionTableWithoutMockupTabStyles()
-    {
-        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
-        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
-        var clusterTabStart = clusters.IndexOf("selectedTab == \"clusters\"", StringComparison.Ordinal);
-        var usersTabStart = clusters.IndexOf("selectedTab == \"users\"", StringComparison.Ordinal);
-        var clusterTab = clusters.Substring(clusterTabStart, usersTabStart - clusterTabStart);
-
-        Assert.True(clusterTabStart >= 0);
-        Assert.True(usersTabStart > clusterTabStart);
-        Assert.Contains("bp-cluster-create-strip", clusterTab);
-        Assert.Contains("bp-cluster-management-table", clusterTab);
-        Assert.Contains("bp-console-table", clusterTab);
-        Assert.Contains("<th>Cluster</th>", clusterTab);
-        Assert.Contains("<th>Cluster ID</th>", clusterTab);
-        Assert.Contains("<th>Rename</th>", clusterTab);
-        Assert.Contains("<th>Delete</th>", clusterTab);
-        Assert.Contains("<th>Force delete</th>", clusterTab);
-        Assert.Contains("aria-label=\"Save cluster name\"", clusterTab);
-        Assert.Contains("aria-label=\"Delete cluster\"", clusterTab);
-        Assert.Contains("aria-label=\"Force delete cluster\"", clusterTab);
-        Assert.DoesNotContain("bp-management-card", clusterTab);
-        Assert.DoesNotContain("bp-management-danger-zone", clusterTab);
-        Assert.DoesNotContain("option-button", clusterTab);
-        Assert.DoesNotContain("mockup-shell", clusterTab);
-        Assert.Contains(".bp-cluster-create-strip", css);
-        Assert.Contains(".bp-cluster-management-table", css);
-        Assert.Contains(".bp-cluster-danger-form", css);
     }
 
     [Fact]

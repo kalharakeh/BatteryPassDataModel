@@ -127,7 +127,7 @@ public class AdminController : Controller
 
         var clusterNamesById = clusterViewModels.ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
         var needsUsers = selectedTab is "users" or "clusters";
-        var needsCredentials = selectedTab == "api-token-management";
+        var needsCredentials = selectedTab is "api-token-management" or "clusters"; // the clusters tab counts each cluster's tokens
         IReadOnlyList<BsonDocument> users = needsUsers
             ? await _clusterRepository.ListUsersAsync(cancellationToken)
             : Array.Empty<BsonDocument>();
@@ -179,6 +179,7 @@ public class AdminController : Controller
                     IsActive = token.GetValue("isActive", false).ToBoolean(),
                     IsSample = token.GetValue("isSample", false).ToBoolean(),
                     ClusterIdsLabel = clusterNames.Count == 0 ? "No clusters" : string.Join(", ", clusterNames),
+                    ClusterIds = tokenClusterIds.Select(entry => entry.ToString() ?? string.Empty).Where(clusterId => !string.IsNullOrWhiteSpace(clusterId)).ToList(),
                     ClusterScopeNames = clusterNames,
                     CreatedAt = BsonHelpers.GetString(token, "createdAt"),
                     UpdatedAt = BsonHelpers.GetString(token, "updatedAt"),

@@ -22,7 +22,7 @@ namespace BatteryPassWeb.Tests.Demo;
 [Collection(MongoCollection.Name)]
 public sealed class DemoCardTests(MongoFixture mongo)
 {
-    private static AdminController Controller(DemoRig rig)
+    internal static AdminController Controller(DemoRig rig)
     {
         var http = new DefaultHttpContext
         {
@@ -116,7 +116,7 @@ public sealed class DemoCardTests(MongoFixture mongo)
     public void TheCard_ShouldAskFirstAndTheWindowShouldShowTheTokensOnce()
     {
         var page = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
-        var card = page[page.IndexOf("data-demo-data-card", StringComparison.Ordinal)..page.IndexOf("bp-cluster-create-strip", StringComparison.Ordinal)];
+        var card = page[page.IndexOf("data-demo-data-card", StringComparison.Ordinal)..page.IndexOf("@if (selectedTab == \"users\")", StringComparison.Ordinal)];
         var window = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Shared", "_GeneratedCredentialsModal.cshtml"));
 
         Assert.Contains("action=\"/admin/demo-data/reset\"", card, StringComparison.Ordinal);

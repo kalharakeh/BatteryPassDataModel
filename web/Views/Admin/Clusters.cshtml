@@ -41,6 +41,7 @@
         "liTreatment" => "Legitimate interest: authorised or WEEE treatment",
         _ => clusterMembershipRoleOptions.TryGetValue(role, out var label) ? label : "Normal User"
     };
+    string Count(int count, string one, string many) => $"{count} {(count == 1 ? one : many)}";
     string MembershipCountLabel(int count) => $"{count} {(count == 1 ? "membership" : "memberships")}";
     string TokenClusterPickerName(string name) => name.StartsWith("Default ", StringComparison.OrdinalIgnoreCase) ? name["Default ".Length..] : name;
     string TokenDisplayName(BatteryPassWeb.Models.ViewModels.ApiTokenViewModel token)
@@ -109,172 +110,153 @@
 
     @if (selectedTab == "clusters")
     {
-        var clusterRowIndex = 0;
-        <div class="bp-management-shell bp-cluster-management-shell mt-4">
-            <section class="bp-card bp-console-form-card bp-demo-data-card" data-demo-data-card>
+        <section class="bp-card bp-console-form-card bp-tab-intro mt-4">
+            <div>
+                <h2>Clusters</h2>
+                <p>Each battery and each cluster user belongs to a cluster. Cluster admins look after their own cluster's users and API tokens.</p>
+            </div>
+            <div class="bp-tab-intro-actions">
+                <span class="bp-counts">@Count(Model.Clusters.Count, "cluster", "clusters")</span>
+                <button type="button" class="bp-primary-button" data-open-dialog="add-cluster-dialog">Add cluster</button>
+            </div>
+        </section>
+
+        <dialog id="add-cluster-dialog" class="bp-modal-panel bp-dialog bp-console-form-card" aria-labelledby="add-cluster-title" data-open-on-load="@(clusterCreateName.Length > 0 ? "true" : "false")">
+            <form method="post" action="/admin/clusters/create" class="bp-dialog-form">
+                @Html.AntiForgeryToken()
                 <div>
-                    <span class="bp-summary-title">Demo data</span>
-                    <h2 class="h5 mb-2">Demo data</h2>
-                    <p class="text-secondary mb-1">The Compact and Core families with six batteries in several states, three demo clusters, an account for every role but the team admin, and API tokens. Real data is never changed. Sign in with your own team account; the demo accounts cover the other roles.</p>
-                    <p class="mb-0" data-demo-data-state>@(Model.HasDemoData ? "The demo data is there." : "There is no demo data.")</p>
-                    @if (!Model.DemoAccountsPossible)
-                    {
-                        <p class="text-secondary mb-0" data-demo-data-no-accounts>@BatteryPassWeb.Dpp.Demo.DemoDataService.NoPassword</p>
-                    }
+                    <h2 id="add-cluster-title">Add a cluster</h2>
+                    <p class="bp-help-text mb-0">Batteries and users are added to it afterwards.</p>
                 </div>
-                <div class="d-flex flex-wrap gap-2 align-items-end">
-                    <form method="post" action="/admin/demo-data/reset">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="bp-primary-button" data-confirm-action data-confirm-title="Reset demo data" data-confirm-message="Remove the demo data and make it again? Real data stays as it is. The new API tokens are shown once." data-confirm-submit="Reset demo data">Reset demo data</button>
-                    </form>
-                    <form method="post" action="/admin/demo-data/clear">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="bp-danger-button" data-confirm-action data-confirm-title="Clear demo data" data-confirm-message="Remove the demo data? Real data stays as it is, and a demo record that real data uses is kept." data-confirm-submit="Clear demo data">Clear demo data</button>
-                    </form>
+                <label>
+                    Cluster name
+                    <input type="text" name="name" value="@clusterCreateName" placeholder="e.g. North operations" required />
+                </label>
+                <label>
+                    <span>Cluster ID <span class="text-secondary fw-normal">(optional; one is made for you if empty)</span></span>
+                    <input type="text" name="clusterId" value="@clusterCreateId" placeholder="e.g. north-operations" />
+                </label>
+                <div class="bp-dialog-actions">
+                    <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
+                    <button type="submit" class="bp-primary-button">Add cluster</button>
                 </div>
-            </section>
-            <section class="bp-card bp-cluster-create-strip bp-console-form-card">
-                <div>
-                    <span class="bp-summary-title">Cluster setup</span>
-                    <h2 class="h5 mb-2">Create Cluster</h2>
-                    <p class="text-secondary mb-0">Create a cluster first, then assign batteries and users from the nearby tabs.</p>
-                </div>
-                <form method="post" action="/admin/clusters/create" class="bp-cluster-create-form">
-                    @Html.AntiForgeryToken()
-                    <label>
-                        Cluster name
-                        <input type="text" name="name" value="@clusterCreateName" placeholder="North Operations Cluster" required />
-                    </label>
-                    <label>
-                        Cluster ID
-                        <input type="text" name="clusterId" value="@clusterCreateId" placeholder="cluster-north-operations (optional)" />
-                    </label>
-                    <button type="submit" class="bp-primary-button">Create Cluster</button>
-                </form>
-            </section>
-            <section class="bp-card bp-table-card">
-                <div class="bp-table-scroll">
-                    <table class="table table-hover align-middle bp-console-table bp-cluster-management-table bp-mobile-card-table">
-                        <thead>
-                            <tr>
-                                <th>Cluster</th>
-                                <th>Cluster ID</th>
-                                <th>Users</th>
-                                <th>Rename</th>
-                                <th>Delete</th>
-                                <th>Force delete</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (Model.Clusters.Count == 0)
+            </form>
+        </dialog>
+
+        <section class="bp-card bp-list-card mt-4" style="--bp-row-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 1.2fr) 96px" aria-label="Clusters">
+            @if (Model.Clusters.Count == 0)
+            {
+                <p class="bp-list-empty">No clusters yet.</p>
+            }
+            else
+            {
+                <div class="bp-list-head" aria-hidden="true"><span>Cluster</span><span>Users</span><span>API tokens</span><span></span></div>
+            }
+            @foreach (var cluster in Model.Clusters)
+            {
+                var clusterMemberships = Model.Memberships
+                    .Where(membership => membership.ClusterId.Equals(cluster.ClusterId, StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(membership => membership.Email, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                var clusterTokenCount = Model.ApiTokens.Count(token => !token.GlobalAccess && token.ClusterIds.Contains(cluster.ClusterId, StringComparer.OrdinalIgnoreCase));
+                var forceDialogId = $"force-delete-{cluster.ClusterId}";
+                <details class="bp-row" data-cluster-row="@cluster.ClusterId">
+                    <summary>
+                        <span class="bp-row-title"><strong>@cluster.Name</strong><code>@cluster.ClusterId</code></span>
+                        <span><span class="bp-row-label">Users</span>@Count(clusterMemberships.Count, "user", "users")</span>
+                        <span><span class="bp-row-label">API tokens</span>@Count(clusterTokenCount, "token", "tokens")</span>
+                        <span class="bp-row-open"><span class="is-open">Open</span><span class="is-close">Close</span></span>
+                    </summary>
+                    <div class="bp-row-panel bp-console-form-card">
+                        <section class="bp-subcard">
+                            <h3>Name</h3>
+                            <form method="post" action="/admin/clusters/update" class="bp-inline-form">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
+                                <label>
+                                    Cluster name
+                                    <input type="text" name="name" value="@cluster.Name" required />
+                                </label>
+                                <button type="submit" class="bp-secondary-button">Save name</button>
+                            </form>
+                            <p class="text-secondary small mt-2 mb-0">The ID <code>@cluster.ClusterId</code> stays as it is.</p>
+                        </section>
+                        <section class="bp-subcard">
+                            <h3>Users</h3>
+                            @if (clusterMemberships.Count == 0)
                             {
-                                <tr>
-                                    <td class="text-secondary" colspan="6">No clusters have been registered.</td>
-                                </tr>
+                                <p class="text-secondary">No users in this cluster yet.</p>
                             }
                             else
                             {
-                                @foreach (var cluster in Model.Clusters)
-                                {
-                                    var clusterMemberships = Model.Memberships
-                                        .Where(membership => membership.ClusterId.Equals(cluster.ClusterId, StringComparison.OrdinalIgnoreCase))
-                                        .OrderBy(membership => membership.Email, StringComparer.OrdinalIgnoreCase)
-                                        .ToList();
-                                    var drawerId = $"admin-cluster-user-drawer-{clusterRowIndex++}";
-                                    <tr>
-                                        <td data-label="Cluster">
-                                            <p class="bp-cluster-name">@cluster.Name</p>
-                                            <p class="mb-0 small text-secondary">Registered cluster</p>
-                                        </td>
-                                        <td data-label="Cluster ID"><code class="bp-code-wrap">@cluster.ClusterId</code></td>
-                                        <td data-label="Users">
-                                            <button type="button" class="bp-action-button bp-cluster-user-toggle" data-cluster-user-toggle aria-expanded="false" aria-controls="@drawerId" aria-label="Users in cluster @cluster.Name" title="Users in cluster" data-tooltip="Users in cluster">
-                                                <span class="bp-user-count-pill">@clusterMemberships.Count users</span>
-                                                <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                    <path d="m6 9 6 6 6-6" />
-                                                </svg>
-                                            </button>
-                                        </td>
-                                        <td data-label="Rename">
-                                            <form method="post" action="/admin/clusters/update" class="bp-cluster-rename-form">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
-                                                <input class="form-control form-control-sm" name="name" value="@cluster.Name" aria-label="Display name for @cluster.Name" required />
-                                                <button type="submit" class="bp-action-button" aria-label="Save cluster name" title="Save cluster name" data-tooltip="Save cluster name" data-action-icon="save-cluster-name">
-                                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                        <path d="M20 6 9 17l-5-5" />
-                                                    </svg>
-                                                </button>
-                                            </form>
-                                        </td>
-                                        <td data-label="Delete">
-                                            <form method="post" action="/admin/clusters/delete" class="bp-cluster-delete-form">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
-                                                <button type="submit" class="bp-action-button is-danger" aria-label="Delete cluster" title="Delete cluster" data-tooltip="Delete cluster" data-action-icon="delete-cluster" data-confirm-action data-confirm-title="Delete cluster" data-confirm-message="Delete @cluster.ClusterId? This only succeeds when no batteries or users are linked." data-confirm-submit="Delete">
-                                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                        <path d="M3 6h18" />
-                                                        <path d="M8 6V4h8v2" />
-                                                        <path d="M6 6l1 15h10l1-15" />
-                                                        <path d="M10 11v6" />
-                                                        <path d="M14 11v6" />
-                                                    </svg>
-                                                </button>
-                                            </form>
-                                        </td>
-                                        <td data-label="Force delete">
-                                            <form method="post" action="/admin/clusters/force-delete" class="bp-cluster-danger-form">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
-                                                <input class="form-control form-control-sm" name="confirmation" placeholder="I understand this deletes linked cluster data" aria-label="Force delete confirmation for @cluster.Name" />
-                                                <button type="submit" class="bp-action-button is-danger" aria-label="Force delete cluster" title="Force delete cluster" data-tooltip="Force delete cluster" data-action-icon="force-delete-cluster" data-confirm-action data-confirm-title="Force delete cluster" data-confirm-message="Force delete @cluster.ClusterId and remove linked cluster data from passports and memberships?" data-confirm-submit="Force delete">
-                                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                        <path d="M12 9v4" />
-                                                        <path d="M12 17h.01" />
-                                                        <path d="M10.3 4.3 2.8 17.2A2 2 0 0 0 4.5 20h15a2 2 0 0 0 1.7-2.8L13.7 4.3a2 2 0 0 0-3.4 0Z" />
-                                                    </svg>
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                    <tr id="@drawerId" class="bp-cluster-user-drawer-row" data-cluster-user-drawer-row hidden>
-                                        <td colspan="6">
-                                            <div class="bp-cluster-user-drawer">
-                                                <div>
-                                                    <h3>Users in cluster</h3>
-                                                    <p class="mb-0 text-secondary">@cluster.Name</p>
-                                                </div>
-                                                @if (clusterMemberships.Count == 0)
-                                                {
-                                                    <p class="mb-0 text-secondary">No users are assigned to this cluster.</p>
-                                                }
-                                                else
-                                                {
-                                                    <div class="bp-cluster-user-list">
-                                                        @foreach (var membership in clusterMemberships)
-                                                        {
-                                                            var user = Model.Users.FirstOrDefault(candidate => candidate.Email.Equals(membership.Email, StringComparison.OrdinalIgnoreCase));
-                                                            var displayName = string.IsNullOrWhiteSpace(user?.Name) ? membership.Email : user.Name;
-                                                            <div class="bp-cluster-user-row">
-                                                                <span>
-                                                                    <strong>@displayName</strong>
-                                                                    <code>@membership.Email</code>
-                                                                </span>
-                                                                <span class="bp-user-membership-role">@MembershipRoleLabel(membership.Role)</span>
-                                                            </div>
-                                                        }
-                                                    </div>
-                                                }
-                                            </div>
-                                        </td>
-                                    </tr>
-                                }
+                                <ul class="bp-member-list">
+                                    @foreach (var membership in clusterMemberships)
+                                    {
+                                        var user = Model.Users.FirstOrDefault(candidate => candidate.Email.Equals(membership.Email, StringComparison.OrdinalIgnoreCase));
+                                        var displayName = string.IsNullOrWhiteSpace(user?.Name) ? membership.Email : user.Name;
+                                        <li>
+                                            <span><strong>@displayName</strong> <span class="text-secondary small">@membership.Email</span></span>
+                                            <span class="bp-soft-tag">@MembershipRoleLabel(membership.Role)</span>
+                                        </li>
+                                    }
+                                </ul>
                             }
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-        </div>
+                            <a href="/admin/clusters?tab=users">Change in Users</a>
+                        </section>
+                        <div class="bp-danger-zone">
+                            <p>A cluster can be deleted when no batteries or users belong to it. Force delete also removes it from its batteries and memberships.</p>
+                            <div class="bp-danger-actions">
+                                <form method="post" action="/admin/clusters/delete">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
+                                    <button type="submit" class="bp-danger-button bp-button-compact" data-confirm-action data-confirm-title="Delete cluster" data-confirm-message="Delete @cluster.Name? This only works when no batteries or users belong to it." data-confirm-submit="Delete">Delete cluster</button>
+                                </form>
+                                <button type="button" class="bp-quiet-button" data-open-dialog="@forceDialogId">Force delete…</button>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+                <dialog id="@forceDialogId" class="bp-modal-panel bp-dialog bp-console-form-card" aria-labelledby="@(forceDialogId)-title">
+                    <form method="post" action="/admin/clusters/force-delete" class="bp-dialog-form">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
+                        <div>
+                            <h2 id="@(forceDialogId)-title">Force delete @cluster.Name?</h2>
+                            <p class="bp-help-text mb-0">This removes the cluster from its batteries and memberships. It can't be undone.</p>
+                        </div>
+                        <label>
+                            <span>Type <em>I understand this deletes linked cluster data</em></span>
+                            <input type="text" name="confirmation" autocomplete="off" required />
+                        </label>
+                        <div class="bp-dialog-actions">
+                            <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
+                            <button type="submit" class="bp-danger-button">Force delete</button>
+                        </div>
+                    </form>
+                </dialog>
+            }
+        </section>
+
+        <section class="bp-card bp-console-form-card bp-setting-card mt-4" data-demo-data-card>
+            <div>
+                <h2>Demo data <span class="bp-soft-tag ms-1" data-demo-data-state>@(Model.HasDemoData ? "Loaded" : "Not loaded")</span></h2>
+                <p>The Compact and Core families with six batteries in several states, three demo clusters, an account for every role but the team admin, and API tokens. Real data is never changed. Sign in with your own team account; the demo accounts cover the other roles.</p>
+                @if (!Model.DemoAccountsPossible)
+                {
+                    <p class="mt-1" data-demo-data-no-accounts>@BatteryPassWeb.Dpp.Demo.DemoDataService.NoPassword</p>
+                }
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <form method="post" action="/admin/demo-data/reset">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="bp-secondary-button" data-confirm-action data-confirm-title="Reset demo data" data-confirm-message="Remove the demo data and make it again? Real data stays as it is. The new API tokens are shown once." data-confirm-submit="Reset demo data">Reset demo data</button>
+                </form>
+                <form method="post" action="/admin/demo-data/clear">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="bp-danger-button" data-confirm-action data-confirm-title="Clear demo data" data-confirm-message="Remove the demo data? Real data stays as it is, and a demo record that real data uses is kept." data-confirm-submit="Clear demo data">Clear demo data</button>
+                </form>
+            </div>
+        </section>
     }
 
     @if (selectedTab == "users")
@@ -782,52 +764,14 @@
 
     }
 
-    <div class="bp-confirm-modal" data-confirm-modal hidden>
-        <div class="bp-confirm-modal-backdrop" data-confirm-cancel></div>
-        <section class="bp-confirm-modal-panel" role="dialog" aria-modal="true" aria-labelledby="bp-confirm-title">
-            <p class="bp-summary-title">Please confirm</p>
-            <h2 id="bp-confirm-title">Confirm action</h2>
-            <p class="bp-confirm-message" data-confirm-message>Are you sure?</p>
-            <div class="bp-confirm-actions">
-                <button type="button" class="bp-secondary-button" data-confirm-cancel>Cancel</button>
-                <button type="button" class="bp-danger-button" data-confirm-submit>Confirm</button>
-            </div>
-        </section>
-    </div>
+    @await Html.PartialAsync("_ConfirmModal")
 </main>
 
 @section Scripts {
+    <script src="~/js/bp-admin-pages.js" asp-append-version="true"></script>
     <script>
         (function () {
-            document.querySelectorAll('[data-password-reveal]').forEach((button) => {
-                button.addEventListener('click', () => {
-                    const input = button.closest('.bp-password-field')?.querySelector('input');
-                    if (!input) {
-                        return;
-                    }
-
-                    const reveal = input.type === 'password';
-                    input.type = reveal ? 'text' : 'password';
-                    button.setAttribute('aria-label', reveal ? 'Hide password' : 'Show password');
-                    button.setAttribute('title', reveal ? 'Hide password' : 'Show password');
-                });
-            });
-
             document.querySelectorAll('[data-user-drawer-toggle]').forEach((button) => {
-                button.addEventListener('click', () => {
-                    const drawerId = button.getAttribute('aria-controls');
-                    const drawer = drawerId ? document.getElementById(drawerId) : null;
-                    if (!drawer) {
-                        return;
-                    }
-
-                    const expanded = button.getAttribute('aria-expanded') === 'true';
-                    button.setAttribute('aria-expanded', expanded ? 'false' : 'true');
-                    drawer.hidden = expanded;
-                });
-            });
-
-            document.querySelectorAll('[data-cluster-user-toggle]').forEach((button) => {
                 button.addEventListener('click', () => {
                     const drawerId = button.getAttribute('aria-controls');
                     const drawer = drawerId ? document.getElementById(drawerId) : null;
@@ -887,41 +831,6 @@
                     });
                     history.replaceState(null, '', `/admin/clusters?tab=${selected}`);
                 });
-            });
-
-            const confirmModal = document.querySelector('[data-confirm-modal]');
-            const confirmTitle = document.getElementById('bp-confirm-title');
-            const confirmMessage = confirmModal?.querySelector('[data-confirm-message]');
-            const confirmSubmit = confirmModal?.querySelector('[data-confirm-submit]');
-            let pendingForm = null;
-            document.querySelectorAll('[data-confirm-action]').forEach((button) => {
-                button.addEventListener('click', (event) => {
-                    const form = button.closest('form');
-                    if (!form || !confirmModal || !confirmTitle || !confirmMessage || !confirmSubmit) {
-                        return;
-                    }
-
-                    event.preventDefault();
-                    pendingForm = form;
-                    confirmTitle.textContent = button.dataset.confirmTitle || 'Confirm action';
-                    confirmMessage.textContent = button.dataset.confirmMessage || 'Continue with this action?';
-                    confirmSubmit.textContent = button.dataset.confirmSubmit || 'Confirm';
-                    confirmModal.hidden = false;
-                    confirmSubmit.focus();
-                });
-            });
-
-            confirmModal?.querySelectorAll('[data-confirm-cancel]').forEach((button) => {
-                button.addEventListener('click', () => {
-                    confirmModal.hidden = true;
-                    pendingForm = null;
-                });
-            });
-
-            confirmSubmit?.addEventListener('click', () => {
-                if (pendingForm) {
-                    pendingForm.submit();
-                }
             });
         })();
     </script>

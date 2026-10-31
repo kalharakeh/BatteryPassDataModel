@@ -4,18 +4,6 @@ public sealed class AdminFeedbackImplementationTests
 {
 
     [Fact]
-    public void RegisteredClusters_ShouldExposeUserOverviewDropdownAndCreateUserCopy()
-    {
-        var clustersView = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
-
-        Assert.Contains("data-cluster-user-toggle", clustersView);
-        Assert.Contains("Users in cluster", clustersView);
-        Assert.Contains("data-cluster-user-drawer-row", clustersView);
-        Assert.Contains(">Create User<", clustersView);
-        Assert.DoesNotContain(">Save user<", clustersView);
-    }
-
-    [Fact]
     public void CreateUserDropdown_ShouldIncludeGlobalReportRoles()
     {
         var clustersView = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));

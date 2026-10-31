@@ -7,7 +7,7 @@ public sealed class AdminCredentialLayoutTests
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
         var tokenTabStart = markup.IndexOf("selectedTab == \"api-token-management\"", StringComparison.Ordinal);
-        var confirmModalStart = markup.IndexOf("<div class=\"bp-confirm-modal\" data-confirm-modal hidden>", StringComparison.Ordinal);
+        var confirmModalStart = markup.IndexOf("@await Html.PartialAsync(\"_ConfirmModal\")", StringComparison.Ordinal);
 
         Assert.True(tokenTabStart >= 0);
         Assert.True(confirmModalStart > tokenTabStart);
