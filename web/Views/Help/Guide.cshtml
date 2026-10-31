@@ -1,35 +1,103 @@
+@using BatteryPassWeb.Services
 @{
+    // The one Help place (step 3e): each reader sees only the parts for their role. The team's workflow used to be its
+    // own page under the admin tabs (/help/team and /admin/help now lead here).
     ViewData["Title"] = "Help";
     var signedIn = User.Identity?.IsAuthenticated == true;
+    var isTeam = User.IsInRole(AccessControlService.RoleAdmin);
+    var runsACluster = isTeam || User.IsInRole(AccessControlService.RoleClusterAdmin);
 }
 <main class="bp-page bp-help-page">
-    <header class="bp-console-header">
-        <div>
-            <h1>Help</h1>
-            <p class="text-secondary mb-0">How to find a battery passport, and what you can see in it.</p>
+    <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
+    <div class="bp-admin-heading">
+        <h1>Help</h1>
+        <p>How the battery passport works, for you.</p>
+    </div>
+
+    <div class="bp-help-layout mt-4">
+        @await Html.PartialAsync("_HelpContents", "guide")
+        <div class="bp-help-parts">
+            <section class="bp-card bp-help-part" id="find">
+                <h2>Find a passport</h2>
+                <p class="mb-0">On the <a href="/">home page</a>, type the battery's serial number, battery ID or passport ID, or scan the QR code on the battery. @(signedIn ? "The Registry lists the batteries you may open." : "Signed in, the Registry also lists the batteries you may open.")</p>
+            </section>
+
+            <section class="bp-card bp-help-part" id="see">
+                <h2>What each reader sees</h2>
+                <dl class="bp-word-list">
+                    <dt>Everyone</dt>
+                    <dd>The public summary: the public values, the document links and the family's picture.</dd>
+                    <dt>The battery's cluster, market surveillance</dt>
+                    <dd>Also the purchaser values, such as state of charge, temperature, battery status and accident reports.</dd>
+                    <dt>Repair, recycling, treatment, Commission</dt>
+                    <dd>Also the shared values meant for them.</dd>
+                    <dt>Notified bodies, market surveillance, Commission</dt>
+                    <dd>Also the authorities' values, such as test reports.</dd>
+                </dl>
+                <p class="mt-3 mb-0">Signed in, the passport's detail page shows one section per group you belong to. Each value says when it was measured or entered, and how.</p>
+            </section>
+
+            @if (signedIn && !runsACluster)
+            {
+                <section class="bp-card bp-help-part" id="access">
+                    <h2>Need more access?</h2>
+                    <p class="mb-0">If you should see more than you do, ask your cluster admin or the manufacturer's team.</p>
+                </section>
+            }
+
+            @if (runsACluster)
+            {
+                <section class="bp-card bp-help-part" id="cluster">
+                    <h2>Your cluster <span class="bp-soft-tag">Cluster admins</span></h2>
+                    <ol class="bp-steps">
+                        <li><strong><a href="/cluster-admin/users">Add your people</a></strong><p>Under Cluster admin, Users: add someone as a user (sees your cluster's batteries) or as a cluster admin (also looks after its users and tokens).</p></li>
+                        <li><strong><a href="/cluster-admin/api-tokens">Give your systems a token</a></strong><p>Under Cluster admin, API tokens: "Read" reads your batteries' passports; "Read + write" also sends their live values. Copy the value when it is shown: it is shown once.</p></li>
+                        <li><strong><a href="/registry">Check what they see</a></strong><p>Your users find your cluster's batteries in the Registry, with the purchaser values on the detail page.</p></li>
+                    </ol>
+                </section>
+            }
+
+            @if (isTeam)
+            {
+                <section class="bp-card bp-help-part" id="workflow">
+                    <h2>From product data to a published passport <span class="bp-soft-tag">Team</span></h2>
+                    <ol class="bp-steps">
+                        <li><strong><a href="/admin/families">Set up product data</a></strong><p>Families, models and batches, and <a href="/admin/sites-and-operators">sites and operators</a>. Most values are entered once and shared by every battery made from them; the V3 attribute list decides which are required, and by when.</p></li>
+                        <li><strong><a href="/admin/batteries/new">Create the battery</a></strong><p>Choose its batch, economic operator and cluster, and type its serial number, manufacturing date and warranty. The app gives it its battery ID. It starts as a draft only the team sees.</p></li>
+                        <li><strong><a href="/admin/batteries">Fill in what is missing</a></strong><p>Every field says whether it is required by Feb 2027, required later or conditional. Only "required by Feb 2027" blocks publishing, the first state of charge and temperature included.</p></li>
+                        <li><strong>Publish</strong><p>On the battery page, one step checks the passport against the official schema, signs it and publishes it. Later changes ask first, then publish a new version; live values and accident reports change it in place.</p></li>
+                    </ol>
+                    <p class="mt-3 mb-0">Other systems get <a href="/admin/clusters?tab=api-token-management">API tokens</a>: a cluster token reads that cluster's batteries and, with "Read + write", sends their live values; only a token for all batteries creates and publishes them.</p>
+                </section>
+
+                <section class="bp-card bp-help-part" id="words">
+                    <h2>Status words <span class="bp-soft-tag">Team</span></h2>
+                    <dl class="bp-word-list">
+                        <dt>Draft</dt>
+                        <dd>Not published yet; only the team sees it, on the Batteries tab.</dd>
+                        <dt>Published</dt>
+                        <dd>Its current version is public and signed. Public search and the QR code open only published passports.</dd>
+                        <dt>Archived version</dt>
+                        <dd>An earlier version, kept with its signature when a newer one was published.</dd>
+                    </dl>
+                </section>
+
+                <section class="bp-card bp-help-part" id="ready">
+                    <h2>Before you call a battery ready <span class="bp-soft-tag">Team</span></h2>
+                    <ul class="mb-0">
+                        <li>The model, batch, site and operator are complete.</li>
+                        <li>The battery's own values and first live values are in.</li>
+                        <li>Nothing blocks publication, and the battery says "Published" with the latest version.</li>
+                        <li>The QR code opens the public summary.</li>
+                    </ul>
+                </section>
+            }
+
+            <section class="bp-card bp-help-part" id="api">
+                <h2>API reference and workbench</h2>
+                <p class="mb-2">Every call, with examples for the demo clusters (<code>demo-north</code>, <code>demo-south</code>, <code>demo-fleet</code>), and a workbench to try a call with a token.</p>
+                <a class="bp-secondary-button bp-button-compact" href="/help/api">Open the API reference</a>
+            </section>
         </div>
-    </header>
-
-    @await Html.PartialAsync("_HelpTabs", "guide")
-
-    <section class="bp-card mt-4">
-        <h2 class="h5">Find a battery's passport</h2>
-        <p>On the <a href="/">home page</a>, type the battery's serial number, battery ID or passport ID, or scan the QR code on the battery. @(signedIn ? "The Registry also lists the batteries you may open." : "Signed in, the Registry also lists the batteries you may open.")</p>
-    </section>
-
-    <section class="bp-card mt-4">
-        <h2 class="h5">What you can see</h2>
-        <ul class="mb-0">
-            <li><strong>Everyone:</strong> the public summary, with the battery's public values, its document links and its family's picture.</li>
-            <li><strong>The battery's cluster</strong> (its users and admins) and <strong>market surveillance:</strong> also the purchaser values, such as state of charge, temperature, battery status and accident reports.</li>
-            <li><strong>Repairers, recyclers and treatment facilities</strong> with a legitimate interest, and the Commission: also the shared values meant for them.</li>
-            <li><strong>Notified bodies, market surveillance and the Commission:</strong> also the authorities' values, such as test reports.</li>
-        </ul>
-        <p class="mt-2 mb-0">Signed in, the passport's detail page shows one section per group you belong to. Each value says when it was measured or entered, and how.</p>
-    </section>
-
-    <section class="bp-card mt-4">
-        <h2 class="h5">Need access?</h2>
-        <p class="mb-0">If you should see more than you do, ask your cluster admin or the manufacturer's team. Cluster admins add users and API tokens for their clusters under <strong>Cluster admin</strong>.</p>
-    </section>
+    </div>
 </main>

@@ -4,14 +4,15 @@
 }
 <link rel="stylesheet" href="~/css/bp-api-help.css" asp-append-version="true" />
 <main class="bp-page bp-admin-page bp-help-page bp-api-help-page">
-    <header class="bp-console-header">
-        <div>
-            <h1>API help</h1>
-            <p class="text-secondary mb-0">Read passports, send a battery's live values, and create and publish batteries with a team token.</p>
-        </div>
-    </header>
+    <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
+    <div class="bp-admin-heading">
+        <h1>Help</h1>
+        <p>The API: read passports, send a battery's live values, and create and publish batteries with a team token.</p>
+    </div>
 
-    @await Html.PartialAsync("_HelpTabs", "api")
+    <div class="bp-help-layout mt-4">
+    @await Html.PartialAsync("_HelpContents", "api")
+    <div class="bp-help-parts">
 
     <section class="bp-console-toolbar bp-api-help-meta-strip" aria-label="API connection values">
         <div class="bp-help-kv-grid">
@@ -31,7 +32,7 @@
                 }
                 else
                 {
-                    <span class="text-secondary small">No battery passport is published yet.</span>
+                    <span class="text-secondary small">No published demo battery to show. Use one of your batteries' IDs.</span>
                 }
             </div>
         </div>
@@ -246,7 +247,7 @@
 
                 <article id="api-detail-cluster-batteries" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
                     <div><span class="bp-summary-title">Cluster batteries</span><h3>List the batteries of one cluster.</h3><p>Each battery with its battery ID, serial number, family, model and current passport (passport ID, version and status). A cluster token lists its own clusters' batteries that have a published passport; a global token lists every battery, drafts included.</p></div>
-                    <pre class="bp-help-pre"><code>GET @Model.BasePath/clusters/demo-cluster/batteries</code></pre>
+                    <pre class="bp-help-pre"><code>GET @Model.BasePath/clusters/demo-north/batteries</code></pre>
                 </article>
 
                 <article id="api-detail-batches" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
@@ -265,7 +266,7 @@ GET @Model.BasePath/operators</code></pre>
 {
   "batchId": "BATCH-ID",
   "operatorId": "OPERATOR-ID",
-  "clusterId": "demo-cluster",
+  "clusterId": "demo-north",
   "values": {
     "batterySerialNumber": "SN-API-REPLACE-ME",
     "manufacturingDate": "2026-09"
@@ -510,6 +511,8 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
             </details>
         </section>
     </div>
+    </div>
+    </div>
 </main>
 
 @section Scripts {
@@ -618,7 +621,7 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                 },
                 listClusterBatteries: {
                     method: 'GET',
-                    pathTemplate: `${basePath}/clusters/demo-cluster/batteries`,
+                    pathTemplate: `${basePath}/clusters/demo-north/batteries`,
                     body: ''
                 },
                 readSection: {
@@ -682,7 +685,7 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                     body: JSON.stringify({
                         batchId: 'BATCH-ID',
                         operatorId: 'OPERATOR-ID',
-                        clusterId: 'demo-cluster',
+                        clusterId: 'demo-north',
                         values: {
                             batterySerialNumber: 'SN-API-REPLACE-ME',
                             manufacturingDate: new Date().toISOString().slice(0, 7)

@@ -156,6 +156,22 @@ public sealed class BatteryPages(
         return new BatteriesPage(shown, wanted, rows.Count);
     }
 
+    /// <summary>The API help's example battery: a published demo battery's ID, or none. The help is open to everyone, so it
+    /// never shows a real battery's ID (product owner, 30 Oct 2026).</summary>
+    public async Task<string> ExampleBatteryIdAsync(CancellationToken cancellationToken = default)
+    {
+        var published = (await store.ListAsync<PassportVersion>(cancellationToken))
+            .Where(version => version.DppStatus == DppStatuses.Active)
+            .Select(version => version.PackId)
+            .ToHashSet(StringComparer.Ordinal);
+        return (await store.ListAsync<BatteryPack>(cancellationToken))
+            .Where(pack => pack.IsDemo && published.Contains(pack.Id))
+            .Select(pack => Text(pack, "uniqueProductIdentifier") ?? string.Empty)
+            .Where(identifier => identifier.Length > 0)
+            .Order(StringComparer.Ordinal)
+            .FirstOrDefault() ?? string.Empty;
+    }
+
     /// <summary>True when the search text is part of the battery's passport IDs, battery ID, serial number or cluster.</summary>
     public static bool Matches(BatteryRow row, string query, IEnumerable<PassportVersion> versions)
     {

@@ -93,37 +93,6 @@ public sealed class AdminDenseConsoleLayoutTests
     }
 
     [Fact]
-    public void AdminHelp_ShouldUsePersistentAdminTabsAndLighterWorkflowIntro()
-    {
-        var help = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
-        var tabs = File.ReadAllText(RepoFile("web", "Views", "Shared", "_AdminTabs.cshtml"));
-        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
-
-        Assert.Contains("_AdminTabs", help);
-        Assert.Contains("bp-tab-row", tabs);
-        Assert.Contains("Administration tabs", tabs);
-        Assert.Contains("bp-tab-active", tabs);
-        Assert.Contains("href=\"/admin/batteries\"", tabs);
-        Assert.Contains("href=\"/admin/clusters?tab=api-token-management\"", tabs);
-        Assert.Contains("bp-admin-help-reference-console", help);
-        Assert.Contains("bp-admin-help-reference-toolbar", help);
-        Assert.Contains("bp-admin-help-workflow-table", help);
-        Assert.Contains("bp-admin-help-detail-row", help);
-        Assert.Contains("bp-admin-help-detail-panel", help);
-        Assert.Contains("data-admin-help-detail-target", help);
-        Assert.Contains("parentNode.insertBefore", help);
-        Assert.DoesNotContain("scrollIntoView", help);
-        Assert.DoesNotContain("bp-admin-help-hero-panel", help);
-        Assert.DoesNotContain("bp-admin-help-workflow-card", help);
-        Assert.DoesNotContain("bp-admin-help-workflow-chip-row", help);
-        Assert.Contains(".bp-admin-help-reference-console", css);
-        Assert.Contains(".bp-admin-help-reference-toolbar", css);
-        Assert.Contains(".bp-admin-help-workflow-table", css);
-        Assert.Contains(".bp-admin-help-detail-row", css);
-        Assert.Contains(".bp-admin-help-detail-panel", css);
-    }
-
-    [Fact]
     public void AdminForms_ShouldUseModernConsoleFieldControls()
     {
         var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));

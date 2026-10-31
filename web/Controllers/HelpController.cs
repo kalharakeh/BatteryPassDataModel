@@ -16,20 +16,15 @@ public class HelpController : Controller
         _batteryPages = batteryPages;
     }
 
-    /// <summary>The guide for everyone: finding a passport and what each role sees.</summary>
+    /// <summary>The one Help place (step 3e): each reader sees only the parts for their role.</summary>
     [AllowAnonymous]
     [HttpGet("")]
     public IActionResult Guide() => View("Guide");
 
-    /// <summary>The team's workflow help (it used to be /admin/help, which now forwards here).</summary>
+    /// <summary>The team's workflow is a part of the Help page now (this address, and /admin/help before it, lead there).</summary>
     [Authorize(Policy = "AdminOnly")]
     [HttpGet("team")]
-    public IActionResult Team([FromQuery] string? status, [FromQuery] string? error)
-    {
-        ViewData["StatusMessage"] = string.IsNullOrWhiteSpace(status) ? string.Empty : Uri.UnescapeDataString(status);
-        ViewData["ErrorMessage"] = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error);
-        return View("~/Views/Admin/Help.cshtml");
-    }
+    public IActionResult Team() => Redirect("/help#workflow");
 
     /// <summary>The API reference and request workbench.</summary>
     [AllowAnonymous]
@@ -40,7 +35,7 @@ public class HelpController : Controller
         {
             BasePath = "/api/external/v1",
             PublicBaseUrl = RequestBaseUrl(),
-            ExampleBatteryId = (await _batteryPages.ListAsync(null, cancellationToken)).Rows.FirstOrDefault(row => !row.IsDraft)?.Identifier ?? string.Empty,
+            ExampleBatteryId = await _batteryPages.ExampleBatteryIdAsync(cancellationToken),
         };
 
         return View(model);

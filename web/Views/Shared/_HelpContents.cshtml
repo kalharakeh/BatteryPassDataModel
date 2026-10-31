@@ -1,0 +1,34 @@
+@using BatteryPassWeb.Services
+@model string
+@{
+    // The one Help place (step 3e): its contents list shows only the parts for the reader's role. The model names the
+    // page it is on, "guide" (/help) or "api" (/help/api), so the links work from both.
+    var onGuide = !string.Equals(Model, "api", StringComparison.OrdinalIgnoreCase);
+    var signedIn = User.Identity?.IsAuthenticated == true;
+    var isTeam = User.IsInRole(AccessControlService.RoleAdmin);
+    var runsACluster = isTeam || User.IsInRole(AccessControlService.RoleClusterAdmin);
+    string Part(string id) => onGuide ? $"#{id}" : $"/help#{id}";
+}
+<nav class="bp-help-contents" aria-label="Help contents">
+    <p>For everyone</p>
+    <a href="@Part("find")">Find a passport</a>
+    <a href="@Part("see")">What each reader sees</a>
+    @if (signedIn && !runsACluster)
+    {
+        <a href="@Part("access")">Need more access?</a>
+    }
+    @if (runsACluster)
+    {
+        <p>For cluster admins</p>
+        <a href="@Part("cluster")">Your cluster</a>
+    }
+    @if (isTeam)
+    {
+        <p>For the team</p>
+        <a href="@Part("workflow")">From product data to a published passport</a>
+        <a href="@Part("words")">Status words</a>
+        <a href="@Part("ready")">Before you call a battery ready</a>
+    }
+    <p>For systems</p>
+    <a href="/help/api" aria-current="@(onGuide ? null : "page")">API reference and workbench</a>
+</nav>

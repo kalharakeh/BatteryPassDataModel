@@ -37,20 +37,18 @@ public sealed class ReviewFixesTests
     }
 
     [Fact]
-    public void Help_ShouldBeOneAreaWithAGuideATeamTabAndTheApi()
+    public void Help_ShouldBeOnePlaceWithTheTeamsPartsAndTheApi()
     {
-        var tabs = Read("web", "Views", "Shared", "_HelpTabs.cshtml");
+        var contents = Read("web", "Views", "Shared", "_HelpContents.cshtml");
         var help = Read("web", "Controllers", "HelpController.cs");
 
-        Assert.Contains("href=\"/help\">Guide</a>", tabs);
-        Assert.Contains("href=\"/help/team\">Team</a>", tabs);
-        Assert.Contains("href=\"/help/api\">API</a>", tabs);
-        Assert.Contains("User.IsInRole(AccessControlService.RoleAdmin)", tabs); // the team tab only for the team
+        Assert.Contains("<a href=\"/help/api\"", contents);
+        Assert.Contains("User.IsInRole(AccessControlService.RoleAdmin)", contents); // the team's parts only for the team (step 3e)
         Assert.Contains("[HttpGet(\"api\")]", help);
         Assert.Contains("public IActionResult Guide() => View(\"Guide\");", help);
-        foreach (var page in new[] { Read("web", "Views", "Help", "Guide.cshtml"), Read("web", "Views", "Help", "Index.cshtml"), Read("web", "Views", "Admin", "Help.cshtml") })
+        foreach (var page in new[] { Read("web", "Views", "Help", "Guide.cshtml"), Read("web", "Views", "Help", "Index.cshtml") })
         {
-            Assert.Contains("_HelpTabs", page);
+            Assert.Contains("_HelpContents", page);
         }
 
         Assert.Contains("href=\"/help/api\">Developer help</a>", Read("web", "Views", "Shared", "_Layout.cshtml"));

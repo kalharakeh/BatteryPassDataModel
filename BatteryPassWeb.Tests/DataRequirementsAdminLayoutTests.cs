@@ -15,7 +15,7 @@ public sealed class DataRequirementsAdminLayoutTests
     [Fact]
     public void ProductTemplateEditor_ShouldRemainRequirementSourceOfTruth()
     {
-        Assert.Contains("Battery families tab", File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml")));
+        Assert.Contains("<a href=\"/admin/families\">Set up product data</a>", File.ReadAllText(RepoFile("web", "Views", "Help", "Guide.cshtml")));
     }
 
     private static string RepoFile(params string[] parts)

@@ -38,7 +38,7 @@ public sealed class Phase6ADocumentationTests
     public void Documentation_ShouldExplainPhase6BEvidenceWorkflow()
     {
         var guide = File.ReadAllText(RepoFile("docs", "end-user-testing-guide.md"));
-        var help = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
+        var help = File.ReadAllText(RepoFile("web", "Views", "Help", "Guide.cshtml"));
 
         Assert.Contains("Phase 6B", guide);
         Assert.Contains("Evidence readiness", guide);

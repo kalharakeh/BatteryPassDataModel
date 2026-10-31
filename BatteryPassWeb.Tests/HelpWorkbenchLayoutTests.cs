@@ -22,7 +22,7 @@ public sealed class HelpWorkbenchLayoutTests
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.Contains("bp-api-help-page", markup);
-        Assert.Contains("bp-console-header", markup);
+        Assert.Contains("_HelpContents", markup);
         Assert.Contains("bp-console-toolbar", markup);
         Assert.Contains("bp-api-help-meta-strip", markup);
         Assert.Contains("bp-api-help-section-card", markup);
@@ -138,11 +138,11 @@ public sealed class HelpWorkbenchLayoutTests
         var controller = File.ReadAllText(RepoFile("web", "Controllers", "HelpController.cs"));
 
         Assert.Contains("Example battery ID", markup);
-        Assert.Contains("No battery passport is published yet.", markup);
+        Assert.Contains("No published demo battery to show.", markup);
         Assert.Contains("id=\"tester-battery-id\" class=\"bp-id-value\" value=\"@Model.ExampleBatteryId\"", markup);
         Assert.DoesNotContain("SampleBatteryId", markup);
         Assert.DoesNotContain("SampleBatteryId", controller);
-        Assert.Contains("Rows.FirstOrDefault(row => !row.IsDraft)?.Identifier", controller);
+        Assert.Contains("ExampleBatteryIdAsync(cancellationToken)", controller);
         Assert.Contains("BatteryPassWeb.Dpp.Api.PassportApi.Sections", markup);
         Assert.DoesNotContain("<code>materialComposition</code>", markup);
     }

@@ -51,7 +51,6 @@ public sealed class ApplicationAuditCoverageTests
     public void AdminWorkspace_ShouldLinkToApplicationAuditLog()
     {
         var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
-        var help = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
         var layout = File.ReadAllText(RepoFile("web", "Views", "Shared", "_Layout.cshtml"));
         var adminTabsPath = RepoFileOrEmpty("web", "Views", "Shared", "_AdminTabs.cshtml");
 
@@ -64,7 +63,6 @@ public sealed class ApplicationAuditCoverageTests
         Assert.Contains(">Audit log<", tabs);
         Assert.Contains("bp-tab-active", tabs);
         Assert.Contains("_AdminTabs", clusters);
-        Assert.Contains("_AdminTabs", help);
     }
 
     [Fact]
