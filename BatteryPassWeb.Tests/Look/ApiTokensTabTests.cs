@@ -49,7 +49,7 @@ public sealed class ApiTokensTabTests(MongoFixture mongo)
     [Fact]
     public void TheList_ShouldBeSharedWithTheClusterAdminsPage()
     {
-        Assert.Contains("@await Html.PartialAsync(\"_ApiTokenList\", new BatteryPassWeb.Models.ViewModels.ApiTokenListViewModel(Model.ApiTokens, \"/admin/api/tokens\", true, \"No API tokens yet.\"))", Tab, StringComparison.Ordinal);
+        Assert.Contains("@await Html.PartialAsync(\"_ApiTokenList\", new BatteryPassWeb.Models.ViewModels.ApiTokenListViewModel(Model.ApiTokens, \"/admin/api/tokens\", true, true, \"No API tokens yet.\"))", Tab, StringComparison.Ordinal);
         Assert.DoesNotContain("<table", Tab, StringComparison.Ordinal);
     }
 

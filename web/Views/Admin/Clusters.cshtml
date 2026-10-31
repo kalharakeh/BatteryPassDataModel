@@ -540,7 +540,7 @@
             </form>
         </dialog>
 
-        @await Html.PartialAsync("_ApiTokenList", new BatteryPassWeb.Models.ViewModels.ApiTokenListViewModel(Model.ApiTokens, "/admin/api/tokens", true, "No API tokens yet."))
+        @await Html.PartialAsync("_ApiTokenList", new BatteryPassWeb.Models.ViewModels.ApiTokenListViewModel(Model.ApiTokens, "/admin/api/tokens", true, true, "No API tokens yet."))
 
         <details class="bp-card bp-console-form-card mt-4 p-3" data-token-bulk-actions>
             <summary class="fw-semibold">More: tokens for every cluster at once</summary>

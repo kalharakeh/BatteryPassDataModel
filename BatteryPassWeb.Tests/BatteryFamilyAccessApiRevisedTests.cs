@@ -92,11 +92,12 @@ public sealed class BatteryFamilyAccessApiRevisedTests
         Assert.Contains("ValidateClusterTokenScopeAsync", controller);
         Assert.Contains("CanAdministerClusterAsync", controller);
         Assert.Contains("/cluster-admin/api-tokens/create", view);
-        Assert.Contains("Full access", view);
-        Assert.DoesNotContain("Read + write + Passport Lifecycle", view);
-        Assert.Contains("Passport Lifecycle", view);
+        Assert.Contains("name=\"accessMode\" value=\"read\"", view); // a cluster token reads, and with write sends live values (step 3e)
+        Assert.Contains("name=\"accessMode\" value=\"readWrite\"", view);
+        Assert.DoesNotContain("value=\"readWriteSign\"", view);
+        Assert.DoesNotContain("value=\"sign\"", view);
         Assert.DoesNotContain("Create, validate, sign and publish passport", view);
-        Assert.Contains("/cluster-admin/api-tokens/delete", view);
+        Assert.Contains("\"/cluster-admin/api-tokens\", false, false", view);
     }
 
     private static string RepoFile(params string[] parts)

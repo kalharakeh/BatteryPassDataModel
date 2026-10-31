@@ -2,7 +2,7 @@
 @model ApiTokenListViewModel
 @{
     // One row per token: its name, permission, batteries and last use. A row opens to its ID, regenerating it,
-    // switching it off and on (the team's page only) and, last, deleting it.
+    // switching it off and on (the team's page only) and, last, deleting it (on a cluster admin's page: switching it off).
     string DisplayName(ApiTokenViewModel token)
     {
         // Tokens made per cluster end in " - read" or " - readwrite"; the permission column says that already.
@@ -110,12 +110,28 @@
                     </section>
                 }
                 <div class="bp-danger-zone">
-                    <p>Deleting the token stops every system that uses it. It can't be undone.</p>
-                    <form method="post" action="@Model.ActionBase/delete">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="tokenId" value="@token.TokenId" />
-                        <button type="submit" class="bp-danger-button bp-button-compact" data-confirm-action data-confirm-title="Delete API token" data-confirm-message="Delete @name? Systems using this token will stop working." data-confirm-submit="Delete">Delete token</button>
-                    </form>
+                    @if (Model.CanDelete)
+                    {
+                        <p>Deleting the token stops every system that uses it. It can't be undone.</p>
+                        <form method="post" action="@Model.ActionBase/delete">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="tokenId" value="@token.TokenId" />
+                            <button type="submit" class="bp-danger-button bp-button-compact" data-confirm-action data-confirm-title="Delete API token" data-confirm-message="Delete @name? Systems using this token will stop working." data-confirm-submit="Delete">Delete token</button>
+                        </form>
+                    }
+                    else if (token.IsActive)
+                    {
+                        <p>Deactivating the token stops every system that uses it. Only the team can switch it on again or delete it.</p>
+                        <form method="post" action="@Model.ActionBase/delete">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="tokenId" value="@token.TokenId" />
+                            <button type="submit" class="bp-danger-button bp-button-compact" data-confirm-action data-confirm-title="Deactivate API token" data-confirm-message="Deactivate @name? Systems using it will stop working, and only the team can switch it on again." data-confirm-submit="Deactivate">Deactivate token</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <p>This token is switched off. Only the team can switch it on again or delete it.</p>
+                    }
                 </div>
             </div>
         </details>

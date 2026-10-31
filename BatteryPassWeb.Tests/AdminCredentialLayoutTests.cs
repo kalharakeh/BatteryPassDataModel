@@ -13,7 +13,7 @@ public sealed class AdminCredentialLayoutTests
         Assert.DoesNotContain(">Battery secrets</a>", clusters);
         Assert.DoesNotContain("Battery secrets", clusters);
         Assert.Contains("_PasswordReveal", clusters);
-        Assert.Contains("data-password-reveal", clusterUsers);
+        Assert.Contains("_PasswordReveal", clusterUsers);
         Assert.Contains(".bp-tab-row", css);
         Assert.Contains("flex-wrap: nowrap", css);
     }

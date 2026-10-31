@@ -69,7 +69,7 @@ public sealed class MobileThemeSessionLayoutTests
         Assert.Contains("value=\"/cluster-admin/api-tokens\"", clusterTabs);
         Assert.Contains("aria-label=\"Local admin tabs\"", clusterTabs);
         Assert.Contains("bp-tab-row", clusterTabs);
-        Assert.Contains("API token management", clusterTabs);
+        Assert.Contains(">API tokens</a>", clusterTabs);
         Assert.True(mobileFormIndex >= 0);
         Assert.True(localNavIndex > mobileFormIndex);
         Assert.Contains("@await Html.PartialAsync(\"_ClusterAdminTabs\", \"users\")", users);

@@ -90,13 +90,11 @@ public sealed class AdminFeedbackFollowupTests
         Assert.DoesNotContain("confirm(", clusters);
         Assert.DoesNotContain("confirm(", clusterTokens);
         Assert.Contains("_ConfirmModal", clusters);
-        Assert.Contains("bp-confirm-modal", clusterTokens);
+        Assert.Contains("_ConfirmModal", clusterTokens);
         Assert.Contains("data-confirm-action", clusters);
-        Assert.Contains("data-confirm-action", clusterTokens);
-        Assert.Contains("bp-user-management-table", clusterUsers);
+        Assert.Contains("<details class=\"bp-row\" data-open-user", clusterUsers);
         Assert.DoesNotContain("class=\"bp-tag\"", clusters);
         Assert.DoesNotContain("class=\"bp-tag\"", clusterUsers);
-        Assert.Contains("bp-token-cluster-chip-picker", clusterTokens);
         Assert.Contains(".bp-confirm-modal", css);
         Assert.Contains(".bp-token-cluster-chip-picker", css);
     }

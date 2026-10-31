@@ -1,21 +1,28 @@
 @model string
 @{
+    // The cluster admin pages' heading and tabs. The page names the clusters it is about in ViewData["ClusterAdminScope"].
     var activeTab = Model ?? string.Empty;
     string TabClass(string tab) => activeTab.Equals(tab, StringComparison.OrdinalIgnoreCase) ? "bp-tab bp-tab-active" : "bp-tab";
     bool IsSelected(string tab) => activeTab.Equals(tab, StringComparison.OrdinalIgnoreCase);
+    var scope = ViewData["ClusterAdminScope"] as string;
 }
+
+<div class="bp-admin-heading">
+    <h1>Cluster admin</h1>
+    <p>Users and API tokens for @(string.IsNullOrWhiteSpace(scope) ? "the clusters you run" : scope).</p>
+</div>
 
 <form class="bp-admin-mobile-tab-form mt-4" aria-label="Cluster administration section">
     <label for="bp-cluster-admin-mobile-tab-select">Cluster admin section</label>
     <select id="bp-cluster-admin-mobile-tab-select" data-admin-mobile-tab-select>
         <option value="/cluster-admin/users" selected="@IsSelected("users")">Users</option>
-        <option value="/cluster-admin/api-tokens" selected="@IsSelected("api-tokens")">API token management</option>
+        <option value="/cluster-admin/api-tokens" selected="@IsSelected("api-tokens")">API tokens</option>
     </select>
 </form>
 
 <nav class="bp-local-admin-nav" aria-label="Local admin tabs">
     <div class="bp-tab-row">
         <a class="@TabClass("users")" href="/cluster-admin/users">Users</a>
-        <a class="@TabClass("api-tokens")" href="/cluster-admin/api-tokens">API token management</a>
+        <a class="@TabClass("api-tokens")" href="/cluster-admin/api-tokens">API tokens</a>
     </div>
 </nav>

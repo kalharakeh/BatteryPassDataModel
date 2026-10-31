@@ -47,7 +47,7 @@ public sealed class AdminDenseConsoleLayoutTests
         Assert.Contains("bp-select-shell", clusters);
         Assert.Contains("bp-select-shell", clusterUsers);
         Assert.Contains(".bp-select-shell::after", css);
-        Assert.Contains("bp-user-management-table", clusterUsers);
+        Assert.Contains("<details class=\"bp-row\" data-open-user", clusterUsers);
         Assert.DoesNotContain("bp-console-split", clusterUsers);
     }
 
@@ -84,9 +84,9 @@ public sealed class AdminDenseConsoleLayoutTests
         Assert.Contains("_ClusterAdminTabs", users);
         Assert.Contains("_ClusterAdminTabs", tokens);
         Assert.Contains("bp-local-admin-nav", localTabs);
-        Assert.Contains("bp-user-management-table", users);
+        Assert.Contains("<details class=\"bp-row\" data-open-user", users);
         Assert.DoesNotContain("bp-console-split", users);
-        Assert.Contains("bp-console-table", tokens);
+        Assert.Contains("_ApiTokenList", tokens);
         Assert.Contains(".bp-local-admin-nav", css);
         Assert.Contains(".bp-console-split", css);
         Assert.Contains(".bp-edit-grid", css);

@@ -205,7 +205,7 @@ public class ClusterAdminController : Controller
             "apiToken",
             tokenId,
             cancellationToken);
-        TempData["StatusMessage"] = "API token deleted.";
+        TempData["StatusMessage"] = "API token deactivated.";
         return Redirect("/cluster-admin/api-tokens");
     }
 
