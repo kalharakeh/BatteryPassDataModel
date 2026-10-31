@@ -184,7 +184,7 @@ public sealed class MobileThemeSessionLayoutTests
         var controller = File.ReadAllText(RepoFile("web", "Controllers", "AdminController.cs"));
         var program = File.ReadAllText(RepoFile("web", "Program.cs"));
 
-        Assert.Contains("Global session timeout", view);
+        Assert.Contains("<h2>Signing out</h2>", view);
         Assert.Contains("name=\"sessionTimeoutMinutes\"", view);
         Assert.Contains("/admin/clusters/session-timeout", view);
         Assert.Contains("[HttpPost(\"clusters/session-timeout\")]", controller);

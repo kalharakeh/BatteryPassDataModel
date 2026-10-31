@@ -26,9 +26,9 @@ public sealed class AppRolesTests
         var users = View("Admin", "Clusters.cshtml");
 
         Assert.Equal(
-            ["admin", "notifiedBody", "marketSurveillanceAuthority", "commission", "liRepair", "liRecycling", "liTreatment", "member"],
+            ["member", "admin", "notifiedBody", "marketSurveillanceAuthority", "commission", "liRepair", "liRecycling", "liTreatment"],
             Keys(users, "globalAccessOptions"));
-        Assert.Equal(["clusterAdmin", "member"], Keys(users, "clusterMembershipRoleOptions"));
+        Assert.Equal(["member", "clusterAdmin"], Keys(users, "clusterMembershipRoleOptions"));
         Assert.DoesNotContain("legitimateInterest", users, StringComparison.Ordinal);
         Assert.DoesNotContain("Person with Legitimate Interest", users, StringComparison.Ordinal);
     }

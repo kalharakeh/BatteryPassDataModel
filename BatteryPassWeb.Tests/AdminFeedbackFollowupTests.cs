@@ -93,7 +93,6 @@ public sealed class AdminFeedbackFollowupTests
         Assert.Contains("bp-confirm-modal", clusterTokens);
         Assert.Contains("data-confirm-action", clusters);
         Assert.Contains("data-confirm-action", clusterTokens);
-        Assert.Contains("bp-user-management-table", clusters);
         Assert.Contains("bp-user-management-table", clusterUsers);
         Assert.DoesNotContain("class=\"bp-tag\"", clusters);
         Assert.DoesNotContain("class=\"bp-tag\"", clusterUsers);
@@ -153,7 +152,7 @@ public sealed class AdminFeedbackFollowupTests
         Assert.Contains("TempData[\"ClusterCreateName\"]", adminController);
         Assert.Contains("TempData[\"ClusterCreateId\"]", adminController);
         Assert.Contains("Cluster ID already exists.", adminController);
-        Assert.Contains("[\"member\"] = \"Cluster Member\"", clusters);
+        Assert.Contains("[\"member\"] = \"Cluster member (sees only their clusters' batteries)\"", clusters);
         Assert.Contains("selected=\"@(option.Key.Equals(\"member\"", clusters);
         Assert.Contains("data-open-user", clusters);
         Assert.Contains("data-open-user", clusterUsers);

@@ -12,12 +12,12 @@ public sealed class AdminTestFeedbackFixesTests
         var accessControl = File.ReadAllText(RepoFile("web", "Services", "AccessControlService.cs"));
 
         Assert.Contains(">Access", adminUsers);
-        Assert.Contains("Global Admin", adminUsers);
-        Assert.Contains("Cluster Member", adminUsers);
-        Assert.Contains("Cluster Admin", adminUsers);
-        Assert.Contains("Normal User", adminUsers);
-        Assert.Contains("Notified Body", adminUsers);
-        Assert.Contains("Market Surveillance Authorities", adminUsers);
+        Assert.Contains("Global admin", adminUsers);
+        Assert.Contains("Cluster member", adminUsers);
+        Assert.Contains("Cluster admin", adminUsers);
+        Assert.Contains("[\"member\"] = \"User\"", adminUsers);
+        Assert.Contains("Notified body", adminUsers);
+        Assert.Contains("Market surveillance authority", adminUsers);
         Assert.Contains("Commission", adminUsers);
         Assert.Contains("Legitimate interest: repair, repurposing, remanufacturing", adminUsers);
         Assert.Contains("Legitimate interest: recycling and battery treatment", adminUsers);

@@ -7,7 +7,7 @@ public sealed class AdminFeedbackImplementationTests
     public void CreateUserDropdown_ShouldIncludeGlobalReportRoles()
     {
         var clustersView = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
-        var createFormStart = clustersView.IndexOf("action=\"/admin/clusters/save-user\" class=\"bp-user-create-strip\"", StringComparison.Ordinal);
+        var createFormStart = clustersView.IndexOf("<dialog id=\"add-user-dialog\"", StringComparison.Ordinal);
         Assert.True(createFormStart >= 0);
         var createFormEnd = clustersView.IndexOf("</form>", createFormStart, StringComparison.Ordinal);
         Assert.True(createFormEnd > createFormStart);

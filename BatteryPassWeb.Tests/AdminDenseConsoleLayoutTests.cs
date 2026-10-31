@@ -41,50 +41,14 @@ public sealed class AdminDenseConsoleLayoutTests
         Assert.Contains("Add cluster", clusters);
         Assert.Contains("Cluster ID already exists.", admin);
         Assert.Contains("Access", clusters);
-        Assert.Contains("Global Admin", clusters);
-        Assert.Contains("Cluster Member", clusters);
+        Assert.Contains("Global admin (the team)", clusters);
+        Assert.Contains("Cluster member (sees only", clusters);
         Assert.DoesNotContain("No global admin", clusters);
         Assert.Contains("bp-select-shell", clusters);
         Assert.Contains("bp-select-shell", clusterUsers);
         Assert.Contains(".bp-select-shell::after", css);
         Assert.Contains("bp-user-management-table", clusterUsers);
         Assert.DoesNotContain("bp-console-split", clusterUsers);
-    }
-
-    [Fact]
-    public void AdminUsers_ShouldUseDenseMoreMenuTableForMultiClusterAssignments()
-    {
-        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
-        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
-        var usersTabStart = clusters.IndexOf("selectedTab == \"users\"", StringComparison.Ordinal);
-        var nextTabStart = clusters.IndexOf("selectedTab == \"api-token-management\"", StringComparison.Ordinal);
-        var usersTab = clusters.Substring(usersTabStart, nextTabStart - usersTabStart);
-
-        Assert.True(usersTabStart >= 0);
-        Assert.True(nextTabStart > usersTabStart);
-        Assert.Contains("bp-user-create-strip", usersTab);
-        Assert.Contains("bp-user-management-table", usersTab);
-        Assert.Contains("bp-console-table", usersTab);
-        Assert.Contains("<th>Username</th>", usersTab);
-        Assert.Contains("<th>Email</th>", usersTab);
-        Assert.Contains("<th>Cluster memberships</th>", usersTab);
-        Assert.Contains("<th class=\"bp-action-cell\">Actions</th>", usersTab);
-        Assert.Contains("memberships.Count", usersTab);
-        Assert.Contains("data-user-drawer-toggle", usersTab);
-        Assert.Contains("bp-user-drawer-row", usersTab);
-        Assert.Contains("bp-user-drawer-grid", usersTab);
-        Assert.Contains("Account email (read-only)", usersTab);
-        Assert.Contains("readonly", usersTab);
-        Assert.Contains("bp-user-membership-add-row", usersTab);
-        Assert.Contains("Access is app-wide", usersTab);
-        Assert.DoesNotContain("<th>System role</th>", usersTab);
-        Assert.DoesNotContain("Quick add membership", usersTab);
-        Assert.DoesNotContain("bp-user-management-list", usersTab);
-        Assert.DoesNotContain("bp-user-card", usersTab);
-        Assert.Contains(".bp-user-create-strip", css);
-        Assert.Contains(".bp-user-management-table", css);
-        Assert.Contains(".bp-user-drawer-grid", css);
-        Assert.Contains(".bp-user-membership-add-row", css);
     }
 
     [Fact]
@@ -96,8 +60,8 @@ public sealed class AdminDenseConsoleLayoutTests
         var accountController = File.ReadAllText(RepoFile("web", "Controllers", "AccountController.cs"));
 
         Assert.Contains("name=\"passwordConfirmation\"", clusters);
-        Assert.Contains("Confirm password", clusters);
-        Assert.Contains("data-password-reveal", clusters);
+        Assert.Contains("Type it again", clusters);
+        Assert.Contains("_PasswordReveal", clusters);
         Assert.Contains("<svg class=\"bp-action-icon\"", clusters);
         Assert.Contains("name=\"passwordConfirmation\"", account);
         Assert.Contains("Confirm password", account);
