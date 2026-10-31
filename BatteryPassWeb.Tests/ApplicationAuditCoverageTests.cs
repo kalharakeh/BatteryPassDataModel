@@ -74,7 +74,7 @@ public sealed class ApplicationAuditCoverageTests
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.DoesNotContain("Back to batteries", globalAuditView);
-        Assert.Contains("<h1 class=\"mb-1\">Administration</h1>", globalAuditView);
+        Assert.DoesNotContain("<h1", globalAuditView); // the heading comes with _AdminTabs (step 3e)
         Assert.Contains("_AdminTabs", globalAuditView);
         Assert.Contains("_AuditLine", globalAuditView);
         Assert.DoesNotContain("bp-ledger-event ", globalAuditView);

@@ -38,12 +38,11 @@ public sealed class AdminHelpPageTests
         var markup = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
         var tabs = File.ReadAllText(RepoFile("web", "Views", "Shared", "_AdminTabs.cshtml"));
 
-        Assert.Contains("bp-console-header", markup);
         Assert.Contains("_AdminTabs", markup);
         Assert.Contains("Administration tabs", tabs);
         Assert.Contains("bp-tab-active", tabs);
         Assert.Contains("href=\"/admin/batteries\"", tabs);
-        Assert.Contains("href=\"/help/team\"", tabs);
+        Assert.DoesNotContain("/help", tabs); // Help is in the top bar (step 3e)
         Assert.DoesNotContain("Back to main admin page", markup);
         Assert.DoesNotContain("bp-page-return-row", markup);
         Assert.DoesNotContain("bp-page-return-link", markup);

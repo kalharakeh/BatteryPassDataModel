@@ -92,11 +92,7 @@
     }
 }
 <main class="bp-page bp-admin-page">
-    <div>
-        <h1 class="mb-1">Administration</h1>
-        <p class="text-secondary mb-0">Manage batteries, passport snapshots, battery families, cluster assignments, registered clusters, user memberships, credentials, and audit history from one page.</p>
-    </div>
-
+    <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
     @await Html.PartialAsync("_AdminTabs", selectedTab)
 
     @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))

@@ -2035,3 +2035,606 @@ main .bp-field-marker.is-published {
 [data-theme="dark"] :is(.bp-module-edit summary, .bp-passport-modules small) {
   color: var(--bp-muted);
 }
+
+/* ==== Admin, cluster admin and help pages (step 3e) ================================================================
+   Decision 27's finish on the remaining admin tabs, the cluster admin pages and the help: one card per thing, a short
+   intro with the tab's one main button, lists whose rows open in place, outlined sentence-case tags, dialogs for
+   adding things, and the rare or risky actions at the end of a row's panel. */
+
+/* The page heading: one title, one line. */
+.bp-admin-heading h1 {
+  margin: 0 0 4px;
+  font-size: 2rem;
+  font-weight: 650;
+}
+
+.bp-admin-heading p {
+  margin: 0;
+  color: var(--bp-muted);
+}
+
+/* A tab's intro card: what it is for, its numbers, and its one main button. */
+.bp-tab-intro {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 28px;
+}
+
+.bp-tab-intro h2 {
+  margin: 0 0 4px;
+  font-size: 1.25rem;
+  font-weight: 650;
+}
+
+.bp-tab-intro p {
+  max-width: 760px;
+  margin: 0;
+  color: #52637a;
+}
+
+.bp-tab-intro-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.bp-counts {
+  color: var(--bp-muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+/* Quiet outlined tags in sentence case. */
+.bp-soft-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid #d6dee8;
+  border-radius: 999px;
+  color: #405367;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.bp-soft-tag.is-off {
+  border-style: dashed;
+  color: var(--bp-muted);
+}
+
+.bp-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+
+/* A list card: a toolbar, then one row per thing. A row opens in place to show its panel. */
+.bp-list-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.bp-list-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 20px;
+  padding: 14px 20px;
+}
+
+.bp-list-tools h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 650;
+}
+
+.bp-list-search {
+  flex: 0 1 320px;
+}
+
+.bp-list-search input {
+  width: 100%;
+}
+
+.bp-list-head,
+.bp-row > summary {
+  display: grid;
+  grid-template-columns: var(--bp-row-columns, minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1.6fr) 96px);
+  align-items: center;
+  gap: 6px 20px;
+  padding: 12px 20px;
+}
+
+.bp-list-head {
+  border-top: 1px solid var(--bp-border);
+  color: var(--bp-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.bp-row {
+  border-top: 1px solid var(--bp-border);
+}
+
+.bp-row > summary {
+  list-style: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.bp-row > summary::-webkit-details-marker {
+  display: none;
+}
+
+.bp-row > summary:hover,
+.bp-row[open] > summary {
+  background: rgba(42, 110, 207, 0.05);
+}
+
+.bp-row-title {
+  min-width: 0;
+}
+
+.bp-row-title strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.bp-row-title small,
+.bp-row-title code {
+  display: block;
+  color: var(--bp-muted);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.bp-row-open {
+  justify-self: end;
+  color: var(--bp-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bp-row-open::after {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-3px) rotate(45deg);
+  transition: transform 0.15s ease;
+}
+
+.bp-row[open] .bp-row-open::after {
+  transform: translateY(1px) rotate(225deg);
+}
+
+.bp-row-open .is-close,
+.bp-row[open] .bp-row-open .is-open {
+  display: none;
+}
+
+.bp-row[open] .bp-row-open .is-close {
+  display: inline;
+}
+
+.bp-row-label {
+  display: none;
+}
+
+.bp-list-empty {
+  margin: 0;
+  padding: 18px 20px;
+  border-top: 1px solid var(--bp-border);
+  color: var(--bp-muted);
+}
+
+/* A row's panel: small cards side by side, the risky actions last. */
+.bp-row-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  padding: 4px 20px 20px;
+}
+
+.bp-subcard {
+  padding: 16px;
+  border: 1px solid var(--bp-border);
+  border-radius: 12px;
+  background: var(--bp-surface);
+}
+
+.bp-subcard h3 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.bp-subcard form {
+  display: grid;
+  gap: 10px;
+}
+
+.bp-subcard label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.bp-subcard .bp-inline-form {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.bp-subcard .bp-add-membership {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: end;
+}
+
+.bp-add-membership button {
+  justify-self: start;
+}
+
+.bp-member-list {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.bp-member-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 10px;
+}
+
+.bp-danger-zone {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 20px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--bp-border);
+}
+
+.bp-danger-zone p {
+  max-width: 720px;
+  margin: 0;
+  color: #52637a;
+  font-size: 0.9rem;
+}
+
+.bp-danger-zone .bp-danger-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.bp-quiet-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--bp-danger);
+  font-weight: 600;
+}
+
+.bp-quiet-button:hover,
+.bp-quiet-button:focus-visible {
+  text-decoration: underline;
+}
+
+/* A small card for a rare setting, at the end of a tab. */
+.bp-setting-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
+.bp-setting-card h2 {
+  margin: 0 0 2px;
+  font-size: 1.125rem;
+  font-weight: 650;
+}
+
+.bp-setting-card p {
+  margin: 0;
+  color: #52637a;
+}
+
+.bp-setting-card form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Choices with a line of explanation each (a token's permission, a user's access). */
+.bp-choice-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.bp-choice-list legend {
+  margin-bottom: 4px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.bp-choice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--bp-border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.bp-choice:has(input:checked) {
+  border-color: var(--bp-primary);
+  background: rgba(42, 110, 207, 0.05);
+}
+
+.bp-console-form-card .bp-choice input[type="radio"] {
+  grid-row: span 2;
+  width: auto;
+  min-height: 0;
+  margin-top: 4px;
+  padding: 0;
+  box-shadow: none;
+}
+
+.bp-choice small {
+  color: #52637a;
+}
+
+.bp-dialog-form {
+  display: grid;
+  gap: 14px;
+}
+
+.bp-dialog-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.bp-dialog-form :is(input, select) {
+  width: 100%;
+  min-width: 0;
+}
+
+.bp-field-pairs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 14px;
+}
+
+.bp-dialog-wide {
+  width: min(100% - 32px, 620px);
+  min-width: 0;
+}
+
+/* The Help: one place, a contents list on the left with only the reader's parts. */
+.bp-help-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  align-items: start;
+  gap: 28px;
+}
+
+.bp-help-contents {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 2px;
+}
+
+.bp-help-contents p {
+  margin: 10px 0 4px;
+  color: var(--bp-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.bp-help-contents a {
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: var(--bp-text);
+  text-decoration: none;
+}
+
+.bp-help-contents a:hover,
+.bp-help-contents a:focus-visible {
+  background: rgba(42, 110, 207, 0.06);
+}
+
+.bp-help-contents a[aria-current] {
+  background: #e8f1ff;
+  color: var(--bp-scania-blue);
+  font-weight: 600;
+}
+
+.bp-help-parts {
+  display: grid;
+  gap: 20px;
+}
+
+.bp-help-part h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0 0 8px;
+  font-size: 1.25rem;
+  font-weight: 650;
+}
+
+.bp-help-part > p {
+  max-width: 820px;
+}
+
+.bp-steps {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: bp-step;
+}
+
+.bp-steps li {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 2px 12px;
+  counter-increment: bp-step;
+}
+
+.bp-steps li::before {
+  content: counter(bp-step);
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #bacde8;
+  border-radius: 50%;
+  color: var(--bp-scania-blue);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.bp-steps strong a {
+  font-weight: 600;
+}
+
+.bp-steps p {
+  margin: 0;
+  color: #52637a;
+}
+
+.bp-word-list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 18px;
+  margin: 0;
+}
+
+.bp-word-list dt {
+  font-weight: 600;
+}
+
+.bp-word-list dd {
+  margin: 0;
+  color: #52637a;
+}
+
+@media (max-width: 767.98px) {
+  .bp-list-head {
+    display: none;
+  }
+
+  .bp-row > summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 14px 16px;
+  }
+
+  .bp-row > summary > :not(.bp-row-title):not(.bp-row-open) {
+    grid-column: 1 / -1;
+  }
+
+  .bp-row > summary > .bp-row-open {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .bp-row-label {
+    display: inline;
+    margin-right: 6px;
+    color: var(--bp-muted);
+    font-size: 0.8rem;
+  }
+
+  .bp-row-panel {
+    padding: 4px 12px 16px;
+  }
+
+  .bp-list-tools {
+    padding: 14px 16px;
+  }
+
+  .bp-list-search {
+    flex-basis: 100%;
+  }
+
+  .bp-help-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .bp-help-contents {
+    position: static;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .bp-help-contents p {
+    display: none;
+  }
+
+  .bp-help-contents a {
+    border: 1px solid var(--bp-border);
+    font-size: 0.9rem;
+  }
+
+  .bp-word-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bp-word-list dd {
+    margin-bottom: 6px;
+  }
+}
+
+[data-theme="dark"] :is(.bp-tab-intro p, .bp-danger-zone p, .bp-setting-card p, .bp-choice small, .bp-steps p, .bp-word-list dd) {
+  color: var(--bp-muted);
+}
+
+[data-theme="dark"] .bp-soft-tag {
+  border-color: var(--bp-border);
+  color: var(--bp-text);
+}
+
+[data-theme="dark"] .bp-soft-tag.is-off {
+  color: var(--bp-muted);
+}
+
+[data-theme="dark"] .bp-help-contents a[aria-current] {
+  background: rgba(122, 182, 255, 0.14);
+  color: var(--bp-text);
+}
+
+[data-theme="dark"] .bp-steps li::before {
+  border-color: var(--bp-border);
+  color: var(--bp-text);
+}

@@ -17,11 +17,6 @@
 
 <main class="bp-page bp-admin-page bp-audit-log">
     <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
-    <div>
-        <h1 class="mb-1">Administration</h1>
-        <p class="text-secondary mb-0">Manage battery families, sites and operators, batteries, cluster assignments, registered clusters, user memberships, credentials, and audit history.</p>
-    </div>
-
     @await Html.PartialAsync("_AdminTabs", "audit")
 
     <svg width="0" height="0" class="position-absolute" aria-hidden="true" focusable="false">
