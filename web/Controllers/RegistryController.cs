@@ -17,6 +17,7 @@ public sealed class RegistryController(DppReaders readers, BatteryPages batterie
     public async Task<IActionResult> Index([FromQuery] string? q, CancellationToken cancellationToken)
     {
         var reader = await readers.ForAsync(User, cancellationToken);
-        return View(RegistryList.Build(reader, await batteries.ListAsync(q, cancellationToken)));
+        var editor = await readers.EditorForAsync(User, cancellationToken);
+        return View(RegistryList.Build(reader, await batteries.ListAsync(q, cancellationToken), editor));
     }
 }

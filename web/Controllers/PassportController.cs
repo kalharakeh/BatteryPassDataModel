@@ -27,7 +27,11 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
     }
 
     [HttpGet("{id}/detail")]
-    public async Task<IActionResult> Detail(string id, CancellationToken cancellationToken, [FromServices] BatteryApi? liveHistory = null)
+    public async Task<IActionResult> Detail(
+        string id,
+        CancellationToken cancellationToken,
+        [FromServices] BatteryApi? liveHistory = null,
+        [FromServices] ClusterBatteryPages? manage = null)
     {
         if (User.Identity?.IsAuthenticated != true)
         {
@@ -46,6 +50,12 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
         if (liveHistory is not null && page.IsCurrent)
         {
             ViewData["LiveHistory"] = await liveHistory.HistoryAsync(reader, page.Version.PackId, BatteryApi.MaxHistoryHours, cancellationToken);
+        }
+
+        // The battery's cluster admins manage it from here too (step 4a).
+        if (manage is not null && page.IsCurrent)
+        {
+            ViewData[ClusterBatteryPages.ManageHrefKey] = await manage.ManageHrefAsync(await readers.EditorForAsync(User, cancellationToken), page.Version.PackId, cancellationToken);
         }
 
         Response.Headers[HeaderNames.CacheControl] = "private, no-store";

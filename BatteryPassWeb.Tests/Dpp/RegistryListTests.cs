@@ -1,4 +1,5 @@
 using BatteryPassWeb.Dpp.Access;
+using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Pages;
 using BatteryPassWeb.Dpp.Store;
 
@@ -52,5 +53,28 @@ public sealed class RegistryListTests
 
         Assert.Contains("/dpp/@Uri.EscapeDataString(row.Identifier)/detail", view);
         Assert.DoesNotContain("_BatteryTable", view); // the old model's table is gone from the Registry
+        Assert.Contains("Model.ManageHref(row)", view); // step 4a: the cluster admin's "Manage" link
+    }
+
+    [Fact]
+    public void AClusterAdmin_ShouldGetAManageLinkOnTheirOwnClustersRowsOnly()
+    {
+        var reader = new Reader(new HashSet<ReaderRole> { ReaderRole.ClusterAdmin, ReaderRole.ClusterUser }, new HashSet<string> { "north", "south" }, "x");
+        var editor = ChangeSender.ClusterAdmin("x", "north"); // admin of north, a plain member of south
+
+        var page = RegistryList.Build(reader, Batteries, editor);
+
+        Assert.Equal("/cluster-admin/batteries/pack-NORTH-1", page.ManageHref(page.Rows.Single(row => row.SerialNumber == "NORTH-1")));
+        Assert.Null(page.ManageHref(page.Rows.Single(row => row.SerialNumber == "SOUTH-1")));
+    }
+
+    [Fact]
+    public void EveryoneElse_ShouldGetNoManageLink()
+    {
+        var user = RegistryList.Build(Reader.With("x", ReaderRole.ClusterUser, "north"), Batteries);
+        var team = RegistryList.Build(Reader.With("x", ReaderRole.Team), Batteries, ChangeSender.Team("x"));
+
+        Assert.All(user.Rows, row => Assert.Null(user.ManageHref(row)));
+        Assert.All(team.Rows, row => Assert.Null(team.ManageHref(row)));
     }
 }

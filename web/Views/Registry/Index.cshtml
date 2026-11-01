@@ -39,6 +39,10 @@
                                 <th>Cluster</th>
                             }
                             <th>Passport</th>
+                            @if (Model.ManagedClusterIds.Count > 0)
+                            {
+                                <th><span class="visually-hidden">Manage</span></th>
+                            }
                         </tr>
                     </thead>
                     <tbody>
@@ -56,6 +60,15 @@
                                     <td data-label="Cluster">@row.ClusterLabel</td>
                                 }
                                 <td data-label="Passport">Version @row.Active!.Number <small class="d-block text-secondary">updated @ValueWords.Time(row.Active.LastUpdatedUtc)</small></td>
+                                @if (Model.ManagedClusterIds.Count > 0)
+                                {
+                                    <td data-label="">
+                                        @if (Model.ManageHref(row) is { } manage)
+                                        {
+                                            <a class="bp-text-button" href="@manage">Manage</a>
+                                        }
+                                    </td>
+                                }
                             </tr>
                         }
                     </tbody>

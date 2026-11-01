@@ -22,6 +22,9 @@ public sealed record ClusterBatteryPage(
     public string BatchLabel => $"{Sources.Batch.Year} · {Sources.Site.Name}";
 
     public string Href => ClusterBatteryPages.BatteryHref(Pack.Id);
+
+    /// <summary>The team page's cards, without what only the team does (step 4a).</summary>
+    public BatteryCards Cards => new(Pack, Href, Live, AccidentReports, Versions, Live.Languages, ForTeam: false);
 }
 
 /// <summary>

@@ -78,6 +78,7 @@ public sealed class HelpTests(MongoFixture mongo)
         Assert.Contains("<a href=\"/cluster-admin/users\">Add your people</a>", part, StringComparison.Ordinal);
         Assert.Contains("<a href=\"/cluster-admin/api-tokens\">Give your systems a token</a>", part, StringComparison.Ordinal);
         Assert.Contains("it is shown once", part, StringComparison.Ordinal);
+        Assert.Contains("\"Manage\" opens a battery's page", part, StringComparison.Ordinal); // step 4a
     }
 
     [Fact]

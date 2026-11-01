@@ -1,9 +1,21 @@
 using BatteryPassWeb.Dpp.Access;
+using BatteryPassWeb.Dpp.Editing;
 
 namespace BatteryPassWeb.Dpp.Pages;
 
 /// <summary>The Registry: the published batteries a signed-in reader may open, and whether to show their clusters.</summary>
-public sealed record RegistryPage(IReadOnlyList<BatteryRow> Rows, string Query, bool ShowClusters, string Scope);
+public sealed record RegistryPage(IReadOnlyList<BatteryRow> Rows, string Query, bool ShowClusters, string Scope)
+{
+    /// <summary>The clusters the signed-in user is admin of (step 4a); empty for everyone else, the team included.</summary>
+    public IReadOnlySet<string> ManagedClusterIds { get; init; } = new HashSet<string>(StringComparer.Ordinal);
+
+    /// <summary>The cluster admin's page of a battery of a cluster they are admin of; null otherwise.</summary>
+    public string? ManageHref(BatteryRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        return row.ClusterId is { } cluster && ManagedClusterIds.Contains(cluster) ? ClusterBatteryPages.BatteryHref(row.PackId) : null;
+    }
+}
 
 /// <summary>
 /// Who the Registry lists which batteries for (decision 30). The team, the authorities and the legitimate-interest roles
@@ -41,13 +53,17 @@ public static class RegistryList
             : "No batteries are shared with your account yet. Ask your cluster admin or the manufacturer's team.";
     }
 
-    public static RegistryPage Build(Reader reader, BatteriesPage batteries)
+    /// <param name="editor">The signed-in user as the sender of a change; a cluster admin's rows get a "Manage" link (step 4a).</param>
+    public static RegistryPage Build(Reader reader, BatteriesPage batteries, ChangeSender? editor = null)
     {
         ArgumentNullException.ThrowIfNull(batteries);
         return new RegistryPage(
             batteries.Rows.Where(row => MayList(reader, row)).ToArray(),
             batteries.Query,
             ShowsClusters(reader),
-            Scope(reader));
+            Scope(reader))
+        {
+            ManagedClusterIds = editor is { Kind: SenderKind.ClusterAdmin } ? editor.ClusterIds.ToHashSet(StringComparer.Ordinal) : new HashSet<string>(StringComparer.Ordinal),
+        };
     }
 }

@@ -92,6 +92,10 @@
             @if (detail)
             {
                 <a class="bp-report-hero-cta" href="@PassportPages.SummaryHref(Model.Address)">&lt;- Back to summary</a>
+                @if (ViewData["ManageHref"] is string manageHref)
+                {
+                    <a class="bp-report-hero-cta" href="@manageHref">Manage this battery -&gt;</a>
+                }
             }
             else if (signedIn && Model.ReaderSeesMore)
             {

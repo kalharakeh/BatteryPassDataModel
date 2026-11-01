@@ -1,0 +1,60 @@
+@using BatteryPassWeb.Dpp.Pages
+@model ClusterBatteryPage
+@* The cluster admin's battery page (step 4a, mock-up S2): the team page's shared cards, without what only the team does. *@
+@{
+    ViewData["Title"] = $"Battery {Model.SerialNumber}";
+    var active = Model.Versions.Select(row => row.Version).FirstOrDefault(version => version.DppStatus == BatteryPassWeb.Dpp.Store.DppStatuses.Active);
+    var batteryKey = Uri.EscapeDataString(Model.Identifier);
+}
+
+<main class="bp-page bp-admin-page">
+    <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
+    <nav class="bp-breadcrumb" aria-label="Breadcrumb">
+        <a href="/registry">Registry</a>
+        <span aria-current="page">@Model.SerialNumber</span>
+    </nav>
+
+    <header class="bp-page-heading bp-battery-heading">
+        <span class="bp-summary-title">Battery</span>
+        <div class="bp-battery-title">
+            <h1>@Model.SerialNumber</h1>
+            @if (active is not null)
+            {
+                <span class="bp-field-marker is-published">Published · version @active.Number</span>
+            }
+        </div>
+        <p class="mb-0">Model @Model.Sources.Model.Name of @Model.Family.Name, made at @Model.Sources.Site.Name in @Model.Sources.Batch.Year.</p>
+        <nav class="bp-battery-links" aria-label="This battery elsewhere">
+            <a href="/dpp/@batteryKey" target="_blank" rel="noreferrer">Public summary</a>
+            <a href="/dpp/@batteryKey/detail" target="_blank" rel="noreferrer">Detail page</a>
+            <a href="@ReaderPages.AccidentsHref(Model.Pack.Id)">Accident page</a>
+        </nav>
+        <dl class="bp-battery-facts">
+            <div class="bp-battery-fact-wide">
+                <dt>Battery ID <span class="bp-attr-number">#6</span></dt>
+                <dd><span class="bp-id-copy-row"><span class="bp-id-value">@Model.Identifier</span>@await Html.PartialAsync("_CopyIdButton", Model.Identifier)</span></dd>
+            </div>
+            <div>
+                <dt>Batch</dt>
+                <dd>@Model.BatchLabel</dd>
+            </div>
+            <div>
+                <dt>Cluster</dt>
+                <dd>@Model.ClusterLabel</dd>
+            </div>
+            <div>
+                <dt>Serial number <span class="bp-attr-number">#11</span></dt>
+                <dd>@Model.SerialNumber</dd>
+            </div>
+        </dl>
+    </header>
+
+    @await Html.PartialAsync("~/Views/Batteries/_LiveValuesCard.cshtml", Model.Cards)
+    @await Html.PartialAsync("~/Views/Batteries/_AccidentsCard.cshtml", Model.Cards)
+    @await Html.PartialAsync("~/Views/Batteries/_ModulesCard.cshtml", Model.Cards)
+    @await Html.PartialAsync("~/Views/Batteries/_VersionsCard.cshtml", Model.Cards)
+</main>
+
+@section Scripts {
+    <script src="~/js/bp-record-editor.js" asp-append-version="true"></script>
+}
