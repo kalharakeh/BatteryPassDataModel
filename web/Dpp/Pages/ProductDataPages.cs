@@ -39,6 +39,9 @@ public sealed record RecordEditorView(
     string Stamp,
     RemovalView Removal)
 {
+    /// <summary>Shown to the team (the default); false on the cluster admin's battery page (step 4a), which says "the team".</summary>
+    public bool ForTeam { get; init; } = true;
+
     public string UploadAction(string property) => $"{SaveAction}/documents/{Uri.EscapeDataString(property)}";
 
     public string KindLabel => Kind switch

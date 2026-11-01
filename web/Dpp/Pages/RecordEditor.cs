@@ -111,6 +111,9 @@ public sealed record EditorField(
         _ => "everyone",
     };
 
+    /// <summary><see cref="SeenBy"/> in the words of a reader outside the team, e.g. a cluster admin (step 4a).</summary>
+    public string SeenByOutsideTheTeam => SeenBy.Replace("your team", "the team", StringComparison.Ordinal);
+
     private string SharedGroups()
     {
         var groups = new List<string>();

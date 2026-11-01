@@ -595,9 +595,9 @@ public sealed class BatteryPages(
         }
     }
 
-    private static string ClusterLabel(string? clusterId, IReadOnlyDictionary<string, string> names) =>
+    internal static string ClusterLabel(string? clusterId, IReadOnlyDictionary<string, string> names) =>
         clusterId is null ? "No cluster yet" : names.TryGetValue(clusterId, out var name) && name.Length > 0 ? name : clusterId;
 
-    private static string? Text(BatteryPack pack, string property) =>
+    internal static string? Text(BatteryPack pack, string property) =>
         pack.Values.GetValueOrDefault(property)?.Value is System.Text.Json.Nodes.JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
 }
