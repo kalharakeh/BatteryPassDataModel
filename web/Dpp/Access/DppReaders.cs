@@ -58,6 +58,35 @@ public sealed class DppReaders(ClusterRepository clusters)
     }
 
     /// <summary>
+    /// The signed-in user as the sender of a change (design 6.1, step 4a): the team for an admin; otherwise a cluster
+    /// admin of only the clusters where their membership is cluster admin, since a plain member of a cluster changes
+    /// nothing there. Null for anyone who changes nothing. Read from the memberships on every request, like
+    /// <see cref="ForAsync"/>.
+    /// </summary>
+    public async Task<ChangeSender?> EditorForAsync(ClaimsPrincipal user, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+        var email = AccessControlService.CurrentEmail(user).Trim().ToLowerInvariant();
+        if (user.Identity?.IsAuthenticated != true || email.Length == 0)
+        {
+            return null;
+        }
+
+        if (user.FindAll(ClaimTypes.Role).Any(claim => claim.Value.Equals(AccessControlService.RoleAdmin, StringComparison.OrdinalIgnoreCase)))
+        {
+            return ChangeSender.Team(email);
+        }
+
+        var adminOf = (await clusters.GetClusterMembershipsForUserAsync(email, cancellationToken))
+            .Where(membership => BsonHelpers.GetString(membership, "role").Equals(AccessControlService.RoleClusterAdmin, StringComparison.OrdinalIgnoreCase))
+            .Select(membership => BsonHelpers.GetString(membership, "clusterId"))
+            .Where(clusterId => clusterId.Length > 0)
+            .Select(ClusterRepository.NormalizeClusterId)
+            .ToArray();
+        return adminOf.Length == 0 ? null : ChangeSender.ClusterAdmin(email, adminOf);
+    }
+
+    /// <summary>
     /// An API token as a reader (design 5.2). A token for named clusters reads like a cluster user of those clusters. A
     /// global token is the team's token, issued only for Scania's own systems, so it reads like the team.
     /// </summary>
