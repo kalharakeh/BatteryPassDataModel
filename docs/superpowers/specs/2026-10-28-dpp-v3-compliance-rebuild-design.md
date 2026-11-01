@@ -431,7 +431,7 @@ Step 3 is planned in four parts (agreed with the product owner on 29 Oct 2026), 
 Step 4 is planned in four parts (product owner, 31 Oct 2026, decision 34), each ending with a working app, after one mock-up of all its new screens (`docs/mockups/dpp-v3-step4-purchaser-and-lifecycle.html`):
 
 - **4a, the cluster admin's battery page:** `/cluster-admin/batteries/{id}`, opened by "Manage" on their Registry rows and on the detail page: the live values and accident reports of a published battery of a cluster they are admin of, and its modules and versions to read. The team page's cards become shared partials, so both pages draw the same ones. Planned in `docs/superpowers/plans/2026-10-31-dpp-v3-step4a-cluster-admin-battery-page.md`.
-- **4b, the status change and repairs:** the status card and window on both battery pages, the re-stated values, the repair history, waste, and the status-change demo battery.
+- **4b, the status change and repairs:** the status card and window on both battery pages ("Repaired" and "Waste"; the team's "Correct the values"), the re-stated values, the repair history with correcting notes, and a repaired and a waste demo battery. Planned in `docs/superpowers/plans/2026-11-01-dpp-v3-step4b-status-change-and-repairs.md`.
 - **4c, successor passports, "invalid" and "marked for deletion"** (7.5–7.7), with the passport notices of the public and detail pages.
 - **4d, hand-overs** (7.8), with the receiver's "Waiting for you" card on the Registry.
 
