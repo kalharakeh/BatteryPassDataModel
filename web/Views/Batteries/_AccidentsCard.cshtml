@@ -1,0 +1,51 @@
+@using BatteryPassWeb.Dpp.Pages
+@model BatteryCards
+@* The accident reports card (#92): on the team's battery page and on the cluster admin's (step 4a). *@
+<section class="bp-card bp-console-form-card bp-battery-card mt-4" id="accidents">
+    <span class="bp-summary-title">Accident reports <span class="bp-attr-number">#92</span></span>
+    <h2>@(Model.AccidentReports.Count == 0 ? "No accidents reported" : Words.Count(Model.AccidentReports.Count, "accident report"))</h2>
+    <p class="mb-0">The passport links to the battery's <a href="@ReaderPages.AccidentsHref(Model.Pack.Id)">accident page</a>, which lists these reports or says none were reported. Seen only by the battery's cluster, market surveillance and @Model.Team.</p>
+    @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "accidents")
+    @if (Model.AccidentReports.Count > 0)
+    {
+        <ul class="bp-file-checks">
+            @foreach (var report in Model.AccidentReports)
+            {
+                <li>
+                    <span><a href="@ReaderPages.DocumentHref(report.Id)" target="_blank" rel="noreferrer"><strong>@report.Title</strong></a> · @report.FileName · @BatteryCards.Size(report.Length)</span>
+                    <span class="bp-batteries-muted">@ValueWords.Time(report.UploadedAtUtc) by @report.UploadedBy</span>
+                </li>
+            }
+        </ul>
+    }
+    <form method="post" action="@Model.Href/accidents" enctype="multipart/form-data" class="bp-attr-upload bp-accident-upload">
+        @Html.AntiForgeryToken()
+        <div class="bp-attr-file">
+            <label class="bp-secondary-button bp-button-compact bp-document-smart-upload position-relative text-nowrap mb-0">
+                Choose file
+                <input type="file" name="file" class="bp-document-hidden-file" accept="application/pdf,image/png,image/jpeg" data-upload-file />
+            </label>
+            <span class="bp-help-text" data-upload-chosen>No file chosen</span>
+        </div>
+        <div class="bp-attr-parts">
+            <label>
+                <span>Title (optional)</span>
+                <input type="text" name="title" placeholder="e.g. Collision on 12 Oct 2026" />
+            </label>
+            <label>
+                <span>Language (optional)</span>
+                <select name="language">
+                    <option value=""></option>
+                    @foreach (var language in Model.Languages)
+                    {
+                        <option value="@language">@language</option>
+                    }
+                </select>
+            </label>
+        </div>
+        <div class="bp-live-save">
+            <small class="bp-field-help">PDF, PNG or JPEG, checked by its content.</small>
+            <button type="submit" class="bp-secondary-button" data-upload-button>Add report</button>
+        </div>
+    </form>
+</section>

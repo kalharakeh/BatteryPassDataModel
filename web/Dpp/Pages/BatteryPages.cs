@@ -89,6 +89,18 @@ public sealed record BatteryPage(
     RemovalView Removal)
 {
     public string BatchLabel => $"{Sources.Batch.Year} · {Sources.Site.Name}";
+
+    /// <summary>The cards this page shares with the cluster admin's battery page (step 4a).</summary>
+    public BatteryCards Cards => new(
+        Pack,
+        BatteryPages.BatteryHref(Pack.Id),
+        Live,
+        AccidentReports,
+        Versions,
+        Values.Languages,
+        ForTeam: true,
+        $"{ProductDataPages.FamilyHref(Sources.Model.FamilyId, Sources.Model.Id)}#modules",
+        !string.IsNullOrWhiteSpace(Sources.Model.ModuleDescription));
 }
 
 /// <summary>

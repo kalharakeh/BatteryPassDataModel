@@ -1,0 +1,30 @@
+@using BatteryPassWeb.Controllers
+@model string
+@* The message line under a battery card after its form was sent: done, information or a problem (both battery pages). *@
+@{
+    var card = (TempData.Peek(BatteriesController.CardKey) ?? ViewData[BatteriesController.CardKey]) as string;
+    var status = (TempData.Peek(BatteriesController.CardStatusKey) ?? ViewData[BatteriesController.CardStatusKey]) as string;
+    var error = (TempData.Peek(BatteriesController.CardErrorKey) ?? ViewData[BatteriesController.CardErrorKey]) as string;
+    var info = (TempData.Peek(BatteriesController.CardInfoKey) ?? ViewData[BatteriesController.CardInfoKey]) as string;
+}
+@if (card == Model)
+{
+    if (!string.IsNullOrWhiteSpace(status))
+    {
+        <p class="alert alert-success bp-status-line is-done" role="status">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" /></svg>
+            <span>@status</span>
+        </p>
+    }
+    if (!string.IsNullOrWhiteSpace(info))
+    {
+        <p class="alert alert-secondary bp-status-line is-info" role="status"><span>@info</span></p>
+    }
+    if (!string.IsNullOrWhiteSpace(error))
+    {
+        <p class="alert alert-danger bp-status-line is-problem" role="alert">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4.5v4.5M8 11.5v.5" /></svg>
+            <span>@error</span>
+        </p>
+    }
+}

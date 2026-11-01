@@ -172,7 +172,7 @@ public sealed class BatteriesControllerTests(MongoFixture mongo)
     public void TheViews_ShouldUseTheTeamPagesFinishAndTheirParts()
     {
         var list = View("Batteries");
-        var battery = View("Battery");
+        var battery = DppTestFiles.BatteryPageSource();
         var create = View("NewBattery");
         var editor = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "ProductData", "_RecordEditor.cshtml"));
 

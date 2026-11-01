@@ -1,0 +1,42 @@
+@using BatteryPassWeb.Controllers
+@using BatteryPassWeb.Dpp.Pages
+@model BatteryCards
+@* The live values card (#63, #83, #87, E1–E4): on the team's battery page and on the cluster admin's (step 4a). *@
+<section class="bp-card bp-console-form-card bp-battery-card mt-4" id="live">
+    <span class="bp-summary-title">Live values</span>
+    <h2>Measured on the battery</h2>
+    <p class="mb-0">
+        @if (Model.ForTeam)
+        {
+            <text>Its battery system sends these; type them here before it does, for example the end-of-line values, or to
+            correct one. They change the passport in place, without a new version.</text>
+        }
+        else
+        {
+            <text>Its battery system sends these; type them here to correct one. They change the passport in place, without a
+            new version.</text>
+        }
+    </p>
+    @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "live")
+    <form method="post" action="@Model.Live.SaveAction" class="bp-live-form">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="@ProductDataController.StampField" value="@Model.Live.Stamp" />
+        <div class="bp-attr-list">
+            @foreach (var field in Model.Live.Sections.SelectMany(section => section.Fields))
+            {
+                @await Html.PartialAsync("~/Views/ProductData/_EditorField.cshtml", new EditorFieldView(Model.Live, field))
+                @if (Model.Pack.Values.GetValueOrDefault(field.Attribute.Property) is { } stored)
+                {
+                    <p class="bp-live-meta">Last value @ValueWords.Time(stored.GeneratedAtUtc), @BatteryCards.Source(stored.Source)@(string.IsNullOrEmpty(stored.Who) ? string.Empty : $" by {stored.Who}").</p>
+                }
+            }
+        </div>
+        <div class="bp-live-save">
+            <label>
+                <span>Measured at <span class="bp-attr-optional">(optional; now if empty)</span></span>
+                <input type="datetime-local" name="@BatteriesController.MeasuredAtField" />
+            </label>
+            <button type="submit" class="bp-primary-button">Save live values</button>
+        </div>
+    </form>
+</section>

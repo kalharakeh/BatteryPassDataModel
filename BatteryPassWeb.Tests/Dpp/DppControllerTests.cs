@@ -146,7 +146,7 @@ public sealed class DppControllerTests(MongoFixture mongo)
     [Fact]
     public void TheTeamsPages_ShouldLinkTheFilesAndTheAccidentPage()
     {
-        var battery = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Batteries", "Battery.cshtml"));
+        var battery = DppTestFiles.BatteryPageSource();
         var field = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "ProductData", "_EditorField.cshtml"));
 
         Assert.Contains("ReaderPages.AccidentsHref(Model.Pack.Id)", battery, StringComparison.Ordinal);
@@ -156,7 +156,7 @@ public sealed class DppControllerTests(MongoFixture mongo)
 
     /// <summary>A file opens in a new tab, so the page it was opened from stays where it was (product owner, 29 Oct 2026).</summary>
     [Theory]
-    [InlineData("Batteries", "Battery.cshtml")]
+    [InlineData("Batteries", "_AccidentsCard.cshtml")]
     [InlineData("Dpp", "Accidents.cshtml")]
     [InlineData("ProductData", "_EditorField.cshtml")]
     public void EveryFileLink_ShouldOpenInANewTab(string folder, string file)

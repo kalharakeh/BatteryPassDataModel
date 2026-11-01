@@ -57,7 +57,7 @@ public sealed class ReviewFixesTests
     [Fact]
     public void TheTeamsBatteryPage_ShouldLinkItsPassportPagesQrCodeAndAuditEntries()
     {
-        var page = Read("web", "Views", "Batteries", "Battery.cshtml");
+        var page = DppTestFiles.BatteryPageSource();
 
         Assert.Contains("href=\"/dpp/@batteryKey\"", page);
         Assert.Contains("href=\"/dpp/@batteryKey/detail\"", page);

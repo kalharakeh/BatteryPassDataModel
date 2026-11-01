@@ -150,12 +150,12 @@ public sealed class ModuleDataTests(MongoFixture mongo)
     [Fact]
     public void ThePages_ShouldOfferTheModuleForms()
     {
-        var battery = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Batteries", "Battery.cshtml"));
+        var battery = DppTestFiles.BatteryPageSource();
         var family = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "ProductData", "Family.cshtml"));
         var hero = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Passport", "_PassportHero.cshtml"));
 
-        Assert.Contains("action=\"@href/modules/from-export\"", battery);
-        Assert.Contains("action=\"@href/modules\"", battery);
+        Assert.Contains("action=\"@Model.Href/modules/from-export\"", battery);
+        Assert.Contains("action=\"@Model.Href/modules\"", battery);
         Assert.Contains("action=\"/admin/models/@selected.Id/module-description\"", family);
         Assert.Contains("Model.ModuleCount", hero);
     }
