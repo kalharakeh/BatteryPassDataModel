@@ -34,7 +34,8 @@ public static class RegistryList
     {
         ArgumentNullException.ThrowIfNull(reader);
         ArgumentNullException.ThrowIfNull(row);
-        return !row.IsDraft
+        // Only an active passport is listed: an inactive battery continues on its new passport (step 4c).
+        return row.Active is not null
             && (EveryPublishedBattery.Any(reader.Roles.Contains) || (row.ClusterId is { } cluster && reader.ClusterIds.Contains(cluster)));
     }
 

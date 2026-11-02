@@ -9,6 +9,31 @@ using BatteryPassWeb.Dpp.Values;
 namespace BatteryPassWeb.Dpp.Pages;
 
 /// <summary>
+/// "Who places it on the market again?" (mock-up S4, step 4c-1): the battery waits for its new passport, or has it.
+/// </summary>
+/// <param name="Action">Where the card's forms post: the battery page plus "/successor".</param>
+/// <param name="SuccessorHref">The new pack's page for this reader (the team's battery page, or the detail page); null until made.</param>
+/// <param name="Operators">The economic operators the team picks from for Scania's new passport; empty for a cluster admin.</param>
+public sealed record SuccessionView(
+    string Status,
+    string Action,
+    bool Linked,
+    string? SuccessorHref,
+    bool SuccessorPublished,
+    string? OtherOperatorId,
+    string? OtherOperatorInfo,
+    string? OtherPassport,
+    IReadOnlyList<(string Id, string Name)> Operators,
+    string DefaultOperatorId)
+{
+    /// <summary>Scania's new pack has been made (a draft until the team publishes it).</summary>
+    public bool SuccessorMade => SuccessorHref is not null;
+}
+
+/// <summary>The S5 line on a new passport's battery pages: the battery it replaces, and whether that one is inactive yet.</summary>
+public sealed record PredecessorView(string SerialNumber, string Href, bool Inactive);
+
+/// <summary>
 /// The battery status card both battery pages show (mock-up S2 and S3, step 4b): the status and since when, the repair
 /// history newest first, and the "Change status" window with the re-stated values filled in.
 /// </summary>
@@ -25,7 +50,9 @@ public sealed record StatusCardView(
     decimal? RatedCapacityAh,
     string Today,
     bool ForTeam,
-    bool MayAddNote = false)
+    bool MayAddNote = false,
+    SuccessionView? Succession = null,
+    PredecessorView? Predecessor = null)
 {
     /// <summary>Where "Add a note to the history" posts (decision 34).</summary>
     public string NoteAction => $"{Restated.SaveAction}/note";
@@ -39,11 +66,14 @@ public sealed record StatusCardView(
         get
         {
             var choices = new List<(StatusEvent, string, string)>();
-            if (Status != "waste")
+            if (Status != "waste" && Succession is null)
             {
                 choices.Add((StatusEvent.Repaired, "Repaired", Status == "original"
                     ? "Status becomes re-used; the repair joins its history. Same passport."
                     : $"Status stays {Status}; the repair joins its history. Same passport."));
+                choices.Add((StatusEvent.PlacedOnMarketAgain, "Prepared for re-use and placed on the market again", "Status re-used. A new, linked passport follows."));
+                choices.Add((StatusEvent.Remanufactured, "Remanufactured", "A new, linked passport follows."));
+                choices.Add((StatusEvent.Repurposed, "Repurposed", "For a new use. A new, linked passport follows."));
                 choices.Add((StatusEvent.Waste, "Waste", "Final. The passport stays active until the team marks it for deletion after recycling."));
             }
 
@@ -61,7 +91,7 @@ public sealed record StatusCardView(
 /// Builds the status card and reads the status window for both battery pages (step 4b). The change itself is
 /// <see cref="StatusChangeService"/>'s; the window's fields are the editors' own, so values are read and checked alike.
 /// </summary>
-public sealed class StatusPages(DppStore store, RecordEditor editor, StatusChangeService changes, TimeProvider clock)
+public sealed class StatusPages(DppStore store, RecordEditor editor, StatusChangeService changes, SuccessionService succession, TimeProvider clock)
 {
     /// <summary>The card of a battery; <paramref name="typed"/> is the window as typed after a refused change.</summary>
     /// <param name="href">The battery page's address; the window posts to it plus "/status".</param>
@@ -87,13 +117,17 @@ public sealed class StatusPages(DppStore store, RecordEditor editor, StatusChang
             ForTeam = forTeam,
         };
         var status = StatusChangeService.CurrentStatus(pack) ?? "original";
-        var whyNot = !active ? "The status changes once the passport is published."
+        var passportStatus = await store.PassportStatusAsync(pack.Id, cancellationToken);
+        var successionView = await SuccessionAsync(pack, href, forTeam, cancellationToken);
+        var whyNot = DppStatuses.IsNoLongerActive(passportStatus) ? $"The passport is {passportStatus}: nothing on it changes any more."
+            : !active ? "The status changes once the passport is published."
             : status == "waste" && !forTeam ? "The battery is waste, which is final."
+            : successionView is not null && !forTeam ? "The battery is waiting for its new passport."
             : null;
         return new StatusCardView(
             status,
             pack.Values.GetValueOrDefault("batteryStatus")?.GeneratedAtUtc,
-            pack.Repairs.Count > 0 && status != "waste",
+            pack.Repairs.Count > 0 && status != "waste" && pack.Succession is null,
             pack.Repairs.AsEnumerable().Reverse().ToArray(),
             view,
             whyNot is null,
@@ -101,8 +135,77 @@ public sealed class StatusPages(DppStore store, RecordEditor editor, StatusChang
             ValueWords.Decimal(sources.Model.Values.GetValueOrDefault("ratedCapacity")?.Value?["amperehourMiliamperehourValue"]),
             DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
             forTeam,
-            MayAddNote: active);
+            MayAddNote: active,
+            Succession: successionView,
+            Predecessor: await PredecessorAsync(pack, forTeam, cancellationToken));
     }
+
+    private async Task<SuccessionView?> SuccessionAsync(BatteryPack pack, string href, bool forTeam, CancellationToken cancellationToken)
+    {
+        if (pack.Succession is not { } waiting)
+        {
+            return null;
+        }
+
+        string? successorHref = null;
+        var published = false;
+        if (waiting.SuccessorPackId is { } successorId && await store.GetAsync<BatteryPack>(successorId, cancellationToken) is { } successor)
+        {
+            published = await store.GetLatestVersionNumberAsync(successorId, cancellationToken) > 0;
+            successorHref = forTeam
+                ? BatteryPages.BatteryHref(successorId)
+                : published ? PassportPages.DetailHref(BatteryPages.Text(successor, "uniqueProductIdentifier") ?? successorId) : null;
+        }
+
+        var operators = forTeam
+            ? (await store.ListAsync<EconomicOperator>(cancellationToken)).OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase).Select(item => (item.Id, item.Name)).ToArray()
+            : [];
+        return new SuccessionView(
+            waiting.Status,
+            $"{href}/successor",
+            waiting.LinkedAtUtc is not null,
+            successorHref,
+            published,
+            waiting.OtherOperatorId,
+            waiting.OtherOperatorInfo,
+            waiting.OtherPassport,
+            operators,
+            pack.OperatorId);
+    }
+
+    private async Task<PredecessorView?> PredecessorAsync(BatteryPack pack, bool forTeam, CancellationToken cancellationToken)
+    {
+        if (pack.SuccessorOf is not { } predecessorId || await store.GetAsync<BatteryPack>(predecessorId, cancellationToken) is not { } predecessor)
+        {
+            return null;
+        }
+
+        return new PredecessorView(
+            BatteryPages.Text(predecessor, "batterySerialNumber") ?? predecessorId,
+            forTeam ? BatteryPages.BatteryHref(predecessorId) : PassportPages.DetailHref(BatteryPages.Text(predecessor, "uniqueProductIdentifier") ?? predecessorId),
+            await store.PassportStatusAsync(predecessorId, cancellationToken) == DppStatuses.Inactive);
+    }
+
+    /// <summary>The team makes Scania's new passport; the message, and the new battery's page when it was made.</summary>
+    public async Task<(string? Done, string? Problem, string? SuccessorId)> MakeSuccessorAsync(ChangeSender sender, string packId, string? operatorId, CancellationToken cancellationToken = default)
+    {
+        var (successorId, problem) = await succession.CreateSuccessorAsync(sender, packId, operatorId, cancellationToken);
+        return problem is null
+            ? ("The new passport is made as a draft. Type its warranty, check it and publish it; the old passport then becomes inactive.", null, successorId)
+            : (null, $"The new passport wasn't made: {problem}.", null);
+    }
+
+    /// <summary>Another operator's details, saved or linked; the card's message.</summary>
+    public async Task<(string? Done, string? Problem)> OtherOperatorAsync(ChangeSender sender, string packId, OtherOperator details, bool link, CancellationToken cancellationToken = default) =>
+        await succession.SaveOtherOperatorAsync(sender, packId, details, link, cancellationToken) is { } problem
+            ? (null, problem == SuccessionService.LinkNeedsPassport ? $"The details are saved, but not linked: {problem}." : $"Nothing was saved: {problem}.")
+            : (link ? "Linked: the new passport is named, and this passport is inactive." : "The operator's details are saved.", null);
+
+    /// <summary>The team cancels the new passport; the card's message.</summary>
+    public async Task<(string? Done, string? Problem)> CancelSuccessorAsync(ChangeSender sender, string packId, CancellationToken cancellationToken = default) =>
+        await succession.CancelAsync(sender, packId, cancellationToken) is { } problem
+            ? (null, $"Nothing was cancelled: {problem}.")
+            : ("The new passport is cancelled, and the old status is back.", null);
 
     /// <summary>Reads the window and makes the change; null when the battery doesn't exist.</summary>
     public async Task<StatusChangeResult?> ChangeAsync(

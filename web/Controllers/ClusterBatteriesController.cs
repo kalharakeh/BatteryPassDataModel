@@ -138,6 +138,21 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
         return Redirect($"{ClusterBatteryPages.BatteryHref(packId)}#status");
     }
 
+    /// <summary>Another operator places the battery on the market again (design 7.5), as its cluster admin.</summary>
+    [HttpPost("{packId}/successor/other")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> OtherOperator(string packId, [FromForm] string? operatorIdentifier, [FromForm] string? operatorInfo, [FromForm] string? passport, [FromForm] bool link, CancellationToken cancellationToken)
+    {
+        if (await ClusterAdminAsync(cancellationToken) is not { } sender
+            || await pages.OtherOperatorAsync(sender, packId, new OtherOperator(operatorIdentifier, operatorInfo, passport), link, cancellationToken) is not { } message)
+        {
+            return NotFound();
+        }
+
+        Card("status", message.Done, message.Problem);
+        return Redirect(link && message.Problem is null ? "/registry" : $"{ClusterBatteryPages.BatteryHref(packId)}#status");
+    }
+
     /// <summary>The signed-in user as a cluster admin; null for the team (it has its own page) and for anyone else.</summary>
     private async Task<ChangeSender?> ClusterAdminAsync(CancellationToken cancellationToken) =>
         await readers.EditorForAsync(User, cancellationToken) is { Kind: SenderKind.ClusterAdmin } sender ? sender : null;

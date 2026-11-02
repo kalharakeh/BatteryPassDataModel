@@ -110,6 +110,12 @@ public sealed class ClusterBatteryPages(
             ? await status.AddNoteAsync(sender, pack.Id, note, cancellationToken)
             : null;
 
+    /// <summary>Another operator's details or link, as the cluster admin (design 7.5); null when the sender may not manage the battery.</summary>
+    public async Task<(string? Done, string? Problem)?> OtherOperatorAsync(ChangeSender sender, string packId, OtherOperator details, bool link, CancellationToken cancellationToken = default) =>
+        await ManagedAsync(sender, packId, cancellationToken) is { } pack
+            ? await status.OtherOperatorAsync(sender, pack.Id, details, link, cancellationToken)
+            : null;
+
     /// <summary>What the status card says after the window was sent (the team page's words).</summary>
     public (string? Done, string? Problem) StatusMessage(StatusChangeResult result, int versionBefore) => status.Message(result, versionBefore);
 

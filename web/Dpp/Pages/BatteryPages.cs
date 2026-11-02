@@ -26,7 +26,13 @@ public sealed record BatteryRow(
     string ClusterLabel,
     PassportVersion? Active)
 {
-    public bool IsDraft => Active is null;
+    /// <summary>The newest version, whatever its status: the active one, or an inactive one (step 4c); null for a draft.</summary>
+    public PassportVersion? Latest { get; init; }
+
+    public bool IsDraft => Active is null && Latest is null;
+
+    /// <summary>The passport's DPP status (#2), or "draft".</summary>
+    public string StatusName => (Active ?? Latest)?.DppStatus ?? "draft";
 }
 
 public sealed record BatteriesPage(IReadOnlyList<BatteryRow> Rows, string Query, int Total);
@@ -57,12 +63,16 @@ public sealed record FileCheck(DppDocument Document, string Owner, bool Unchange
 /// <summary>Where the battery's passport stands: published or not, what blocks it, what is needed later, and its files.</summary>
 public sealed record PublicationView(
     PassportVersion? Active,
+    PassportVersion? Latest,
     IReadOnlyList<MissingGroup> Missing,
     IReadOnlyList<string> Problems,
     IReadOnlyList<AttributeDefinition> NeededLater,
     IReadOnlyList<FileCheck> Files)
 {
-    public bool IsPublished => Active is not null;
+    public bool IsPublished => Latest is not null;
+
+    /// <summary>Published once and no longer active: inactive, invalid or marked for deletion (step 4c).</summary>
+    public bool NoLongerActive => Active is null && Latest is not null;
 
     public bool Ready => Missing.Count == 0 && Problems.Count == 0;
 
@@ -103,7 +113,8 @@ public sealed record BatteryPage(
         Values.Languages,
         ForTeam: true,
         $"{ProductDataPages.FamilyHref(Sources.Model.FamilyId, Sources.Model.Id)}#modules",
-        !string.IsNullOrWhiteSpace(Sources.Model.ModuleDescription));
+        !string.IsNullOrWhiteSpace(Sources.Model.ModuleDescription),
+        Frozen: Publication.NoLongerActive);
 }
 
 /// <summary>
@@ -159,7 +170,10 @@ public sealed class BatteryPages(
                 batch is null ? "Unknown batch" : $"{batch.Year} · {site?.Name ?? batch.SiteId}",
                 pack.ClusterId,
                 ClusterLabel(pack.ClusterId, clusterNames),
-                active));
+                active)
+            {
+                Latest = versions[pack.Id].MaxBy(version => version.Number),
+            });
         }
 
         var wanted = query?.Trim() ?? string.Empty;
@@ -524,7 +538,7 @@ public sealed class BatteryPages(
             .Select(group => Group(group.Key, sources, group.OrderBy(attribute => attribute.Number).ToArray()))
             .ToArray();
         var later = report.Warnings.Select(Numbered).OfType<AttributeDefinition>().OrderBy(attribute => attribute.Number).ToArray();
-        return new PublicationView(active, groups, problems, later, await FilesAsync(sources, cancellationToken));
+        return new PublicationView(active, await store.GetLatestVersionAsync(sources.Pack.Id, cancellationToken), groups, problems, later, await FilesAsync(sources, cancellationToken));
     }
 
     /// <summary>The attribute a report line such as "#21 Battery mass is missing" is about.</summary>

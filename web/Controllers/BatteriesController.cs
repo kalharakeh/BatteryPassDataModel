@@ -180,6 +180,36 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
         return Redirect($"{BatteryPages.BatteryHref(packId)}#status");
     }
 
+    /// <summary>Scania places the battery on the market again (design 7.5): the team makes its new passport as a draft.</summary>
+    [HttpPost("{packId}/successor")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MakeSuccessor(string packId, [FromForm] string? operatorId, CancellationToken cancellationToken)
+    {
+        var (done, problem, successorId) = await status.MakeSuccessorAsync(ChangeSender.Team(Who), packId, operatorId, cancellationToken);
+        Card("status", done, problem);
+        return Redirect($"{BatteryPages.BatteryHref(successorId ?? packId)}#status");
+    }
+
+    /// <summary>Another operator places it on the market again (design 7.5): their details, or the link to their passport.</summary>
+    [HttpPost("{packId}/successor/other")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> OtherOperator(string packId, [FromForm] string? operatorIdentifier, [FromForm] string? operatorInfo, [FromForm] string? passport, [FromForm] bool link, CancellationToken cancellationToken)
+    {
+        var (done, problem) = await status.OtherOperatorAsync(ChangeSender.Team(Who), packId, new OtherOperator(operatorIdentifier, operatorInfo, passport), link, cancellationToken);
+        Card("status", done, problem);
+        return Redirect($"{BatteryPages.BatteryHref(packId)}#status");
+    }
+
+    /// <summary>The team cancels the new passport while the old one isn't inactive (decision 34).</summary>
+    [HttpPost("{packId}/successor/cancel")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CancelSuccessor(string packId, CancellationToken cancellationToken)
+    {
+        var (done, problem) = await status.CancelSuccessorAsync(ChangeSender.Team(Who), packId, cancellationToken);
+        Card("status", done, problem);
+        return Redirect($"{BatteryPages.BatteryHref(packId)}#status");
+    }
+
     [HttpPost("{packId}/remove")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Remove(string packId, CancellationToken cancellationToken)

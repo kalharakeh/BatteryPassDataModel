@@ -54,7 +54,7 @@ public sealed class StatusChangeTests(MongoFixture mongo)
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         rig.Clock.Now = rig.Clock.Now.AddHours(1);
 
-        var result = await Service(rig).ChangeAsync(PublicationTesting.Team, rig.PackId, Repair(rig, capacityFade: "6"));
+        var result = await Service(rig).ChangeAsync(PublicationTesting.Team, rig.PackId, await RepairAsync(rig, capacityFade: "6"));
 
         Assert.Null(result.Problem);
         Assert.Equal(2, result.Version!.Number);
@@ -76,10 +76,10 @@ public sealed class StatusChangeTests(MongoFixture mongo)
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         var service = Service(rig);
-        await service.ChangeAsync(PublicationTesting.Team, rig.PackId, Repair(rig, capacityFade: "6"));
+        await service.ChangeAsync(PublicationTesting.Team, rig.PackId, await RepairAsync(rig, capacityFade: "6"));
         rig.Clock.Now = rig.Clock.Now.AddDays(1);
 
-        var result = await service.ChangeAsync(PublicationTesting.Team, rig.PackId, Repair(rig, capacityFade: "7", description: "Cooling plate resealed."));
+        var result = await service.ChangeAsync(PublicationTesting.Team, rig.PackId, await RepairAsync(rig, capacityFade: "7", description: "Cooling plate resealed."));
 
         Assert.Null(result.Problem);
         var pack = (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!;
@@ -95,7 +95,7 @@ public sealed class StatusChangeTests(MongoFixture mongo)
         var service = Service(rig);
 
         var waste = await service.ChangeAsync(PublicationTesting.Team, rig.PackId, new StatusChange(StatusEvent.Waste, await CurrentAsync(rig)));
-        var after = await service.ChangeAsync(PublicationTesting.Team, rig.PackId, Repair(rig, capacityFade: "6"));
+        var after = await service.ChangeAsync(PublicationTesting.Team, rig.PackId, await RepairAsync(rig, capacityFade: "6"));
 
         Assert.Null(waste.Problem);
         Assert.Equal(DppStatuses.Active, waste.Version!.DppStatus); // the passport stays active (7.6)
@@ -149,7 +149,7 @@ public sealed class StatusChangeTests(MongoFixture mongo)
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         var service = Service(rig);
-        await service.ChangeAsync(PublicationTesting.Team, rig.PackId, Repair(rig, capacityFade: "6"));
+        await service.ChangeAsync(PublicationTesting.Team, rig.PackId, await RepairAsync(rig, capacityFade: "6"));
         rig.Clock.Now = rig.Clock.Now.AddDays(1);
 
         var problem = await service.AddNoteAsync(NorthAdmin, rig.PackId, " The repair was on module 5, not module 4. ");
@@ -186,7 +186,7 @@ public sealed class StatusChangeTests(MongoFixture mongo)
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
 
-        var result = await Service(rig).ChangeAsync(NorthAdmin, rig.PackId, Repair(rig, capacityFade: "6"));
+        var result = await Service(rig).ChangeAsync(NorthAdmin, rig.PackId, await RepairAsync(rig, capacityFade: "6"));
 
         Assert.Null(result.Problem);
         Assert.Equal("north-admin@example.com", Assert.Single((await rig.Store.GetAsync<BatteryPack>(rig.PackId))!.Repairs).RecordedBy);
@@ -204,7 +204,7 @@ public sealed class StatusChangeTests(MongoFixture mongo)
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
 
-        var result = await Service(rig).ChangeAsync(ChangeSender.ClusterAdmin("south@example.com", BatteryTesting.South), rig.PackId, Repair(rig, capacityFade: "6"));
+        var result = await Service(rig).ChangeAsync(ChangeSender.ClusterAdmin("south@example.com", BatteryTesting.South), rig.PackId, await RepairAsync(rig, capacityFade: "6"));
 
         Assert.Equal(StatusChangeService.NotYours, result.Problem);
         await AssertUnchangedAsync(rig);
@@ -215,7 +215,7 @@ public sealed class StatusChangeTests(MongoFixture mongo)
     {
         var rig = await PublicationTesting.RigAsync(mongo).WithClustersAsync();
 
-        var result = await Service(rig).ChangeAsync(PublicationTesting.Team, rig.PackId, Repair(rig, capacityFade: "6"));
+        var result = await Service(rig).ChangeAsync(PublicationTesting.Team, rig.PackId, await RepairAsync(rig, capacityFade: "6"));
 
         Assert.Equal(StatusChangeService.OnlyPublished, result.Problem);
         Assert.Empty((await rig.Store.GetAsync<BatteryPack>(rig.PackId))!.Repairs);
@@ -226,7 +226,7 @@ public sealed class StatusChangeTests(MongoFixture mongo)
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
 
-        Assert.False((await Service(rig).ChangeAsync(PublicationTesting.Team, "pack-unknown", Repair(rig, capacityFade: "6"))).Found);
+        Assert.False((await Service(rig).ChangeAsync(PublicationTesting.Team, "pack-unknown", await RepairAsync(rig, capacityFade: "6"))).Found);
     }
 
     [Theory]
@@ -238,7 +238,7 @@ public sealed class StatusChangeTests(MongoFixture mongo)
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
 
-        var result = await Service(rig).ChangeAsync(PublicationTesting.Team, rig.PackId, Repair(rig, capacityFade));
+        var result = await Service(rig).ChangeAsync(PublicationTesting.Team, rig.PackId, await RepairAsync(rig, capacityFade));
 
         Assert.Equal(StatusChangeService.ValuesRefused, result.Problem);
         Assert.Contains(result.Keys, key => key.Key == "capacityFade" && key.Outcome != KeyOutcome.Saved);
@@ -253,7 +253,7 @@ public sealed class StatusChangeTests(MongoFixture mongo)
     public async Task ARepair_ShouldNeedItsDateAndWhatWasRepaired(string? date, string description, string problem)
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
-        var change = Repair(rig, capacityFade: "6") with { RepairDate = date, RepairDescription = description };
+        var change = (await RepairAsync(rig, capacityFade: "6")) with { RepairDate = date, RepairDescription = description };
 
         Assert.Equal(problem, (await Service(rig).ChangeAsync(PublicationTesting.Team, rig.PackId, change)).Problem);
         await AssertUnchangedAsync(rig);
@@ -275,7 +275,7 @@ public sealed class StatusChangeTests(MongoFixture mongo)
         new(rig.Store, rig.Pipeline, rig.Publication, new ApplicationAuditService(rig.Context), rig.Clock);
 
     internal static BatteryPassWeb.Dpp.Pages.StatusPages Pages(PublicationRig rig) =>
-        new(rig.Store, PageTesting.Editor(rig), Service(rig), rig.Clock);
+        new(rig.Store, PageTesting.Editor(rig), Service(rig), SuccessionTests.Service(rig), rig.Clock);
 
     /// <summary>The battery's current re-stated values as the window fills them in, as text.</summary>
     internal static async Task<Dictionary<string, JsonNode?>> CurrentAsync(PublicationRig rig)
@@ -287,9 +287,10 @@ public sealed class StatusChangeTests(MongoFixture mongo)
             StringComparer.Ordinal);
     }
 
-    private static StatusChange Repair(PublicationRig rig, string capacityFade, string description = "Module 4 replaced after a coolant leak.")
+    /// <summary>A repair with the window's values and one capacity fade typed (no blocking wait: xUnit's context has few threads).</summary>
+    private static async Task<StatusChange> RepairAsync(PublicationRig rig, string capacityFade, string description = "Module 4 replaced after a coolant leak.")
     {
-        var values = CurrentAsync(rig).GetAwaiter().GetResult();
+        var values = await CurrentAsync(rig);
         values["capacityFade"] = capacityFade.Length == 0 ? null : (JsonNode?)JsonValue.Create(capacityFade);
         if (decimal.TryParse(capacityFade, out var number))
         {

@@ -35,7 +35,7 @@ public sealed class StatusPagesTests(MongoFixture mongo)
         Assert.Equal([59, 69, 74, 79, 81], fields.Select(field => field.Attribute.Number));
         Assert.Equal("4", fields[0].Text(BatteryTesting.Field("capacityFade"))); // the battery's own value
         Assert.Equal("12", fields[4].Text(BatteryTesting.Field("expectedLifetimeInCalendarYears"))); // the model's, until re-stated
-        Assert.Equal([StatusEvent.Repaired, StatusEvent.Waste, StatusEvent.Corrected], card.Choices.Select(choice => choice.What));
+        Assert.Equal([StatusEvent.Repaired, StatusEvent.PlacedOnMarketAgain, StatusEvent.Remanufactured, StatusEvent.Repurposed, StatusEvent.Waste, StatusEvent.Corrected], card.Choices.Select(choice => choice.What));
         Assert.True(card.MayAddNote);
         Assert.Equal($"{BatteryPages.BatteryHref(rig.PackId)}/status/note", card.NoteAction);
     }
@@ -47,7 +47,7 @@ public sealed class StatusPagesTests(MongoFixture mongo)
 
         var card = (await ClusterBatteryPagesTests.Pages(rig).BatteryAsync(ChangeSender.ClusterAdmin(NorthAdmin, BatteryTesting.North), rig.PackId))!.Status!;
 
-        Assert.Equal([StatusEvent.Repaired, StatusEvent.Waste], card.Choices.Select(choice => choice.What));
+        Assert.Equal([StatusEvent.Repaired, StatusEvent.PlacedOnMarketAgain, StatusEvent.Remanufactured, StatusEvent.Repurposed, StatusEvent.Waste], card.Choices.Select(choice => choice.What));
         Assert.True(card.MayAddNote);
     }
 

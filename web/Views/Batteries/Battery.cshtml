@@ -56,6 +56,10 @@
             {
                 <span class="bp-field-marker is-published">Published · version @current.Number</span>
             }
+            else if (publication.Latest is { } last)
+            {
+                <span class="bp-field-marker">@DppStatuses.Words(last.DppStatus) · version @last.Number</span>
+            }
             else
             {
                 <span class="bp-field-marker">Draft · only your team sees it</span>
@@ -159,6 +163,11 @@
                 {
                     <h2>Published since @When(active.PublishedAtUtc)</h2>
                     <p class="mb-0">Version @active.Number is live. A change to its values publishes a new version, and you're asked first; live values and accident reports update it in place.</p>
+                }
+                else if (publication.Latest is { } last)
+                {
+                    <h2>@DppStatuses.Words(last.DppStatus) since @When(last.LastUpdatedUtc)</h2>
+                    <p class="mb-0">Version @last.Number is its last. Nothing on this passport changes any more; it stays readable by its passport and battery IDs.</p>
                 }
                 else if (publication.Ready)
                 {

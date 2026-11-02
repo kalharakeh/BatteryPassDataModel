@@ -19,8 +19,12 @@ public sealed record BatteryCards(
     IReadOnlyList<string> Languages,
     bool ForTeam,
     string? ModuleDescriptionHref = null,
-    bool HasModuleDescription = false)
+    bool HasModuleDescription = false,
+    bool Frozen = false)
 {
+    /// <summary>Why the live values and accident reports take nothing more (an inactive passport, step 4c); null otherwise.</summary>
+    public string? FrozenNote => Frozen ? "The passport is no longer active: nothing on it changes any more. The battery's data continue on its new passport." : null;
+
     /// <summary>Who the team is, in the reader's words.</summary>
     public string Team => ForTeam ? "your team" : "the team";
 

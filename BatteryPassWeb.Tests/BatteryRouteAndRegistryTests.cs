@@ -13,7 +13,7 @@ public sealed class BatteryRouteAndRegistryTests
 
         Assert.Contains("Battery ID", hero);
         Assert.Contains("Passport ID", hero);
-        Assert.Contains(">Archived<", hero);
+        Assert.Contains(">@Model.StatusWords<", hero); // archived, inactive, … (step 4c-1)
         Assert.Contains(">Active<", hero);
         Assert.Contains("Battery model", hero);
         Assert.DoesNotContain("Battery version", hero);

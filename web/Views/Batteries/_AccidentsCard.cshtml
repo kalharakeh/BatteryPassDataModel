@@ -18,6 +18,12 @@
             }
         </ul>
     }
+    @if (Model.FrozenNote is { } frozen)
+    {
+        <p class="bp-help-text mt-2 mb-0" data-frozen>@frozen</p>
+    }
+    else
+    {
     <form method="post" action="@Model.Href/accidents" enctype="multipart/form-data" class="bp-attr-upload bp-accident-upload">
         @Html.AntiForgeryToken()
         <div class="bp-attr-file">
@@ -48,4 +54,5 @@
             <button type="submit" class="bp-secondary-button" data-upload-button>Add report</button>
         </div>
     </form>
+    }
 </section>

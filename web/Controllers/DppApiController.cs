@@ -88,9 +88,9 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
                 serialNumber = row.SerialNumber,
                 batteryFamily = row.FamilyName,
                 batteryModel = row.ModelName,
-                passportId = row.Active?.DigitalProductPassportId,
-                version = row.Active?.Number,
-                dppStatus = row.Active?.DppStatus ?? "draft",
+                passportId = (row.Active ?? row.Latest)?.DigitalProductPassportId,
+                version = (row.Active ?? row.Latest)?.Number,
+                dppStatus = row.StatusName,
             }).ToArray(),
         });
     }

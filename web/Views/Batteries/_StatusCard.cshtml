@@ -21,6 +21,72 @@
         }
     </div>
     @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "status")
+    @if (Model.Predecessor is { } earlier)
+    {
+        <p class="bp-passport-notice mt-3"><strong>New passport of an earlier battery.</strong><span>It replaces @earlier.SerialNumber, @(earlier.Inactive ? "whose passport is now inactive." : "which becomes inactive when this one is published.")</span><a href="@earlier.Href">Open the earlier battery</a></p>
+    }
+    @if (Model.Succession is { } next)
+    {
+        <div class="mt-3 pt-3 border-top" id="successor">
+            @if (next.Linked)
+            {
+                <p class="mb-0"><strong>This passport is inactive.</strong> The battery continues on its new passport@(next.OtherPassport is { } other ? $", issued by {next.OtherOperatorInfo ?? next.OtherOperatorId}: {other}" : ".")
+                    @if (next.SuccessorHref is { } newPage)
+                    {
+                        <a href="@newPage">Open the new passport</a>
+                    }
+                </p>
+            }
+            else if (next.SuccessorMade)
+            {
+                <p class="mb-2"><strong>The new passport is @(next.SuccessorPublished ? "published" : "a draft").</strong> This passport becomes inactive once it is published.
+                    <a href="@next.SuccessorHref">Open the new battery</a>
+                </p>
+            }
+            else
+            {
+                <p class="mb-2">This passport becomes inactive once the battery's new passport is published or linked. Who places it on the market again?</p>
+                @if (Model.ForTeam)
+                {
+                    <form method="post" action="@next.Action" class="bp-dialog-form mb-3">
+                        @Html.AntiForgeryToken()
+                        <label><span><strong>Scania</strong>: the team makes the new passport as a draft, with a new battery ID, the same batch and cluster, and these values to start.</span>
+                            <select name="operatorId">
+                                @foreach (var (id, name) in next.Operators)
+                                {
+                                    <option value="@id" selected="@(id == next.DefaultOperatorId)">@name</option>
+                                }
+                            </select>
+                        </label>
+                        <div class="bp-dialog-actions"><button type="submit" class="bp-primary-button">Make the new passport</button></div>
+                    </form>
+                }
+                else
+                {
+                    <p class="bp-help-text">If Scania places it on the market again, the team makes the new passport.</p>
+                }
+                <form method="post" action="@next.Action/other" class="bp-dialog-form">
+                    @Html.AntiForgeryToken()
+                    <p class="mb-1"><strong>Another operator</strong>: their details, and the new passport's ID or web address once known.</p>
+                    <label><span>Operator identifier <span class="bp-attr-number">#7</span></span><input type="text" name="operatorIdentifier" value="@next.OtherOperatorId" placeholder="e.g. urn:…" /></label>
+                    <label><span>Operator name and contact <span class="bp-attr-number">#14</span></span><input type="text" name="operatorInfo" value="@next.OtherOperatorInfo" placeholder="Name, postal address, e-mail, web address" /></label>
+                    <label><span>New passport's ID or web address (once known)</span><input type="text" name="passport" value="@next.OtherPassport" placeholder="e.g. https://…" /></label>
+                    <div class="bp-dialog-actions">
+                        <button type="submit" name="link" value="false" class="bp-secondary-button">Save details</button>
+                        <button type="submit" name="link" value="true" class="bp-primary-button">Link and set this passport inactive</button>
+                    </div>
+                </form>
+            }
+            @if (Model.ForTeam && !next.Linked && !next.SuccessorPublished)
+            {
+                <form method="post" action="@next.Action/cancel" class="mt-3">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="bp-text-button">Cancel the new passport (it was a mistake)</button>
+                    <small class="bp-field-help d-block">The status goes back to what it was, with a new version, and a draft new battery is removed.</small>
+                </form>
+            }
+        </div>
+    }
     <h3 class="h6 mt-3 mb-0">Repair history <em class="bp-field-marker">Not passport data</em></h3>
     @if (Model.Repairs.Count == 0)
     {

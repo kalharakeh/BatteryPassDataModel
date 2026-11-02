@@ -18,6 +18,12 @@
         }
     </p>
     @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "live")
+    @if (Model.FrozenNote is { } frozen)
+    {
+        <p class="bp-help-text mt-2 mb-0" data-frozen>@frozen</p>
+    }
+    else
+    {
     <form method="post" action="@Model.Live.SaveAction" class="bp-live-form">
         @Html.AntiForgeryToken()
         <input type="hidden" name="@ProductDataController.StampField" value="@Model.Live.Stamp" />
@@ -39,4 +45,5 @@
             <button type="submit" class="bp-primary-button">Save live values</button>
         </div>
     </form>
+    }
 </section>

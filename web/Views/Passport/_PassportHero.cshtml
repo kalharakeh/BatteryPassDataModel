@@ -12,6 +12,16 @@
 {
     <p class="bp-warning">Test passport: this battery's IDs start with TEST-. Real ones come once the identifier scheme is chosen.</p>
 }
+@if (Model.Notice is { } notice)
+{
+    <p class="bp-warning" data-passport-notice>
+        <strong>@notice.Pill.</strong> @notice.Text
+        @if (notice.Href is not null)
+        {
+            <a href="@notice.Href">@notice.LinkText</a>
+        }
+    </p>
+}
 <section class="bp-report-hero-card">
     <div class="bp-report-hero-layout">
         <article class="bp-report-hero-info bp-summary-identity-grid bp-report-identity-grid">
@@ -26,7 +36,7 @@
                     }
                     else
                     {
-                        <span class="bp-status-pill is-inactive">Archived</span>
+                        <span class="bp-status-pill is-inactive">@Model.StatusWords</span>
                         @if (Model.Current is not null)
                         {
                             <a href="@(detail ? PassportPages.DetailHref(Model.Identifier) : PassportPages.SummaryHref(Model.Identifier))" class="bp-report-action" aria-label="Open the current version" title="Open the current version" data-tooltip="Open the current version" data-action-icon="latest">

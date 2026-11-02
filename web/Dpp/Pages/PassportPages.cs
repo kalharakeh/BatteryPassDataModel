@@ -70,7 +70,19 @@ public sealed record PassportPage(
     /// null otherwise. Not part of the signed passport.
     /// </summary>
     public IReadOnlyList<RepairEntry>? Repairs { get; init; }
+
+    /// <summary>The line about an inactive passport or one that replaces an earlier passport (S7); null otherwise.</summary>
+    public PassportNotice? Notice { get; init; }
+
+    /// <summary>This version's DPP status (#2) in words, for the hero's pill.</summary>
+    public string StatusWords => DppStatuses.Words(Version.DppStatus);
 }
+
+/// <summary>
+/// One line at the top of both passport pages when the passport isn't simply active, or replaces an earlier one (mock-up
+/// S7, step 4c): what it says, and where it leads (a passport page, or another operator's address).
+/// </summary>
+public sealed record PassportNotice(string Pill, string Text, string? Href, string? LinkText);
 
 /// <summary>Where a published passport is: its version, and the battery's ID (#6) and serial number (#11).</summary>
 public sealed record PassportLocation(PassportVersion Version, string Identifier, string SerialNumber)
@@ -250,7 +262,46 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
             ModuleDescription = sources.Model.ModuleDescription,
             Modules = detail && AudienceRules.MaySeePurchaserData(who, clusters) ? sources.Pack.Modules : null,
             Repairs = detail && AudienceRules.MaySeePurchaserData(who, clusters) ? sources.Pack.Repairs.AsEnumerable().Reverse().ToArray() : null,
+            Notice = await NoticeAsync(version, sources.Pack, detail, cancellationToken),
         };
+    }
+
+    /// <summary>
+    /// The S7 line: an inactive passport leads to the battery's new one (Scania's page, or another operator's address);
+    /// a passport that replaces an earlier one leads back to it (design 7.5, step 4c-1). Null for any other passport.
+    /// </summary>
+    private async Task<PassportNotice?> NoticeAsync(PassportVersion version, BatteryPack pack, bool detail, CancellationToken cancellationToken)
+    {
+        string Href(string identifier) => detail ? DetailHref(identifier) : SummaryHref(identifier);
+        if (version.DppStatus == DppStatuses.Inactive && pack.Succession is { } succession)
+        {
+            if (succession.SuccessorPackId is { } successorId && await store.GetAsync<BatteryPack>(successorId, cancellationToken) is { } successor
+                && PackText(successor, "uniqueProductIdentifier") is { } newIdentifier)
+            {
+                return new PassportNotice("Inactive", $"This battery was {succession.Status} and has a new passport.", Href(newIdentifier), "Open the new passport");
+            }
+
+            if (succession.OtherPassport is { } other)
+            {
+                var link = Uri.TryCreate(other, UriKind.Absolute, out var address) && address.Scheme is "https" or "http" ? other : null;
+                return new PassportNotice(
+                    "Inactive",
+                    $"This battery was {succession.Status} by {succession.OtherOperatorInfo ?? succession.OtherOperatorId}, which issued its new passport{(link is null ? $": {other}" : string.Empty)}.",
+                    link,
+                    link);
+            }
+
+            return new PassportNotice("Inactive", $"This battery was {succession.Status} and has a new passport.", null, null);
+        }
+
+        if (version.DppStatus == DppStatuses.Active && pack.SuccessorOf is { } predecessorId
+            && await store.GetAsync<BatteryPack>(predecessorId, cancellationToken) is { } predecessor
+            && PackText(predecessor, "uniqueProductIdentifier") is { } oldIdentifier)
+        {
+            return new PassportNotice("Active", "This passport replaces an earlier one of the same battery.", Href(oldIdentifier), "Open the earlier passport");
+        }
+
+        return null;
     }
 
     /// <summary>The attributes' values in the cut passport, in catalogue order; the detail page adds each value's origin.</summary>
