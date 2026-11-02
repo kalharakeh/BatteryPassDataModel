@@ -80,8 +80,8 @@ main :is(input, textarea)::placeholder {
   font-weight: 400;
 }
 
-/* A visible focus ring on every field. */
-main :is(input:not([type="checkbox"]):not([type="file"]), select, textarea):focus {
+/* A visible focus ring on every field. Radios have their own (their option is outlined), see .bp-choice. */
+main :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea):focus {
   border-color: var(--bp-primary);
   box-shadow: 0 0 0 3px rgba(42, 110, 207, 0.25);
   outline: none;
@@ -2395,11 +2395,24 @@ main .bp-field-marker.is-published {
 
 .bp-console-form-card .bp-choice input[type="radio"] {
   grid-row: span 2;
+  align-self: start;
   width: auto;
   min-height: 0;
   margin-top: 4px;
   padding: 0;
   box-shadow: none;
+  accent-color: var(--bp-primary);
+}
+
+/* No ring around the radio itself (it was stretched into an oval, redesign R1): the whole option shows the focus. */
+.bp-console-form-card .bp-choice input[type="radio"]:focus {
+  box-shadow: none;
+  outline: none;
+}
+
+.bp-choice:has(input:focus-visible) {
+  outline: 2px solid var(--bp-primary);
+  outline-offset: 2px;
 }
 
 .bp-choice small {
@@ -2432,6 +2445,21 @@ main .bp-field-marker.is-published {
 .bp-dialog-wide {
   width: min(100% - 32px, 620px);
   min-width: 0;
+}
+
+/* The status window's buttons stay at its bottom edge while its values scroll (redesign R1, owner's point 3). */
+[data-status-dialog] .bp-dialog-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin: 0 -20px -20px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--bp-border);
+  background: #fff;
+}
+
+[data-theme="dark"] [data-status-dialog] .bp-dialog-actions {
+  background: #101f35;
 }
 
 /* The Help: one place, a contents list on the left with only the reader's parts. */
