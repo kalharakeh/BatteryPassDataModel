@@ -78,6 +78,12 @@ public static class ValueWords
     public static string Time(DateTime utc) =>
         TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), TimeZoneInfo.Local).ToString("d MMM yyyy, HH:mm", English);
 
+    /// <summary>A day kept as yyyy-MM-dd (a repair's), in words: "20 Oct 2026"; the text itself when it isn't one.</summary>
+    public static string Day(string day) =>
+        DateOnly.TryParseExact(day, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)
+            ? parsed.ToString("d MMM yyyy", English)
+            : day;
+
     /// <summary>A JSON number as a decimal, however it was read (the database gives doubles); null for anything else.</summary>
     public static decimal? Decimal(JsonNode? node)
     {

@@ -190,6 +190,9 @@ public sealed class BatteriesControllerTests(MongoFixture mongo)
         Assert.Contains("~/Views/ProductData/_EditorField.cshtml", editor, StringComparison.Ordinal);
     }
 
+    /// <summary>The controller as a team member reaches it, with this form posted (also used by the status tests, step 4b).</summary>
+    internal static BatteriesController Controller(PublicationRig rig, IReadOnlyDictionary<string, string> form) => Controller(rig, form.ToArray());
+
     private static BatteriesController Controller(PublicationRig rig, params KeyValuePair<string, string>[] form)
     {
         var http = new DefaultHttpContext
@@ -199,7 +202,7 @@ public sealed class BatteriesControllerTests(MongoFixture mongo)
                 "test")),
         };
         http.Request.Form = new FormCollection(form.ToDictionary(entry => entry.Key, entry => new StringValues(entry.Value)));
-        return new BatteriesController(BatteryTesting.Pages(rig), PageTesting.Documents(rig))
+        return new BatteriesController(BatteryTesting.Pages(rig), PageTesting.Documents(rig), StatusChangeTests.Pages(rig))
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, new NoTempDataStorage()),

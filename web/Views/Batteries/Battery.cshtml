@@ -276,6 +276,10 @@
         <p class="bp-battery-fixed-note">The serial number, manufacturing date and warranty are fixed now that the passport is published; they're shown at the top.</p>
     }
 
+    @if (Model.Status is { } status)
+    {
+        @await Html.PartialAsync("~/Views/Batteries/_StatusCard.cshtml", status)
+    }
     @await Html.PartialAsync("~/Views/Batteries/_LiveValuesCard.cshtml", Model.Cards)
     @await Html.PartialAsync("~/Views/Batteries/_ModulesCard.cshtml", Model.Cards)
     @await Html.PartialAsync("~/Views/Batteries/_AccidentsCard.cshtml", Model.Cards)
@@ -304,4 +308,5 @@
 
 @section Scripts {
     <script src="~/js/bp-record-editor.js" asp-append-version="true"></script>
+    <script src="~/js/bp-status-change.js" asp-append-version="true"></script>
 }

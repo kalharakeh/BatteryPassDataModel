@@ -14,7 +14,7 @@ namespace BatteryPassWeb.Controllers;
 /// </summary>
 [Authorize(Policy = "AdminOnly")]
 [Route("admin/batteries")]
-public sealed class BatteriesController(BatteryPages pages, DocumentService documents) : Controller
+public sealed class BatteriesController(BatteryPages pages, DocumentService documents, StatusPages status) : Controller
 {
     /// <summary>Which card of the battery page a message belongs to, so it shows where the action was taken.</summary>
     public const string CardKey = "BatteryCard";
@@ -151,6 +151,33 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
         var result = await documents.AddAccidentReportAsync(ChangeSender.Team(Who), packId, new DocumentUpload(file.FileName, buffer.ToArray(), title, language), cancellationToken);
         Card("accidents", result.Problem is null ? $"{result.Document!.FileName} added." : null, result.Problem is null ? null : $"The report wasn't added: {result.Problem}.");
         return Redirect($"{BatteryPages.BatteryHref(packId)}#accidents");
+    }
+
+    /// <summary>The "Change status" window (design 7.4, step 4b): what happened, the re-stated values, a repair's details.</summary>
+    [HttpPost("{packId}/status")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangeStatus(string packId, [FromForm] string? what, [FromForm] string? repairDate, [FromForm] string? repairDescription, CancellationToken cancellationToken)
+    {
+        var form = Request.Form;
+        var before = (await pages.BatteryAsync(packId, cancellationToken: cancellationToken))?.Versions.Count ?? 0;
+        if (await status.ChangeAsync(ChangeSender.Team(Who), packId, what, name => form.TryGetValue(name, out var value) ? value.ToString() : null, repairDate, repairDescription, cancellationToken) is not { Found: true } result)
+        {
+            return NotFound();
+        }
+
+        var (done, problem) = status.Message(result, before);
+        Card("status", done, problem);
+        return Redirect($"{BatteryPages.BatteryHref(packId)}#status");
+    }
+
+    /// <summary>"Add a note to the history" (decision 34): a correcting entry, with no new version.</summary>
+    [HttpPost("{packId}/status/note")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddHistoryNote(string packId, [FromForm] string? note, CancellationToken cancellationToken)
+    {
+        var (done, problem) = await status.AddNoteAsync(ChangeSender.Team(Who), packId, note, cancellationToken);
+        Card("status", done, problem);
+        return Redirect($"{BatteryPages.BatteryHref(packId)}#status");
     }
 
     [HttpPost("{packId}/remove")]

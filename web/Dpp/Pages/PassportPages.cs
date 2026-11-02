@@ -64,6 +64,12 @@ public sealed record PassportPage(
 
     /// <summary>The battery's modules with their IDs, on the detail page for the battery's purchaser's readers; null otherwise.</summary>
     public IReadOnlyList<BatteryModule>? Modules { get; init; }
+
+    /// <summary>
+    /// The battery's repair history, newest first, on the detail page for those who may see its status (design 7.9);
+    /// null otherwise. Not part of the signed passport.
+    /// </summary>
+    public IReadOnlyList<RepairEntry>? Repairs { get; init; }
 }
 
 /// <summary>Where a published passport is: its version, and the battery's ID (#6) and serial number (#11).</summary>
@@ -242,6 +248,7 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
             ModuleCount = sources.Pack.Modules.Count,
             ModuleDescription = sources.Model.ModuleDescription,
             Modules = detail && AudienceRules.MaySeePurchaserData(who, clusters) ? sources.Pack.Modules : null,
+            Repairs = detail && AudienceRules.MaySeePurchaserData(who, clusters) ? sources.Pack.Repairs.AsEnumerable().Reverse().ToArray() : null,
         };
     }
 

@@ -2638,3 +2638,130 @@ main .bp-field-marker.is-published {
   border-color: var(--bp-border);
   color: var(--bp-text);
 }
+
+/* ==== Purchaser editing and lifecycle (step 4) =====================================================================
+   The few new pieces step 4 adds to bp-product-data.css: the battery status line, the repair history, the notices for
+   a passport that is no longer active, and the hand-over rows. Everything else is the app's existing classes. */
+
+/* The battery status at the top of its card: the status in words, and since when. */
+.bp-battery-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
+}
+
+.bp-battery-status strong {
+  font-size: 1.15rem;
+  font-weight: 650;
+}
+
+/* The repair history: one line per repair, newest first. */
+.bp-history {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  border-top: 1px solid var(--bp-border);
+}
+
+.bp-history li {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr);
+  gap: 2px 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--bp-border);
+}
+
+.bp-history time {
+  font-weight: 600;
+}
+
+.bp-history small {
+  grid-column: 2;
+  color: var(--bp-muted);
+}
+
+/* A passport that is no longer active, or a battery whose passport replaced another: one calm line on every page. */
+.bp-passport-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--bp-border);
+  border-left: 4px solid #64748b;
+  border-radius: 8px;
+  background: var(--bp-surface, #fff);
+}
+
+.bp-passport-notice.is-invalid {
+  border-left-color: #c2410c;
+}
+
+.bp-passport-notice strong {
+  font-weight: 650;
+}
+
+/* Hand-overs waiting for a cluster admin: one row each, with its two answers. */
+.bp-handover-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 18px;
+  padding: 12px 0;
+  border-top: 1px solid var(--bp-border);
+}
+
+.bp-handover-row:first-of-type {
+  border-top: 0;
+}
+
+.bp-handover-row .bp-dialog-actions {
+  margin: 0;
+}
+
+/* The suggestion under capacity fade: a measured capacity in, a suggested fade out. */
+.bp-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px 12px;
+  margin-top: 6px;
+}
+
+.bp-suggest label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+
+.bp-suggest input {
+  width: 9rem;
+}
+
+@media (max-width: 640px) {
+  .bp-history li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bp-history small {
+    grid-column: 1;
+  }
+}
+
+[data-theme="dark"] .bp-passport-notice {
+  background: transparent;
+}
+
+/* The status window's two steps: the second shows once "Next" is pressed (bp-status-change.js); without the script
+   both show. */
+[data-status-dialog].is-stepped [data-status-step="2"],
+[data-status-dialog].is-step-2 [data-status-step="1"] {
+  display: none;
+}
+
+[data-status-dialog].is-step-2 [data-status-step="2"] {
+  display: block;
+}

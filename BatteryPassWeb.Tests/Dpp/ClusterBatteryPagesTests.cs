@@ -135,7 +135,8 @@ public sealed class ClusterBatteryPagesTests(MongoFixture mongo)
         PageTesting.Editor(rig),
         PageTesting.Documents(rig),
         new DocumentStore(rig.Context),
-        new ClusterRepository(rig.Context));
+        new ClusterRepository(rig.Context),
+        StatusChangeTests.Pages(rig));
 
     private static async Task<BsonDocument> LastChangeAsync(PublicationRig rig) =>
         await rig.Context.Database!.GetCollection<BsonDocument>("applicationAuditEvents")

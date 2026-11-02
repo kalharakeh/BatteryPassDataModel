@@ -90,6 +90,9 @@ public sealed record BatteryPage(
 {
     public string BatchLabel => $"{Sources.Batch.Year} · {Sources.Site.Name}";
 
+    /// <summary>The battery status card (step 4b), shared with the cluster admin's page.</summary>
+    public StatusCardView? Status { get; init; }
+
     /// <summary>The cards this page shares with the cluster admin's battery page (step 4a).</summary>
     public BatteryCards Cards => new(
         Pack,
@@ -117,7 +120,8 @@ public sealed class BatteryPages(
     DocumentStore documents,
     DppLinks links,
     ClusterRepository clusters,
-    ApplicationAuditService audit)
+    ApplicationAuditService audit,
+    StatusPages status)
 {
     public const string ClusterChangedEvent = "dpp.pack-cluster-changed";
     public const string ModulesSetEvent = "dpp.pack-modules-set";
@@ -323,7 +327,10 @@ public sealed class BatteryPages(
             await PublicationAsync(sources, active, cancellationToken),
             versions.OrderByDescending(version => version.Number).Select(version => new VersionRow(version, PassportReader.Verify(version))).ToArray(),
             await documents.ListAsync(TargetKind.Pack, packId, DocumentService.Accidents, cancellationToken),
-            new RemovalView($"{href}/remove", versions.Count > 0 ? "its passport is published, so it stays with its versions." : null));
+            new RemovalView($"{href}/remove", versions.Count > 0 ? "its passport is published, so it stays with its versions." : null))
+        {
+            Status = await status.CardAsync(sources, active is not null, href, forTeam: true, cancellationToken: cancellationToken),
+        };
     }
 
     /// <summary>

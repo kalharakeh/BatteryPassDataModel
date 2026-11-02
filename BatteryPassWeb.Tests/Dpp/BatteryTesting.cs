@@ -36,7 +36,8 @@ internal static class BatteryTesting
         new DocumentStore(rig.Context),
         DocumentTesting.Links,
         new ClusterRepository(rig.Context),
-        new ApplicationAuditService(rig.Context));
+        new ApplicationAuditService(rig.Context),
+        StatusChangeTests.Pages(rig));
 
     /// <summary>The fields of a form that shows these attributes, as the page shows them.</summary>
     public static Dictionary<string, string> ShownForm(IEnumerable<AttributeDefinition> attributes, IReadOnlyDictionary<string, AttributeValue> stored)

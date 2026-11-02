@@ -1,0 +1,102 @@
+@using BatteryPassWeb.Dpp.Editing
+@using BatteryPassWeb.Dpp.Pages
+@model StatusCardView
+@* The battery status card and its "Change status" window (step 4b, mock-up S2 and S3), on both battery pages. *@
+<section class="bp-card bp-console-form-card bp-battery-card mt-4" id="status">
+    <div class="bp-battery-card-head">
+        <div>
+            <span class="bp-summary-title">Battery status <span class="bp-attr-number">#22</span></span>
+            <div class="bp-battery-status">
+                <strong>@Model.StatusWords</strong>
+                @if (Model.Since is { } since)
+                {
+                    <span class="text-secondary">since @ValueWords.Time(since)@(Model.AfterRepair ? ", after a repair" : string.Empty)</span>
+                }
+            </div>
+            <p class="mb-0">@(Model.WhyNot ?? (Model.Status == "waste" ? "The battery is waste, which is final. Mistyped values can still be corrected." : "A status change also re-states the fades and the expected lifetime, and publishes a new version of this passport."))</p>
+        </div>
+        @if (Model.CanChange)
+        {
+            <button type="button" class="bp-primary-button" data-open-dialog="status-dialog">Change status</button>
+        }
+    </div>
+    @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "status")
+    <h3 class="h6 mt-3 mb-0">Repair history <em class="bp-field-marker">Not passport data</em></h3>
+    @if (Model.Repairs.Count == 0)
+    {
+        <p class="bp-help-text mt-2 mb-0">No repairs recorded.</p>
+    }
+    else
+    {
+        <ul class="bp-history">
+            @foreach (var repair in Model.Repairs)
+            {
+                <li><time datetime="@repair.Date">@ValueWords.Day(repair.Date)</time><span>@if (repair.IsCorrection)
+                    {
+                        <span class="bp-soft-tag">Correction</span>
+                    } @repair.Description</span><small>@(repair.IsCorrection ? "Added" : "Recorded") @ValueWords.Time(repair.RecordedAtUtc) by @repair.RecordedBy</small></li>
+            }
+        </ul>
+    }
+    <small class="bp-field-help d-block mt-2">Seen by the battery's cluster, market surveillance and @(Model.ForTeam ? "your team" : "the team"), with the status.</small>
+    @if (Model.MayAddNote)
+    {
+        <details class="bp-module-edit mt-2">
+            <summary>Add a note to the history</summary>
+            <form method="post" action="@Model.NoteAction" class="bp-dialog-form mt-2">
+                @Html.AntiForgeryToken()
+                <label><span>Entries are never changed or removed. To correct one, add a note; it shows as "Correction".</span><input type="text" name="note" maxlength="@StatusChangeService.MaxDescription" placeholder="e.g. The repair of 20 Oct was on module 5, not module 4." /></label>
+                <div class="bp-live-save"><span></span><button type="submit" class="bp-secondary-button">Add note</button></div>
+            </form>
+        </details>
+    }
+
+    @if (Model.CanChange)
+    {
+        <dialog id="status-dialog" class="bp-modal-panel bp-dialog bp-dialog-wide" aria-labelledby="status-dialog-title" data-status-dialog>
+            <form method="post" action="@Model.Restated.SaveAction" class="bp-dialog-form">
+                @Html.AntiForgeryToken()
+                <div data-status-step="1">
+                    <h2 id="status-dialog-title">Change the battery status</h2>
+                    <p class="bp-help-text">Now: <strong>@Model.Status</strong>. What happened to the battery?</p>
+                    <div class="bp-choice-list">
+                        @foreach (var (what, label, help) in Model.Choices)
+                        {
+                            <label class="bp-choice"><input type="radio" name="what" value="@what" checked="@(what == Model.Choices[0].What)" data-status-choice="@label" /><strong>@label</strong><small>@help</small></label>
+                        }
+                    </div>
+                    <div class="bp-dialog-actions">
+                        <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
+                        <button type="button" class="bp-primary-button" data-status-next>Next</button>
+                    </div>
+                </div>
+                <div data-status-step="2">
+                    <h2><span data-status-chosen>@Model.Choices[0].Label</span>: re-state the values</h2>
+                    <p class="bp-help-text">Check each value; they start as the battery's current ones.</p>
+                    <div data-status-repair>
+                        <label><span>Day of the repair</span><input type="date" name="repairDate" value="@Model.Today" max="@Model.Today" /></label>
+                        <label><span>What was repaired</span><input type="text" name="repairDescription" maxlength="@StatusChangeService.MaxDescription" placeholder="e.g. Module 4 replaced after a coolant leak" /></label>
+                    </div>
+                    <div class="bp-attr-list">
+                        @foreach (var field in Model.Restated.Sections.SelectMany(section => section.Fields))
+                        {
+                            @await Html.PartialAsync("~/Views/ProductData/_EditorField.cshtml", new EditorFieldView(Model.Restated, field))
+                            @if (field.Attribute.Number == 59 && Model.RatedCapacityAh is { } rated)
+                            {
+                                <div class="bp-suggest" data-fade-suggest data-rated="@rated.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                                    <label><span>Measured remaining capacity (Ah)</span><input type="text" inputmode="decimal" data-fade-remaining /></label>
+                                    <button type="button" class="bp-text-button" data-fade-button>Suggest the fade</button>
+                                    <small class="bp-field-help" data-fade-note>1 − remaining / @ValueWords.Number(rated) Ah rated. The measured capacity isn't stored.</small>
+                                </div>
+                            }
+                        }
+                    </div>
+                    <div class="bp-dialog-actions">
+                        <button type="button" class="bp-secondary-button" data-status-back>Back</button>
+                        <button type="submit" class="bp-primary-button">Save and publish a new version</button>
+                    </div>
+                </div>
+            </form>
+        </dialog>
+    }
+</section>

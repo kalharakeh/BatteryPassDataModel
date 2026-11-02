@@ -23,6 +23,9 @@ public sealed record ClusterBatteryPage(
 
     public string Href => ClusterBatteryPages.BatteryHref(Pack.Id);
 
+    /// <summary>The battery status card (step 4b), shared with the team's page.</summary>
+    public StatusCardView? Status { get; init; }
+
     /// <summary>The team page's cards, without what only the team does (step 4a).</summary>
     public BatteryCards Cards => new(Pack, Href, Live, AccidentReports, Versions, Live.Languages, ForTeam: false);
 }
@@ -37,7 +40,8 @@ public sealed class ClusterBatteryPages(
     RecordEditor editor,
     DocumentService documents,
     DocumentStore documentStore,
-    ClusterRepository clusters)
+    ClusterRepository clusters,
+    StatusPages status)
 {
     public static string BatteryHref(string packId) => $"/cluster-admin/batteries/{Uri.EscapeDataString(packId)}";
 
@@ -94,8 +98,33 @@ public sealed class ClusterBatteryPages(
             BatteryPages.ClusterLabel(pack.ClusterId, names),
             liveView,
             versions.OrderByDescending(version => version.Number).Select(version => new VersionRow(version, PassportReader.Verify(version))).ToArray(),
-            await documentStore.ListAsync(TargetKind.Pack, pack.Id, DocumentService.Accidents, cancellationToken));
+            await documentStore.ListAsync(TargetKind.Pack, pack.Id, DocumentService.Accidents, cancellationToken))
+        {
+            Status = await status.CardAsync(sources, active: true, href, forTeam: false, cancellationToken: cancellationToken),
+        };
     }
+
+    /// <summary>Adds a note to the history as the cluster admin (decision 34); null when the sender may not manage the battery.</summary>
+    public async Task<(string? Done, string? Problem)?> AddHistoryNoteAsync(ChangeSender sender, string packId, string? note, CancellationToken cancellationToken = default) =>
+        await ManagedAsync(sender, packId, cancellationToken) is { } pack
+            ? await status.AddNoteAsync(sender, pack.Id, note, cancellationToken)
+            : null;
+
+    /// <summary>What the status card says after the window was sent (the team page's words).</summary>
+    public (string? Done, string? Problem) StatusMessage(StatusChangeResult result, int versionBefore) => status.Message(result, versionBefore);
+
+    /// <summary>Makes a status change from the window, as the cluster admin; null when the sender may not manage the battery.</summary>
+    public async Task<StatusChangeResult?> ChangeStatusAsync(
+        ChangeSender sender,
+        string packId,
+        string? what,
+        Func<string, string?> field,
+        string? repairDate,
+        string? repairDescription,
+        CancellationToken cancellationToken = default) =>
+        await ManagedAsync(sender, packId, cancellationToken) is { } pack
+            ? await status.ChangeAsync(sender, pack.Id, what, field, repairDate, repairDescription, cancellationToken)
+            : null;
 
     /// <summary>Saves the live values typed on the page, as the cluster admin; null when the sender may not manage the battery.</summary>
     public async Task<(EditorPost Post, EditorSave Save)?> SaveLiveAsync(

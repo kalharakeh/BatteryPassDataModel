@@ -75,6 +75,29 @@
                         }
                     </dl>
                 }
+                @if (tab.Key == "purchaser" && Model.Repairs is { } repairs)
+                {
+                    <h3 class="h6 mt-3 mb-0">Repair history</h3>
+                    @if (repairs.Count == 0)
+                    {
+                        <p class="text-secondary mt-2 mb-0">No repairs recorded.</p>
+                    }
+                    else
+                    {
+                        <dl class="bp-field-grid mt-2">
+                            @foreach (var repair in repairs)
+                            {
+                                <div>
+                                    <dt><time datetime="@repair.Date">@ValueWords.Day(repair.Date)</time></dt>
+                                    <dd>
+                                        @(repair.IsCorrection ? $"Correction: {repair.Description}" : repair.Description)
+                                        <span class="d-block small text-secondary">@(repair.IsCorrection ? "Added" : "Recorded") by @(repair.RecordedAs == "Team" ? "the manufacturer's team" : "the battery's cluster")</span>
+                                    </dd>
+                                </div>
+                            }
+                        </dl>
+                    }
+                }
             </div>
         }
     </div>

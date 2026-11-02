@@ -101,6 +101,43 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
         return Redirect($"{ClusterBatteryPages.BatteryHref(packId)}#accidents");
     }
 
+    /// <summary>The "Change status" window (design 7.4, step 4b), as the battery's cluster admin.</summary>
+    [HttpPost("{packId}/status")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangeStatus(string packId, [FromForm] string? what, [FromForm] string? repairDate, [FromForm] string? repairDescription, CancellationToken cancellationToken)
+    {
+        if (await ClusterAdminAsync(cancellationToken) is not { } sender)
+        {
+            return NotFound();
+        }
+
+        var form = Request.Form;
+        var before = (await pages.BatteryAsync(sender, packId, cancellationToken: cancellationToken))?.Versions.Count ?? 0;
+        if (await pages.ChangeStatusAsync(sender, packId, what, name => form.TryGetValue(name, out var value) ? value.ToString() : null, repairDate, repairDescription, cancellationToken) is not { } result)
+        {
+            return NotFound();
+        }
+
+        var (done, problem) = pages.StatusMessage(result, before);
+        Card("status", done, problem);
+        return Redirect($"{ClusterBatteryPages.BatteryHref(packId)}#status");
+    }
+
+    /// <summary>"Add a note to the history" (decision 34), as the battery's cluster admin.</summary>
+    [HttpPost("{packId}/status/note")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddHistoryNote(string packId, [FromForm] string? note, CancellationToken cancellationToken)
+    {
+        if (await ClusterAdminAsync(cancellationToken) is not { } sender
+            || await pages.AddHistoryNoteAsync(sender, packId, note, cancellationToken) is not { } message)
+        {
+            return NotFound();
+        }
+
+        Card("status", message.Done, message.Problem);
+        return Redirect($"{ClusterBatteryPages.BatteryHref(packId)}#status");
+    }
+
     /// <summary>The signed-in user as a cluster admin; null for the team (it has its own page) and for anyone else.</summary>
     private async Task<ChangeSender?> ClusterAdminAsync(CancellationToken cancellationToken) =>
         await readers.EditorForAsync(User, cancellationToken) is { Kind: SenderKind.ClusterAdmin } sender ? sender : null;
