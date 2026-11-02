@@ -21,7 +21,7 @@ public sealed class ProductDataControllerTests(MongoFixture mongo)
         var actions = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
         Assert.All(actions.Where(action => action.GetCustomAttribute<HttpPostAttribute>() is not null), action =>
             Assert.NotNull(action.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>()));
-        Assert.Equal(["FamilyPicture"], actions.Where(action => action.GetCustomAttribute<AllowAnonymousAttribute>() is not null).Select(action => action.Name));
+        Assert.Equal(["FamilyPicture", "ModelPicture"], actions.Where(action => action.GetCustomAttribute<AllowAnonymousAttribute>() is not null).Select(action => action.Name));
     }
 
     [Fact]

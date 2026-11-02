@@ -476,20 +476,13 @@ public sealed class ProductDataPages(
             return "the battery family was not found";
         }
 
-        var limit = options.Value.MaxUploadBytes;
-        var contentType = content.Length == 0 ? null : FileTypes.Detect(content);
-        if (contentType is not (FileTypes.Png or FileTypes.Jpeg))
+        if (PictureProblem(content) is { } problem)
         {
-            return "the picture must be a PNG or JPEG file";
-        }
-
-        if (limit > 0 && content.LongLength > limit)
-        {
-            return $"the picture is larger than the {limit}-byte upload limit";
+            return problem;
         }
 
         var fileId = await documents.UploadFileAsync(Path.GetFileName(fileName), content, cancellationToken);
-        await store.SetFamilyPictureAsync(familyId, fileId, contentType, cancellationToken);
+        await store.SetFamilyPictureAsync(familyId, fileId, FileTypes.Detect(content)!, cancellationToken);
         await AuditAsync(PictureEvent, who, $"Picture of battery family {familyId} set", "dpp-family", familyId, cancellationToken);
         return null;
     }
@@ -518,6 +511,68 @@ public sealed class ProductDataPages(
     }
 
     /// <summary>The family's picture; null when the family or its picture doesn't exist.</summary>
+    /// <summary>Stores a PNG or JPEG as a model's own picture, shown instead of its family's (redesign R2); the problem when it isn't accepted.</summary>
+    public async Task<string?> SetModelPictureAsync(string who, string modelId, string fileName, byte[] content, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        if (await store.GetAsync<BatteryModel>(modelId, cancellationToken) is not { } model)
+        {
+            return "the battery model was not found";
+        }
+
+        if (PictureProblem(content) is { } problem)
+        {
+            return problem;
+        }
+
+        var fileId = await documents.UploadFileAsync(Path.GetFileName(fileName), content, cancellationToken);
+        await store.SetModelPictureAsync(modelId, fileId, FileTypes.Detect(content)!, cancellationToken);
+        if (model.PictureFileId is { } replaced)
+        {
+            await documents.DeleteFileAsync(replaced, cancellationToken);
+        }
+
+        await AuditAsync(PictureEvent, who, $"Picture of battery model {model.Name} set", "dpp-model", modelId, cancellationToken);
+        return null;
+    }
+
+    /// <summary>Removes a model's own picture, so its batteries show the family's again (redesign R2); false when it had none.</summary>
+    public async Task<bool> RemoveModelPictureAsync(string who, string modelId, CancellationToken cancellationToken = default)
+    {
+        if (await store.GetAsync<BatteryModel>(modelId, cancellationToken) is not { PictureFileId: { } fileId } model)
+        {
+            return false;
+        }
+
+        await store.SetModelPictureAsync(modelId, null, null, cancellationToken);
+        await documents.DeleteFileAsync(fileId, cancellationToken);
+        await AuditAsync(PictureEvent, who, $"Picture of battery model {model.Name} removed", "dpp-model", modelId, cancellationToken);
+        return true;
+    }
+
+    public async Task<(byte[] Content, string ContentType)?> ModelPictureAsync(string modelId, CancellationToken cancellationToken = default)
+    {
+        var model = await store.GetAsync<BatteryModel>(modelId, cancellationToken);
+        if (model?.PictureFileId is null || model.PictureContentType is null)
+        {
+            return null;
+        }
+
+        return (await documents.DownloadFileAsync(model.PictureFileId, cancellationToken), model.PictureContentType);
+    }
+
+    /// <summary>Why a picture isn't accepted (not a PNG or JPEG, or over the upload limit); null when it is.</summary>
+    private string? PictureProblem(byte[] content)
+    {
+        var limit = options.Value.MaxUploadBytes;
+        if ((content.Length == 0 ? null : FileTypes.Detect(content)) is not (FileTypes.Png or FileTypes.Jpeg))
+        {
+            return "the picture must be a PNG or JPEG file";
+        }
+
+        return limit > 0 && content.LongLength > limit ? $"the picture is larger than the {limit}-byte upload limit" : null;
+    }
+
     public async Task<(byte[] Content, string ContentType)?> FamilyPictureAsync(string familyId, CancellationToken cancellationToken = default)
     {
         var family = await store.GetAsync<BatteryFamily>(familyId, cancellationToken);

@@ -133,6 +133,39 @@
     @if (selected is not null)
     {
         <section class="bp-card bp-product-editor-section bp-console-form-card mt-4" id="modules">
+            @* The model's own picture, shown instead of the family's (redesign R2, owner's point 8). *@
+            <form method="post" action="/admin/models/@selected.Id/picture" enctype="multipart/form-data" class="bp-model-picture" data-upload-row>
+                @Html.AntiForgeryToken()
+                <div class="bp-model-picture-preview">
+                    @if (selected.PictureFileId is not null)
+                    {
+                        <img src="/dpp/models/@selected.Id/picture" alt="@selected.Name battery model picture" />
+                    }
+                    else if (hasPicture)
+                    {
+                        <img src="/dpp/families/@familyId/picture" alt="@Model.Family.Name battery family picture" />
+                    }
+                </div>
+                <div class="d-grid gap-2">
+                    <span><strong>Picture of @selected.Name</strong> <em class="bp-field-marker">Not passport data</em></span>
+                    <small class="bp-field-help">@(selected.PictureFileId is null ? "It shows the family's picture. Give it its own when it looks different, for example a double stack." : "Its own picture: its batteries' public summary shows it instead of the family's.")</small>
+                    <div class="bp-attr-file">
+                        <label class="bp-secondary-button bp-button-compact bp-document-smart-upload position-relative text-nowrap mb-0">
+                            Choose picture
+                            <input type="file" name="picture" class="bp-document-hidden-file" accept="image/png,image/jpeg" data-kind-words="a PNG or JPEG" data-max-bytes="@AppOptions.Value.MaxUploadBytes" data-upload-file />
+                        </label>
+                        <span class="bp-help-text" data-upload-chosen>No file chosen</span>
+                        <button type="submit" class="bp-secondary-button bp-button-compact text-nowrap" data-upload-button>Save picture</button>
+                    </div>
+                </div>
+            </form>
+            @if (selected.PictureFileId is not null)
+            {
+                <form method="post" action="/admin/models/@selected.Id/picture/remove" class="bp-model-picture-remove">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="bp-text-button">Remove its picture and show the family's</button>
+                </form>
+            }
             <form method="post" action="/admin/models/@selected.Id/module-description" class="bp-module-description">
                 @Html.AntiForgeryToken()
                 <label for="module-description">Module description of @selected.Name <em class="bp-field-marker">Not passport data</em></label>

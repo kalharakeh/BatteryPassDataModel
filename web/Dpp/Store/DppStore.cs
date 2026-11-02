@@ -640,6 +640,16 @@ public sealed class DppStore
         return result.MatchedCount == 1;
     }
 
+    /// <summary>Points a model at its own picture, or back at its family's with nulls (redesign R2); false when no model has that id.</summary>
+    public async Task<bool> SetModelPictureAsync(string modelId, string? fileId, string? contentType, CancellationToken cancellationToken = default)
+    {
+        var result = await Collection<BatteryModel>().UpdateOneAsync(
+            model => model.Id == modelId,
+            Builders<BatteryModel>.Update.Set(model => model.PictureFileId, fileId).Set(model => model.PictureContentType, contentType),
+            cancellationToken: cancellationToken);
+        return result.MatchedCount == 1;
+    }
+
     private IMongoCollection<T> Collection<T>() => RequireDatabase().GetCollection<T>(CollectionName<T>());
 
     private IMongoDatabase RequireDatabase() =>

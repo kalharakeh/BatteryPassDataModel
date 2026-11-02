@@ -134,6 +134,49 @@ public sealed class ProductDataController(ProductDataPages pages, RecordEditor e
         return picture is { } found ? File(found.Content, found.ContentType) : NotFound();
     }
 
+    /// <summary>A model's own picture, shown on its batteries' public summary instead of the family's (redesign R2).</summary>
+    [HttpPost("models/{modelId}/picture")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UploadModelPicture(string modelId, IFormFile? picture, CancellationToken cancellationToken)
+    {
+        if (await store.GetAsync<BatteryModel>(modelId, cancellationToken) is not { } model)
+        {
+            return NotFound();
+        }
+
+        var problem = picture is null || picture.Length == 0
+            ? "choose a PNG or JPEG picture first"
+            : await pages.SetModelPictureAsync(Who, modelId, picture.FileName, await ReadAsync(picture, cancellationToken), cancellationToken);
+        TempData[problem is null ? StatusKey : ErrorKey] = problem is null
+            ? "Picture saved. Its batteries' public summary shows it instead of the family's."
+            : $"The picture was not saved: {problem}.";
+        return Redirect($"{ProductDataPages.FamilyHref(model.FamilyId, modelId)}#modules");
+    }
+
+    [HttpPost("models/{modelId}/picture/remove")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveModelPicture(string modelId, CancellationToken cancellationToken)
+    {
+        if (await store.GetAsync<BatteryModel>(modelId, cancellationToken) is not { } model)
+        {
+            return NotFound();
+        }
+
+        TempData[StatusKey] = await pages.RemoveModelPictureAsync(Who, modelId, cancellationToken)
+            ? "Picture removed. Its batteries show the family's picture again."
+            : "The model had no picture of its own.";
+        return Redirect($"{ProductDataPages.FamilyHref(model.FamilyId, modelId)}#modules");
+    }
+
+    /// <summary>A model's picture is shown on the public summary like the family's, so anyone may load it.</summary>
+    [AllowAnonymous]
+    [HttpGet("~/dpp/models/{modelId}/picture")]
+    public async Task<IActionResult> ModelPicture(string modelId, CancellationToken cancellationToken)
+    {
+        var picture = await pages.ModelPictureAsync(modelId, cancellationToken);
+        return picture is { } found ? File(found.Content, found.ContentType) : NotFound();
+    }
+
     [HttpPost("families/{familyId}/models")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateModel(string familyId, [FromForm] string? name, [FromForm] string? copyFrom, CancellationToken cancellationToken)

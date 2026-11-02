@@ -269,7 +269,10 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
             current,
             identifier,
             family?.Name,
-            family?.PictureFileId is null ? null : $"/dpp/families/{Uri.EscapeDataString(family.Id)}/picture",
+            // The model's own picture, else its family's (redesign R2, decision 20).
+            sources.Model.PictureFileId is not null
+                ? $"/dpp/models/{Uri.EscapeDataString(sources.Model.Id)}/picture"
+                : family?.PictureFileId is null ? null : $"/dpp/families/{Uri.EscapeDataString(family.Id)}/picture",
             identifiers.IsTestIdentifier(identifier) || identifiers.IsTestIdentifier(version.DigitalProductPassportId),
             PassportReader.Verify(version),
             AttributeCatalog.All.Any(a => a.Audience != Audience.Public && AudienceRules.MaySee(who, a, clusters)),

@@ -2447,6 +2447,45 @@ main .bp-field-marker.is-published {
   min-width: 0;
 }
 
+/* A model's own picture, beside its module description (redesign R2). */
+.bp-model-picture {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  margin-bottom: 12px;
+}
+
+.bp-model-picture-preview {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 72px;
+  border: 1px solid var(--bp-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.bp-model-picture-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.bp-model-picture-remove {
+  margin: -6px 0 14px 110px;
+}
+
+@media (max-width: 575.98px) {
+  .bp-model-picture {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bp-model-picture-remove {
+    margin-left: 0;
+  }
+}
+
 /* A frozen passport's values: shown, not editable (redesign R1). The fieldset only disables its fields. */
 .bp-frozen-fields {
   display: contents;

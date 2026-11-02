@@ -46,6 +46,11 @@ public sealed class BatteryModel : IDppRecord
 
     /// <summary>What the model's modules are, in a few words (decision 31). App data, not passport data; null when not typed.</summary>
     public string? ModuleDescription { get; set; }
+
+    /// <summary>The model's own picture, shown instead of its family's (redesign R2); null to show the family's. Not passport data.</summary>
+    public string? PictureFileId { get; set; }
+
+    public string? PictureContentType { get; set; }
 }
 
 /// <summary>Manufacturer identifier and information, and the manufacturing place (#12, #15, #16).</summary>
