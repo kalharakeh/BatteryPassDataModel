@@ -2765,3 +2765,22 @@ main .bp-field-marker.is-published {
 [data-status-dialog].is-step-2 [data-status-step="2"] {
   display: block;
 }
+
+/* Hand-overs waiting for a cluster admin on the Registry (step 4d, mock-up S1): one row each, with its two answers. */
+.bp-handover-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 18px;
+  padding: 12px 0;
+  border-top: 1px solid var(--bp-border);
+}
+
+.bp-handover-row:first-of-type {
+  border-top: 0;
+}
+
+.bp-handover-row .bp-dialog-actions {
+  margin: 0;
+}

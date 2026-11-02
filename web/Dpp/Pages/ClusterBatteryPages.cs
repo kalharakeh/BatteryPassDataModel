@@ -26,9 +26,15 @@ public sealed record ClusterBatteryPage(
     /// <summary>The battery status card (step 4b), shared with the team's page.</summary>
     public StatusCardView? Status { get; init; }
 
+    /// <summary>The "Hand over" card (step 4d): the waiting hand-over, or the window to ask for one.</summary>
+    public HandOverCardView HandOver { get; init; } = new(string.Empty, string.Empty, null, null);
+
     /// <summary>The team page's cards, without what only the team does (step 4a).</summary>
     public BatteryCards Cards => new(Pack, Href, Live, AccidentReports, Versions, Live.Languages, ForTeam: false);
 }
+
+/// <summary>The "Hand over" card (mock-up S2 and S8): where its forms go, and the hand-over waiting with its receiver's name.</summary>
+public sealed record HandOverCardView(string Action, string SerialNumber, HandOver? Waiting, string? ReceiverName);
 
 /// <summary>
 /// The cluster admin's battery page (design 6.1 and 12, step 4a). A cluster admin manages only a battery of a cluster
@@ -89,6 +95,7 @@ public sealed class ClusterBatteryPages(
             cluster => BsonHelpers.GetString(cluster, "name"),
             StringComparer.OrdinalIgnoreCase);
         var versions = await store.ListVersionsAsync(pack.Id, cancellationToken);
+        var waiting = await store.FindWaitingHandOverAsync(pack.Id, cancellationToken);
         return new ClusterBatteryPage(
             pack,
             sources,
@@ -101,6 +108,7 @@ public sealed class ClusterBatteryPages(
             await documentStore.ListAsync(TargetKind.Pack, pack.Id, DocumentService.Accidents, cancellationToken))
         {
             Status = await status.CardAsync(sources, active: true, href, forTeam: false, cancellationToken: cancellationToken),
+            HandOver = new HandOverCardView($"{href}/handover", serial, waiting, waiting is null ? null : names.GetValueOrDefault(waiting.ToClusterId) ?? waiting.ToClusterId),
         };
     }
 

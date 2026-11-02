@@ -55,6 +55,7 @@
     }
     @await Html.PartialAsync("~/Views/Batteries/_LiveValuesCard.cshtml", Model.Cards)
     @await Html.PartialAsync("~/Views/Batteries/_AccidentsCard.cshtml", Model.Cards)
+    @await Html.PartialAsync("~/Views/ClusterAdmin/_HandOverCard.cshtml", Model.HandOver)
     @await Html.PartialAsync("~/Views/Batteries/_ModulesCard.cshtml", Model.Cards)
     @await Html.PartialAsync("~/Views/Batteries/_VersionsCard.cshtml", Model.Cards)
 </main>

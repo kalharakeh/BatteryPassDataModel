@@ -112,6 +112,9 @@ public sealed record BatteryPage(
     /// <summary>The battery status card (step 4b), shared with the cluster admin's page.</summary>
     public StatusCardView? Status { get; init; }
 
+    /// <summary>The receiving cluster's name while a hand-over waits for its answer (step 4d); null otherwise.</summary>
+    public string? HandOverTo { get; init; }
+
     /// <summary>The team's "Passport status" card (mock-up S5, step 4c-2): invalid, marked for deletion, and their undo.</summary>
     public PassportMarkView Marks => new(
         Publication.Active is not null ? DppStatuses.Active : Publication.Latest?.DppStatus,
@@ -360,6 +363,9 @@ public sealed class BatteryPages(
             new RemovalView($"{href}/remove", versions.Count > 0 ? "its passport is published, so it stays with its versions." : null))
         {
             Status = await status.CardAsync(sources, active is not null, href, forTeam: true, cancellationToken: cancellationToken),
+            HandOverTo = await store.FindWaitingHandOverAsync(packId, cancellationToken) is { } waiting
+                ? clusterChoices.FirstOrDefault(cluster => string.Equals(cluster.Id, waiting.ToClusterId, StringComparison.OrdinalIgnoreCase))?.Name ?? waiting.ToClusterId
+                : null,
         };
     }
 

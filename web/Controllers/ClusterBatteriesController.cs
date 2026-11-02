@@ -2,6 +2,7 @@ using BatteryPassWeb.Dpp.Access;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Pages;
+using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,6 +18,11 @@ namespace BatteryPassWeb.Controllers;
 public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppReaders readers) : Controller
 {
     private const string PageView = "~/Views/ClusterAdmin/Battery.cshtml";
+
+    /// <summary>The cluster ID typed in the "Hand over" window, and the name it was found by (step 4d).</summary>
+    public const string HandOverToKey = "HandOverTo";
+
+    public const string HandOverNameKey = "HandOverName";
 
     [HttpGet("{packId}")]
     public async Task<IActionResult> Battery(string packId, CancellationToken cancellationToken)
@@ -151,6 +157,54 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
 
         Card("status", message.Done, message.Problem);
         return Redirect(link && message.Problem is null ? "/registry" : $"{ClusterBatteryPages.BatteryHref(packId)}#status");
+    }
+
+    /// <summary>
+    /// "Hand over…" (design 7.8, step 4d): first names the receiving cluster, then "Ask them to accept" asks for the ID
+    /// whose name was shown. A changed ID is named again instead of asked for.
+    /// </summary>
+    [HttpPost("{packId}/handover")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> HandOver(string packId, [FromForm] string? toClusterId, [FromForm] string? checkedId, [FromServices] HandOverService handOvers, CancellationToken cancellationToken)
+    {
+        if (await ClusterAdminAsync(cancellationToken) is not { } sender)
+        {
+            return NotFound();
+        }
+
+        var typed = string.IsNullOrWhiteSpace(toClusterId) ? string.Empty : ClusterRepository.NormalizeClusterId(toClusterId);
+        var confirm = typed.Length > 0 && !string.IsNullOrWhiteSpace(checkedId) && ClusterRepository.NormalizeClusterId(checkedId) == typed;
+        var asked = await handOvers.AskAsync(sender, packId, typed, confirm, cancellationToken);
+        if (asked.Problem is { } problem)
+        {
+            Card("handover", null, $"Not asked: {problem}.");
+        }
+        else if (asked.HandOver is null)
+        {
+            TempData[HandOverToKey] = typed;
+            TempData[HandOverNameKey] = asked.ReceiverName;
+        }
+        else
+        {
+            Card("handover", $"Asked. The battery stays with your cluster until {asked.ReceiverName} accepts.", null);
+        }
+
+        return Redirect($"{ClusterBatteryPages.BatteryHref(packId)}#handover");
+    }
+
+    /// <summary>The sender cancels its waiting hand-over (step 4d).</summary>
+    [HttpPost("{packId}/handover/cancel")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CancelHandOver(string packId, [FromServices] HandOverService handOvers, CancellationToken cancellationToken)
+    {
+        if (await ClusterAdminAsync(cancellationToken) is not { } sender)
+        {
+            return NotFound();
+        }
+
+        var problem = await handOvers.CancelAsync(sender, packId, cancellationToken);
+        Card("handover", problem is null ? "Hand-over cancelled. The battery stays with your cluster." : null, problem is null ? null : $"Not cancelled: {problem}.");
+        return Redirect($"{ClusterBatteryPages.BatteryHref(packId)}#handover");
     }
 
     /// <summary>The signed-in user as a cluster admin; null for the team (it has its own page) and for anyone else.</summary>

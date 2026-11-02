@@ -38,6 +38,9 @@
         const dialog = document.getElementById(button.dataset.openDialog);
         button.addEventListener('click', () => dialog?.showModal());
     });
+    // A dialog marked data-open-on-load="true" opens at once, e.g. the "Hand over" window once the cluster is named (step
+    // 4d). (Razor writes data- attributes even when false, so the value says it.)
+    document.querySelectorAll('dialog[data-open-on-load="true"]').forEach((dialog) => dialog.showModal());
 
     const form = document.querySelector('[data-record-editor]');
     if (!form) {

@@ -104,6 +104,14 @@
                 <dd>
                     <span class="@(Model.Pack.ClusterId is null ? "bp-batteries-muted" : null)">@Model.ClusterLabel</span>
                     <button type="button" class="bp-text-button" data-open-dialog="cluster-dialog">Change</button>
+                    @if (Model.HandOverTo is { } receiver)
+                    {
+                        <form method="post" action="@href/handover/cancel" class="d-block">
+                            @Html.AntiForgeryToken()
+                            <small class="bp-field-help">Hand-over to @receiver waiting for their answer.</small>
+                            <button type="submit" class="bp-text-button">Cancel it</button>
+                        </form>
+                    }
                 </dd>
             </div>
             @if (publication.IsPublished)
@@ -137,7 +145,7 @@
         <form method="post" action="@href/cluster">
             @Html.AntiForgeryToken()
             <h2 id="cluster-dialog-title">Change the cluster</h2>
-            <p class="bp-help-text">The customer the battery belongs to. Its members see its purchaser data. The passport doesn't change.</p>
+            <p class="bp-help-text">The customer the battery belongs to. Its members see its purchaser data. The passport doesn't change.@(Model.HandOverTo is { } waitingFor ? $" Moving it cancels the hand-over waiting for {waitingFor}." : null)</p>
             <label class="bp-product-version-selected-field">
                 <span>Cluster</span>
                 <select name="clusterId">

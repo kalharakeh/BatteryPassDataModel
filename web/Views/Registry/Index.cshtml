@@ -12,6 +12,32 @@
         </div>
     </header>
 
+    @await Html.PartialAsync("~/Views/ProductData/_Messages.cshtml")
+    @if (Model.Waiting.Count > 0)
+    {
+        <section class="bp-card bp-console-form-card bp-product-editor-section mt-4" id="waiting">
+            <span class="bp-summary-title">Waiting for you</span>
+            <h2 class="h5 mb-1">@Words.Count(Model.Waiting.Count, "battery", "batteries") handed over to your cluster</h2>
+            <p class="bp-help-text mb-2">Accept it to see its purchaser data and manage it. Until then it stays with the sending cluster.</p>
+            @foreach (var waiting in Model.Waiting)
+            {
+                <div class="bp-handover-row">
+                    <div>
+                        <strong>@waiting.SerialNumber</strong>@(waiting.ModelName.Length > 0 ? $" · {waiting.ModelName}" : null)
+                        <small class="d-block text-secondary">From @waiting.FromName, asked @ValueWords.Time(waiting.HandOver.AskedAtUtc) by @waiting.HandOver.AskedBy</small>
+                    </div>
+                    <form method="post" action="/registry/handovers/@Uri.EscapeDataString(waiting.HandOver.Id)">
+                        @Html.AntiForgeryToken()
+                        <div class="bp-dialog-actions">
+                            <button type="submit" name="accept" value="false" class="bp-secondary-button">Decline</button>
+                            <button type="submit" name="accept" value="true" class="bp-primary-button">Accept</button>
+                        </div>
+                    </form>
+                </div>
+            }
+        </section>
+    }
+
     <section class="bp-console-toolbar bp-battery-table-toolbar">
         <form action="/registry" class="bp-search-form" role="search">
             <input name="q" value="@Model.Query" placeholder="Serial number, battery ID or passport ID" aria-label="Search the registry" />

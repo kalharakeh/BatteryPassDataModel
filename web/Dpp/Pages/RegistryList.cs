@@ -10,6 +10,9 @@ public sealed record RegistryPage(IReadOnlyList<BatteryRow> Rows, string Query, 
     /// <summary>The clusters the signed-in user is admin of (step 4a); empty for everyone else, the team included.</summary>
     public IReadOnlySet<string> ManagedClusterIds { get; init; } = new HashSet<string>(StringComparer.Ordinal);
 
+    /// <summary>The hand-overs waiting for the signed-in cluster admin's answer (step 4d, mock-up S1).</summary>
+    public IReadOnlyList<WaitingHandOver> Waiting { get; init; } = [];
+
     /// <summary>The cluster admin's page of a battery of a cluster they are admin of; null otherwise.</summary>
     public string? ManageHref(BatteryRow row)
     {

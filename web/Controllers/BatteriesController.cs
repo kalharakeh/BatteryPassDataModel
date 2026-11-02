@@ -83,6 +83,16 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
         return Redirect(BatteryPages.BatteryHref(packId));
     }
 
+    /// <summary>The team cancels a hand-over waiting for the receiving cluster's answer (design 7.8, step 4d).</summary>
+    [HttpPost("{packId}/handover/cancel")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CancelHandOver(string packId, [FromServices] HandOverService handOvers, CancellationToken cancellationToken)
+    {
+        var problem = await handOvers.CancelAsync(ChangeSender.Team(Who), packId, cancellationToken);
+        Card("cluster", problem is null ? "Hand-over cancelled. The battery stays in its cluster." : null, problem is null ? null : $"Not cancelled: {problem}.");
+        return Redirect(BatteryPages.BatteryHref(packId));
+    }
+
     /// <summary>The largest JSON export taken for the module list; the battery system's are a few kilobytes.</summary>
     public const long MaxExportBytes = 1024 * 1024;
 
