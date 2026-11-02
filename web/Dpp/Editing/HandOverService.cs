@@ -166,6 +166,15 @@ public sealed class HandOverService(DppStore store, ClusterRepository clusters, 
         return null;
     }
 
+    /// <summary>How many hand-overs wait for the sender's answer, for the Registry's entry in the top bar (redesign R3).</summary>
+    public async Task<int> WaitingCountAsync(ChangeSender sender, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sender);
+        return sender.Kind != SenderKind.ClusterAdmin || sender.ClusterIds.Count == 0
+            ? 0
+            : (await store.ListWaitingHandOversToAsync(sender.ClusterIds, cancellationToken)).Count;
+    }
+
     /// <summary>The hand-overs waiting for the sender's answer: to a cluster they are admin of.</summary>
     public async Task<IReadOnlyList<WaitingHandOver>> WaitingForAsync(ChangeSender sender, CancellationToken cancellationToken = default)
     {

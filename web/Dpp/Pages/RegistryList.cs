@@ -13,6 +13,9 @@ public sealed record RegistryPage(IReadOnlyList<BatteryRow> Rows, string Query, 
     /// <summary>The hand-overs waiting for the signed-in cluster admin's answer (step 4d, mock-up S1).</summary>
     public IReadOnlyList<WaitingHandOver> Waiting { get; init; } = [];
 
+    /// <summary>The batteries whose status (#22, purchaser data) the reader may see: the team, market surveillance, their cluster's (redesign R3).</summary>
+    public IReadOnlySet<string> BatteryStatusShown { get; init; } = new HashSet<string>(StringComparer.Ordinal);
+
     /// <summary>The cluster admin's page of a battery of a cluster they are admin of; null otherwise.</summary>
     public string? ManageHref(BatteryRow row)
     {
@@ -70,6 +73,10 @@ public static class RegistryList
             Scope(reader))
         {
             ManagedClusterIds = editor is { Kind: SenderKind.ClusterAdmin } ? editor.ClusterIds.ToHashSet(StringComparer.Ordinal) : new HashSet<string>(StringComparer.Ordinal),
+            BatteryStatusShown = batteries.Rows
+                .Where(row => AudienceRules.MaySeePurchaserData(reader, row.ClusterId is { } cluster ? [cluster] : []))
+                .Select(row => row.PackId)
+                .ToHashSet(StringComparer.Ordinal),
         };
     }
 }

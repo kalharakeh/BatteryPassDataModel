@@ -54,7 +54,7 @@
                             <th>Model</th>
                             <th>Batch</th>
                             <th>Cluster</th>
-                            <th>Passport</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -77,19 +77,15 @@
                                         @row.ClusterLabel
                                     }
                                 </td>
-                                <td data-label="Passport">
-                                    @if (row.Active is { } active)
-                                    {
-                                        <span class="bp-field-marker is-published">Published · version @active.Number</span>
-                                    }
-                                    else if (row.Latest is { } last)
-                                    {
-                                        <span class="bp-field-marker">@DppStatuses.Words(last.DppStatus) · version @last.Number</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="bp-field-marker">Draft</span>
-                                    }
+                                <td data-label="Status">
+                                    @* Both statuses as badges, as everywhere (redesign R3). *@
+                                    <div class="bp-badges is-compact">
+                                        @if (StatusBadge.Battery(row.BatteryStatus) is { } battery)
+                                        {
+                                            @await Html.PartialAsync("_StatusBadge", battery)
+                                        }
+                                        @await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(row.IsDraft ? null : row.StatusName).With((row.Active ?? row.Latest) is { } version ? $"· version {version.Number}" : null))
+                                    </div>
                                 </td>
                             </tr>
                         }

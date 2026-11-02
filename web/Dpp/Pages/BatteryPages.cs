@@ -33,6 +33,9 @@ public sealed record BatteryRow(
 
     /// <summary>The passport's DPP status (#2), or "draft".</summary>
     public string StatusName => (Active ?? Latest)?.DppStatus ?? "draft";
+
+    /// <summary>The battery status (#22), shown as a badge only to its readers (redesign R3); null before it has one.</summary>
+    public string? BatteryStatus { get; init; }
 }
 
 public sealed record BatteriesPage(IReadOnlyList<BatteryRow> Rows, string Query, int Total);
@@ -195,6 +198,7 @@ public sealed class BatteryPages(
                 active)
             {
                 Latest = versions[pack.Id].MaxBy(version => version.Number),
+                BatteryStatus = StatusChangeService.CurrentStatus(pack),
             });
         }
 

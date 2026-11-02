@@ -91,7 +91,7 @@
                                         <p>@customerName / @customerRole</p>
                                         <p>@(clusterNames.Count > 0 ? string.Join(", ", clusterNames) : "No cluster")</p>
                                     </div>
-                                    <a href="/registry">Open Registry</a>
+                                    <a href="/registry">Open Registry<partial name="_WaitingCount" /></a>
                                     @if (showAdminLink)
                                     {
                                         <a href="/admin">Admin</a>
@@ -108,7 +108,7 @@
                         <div class="bp-header-primary-links">
                         @if (isAuthenticated)
                         {
-                            <a href="/registry">Open Registry</a>
+                            <a href="/registry">Open Registry<partial name="_WaitingCount" /></a>
                         }
 
                         @if (showAdminLink)

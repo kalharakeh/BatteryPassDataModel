@@ -147,7 +147,7 @@ public sealed class PassportMarkPagesTests(MongoFixture mongo)
         Assert.Contains("~/Views/Batteries/_PassportStatusCard.cshtml\", marks", battery, StringComparison.Ordinal);
         Assert.Contains("Model.MayMarkInvalid", hero, StringComparison.Ordinal);
         Assert.Contains("Model.MarkReason is { } reason", hero, StringComparison.Ordinal);
-        Assert.Contains("DppStatuses.Words(shown.DppStatus)", registry, StringComparison.Ordinal);
+        Assert.Contains("StatusBadge.Passport(shown.DppStatus)", registry, StringComparison.Ordinal); // a badge since redesign R3
     }
 
     private static PassportController Controller(PublicationRig rig, string email, string role)
