@@ -956,17 +956,20 @@ public class AdminController : Controller
         return string.IsNullOrWhiteSpace(actor) ? "admin" : actor;
     }
 
-    /// <summary>Removes the demo data and makes it again (decision 32); the new tokens are shown once.</summary>
+    /// <summary>
+    /// Removes the demo data and makes it again (decision 32); the new tokens are shown once. It takes no cancellation
+    /// token: closing the tab must not stop it halfway (redesign R1).
+    /// </summary>
     [HttpPost("demo-data/reset")]
     [ValidateAntiForgeryToken]
-    public Task<IActionResult> ResetDemoData(CancellationToken cancellationToken) =>
-        DemoDataAsync("Demo data reset", () => _demoData.ResetAsync(CurrentActor(), cancellationToken));
+    public Task<IActionResult> ResetDemoData() =>
+        DemoDataAsync("Demo data reset", () => _demoData.ResetAsync(CurrentActor(), CancellationToken.None));
 
-    /// <summary>Removes the demo data and keeps the real data (decision 32).</summary>
+    /// <summary>Removes the demo data and keeps the real data (decision 32); like the reset, it always finishes.</summary>
     [HttpPost("demo-data/clear")]
     [ValidateAntiForgeryToken]
-    public Task<IActionResult> ClearDemoData(CancellationToken cancellationToken) =>
-        DemoDataAsync("Demo data cleared", () => _demoData.ClearAsync(CurrentActor(), cancellationToken));
+    public Task<IActionResult> ClearDemoData() =>
+        DemoDataAsync("Demo data cleared", () => _demoData.ClearAsync(CurrentActor(), CancellationToken.None));
 
     private async Task<IActionResult> DemoDataAsync(string heading, Func<Task<DemoResult>> run)
     {

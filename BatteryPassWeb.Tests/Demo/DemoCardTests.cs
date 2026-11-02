@@ -48,7 +48,7 @@ public sealed class DemoCardTests(MongoFixture mongo)
         using var rig = await DemoRig.StartAsync(mongo);
         var controller = Controller(rig);
 
-        var result = await controller.ResetDemoData(CancellationToken.None);
+        var result = await controller.ResetDemoData();
 
         Assert.Equal("/admin/clusters?tab=clusters", Assert.IsType<RedirectResult>(result).Url);
         Assert.Equal("Demo data reset: There was no demo data to clear; 2 families, 3 models, 2 sites, 2 operators and 3 batches; 9 batteries, 6 of them published; 12 accounts and 7 API tokens.", controller.TempData["StatusMessage"]);
@@ -64,7 +64,7 @@ public sealed class DemoCardTests(MongoFixture mongo)
         await rig.Demo.SeedAsync(DemoRig.Who);
         var controller = Controller(rig);
 
-        await controller.ClearDemoData(CancellationToken.None);
+        await controller.ClearDemoData();
 
         Assert.StartsWith("Demo data cleared: 9 batteries removed; ", (string)controller.TempData["StatusMessage"]!, StringComparison.Ordinal);
         Assert.Null(controller.TempData["GeneratedCredentials"]);
@@ -80,7 +80,7 @@ public sealed class DemoCardTests(MongoFixture mongo)
             MongoDB.Driver.Builders<MongoDB.Bson.BsonDocument>.Filter.Eq("clusterId", "demo-north"), MongoDB.Driver.Builders<MongoDB.Bson.BsonDocument>.Update.Set("isDemo", true));
         var controller = Controller(rig);
 
-        await controller.ResetDemoData(CancellationToken.None);
+        await controller.ResetDemoData();
 
         Assert.Equal(DppLinks.NotConfigured, controller.TempData["ErrorMessage"]);
         Assert.Equal(1, await rig.Count("clusters"));
@@ -128,6 +128,31 @@ public sealed class DemoCardTests(MongoFixture mongo)
         Assert.Contains("Store these credentials now", window, StringComparison.Ordinal);
         Assert.Contains("These tokens are shown only once.", window, StringComparison.Ordinal);
         Assert.Contains("data-generated-token-copy", window, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ResetAndClear_ShouldFinishEvenWhenTheTabIsClosed()
+    {
+        // Closing the tab cancels the request; the demo data must not stop halfway (owner's point 1, redesign R1).
+        foreach (var action in new[] { nameof(AdminController.ResetDemoData), nameof(AdminController.ClearDemoData) })
+        {
+            Assert.DoesNotContain(typeof(AdminController).GetMethod(action)!.GetParameters(), parameter => parameter.ParameterType == typeof(CancellationToken));
+        }
+    }
+
+    [Fact]
+    public void TheDemoButtons_ShouldSayTheyAreWorkingOnceConfirmed()
+    {
+        var page = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
+        var card = page[page.IndexOf("data-demo-data-card", StringComparison.Ordinal)..page.IndexOf("@if (selectedTab == \"users\")", StringComparison.Ordinal)];
+        var script = File.ReadAllText(DppTestFiles.RepoFile("web", "wwwroot", "js", "bp-admin-pages.js"));
+
+        Assert.Equal(2, card.Split("data-confirm-busy=\"").Length - 1);
+        Assert.Contains("data-confirm-busy=\"Resetting the demo data… This takes about 2 minutes. Keep this page open; it reloads when done.\"", card, StringComparison.Ordinal);
+        Assert.Contains("data-confirm-busy=\"Clearing the demo data… This takes about a minute. Keep this page open; it reloads when done.\"", card, StringComparison.Ordinal);
+        Assert.Contains("const busy = pendingButton?.dataset.confirmBusy;", script, StringComparison.Ordinal);
+        Assert.Contains("confirmSubmit.disabled = true;", script, StringComparison.Ordinal);
+        Assert.Contains("if (confirmSubmit?.disabled)", script, StringComparison.Ordinal);
     }
 
     private sealed class NoTempDataStorage : ITempDataProvider
