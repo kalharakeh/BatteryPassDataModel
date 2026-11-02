@@ -148,11 +148,24 @@ public sealed class DemoCardTests(MongoFixture mongo)
         var script = File.ReadAllText(DppTestFiles.RepoFile("web", "wwwroot", "js", "bp-admin-pages.js"));
 
         Assert.Equal(2, card.Split("data-confirm-busy=\"").Length - 1);
-        Assert.Contains("data-confirm-busy=\"Resetting the demo data… This takes about 2 minutes. Keep this page open; it reloads when done.\"", card, StringComparison.Ordinal);
-        Assert.Contains("data-confirm-busy=\"Clearing the demo data… This takes about a minute. Keep this page open; it reloads when done.\"", card, StringComparison.Ordinal);
+        Assert.Contains("data-confirm-busy=\"Resetting the demo data… This takes a little over a minute. Keep this page open; it reloads when done.\"", card, StringComparison.Ordinal);
+        Assert.Contains("data-confirm-busy=\"Clearing the demo data… This takes about 20 seconds. Keep this page open; it reloads when done.\"", card, StringComparison.Ordinal);
         Assert.Contains("const busy = pendingButton?.dataset.confirmBusy;", script, StringComparison.Ordinal);
         Assert.Contains("confirmSubmit.disabled = true;", script, StringComparison.Ordinal);
         Assert.Contains("if (confirmSubmit?.disabled)", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheSeed_ShouldRunTheBatteriesSideBySide()
+    {
+        // On Atlas each database call waits for its round trip (about 1,200 calls: 138 s before this change and 76 s after it, with 45 ms each way). The batteries
+        // don't depend on each other, nor do the accounts on the product data, so they run side by side; each battery's
+        // own steps stay in order and every save still goes through the save rules (redesign R1, point 1).
+        var service = File.ReadAllText(DppTestFiles.RepoFile("web", "Dpp", "Demo", "DemoDataService.cs"));
+
+        Assert.Contains("var accountsSeeded = SeedAccountsAsync(catalogue, accountNotes, cancellationToken);", service, StringComparison.Ordinal);
+        Assert.Contains("var outcomes = await Task.WhenAll(catalogue.Packs.Select(demo => SeedPackAsync(", service, StringComparison.Ordinal);
+        Assert.Contains("private async Task<PackOutcome> SeedPackAsync(", service, StringComparison.Ordinal);
     }
 
     private sealed class NoTempDataStorage : ITempDataProvider

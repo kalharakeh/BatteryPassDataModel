@@ -109,7 +109,9 @@ public sealed class DemoDataService(
             await MarkAccountRecordAsync("clusters", Builders<BsonDocument>.Filter.Eq("clusterId", cluster.Id), cancellationToken);
         }
 
-        var accounts = await SeedAccountsAsync(catalogue, notes, cancellationToken);
+        // The accounts don't depend on the product data, so they are made side by side with it (redesign R1).
+        var accountNotes = new List<string>();
+        var accountsSeeded = SeedAccountsAsync(catalogue, accountNotes, cancellationToken);
 
         var families = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var family in catalogue.Families)
@@ -155,71 +157,16 @@ public sealed class DemoDataService(
             batches[batch.Key] = id;
         }
 
-        var published = 0;
-        var successors = 0;
-        foreach (var demo in catalogue.Packs)
-        {
-            var created = await packCreation.CreateAsync(team, new NewPack(batches[demo.Batch], operators[demo.Operator], demo.Cluster, Values(demo.Values), "form"), cancellationToken);
-            if (created.Pack is null)
-            {
-                var rejected = created.Keys.Where(key => key.Outcome == KeyOutcome.Rejected).Select(key => $"{key.Key} ({key.Message})");
-                notes.Add($"Battery {demo.Serial} wasn't made: {created.Problem} {string.Join("; ", rejected)}".TrimEnd() + ".");
-                continue;
-            }
+        var accounts = await accountsSeeded;
+        notes.AddRange(accountNotes);
 
-            var packId = created.Pack.Id;
-            await MarkAsync(DppStore.Packs, packId, cancellationToken);
-            if (demo.Modules > 0)
-            {
-                await batteries.ImportModulesAsync(who, packId, ModuleExport(demo.Serial, demo.Modules), cancellationToken);
-            }
-
-            if (demo.Publish)
-            {
-                var result = await publication.PublishAsync(team, packId, cancellationToken);
-                if (result.Version is null)
-                {
-                    throw new InvalidOperationException($"The demo battery {demo.Serial} couldn't be published: {result.Problem ?? string.Join("; ", result.Report?.Blocking ?? [])}.");
-                }
-
-                published++;
-                if (demo.History)
-                {
-                    await WriteHistoryAsync(team, packId, demo, cancellationToken);
-                }
-
-                if (demo.NewVersion is not null)
-                {
-                    await SaveAsync(team, TargetKind.Pack, packId, demo.NewVersion, cancellationToken);
-                }
-            }
-
-            if (demo.Accident is not null)
-            {
-                await documents.AddAccidentReportAsync(team, packId, new DocumentUpload("accident-report.pdf", DemoPdf.Make("Accident report", demo.Accident), demo.Accident, "en-GB"), cancellationToken);
-            }
-
-            if (demo.Status is { } status && demo.Publish)
-            {
-                await ChangeStatusAsync(team, packId, demo, status, cancellationToken);
-                if (status.Successor is { } next)
-                {
-                    await MakeSuccessorAsync(team, packId, demo, next, cancellationToken);
-                    successors++;
-                    published++;
-                }
-            }
-
-            if (demo.Mark is { } mark && demo.Publish)
-            {
-                await MarkAsync(team, packId, demo, mark, catalogue, cancellationToken);
-            }
-
-            if (demo.HandOverTo is { } receiver && demo.Publish)
-            {
-                await HandOverAsync(packId, demo, receiver, catalogue, cancellationToken);
-            }
-        }
+        // The batteries don't depend on each other: on a remote database each call waits for its round trip, so they are
+        // made side by side, which about halves the reset (redesign R1, point 1). Each battery's own steps stay in order,
+        // and every save still goes through the save rules.
+        var outcomes = await Task.WhenAll(catalogue.Packs.Select(demo => SeedPackAsync(who, team, demo, batches, operators, catalogue, cancellationToken)));
+        var published = outcomes.Sum(outcome => outcome.Published);
+        var successors = outcomes.Sum(outcome => outcome.Successors);
+        notes.AddRange(outcomes.SelectMany(outcome => outcome.Notes));
 
         demoTokens.AddRange(await SeedTokensAsync(who, catalogue, cancellationToken));
 
@@ -409,6 +356,85 @@ public sealed class DemoDataService(
     }
 
     /// <summary>Seven days of live values every six hours, oldest first, through the API's own write path.</summary>
+    /// <summary>One demo battery's steps, in order: made, its modules, published with its history, its accident report, its
+    /// status change and new passport, its mark and its hand-over. Batteries are seeded side by side (redesign R1).</summary>
+    private async Task<PackOutcome> SeedPackAsync(
+        string who,
+        ChangeSender team,
+        DemoPack demo,
+        IReadOnlyDictionary<string, string> batches,
+        IReadOnlyDictionary<string, string> operators,
+        DemoCatalogue catalogue,
+        CancellationToken cancellationToken)
+    {
+        var published = 0;
+        var successors = 0;
+        var created = await packCreation.CreateAsync(team, new NewPack(batches[demo.Batch], operators[demo.Operator], demo.Cluster, Values(demo.Values), "form"), cancellationToken);
+        if (created.Pack is null)
+        {
+            var rejected = created.Keys.Where(key => key.Outcome == KeyOutcome.Rejected).Select(key => $"{key.Key} ({key.Message})");
+            return new PackOutcome(0, 0, [$"Battery {demo.Serial} wasn't made: {created.Problem} {string.Join("; ", rejected)}".TrimEnd() + "."]);
+        }
+
+        var packId = created.Pack.Id;
+        await MarkAsync(DppStore.Packs, packId, cancellationToken);
+        if (demo.Modules > 0)
+        {
+            await batteries.ImportModulesAsync(who, packId, ModuleExport(demo.Serial, demo.Modules), cancellationToken);
+        }
+
+        if (demo.Publish)
+        {
+            var result = await publication.PublishAsync(team, packId, cancellationToken);
+            if (result.Version is null)
+            {
+                throw new InvalidOperationException($"The demo battery {demo.Serial} couldn't be published: {result.Problem ?? string.Join("; ", result.Report?.Blocking ?? [])}.");
+            }
+
+            published++;
+            if (demo.History)
+            {
+                await WriteHistoryAsync(team, packId, demo, cancellationToken);
+            }
+
+            if (demo.NewVersion is not null)
+            {
+                await SaveAsync(team, TargetKind.Pack, packId, demo.NewVersion, cancellationToken);
+            }
+        }
+
+        if (demo.Accident is not null)
+        {
+            await documents.AddAccidentReportAsync(team, packId, new DocumentUpload("accident-report.pdf", DemoPdf.Make("Accident report", demo.Accident), demo.Accident, "en-GB"), cancellationToken);
+        }
+
+        if (demo.Status is { } status && demo.Publish)
+        {
+            await ChangeStatusAsync(team, packId, demo, status, cancellationToken);
+            if (status.Successor is { } next)
+            {
+                await MakeSuccessorAsync(team, packId, demo, next, cancellationToken);
+                successors++;
+                published++;
+            }
+        }
+
+        if (demo.Mark is { } mark && demo.Publish)
+        {
+            await MarkAsync(team, packId, demo, mark, catalogue, cancellationToken);
+        }
+
+        if (demo.HandOverTo is { } receiver && demo.Publish)
+        {
+            await HandOverAsync(packId, demo, receiver, catalogue, cancellationToken);
+        }
+
+        return new PackOutcome(published, successors, []);
+    }
+
+    /// <summary>What seeding one battery made: published passports, new passports, and notes.</summary>
+    private sealed record PackOutcome(int Published, int Successors, IReadOnlyList<string> Notes);
+
     private async Task WriteHistoryAsync(ChangeSender team, string packId, DemoPack demo, CancellationToken cancellationToken)
     {
         var pack = await store.GetAsync<BatteryPack>(packId, cancellationToken) ?? throw new InvalidOperationException($"The demo battery {demo.Serial} is missing.");
