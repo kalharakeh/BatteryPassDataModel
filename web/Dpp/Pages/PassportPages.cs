@@ -56,6 +56,12 @@ public sealed record PassportPage(
     /// <summary>The first line of a public value in words, or "-".</summary>
     public string Text(int number) => Value(number)?.Lines.FirstOrDefault()?.Text ?? "-";
 
+    /// <summary>
+    /// The battery status (#22) in words for the badge (redesign R3); null unless the reader may see it. It is purchaser
+    /// data, so it comes only from the detail page's audience sections, never from the public ones.
+    /// </summary>
+    public string? BatteryStatus => Audiences.SelectMany(section => section.Values).FirstOrDefault(value => value.Attribute.Number == 22)?.Lines.FirstOrDefault()?.Text;
+
     /// <summary>How many modules the battery has (decision 31): app data, public, not part of the signed passport.</summary>
     public int ModuleCount { get; init; }
 
@@ -88,7 +94,14 @@ public sealed record PassportPage(
 /// One line at the top of both passport pages when the passport isn't simply active, or replaces an earlier one (mock-up
 /// S7, step 4c): what it says, and where it leads (a passport page, or another operator's address).
 /// </summary>
-public sealed record PassportNotice(string Pill, string Text, string? Href, string? LinkText);
+public sealed record PassportNotice(string Pill, string Text, string? Href, string? LinkText)
+{
+    /// <summary>
+    /// An earlier or newer passport of the same battery: drawn calmly, as a small chip beside the passport badge and one
+    /// plain line (redesign R3, owner's answer to Q4), not as a warning.
+    /// </summary>
+    public bool Calm { get; init; }
+}
 
 /// <summary>Where a published passport is: its version, and the battery's ID (#6) and serial number (#11).</summary>
 public sealed record PassportLocation(PassportVersion Version, string Identifier, string SerialNumber)
@@ -285,7 +298,7 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
             ModuleDescription = sources.Model.ModuleDescription,
             Modules = detail && AudienceRules.MaySeePurchaserData(who, clusters) ? sources.Pack.Modules : null,
             Repairs = detail && AudienceRules.MaySeePurchaserData(who, clusters) ? sources.Pack.Repairs.AsEnumerable().Reverse().ToArray() : null,
-            Notice = await NoticeAsync(version, sources.Pack, detail, cancellationToken),
+            Notice = await NoticeAsync(version, sources.Pack, detail, detail && AudienceRules.MaySee(who, AttributeCatalog.ByNumber(22), clusters), cancellationToken),
             MarkReason = detail && sources.Pack.Mark is { Reason: { } reason } mark && version.DppStatus == mark.Status
                 && (who.Roles.Contains(ReaderRole.Team) || who.Roles.Contains(ReaderRole.MarketSurveillance))
                 ? $"{reason} (marked by {(mark.ByRole == "MarketSurveillance" ? "market surveillance" : "the team")}, {mark.By})"
@@ -296,9 +309,11 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
 
     /// <summary>
     /// The S7 line: an inactive passport leads to the battery's new one (Scania's page, or another operator's address);
-    /// a passport that replaces an earlier one leads back to it (design 7.5, step 4c-1). Null for any other passport.
+    /// a passport that replaces an earlier one leads back to it (design 7.5, step 4c-1), both calmly and dated (redesign
+    /// R3). Only a reader who may see the battery status (#22, purchaser data) reads what happened ("Repurposed on …");
+    /// everyone else reads the facts without it. Invalid and marked passports keep a warning. Null for any other passport.
     /// </summary>
-    private async Task<PassportNotice?> NoticeAsync(PassportVersion version, BatteryPack pack, bool detail, CancellationToken cancellationToken)
+    private async Task<PassportNotice?> NoticeAsync(PassportVersion version, BatteryPack pack, bool detail, bool showsStatus, CancellationToken cancellationToken)
     {
         string Href(string identifier) => detail ? DetailHref(identifier) : SummaryHref(identifier);
         if (version.DppStatus == DppStatuses.Invalid)
@@ -313,34 +328,49 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
 
         if (version.DppStatus == DppStatuses.Inactive && pack.Succession is { } succession)
         {
+            var what = Happened(succession);
+            var since = Day(succession.StartedAtUtc);
             if (succession.SuccessorPackId is { } successorId && await store.GetAsync<BatteryPack>(successorId, cancellationToken) is { } successor
                 && PackText(successor, "uniqueProductIdentifier") is { } newIdentifier)
             {
-                return new PassportNotice("Inactive", $"This battery was {succession.Status} and has a new passport.", Href(newIdentifier), "Open the new passport");
+                var text = showsStatus ? $"{what}; the battery continues on its new passport." : $"This battery continues on a new passport since {since}.";
+                return new PassportNotice("Inactive", text, Href(newIdentifier), "New passport") { Calm = true };
             }
 
             if (succession.OtherPassport is { } other)
             {
                 var link = Uri.TryCreate(other, UriKind.Absolute, out var address) && address.Scheme is "https" or "http" ? other : null;
-                return new PassportNotice(
-                    "Inactive",
-                    $"This battery was {succession.Status} by {succession.OtherOperatorInfo ?? succession.OtherOperatorId}, which issued its new passport{(link is null ? $": {other}" : string.Empty)}.",
-                    link,
-                    link);
+                var issuer = succession.OtherOperatorInfo ?? succession.OtherOperatorId;
+                var tail = link is null ? $": {other}" : string.Empty;
+                var text = showsStatus
+                    ? $"{what} by {issuer}, which issued its new passport{tail}."
+                    : $"This battery continues on a new passport issued by {issuer} since {since}{tail}.";
+                return new PassportNotice("Inactive", text, link, link is null ? null : "New passport") { Calm = true };
             }
 
-            return new PassportNotice("Inactive", $"This battery was {succession.Status} and has a new passport.", null, null);
+            return new PassportNotice("Inactive", showsStatus ? $"{what}; the battery has a new passport." : $"This battery has a new passport since {since}.", null, null) { Calm = true };
         }
 
         if (version.DppStatus == DppStatuses.Active && pack.SuccessorOf is { } predecessorId
             && await store.GetAsync<BatteryPack>(predecessorId, cancellationToken) is { } predecessor
             && PackText(predecessor, "uniqueProductIdentifier") is { } oldIdentifier)
         {
-            return new PassportNotice("Active", "This passport replaces an earlier one of the same battery.", Href(oldIdentifier), "Open the earlier passport");
+            var text = predecessor.Succession is not { } earlier
+                ? "This passport replaces an earlier one of the same battery."
+                : showsStatus
+                    ? $"{Happened(earlier)}. Its earlier passport is inactive and stays readable."
+                    : $"Replaces an earlier passport of this battery (since {Day(earlier.StartedAtUtc)}).";
+            return new PassportNotice("Active", text, Href(oldIdentifier), "Earlier passport") { Calm = true };
         }
 
         return null;
     }
+
+    /// <summary>What happened to the battery and when, in words: "Repurposed on 2 Nov 2026". Only for readers of #22.</summary>
+    private static string Happened(Succession succession) =>
+        $"{StatusBadge.Battery(succession.Status)?.Words ?? succession.Status} on {Day(succession.StartedAtUtc)}";
+
+    private static string Day(DateTime utc) => ValueWords.Day(utc.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture));
 
     /// <summary>The attributes' values in the cut passport, in catalogue order; the detail page adds each value's origin.</summary>
     private IReadOnlyList<ShownValue> Shown(JsonObject passport, PassportSources sources, bool detail, IEnumerable<AttributeDefinition> attributes)

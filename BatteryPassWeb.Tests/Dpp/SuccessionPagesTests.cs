@@ -108,9 +108,10 @@ public sealed class SuccessionPagesTests(MongoFixture mongo)
         var oldSummary = (await pages.SummaryAsync(Reader.Anonymous, oldId))!;
         var newDetail = (await pages.DetailAsync(Reader.With("user", ReaderRole.ClusterUser, BatteryTesting.North), newId))!;
 
+        var day = ValueWords.Day(old.Succession.StartedAtUtc.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture));
         Assert.Equal("Inactive", oldSummary.StatusWords);
-        Assert.Equal(new PassportNotice("Inactive", "This battery was repurposed and has a new passport.", PassportPages.SummaryHref(newId), "Open the new passport"), oldSummary.Notice);
-        Assert.Equal(new PassportNotice("Active", "This passport replaces an earlier one of the same battery.", PassportPages.DetailHref(oldId), "Open the earlier passport"), newDetail.Notice);
+        Assert.Equal(new PassportNotice("Inactive", $"This battery continues on a new passport since {day}.", PassportPages.SummaryHref(newId), "New passport") { Calm = true }, oldSummary.Notice); // no #22 word for anyone
+        Assert.Equal(new PassportNotice("Active", $"Repurposed on {day}. Its earlier passport is inactive and stays readable.", PassportPages.DetailHref(oldId), "Earlier passport") { Calm = true }, newDetail.Notice);
     }
 
     [Fact]
@@ -118,11 +119,13 @@ public sealed class SuccessionPagesTests(MongoFixture mongo)
     {
         var rig = await new SuccessionTests(mongo).RepurposedAsync();
         await SuccessionTests.Service(rig).SaveOtherOperatorAsync(PublicationTesting.Team, rig.PackId, new OtherOperator(null, "Example Remanufacturing AB", "https://example.com/p/1"), link: true);
-        var oldId = Text((await rig.Store.GetAsync<BatteryPack>(rig.PackId))!, "uniqueProductIdentifier")!;
+        var old = (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!;
+        var oldId = Text(old, "uniqueProductIdentifier")!;
+        var day = ValueWords.Day(old.Succession!.StartedAtUtc.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture));
 
         var summary = (await PassportPagesTests.Pages(rig).SummaryAsync(Reader.Anonymous, oldId))!;
 
-        Assert.Equal(new PassportNotice("Inactive", "This battery was repurposed by Example Remanufacturing AB, which issued its new passport.", "https://example.com/p/1", "https://example.com/p/1"), summary.Notice);
+        Assert.Equal(new PassportNotice("Inactive", $"This battery continues on a new passport issued by Example Remanufacturing AB since {day}.", "https://example.com/p/1", "New passport") { Calm = true }, summary.Notice);
     }
 
     [Fact]

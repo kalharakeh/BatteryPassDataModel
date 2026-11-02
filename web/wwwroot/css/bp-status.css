@@ -246,6 +246,37 @@
   gap: 8px;
 }
 
+/* A test passport or battery: a small amber tag that explains itself on a tap or a hover (owner's point 7). */
+.bp-test-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 1px 8px;
+  border: 1px solid #fcd34d;
+  border-radius: 999px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.74rem;
+  font-weight: 650;
+  cursor: help;
+}
+
+.bp-test-tag .bp-i {
+  width: 14px;
+  height: 14px;
+}
+
+.bp-test-help {
+  width: min(100% - 32px, 440px);
+}
+
+.bp-test-note {
+  margin: 4px 0 0;
+  color: #92400e;
+  font-size: 0.85rem;
+}
+
 /* ---- Dark ---------------------------------------------------------------------------------------------------------- */
 [data-theme="dark"] .bp-badge { background: transparent; }
 [data-theme="dark"] .bp-badge.is-original { border-color: #64748b; color: #cbd5e1; }
@@ -262,3 +293,5 @@
 [data-theme="dark"] .bp-status-notice { border-color: #7f1d1d; background: rgba(127, 29, 29, 0.25); color: #fecaca; }
 [data-theme="dark"] .bp-status-notice.is-quiet { border-color: var(--bp-border); background: transparent; color: var(--bp-text); }
 [data-theme="dark"] .bp-status-help { background: #101f35; }
+[data-theme="dark"] .bp-test-tag { border-color: #b45309; background: transparent; color: #fcd34d; }
+[data-theme="dark"] .bp-test-note { color: #fcd34d; }

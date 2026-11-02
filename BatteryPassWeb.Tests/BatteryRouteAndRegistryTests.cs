@@ -13,8 +13,8 @@ public sealed class BatteryRouteAndRegistryTests
 
         Assert.Contains("Battery ID", hero);
         Assert.Contains("Passport ID", hero);
-        Assert.Contains(">@Model.StatusWords<", hero); // archived, inactive, … (step 4c-1)
-        Assert.Contains(">Active<", hero);
+        // Active, archived, inactive, … as a badge (step 4c-1, redesign R3).
+        Assert.Contains("StatusBadge.Passport(Model.IsCurrent ? BatteryPassWeb.Dpp.Store.DppStatuses.Active : Model.Version.DppStatus)", hero);
         Assert.Contains("Battery model", hero);
         Assert.DoesNotContain("Battery version", hero);
     }

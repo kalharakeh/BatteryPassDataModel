@@ -8,24 +8,6 @@
     var detailHref = PassportPages.DetailHref(Model.Address);
     var signIn = $"/login?next={Uri.EscapeDataString(detailHref)}";
 }
-@if (Model.IsTest)
-{
-    <p class="bp-warning">Test passport: this battery's IDs start with TEST-. Real ones come once the identifier scheme is chosen.</p>
-}
-@if (Model.Notice is { } notice)
-{
-    <p class="bp-warning" data-passport-notice>
-        <strong>@notice.Pill.</strong> @notice.Text
-        @if (notice.Href is not null)
-        {
-            <a href="@notice.Href">@notice.LinkText</a>
-        }
-        @if (Model.MarkReason is { } reason)
-        {
-            <span class="d-block mt-1">Reason, seen only by the manufacturer's team and market surveillance: @reason</span>
-        }
-    </p>
-}
 @if (Model.MayMarkInvalid)
 {
     <details class="bp-warning" data-mark-invalid>
@@ -46,14 +28,19 @@
                 <span class="bp-summary-title">Battery</span>
                 <h1>@Model.Text(11)</h1>
                 <p class="text-secondary">Model: @Model.Text(10)</p>
-                <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
-                    @if (Model.IsCurrent)
+                @* The two statuses as badges (redesign R3); the battery's only for readers who may see it (#22 is purchaser data). *@
+                <div class="bp-badges mt-3" data-passport-badges>
+                    @if (StatusBadge.Battery(Model.BatteryStatus) is { } battery)
                     {
-                        <span class="bp-status-pill is-active">Active</span>
+                        @await Html.PartialAsync("_StatusBadge", battery)
                     }
-                    else
+                    @await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(Model.IsCurrent ? BatteryPassWeb.Dpp.Store.DppStatuses.Active : Model.Version.DppStatus))
+                    @if (Model.Notice is { Calm: true, Href: { } lineageHref } lineage)
                     {
-                        <span class="bp-status-pill is-inactive">@Model.StatusWords</span>
+                        <a class="bp-chip" href="@lineageHref"><svg class="bp-i" aria-hidden="true"><use href="#i-@(lineage.Pill == "Active" ? "history" : "arrow")" /></svg>@lineage.LinkText</a>
+                    }
+                    @if (!Model.IsCurrent)
+                    {
                         @if (Model.Current is not null)
                         {
                             <a href="@(detail ? PassportPages.DetailHref(Model.Identifier) : PassportPages.SummaryHref(Model.Identifier))" class="bp-report-action" aria-label="Open the current version" title="Open the current version" data-tooltip="Open the current version" data-action-icon="latest">
@@ -65,7 +52,30 @@
                             </a>
                         }
                     }
+                    @if (Model.IsTest)
+                    {
+                        @* A tag, not a banner (owner's point 7); a tap or a hover explains it. *@
+                        @await Html.PartialAsync("_TestTag", "Test passport")
+                    }
+                    @await Html.PartialAsync("_StatusHelp")
                 </div>
+                @if (Model.Notice is { Calm: true } calm)
+                {
+                    <p class="bp-lineage" data-passport-notice><svg class="bp-i" aria-hidden="true"><use href="#i-history" /></svg>@calm.Text</p>
+                }
+                else if (Model.Notice is { } warning)
+                {
+                    <p class="bp-status-notice mt-2" data-passport-notice>
+                        <svg class="bp-i" aria-hidden="true"><use href="#i-alert" /></svg>
+                        <span>
+                            <strong>@warning.Pill.</strong> @warning.Text
+                            @if (Model.MarkReason is { } reason)
+                            {
+                                <span class="d-block mt-1">Reason, seen only by the manufacturer's team and market surveillance: @reason</span>
+                            }
+                        </span>
+                    </p>
+                }
                 @if (!Model.IsCurrent && Model.Current is not null)
                 {
                     <p class="text-secondary small mt-2 mb-0">An older version of this passport. <a href="@(detail ? PassportPages.DetailHref(Model.Identifier) : PassportPages.SummaryHref(Model.Identifier))">Open the current version</a></p>
@@ -76,6 +86,10 @@
                 <span class="bp-summary-title">Identifiers</span>
                 <p class="bp-passport-id"><span class="bp-id-label">Passport ID:</span><span class="bp-id-copy-row"><span class="bp-id-value">@Model.Version.DigitalProductPassportId</span>@await Html.PartialAsync("_CopyIdButton", Model.Version.DigitalProductPassportId)</span></p>
                 <p class="bp-passport-id"><span class="bp-id-label">Battery ID:</span><span class="bp-id-copy-row"><span class="bp-id-value">@Model.Identifier</span>@await Html.PartialAsync("_CopyIdButton", Model.Identifier)</span></p>
+                @if (Model.IsTest && detail)
+                {
+                    <p class="bp-test-note">Test identifiers: these IDs start with TEST-, so this isn't a real passport yet. Real ones come once the identifier scheme is chosen.</p>
+                }
             </section>
 
             <section class="bp-summary-id-panel bp-summary-qr-panel bp-report-identity-panel bp-report-identity-panel--qr">

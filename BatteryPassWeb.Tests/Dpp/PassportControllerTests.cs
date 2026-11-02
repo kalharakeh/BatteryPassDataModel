@@ -178,7 +178,7 @@ public sealed class PassportControllerTests(MongoFixture mongo)
 
         Assert.DoesNotContain("Cluster", hero, StringComparison.Ordinal);
         Assert.DoesNotContain("Battery status", hero, StringComparison.Ordinal);
-        Assert.Contains("Test passport: this battery's IDs start with TEST-.", hero, StringComparison.Ordinal);
+        Assert.Contains("@await Html.PartialAsync(\"_TestTag\", \"Test passport\")", hero, StringComparison.Ordinal); // a tag since redesign R3
         Assert.Contains("Model.PictureHref", hero, StringComparison.Ordinal);
         Assert.Contains("Open the current version", hero, StringComparison.Ordinal);
         Assert.Contains("Model.Audiences", tabs, StringComparison.Ordinal);
