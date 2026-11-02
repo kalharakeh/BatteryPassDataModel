@@ -203,7 +203,8 @@
     <div class="bp-bpage">
         @await Html.PartialAsync("~/Views/Batteries/_BatteryNav.cshtml", new BatteryNav(sections, chosen, href))
         <div class="bp-bpanel">
-            @* Overview: today's Publication card, whole, as what needs you first. *@
+            @* The overview (redesign R4, the owner's improvement 4): where the passport stands, the live values with their last
+               7 days, and what needs doing, once. Today's Publication card, whole, with clearer words. *@
             <div data-section="overview" hidden="@Hidden("overview")">
                 <section class="bp-card bp-console-form-card bp-battery-card" id="publication">
                     <div class="bp-battery-card-head">
@@ -211,13 +212,13 @@
                             <span class="bp-summary-title">Overview</span>
                             @if (publication.Active is { } active)
                             {
-                                <h2>Published since @When(active.PublishedAtUtc)</h2>
-                                <p class="mb-0">Version @active.Number is live. A change to its values publishes a new version, and you're asked first; live values and accident reports update it in place.</p>
+                                <h2>Published · version @active.Number</h2>
+                                <p class="mb-0">Public since @When(active.PublishedAtUtc). Changing one of its values publishes version @(active.Number + 1), and you're asked first; live values and accident reports change it in place.</p>
                             }
                             else if (publication.Latest is { } last)
                             {
-                                <h2>@DppStatuses.Words(last.DppStatus) since @When(last.LastUpdatedUtc)</h2>
-                                <p class="mb-0">Version @last.Number is its last. Nothing on this passport changes any more; it stays readable by its passport and battery IDs.</p>
+                                <h2>@DppStatuses.Words(last.DppStatus) · version @last.Number</h2>
+                                <p class="mb-0">Since @When(last.LastUpdatedUtc). Nothing on this passport changes any more; it stays readable by its passport and battery IDs.</p>
                             }
                             else if (publication.Ready)
                             {
@@ -237,12 +238,15 @@
                     </div>
                     @{ await CardMessagesAsync("publication"); }
 
+                    @await Html.PartialAsync("~/Views/Batteries/_LiveTiles.cshtml", Model.Tiles)
+
                     @if (Model.NeedsYou == 0 && publication.IsPublished)
                     {
                         <ul class="bp-todo"><li class="is-none">Nothing needs you.</li></ul>
                     }
                     @if (publication.Missing.Count > 0)
                     {
+                        <h3 class="h6 mt-3 mb-0">What the passport still needs</h3>
                         <ul class="bp-missing-groups">
                             @foreach (var group in publication.Missing)
                             {
@@ -266,15 +270,6 @@
                         </ul>
                     }
 
-                    <dl class="bp-overview">
-                        @if (Model.Status is { } status)
-                        {
-                            <div><dt><svg class="bp-i" aria-hidden="true"><use href="#i-swap" /></svg>Battery status</dt><dd>@status.StatusWords<small>@(status.Since is { } since ? $"since {ValueWords.Time(since)}{(status.AfterRepair ? ", after a repair" : string.Empty)}" : "since it was made")</small></dd></div>
-                        }
-                        <div><dt><svg class="bp-i" aria-hidden="true"><use href="#i-live" /></svg>Live values</dt><dd>@BatterySections.LiveHint(Model.Pack, Model.Live)<small>Measured on the battery</small></dd></div>
-                        <div><dt><svg class="bp-i" aria-hidden="true"><use href="#i-accident" /></svg>Accident reports</dt><dd>@(Model.AccidentReports.Count == 0 ? "None reported" : Words.Count(Model.AccidentReports.Count, "report"))</dd></div>
-                    </dl>
-
                     <div class="bp-battery-checks">
                         @if (publication.NeededLater.Count > 0)
                         {
@@ -285,7 +280,7 @@
                         }
                         @if (publication.Files.Count == 0)
                         {
-                            <p class="mb-0 bp-batteries-muted">No uploaded files yet.</p>
+                            <p class="mb-0 bp-batteries-muted">No documents uploaded yet.</p>
                         }
                         else
                         {
@@ -293,11 +288,11 @@
                                 <summary>
                                     @if (filesChanged == 0)
                                     {
-                                        <span class="bp-done-note">Uploaded files: @publication.Files.Count of @publication.Files.Count unchanged</span>
+                                        <span class="bp-done-note">Documents: @publication.Files.Count, all unchanged since they were uploaded</span>
                                     }
                                     else
                                     {
-                                        <span class="bp-missing-note">Uploaded files: @filesChanged changed since upload</span>
+                                        <span class="bp-missing-note">Documents: @filesChanged of @publication.Files.Count changed since they were uploaded</span>
                                     }
                                 </summary>
                                 <ul class="bp-file-checks">
@@ -316,7 +311,7 @@
                                         </li>
                                     }
                                 </ul>
-                                <small class="bp-field-help">Each file is checked against the SHA-256 fingerprint taken when it was uploaded.</small>
+                                <small class="bp-field-help">Each document is checked against the SHA-256 fingerprint taken when it was uploaded.</small>
                             </details>
                         }
                     </div>

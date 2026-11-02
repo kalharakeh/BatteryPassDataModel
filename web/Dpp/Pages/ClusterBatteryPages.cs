@@ -26,6 +26,9 @@ public sealed record ClusterBatteryPage(
     /// <summary>The battery status card (step 4b), shared with the team's page.</summary>
     public StatusCardView? Status { get; init; }
 
+    /// <summary>The overview's tiles, as on the team's page (redesign R4).</summary>
+    public IReadOnlyList<LiveTile> Tiles { get; init; } = [];
+
     /// <summary>The "Hand over" card (step 4d): the waiting hand-over, or the window to ask for one.</summary>
     public HandOverCardView HandOver { get; init; } = new(string.Empty, string.Empty, null, null);
 
@@ -70,7 +73,8 @@ public sealed class ClusterBatteryPages(
     DocumentService documents,
     DocumentStore documentStore,
     ClusterRepository clusters,
-    StatusPages status)
+    StatusPages status,
+    LiveTrends? trends = null)
 {
     public static string BatteryHref(string packId) => $"/cluster-admin/batteries/{Uri.EscapeDataString(packId)}";
 
@@ -131,6 +135,7 @@ public sealed class ClusterBatteryPages(
             await documentStore.ListAsync(TargetKind.Pack, pack.Id, DocumentService.Accidents, cancellationToken))
         {
             Status = await status.CardAsync(sources, active: true, href, forTeam: false, cancellationToken: cancellationToken),
+            Tiles = trends is null ? [] : await trends.TilesAsync(sources.Pack, sources.Model, cancellationToken),
             HandOver = new HandOverCardView($"{href}/handover", serial, waiting, waiting is null ? null : names.GetValueOrDefault(waiting.ToClusterId) ?? waiting.ToClusterId),
         };
     }

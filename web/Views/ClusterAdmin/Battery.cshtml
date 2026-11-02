@@ -112,14 +112,7 @@
                     <span class="bp-summary-title">Overview</span>
                     <h2>@(active is null ? "Not published" : $"Published · version {active.Number}")</h2>
                     <p class="mb-0">Your cluster's battery. Change its status after a repair or when it's used again, keep its live values and accident reports, or hand it over to another customer. The team keeps its passport values.</p>
-                    <dl class="bp-overview">
-                        @if (Model.Status is { } status)
-                        {
-                            <div><dt><svg class="bp-i" aria-hidden="true"><use href="#i-swap" /></svg>Battery status</dt><dd>@status.StatusWords<small>@(status.Since is { } since ? $"since {ValueWords.Time(since)}{(status.AfterRepair ? ", after a repair" : string.Empty)}" : "since it was made")</small></dd></div>
-                        }
-                        <div><dt><svg class="bp-i" aria-hidden="true"><use href="#i-live" /></svg>Live values</dt><dd>@BatterySections.LiveHint(Model.Pack, Model.Live)<small>Measured on the battery</small></dd></div>
-                        <div><dt><svg class="bp-i" aria-hidden="true"><use href="#i-accident" /></svg>Accident reports</dt><dd>@(Model.AccidentReports.Count == 0 ? "None reported" : Words.Count(Model.AccidentReports.Count, "report"))</dd></div>
-                    </dl>
+                    @await Html.PartialAsync("~/Views/Batteries/_LiveTiles.cshtml", Model.Tiles)
                 </section>
             </div>
             @if (Model.Status is { } statusCard)

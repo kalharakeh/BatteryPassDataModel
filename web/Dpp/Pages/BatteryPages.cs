@@ -118,6 +118,9 @@ public sealed record BatteryPage(
     /// <summary>The receiving cluster's name while a hand-over waits for its answer (step 4d); null otherwise.</summary>
     public string? HandOverTo { get; init; }
 
+    /// <summary>The overview's tiles: state of charge, cycles, temperature and capacity fade, with their last 7 days (redesign R4).</summary>
+    public IReadOnlyList<LiveTile> Tiles { get; init; } = [];
+
     /// <summary>The team's "Passport status" card (mock-up S5, step 4c-2): invalid, marked for deletion, and their undo.</summary>
     public PassportMarkView Marks => new(
         Publication.Active is not null ? DppStatuses.Active : Publication.Latest?.DppStatus,
@@ -191,7 +194,8 @@ public sealed class BatteryPages(
     DppLinks links,
     ClusterRepository clusters,
     ApplicationAuditService audit,
-    StatusPages status)
+    StatusPages status,
+    LiveTrends? trends = null)
 {
     public const string ClusterChangedEvent = "dpp.pack-cluster-changed";
     public const string ModulesSetEvent = "dpp.pack-modules-set";
@@ -420,6 +424,7 @@ public sealed class BatteryPages(
             new RemovalView($"{href}/remove", versions.Count > 0 ? "its passport is published, so it stays with its versions." : null))
         {
             Status = await status.CardAsync(sources, active is not null, href, forTeam: true, cancellationToken: cancellationToken),
+            Tiles = trends is null ? [] : await trends.TilesAsync(sources.Pack, sources.Model, cancellationToken),
             HandOverTo = await store.FindWaitingHandOverAsync(packId, cancellationToken) is { } waiting
                 ? clusterChoices.FirstOrDefault(cluster => string.Equals(cluster.Id, waiting.ToClusterId, StringComparison.OrdinalIgnoreCase))?.Name ?? waiting.ToClusterId
                 : null,

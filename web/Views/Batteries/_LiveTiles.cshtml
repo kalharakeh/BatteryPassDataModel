@@ -1,0 +1,24 @@
+@using BatteryPassWeb.Dpp.Pages
+@model IReadOnlyList<LiveTile>
+@* The overview's tiles (redesign R4, the owner's improvement 4): each value now, with a small line of its last 7 days. *@
+@if (Model.Count > 0)
+{
+    <div class="bp-tiles">
+        @foreach (var tile in Model)
+        {
+            <div class="bp-tile">
+                <span class="bp-tile-title">@tile.Title</span>
+                <strong class="bp-tile-value">@tile.Shown</strong>
+                @if (tile.Line(140, 36) is { } line)
+                {
+                    <svg class="bp-spark" viewBox="0 0 140 36" preserveAspectRatio="none" role="img" aria-label="@tile.TrendWords"><polyline points="@line" /></svg>
+                }
+                else
+                {
+                    <span class="bp-tile-flat">@tile.TrendWords</span>
+                }
+                <small>@tile.Note</small>
+            </div>
+        }
+    </div>
+}

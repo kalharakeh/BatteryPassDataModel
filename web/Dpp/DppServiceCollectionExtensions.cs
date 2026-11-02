@@ -49,6 +49,7 @@ public static class DppServiceCollectionExtensions
         services.AddSingleton<RecordEditor>();
         services.AddSingleton<ProductDataPages>();
         services.AddSingleton<StatusPages>();
+        services.AddSingleton<LiveTrends>();
         services.AddSingleton<BatteryPages>();
         services.AddSingleton<ClusterBatteryPages>();
         services.AddSingleton<DppReaders>();
