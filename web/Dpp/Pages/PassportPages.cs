@@ -160,7 +160,8 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
 
     /// <summary>
     /// The published version a battery ID (#6), passport ID (#5) or serial number (#11) names; null when there is none.
-    /// A serial number counts only when exactly one published battery has it.
+    /// A serial number counts only when exactly one published battery has it: the one with an active passport, else (an
+    /// invalid or marked passport, redesign R1) the one whose latest version is published.
     /// </summary>
     public async Task<PassportVersion?> FindAsync(string? id, CancellationToken cancellationToken = default)
     {
@@ -181,12 +182,25 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
             return await store.GetActiveVersionAsync(pack.Id, cancellationToken) ?? await store.GetLatestVersionAsync(pack.Id, cancellationToken);
         }
 
+        var candidates = await store.FindPacksBySerialNumberAsync(text, cancellationToken);
         var published = new List<PassportVersion>();
-        foreach (var candidate in await store.FindPacksBySerialNumberAsync(text, cancellationToken))
+        foreach (var candidate in candidates)
         {
             if (await store.GetActiveVersionAsync(candidate.Id, cancellationToken) is { } active)
             {
                 published.Add(active);
+            }
+        }
+
+        if (published.Count == 0)
+        {
+            // Marking a passport invalid leaves it no active version; it stays findable and says so (owner's point 10b).
+            foreach (var candidate in candidates)
+            {
+                if (await store.GetLatestVersionAsync(candidate.Id, cancellationToken) is { } latest)
+                {
+                    published.Add(latest);
+                }
             }
         }
 

@@ -70,6 +70,22 @@ public sealed class PassportMarkPagesTests(MongoFixture mongo)
     }
 
     [Fact]
+    public async Task AnInvalidPassport_ShouldStillBeFoundByItsSerialNumber()
+    {
+        // Point 10b: marking it invalid leaves no active version, and the search said "No published battery passport was found".
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
+        await PassportMarkTests.Service(rig).MarkInvalidAsync(ChangeSender.MarketSurveillance("msa@example.com"), rig.PackId, Reason);
+        var pages = PassportPagesTests.Pages(rig);
+
+        var found = await pages.FindAsync("VPC8C05-6788");
+        var located = (await pages.LocateAsync("VPC8C05-6788"))!;
+
+        Assert.Equal(DppStatuses.Invalid, found!.DppStatus);
+        Assert.Equal(PassportPagesTests.Identifier(rig), located.Identifier);
+        Assert.Equal("Invalid", (await pages.SummaryAsync(Reader.Anonymous, located.Address))!.Notice!.Pill);
+    }
+
+    [Fact]
     public async Task MarketSurveillance_ShouldMarkInvalidFromTheDetailPageAndNobodyElse()
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
