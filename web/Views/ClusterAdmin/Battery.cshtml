@@ -1,66 +1,160 @@
+@using BatteryPassWeb.Controllers
+@using BatteryPassWeb.Dpp.Identifiers
 @using BatteryPassWeb.Dpp.Pages
+@inject IIdentifierScheme Identifiers
 @model ClusterBatteryPage
-@* The cluster admin's battery page (step 4a, mock-up S2): the team page's shared cards, without what only the team does. *@
+@* The cluster admin's battery page (step 4a, mock-up S2), in the team page's layout (redesign R4, mock-up F1): the same
+   header and side menu, without what only the team does. *@
 @{
     ViewData["Title"] = $"Battery {Model.SerialNumber}";
     var active = Model.Versions.Select(row => row.Version).FirstOrDefault(version => version.DppStatus == BatteryPassWeb.Dpp.Store.DppStatuses.Active);
     var batteryKey = Uri.EscapeDataString(Model.Identifier);
+    var card = (TempData.Peek(BatteriesController.CardKey) ?? ViewData[BatteriesController.CardKey]) as string;
+    var sections = Model.Sections;
+    var chosen = BatterySections.Chosen(sections, Context.Request.Query["section"], card, valuesMessage: false);
+    bool Hidden(string id) => id != chosen;
+    var testIds = Identifiers.IsTestIdentifier(Model.Identifier);
 }
 
-<main class="bp-page bp-admin-page">
+<main class="bp-page bp-admin-page bp-battery-page">
     <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
     <nav class="bp-breadcrumb" aria-label="Breadcrumb">
         <a href="/registry">Registry</a>
         <span aria-current="page">@Model.SerialNumber</span>
     </nav>
 
-    <header class="bp-page-heading bp-battery-heading">
-        <span class="bp-summary-title">Battery</span>
-        <div class="bp-battery-title">
-            <h1>@Model.SerialNumber</h1>
-            @if (active is not null)
+    <header class="bp-bh">
+        @* The picture is a real picture, a column from the label down to the facts, with the text beside it
+           (owner's feedback, 2 Nov 2026); the actions and links stay below, across the header. *@
+        <div class="bp-bh-main@(Model.PictureHref is null ? " no-picture" : string.Empty)">
+            @if (Model.PictureHref is { } picture)
             {
-                <span class="bp-field-marker is-published">Published · version @active.Number</span>
+                <div class="bp-bh-picture"><img src="@picture" alt="Picture of the @Model.Sources.Model.Name battery model" /></div>
             }
+            <div class="bp-bh-id">
+                <span class="bp-summary-title">Battery · @Model.Sources.Model.Name of @Model.Family.Name</span>
+                <h1>@Model.SerialNumber</h1>
+                <div class="bp-badges">
+                    @if (StatusBadge.Battery(Model.Status?.Status) is { } battery)
+                    {
+                        @await Html.PartialAsync("_StatusBadge", battery)
+                    }
+                    @await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(active?.DppStatus).With(active is null ? null : $"· version {active.Number}"))
+                    @if (testIds)
+                    {
+                        @await Html.PartialAsync("_TestTag", "Test ID")
+                    }
+                    @await Html.PartialAsync("_StatusHelp")
+                </div>
+                @if (Model.Status?.Predecessor is { } replaced)
+                {
+                    <p class="bp-lineage"><svg class="bp-i" aria-hidden="true"><use href="#i-history" /></svg>New passport of @replaced.SerialNumber. Its <a href="/dpp/@batteryKey/detail" target="_blank" rel="noreferrer">detail page</a> links the earlier one.</p>
+                }
+            </div>
+            <div class="bp-bh-facts-row">
+                <dl class="bp-bh-facts">
+                    <div class="bp-bh-fact-id">
+                        <dt>Battery ID <span class="bp-attr-number">#6</span></dt>
+                        <dd><span class="bp-id-copy-row"><span class="bp-id-value" title="@Model.Identifier">@BatteryPages.ShortId(Model.Identifier)</span>@await Html.PartialAsync("_CopyIdButton", Model.Identifier)</span></dd>
+                    </div>
+                </dl>
+                <details class="bp-bh-details" open data-fold-on-phone>
+                    <summary>More details</summary>
+                    <dl class="bp-bh-facts">
+                        <div><dt>Batch</dt><dd title="@Model.BatchLabel">@Model.BatchLabel</dd></div>
+                        <div><dt>Cluster</dt><dd title="@Model.ClusterLabel">@Model.ClusterLabel</dd></div>
+                    </dl>
+                </details>
+            </div>
         </div>
-        <p class="mb-0">Model @Model.Sources.Model.Name of @Model.Family.Name, made at @Model.Sources.Site.Name in @Model.Sources.Batch.Year.</p>
-        <nav class="bp-battery-links" aria-label="This battery elsewhere">
-            <a href="/dpp/@batteryKey" target="_blank" rel="noreferrer">Public summary</a>
-            <a href="/dpp/@batteryKey/detail" target="_blank" rel="noreferrer">Detail page</a>
-            <a href="@ReaderPages.AccidentsHref(Model.Pack.Id)">Accident page</a>
-        </nav>
-        <dl class="bp-battery-facts">
-            <div class="bp-battery-fact-wide">
-                <dt>Battery ID <span class="bp-attr-number">#6</span></dt>
-                <dd><span class="bp-id-copy-row"><span class="bp-id-value">@Model.Identifier</span>@await Html.PartialAsync("_CopyIdButton", Model.Identifier)</span></dd>
-            </div>
-            <div>
-                <dt>Batch</dt>
-                <dd>@Model.BatchLabel</dd>
-            </div>
-            <div>
-                <dt>Cluster</dt>
-                <dd>@Model.ClusterLabel</dd>
-            </div>
-            <div>
-                <dt>Serial number <span class="bp-attr-number">#11</span></dt>
-                <dd>@Model.SerialNumber</dd>
-            </div>
-        </dl>
+
+        @* The page opens only while the passport is active (step 4a): an invalid or inactive battery shows on the Registry
+           row and the detail page instead. A waiting hand-over is one line here, with its one Cancel (redesign R4). *@
+        @if (Model.HandOver.Waiting is { } waiting)
+        {
+            <form method="post" action="@Model.HandOver.Action/cancel" class="bp-status-notice is-quiet">
+                @Html.AntiForgeryToken()
+                <svg class="bp-i" aria-hidden="true"><use href="#i-handover" /></svg>
+                <span>Hand-over to <strong>@Model.HandOver.ReceiverName</strong> waiting for their answer, asked @ValueWords.Time(waiting.AskedAtUtc).</span>
+                <button type="submit" class="bp-secondary-button bp-button-compact">Cancel the hand-over</button>
+            </form>
+        }
+        <div class="bp-bh-bar">
+            @if (Model.Status is { CanChange: true } || Model.Status is { MayAddNote: true })
+            {
+                <div class="bp-bh-actions" data-action-bar>
+                    @if (Model.Status is { CanChange: true })
+                    {
+                        <button type="button" class="bp-primary-button bp-with-icon" data-open-dialog="status-dialog"><svg class="bp-i" aria-hidden="true"><use href="#i-swap" /></svg>Change status</button>
+                    }
+                    @if (Model.Status is { MayAddNote: true })
+                    {
+                        <button type="button" class="bp-secondary-button bp-with-icon" data-open-dialog="note-dialog"><svg class="bp-i" aria-hidden="true"><use href="#i-note" /></svg>Add a note</button>
+                    }
+                </div>
+            }
+            <a class="bp-secondary-button bp-with-icon" href="@Model.Href?section=handover"><svg class="bp-i" aria-hidden="true"><use href="#i-handover" /></svg>Hand over…</a>
+            <nav class="bp-bh-open" aria-label="This battery elsewhere">
+                <a class="bp-ilink" href="/dpp/@batteryKey" target="_blank" rel="noreferrer" title="The public summary, as anyone sees it"><svg class="bp-i" aria-hidden="true"><use href="#i-globe" /></svg>Public page</a>
+                <a class="bp-ilink" href="/dpp/@batteryKey/detail" target="_blank" rel="noreferrer" title="Everything your cluster sees"><svg class="bp-i" aria-hidden="true"><use href="#i-doc" /></svg>Detail page</a>
+                <a class="bp-ilink" href="@ReaderPages.AccidentsHref(Model.Pack.Id)" title="The battery's accident reports, as readers see them"><svg class="bp-i" aria-hidden="true"><use href="#i-accident" /></svg>Accident page</a>
+            </nav>
+        </div>
     </header>
 
-    @if (Model.Status is { } status)
+    @await Html.PartialAsync("~/Views/ProductData/_Messages.cshtml")
+
+    <div class="bp-bpage">
+        @await Html.PartialAsync("~/Views/Batteries/_BatteryNav.cshtml", new BatteryNav(sections, chosen, Model.Href))
+        <div class="bp-bpanel">
+            <div data-section="overview" hidden="@Hidden("overview")">
+                <section class="bp-card bp-console-form-card bp-battery-card" id="overview">
+                    <span class="bp-summary-title">Overview</span>
+                    <h2>@(active is null ? "Not published" : $"Published · version {active.Number}")</h2>
+                    <p class="mb-0">Your cluster's battery. Change its status after a repair or when it's used again, keep its live values and accident reports, or hand it over to another customer. The team keeps its passport values.</p>
+                    <dl class="bp-overview">
+                        @if (Model.Status is { } status)
+                        {
+                            <div><dt><svg class="bp-i" aria-hidden="true"><use href="#i-swap" /></svg>Battery status</dt><dd>@status.StatusWords<small>@(status.Since is { } since ? $"since {ValueWords.Time(since)}{(status.AfterRepair ? ", after a repair" : string.Empty)}" : "since it was made")</small></dd></div>
+                        }
+                        <div><dt><svg class="bp-i" aria-hidden="true"><use href="#i-live" /></svg>Live values</dt><dd>@BatterySections.LiveHint(Model.Pack, Model.Live)<small>Measured on the battery</small></dd></div>
+                        <div><dt><svg class="bp-i" aria-hidden="true"><use href="#i-accident" /></svg>Accident reports</dt><dd>@(Model.AccidentReports.Count == 0 ? "None reported" : Words.Count(Model.AccidentReports.Count, "report"))</dd></div>
+                    </dl>
+                </section>
+            </div>
+            @if (Model.Status is { } statusCard)
+            {
+                <div data-section="status" hidden="@Hidden("status")">
+                    @await Html.PartialAsync("~/Views/Batteries/_StatusCard.cshtml", statusCard)
+                </div>
+            }
+            <div data-section="live" hidden="@Hidden("live")">
+                @await Html.PartialAsync("~/Views/Batteries/_LiveValuesCard.cshtml", Model.Cards)
+            </div>
+            <div data-section="accidents" hidden="@Hidden("accidents")">
+                @await Html.PartialAsync("~/Views/Batteries/_AccidentsCard.cshtml", Model.Cards)
+            </div>
+            <div data-section="handover" hidden="@Hidden("handover")">
+                @await Html.PartialAsync("~/Views/ClusterAdmin/_HandOverCard.cshtml", Model.HandOver)
+            </div>
+            <div data-section="modules" hidden="@Hidden("modules")">
+                @await Html.PartialAsync("~/Views/Batteries/_ModulesCard.cshtml", Model.Cards)
+            </div>
+            <div data-section="versions" hidden="@Hidden("versions")">
+                @await Html.PartialAsync("~/Views/Batteries/_VersionsCard.cshtml", Model.Cards)
+            </div>
+        </div>
+    </div>
+
+    @* The windows, at page level: one inside a hidden section can't open. *@
+    @if (Model.Status is { } statusWindows)
     {
-        @await Html.PartialAsync("~/Views/Batteries/_StatusCard.cshtml", status)
+        @await Html.PartialAsync("~/Views/Batteries/_StatusDialog.cshtml", statusWindows)
     }
-    @await Html.PartialAsync("~/Views/Batteries/_LiveValuesCard.cshtml", Model.Cards)
-    @await Html.PartialAsync("~/Views/Batteries/_AccidentsCard.cshtml", Model.Cards)
-    @await Html.PartialAsync("~/Views/ClusterAdmin/_HandOverCard.cshtml", Model.HandOver)
-    @await Html.PartialAsync("~/Views/Batteries/_ModulesCard.cshtml", Model.Cards)
-    @await Html.PartialAsync("~/Views/Batteries/_VersionsCard.cshtml", Model.Cards)
 </main>
 
 @section Scripts {
     <script src="~/js/bp-record-editor.js" asp-append-version="true"></script>
     <script src="~/js/bp-status-change.js" asp-append-version="true"></script>
+    <script src="~/js/bp-battery-page.js" asp-append-version="true"></script>
 }

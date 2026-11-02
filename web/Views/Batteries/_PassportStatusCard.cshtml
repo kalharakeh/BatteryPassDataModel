@@ -1,24 +1,22 @@
 @using BatteryPassWeb.Dpp.Pages
 @using BatteryPassWeb.Dpp.Store
 @model PassportMarkView
-@* The team's "Passport status" card (step 4c-2, mock-up S5): mark the passport invalid or for deletion, or undo it. *@
-<details class="bp-card bp-danger-zone mt-4" id="passport-status" open="@(Model.Marked)">
-    <summary><strong>Passport status</strong> <span class="text-secondary">· @DppStatuses.Words(Model.Status ?? "draft").ToLowerInvariant()</span></summary>
+@* The team's "Passport status" section (step 4c-2, mock-up S5; redesign R4): mark the passport invalid or for deletion.
+   Once marked, the header's red line carries the reason and the one Undo button (owner's point 17). *@
+<section class="bp-card bp-console-form-card bp-danger-zone" id="passport-status">
+    <span class="bp-summary-title">Passport status <span class="bp-attr-number">#2</span></span>
+    <div class="bp-battery-status mb-2">@await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(Model.Status))</div>
     @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "passport-status")
     @if (Model.Marked)
     {
-        <p class="mt-2 mb-2">
+        <p class="mb-1">
             <strong>@DppStatuses.Words(Model.Status!) since @(Model.Mark is { } mark ? ValueWords.Time(mark.AtUtc) : "—").</strong>
             @if (Model.Mark is { } why)
             {
                 <span>Marked by @(why.ByRole == "MarketSurveillance" ? "market surveillance" : "the team") (@why.By)@(why.Reason is null ? "." : $": {why.Reason}")</span>
             }
         </p>
-        <form method="post" action="@Model.Action/undo">
-            @Html.AntiForgeryToken()
-            <div class="bp-danger-actions"><button type="submit" class="bp-secondary-button">Undo: make the passport active again</button></div>
-            <small class="bp-field-help d-block">The reason stays in the audit log.</small>
-        </form>
+        <p class="bp-help-text mb-0">To undo it, use <strong>Undo</strong> on the red line at the top of the page. The reason stays in the audit log.</p>
     }
     else
     {
@@ -41,4 +39,4 @@
             </div>
         </form>
     }
-</details>
+</section>

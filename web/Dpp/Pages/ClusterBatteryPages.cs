@@ -32,6 +32,9 @@ public sealed record ClusterBatteryPage(
     /// <summary>The team page's cards, without what only the team does (step 4a).</summary>
     public BatteryCards Cards => new(Pack, Href, Live, AccidentReports, Versions, Live.Languages, ForTeam: false);
 
+    /// <summary>The header's thumbnail, as on the team's page.</summary>
+    public string? PictureHref => BatteryPages.PictureHref(Sources.Model, Family);
+
     /// <summary>The page's side menu (redesign R4, option B), like the team's without what only the team does.</summary>
     public IReadOnlyList<BatterySection> Sections
     {

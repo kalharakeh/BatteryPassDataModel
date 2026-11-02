@@ -153,7 +153,8 @@ public sealed class HandOverPagesTests(MongoFixture mongo)
         Assert.Contains("name=\"checkedId\"", card, StringComparison.Ordinal);
         Assert.Contains("TempData[ClusterBatteriesController.HandOverToKey] as string", card, StringComparison.Ordinal); // read once, so the window opens only right after "Find the cluster"
         Assert.DoesNotContain("TempData.Peek", card, StringComparison.Ordinal);
-        Assert.Contains("Cancel the hand-over", card, StringComparison.Ordinal);
+        Assert.Contains("Cancel the hand-over</button>", cluster, StringComparison.Ordinal); // one Cancel, on the header's line (redesign R4)
+        Assert.DoesNotContain("/cancel", card, StringComparison.Ordinal);
         Assert.Contains("foreach (var waiting in Model.Waiting)", registry, StringComparison.Ordinal);
         Assert.Contains("bp-handover-row", registry, StringComparison.Ordinal);
         Assert.Contains("Model.HandOverTo is { } receiver", battery, StringComparison.Ordinal);

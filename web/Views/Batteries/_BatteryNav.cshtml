@@ -1,0 +1,36 @@
+@using BatteryPassWeb.Dpp.Pages
+@model BatteryNav
+@* The battery page's side menu (redesign R4, option B, like the old app's): one section at a time. Each entry is a link,
+   so it works without JavaScript; bp-battery-page.js switches sections without a reload. *@
+@* On a phone a picker at the top chooses the section instead of the stacked menu (owner's improvement 7); without
+   JavaScript its button shows the chosen one. *@
+<form method="get" action="@Model.Href" class="bp-bpicker">
+    <label>
+        <span>Section</span>
+        <select name="section" data-section-picker>
+            @foreach (var entry in Model.Sections)
+            {
+                <option value="@entry.Id" selected="@(entry.Id == Model.Chosen)">@entry.Title@(entry.Count is { } count ? $" ({count})" : string.Empty)</option>
+            }
+        </select>
+    </label>
+    <noscript><button type="submit" class="bp-secondary-button bp-button-compact">Show</button></noscript>
+</form>
+<nav class="bp-edit-nav bp-bnav" aria-label="Battery sections" data-battery-nav>
+    @foreach (var entry in Model.Sections)
+    {
+        var open = entry.Id == Model.Chosen;
+        <a href="@Model.Href?section=@entry.Id" class="bp-edit-nav-button@(open ? " is-active" : string.Empty)" aria-current="@(open ? "page" : null)" data-section-link="@entry.Id">
+            <svg class="bp-i" aria-hidden="true"><use href="#i-@entry.Icon" /></svg>
+            <span class="bp-edit-nav-label">@entry.Title</span>
+            @if (entry.Count is { } count)
+            {
+                <span class="bp-count">@count</span>
+            }
+            @if (entry.Hint is { } hint)
+            {
+                <small>@hint</small>
+            }
+        </a>
+    }
+</nav>

@@ -15,11 +15,8 @@
         <span class="bp-summary-title">Hand over <em class="bp-field-marker">Not passport data</em></span>
         <h2>Waiting for @Model.ReceiverName</h2>
         <p class="mb-2">Asked @ValueWords.Time(waiting.AskedAtUtc). The battery stays with your cluster until they accept.</p>
+        <p class="bp-help-text mb-0">To cancel it, use <strong>Cancel the hand-over</strong> on the line at the top of the page.</p>
         @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "handover")
-        <form method="post" action="@Model.Action/cancel">
-            @Html.AntiForgeryToken()
-            <div class="bp-dialog-actions"><button type="submit" class="bp-secondary-button">Cancel the hand-over</button></div>
-        </form>
     }
     else
     {

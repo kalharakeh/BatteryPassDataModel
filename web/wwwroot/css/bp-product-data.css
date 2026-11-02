@@ -2871,3 +2871,548 @@ main .bp-field-marker.is-published {
 .bp-handover-row .bp-dialog-actions {
   margin: 0;
 }
+
+/* ==== The battery pages' layout (redesign R4, option B, mock-up H and F1; the owner's improvements of 2 Nov 2026) =====
+   A short header: the model's picture, the battery and its two statuses, its facts, and one toolbar row with what to do
+   and where to open it. Then a slim side menu that shows one section at a time, like the old app's. On a phone: a
+   section picker, the facts folded, and the actions in a bar at the bottom. Badges, chips and notice lines come from
+   bp-status.css. */
+.bp-bh {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 16px 20px;
+  border: 1px solid var(--bp-border);
+  border-radius: 14px;
+  background: var(--bp-surface);
+}
+
+/* The picture, a column from the label down to the facts; the text top-aligned beside it. It is sized by its height
+   at its own shape (the 7M is tall, the 13M wide), the same as the public hero's picture (bp-status.css). */
+.bp-bh-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "picture id"
+    "picture facts";
+  gap: 10px 22px;
+  align-items: start;
+}
+
+.bp-bh-main.no-picture {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "id"
+    "facts";
+}
+
+.bp-bh-main > .bp-bh-id {
+  grid-area: id;
+}
+
+.bp-bh-main > .bp-bh-facts-row {
+  grid-area: facts;
+}
+
+.bp-bh-picture {
+  grid-area: picture;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  border: 1px solid var(--bp-border);
+  border-radius: 12px;
+  background: #f3f6fa;
+}
+
+/* The box fits the picture's visible shape: bp-battery-page.js cuts transparent margins off, hiding it meanwhile. */
+.bp-bh-picture img.is-trimming {
+  opacity: 0;
+}
+
+.bp-bh-picture img {
+  display: block;
+  width: auto;
+  height: 160px;
+  max-width: 220px;
+  object-fit: contain;
+}
+
+.bp-bh-id {
+  min-width: 0;
+}
+
+.bp-bh h1 {
+  margin: 2px 0 6px;
+  font-size: 1.6rem;
+  overflow-wrap: anywhere;
+}
+
+/* The facts: one line each, the long battery ID shortened in the middle (its copy button and tooltip keep it whole). */
+.bp-bh-facts-row {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 10px 22px;
+  padding-top: 10px;
+  border-top: 1px solid var(--bp-border);
+}
+
+.bp-bh-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+  gap: 8px 22px;
+  margin: 0;
+}
+
+.bp-bh-facts div {
+  min-width: 0;
+}
+
+.bp-bh-facts dt {
+  color: var(--bp-muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.bp-bh-facts dd {
+  margin: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bp-bh-facts dt .bp-text-button {
+  margin-left: 6px;
+  font-size: 0.78rem;
+}
+
+/* The folded facts: each at its own width on one line, flowing to a next row only when they don't fit. */
+.bp-bh-details .bp-bh-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+}
+
+.bp-bh-details .bp-bh-facts dd {
+  overflow: visible;
+}
+
+.bp-bh-fact-id {
+  grid-column: 1 / -1;
+}
+
+.bp-bh-fact-id dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  overflow: visible;
+}
+
+.bp-bh-fact-id .bp-id-copy-row {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.bp-bh-fact-id .bp-id-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bp-bh-details > summary {
+  display: none;
+}
+
+/* One toolbar row: the actions on the left, the labelled icon links on the right (owner's improvement 3). */
+.bp-bh-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--bp-border);
+}
+
+.bp-bh-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bp-bh-open {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.bp-ilink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 9px;
+  border-radius: 9px;
+  color: var(--bp-text);
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.bp-ilink .bp-i {
+  width: 18px;
+  height: 18px;
+  color: var(--bp-primary);
+}
+
+.bp-ilink:hover,
+.bp-ilink:focus-visible {
+  background: rgba(42, 110, 207, 0.08);
+  color: var(--bp-primary);
+}
+
+/* "More": the risky actions, in a small menu. */
+.bp-more {
+  position: relative;
+}
+
+.bp-more > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.bp-more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.bp-more-list {
+  position: absolute;
+  left: 0;
+  z-index: 5;
+  display: grid;
+  min-width: 270px;
+  margin-top: 6px;
+  padding: 6px;
+  border: 1px solid var(--bp-border);
+  border-radius: 12px;
+  background: var(--bp-surface);
+  box-shadow: 0 10px 28px rgba(10, 40, 80, 0.14);
+}
+
+.bp-more-list a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  color: var(--bp-text);
+  text-decoration: none;
+}
+
+.bp-more-list a:hover {
+  background: rgba(42, 110, 207, 0.08);
+}
+
+.bp-more-list .is-danger {
+  color: var(--bp-danger);
+}
+
+.bp-more-list small {
+  display: block;
+  color: var(--bp-muted);
+  font-size: 0.76rem;
+}
+
+/* The windows at page level keep the card's form styles; the host itself draws nothing. */
+.bp-console-form-card.bp-dialog-host {
+  display: contents;
+}
+
+/* The slim side menu: a coloured edge on the open section, in view while the page scrolls (owner's improvement 5). */
+.bp-bpage {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+  margin-top: 18px;
+}
+
+.bp-bnav {
+  position: sticky;
+  top: 12px;
+  gap: 2px;
+}
+
+.bp-bnav .bp-edit-nav-button {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1px 10px;
+  padding: 8px 10px;
+  border: 0;
+  border-left: 3px solid transparent;
+  border-radius: 0 8px 8px 0;
+  background: transparent;
+  text-decoration: none;
+}
+
+.bp-bnav .bp-edit-nav-button:hover {
+  background: rgba(42, 110, 207, 0.06);
+}
+
+.bp-bnav .bp-edit-nav-button.is-active {
+  border-left-color: var(--bp-primary);
+  background: rgba(42, 110, 207, 0.08);
+  color: var(--bp-primary);
+}
+
+.bp-bnav .bp-edit-nav-button .bp-i {
+  color: var(--bp-primary);
+}
+
+.bp-bnav .bp-edit-nav-button small {
+  grid-column: 2 / -1;
+  color: var(--bp-muted);
+  font-size: 0.74rem;
+  font-weight: 500;
+}
+
+.bp-count {
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgba(110, 130, 159, 0.16);
+  color: var(--bp-text);
+  font-size: 0.72rem;
+}
+
+.bp-bpicker {
+  display: none;
+}
+
+.bp-bpanel > [data-section] > .bp-card:first-child {
+  margin-top: 0 !important;
+}
+
+/* The overview's "Nothing needs you" or what needs doing. */
+.bp-todo {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bp-todo li {
+  padding: 8px 12px;
+  border-left: 3px solid #f59e0b;
+  border-radius: 0 8px 8px 0;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.bp-todo li.is-none {
+  border-left-color: #22c55e;
+  background: rgba(34, 197, 94, 0.07);
+}
+
+.bp-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.bp-overview > div {
+  padding: 12px 14px;
+  border: 1px solid var(--bp-border);
+  border-radius: 12px;
+}
+
+.bp-overview dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--bp-muted);
+  font-size: 0.76rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.bp-overview dd {
+  margin: 6px 0 0;
+}
+
+.bp-overview dd small {
+  display: block;
+  color: var(--bp-muted);
+}
+
+@media (max-width: 767.98px) {
+  .bp-bh {
+    padding: 14px;
+  }
+
+  .bp-bh h1 {
+    font-size: 1.35rem;
+  }
+
+  .bp-bh-facts-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* On a phone the picture is about 100 px tall beside the name; the facts take the full width below. */
+  .bp-bh-main {
+    grid-template-areas:
+      "picture id"
+      "facts facts";
+    gap: 10px 14px;
+  }
+
+  .bp-bh-main.no-picture {
+    grid-template-areas:
+      "id"
+      "facts";
+  }
+
+  .bp-bh-picture {
+    align-self: start;
+    min-width: 0;
+    padding: 6px;
+  }
+
+  .bp-bh-picture img {
+    height: 100px;
+    max-width: 110px;
+  }
+
+  .bp-bh-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* The less used facts fold behind "More details" (owner's improvement 9). */
+  .bp-bh-details > summary {
+    display: inline-block;
+    color: var(--bp-primary);
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .bp-bh-details[open] > summary {
+    margin-bottom: 8px;
+  }
+
+  /* "More" beside the five links, so the header stays short. */
+  .bp-bh-bar {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .bp-bh-bar .bp-more > summary {
+    min-height: 0;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+  }
+
+  .bp-bh-open {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    margin-left: 0;
+  }
+
+  .bp-ilink {
+    flex-direction: column;
+    gap: 3px;
+    padding: 6px 2px;
+    font-size: 0.7rem;
+    text-align: center;
+  }
+
+  /* The actions in a bar at the bottom of the screen; the page leaves room for it (owner's improvement 8). */
+  .bp-bh-actions {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 20;
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    gap: 8px;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--bp-border);
+    background: var(--bp-surface);
+    box-shadow: 0 -6px 18px rgba(10, 40, 80, 0.08);
+  }
+
+  .bp-battery-page {
+    padding-bottom: 84px;
+  }
+
+  .bp-more {
+    position: static;
+  }
+
+  .bp-more-list {
+    left: 14px;
+    right: 14px;
+    min-width: 0;
+  }
+
+  /* A section picker at the top instead of the stacked menu (owner's improvement 7). */
+  .bp-bpage {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    margin-top: 14px;
+  }
+
+  .bp-bnav {
+    display: none;
+  }
+
+  .bp-bpicker {
+    display: block;
+  }
+
+  .bp-bpicker label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-weight: 600;
+  }
+
+  .bp-bpicker select {
+    flex: 1;
+    min-height: 42px;
+    padding: 8px 10px;
+    border: 1px solid var(--bp-border);
+    border-radius: 10px;
+    background: var(--bp-surface);
+    color: var(--bp-text);
+    font: inherit;
+    font-weight: 600;
+  }
+}
+
+[data-theme="dark"] .bp-bh-picture {
+  background: #e9eef5;
+}
+
+[data-theme="dark"] .bp-bnav .bp-edit-nav-button {
+  border-color: transparent;
+  background: transparent;
+  text-decoration: none;
+}
+
+[data-theme="dark"] .bp-bnav .bp-edit-nav-button.is-active {
+  border-left-color: var(--bp-primary);
+  background: rgba(122, 182, 255, 0.1);
+  color: var(--bp-primary);
+}
+

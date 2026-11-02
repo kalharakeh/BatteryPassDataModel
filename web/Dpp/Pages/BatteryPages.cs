@@ -144,6 +144,9 @@ public sealed record BatteryPage(
     /// <summary>What the overview asks the team to do: the missing values by group, the problems, and publishing once ready.</summary>
     public int NeedsYou => Publication.Missing.Count + Publication.Problems.Count + (!Publication.IsPublished && Publication.Ready ? 1 : 0);
 
+    /// <summary>The header's thumbnail: the model's own picture, else its family's; null when neither has one (redesign R4).</summary>
+    public string? PictureHref => BatteryPages.PictureHref(Sources.Model, Family);
+
     /// <summary>The page's side menu (redesign R4, option B): every card, in the order of the work, with a hint or a count.</summary>
     public IReadOnlyList<BatterySection> Sections
     {
@@ -192,6 +195,22 @@ public sealed class BatteryPages(
 {
     public const string ClusterChangedEvent = "dpp.pack-cluster-changed";
     public const string ModulesSetEvent = "dpp.pack-modules-set";
+
+    /// <summary>A battery's picture: its model's own (redesign R2), else its family's (decision 20); null when neither has one.</summary>
+    public static string? PictureHref(BatteryModel model, BatteryFamily? family)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        return model.PictureFileId is not null
+            ? $"/dpp/models/{Uri.EscapeDataString(model.Id)}/picture"
+            : family?.PictureFileId is null ? null : $"/dpp/families/{Uri.EscapeDataString(family.Id)}/picture";
+    }
+
+    /// <summary>A long ID shortened in the middle for a header ("urn:x-battery-pass:TES…3c043"); the copy button keeps it whole.</summary>
+    public static string ShortId(string id)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+        return id.Length <= 36 ? id : $"{id[..24]}…{id[^8..]}";
+    }
 
     public static string BatteryHref(string packId) => $"/admin/batteries/{Uri.EscapeDataString(packId)}";
 
