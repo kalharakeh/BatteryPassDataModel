@@ -151,6 +151,20 @@ public sealed class HandOverTests(MongoFixture mongo)
         Assert.Equal((HandOverStates.Cancelled, "team@example.com"), (cancelled.State, cancelled.AnsweredBy));
     }
 
+    [Fact]
+    public async Task AClusterIdStoredUnnormalised_ShouldStillBeTheSendersAndMoveOnAccept()
+    {
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
+        await rig.Store.SetPackClusterAsync(rig.PackId, $" {BatteryTesting.North.ToUpperInvariant()} ");
+
+        var asked = await Service(rig).AskAsync(NorthAdmin, rig.PackId, BatteryTesting.South, confirm: true);
+        Assert.Null(asked.Problem);
+        Assert.Equal(BatteryTesting.North, asked.HandOver!.FromClusterId);
+        Assert.Null(await Service(rig).AnswerAsync(SouthAdmin, asked.HandOver.Id, accept: true));
+
+        Assert.Equal(BatteryTesting.South, (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!.ClusterId);
+    }
+
     internal static HandOverService Service(PublicationRig rig) =>
         new(rig.Store, new ClusterRepository(rig.Context), new ApplicationAuditService(rig.Context), rig.Clock);
 

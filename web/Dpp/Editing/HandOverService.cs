@@ -50,7 +50,9 @@ public sealed class HandOverService(DppStore store, ClusterRepository clusters, 
             return Refused(NoBattery);
         }
 
-        if (sender.Kind != SenderKind.ClusterAdmin || pack.ClusterId is not { } from || !sender.ClusterIds.Contains(from))
+        // Cluster IDs are compared normalised, as ClusterBatteryPages does (the step 4 wrap-up's follow-up).
+        if (sender.Kind != SenderKind.ClusterAdmin || pack.ClusterId is not { } stored || ClusterRepository.NormalizeClusterId(stored) is not { } from
+            || !sender.ClusterIds.Contains(from))
         {
             return Refused(NotYours);
         }
@@ -106,13 +108,14 @@ public sealed class HandOverService(DppStore store, ClusterRepository clusters, 
             return NotWaiting;
         }
 
-        if (sender.Kind != SenderKind.ClusterAdmin || !sender.ClusterIds.Contains(handOver.ToClusterId))
+        if (sender.Kind != SenderKind.ClusterAdmin || !sender.ClusterIds.Contains(ClusterRepository.NormalizeClusterId(handOver.ToClusterId)))
         {
             return NotTheReceiver;
         }
 
         var pack = await store.GetAsync<BatteryPack>(handOver.PackId, cancellationToken);
-        if (handOver.State != HandOverStates.Waiting || pack?.ClusterId != handOver.FromClusterId)
+        if (handOver.State != HandOverStates.Waiting || pack?.ClusterId is not { } now
+            || ClusterRepository.NormalizeClusterId(now) != ClusterRepository.NormalizeClusterId(handOver.FromClusterId))
         {
             return NotWaiting;
         }
@@ -147,7 +150,7 @@ public sealed class HandOverService(DppStore store, ClusterRepository clusters, 
         }
 
         var mayCancel = sender.Kind == SenderKind.Team
-            || (sender.Kind == SenderKind.ClusterAdmin && sender.ClusterIds.Contains(handOver.FromClusterId));
+            || (sender.Kind == SenderKind.ClusterAdmin && sender.ClusterIds.Contains(ClusterRepository.NormalizeClusterId(handOver.FromClusterId)));
         if (!mayCancel)
         {
             return NotYours;
