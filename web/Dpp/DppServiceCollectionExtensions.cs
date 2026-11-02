@@ -34,6 +34,7 @@ public static class DppServiceCollectionExtensions
         services.AddSingleton<PackCreationService>();
         services.AddSingleton<StatusChangeService>();
         services.AddSingleton<SuccessionService>();
+        services.AddSingleton<PassportMarks>();
         services.AddSingleton<PassportSigner>();
         services.AddSingleton<PublicationChecks>();
         services.AddSingleton<PublicationService>();

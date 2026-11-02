@@ -7,6 +7,9 @@ public enum SenderKind
     Team,
     ClusterAdmin,
     BatterySystemFeed,
+
+    /// <summary>Market surveillance (step 4c-2): marks a passport invalid and changes no value.</summary>
+    MarketSurveillance,
 }
 
 /// <summary>
@@ -23,6 +26,8 @@ public sealed record ChangeSender(SenderKind Kind, string Who, IReadOnlySet<stri
 
     public static ChangeSender Feed(string who, params string[] clusterIds) =>
         new(SenderKind.BatterySystemFeed, who, clusterIds.ToHashSet(StringComparer.Ordinal));
+
+    public static ChangeSender MarketSurveillance(string who) => new(SenderKind.MarketSurveillance, who, new HashSet<string>(StringComparer.Ordinal));
 }
 
 /// <summary>"May this sender change this attribute?" (design 6.1, decisions 9 and 10, J-10).</summary>

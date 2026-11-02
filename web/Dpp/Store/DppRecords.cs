@@ -131,6 +131,26 @@ public sealed class BatteryPack : IDppRecord
 
     /// <summary>The pack whose passport this one replaces (design 7.5); null for a battery placed on the market new.</summary>
     public string? SuccessorOf { get; set; }
+
+    /// <summary>Why the passport is invalid or marked for deletion, by whom and when (step 4c-2); null otherwise.</summary>
+    public PassportMark? Mark { get; set; }
+}
+
+/// <summary>An invalid or marked-for-deletion passport's mark (design 7.6 and 7.7): its reason is seen by the team and market surveillance only.</summary>
+public sealed class PassportMark
+{
+    /// <summary>invalid or marked-for-deletion.</summary>
+    public required string Status { get; init; }
+
+    public string? Reason { get; init; }
+
+    public required string By { get; init; }
+
+    /// <summary>The sender's kind: Team or MarketSurveillance.</summary>
+    public required string ByRole { get; init; }
+
+    [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+    public required DateTime AtUtc { get; init; }
 }
 
 /// <summary>A battery placed on the market again, and its new passport (design 7.5).</summary>

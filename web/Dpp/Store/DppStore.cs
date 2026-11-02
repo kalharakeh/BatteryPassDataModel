@@ -307,6 +307,16 @@ public sealed class DppStore
             Builders<PassportVersion>.Update.Set(version => version.DppStatus, status).Set(version => version.LastUpdatedUtc, lastUpdatedUtc),
             cancellationToken: cancellationToken);
 
+    /// <summary>Sets or clears a pack's invalid or deletion mark (step 4c-2). False when the pack doesn't exist.</summary>
+    public async Task<bool> SetMarkAsync(string packId, PassportMark? mark, CancellationToken cancellationToken = default)
+    {
+        var result = await Collection<BatteryPack>().UpdateOneAsync(
+            pack => pack.Id == packId,
+            Builders<BatteryPack>.Update.Set(pack => pack.Mark, mark),
+            cancellationToken: cancellationToken);
+        return result.MatchedCount == 1;
+    }
+
     /// <summary>Sets or clears a pack's succession (design 7.5). False when the pack doesn't exist.</summary>
     public async Task<bool> SetSuccessionAsync(string packId, Succession? succession, CancellationToken cancellationToken = default)
     {
