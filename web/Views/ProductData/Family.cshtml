@@ -1,5 +1,6 @@
 @using BatteryPassWeb.Dpp.Editing
 @using BatteryPassWeb.Dpp.Pages
+@inject Microsoft.Extensions.Options.IOptions<BatteryPassWeb.Configuration.BatteryPassOptions> AppOptions
 @model FamilyPage
 @{
     var selected = Model.SelectedModel;
@@ -50,7 +51,7 @@
                         <input type="text" readonly value="@(hasPicture ? "A picture is set" : "No picture yet")" aria-label="Current picture" data-upload-name />
                         <label class="bp-secondary-button bp-button-compact bp-document-smart-upload position-relative text-nowrap flex-shrink-0 mb-0">
                             Choose picture
-                            <input type="file" name="picture" class="bp-document-hidden-file" accept="image/png,image/jpeg" data-upload-file />
+                            <input type="file" name="picture" class="bp-document-hidden-file" accept="image/png,image/jpeg" data-kind-words="a PNG or JPEG" data-max-bytes="@AppOptions.Value.MaxUploadBytes" data-upload-file />
                         </label>
                         <button type="submit" class="bp-secondary-button bp-button-compact text-nowrap" data-upload-button>Save picture</button>
                     </div>

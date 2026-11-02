@@ -36,4 +36,50 @@ public sealed class RedesignFixesTests
         Assert.Contains("bottom: 0;", actions, StringComparison.Ordinal);
         Assert.Contains("background: #101f35;", Block(Css, "[data-theme=\"dark\"] [data-status-dialog] .bp-dialog-actions {"), StringComparison.Ordinal);
     }
+
+    [Theory]
+    [InlineData("Batteries", "_AccidentsCard.cshtml", "a PDF, PNG or JPEG", "@AppOptions.Value.MaxUploadBytes")]
+    [InlineData("Batteries", "_ModulesCard.cshtml", "a JSON file", "@BatteryPassWeb.Controllers.BatteriesController.MaxExportBytes")]
+    [InlineData("ProductData", "_EditorField.cshtml", "a PDF, PNG or JPEG", "@Options.Value.MaxUploadBytes")]
+    [InlineData("ProductData", "Family.cshtml", "a PNG or JPEG", "@AppOptions.Value.MaxUploadBytes")]
+    public void EveryUpload_ShouldSayWhichKindAndHowLargeAFileItTakes(string folder, string view, string kind, string limit)
+    {
+        // Point 13: every upload is checked as the right kind of file for it, with clear feedback.
+        var page = Read("web", "Views", folder, view);
+
+        Assert.Contains($"data-kind-words=\"{kind}\"", page, StringComparison.Ordinal);
+        Assert.Contains($"data-max-bytes=\"{limit}\"", page, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheAccidentAndModuleUploads_ShouldShowTheChosenFile()
+    {
+        // The script finds the chosen-file line through the form's data-upload-row; these two forms had none (point 13).
+        foreach (var view in new[] { "_AccidentsCard.cshtml", "_ModulesCard.cshtml" })
+        {
+            var page = Read("web", "Views", "Batteries", view);
+            var upload = page.IndexOf("enctype=\"multipart/form-data\"", StringComparison.Ordinal);
+            var start = page.LastIndexOf("<form", upload, StringComparison.Ordinal);
+            var openingTag = page[start..page.IndexOf('>', upload)];
+            var form = page[start..page.IndexOf("</form>", upload, StringComparison.Ordinal)];
+
+            Assert.Contains("data-upload-row", openingTag, StringComparison.Ordinal);
+            Assert.Contains("data-upload-chosen", form, StringComparison.Ordinal);
+            Assert.Contains("data-upload-button", form, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void TheUploadScript_ShouldRefuseAFileOfTheWrongKindOrSizeBeforeSendingIt()
+    {
+        var script = Read("web", "wwwroot", "js", "bp-record-editor.js");
+
+        Assert.Contains("function uploadProblem(picked, input)", script, StringComparison.Ordinal);
+        Assert.Contains("input.dataset.kindWords", script, StringComparison.Ordinal);
+        Assert.Contains("input.dataset.maxBytes", script, StringComparison.Ordinal);
+        Assert.Contains("'Ready to upload: ' + picked.name + ' · ' + sizeWords(picked.size)", script, StringComparison.Ordinal);
+        Assert.Contains("button.disabled = !picked || problem !== null;", script, StringComparison.Ordinal);
+        Assert.Contains("[data-upload-chosen].is-wrong {", Css, StringComparison.Ordinal);
+        Assert.Contains("[data-upload-chosen].is-good {", Css, StringComparison.Ordinal);
+    }
 }

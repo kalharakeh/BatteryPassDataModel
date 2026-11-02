@@ -2,22 +2,57 @@
 // "Discard unsaved edits?", the warning before leaving with unsaved edits, and the republish question.
 // Without JavaScript every section stays visible and the forms still work.
 (function () {
-    // A chosen file shows its name; its Upload button waits for one.
+    // A file size in plain words, like the pages' own (BatteryCards.Size).
+    function sizeWords(bytes) {
+        if (bytes < 1024) {
+            return bytes + ' bytes';
+        }
+
+        return bytes < 1048576 ? Math.round(bytes / 1024) + ' KB' : (bytes / 1048576).toFixed(1).replace(/\.0$/, '') + ' MB';
+    }
+
+    // Why a chosen file can't be sent, in words, or null when it may (redesign R1, owner's point 13): its kind against
+    // the input's accept list ("application/pdf,image/png" or ".json"), then its size against data-max-bytes. The server
+    // still checks the file's content; this only says it at once, before a long upload.
+    function uploadProblem(picked, input) {
+        const kinds = (input.accept || '').split(',').map((kind) => kind.trim().toLowerCase()).filter((kind) => kind.length > 0);
+        const name = picked.name.toLowerCase();
+        const type = (picked.type || '').toLowerCase();
+        const fits = kinds.length === 0 || kinds.some((kind) => kind.startsWith('.')
+            ? name.endsWith(kind)
+            : kind.endsWith('/*') ? type.startsWith(kind.slice(0, -1)) : type === kind);
+        if (!fits) {
+            return picked.name + ' isn’t ' + (input.dataset.kindWords || 'the right kind of file') + '. Choose another file.';
+        }
+
+        const max = Number(input.dataset.maxBytes || 0);
+        if (max > 0 && picked.size > max) {
+            return picked.name + ' is ' + sizeWords(picked.size) + '; the most is ' + sizeWords(max) + '. Choose a smaller file.';
+        }
+
+        return null;
+    }
+
+    // A chosen file shows its name and size, or why it can't be sent; its Upload button waits for a file that may be.
     document.querySelectorAll('[data-upload-file]').forEach((file) => {
         const row = file.closest('[data-upload-row], .bp-attr-row');
         const chosen = row?.querySelector('[data-upload-chosen]');
         const name = row?.querySelector('[data-upload-name]');
         const button = row?.querySelector('[data-upload-button]');
         const update = () => {
-            const picked = file.files && file.files.length > 0 ? file.files[0].name : null;
+            const picked = file.files && file.files.length > 0 ? file.files[0] : null;
+            const problem = picked ? uploadProblem(picked, file) : null;
+            const text = !picked ? 'No file chosen' : problem ?? 'Ready to upload: ' + picked.name + ' · ' + sizeWords(picked.size);
             if (button) {
-                button.disabled = !picked;
+                button.disabled = !picked || problem !== null;
             }
 
             if (chosen) {
-                chosen.textContent = picked ? 'Ready to upload: ' + picked : 'No file chosen';
+                chosen.textContent = text;
+                chosen.classList.toggle('is-good', picked !== null && problem === null);
+                chosen.classList.toggle('is-wrong', problem !== null);
             } else if (name && picked) {
-                name.value = 'Ready to upload: ' + picked;
+                name.value = text;
             }
         };
         file.addEventListener('change', update);

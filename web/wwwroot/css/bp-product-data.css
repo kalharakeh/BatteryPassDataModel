@@ -2447,6 +2447,21 @@ main .bp-field-marker.is-published {
   min-width: 0;
 }
 
+/* A chosen file: ready (green) or why it can't be sent (red), before anything is uploaded (redesign R1). */
+[data-upload-chosen].is-good {
+  color: #166534;
+  font-weight: 600;
+}
+
+[data-upload-chosen].is-wrong {
+  color: var(--bp-danger);
+  font-weight: 600;
+}
+
+[data-theme="dark"] [data-upload-chosen].is-good {
+  color: #86efac;
+}
+
 /* The status window's buttons stay at its bottom edge while its values scroll (redesign R1, owner's point 3). */
 [data-status-dialog] .bp-dialog-actions {
   position: sticky;

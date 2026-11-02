@@ -37,12 +37,12 @@
     }
     @if (Model.ForTeam)
     {
-        <form method="post" action="@Model.Href/modules/from-export" enctype="multipart/form-data" class="bp-attr-upload bp-module-upload">
+        <form method="post" action="@Model.Href/modules/from-export" enctype="multipart/form-data" class="bp-attr-upload bp-module-upload" data-upload-row>
             @Html.AntiForgeryToken()
             <div class="bp-attr-file">
                 <label class="bp-secondary-button bp-button-compact bp-document-smart-upload position-relative text-nowrap mb-0">
                     Choose file
-                    <input type="file" name="file" class="bp-document-hidden-file" accept="application/json,.json" data-upload-file />
+                    <input type="file" name="file" class="bp-document-hidden-file" accept="application/json,.json" data-kind-words="a JSON file" data-max-bytes="@BatteryPassWeb.Controllers.BatteriesController.MaxExportBytes" data-upload-file />
                 </label>
                 <span class="bp-help-text" data-upload-chosen>No file chosen</span>
             </div>

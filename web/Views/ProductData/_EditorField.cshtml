@@ -188,7 +188,7 @@
                     <div class="bp-attr-file">
                         <label class="bp-secondary-button bp-button-compact bp-document-smart-upload position-relative text-nowrap mb-0">
                             Choose file
-                            <input type="file" name="file" class="bp-document-hidden-file" accept="application/pdf,image/png,image/jpeg" form="@formId" data-upload-file />
+                            <input type="file" name="file" class="bp-document-hidden-file" accept="application/pdf,image/png,image/jpeg" form="@formId" data-kind-words="a PDF, PNG or JPEG" data-max-bytes="@Options.Value.MaxUploadBytes" data-upload-file />
                         </label>
                         <span class="bp-help-text" data-upload-chosen>No file chosen</span>
                         <button type="submit" class="bp-secondary-button bp-button-compact text-nowrap" form="@formId" data-upload-button>Upload</button>

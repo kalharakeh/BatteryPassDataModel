@@ -1,4 +1,5 @@
 @using BatteryPassWeb.Dpp.Pages
+@inject Microsoft.Extensions.Options.IOptions<BatteryPassWeb.Configuration.BatteryPassOptions> AppOptions
 @model BatteryCards
 @* The accident reports card (#92): on the team's battery page and on the cluster admin's (step 4a). *@
 <section class="bp-card bp-console-form-card bp-battery-card mt-4" id="accidents">
@@ -24,12 +25,12 @@
     }
     else
     {
-    <form method="post" action="@Model.Href/accidents" enctype="multipart/form-data" class="bp-attr-upload bp-accident-upload">
+    <form method="post" action="@Model.Href/accidents" enctype="multipart/form-data" class="bp-attr-upload bp-accident-upload" data-upload-row>
         @Html.AntiForgeryToken()
         <div class="bp-attr-file">
             <label class="bp-secondary-button bp-button-compact bp-document-smart-upload position-relative text-nowrap mb-0">
                 Choose file
-                <input type="file" name="file" class="bp-document-hidden-file" accept="application/pdf,image/png,image/jpeg" data-upload-file />
+                <input type="file" name="file" class="bp-document-hidden-file" accept="application/pdf,image/png,image/jpeg" data-kind-words="a PDF, PNG or JPEG" data-max-bytes="@AppOptions.Value.MaxUploadBytes" data-upload-file />
             </label>
             <span class="bp-help-text" data-upload-chosen>No file chosen</span>
         </div>
@@ -50,7 +51,7 @@
             </label>
         </div>
         <div class="bp-live-save">
-            <small class="bp-field-help">PDF, PNG or JPEG, checked by its content.</small>
+            <small class="bp-field-help">PDF, PNG or JPEG, up to @BatteryCards.Size(AppOptions.Value.MaxUploadBytes), checked by its content.</small>
             <button type="submit" class="bp-secondary-button" data-upload-button>Add report</button>
         </div>
     </form>
