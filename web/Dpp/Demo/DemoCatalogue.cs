@@ -18,9 +18,16 @@ public sealed record DemoNamed(string Key, string Name, JsonObject Values);
 public sealed record DemoBatch(string Key, string Model, string Site, int Year, string TestReport, JsonObject Values);
 
 /// <summary>
+/// A status change the seed makes on a published demo battery (step 4b): what happened ("Repaired" or "Waste"), the
+/// re-stated values that differ from the battery's current ones, and for a repair how many days ago and what.
+/// </summary>
+public sealed record DemoStatus(string What, JsonObject? Restated = null, int DaysAgo = 0, string? Repair = null);
+
+/// <summary>
 /// A demo battery. <see cref="Publish"/> publishes it; <see cref="NewVersion"/> then changes these values, which makes
 /// version 2; <see cref="History"/> writes seven days of live values; <see cref="Modules"/> imports that many modules
-/// from an export-shaped file; <see cref="Accident"/> adds an accident report.
+/// from an export-shaped file; <see cref="Accident"/> adds an accident report; <see cref="Status"/> then changes its
+/// status through the app's own status change.
 /// </summary>
 public sealed record DemoPack(
     string Serial,
@@ -32,7 +39,8 @@ public sealed record DemoPack(
     JsonObject? NewVersion = null,
     bool History = false,
     int Modules = 0,
-    string? Accident = null);
+    string? Accident = null,
+    DemoStatus? Status = null);
 
 /// <summary>
 /// What the demo data seed makes (decision 32): the Compact and Core families of the old demo on the new model, with

@@ -30,8 +30,8 @@ public sealed class DemoSeedTests(MongoFixture mongo)
         Assert.Equal(2, await rig.Count(DppStore.Sites));
         Assert.Equal(2, await rig.Count(DppStore.Operators));
         Assert.Equal(3, await rig.Count(DppStore.Batches));
-        Assert.Equal(6, await rig.Count(DppStore.Packs));
-        Assert.Equal(["2 families, 3 models, 2 sites, 2 operators and 3 batches", "6 batteries, 3 of them published", "12 accounts and 7 API tokens"], result.Done);
+        Assert.Equal(7, await rig.Count(DppStore.Packs));
+        Assert.Equal(["2 families, 3 models, 2 sites, 2 operators and 3 batches", "7 batteries, 4 of them published", "12 accounts and 7 API tokens"], result.Done);
     }
 
     [Fact]
@@ -42,12 +42,29 @@ public sealed class DemoSeedTests(MongoFixture mongo)
         await rig.Demo.SeedAsync(DemoRig.Who);
 
         var versions = await rig.All(DppStore.Versions);
-        Assert.Equal(4, versions.Count);
-        Assert.Equal(3, versions.Count(version => version["DppStatus"].AsString == "active"));
+        Assert.Equal(7, versions.Count); // C7M-0001: 3 (a new version, then its repair); CORE-0003: 2 (waste); two with 1
+        Assert.Equal(4, versions.Count(version => version["DppStatus"].AsString == "active"));
         Assert.All(versions, version => Assert.True(version.Contains("Proof")));
         var firstPack = (await rig.All(DppStore.Packs, Eq("Values.batterySerialNumber.Value", "DEMO-C7M-0001"))).Single()["_id"].AsString;
-        Assert.Equal([1, 2], versions.Where(version => version["PackId"] == firstPack).Select(version => version["Number"].ToInt32()).Order());
+        Assert.Equal([1, 2, 3], versions.Where(version => version["PackId"] == firstPack).Select(version => version["Number"].ToInt32()).Order());
         Assert.All(await rig.All(DppStore.Packs), pack => Assert.StartsWith("urn:x-battery-pass:TEST-", pack["Values"]["uniqueProductIdentifier"]["Value"].AsString, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task TheStatusExamples_ShouldBeARepairedBatteryAndAWasteOne()
+    {
+        using var rig = await DemoRig.StartAsync(mongo);
+
+        await rig.Demo.SeedAsync(DemoRig.Who);
+
+        var repaired = (await rig.All(DppStore.Packs, Eq("Values.batterySerialNumber.Value", "DEMO-C7M-0001"))).Single();
+        var waste = (await rig.All(DppStore.Packs, Eq("Values.batterySerialNumber.Value", "DEMO-CORE-0003"))).Single();
+        Assert.Equal("re-used", repaired["Values"]["batteryStatus"]["Value"]["batteryStatusValues"].AsString);
+        Assert.Equal("Module 4 replaced after a coolant leak.", repaired["Repairs"].AsBsonArray.Single()["Description"].AsString);
+        Assert.Equal(6, repaired["Values"]["capacityFade"]["Value"]["percentageValue"].ToInt32());
+        Assert.Equal("waste", waste["Values"]["batteryStatus"]["Value"]["batteryStatusValues"].AsString);
+        Assert.Empty(waste["Repairs"].AsBsonArray);
+        Assert.Equal(2, await rig.Count("applicationAuditEvents", Eq("eventType", BatteryPassWeb.Dpp.Editing.StatusChangeService.ChangedEvent)));
     }
 
     [Fact]
@@ -71,7 +88,7 @@ public sealed class DemoSeedTests(MongoFixture mongo)
         await rig.Demo.SeedAsync(DemoRig.Who);
 
         var packs = await rig.All(DppStore.Packs);
-        Assert.Equal([0, 0, 0, 7, 10, 13], packs.Select(pack => pack["Modules"].AsBsonArray.Count).Order());
+        Assert.Equal([0, 0, 0, 7, 10, 10, 13], packs.Select(pack => pack["Modules"].AsBsonArray.Count).Order());
         Assert.Equal(2, await rig.Count(DocumentStore.Records, Eq("Property", "informationOnAccidents")));
         Assert.Equal(12, await rig.Count(DocumentStore.Records, Eq("OwnerKind", "Model")));
         Assert.Equal(3, await rig.Count(DocumentStore.Records, Eq("Property", "resultsOfTestReportsProvingCompliance")));
@@ -132,7 +149,7 @@ public sealed class DemoSeedTests(MongoFixture mongo)
 
         Assert.Equal([DemoDataService.NoPassword], result.Notes);
         Assert.Equal(0, await rig.Count("users"));
-        Assert.Equal(6, await rig.Count(DppStore.Packs));
+        Assert.Equal(7, await rig.Count(DppStore.Packs));
     }
 
     [Fact]
@@ -181,7 +198,7 @@ public sealed class DemoSeedTests(MongoFixture mongo)
         var again = await rig.Demo.SeedAsync(DemoRig.Who);
 
         Assert.Equal(["The demo data is already there: reset it or clear it first."], again.Notes);
-        Assert.Equal(6, await rig.Count(DppStore.Packs));
+        Assert.Equal(7, await rig.Count(DppStore.Packs));
     }
 
     [Fact]
@@ -204,6 +221,6 @@ public sealed class DemoSeedTests(MongoFixture mongo)
 
         var entry = (await rig.All("applicationAuditEvents", Eq("eventType", DemoDataService.SeededEvent))).Single();
         Assert.Equal(DemoRig.Who, entry["actor"].AsString);
-        Assert.Equal((6, 3, 12, 7), (entry["metadata"]["batteries"].ToInt32(), entry["metadata"]["published"].ToInt32(), entry["metadata"]["accounts"].ToInt32(), entry["metadata"]["tokens"].ToInt32()));
+        Assert.Equal((7, 4, 12, 7), (entry["metadata"]["batteries"].ToInt32(), entry["metadata"]["published"].ToInt32(), entry["metadata"]["accounts"].ToInt32(), entry["metadata"]["tokens"].ToInt32()));
     }
 }

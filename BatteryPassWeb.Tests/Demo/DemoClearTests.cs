@@ -29,7 +29,7 @@ public sealed class DemoClearTests(MongoFixture mongo)
         }
 
         Assert.Empty(result.Notes);
-        Assert.Contains("6 batteries removed", result.Done);
+        Assert.Contains("7 batteries removed", result.Done);
         Assert.Contains("12 accounts removed", result.Done);
     }
 
@@ -44,7 +44,7 @@ public sealed class DemoClearTests(MongoFixture mongo)
 
         Assert.Equal(before + 1, await rig.Count("applicationAuditEvents"));
         var entry = (await rig.All("applicationAuditEvents", Eq("eventType", DemoDataService.ClearedEvent))).Single();
-        Assert.Equal(6, entry["metadata"]["batteries"].ToInt32());
+        Assert.Equal(7, entry["metadata"]["batteries"].ToInt32());
     }
 
     [Fact]
@@ -97,12 +97,12 @@ public sealed class DemoClearTests(MongoFixture mongo)
         var result = await rig.Demo.ResetAsync(DemoRig.Who);
 
         var packs = (await rig.All(DppStore.Packs)).Select(pack => pack["_id"].AsString).ToList();
-        Assert.Equal(6, packs.Count);
+        Assert.Equal(7, packs.Count);
         Assert.Empty(packs.Intersect(firstPacks));
-        Assert.Equal(4, await rig.Count(DppStore.Versions));
+        Assert.Equal(7, await rig.Count(DppStore.Versions));
         Assert.Equal(7, result.Tokens.Count);
         Assert.Empty(result.Tokens.Select(token => token.Value).Intersect(first.Tokens.Select(token => token.Value)));
-        Assert.Contains("6 batteries removed", result.Done);
-        Assert.Contains("6 batteries, 3 of them published", result.Done);
+        Assert.Contains("7 batteries removed", result.Done);
+        Assert.Contains("7 batteries, 4 of them published", result.Done);
     }
 }

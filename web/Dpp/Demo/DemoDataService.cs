@@ -33,6 +33,7 @@ public sealed class DemoDataService(
     PackCreationService packCreation,
     SavePipeline pipeline,
     PublicationService publication,
+    StatusChangeService statusChanges,
     DocumentService documents,
     DocumentStore documentStore,
     DppLinks links,
@@ -192,6 +193,11 @@ public sealed class DemoDataService(
             if (demo.Accident is not null)
             {
                 await documents.AddAccidentReportAsync(team, packId, new DocumentUpload("accident-report.pdf", DemoPdf.Make("Accident report", demo.Accident), demo.Accident, "en-GB"), cancellationToken);
+            }
+
+            if (demo.Status is { } status && demo.Publish)
+            {
+                await ChangeStatusAsync(team, packId, demo, status, cancellationToken);
             }
         }
 
@@ -458,6 +464,28 @@ public sealed class DemoDataService(
 
     private static Dictionary<string, JsonNode?> Values(JsonObject values) =>
         values.ToDictionary(entry => entry.Key, entry => entry.Value?.DeepClone(), StringComparer.Ordinal);
+
+    /// <summary>
+    /// A demo battery's status change (step 4b), through the app's own status change like a person's: the re-stated
+    /// values start as the battery's current ones, as the window fills them in, with the catalogue's on top.
+    /// </summary>
+    private async Task ChangeStatusAsync(ChangeSender team, string packId, DemoPack demo, DemoStatus status, CancellationToken cancellationToken)
+    {
+        var sources = await store.LoadSourcesAsync(packId, cancellationToken) ?? throw new InvalidOperationException($"The demo battery {demo.Serial} is missing.");
+        var restated = new Dictionary<string, JsonNode?>(StringComparer.Ordinal);
+        foreach (var attribute in StatusChangeService.RestatedAttributes(sources.Model))
+        {
+            restated[attribute.Property] = status.Restated?[attribute.Property]?.DeepClone()
+                ?? (sources.Pack.Values.GetValueOrDefault(attribute.Property) ?? sources.Model.Values.GetValueOrDefault(attribute.Property))?.Value?.DeepClone();
+        }
+
+        var day = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime).AddDays(-status.DaysAgo).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        var result = await statusChanges.ChangeAsync(team, packId, new StatusChange(Enum.Parse<StatusEvent>(status.What), restated, day, status.Repair), cancellationToken);
+        if (result.Problem is not null)
+        {
+            throw new InvalidOperationException($"The demo battery {demo.Serial}'s status couldn't change: {result.Problem}.");
+        }
+    }
 
     /// <summary>An export-shaped file (decision 31) with this many modules for the battery.</summary>
     private static byte[] ModuleExport(string serial, int modules)

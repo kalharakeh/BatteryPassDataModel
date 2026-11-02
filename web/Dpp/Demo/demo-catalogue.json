@@ -891,7 +891,16 @@
       },
       "history": true,
       "modules": 7,
-      "accident": "Coolant leak found at the 12-month service; module 4 replaced."
+      "accident": "Coolant leak found at the 12-month service; module 4 replaced.",
+      "status": {
+        "what": "Repaired",
+        "daysAgo": 10,
+        "repair": "Module 4 replaced after a coolant leak.",
+        "restated": {
+          "capacityFade": 6,
+          "powerFade": 4
+        }
+      }
     },
     {
       "serial": "DEMO-C7M-0002",
@@ -998,6 +1007,37 @@
         "temperatureInformation": {
           "degreeCelsiusUnit": "°C",
           "celsiusValue": 19
+        }
+      }
+    },
+    {
+      "serial": "DEMO-CORE-0003",
+      "batch": "core",
+      "operator": "fleet",
+      "cluster": "demo-fleet",
+      "values": {
+        "batterySerialNumber": "DEMO-CORE-0003",
+        "thirdPartyServiceProvider": "Demo Passport Hosting AB",
+        "manufacturingDate": "2026-07",
+        "warrantyPeriod": "P8Y",
+        "stateOfChargeSoC": {
+          "percentUnit": "%",
+          "percentageValue": 0
+        },
+        "numberOfFullChargingAndDischargingCycles": 2950,
+        "temperatureInformation": {
+          "degreeCelsiusUnit": "°C",
+          "celsiusValue": 15
+        }
+      },
+      "publish": true,
+      "modules": 10,
+      "status": {
+        "what": "Waste",
+        "restated": {
+          "capacityFade": 38,
+          "powerFade": 31,
+          "expectedLifetimeInCalendarYears": 0
         }
       }
     }
