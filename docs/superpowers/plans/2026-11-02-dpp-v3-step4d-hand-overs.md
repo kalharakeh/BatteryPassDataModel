@@ -35,7 +35,7 @@
 - Work in the worktree `.worktrees/cloned-kassem-rewrite`, from its root, in Git Bash.
 - **Branch:** `feature/dpp-v3-step2d-team-pages` (local only). This plan starts at e25d335 (the end of plan 4c-2's run), plus the commit that adds this plan. Check with `git branch --show-current` and `git log --oneline -5`.
 - **The local app must be closed.** While the v3 launcher runs the app from this worktree (localhost:5186), it locks `web/bin/Debug`, and the builds below fail with MSB3027. Never stop it yourself: ask the product owner to close it.
-- **Nothing here touches Atlas.** The tests use a throwaway MongoDB (EphemeralMongo). The new collection `dpp_transfers` is made on Atlas only when the app first writes to it; the reset tool knows it as new test data.
+- **Nothing here touches Atlas.** The tests use a throwaway MongoDB (EphemeralMongo). Once this plan runs, the app's start (its `EnsureIndexesAsync`) makes the new collection `dpp_transfers` and its two indexes in `battery_pass_v3` the first time the product owner starts it; it stays empty until a hand-over is asked. The reset tool knows it as new test data.
 - **Builds and test runs:**
   - Run every `dotnet test` and `dotnet build` with `--disable-build-servers`, in a shell where `export MSBUILDDISABLENODEREUSE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0` was run first. Whole-suite runs also take `--blame-hang --blame-hang-timeout 10m`.
   - Runs have sometimes taken far longer while the machine was busy with other sessions: a slowdown, not a stuck test. If a run seems stuck for more than 20 minutes, stop it (and any `dotnet` and `testhost` it left) and run it again.
@@ -1595,7 +1595,7 @@ Not steps of this plan. The managing session brings them to the product owner:
    - **DEMO-CORE-0001's page** ("Manage" on the Registry): the "Hand over" card says "Waiting for Demo North Operations", with "Cancel the hand-over". Cancel it.
    - **"Hand over…"** again: type `demo-south`, "Find the cluster" shows its name, then "Ask them to accept".
 4. **As demo-south's cluster admin:** "Decline" on the Registry. DEMO-CORE-0001 stays with demo-fleet.
-5. **As the team:** DEMO-CORE-0001's page shows a waiting hand-over beside the cluster with "Cancel it" (after another ask), and "Change" moves it directly.
+5. **As the team:** after demo-fleet's admin asks for a hand-over again (step 3), DEMO-CORE-0001's page shows it waiting beside the cluster, with "Cancel it"; "Change" moves the battery directly and cancels the hand-over.
 6. **Light and dark:** the moon button in the top bar switches.
 
 ## Next
