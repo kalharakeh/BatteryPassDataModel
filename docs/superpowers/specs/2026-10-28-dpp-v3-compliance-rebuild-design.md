@@ -444,6 +444,13 @@ Step 5 is planned in four parts (product owner, 2 Nov 2026, decision 35), each e
 - **5c, the upload page** with its preview, for the team and the battery's cluster admins, and the upload log on it.
 - **5d, status changes and repairs by upload** (7.4, 7.9), through the status change, and the demo example.
 
+Before 5c, the battery pages are redesigned in four parts (product owner, 2 Nov 2026, decision 36), each ending with a working app, after the owner tried step 4 and found the battery page long and confusing:
+
+- **R1, the bugs:** the demo reset's feedback, the status window, every upload's feedback and check, an invalid passport found by its serial number, a frozen passport's words. Planned in `docs/superpowers/plans/2026-11-02-dpp-v3-redesign-r1-bug-fixes.md`.
+- **R2, a picture per battery model** (amends decision 20). Planned in `docs/superpowers/plans/2026-11-02-dpp-v3-redesign-r2-model-pictures.md`.
+- **R3, the two statuses as badges** on the passport pages, the Registry and the team's list. Planned in `docs/superpowers/plans/2026-11-02-dpp-v3-redesign-r3-status-badges.md`.
+- **R4, the side-menu battery pages** (layout B) for the team and the cluster admins; 5c's card becomes one of their sections. Planned in `docs/superpowers/plans/2026-11-02-dpp-v3-redesign-r4-side-menu.md`.
+
 **Where it runs (agreed 28 Oct 2026):** until the cut-over, the new version runs only on the product owner's PC, against the Atlas database `battery_pass_v3` (a launcher outside the repository sets `MONGODB_URI` and `MONGODB_DB` for its own process; any new configuration or launch profile must set `MONGODB_DB`, because the app falls back to `battery_pass_demo`). The live app on Elastic Beanstalk (branch `security/demo-api-hardening`, database `battery_pass_demo`) is not changed. Step 3's switch-over and reset run only against `battery_pass_v3`. Nothing in the rebuild touches the running app or its data. When all steps are done, the new version is deployed to AWS connected to `battery_pass_v3`, if that adds no cost; if it would, the old database is reset to match the new app instead.
 
 ## 15. Judgement calls
