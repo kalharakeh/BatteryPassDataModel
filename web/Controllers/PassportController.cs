@@ -1,5 +1,6 @@
 using BatteryPassWeb.Dpp.Api;
 using BatteryPassWeb.Dpp.Access;
+using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Pages;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -18,6 +19,28 @@ namespace BatteryPassWeb.Controllers;
 [Route("dpp")]
 public sealed class PassportController(DppReaders readers, PassportPages pages) : Controller
 {
+    /// <summary>Where the detail page says what happened to "Mark as invalid".</summary>
+    public const string MarkMessageKey = "PassportMarkMessage";
+
+    /// <summary>
+    /// Market surveillance marks a passport invalid from its detail page (design 7.7, mock-up S6, step 4c-2). Anyone else,
+    /// signed in or not, finds nothing here.
+    /// </summary>
+    [HttpPost("{id}/detail/invalid")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MarkInvalid(string id, [FromForm] string? reason, [FromServices] PassportMarks marks, CancellationToken cancellationToken)
+    {
+        var reader = await readers.ForAsync(User, cancellationToken);
+        if (!reader.Roles.Contains(ReaderRole.MarketSurveillance) || await pages.FindAsync(Uri.UnescapeDataString(id), cancellationToken) is not { } version)
+        {
+            return NotFound();
+        }
+
+        var problem = await marks.MarkInvalidAsync(ChangeSender.MarketSurveillance(reader.Who), version.PackId, reason, cancellationToken);
+        TempData[MarkMessageKey] = problem is null ? "The passport is marked invalid. The team is the only one who can undo it." : $"The passport wasn't marked: {problem}.";
+        return Redirect(PassportPages.DetailHref(Uri.UnescapeDataString(id)));
+    }
+
     [HttpGet("{id}")]
     public async Task<IActionResult> Summary(string id, CancellationToken cancellationToken)
     {

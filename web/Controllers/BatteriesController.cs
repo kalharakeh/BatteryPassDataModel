@@ -14,7 +14,7 @@ namespace BatteryPassWeb.Controllers;
 /// </summary>
 [Authorize(Policy = "AdminOnly")]
 [Route("admin/batteries")]
-public sealed class BatteriesController(BatteryPages pages, DocumentService documents, StatusPages status) : Controller
+public sealed class BatteriesController(BatteryPages pages, DocumentService documents, StatusPages status, PassportMarks marks) : Controller
 {
     /// <summary>Which card of the battery page a message belongs to, so it shows where the action was taken.</summary>
     public const string CardKey = "BatteryCard";
@@ -208,6 +208,30 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
         var (done, problem) = await status.CancelSuccessorAsync(ChangeSender.Team(Who), packId, cancellationToken);
         Card("status", done, problem);
         return Redirect($"{BatteryPages.BatteryHref(packId)}#status");
+    }
+
+    /// <summary>The team marks the passport invalid, with a reason (design 7.7).</summary>
+    [HttpPost("{packId}/mark/invalid")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MarkInvalid(string packId, [FromForm] string? reason, CancellationToken cancellationToken) =>
+        MarkResult(packId, await marks.MarkInvalidAsync(ChangeSender.Team(Who), packId, reason, cancellationToken), "The passport is marked invalid. Every page says so; only the team undoes it.");
+
+    /// <summary>The team marks a waste battery's passport for deletion (design 7.6).</summary>
+    [HttpPost("{packId}/mark/deletion")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MarkForDeletion(string packId, CancellationToken cancellationToken) =>
+        MarkResult(packId, await marks.MarkForDeletionAsync(ChangeSender.Team(Who), packId, cancellationToken), "The passport is marked for deletion. It stays readable until it is deleted.");
+
+    /// <summary>The team undoes "invalid" or "marked for deletion" (J-8).</summary>
+    [HttpPost("{packId}/mark/undo")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UndoMark(string packId, CancellationToken cancellationToken) =>
+        MarkResult(packId, await marks.UndoAsync(ChangeSender.Team(Who), packId, cancellationToken), "Undone: the passport is active again.");
+
+    private RedirectResult MarkResult(string packId, string? problem, string done)
+    {
+        Card("passport-status", problem is null ? done : null, problem is null ? null : $"Nothing changed: {problem}.");
+        return Redirect($"{BatteryPages.BatteryHref(packId)}#passport-status");
     }
 
     [HttpPost("{packId}/remove")]

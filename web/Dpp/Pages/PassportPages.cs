@@ -74,6 +74,12 @@ public sealed record PassportPage(
     /// <summary>The line about an inactive passport or one that replaces an earlier passport (S7); null otherwise.</summary>
     public PassportNotice? Notice { get; init; }
 
+    /// <summary>Why the passport is invalid and who said so, for the team and market surveillance only (decision 34); null otherwise.</summary>
+    public string? MarkReason { get; init; }
+
+    /// <summary>The reader may mark this passport invalid here: market surveillance on an active passport's detail page (S6).</summary>
+    public bool MayMarkInvalid { get; init; }
+
     /// <summary>This version's DPP status (#2) in words, for the hero's pill.</summary>
     public string StatusWords => DppStatuses.Words(Version.DppStatus);
 }
@@ -263,6 +269,11 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
             Modules = detail && AudienceRules.MaySeePurchaserData(who, clusters) ? sources.Pack.Modules : null,
             Repairs = detail && AudienceRules.MaySeePurchaserData(who, clusters) ? sources.Pack.Repairs.AsEnumerable().Reverse().ToArray() : null,
             Notice = await NoticeAsync(version, sources.Pack, detail, cancellationToken),
+            MarkReason = detail && sources.Pack.Mark is { Reason: { } reason } mark && version.DppStatus == mark.Status
+                && (who.Roles.Contains(ReaderRole.Team) || who.Roles.Contains(ReaderRole.MarketSurveillance))
+                ? $"{reason} (marked by {(mark.ByRole == "MarketSurveillance" ? "market surveillance" : "the team")}, {mark.By})"
+                : null,
+            MayMarkInvalid = detail && version.DppStatus == DppStatuses.Active && who.Roles.Contains(ReaderRole.MarketSurveillance),
         };
     }
 
@@ -273,6 +284,16 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
     private async Task<PassportNotice?> NoticeAsync(PassportVersion version, BatteryPack pack, bool detail, CancellationToken cancellationToken)
     {
         string Href(string identifier) => detail ? DetailHref(identifier) : SummaryHref(identifier);
+        if (version.DppStatus == DppStatuses.Invalid)
+        {
+            return new PassportNotice("Invalid", $"This passport was marked invalid on {ValueWords.Day(version.LastUpdatedUtc.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))}. Its data can't be relied on.", null, null);
+        }
+
+        if (version.DppStatus == DppStatuses.MarkedForDeletion)
+        {
+            return new PassportNotice("Marked for deletion", "The battery was recycled or exported. This passport stays readable until it is deleted.", null, null);
+        }
+
         if (version.DppStatus == DppStatuses.Inactive && pack.Succession is { } succession)
         {
             if (succession.SuccessorPackId is { } successorId && await store.GetAsync<BatteryPack>(successorId, cancellationToken) is { } successor

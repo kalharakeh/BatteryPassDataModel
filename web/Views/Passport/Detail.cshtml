@@ -7,6 +7,10 @@
     ViewData["Detail"] = true;
 }
 <main class="bp-page">
+    @if (TempData[BatteryPassWeb.Controllers.PassportController.MarkMessageKey] is string marked)
+    {
+        <p class="bp-warning" role="status">@marked</p>
+    }
     <partial name="_PassportHero" model="Model" view-data="ViewData" />
     <partial name="_PassportTabs" model="Model" />
     @if (Model.Modules is { Count: > 0 } modules)

@@ -1,0 +1,44 @@
+@using BatteryPassWeb.Dpp.Pages
+@using BatteryPassWeb.Dpp.Store
+@model PassportMarkView
+@* The team's "Passport status" card (step 4c-2, mock-up S5): mark the passport invalid or for deletion, or undo it. *@
+<details class="bp-card bp-danger-zone mt-4" id="passport-status" open="@(Model.Marked)">
+    <summary><strong>Passport status</strong> <span class="text-secondary">· @DppStatuses.Words(Model.Status ?? "draft").ToLowerInvariant()</span></summary>
+    @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "passport-status")
+    @if (Model.Marked)
+    {
+        <p class="mt-2 mb-2">
+            <strong>@DppStatuses.Words(Model.Status!) since @(Model.Mark is { } mark ? ValueWords.Time(mark.AtUtc) : "—").</strong>
+            @if (Model.Mark is { } why)
+            {
+                <span>Marked by @(why.ByRole == "MarketSurveillance" ? "market surveillance" : "the team") (@why.By)@(why.Reason is null ? "." : $": {why.Reason}")</span>
+            }
+        </p>
+        <form method="post" action="@Model.Action/undo">
+            @Html.AntiForgeryToken()
+            <div class="bp-danger-actions"><button type="submit" class="bp-secondary-button">Undo: make the passport active again</button></div>
+            <small class="bp-field-help d-block">The reason stays in the audit log.</small>
+        </form>
+    }
+    else
+    {
+        <p class="mt-2 mb-2"><strong>Mark as invalid</strong>, for example after a market surveillance finding. Every page then says so, and nothing on the passport changes any more. Only the team undoes it.</p>
+        <form method="post" action="@Model.Action/invalid" class="bp-dialog-form">
+            @Html.AntiForgeryToken()
+            <label><span>Reason (seen only by your team and market surveillance)</span><input type="text" name="reason" maxlength="@BatteryPassWeb.Dpp.Editing.PassportMarks.MaxReason" placeholder="e.g. Declared values don't match the test report" required /></label>
+            <div class="bp-danger-actions"><button type="submit" class="bp-danger-button">Mark as invalid</button></div>
+        </form>
+        <hr />
+        <p class="mb-2"><strong>Mark for deletion</strong>, after recycling or export. Only for a battery whose status is waste; the passport stays readable until it is deleted. The team can undo it.</p>
+        <form method="post" action="@Model.Action/deletion">
+            @Html.AntiForgeryToken()
+            <div class="bp-danger-actions">
+                <button type="submit" class="bp-danger-button" disabled="@(!Model.Waste)">Mark for deletion</button>
+                @if (!Model.Waste)
+                {
+                    <small class="bp-field-help">The battery status isn't waste.</small>
+                }
+            </div>
+        </form>
+    }
+</details>

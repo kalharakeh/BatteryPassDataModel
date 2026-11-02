@@ -1,5 +1,6 @@
 using BatteryPassWeb.Dpp.Access;
 using BatteryPassWeb.Dpp.Editing;
+using BatteryPassWeb.Dpp.Store;
 
 namespace BatteryPassWeb.Dpp.Pages;
 
@@ -13,7 +14,7 @@ public sealed record RegistryPage(IReadOnlyList<BatteryRow> Rows, string Query, 
     public string? ManageHref(BatteryRow row)
     {
         ArgumentNullException.ThrowIfNull(row);
-        return row.ClusterId is { } cluster && ManagedClusterIds.Contains(cluster) ? ClusterBatteryPages.BatteryHref(row.PackId) : null;
+        return row.Active is not null && row.ClusterId is { } cluster && ManagedClusterIds.Contains(cluster) ? ClusterBatteryPages.BatteryHref(row.PackId) : null;
     }
 }
 
@@ -34,8 +35,9 @@ public static class RegistryList
     {
         ArgumentNullException.ThrowIfNull(reader);
         ArgumentNullException.ThrowIfNull(row);
-        // Only an active passport is listed: an inactive battery continues on its new passport (step 4c).
-        return row.Active is not null
+        // An active, invalid or marked-for-deletion passport is listed (decision 34): market surveillance finds what it
+        // flagged, and the cluster still owns the battery. An inactive battery continues on its new passport (step 4c).
+        return (row.Active is not null || row.Latest?.DppStatus is DppStatuses.Invalid or DppStatuses.MarkedForDeletion)
             && (EveryPublishedBattery.Any(reader.Roles.Contains) || (row.ClusterId is { } cluster && reader.ClusterIds.Contains(cluster)));
     }
 

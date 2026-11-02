@@ -59,7 +59,15 @@
                                 {
                                     <td data-label="Cluster">@row.ClusterLabel</td>
                                 }
-                                <td data-label="Passport">Version @row.Active!.Number <small class="d-block text-secondary">updated @ValueWords.Time(row.Active.LastUpdatedUtc)</small></td>
+                                @{ var shown = (row.Active ?? row.Latest)!; }
+                                <td data-label="Passport">
+                                    Version @shown.Number
+                                    @if (row.Active is null)
+                                    {
+                                        <span class="bp-status-pill is-inactive">@BatteryPassWeb.Dpp.Store.DppStatuses.Words(shown.DppStatus)</span>
+                                    }
+                                    <small class="d-block text-secondary">updated @ValueWords.Time(shown.LastUpdatedUtc)</small>
+                                </td>
                                 @if (Model.ManagedClusterIds.Count > 0)
                                 {
                                     <td data-label="">

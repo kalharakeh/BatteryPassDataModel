@@ -20,7 +20,24 @@
         {
             <a href="@notice.Href">@notice.LinkText</a>
         }
+        @if (Model.MarkReason is { } reason)
+        {
+            <span class="d-block mt-1">Reason, seen only by the manufacturer's team and market surveillance: @reason</span>
+        }
     </p>
+}
+@if (Model.MayMarkInvalid)
+{
+    <details class="bp-warning" data-mark-invalid>
+        <summary>Mark as invalid…</summary>
+        <form method="post" action="@PassportPages.DetailHref(Model.Address)/invalid" class="mt-2">
+            @Html.AntiForgeryToken()
+            <label class="d-block">Reason (seen only by the manufacturer's team and market surveillance)
+                <input type="text" name="reason" maxlength="500" class="form-control mt-1" required />
+            </label>
+            <button type="submit" class="btn btn-danger btn-sm mt-2">Mark this passport invalid</button>
+        </form>
+    </details>
 }
 <section class="bp-report-hero-card">
     <div class="bp-report-hero-layout">

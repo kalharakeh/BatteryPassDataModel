@@ -79,6 +79,15 @@ public sealed record PublicationView(
     public int MissingCount => Missing.Sum(group => group.Attributes.Count);
 }
 
+/// <summary>The team's "Passport status" card (S5): the passport's DPP status, its mark, whether the battery is waste.</summary>
+/// <param name="Status">The DPP status (#2) of the passport's newest version; null for a draft.</param>
+public sealed record PassportMarkView(string? Status, PassportMark? Mark, bool Waste, string Action)
+{
+    public bool Active => Status == DppStatuses.Active;
+
+    public bool Marked => Status is DppStatuses.Invalid or DppStatuses.MarkedForDeletion;
+}
+
 /// <summary>One published version of the passport and whether its signature still holds.</summary>
 public sealed record VersionRow(PassportVersion Version, bool SignatureHolds);
 
@@ -102,6 +111,13 @@ public sealed record BatteryPage(
 
     /// <summary>The battery status card (step 4b), shared with the cluster admin's page.</summary>
     public StatusCardView? Status { get; init; }
+
+    /// <summary>The team's "Passport status" card (mock-up S5, step 4c-2): invalid, marked for deletion, and their undo.</summary>
+    public PassportMarkView Marks => new(
+        Publication.Active is not null ? DppStatuses.Active : Publication.Latest?.DppStatus,
+        Pack.Mark,
+        StatusChangeService.CurrentStatus(Pack) == "waste",
+        $"{BatteryPages.BatteryHref(Pack.Id)}/mark");
 
     /// <summary>The cards this page shares with the cluster admin's battery page (step 4a).</summary>
     public BatteryCards Cards => new(

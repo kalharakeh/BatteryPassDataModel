@@ -294,6 +294,11 @@
     @await Html.PartialAsync("~/Views/Batteries/_AccidentsCard.cshtml", Model.Cards)
     @await Html.PartialAsync("~/Views/Batteries/_VersionsCard.cshtml", Model.Cards)
 
+    @if (Model.Marks is { } marks && (marks.Active || marks.Marked))
+    {
+        @await Html.PartialAsync("~/Views/Batteries/_PassportStatusCard.cshtml", marks)
+    }
+
     @if (!publication.IsPublished)
     {
     <details class="bp-card bp-remove-record mt-4" id="remove" open="@(card == "remove")">
