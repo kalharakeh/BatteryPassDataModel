@@ -182,6 +182,45 @@ public sealed class Succession
     public DateTime? LinkedAtUtc { get; set; }
 }
 
+/// <summary>The states of a hand-over (design 7.8).</summary>
+public static class HandOverStates
+{
+    public const string Waiting = "waiting";
+    public const string Accepted = "accepted";
+    public const string Declined = "declined";
+    public const string Cancelled = "cancelled";
+}
+
+/// <summary>
+/// A battery's hand-over from one cluster to another (design 4.1 and 7.8, step 4d): asked by the sending cluster's admin,
+/// answered by the receiving cluster's, or cancelled. App data, not passport data.
+/// </summary>
+public sealed class HandOver : IDppRecord
+{
+    [BsonId]
+    public required string Id { get; init; }
+
+    public required string PackId { get; init; }
+
+    public required string FromClusterId { get; init; }
+
+    public required string ToClusterId { get; init; }
+
+    /// <summary>One of <see cref="HandOverStates"/>.</summary>
+    public required string State { get; set; }
+
+    public required string AskedBy { get; init; }
+
+    [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+    public required DateTime AskedAtUtc { get; init; }
+
+    /// <summary>Who accepted, declined or cancelled it.</summary>
+    public string? AnsweredBy { get; set; }
+
+    [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+    public DateTime? AnsweredAtUtc { get; set; }
+}
+
 /// <summary>One repair of a pack (design 7.9): when, what was repaired, and who recorded it when.</summary>
 public sealed class RepairEntry
 {

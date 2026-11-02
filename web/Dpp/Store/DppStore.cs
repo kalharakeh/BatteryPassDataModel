@@ -20,6 +20,7 @@ public sealed class DppStore
     public const string Operators = "dpp_operators";
     public const string Packs = "dpp_packs";
     public const string Versions = "dpp_passport_versions";
+    public const string HandOvers = "dpp_transfers";
 
     private const string UniqueProductIdentifierField = "Values.uniqueProductIdentifier.Value";
     private const string SerialNumberField = "Values.batterySerialNumber.Value";
@@ -33,6 +34,7 @@ public sealed class DppStore
         [typeof(EconomicOperator)] = Operators,
         [typeof(BatteryPack)] = Packs,
         [typeof(PassportVersion)] = Versions,
+        [typeof(HandOver)] = HandOvers,
     };
 
     private readonly IMongoDatabase? _database;
@@ -92,6 +94,15 @@ public sealed class DppStore
             new CreateIndexModel<PassportVersion>(
                 Builders<PassportVersion>.IndexKeys.Ascending(version => version.PackId).Ascending(version => version.DppStatus),
                 new CreateIndexOptions { Name = "pack_status" }),
+        ], cancellationToken);
+        await Collection<HandOver>().Indexes.CreateManyAsync(
+        [
+            new CreateIndexModel<HandOver>(
+                Builders<HandOver>.IndexKeys.Ascending(handOver => handOver.PackId).Ascending(handOver => handOver.State),
+                new CreateIndexOptions { Name = "pack_state" }),
+            new CreateIndexModel<HandOver>(
+                Builders<HandOver>.IndexKeys.Ascending(handOver => handOver.ToClusterId).Ascending(handOver => handOver.State),
+                new CreateIndexOptions { Name = "to_state" }),
         ], cancellationToken);
     }
 
@@ -306,6 +317,45 @@ public sealed class DppStore
             version => version.Id == versionId,
             Builders<PassportVersion>.Update.Set(version => version.DppStatus, status).Set(version => version.LastUpdatedUtc, lastUpdatedUtc),
             cancellationToken: cancellationToken);
+
+    /// <summary>The battery's hand-over waiting for an answer (step 4d); null when none is.</summary>
+    public async Task<HandOver?> FindWaitingHandOverAsync(string packId, CancellationToken cancellationToken = default)
+    {
+        if (_database is null || string.IsNullOrWhiteSpace(packId))
+        {
+            return null;
+        }
+
+        return await Collection<HandOver>().Find(handOver => handOver.PackId == packId && handOver.State == HandOverStates.Waiting).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>The hand-overs waiting for an answer from these receiving clusters, oldest first.</summary>
+    public async Task<IReadOnlyList<HandOver>> ListWaitingHandOversToAsync(IEnumerable<string> clusterIds, CancellationToken cancellationToken = default)
+    {
+        if (_database is null)
+        {
+            return [];
+        }
+
+        var to = clusterIds.ToArray();
+        return await Collection<HandOver>()
+            .Find(Builders<HandOver>.Filter.In(handOver => handOver.ToClusterId, to) & Builders<HandOver>.Filter.Eq(handOver => handOver.State, HandOverStates.Waiting))
+            .SortBy(handOver => handOver.AskedAtUtc)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Ends a waiting hand-over (accepted, declined or cancelled); false when it no longer waits, so two answers at once
+    /// can't both count.
+    /// </summary>
+    public async Task<bool> SetHandOverStateAsync(string handOverId, string state, string by, DateTime atUtc, CancellationToken cancellationToken = default)
+    {
+        var result = await Collection<HandOver>().UpdateOneAsync(
+            handOver => handOver.Id == handOverId && handOver.State == HandOverStates.Waiting,
+            Builders<HandOver>.Update.Set(handOver => handOver.State, state).Set(handOver => handOver.AnsweredBy, by).Set(handOver => handOver.AnsweredAtUtc, atUtc),
+            cancellationToken: cancellationToken);
+        return result.ModifiedCount == 1;
+    }
 
     /// <summary>Sets or clears a pack's invalid or deletion mark (step 4c-2). False when the pack doesn't exist.</summary>
     public async Task<bool> SetMarkAsync(string packId, PassportMark? mark, CancellationToken cancellationToken = default)

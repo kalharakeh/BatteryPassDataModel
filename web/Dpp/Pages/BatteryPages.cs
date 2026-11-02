@@ -417,6 +417,12 @@ public sealed class BatteryPages(
         }
 
         await store.SetPackClusterAsync(packId, wanted, cancellationToken);
+
+        // The team's direct move (design 7.8) ends a hand-over that was waiting for this battery (step 4d).
+        if (await store.FindWaitingHandOverAsync(packId, cancellationToken) is { } waiting)
+        {
+            await store.SetHandOverStateAsync(waiting.Id, HandOverStates.Cancelled, who, DateTime.UtcNow, cancellationToken);
+        }
         var serial = Text(pack, "batterySerialNumber") ?? packId;
         await audit.AppendApplicationAuditEventAsync(
             ClusterChangedEvent,

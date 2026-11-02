@@ -254,6 +254,7 @@ public sealed class DemoDataService(
         foreach (var packId in await DemoIdsAsync(DppStore.Packs, cancellationToken))
         {
             await Collection(DppStore.Versions).DeleteManyAsync(Builders<BsonDocument>.Filter.Eq("PackId", packId), cancellationToken);
+            await Collection(DppStore.HandOvers).DeleteManyAsync(Builders<BsonDocument>.Filter.Eq("PackId", packId), cancellationToken);
             await documentStore.DeleteOwnedAsync(TargetKind.Pack, packId, cancellationToken);
             await store.DeleteAsync<BatteryPack>(packId, cancellationToken);
             Count("batteries");
