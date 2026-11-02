@@ -67,7 +67,7 @@ public sealed class DemoCatalogueTests
     [Fact]
     public void TheBatteries_ShouldBeInSeveralStates()
     {
-        Assert.Equal(["DEMO-C7M-0001", "DEMO-C13M-0001", "DEMO-CORE-0001", "DEMO-CORE-0003"], Catalogue.Packs.Where(pack => pack.Publish).Select(pack => pack.Serial));
+        Assert.Equal(["DEMO-C7M-0001", "DEMO-C7M-0003", "DEMO-C13M-0001", "DEMO-CORE-0001", "DEMO-CORE-0003"], Catalogue.Packs.Where(pack => pack.Publish).Select(pack => pack.Serial));
         Assert.Equal(["DEMO-C7M-0001 Repaired", "DEMO-C13M-0001 Repurposed", "DEMO-CORE-0003 Waste"], Catalogue.Packs.Where(pack => pack.Status is not null).Select(pack => $"{pack.Serial} {pack.Status!.What}"));
         Assert.Equal(["DEMO-C7M-0001"], Catalogue.Packs.Where(pack => pack.NewVersion is not null).Select(pack => pack.Serial));
         Assert.Equal(2, Catalogue.Packs.Count(pack => pack.Accident is not null));

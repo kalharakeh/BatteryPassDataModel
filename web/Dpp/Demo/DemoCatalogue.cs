@@ -27,6 +27,12 @@ public sealed record DemoStatus(string What, JsonObject? Restated = null, int Da
 public sealed record DemoSuccessor(string Warranty);
 
 /// <summary>
+/// A demo battery's passport marked invalid, by the demo market surveillance account with this reason, or marked for
+/// deletion by the team (step 4c-2).
+/// </summary>
+public sealed record DemoMark(string? Invalid = null, bool Deletion = false);
+
+/// <summary>
 /// A demo battery. <see cref="Publish"/> publishes it; <see cref="NewVersion"/> then changes these values, which makes
 /// version 2; <see cref="History"/> writes seven days of live values; <see cref="Modules"/> imports that many modules
 /// from an export-shaped file; <see cref="Accident"/> adds an accident report; <see cref="Status"/> then changes its
@@ -43,7 +49,8 @@ public sealed record DemoPack(
     bool History = false,
     int Modules = 0,
     string? Accident = null,
-    DemoStatus? Status = null);
+    DemoStatus? Status = null,
+    DemoMark? Mark = null);
 
 /// <summary>
 /// What the demo data seed makes (decision 32): the Compact and Core families of the old demo on the new model, with

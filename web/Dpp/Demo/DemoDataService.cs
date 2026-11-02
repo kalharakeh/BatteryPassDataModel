@@ -35,6 +35,7 @@ public sealed class DemoDataService(
     PublicationService publication,
     StatusChangeService statusChanges,
     SuccessionService successions,
+    PassportMarks marks,
     DocumentService documents,
     DocumentStore documentStore,
     DppLinks links,
@@ -206,6 +207,11 @@ public sealed class DemoDataService(
                     successors++;
                     published++;
                 }
+            }
+
+            if (demo.Mark is { } mark && demo.Publish)
+            {
+                await MarkAsync(team, packId, demo, mark, catalogue, cancellationToken);
             }
         }
 
@@ -514,6 +520,29 @@ public sealed class DemoDataService(
         if (result.Version is null)
         {
             throw new InvalidOperationException($"The demo battery {demo.Serial}'s new passport couldn't be published: {result.Problem ?? string.Join("; ", result.Report?.Blocking ?? [])}.");
+        }
+    }
+
+    /// <summary>
+    /// A demo battery's passport marked invalid by the demo market surveillance account, as it would mark it on the
+    /// detail page, or marked for deletion by the team (step 4c-2).
+    /// </summary>
+    private async Task MarkAsync(ChangeSender team, string packId, DemoPack demo, DemoMark mark, DemoCatalogue catalogue, CancellationToken cancellationToken)
+    {
+        string? problem = null;
+        if (mark.Invalid is { } reason)
+        {
+            var surveillance = catalogue.Accounts.FirstOrDefault(account => account.Role == AccessControlService.RoleMarketSurveillanceAuthority)?.Email ?? team.Who;
+            problem = await marks.MarkInvalidAsync(ChangeSender.MarketSurveillance(surveillance), packId, reason, cancellationToken);
+        }
+        else if (mark.Deletion)
+        {
+            problem = await marks.MarkForDeletionAsync(team, packId, cancellationToken);
+        }
+
+        if (problem is not null)
+        {
+            throw new InvalidOperationException($"The demo battery {demo.Serial} couldn't be marked: {problem}.");
         }
     }
 

@@ -903,6 +903,32 @@
       }
     },
     {
+      "serial": "DEMO-C7M-0003",
+      "batch": "compact-7m",
+      "operator": "batteries",
+      "cluster": "demo-north",
+      "values": {
+        "batterySerialNumber": "DEMO-C7M-0003",
+        "thirdPartyServiceProvider": "Demo Passport Hosting AB",
+        "manufacturingDate": "2026-07",
+        "warrantyPeriod": "P8Y",
+        "stateOfChargeSoC": {
+          "percentUnit": "%",
+          "percentageValue": 81
+        },
+        "numberOfFullChargingAndDischargingCycles": 96,
+        "temperatureInformation": {
+          "degreeCelsiusUnit": "°C",
+          "celsiusValue": 21
+        }
+      },
+      "publish": true,
+      "modules": 7,
+      "mark": {
+        "invalid": "Demo: wrong carbon footprint figures"
+      }
+    },
+    {
       "serial": "DEMO-C7M-0002",
       "batch": "compact-7m",
       "operator": "batteries",
@@ -1050,6 +1076,9 @@
           "powerFade": 31,
           "expectedLifetimeInCalendarYears": 0
         }
+      },
+      "mark": {
+        "deletion": true
       }
     }
   ]
