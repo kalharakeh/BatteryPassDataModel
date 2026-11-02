@@ -34,6 +34,7 @@ public sealed class DemoDataService(
     SavePipeline pipeline,
     PublicationService publication,
     StatusChangeService statusChanges,
+    SuccessionService successions,
     DocumentService documents,
     DocumentStore documentStore,
     DppLinks links,
@@ -153,6 +154,7 @@ public sealed class DemoDataService(
         }
 
         var published = 0;
+        var successors = 0;
         foreach (var demo in catalogue.Packs)
         {
             var created = await packCreation.CreateAsync(team, new NewPack(batches[demo.Batch], operators[demo.Operator], demo.Cluster, Values(demo.Values), "form"), cancellationToken);
@@ -198,6 +200,12 @@ public sealed class DemoDataService(
             if (demo.Status is { } status && demo.Publish)
             {
                 await ChangeStatusAsync(team, packId, demo, status, cancellationToken);
+                if (status.Successor is { } next)
+                {
+                    await MakeSuccessorAsync(team, packId, demo, next, cancellationToken);
+                    successors++;
+                    published++;
+                }
             }
         }
 
@@ -206,7 +214,7 @@ public sealed class DemoDataService(
         var done = new List<string>
         {
             $"{catalogue.Families.Count} families, {catalogue.Models.Count} models, {catalogue.Sites.Count} sites, {catalogue.Operators.Count} operators and {catalogue.Batches.Count} batches",
-            $"{catalogue.Packs.Count} batteries, {published} of them published",
+            $"{catalogue.Packs.Count + successors} batteries, {published} of them published",
             $"{accounts} accounts and {demoTokens.Count} API tokens",
         };
         await audit.AppendApplicationAuditEventAsync(
@@ -219,7 +227,7 @@ public sealed class DemoDataService(
             {
                 ["families"] = catalogue.Families.Count,
                 ["models"] = catalogue.Models.Count,
-                ["batteries"] = catalogue.Packs.Count,
+                ["batteries"] = catalogue.Packs.Count + successors,
                 ["published"] = published,
                 ["accounts"] = accounts,
                 ["tokens"] = demoTokens.Count,
@@ -484,6 +492,28 @@ public sealed class DemoDataService(
         if (result.Problem is not null)
         {
             throw new InvalidOperationException($"The demo battery {demo.Serial}'s status couldn't change: {result.Problem}.");
+        }
+    }
+
+    /// <summary>
+    /// Scania's new passport of a demo battery placed on the market again (step 4c-1), the way the team makes it: made
+    /// from the old battery with its operator, given a warranty, published, which makes the old passport inactive.
+    /// </summary>
+    private async Task MakeSuccessorAsync(ChangeSender team, string packId, DemoPack demo, DemoSuccessor next, CancellationToken cancellationToken)
+    {
+        var old = await store.GetAsync<BatteryPack>(packId, cancellationToken) ?? throw new InvalidOperationException($"The demo battery {demo.Serial} is missing.");
+        var (successorId, problem) = await successions.CreateSuccessorAsync(team, packId, old.OperatorId, cancellationToken);
+        if (successorId is null)
+        {
+            throw new InvalidOperationException($"The demo battery {demo.Serial}'s new passport couldn't be made: {problem}.");
+        }
+
+        await MarkAsync(DppStore.Packs, successorId, cancellationToken);
+        await SaveAsync(team, TargetKind.Pack, successorId, new JsonObject { ["warrantyPeriod"] = next.Warranty }, cancellationToken);
+        var result = await publication.PublishAsync(team, successorId, cancellationToken);
+        if (result.Version is null)
+        {
+            throw new InvalidOperationException($"The demo battery {demo.Serial}'s new passport couldn't be published: {result.Problem ?? string.Join("; ", result.Report?.Blocking ?? [])}.");
         }
     }
 

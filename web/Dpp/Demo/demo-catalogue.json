@@ -945,7 +945,18 @@
       },
       "publish": true,
       "history": true,
-      "modules": 13
+      "modules": 13,
+      "status": {
+        "what": "Repurposed",
+        "restated": {
+          "capacityFade": 12,
+          "powerFade": 9,
+          "expectedLifetimeInCalendarYears": 6
+        },
+        "successor": {
+          "warranty": "P3Y"
+        }
+      }
     },
     {
       "serial": "DEMO-C13M-0002",

@@ -21,7 +21,10 @@ public sealed record DemoBatch(string Key, string Model, string Site, int Year, 
 /// A status change the seed makes on a published demo battery (step 4b): what happened ("Repaired" or "Waste"), the
 /// re-stated values that differ from the battery's current ones, and for a repair how many days ago and what.
 /// </summary>
-public sealed record DemoStatus(string What, JsonObject? Restated = null, int DaysAgo = 0, string? Repair = null);
+public sealed record DemoStatus(string What, JsonObject? Restated = null, int DaysAgo = 0, string? Repair = null, DemoSuccessor? Successor = null);
+
+/// <summary>Scania's new passport of a demo battery placed on the market again (step 4c-1): made, given a warranty, published.</summary>
+public sealed record DemoSuccessor(string Warranty);
 
 /// <summary>
 /// A demo battery. <see cref="Publish"/> publishes it; <see cref="NewVersion"/> then changes these values, which makes
