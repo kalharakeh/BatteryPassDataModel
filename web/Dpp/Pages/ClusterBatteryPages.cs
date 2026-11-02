@@ -31,6 +31,26 @@ public sealed record ClusterBatteryPage(
 
     /// <summary>The team page's cards, without what only the team does (step 4a).</summary>
     public BatteryCards Cards => new(Pack, Href, Live, AccidentReports, Versions, Live.Languages, ForTeam: false);
+
+    /// <summary>The page's side menu (redesign R4, option B), like the team's without what only the team does.</summary>
+    public IReadOnlyList<BatterySection> Sections
+    {
+        get
+        {
+            var sections = new List<BatterySection> { new(BatterySections.Overview, "Overview", "overview", HandOver.Waiting is null ? null : "A hand-over is waiting") };
+            if (Status is { } status)
+            {
+                sections.Add(new("status", "Status & repairs", "swap", BatterySections.StatusHint(status)));
+            }
+
+            sections.Add(new("live", "Live values", "live", BatterySections.LiveHint(Pack, Live)));
+            sections.Add(new("accidents", "Accident reports", "accident", Count: AccidentReports.Count));
+            sections.Add(new("handover", "Hand over", "handover", HandOver.Waiting is null ? "To another cluster" : "Waiting for their answer"));
+            sections.Add(new("modules", "Modules", "modules", Count: Pack.Modules.Count));
+            sections.Add(new("versions", "Versions", "versions", Count: Versions.Count));
+            return sections;
+        }
+    }
 }
 
 /// <summary>The "Hand over" card (mock-up S2 and S8): where its forms go, and the hand-over waiting with its receiver's name.</summary>

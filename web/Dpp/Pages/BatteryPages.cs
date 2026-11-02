@@ -140,6 +140,37 @@ public sealed record BatteryPage(
 
     /// <summary>The passport values editor as the page shows it: read-only, with the reason, once nothing changes (redesign R1).</summary>
     public RecordEditorView Editor => Cards.FrozenNote is { } note ? Values with { FrozenNote = note } : Values;
+
+    /// <summary>What the overview asks the team to do: the missing values by group, the problems, and publishing once ready.</summary>
+    public int NeedsYou => Publication.Missing.Count + Publication.Problems.Count + (!Publication.IsPublished && Publication.Ready ? 1 : 0);
+
+    /// <summary>The page's side menu (redesign R4, option B): every card, in the order of the work, with a hint or a count.</summary>
+    public IReadOnlyList<BatterySection> Sections
+    {
+        get
+        {
+            var sections = new List<BatterySection>
+            {
+                new(BatterySections.Overview, "Overview", "overview", NeedsYou == 0 ? "Nothing needs you" : $"{Words.Count(NeedsYou, "thing")} to do"),
+                new("values", "Passport values", "values", Editor.Missing > 0 ? $"{Editor.Missing} missing" : "All filled in"),
+            };
+            if (Status is { } status)
+            {
+                sections.Add(new("status", "Status & repairs", "swap", BatterySections.StatusHint(status)));
+            }
+
+            sections.Add(new("live", "Live values", "live", BatterySections.LiveHint(Pack, Live)));
+            sections.Add(new("accidents", "Accident reports", "accident", Count: AccidentReports.Count));
+            sections.Add(new("modules", "Modules", "modules", Count: Pack.Modules.Count));
+            sections.Add(new("versions", "Versions", "versions", Count: Versions.Count));
+            if (Marks.Active || Marks.Marked)
+            {
+                sections.Add(new("passport-status", "Passport status", "shield", Marks.Marked ? DppStatuses.Words(Marks.Status!) : "Mark invalid or for deletion"));
+            }
+
+            return sections;
+        }
+    }
 }
 
 /// <summary>
