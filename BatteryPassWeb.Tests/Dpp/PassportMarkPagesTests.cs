@@ -70,6 +70,24 @@ public sealed class PassportMarkPagesTests(MongoFixture mongo)
     }
 
     [Fact]
+    public async Task AnInvalidBattery_ShouldSayWhyNothingChangesInsteadOfCallingItADraft()
+    {
+        // Found in the redesign review: its values editor said "Its passport is a draft" and offered Save.
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
+        await PassportMarkTests.Service(rig).MarkInvalidAsync(ChangeSender.MarketSurveillance("msa@example.com"), rig.PackId, Reason);
+        var page = (await BatteryTesting.Pages(rig).BatteryAsync(rig.PackId))!;
+        var editor = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "ProductData", "_RecordEditor.cshtml"));
+        var battery = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Batteries", "Battery.cshtml"));
+
+        Assert.Equal("The passport is invalid: nothing on it changes until your team undoes it.", page.Cards.FrozenNote);
+        Assert.Equal(page.Cards.FrozenNote, page.Editor.FrozenNote);
+        Assert.Null(page.Values.FrozenNote);
+        Assert.Contains("<fieldset class=\"bp-frozen-fields\" disabled=\"@(Model.FrozenNote is not null)\">", editor, StringComparison.Ordinal);
+        Assert.Contains("@if (Model.FrozenNote is null)", editor, StringComparison.Ordinal);
+        Assert.Contains("@await Html.PartialAsync(\"~/Views/ProductData/_RecordEditor.cshtml\", Model.Editor)", battery, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task AnInvalidPassport_ShouldStillBeFoundByItsSerialNumber()
     {
         // Point 10b: marking it invalid leaves no active version, and the search said "No published battery passport was found".

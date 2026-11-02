@@ -42,6 +42,9 @@ public sealed record RecordEditorView(
     /// <summary>Shown to the team (the default); false on the cluster admin's battery page (step 4a), which says "the team".</summary>
     public bool ForTeam { get; init; } = true;
 
+    /// <summary>Why nothing can be saved (a battery whose passport is no longer active, redesign R1); null when it can.</summary>
+    public string? FrozenNote { get; init; }
+
     public string UploadAction(string property) => $"{SaveAction}/documents/{Uri.EscapeDataString(property)}";
 
     public string KindLabel => Kind switch

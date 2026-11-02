@@ -28,7 +28,9 @@
         TargetKind.Pack => "Only this battery has these values; the others come from its model, batch, site and operator.",
         _ => null,
     };
-    var publishedNote = Model.Kind == TargetKind.Pack
+    var publishedNote = Model.FrozenNote is { } frozen
+        ? frozen
+        : Model.Kind == TargetKind.Pack
         ? Model.PublishedPassports > 0
             ? "Its passport is published: saving a change publishes a new version, and you're asked first."
             : "Its passport is a draft: saving changes the draft only."
@@ -132,6 +134,7 @@
         }
 
         <div class="bp-edit-form">
+            <fieldset class="bp-frozen-fields" disabled="@(Model.FrozenNote is not null)">
             @foreach (var group in Model.Sections)
             {
                 <section id="@group.Id" class="bp-card bp-edit-section bp-console-form-card@(group.Missing == 0 ? " has-no-missing" : string.Empty)" data-section-title="@group.Title">
@@ -146,6 +149,10 @@
                 </section>
             }
 
+            </fieldset>
+
+            @if (Model.FrozenNote is null)
+            {
             <div class="bp-product-editor-savebar">
                 <span class="bp-savebar-text" data-save-status>Only the values you change are saved.</span>
                 <div class="bp-savebar-actions">
@@ -153,6 +160,7 @@
                     <button type="submit" class="bp-primary-button">Save @kindWord</button>
                 </div>
             </div>
+            }
         </div>
 
         @if (Model.Confirm.Count > 0)

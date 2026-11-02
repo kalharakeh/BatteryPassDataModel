@@ -10,6 +10,8 @@ namespace BatteryPassWeb.Dpp.Pages;
 /// </summary>
 /// <param name="ForTeam">The team's page: it edits the module list and links the model's module description.</param>
 /// <param name="ModuleDescriptionHref">Where the team types the model's module description; null on the cluster admin's page.</param>
+/// <param name="FrozenAs">The DPP status (#2) of a passport that is no longer active (inactive, invalid or marked for
+/// deletion); null while it is active or a draft.</param>
 public sealed record BatteryCards(
     BatteryPack Pack,
     string Href,
@@ -20,10 +22,19 @@ public sealed record BatteryCards(
     bool ForTeam,
     string? ModuleDescriptionHref = null,
     bool HasModuleDescription = false,
-    bool Frozen = false)
+    string? FrozenAs = null)
 {
-    /// <summary>Why the live values and accident reports take nothing more (an inactive passport, step 4c); null otherwise.</summary>
-    public string? FrozenNote => Frozen ? "The passport is no longer active: nothing on it changes any more. The battery's data continue on its new passport." : null;
+    /// <summary>Whether nothing on the passport changes any more (step 4c).</summary>
+    public bool Frozen => FrozenAs is not null;
+
+    /// <summary>Why nothing on the passport changes, in words that fit its status (redesign R1); null while it can change.</summary>
+    public string? FrozenNote => FrozenAs switch
+    {
+        null => null,
+        DppStatuses.Invalid => $"The passport is invalid: nothing on it changes until {Team} undoes it.",
+        DppStatuses.MarkedForDeletion => $"The passport is marked for deletion: nothing on it changes until {Team} undoes it.",
+        _ => "The passport is no longer active: nothing on it changes any more. The battery's data continue on its new passport.",
+    };
 
     /// <summary>Who the team is, in the reader's words.</summary>
     public string Team => ForTeam ? "your team" : "the team";

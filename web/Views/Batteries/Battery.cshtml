@@ -286,7 +286,7 @@
     }
 
     <div id="values">
-        @await Html.PartialAsync("~/Views/ProductData/_RecordEditor.cshtml", Model.Values)
+        @await Html.PartialAsync("~/Views/ProductData/_RecordEditor.cshtml", Model.Editor)
     </div>
     @if (publication.IsPublished)
     {
