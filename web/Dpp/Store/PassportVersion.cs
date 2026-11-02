@@ -5,11 +5,34 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace BatteryPassWeb.Dpp.Store;
 
-/// <summary>DPP status values (#2) that versioning sets; step 4 adds inactive, invalid and marked-for-deletion.</summary>
+/// <summary>DPP status values (#2), the schema's five.</summary>
 public static class DppStatuses
 {
     public const string Active = "active";
     public const string Archived = "archived";
+
+    /// <summary>Replaced by a linked new passport (design 7.5, step 4c-1).</summary>
+    public const string Inactive = "inactive";
+
+    /// <summary>Marked invalid by the team or market surveillance (design 7.7, step 4c-2).</summary>
+    public const string Invalid = "invalid";
+
+    /// <summary>After recycling or export (design 7.6, step 4c-2).</summary>
+    public const string MarkedForDeletion = "marked-for-deletion";
+
+    /// <summary>A passport no longer active (step 4c): it takes no changes and gets no new version.</summary>
+    public static bool IsNoLongerActive(string? status) => status is Inactive or Invalid or MarkedForDeletion;
+
+    /// <summary>A DPP status in words, for pills and tables: "Active", "Marked for deletion".</summary>
+    public static string Words(string status) => status switch
+    {
+        Active => "Active",
+        Archived => "Archived",
+        Inactive => "Inactive",
+        Invalid => "Invalid",
+        MarkedForDeletion => "Marked for deletion",
+        _ => status,
+    };
 }
 
 /// <summary>

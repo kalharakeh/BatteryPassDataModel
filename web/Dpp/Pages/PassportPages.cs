@@ -159,7 +159,8 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
 
         if (await store.FindPackByUniqueProductIdentifierAsync(text, cancellationToken) is { } pack)
         {
-            return await store.GetActiveVersionAsync(pack.Id, cancellationToken);
+            // A passport that is no longer active stays readable by its battery ID (step 4c).
+            return await store.GetActiveVersionAsync(pack.Id, cancellationToken) ?? await store.GetLatestVersionAsync(pack.Id, cancellationToken);
         }
 
         var published = new List<PassportVersion>();

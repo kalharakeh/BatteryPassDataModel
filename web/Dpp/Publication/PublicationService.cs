@@ -29,6 +29,10 @@ public sealed class PublicationService(
 {
     public const string PublishedEvent = "dpp.published";
     public const string BlockedEvent = "dpp.publish-blocked";
+    public const string InactiveEvent = "dpp.passport-inactive";
+
+    /// <summary>Why a passport that is no longer active gets no new version.</summary>
+    public static string NoNewVersion(string status) => $"the passport is {status}, so it gets no new version";
 
     /// <summary>
     /// The checks the pack's passport would meet if it were published now, without publishing anything (the battery
@@ -46,12 +50,53 @@ public sealed class PublicationService(
         return checks.Check(PassportAssembler.Assemble(sources, header));
     }
 
-    public Task<PublicationResult> PublishAsync(ChangeSender sender, string packId, CancellationToken cancellationToken = default)
+    public async Task<PublicationResult> PublishAsync(ChangeSender sender, string packId, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(sender);
-        return sender.Kind == SenderKind.Team
-            ? PublishCoreAsync(packId, sender, retryOnConflict: true, cancellationToken)
-            : Task.FromResult(new PublicationResult(null, null, "only the team publishes passports"));
+        if (sender.Kind != SenderKind.Team)
+        {
+            return new PublicationResult(null, null, "only the team publishes passports");
+        }
+
+        // A passport with no active version is either a draft or no longer active (step 4c): only a draft is published.
+        if (await store.PassportStatusAsync(packId, cancellationToken) is { } status && DppStatuses.IsNoLongerActive(status))
+        {
+            return new PublicationResult(null, null, NoNewVersion(status));
+        }
+
+        return await PublishCoreAsync(packId, sender, retryOnConflict: true, cancellationToken);
+    }
+
+    /// <summary>
+    /// Makes a passport inactive once its new linked passport is published or linked (design 7.5, J-13): its active
+    /// version's DPP status becomes "inactive" and #4 moves to now. No new version: #2 isn't signed (4.3).
+    /// </summary>
+    public async Task InactivateAsync(ChangeSender sender, string packId, string why, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sender);
+        if (await store.GetActiveVersionAsync(packId, cancellationToken) is not { } active)
+        {
+            return;
+        }
+
+        var now = clock.GetUtcNow().UtcDateTime;
+        await store.SetVersionStatusAsync(active.Id, DppStatuses.Inactive, now, cancellationToken);
+        if (await store.GetAsync<BatteryPack>(packId, cancellationToken) is { Succession: { } succession })
+        {
+            succession.LinkedAtUtc = now;
+            await store.SetSuccessionAsync(packId, succession, cancellationToken);
+        }
+
+        await audit.AppendApplicationAuditEventAsync(
+            InactiveEvent,
+            sender.Who,
+            sender.Kind.ToString(),
+            "publication",
+            $"The passport of pack {packId} is inactive: {why}",
+            new BsonDocument { ["version"] = active.Number, ["why"] = why },
+            entityType: "dpp-pack",
+            entityId: packId,
+            cancellationToken: cancellationToken);
     }
 
     public async Task ValuesSavedAsync(TargetKind target, string targetId, IReadOnlyCollection<string> keys, ChangeSender sender, CancellationToken cancellationToken)
@@ -151,6 +196,11 @@ public sealed class PublicationService(
         }
 
         await store.ArchiveOtherVersionsAsync(packId, version.Id, cancellationToken);
+        if (version.Number == 1 && sources.Pack.SuccessorOf is { } predecessor)
+        {
+            await InactivateAsync(sender, predecessor, $"its new passport {passportId} is published", cancellationToken);
+        }
+
         await audit.AppendApplicationAuditEventAsync(
             PublishedEvent,
             who,

@@ -156,7 +156,14 @@ public sealed class DppStore
     /// True when another pack already has this serial number (#11), ignoring case and surrounding spaces, as the old
     /// battery pages judged it. <paramref name="exceptPackId"/> is the pack being corrected, which may keep its own.
     /// </summary>
-    public async Task<bool> SerialNumberTakenAsync(string serialNumber, string? exceptPackId = null, CancellationToken cancellationToken = default)
+    public Task<bool> SerialNumberTakenAsync(string serialNumber, string? exceptPackId = null, CancellationToken cancellationToken = default) =>
+        SerialNumberTakenAsync(serialNumber, exceptPackId is null ? [] : [exceptPackId], cancellationToken);
+
+    /// <summary>
+    /// The same, with several packs that may keep it: a battery's new passport shares its old one's serial number, as it
+    /// is the same battery (design 7.5, step 4c-1).
+    /// </summary>
+    public async Task<bool> SerialNumberTakenAsync(string serialNumber, IReadOnlyCollection<string> exceptPackIds, CancellationToken cancellationToken = default)
     {
         var wanted = serialNumber?.Trim();
         if (_database is null || string.IsNullOrEmpty(wanted))
@@ -165,7 +172,7 @@ public sealed class DppStore
         }
 
         var sameSerial = Builders<BatteryPack>.Filter.Regex(SerialNumberField, new BsonRegularExpression($@"^\s*{Regex.Escape(wanted)}\s*$", "i"));
-        var filter = exceptPackId is null ? sameSerial : sameSerial & Builders<BatteryPack>.Filter.Ne("_id", exceptPackId);
+        var filter = exceptPackIds.Count == 0 ? sameSerial : sameSerial & Builders<BatteryPack>.Filter.Nin("_id", exceptPackIds);
         return await Collection<BatteryPack>().Find(filter).Limit(1).AnyAsync(cancellationToken);
     }
 
@@ -276,6 +283,38 @@ public sealed class DppStore
             .Find(version => version.PackId == packId && version.DppStatus == DppStatuses.Active)
             .SortByDescending(version => version.Number)
             .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>The pack's newest version, whatever its status; null for a draft.</summary>
+    public async Task<PassportVersion?> GetLatestVersionAsync(string packId, CancellationToken cancellationToken = default)
+    {
+        if (_database is null || string.IsNullOrWhiteSpace(packId))
+        {
+            return null;
+        }
+
+        return await Collection<PassportVersion>().Find(version => version.PackId == packId).SortByDescending(version => version.Number).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>The passport's DPP status (#2): its newest version's; null for a draft (step 4c).</summary>
+    public async Task<string?> PassportStatusAsync(string packId, CancellationToken cancellationToken = default) =>
+        (await GetLatestVersionAsync(packId, cancellationToken))?.DppStatus;
+
+    /// <summary>Sets a version's DPP status and #4 (the status is made available then); #2 isn't signed (4.3).</summary>
+    public Task SetVersionStatusAsync(string versionId, string status, DateTime lastUpdatedUtc, CancellationToken cancellationToken = default) =>
+        Collection<PassportVersion>().UpdateOneAsync(
+            version => version.Id == versionId,
+            Builders<PassportVersion>.Update.Set(version => version.DppStatus, status).Set(version => version.LastUpdatedUtc, lastUpdatedUtc),
+            cancellationToken: cancellationToken);
+
+    /// <summary>Sets or clears a pack's succession (design 7.5). False when the pack doesn't exist.</summary>
+    public async Task<bool> SetSuccessionAsync(string packId, Succession? succession, CancellationToken cancellationToken = default)
+    {
+        var result = await Collection<BatteryPack>().UpdateOneAsync(
+            pack => pack.Id == packId,
+            Builders<BatteryPack>.Update.Set(pack => pack.Succession, succession),
+            cancellationToken: cancellationToken);
+        return result.MatchedCount == 1;
     }
 
     /// <summary>A version by its passport ID (#5), whatever its status.</summary>

@@ -116,6 +116,21 @@ public sealed class BatteryApi(
             }
         }
 
+        // A serial number names the battery whose passport isn't inactive: its new linked passport (step 4c-1, decision 34).
+        if (known.Count > 1)
+        {
+            var current = new List<BatteryPack>();
+            foreach (var pack in known)
+            {
+                if (await store.PassportStatusAsync(pack.Id, cancellationToken) != DppStatuses.Inactive)
+                {
+                    current.Add(pack);
+                }
+            }
+
+            known = current;
+        }
+
         var mine = known.Where(pack => MayChange(sender, pack)).ToArray();
         return mine.Length switch
         {

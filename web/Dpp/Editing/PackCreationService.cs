@@ -13,7 +13,8 @@ public sealed record NewPack(
     string OperatorId,
     string? ClusterId,
     IReadOnlyDictionary<string, JsonNode?> Values,
-    string Source = "form");
+    string Source = "form",
+    string? PredecessorPackId = null);
 
 /// <summary>The created pack, or the problem that stopped it; <see cref="Keys"/> says what happened to each value.</summary>
 public sealed record PackCreationResult(BatteryPack? Pack, IReadOnlyList<KeyResult> Keys, string? Problem);
@@ -68,8 +69,11 @@ public sealed class PackCreationService(
             return new PackCreationResult(null, evaluation.Results, "the battery serial number (#11) is required");
         }
 
-        // Linked successor packs (step 4) will be the one exception (design 8.2).
-        if (await store.SerialNumberTakenAsync(evaluation.Accepted["batterySerialNumber"].GetValue<string>(), cancellationToken: cancellationToken))
+        // A battery's new linked passport keeps its serial number (design 7.5 and 8.2): the old pack may share it.
+        if (await store.SerialNumberTakenAsync(
+            evaluation.Accepted["batterySerialNumber"].GetValue<string>(),
+            request.PredecessorPackId is null ? [] : [request.PredecessorPackId],
+            cancellationToken))
         {
             var keys = evaluation.Results
                 .Select(result => result.Key == "batterySerialNumber" ? result with { Outcome = KeyOutcome.Rejected, Message = SavePipeline.SerialNumberTaken } : result)
@@ -84,6 +88,7 @@ public sealed class PackCreationService(
             BatchId = request.BatchId,
             OperatorId = request.OperatorId,
             ClusterId = request.ClusterId,
+            SuccessorOf = request.PredecessorPackId,
         };
         pack.Values["uniqueProductIdentifier"] = Stored(JsonValue.Create(identifiers.NewPackIdentifier()), now, "system", sender.Who);
         pack.Values["batteryStatus"] = Stored(new JsonObject { ["batteryStatusValues"] = "original" }, now, "system", sender.Who);

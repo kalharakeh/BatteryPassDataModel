@@ -95,6 +95,15 @@ public sealed class SavePipeline(
             return new SaveResult(false, false, []);
         }
 
+        // An inactive, invalid or marked-for-deletion passport takes no more changes (step 4c, decision 34).
+        if (changes.Target == TargetKind.Pack && await store.PassportStatusAsync(changes.TargetId, cancellationToken) is { } status && DppStatuses.IsNoLongerActive(status))
+        {
+            var frozen = changes.Values.Keys.Concat(changes.Removals ?? []).Distinct(StringComparer.Ordinal)
+                .Select(key => new KeyResult(key, KeyOutcome.Rejected, NoLongerChanges(status)))
+                .ToArray();
+            return new SaveResult(true, false, frozen);
+        }
+
         var evaluation = EvaluateCore(sender, changes.Target, target.ClusterId, changes.Values, statusChange);
         if (changes.Target == TargetKind.Pack)
         {
@@ -193,6 +202,9 @@ public sealed class SavePipeline(
         return results;
     }
 
+    /// <summary>Why a value of a passport that is no longer active is refused.</summary>
+    public static string NoLongerChanges(string status) => $"the passport is {status}; nothing on it changes";
+
     /// <summary>Why a pack's fixed value (#11, #17, #19) is refused after publication.</summary>
     public const string FixedOncePublished = "fixed once the passport is published";
 
@@ -234,7 +246,7 @@ public sealed class SavePipeline(
             else if (attribute.Number == 11
                 && accepted[result.Key] is JsonValue serial
                 && serial.TryGetValue<string>(out var text)
-                && await store.SerialNumberTakenAsync(text, packId, cancellationToken))
+                && await store.SerialNumberTakenAsync(text, await LinkedPacksAsync(packId, cancellationToken), cancellationToken))
             {
                 refusal = SerialNumberTaken;
             }
@@ -247,6 +259,13 @@ public sealed class SavePipeline(
         }
 
         return new Evaluation(results, accepted);
+    }
+
+    /// <summary>The pack and the passports linked to it (its predecessor and successor), which share its serial number.</summary>
+    private async Task<IReadOnlyCollection<string>> LinkedPacksAsync(string packId, CancellationToken cancellationToken)
+    {
+        var pack = await store.GetAsync<BatteryPack>(packId, cancellationToken);
+        return new[] { packId, pack?.SuccessorOf, pack?.Succession?.SuccessorPackId }.OfType<string>().ToArray();
     }
 
     private async Task<bool> UsedByPublishedPassportAsync(TargetKind target, string id, CancellationToken cancellationToken)

@@ -122,6 +122,44 @@ public sealed class BatteryPack : IDppRecord
     /// (decision 34).
     /// </summary>
     public List<RepairEntry> Repairs { get; set; } = [];
+
+    /// <summary>
+    /// Placed on the market again (design 7.5, step 4c-1): what the status was, and the battery's new passport, Scania's
+    /// (a new pack) or another operator's. Null while the battery isn't waiting for a new passport. App data.
+    /// </summary>
+    public Succession? Succession { get; set; }
+
+    /// <summary>The pack whose passport this one replaces (design 7.5); null for a battery placed on the market new.</summary>
+    public string? SuccessorOf { get; set; }
+}
+
+/// <summary>A battery placed on the market again, and its new passport (design 7.5).</summary>
+public sealed class Succession
+{
+    /// <summary>The status before (to put back if the team cancels, decision 34).</summary>
+    public required string StatusBefore { get; init; }
+
+    /// <summary>The status it was placed on the market again with: re-used, remanufactured or repurposed.</summary>
+    public required string Status { get; init; }
+
+    [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+    public required DateTime StartedAtUtc { get; init; }
+
+    /// <summary>Scania's new pack, once the team made it.</summary>
+    public string? SuccessorPackId { get; set; }
+
+    /// <summary>Another operator's identifier (#7), as typed.</summary>
+    public string? OtherOperatorId { get; set; }
+
+    /// <summary>Another operator's name and contact (#14), as typed.</summary>
+    public string? OtherOperatorInfo { get; set; }
+
+    /// <summary>Another operator's new passport: its ID or web address.</summary>
+    public string? OtherPassport { get; set; }
+
+    /// <summary>When the new passport was published or linked, which made this one inactive.</summary>
+    [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+    public DateTime? LinkedAtUtc { get; set; }
 }
 
 /// <summary>One repair of a pack (design 7.9): when, what was repaired, and who recorded it when.</summary>

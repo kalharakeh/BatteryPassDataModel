@@ -22,6 +22,15 @@ public enum StatusEvent
     /// version is published. Cluster admins ask the team.
     /// </summary>
     Corrected,
+
+    /// <summary>Prepared for re-use and placed on the market again (design 7.5): "re-used", and a new linked passport follows.</summary>
+    PlacedOnMarketAgain,
+
+    /// <summary>Remanufactured (design 7.5): a new linked passport follows.</summary>
+    Remanufactured,
+
+    /// <summary>Repurposed, for a new use (design 7.5): a new linked passport follows.</summary>
+    Repurposed,
 }
 
 /// <summary>One status change: what happened, the re-stated values, and for a repair its day (yyyy-MM-dd) and what was repaired.</summary>
@@ -58,6 +67,13 @@ public sealed class StatusChangeService(
     public const string RepairNotInTheFuture = "the day of the repair can't be in the future";
     public const string RepairNeedsDescription = "say what was repaired";
     public const string OnlyTheTeamCorrects = "only the team corrects the values; ask the team";
+    public const string WaitingForSuccessor = "the battery is waiting for its new passport; the team can cancel it";
+
+    /// <summary>Why a passport that is no longer active changes nothing (step 4c).</summary>
+    public static string NoLongerActive(string status) => SavePipeline.NoLongerChanges(status);
+
+    /// <summary>What happened that places the battery on the market again, with a new linked passport (design 7.5).</summary>
+    public static bool LeadsToNewPassport(StatusEvent what) => what is StatusEvent.PlacedOnMarketAgain or StatusEvent.Remanufactured or StatusEvent.Repurposed;
     public const string NoteNeedsText = "write the note first";
     public const string NoBattery = "the battery was not found";
     public const string NoteAddedEvent = "dpp.history-note-added";
@@ -102,6 +118,9 @@ public sealed class StatusChangeService(
         {
             StatusEvent.Repaired => current == "original" ? "re-used" : current,
             StatusEvent.Waste => "waste",
+            StatusEvent.PlacedOnMarketAgain => "re-used",
+            StatusEvent.Remanufactured => "remanufactured",
+            StatusEvent.Repurposed => "repurposed",
             _ => null,
         };
     }
@@ -139,7 +158,12 @@ public sealed class StatusChangeService(
 
         if (await store.GetActiveVersionAsync(packId, cancellationToken) is null)
         {
-            return Refused(OnlyPublished);
+            return Refused(await store.PassportStatusAsync(packId, cancellationToken) is { } status && DppStatuses.IsNoLongerActive(status) ? NoLongerActive(status) : OnlyPublished);
+        }
+
+        if (pack.Succession is { LinkedAtUtc: null } && change.What != StatusEvent.Corrected)
+        {
+            return Refused(WaitingForSuccessor);
         }
 
         var from = CurrentStatus(pack) ?? "original";
@@ -209,6 +233,11 @@ public sealed class StatusChangeService(
             await store.AddRepairAsync(packId, repair, cancellationToken);
         }
 
+        if (LeadsToNewPassport(change.What))
+        {
+            await store.SetSuccessionAsync(packId, new Succession { StatusBefore = from, Status = to, StartedAtUtc = clock.GetUtcNow().UtcDateTime }, cancellationToken);
+        }
+
         var version = await store.GetActiveVersionAsync(packId, cancellationToken);
         var serial = pack.Values.GetValueOrDefault("batterySerialNumber")?.Value?.GetValue<string>() ?? packId;
         var metadata = new BsonDocument
@@ -266,7 +295,7 @@ public sealed class StatusChangeService(
 
         if (await store.GetActiveVersionAsync(packId, cancellationToken) is null)
         {
-            return OnlyPublished;
+            return await store.PassportStatusAsync(packId, cancellationToken) is { } status && DppStatuses.IsNoLongerActive(status) ? NoLongerActive(status) : OnlyPublished;
         }
 
         var note = text?.Trim() ?? string.Empty;
