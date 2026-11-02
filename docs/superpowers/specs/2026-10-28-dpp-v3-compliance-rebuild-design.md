@@ -298,23 +298,25 @@ The file's DIN note on #22 asks for a repair history and for a repair to be reco
 
 ### 8.3 The BMS export (mapping `BMS2_ACO`, version 01.32.07; decision 17)
 
-Sample: `battery-passport_VPC8C05-6788_2026-10-27T10-02-59.928Z.json`.
+Samples: `battery-passport_VPC8C05-6788_2026-10-27T10-02-59.928Z.json` and `battery-passport_VPC8C05-01036_2026-10-28T13-40-26.319Z.json`. Each value comes as `raw` and `formatted` (readable text). Corrected to match the samples in step 5b (decision 35):
 
 | Export field | Use |
 |---|---|
-| `serialNumber` | Finds the pack (#11) |
-| `exportedAt` | Generation time of the values |
-| `stateOfCharge.raw` | #63 |
-| `equivalentChargeAndDischargeCycles` | #83. One full charge plus one full discharge counts as one cycle (the export team confirms, 8.5). |
-| A new field with the latest measured pack temperature in °C (8.5) | #87 |
-| `timeSpentInExtremeHighTemperature.raw` | E1, seconds converted to whole minutes (decision 28) |
+| `metadata.identifiers.deviceIdentifiers.serialNumber` | Finds the pack (#11) |
+| `metadata.exportedAt` | Generation time of the values |
+| `metadata.mappingName`, `metadata.mappingVersion` | Must be BMS2_ACO; another version is read the same way, with a note (checked against 01.32.07) |
+| `stateOfCharge.formatted` | #63, from the readable text ("27.1 %") as a whole percent. The raw number is on another scale (17323 for 27.1 %); the export team is asked which (8.5). |
+| `equivalentChargeAndDischargeCycles.raw` | #83, as full cycles completed (rounded down). One full charge plus one full discharge counts as one cycle (the export team confirms, 8.5). |
+| A new field with the latest measured pack temperature in °C (8.5) | #87. Until it exists, each export's notes say so and #87 is left as it is. |
+| `timeSpentInExtremeHighTemperature.raw` | E1, seconds converted to whole minutes, rounded down (decision 28) |
 | `timeSpentInExtremeLowTemperature.raw` | E2, the same |
-| `timeSpentChargingInExtremeTemperature.raw` | E3 and E4, in whole minutes. Polarion says it is always zero, because charging in extreme temperatures is prevented. A value above zero can't be split into above and below: the upload reports it and leaves E3 and E4 unchanged (8.5, item 7). |
-| `productionDate` | #17 as year and month (decision 18), accepted from the team only |
-| `remainingCapacityAh` | Suggests #59 at the next status change; not stored |
-| Everything else: energy and Ah totals, the other cycle fields, histograms, deep-discharge events, service date, CAN payload, IP address, exporter, parent and child devices | Ignored: not in the file. The exporter's name and e-mail are not stored. |
+| `timeSpentChargingInExtremeTemperature.raw` | E3 and E4, in whole minutes. Polarion says it is always zero, because charging in extreme temperatures is prevented. A value above zero can't be split into above and below: the upload notes it and leaves E3 and E4 unchanged (8.5, item 7). |
+| `productionDate.formatted` | #17 as year and month (decision 18), only for a draft without one, sent by the team; otherwise a note says it isn't used. The raw date is character codes, and seven zeros when unset. |
+| `remainingCapacityAh.formatted` | Kept as app data, the latest reading only, to suggest #59 at the next status change (J-11); not in the passport |
+| `metadata.identifiers.deviceIdentifiers.childrenIdentifiers` | The battery's module list (decision 31): position, serial number, connectivity ID |
+| Everything else: energy and Ah totals, the other cycle fields, histograms, deep-discharge events, service date, CAN payload, IP address, exporter, parent devices | Ignored: not in the file. The exporter's name and e-mail are not stored. |
 
-In the sample, every field the passport needs is empty; only energy and Ah totals are filled. The request to the export team is in 8.5.
+In the first sample, every field the passport needs is empty; only energy and Ah totals are filled. The second fills the state of charge, the cycles and the extreme-temperature times. The request to the export team is in 8.5.
 
 ### 8.4 What goes away
 
@@ -438,7 +440,7 @@ Step 4 is planned in four parts (product owner, 31 Oct 2026, decision 34), each 
 Step 5 is planned in four parts (product owner, 2 Nov 2026, decision 35), each ending with a working app, with one mock-up of its new screens before 5c:
 
 - **5a, the upload engine, the upload log and the API's upload endpoint:** the native format (8.2) read by its adapter, each battery found as the API finds it and its values through the save pipeline, a battery that can't be changed refused on its own, each upload logged in `dpp_uploads`, and `POST api/external/v1/uploads` with its preview; also the step 4 wrap-up's follow-up (hand-overs compare normalised cluster IDs). Planned in `docs/superpowers/plans/2026-11-02-dpp-v3-step5a-upload-engine.md`.
-- **5b, the battery system's export** (8.3, mapping BMS2_ACO) on the same endpoint: the live values, E1–E4 in whole minutes, #17 for the team and the module list.
+- **5b, the battery system's export** (8.3, mapping BMS2_ACO) on the same endpoint: the live values, E1–E4 in whole minutes, #17 for the team's drafts and the module list, and the remaining capacity kept for the fade suggestion. Planned in `docs/superpowers/plans/2026-11-02-dpp-v3-step5b-battery-system-export.md`.
 - **5c, the upload page** with its preview, for the team and the battery's cluster admins, and the upload log on it.
 - **5d, status changes and repairs by upload** (7.4, 7.9), through the status change, and the demo example.
 
