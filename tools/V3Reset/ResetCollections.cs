@@ -41,6 +41,7 @@ public static class ResetCollections
         ["dpp_packs"] = CollectionFate.NewTestData,
         ["dpp_passport_versions"] = CollectionFate.NewTestData,
         ["dpp_transfers"] = CollectionFate.NewTestData,
+        ["dpp_uploads"] = CollectionFate.NewTestData,
         ["dpp_documents"] = CollectionFate.NewTestData,
         ["dpp_files.files"] = CollectionFate.NewTestData,
         ["dpp_files.chunks"] = CollectionFate.NewTestData,

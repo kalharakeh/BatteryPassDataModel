@@ -7,6 +7,7 @@ using BatteryPassWeb.Dpp.Forms;
 using BatteryPassWeb.Dpp.Pages;
 using BatteryPassWeb.Dpp.Publication;
 using BatteryPassWeb.Dpp.Store;
+using BatteryPassWeb.Dpp.Uploads;
 using BatteryPassWeb.Services;
 using MongoDB.Bson;
 using MongoDB.Bson.IO;
@@ -213,6 +214,13 @@ public sealed class AuditLines(DppStore store, DocumentStore documents, Attribut
                 icon = AuditIcon.Add;
                 words.Add(new(" created battery "));
                 words.Add(new(record?.Name ?? entityId, Strong: true));
+                break;
+            case UploadService.UploadedEvent:
+                icon = AuditIcon.Upload;
+                var counts = message.Split(": ", 2);
+                words.Add(new(" uploaded values for "));
+                words.Add(new(counts[0].Replace("Upload of ", string.Empty, StringComparison.Ordinal), Strong: true));
+                change = counts.Length == 2 ? counts[1] : null;
                 break;
             case PublicationService.PublishedEvent:
                 icon = AuditIcon.Publish;

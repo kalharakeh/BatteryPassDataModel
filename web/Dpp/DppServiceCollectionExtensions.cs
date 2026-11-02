@@ -10,6 +10,7 @@ using BatteryPassWeb.Dpp.Publication;
 using BatteryPassWeb.Dpp.Schemas;
 using BatteryPassWeb.Dpp.Signing;
 using BatteryPassWeb.Dpp.Store;
+using BatteryPassWeb.Dpp.Uploads;
 using BatteryPassWeb.Dpp.Values;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -54,6 +55,8 @@ public static class DppServiceCollectionExtensions
         services.AddSingleton<ReaderPages>();
         services.AddSingleton<PassportApi>();
         services.AddSingleton<BatteryApi>();
+        services.AddSingleton<IUploadAdapter, NativeUploadFormat>();
+        services.AddSingleton<UploadService>();
         services.AddSingleton<PassportPages>();
         services.AddSingleton<AuditLines>();
         return services;

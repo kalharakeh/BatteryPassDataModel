@@ -221,6 +221,73 @@ public sealed class HandOver : IDppRecord
     public DateTime? AnsweredAtUtc { get; set; }
 }
 
+/// <summary>
+/// One upload (design 6.2 step 8 and 8.1, step 5a): a file of many batteries sent on the upload page or to the API's
+/// upload endpoint, with what happened to each battery and each value. App data, not passport data. Previews aren't
+/// logged: they change nothing.
+/// </summary>
+public sealed class UploadRecord : IDppRecord
+{
+    [BsonId]
+    public required string Id { get; init; }
+
+    [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+    public required DateTime AtUtc { get; init; }
+
+    /// <summary>The person's e-mail or the token's name.</summary>
+    public required string Who { get; init; }
+
+    /// <summary>The sender's kind (<c>SenderKind</c>): Team, ClusterAdmin or BatterySystemFeed.</summary>
+    public required string SentAs { get; init; }
+
+    /// <summary>The clusters a cluster admin or a battery system's token sent for; empty for the team.</summary>
+    public List<string> ClusterIds { get; init; } = [];
+
+    /// <summary>"page" or "api".</summary>
+    public required string Channel { get; init; }
+
+    public string? FileName { get; init; }
+
+    /// <summary>The file's format, e.g. "dpp-v3-upload/1".</summary>
+    public required string Format { get; init; }
+
+    public List<UploadedBattery> Batteries { get; init; } = [];
+
+    /// <summary>Made by the demo data seed (decision 32); clearing the demo data removes it.</summary>
+    public bool IsDemo { get; set; }
+}
+
+/// <summary>What happened to one battery of an upload: found or not, refused or not, and each value's outcome.</summary>
+public sealed class UploadedBattery
+{
+    /// <summary>The battery's place in the file, from 1.</summary>
+    public int Entry { get; init; }
+
+    /// <summary>The battery ID or serial number the file names it by.</summary>
+    public required string NamedAs { get; init; }
+
+    /// <summary>The battery found; null when none was.</summary>
+    public string? PackId { get; init; }
+
+    /// <summary>"saved", "nothing saved" or "refused".</summary>
+    public required string Outcome { get; init; }
+
+    /// <summary>Why the battery was refused as a whole; null when it wasn't.</summary>
+    public string? Problem { get; init; }
+
+    public List<UploadedValue> Values { get; init; } = [];
+}
+
+/// <summary>One value of an upload: its key, its outcome ("Saved", "KeptEmpty", "Ignored", "Rejected") and why.</summary>
+public sealed class UploadedValue
+{
+    public required string Key { get; init; }
+
+    public required string Outcome { get; init; }
+
+    public string? Message { get; init; }
+}
+
 /// <summary>One repair of a pack (design 7.9): when, what was repaired, and who recorded it when.</summary>
 public sealed class RepairEntry
 {

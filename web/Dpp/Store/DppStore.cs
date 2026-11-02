@@ -21,6 +21,7 @@ public sealed class DppStore
     public const string Packs = "dpp_packs";
     public const string Versions = "dpp_passport_versions";
     public const string HandOvers = "dpp_transfers";
+    public const string Uploads = "dpp_uploads";
 
     private const string UniqueProductIdentifierField = "Values.uniqueProductIdentifier.Value";
     private const string SerialNumberField = "Values.batterySerialNumber.Value";
@@ -35,6 +36,7 @@ public sealed class DppStore
         [typeof(BatteryPack)] = Packs,
         [typeof(PassportVersion)] = Versions,
         [typeof(HandOver)] = HandOvers,
+        [typeof(UploadRecord)] = Uploads,
     };
 
     private readonly IMongoDatabase? _database;
@@ -104,6 +106,30 @@ public sealed class DppStore
                 Builders<HandOver>.IndexKeys.Ascending(handOver => handOver.ToClusterId).Ascending(handOver => handOver.State),
                 new CreateIndexOptions { Name = "to_state" }),
         ], cancellationToken);
+        await Collection<UploadRecord>().Indexes.CreateOneAsync(
+            new CreateIndexModel<UploadRecord>(Builders<UploadRecord>.IndexKeys.Descending(upload => upload.AtUtc), new CreateIndexOptions { Name = "at" }),
+            cancellationToken: cancellationToken);
+    }
+
+    /// <summary>Logs an upload (step 5a).</summary>
+    public async Task AddUploadAsync(UploadRecord upload, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(upload);
+        if (_database is not null)
+        {
+            await Collection<UploadRecord>().InsertOneAsync(upload, cancellationToken: cancellationToken);
+        }
+    }
+
+    /// <summary>The latest uploads, newest first.</summary>
+    public async Task<IReadOnlyList<UploadRecord>> ListUploadsAsync(int limit, CancellationToken cancellationToken = default)
+    {
+        if (_database is null)
+        {
+            return [];
+        }
+
+        return await Collection<UploadRecord>().Find(Builders<UploadRecord>.Filter.Empty).SortByDescending(upload => upload.AtUtc).Limit(limit).ToListAsync(cancellationToken);
     }
 
     public async Task<T?> GetAsync<T>(string id, CancellationToken cancellationToken = default)

@@ -16,7 +16,7 @@ public sealed class ResetCollectionsTests
         var named = Directory.GetFiles(web, "*.cs", SearchOption.AllDirectories)
             .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
             .SelectMany(file => Regex.Matches(File.ReadAllText(file), "GetCollection<[^>]*>\\(\"([^\"]+)\"\\)").Select(match => match.Groups[1].Value));
-        var dpp = new[] { DppStore.Families, DppStore.Models, DppStore.Sites, DppStore.Batches, DppStore.Operators, DppStore.Packs, DppStore.Versions, DppStore.HandOvers, DocumentStore.Records, $"{DocumentStore.Bucket}.files", $"{DocumentStore.Bucket}.chunks" };
+        var dpp = new[] { DppStore.Families, DppStore.Models, DppStore.Sites, DppStore.Batches, DppStore.Operators, DppStore.Packs, DppStore.Versions, DppStore.HandOvers, DppStore.Uploads, DocumentStore.Records, $"{DocumentStore.Bucket}.files", $"{DocumentStore.Bucket}.chunks" };
 
         foreach (var collection in named.Concat(dpp).Distinct())
         {
@@ -27,7 +27,7 @@ public sealed class ResetCollectionsTests
     [Fact]
     public void TheNewModelsCollections_ShouldBeEmptiedAsTestData()
     {
-        foreach (var collection in new[] { DppStore.Families, DppStore.Models, DppStore.Sites, DppStore.Batches, DppStore.Operators, DppStore.Packs, DppStore.Versions, DppStore.HandOvers, DocumentStore.Records, $"{DocumentStore.Bucket}.files" })
+        foreach (var collection in new[] { DppStore.Families, DppStore.Models, DppStore.Sites, DppStore.Batches, DppStore.Operators, DppStore.Packs, DppStore.Versions, DppStore.HandOvers, DppStore.Uploads, DocumentStore.Records, $"{DocumentStore.Bucket}.files" })
         {
             Assert.Equal(CollectionFate.NewTestData, ResetCollections.FateOf(collection));
         }
