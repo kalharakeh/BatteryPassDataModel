@@ -273,6 +273,7 @@
       "key": "compact-13m",
       "family": "compact",
       "name": "Compact 13M",
+      "picture": "compact13.png",
       "modules": 13,
       "moduleDescription": "Thirteen liquid-cooled NMC modules in two rows, with the battery management unit at the front.",
       "documents": {

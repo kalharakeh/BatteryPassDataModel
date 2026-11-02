@@ -139,6 +139,11 @@ public sealed class DemoDataService(
 
             var stored = await store.GetAsync<BatteryModel>(id, cancellationToken);
             await productData.SetModuleDescriptionAsync(who, stored!, model.ModuleDescription, cancellationToken);
+            if (model.Picture is { } picture)
+            {
+                await productData.SetModelPictureAsync(who, id, picture, DemoCatalogue.Picture(picture), cancellationToken);
+            }
+
             models[model.Key] = id;
         }
 
@@ -215,7 +220,18 @@ public sealed class DemoDataService(
 
         await ClearUnlessUsedAsync<ProductionBatch>(DppStore.Batches, "batches", (DppStore.Packs, "BatchId"), "real batteries", TargetKind.Batch, notes, Count, cancellationToken);
         await ClearUnlessUsedAsync<EconomicOperator>(DppStore.Operators, "operators", (DppStore.Packs, "OperatorId"), "real batteries", null, notes, Count, cancellationToken);
+        // A removed demo model takes its own picture with it (redesign R2); a kept one keeps it.
+        var modelPictures = (await Collection(DppStore.Models).Find(Builders<BsonDocument>.Filter.Eq(Mark, true)).ToListAsync(cancellationToken))
+            .Where(model => model.GetValue("PictureFileId", BsonNull.Value).IsString)
+            .ToDictionary(model => model["_id"].AsString, model => model["PictureFileId"].AsString);
         await ClearUnlessUsedAsync<BatteryModel>(DppStore.Models, "models", (DppStore.Batches, "ModelId"), "real batches", TargetKind.Model, notes, Count, cancellationToken);
+        foreach (var (modelId, fileId) in modelPictures)
+        {
+            if (await store.GetAsync<BatteryModel>(modelId, cancellationToken) is null)
+            {
+                await documentStore.DeleteFileAsync(fileId, cancellationToken);
+            }
+        }
         await ClearUnlessUsedAsync<ManufacturingSite>(DppStore.Sites, "sites", (DppStore.Batches, "SiteId"), "real batches", null, notes, Count, cancellationToken);
         foreach (var family in await Collection(DppStore.Families).Find(Builders<BsonDocument>.Filter.Eq(Mark, true)).ToListAsync(cancellationToken))
         {

@@ -16,6 +16,21 @@ public sealed class DemoSeedTests(MongoFixture mongo)
     private static FilterDefinition<BsonDocument> Eq(string field, BsonValue value) => Builders<BsonDocument>.Filter.Eq(field, value);
 
     [Fact]
+    public async Task TheCompact13M_ShouldShowItsOwnPictureAndThe7MItsFamilys()
+    {
+        // Owner's point 8: the 13M is the double stack, so it gets back the old demo's compact13.png (redesign R2).
+        using var rig = await DemoRig.StartAsync(mongo);
+
+        await rig.Demo.SeedAsync(DemoRig.Who);
+        var models = (await rig.All(DppStore.Models)).ToDictionary(model => model["Name"].AsString);
+
+        Assert.Equal("image/png", models["Compact 13M"]["PictureContentType"].AsString);
+        Assert.True(models["Compact 7M"].GetValue("PictureFileId", BsonNull.Value).IsBsonNull);
+        Assert.True(models["Core"].GetValue("PictureFileId", BsonNull.Value).IsBsonNull);
+        Assert.Equal(700941, DemoCatalogue.Picture("compact13.png").Length);
+    }
+
+    [Fact]
     public async Task TheSeed_ShouldMakeTheFamiliesModelsAndBatteries()
     {
         using var rig = await DemoRig.StartAsync(mongo);
@@ -107,7 +122,7 @@ public sealed class DemoSeedTests(MongoFixture mongo)
         Assert.Equal(2, await rig.Count(DocumentStore.Records, Eq("Property", "informationOnAccidents")));
         Assert.Equal(12, await rig.Count(DocumentStore.Records, Eq("OwnerKind", "Model")));
         Assert.Equal(3, await rig.Count(DocumentStore.Records, Eq("Property", "resultsOfTestReportsProvingCompliance")));
-        Assert.Equal(12 + 3 + 2 + 2, await rig.Count($"{DocumentStore.Bucket}.files"));
+        Assert.Equal(12 + 3 + 2 + 2 + 1, await rig.Count($"{DocumentStore.Bucket}.files")); // + the Compact 13M picture (redesign R2)
     }
 
     [Fact]

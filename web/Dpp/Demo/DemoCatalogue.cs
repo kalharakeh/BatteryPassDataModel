@@ -10,8 +10,11 @@ public sealed record DemoAccount(string Email, string Name, string Role, string?
 
 public sealed record DemoFamily(string Key, string Name, string Picture);
 
-/// <summary>A battery model: its values, its module description and the restricted documents the seed uploads for it.</summary>
-public sealed record DemoModel(string Key, string Family, string Name, int Modules, string ModuleDescription, Dictionary<string, string> Documents, JsonObject Values);
+/// <summary>
+/// A battery model: its values, its module description, the restricted documents the seed uploads for it, and its own
+/// picture when it looks different from its family's (redesign R2).
+/// </summary>
+public sealed record DemoModel(string Key, string Family, string Name, int Modules, string ModuleDescription, Dictionary<string, string> Documents, JsonObject Values, string? Picture = null);
 
 public sealed record DemoNamed(string Key, string Name, JsonObject Values);
 
@@ -77,7 +80,7 @@ public sealed record DemoCatalogue(
         return JsonSerializer.Deserialize<DemoCatalogue>(stream, Json) ?? throw new InvalidOperationException("The demo catalogue is empty.");
     }
 
-    /// <summary>A family picture from the old demo (tag app-v1.2-before-dpp-v3).</summary>
+    /// <summary>A family or model picture from the old demo (tag app-v1.2-before-dpp-v3).</summary>
     public static byte[] Picture(string fileName)
     {
         using var stream = Resource(fileName);
