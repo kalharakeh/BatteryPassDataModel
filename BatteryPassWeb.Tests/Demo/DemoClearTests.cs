@@ -23,7 +23,7 @@ public sealed class DemoClearTests(MongoFixture mongo)
 
         var result = await rig.Demo.ClearAsync(DemoRig.Who);
 
-        foreach (var collection in new[] { DppStore.Families, DppStore.Models, DppStore.Sites, DppStore.Batches, DppStore.Operators, DppStore.Packs, DppStore.Versions, DocumentStore.Records, $"{DocumentStore.Bucket}.files", $"{DocumentStore.Bucket}.chunks", "users", "clusterMemberships", "clusters", "apiTokens" })
+        foreach (var collection in new[] { DppStore.Families, DppStore.Models, DppStore.Sites, DppStore.Batches, DppStore.Operators, DppStore.Packs, DppStore.Versions, DppStore.HandOvers, DocumentStore.Records, $"{DocumentStore.Bucket}.files", $"{DocumentStore.Bucket}.chunks", "users", "clusterMemberships", "clusters", "apiTokens" })
         {
             Assert.True(await rig.Count(collection) == 0, $"{collection} still has records");
         }

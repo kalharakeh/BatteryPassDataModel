@@ -1026,7 +1026,8 @@
       "publish": true,
       "history": true,
       "modules": 10,
-      "accident": "Collision during loading; the housing was inspected and found sound."
+      "accident": "Collision during loading; the housing was inspected and found sound.",
+      "handOverTo": "demo-north"
     },
     {
       "serial": "DEMO-CORE-0002",

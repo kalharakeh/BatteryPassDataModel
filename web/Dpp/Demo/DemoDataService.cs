@@ -36,6 +36,7 @@ public sealed class DemoDataService(
     StatusChangeService statusChanges,
     SuccessionService successions,
     PassportMarks marks,
+    HandOverService handOvers,
     DocumentService documents,
     DocumentStore documentStore,
     DppLinks links,
@@ -212,6 +213,11 @@ public sealed class DemoDataService(
             if (demo.Mark is { } mark && demo.Publish)
             {
                 await MarkAsync(team, packId, demo, mark, catalogue, cancellationToken);
+            }
+
+            if (demo.HandOverTo is { } receiver && demo.Publish)
+            {
+                await HandOverAsync(packId, demo, receiver, catalogue, cancellationToken);
             }
         }
 
@@ -544,6 +550,21 @@ public sealed class DemoDataService(
         if (problem is not null)
         {
             throw new InvalidOperationException($"The demo battery {demo.Serial} couldn't be marked: {problem}.");
+        }
+    }
+
+    /// <summary>
+    /// A demo battery handed over by its cluster's demo admin, as they would on its page, and left waiting for the
+    /// receiving cluster's answer (step 4d).
+    /// </summary>
+    private async Task HandOverAsync(string packId, DemoPack demo, string receiver, DemoCatalogue catalogue, CancellationToken cancellationToken)
+    {
+        var admin = catalogue.Accounts.FirstOrDefault(account => account.Cluster == demo.Cluster && account.ClusterRole == "clusterAdmin")?.Email
+            ?? throw new InvalidOperationException($"The demo cluster {demo.Cluster} has no admin to hand {demo.Serial} over.");
+        var asked = await handOvers.AskAsync(ChangeSender.ClusterAdmin(admin, demo.Cluster), packId, receiver, confirm: true, cancellationToken);
+        if (asked.Problem is { } problem)
+        {
+            throw new InvalidOperationException($"The demo battery {demo.Serial} couldn't be handed over: {problem}.");
         }
     }
 

@@ -85,6 +85,16 @@ public sealed class DemoCatalogueTests
     }
 
     [Fact]
+    public void TheHandOverExample_ShouldGoFromOnePublishedClusterBatteryToAnother()
+    {
+        var handedOver = Assert.Single(Catalogue.Packs, pack => pack.HandOverTo is not null);
+
+        Assert.Equal(("DEMO-CORE-0001", "demo-fleet", "demo-north"), (handedOver.Serial, handedOver.Cluster, handedOver.HandOverTo));
+        Assert.True(handedOver.Publish);
+        Assert.Contains(Catalogue.Clusters, cluster => cluster.Id == handedOver.HandOverTo);
+    }
+
+    [Fact]
     public void ThePictures_ShouldBeTheOldDemosPngFiles()
     {
         foreach (var family in Catalogue.Families)

@@ -124,6 +124,22 @@ public sealed class DemoSeedTests(MongoFixture mongo)
     }
 
     [Fact]
+    public async Task TheHandOverExample_ShouldWaitForDemoNorthsAnswer()
+    {
+        using var rig = await DemoRig.StartAsync(mongo);
+
+        await rig.Demo.SeedAsync(DemoRig.Who);
+
+        var pack = (await rig.All(DppStore.Packs, Eq("Values.batterySerialNumber.Value", "DEMO-CORE-0001"))).Single();
+        var waiting = (await rig.All(DppStore.HandOvers)).Single();
+        Assert.Equal(pack["_id"].AsString, waiting["PackId"].AsString);
+        Assert.Equal(
+            ("demo-fleet", "demo-north", "waiting", "demo.fleet.admin@example.test"),
+            (waiting["FromClusterId"].AsString, waiting["ToClusterId"].AsString, waiting["State"].AsString, waiting["AskedBy"].AsString));
+        Assert.Equal("demo-fleet", pack["ClusterId"].AsString); // it stays with the sender until demo-north accepts
+    }
+
+    [Fact]
     public async Task EveryRecordItMakes_ShouldBeMarkedAsDemoData()
     {
         using var rig = await DemoRig.StartAsync(mongo);

@@ -33,7 +33,8 @@ public sealed record DemoSuccessor(string Warranty);
 public sealed record DemoMark(string? Invalid = null, bool Deletion = false);
 
 /// <summary>
-/// A demo battery. <see cref="Publish"/> publishes it; <see cref="NewVersion"/> then changes these values, which makes
+/// A demo battery. <see cref="Publish"/> publishes it; <see cref="HandOverTo"/> then has its cluster admin hand it over to
+/// that cluster, waiting for its answer (step 4d); <see cref="NewVersion"/> then changes these values, which makes
 /// version 2; <see cref="History"/> writes seven days of live values; <see cref="Modules"/> imports that many modules
 /// from an export-shaped file; <see cref="Accident"/> adds an accident report; <see cref="Status"/> then changes its
 /// status through the app's own status change.
@@ -50,7 +51,8 @@ public sealed record DemoPack(
     int Modules = 0,
     string? Accident = null,
     DemoStatus? Status = null,
-    DemoMark? Mark = null);
+    DemoMark? Mark = null,
+    string? HandOverTo = null);
 
 /// <summary>
 /// What the demo data seed makes (decision 32): the Compact and Core families of the old demo on the new model, with
