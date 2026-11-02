@@ -12,6 +12,24 @@ public sealed class PassportHeroTests
     private static string Read(params string[] parts) => File.ReadAllText(DppTestFiles.RepoFile(parts)).Replace("\r\n", "\n", StringComparison.Ordinal);
 
     [Fact]
+    public void ThePicture_ShouldBeTrimmedLikeTheBatteryPageHeadersPicture()
+    {
+        // The 7M's picture has empty sides; the same script that trims the header's picture trims this one (owner, 2 Nov 2026).
+        var hero = Read("web", "Views", "Passport", "_PassportHero.cshtml");
+        var script = Read("web", "wwwroot", "js", "bp-picture-trim.js");
+        var css = Read("web", "wwwroot", "css", "bp-status.css");
+
+        Assert.Contains("<script src=\"~/js/bp-picture-trim.js\" asp-append-version=\"true\"></script>", hero, StringComparison.Ordinal);
+        Assert.Contains("document.querySelector('.bp-bh-picture img, .bp-hero-picture img')", script, StringComparison.Ordinal);
+        Assert.Contains("image.dataset.trimmed = 'true';", script, StringComparison.Ordinal);
+        // Without JavaScript the picture shows as before: only the script hides it, and only while it cuts.
+        Assert.DoesNotContain("is-trimming", hero, StringComparison.Ordinal);
+        Assert.Contains("image.classList.add('is-trimming');", script, StringComparison.Ordinal);
+        Assert.Contains(".bp-hero-picture img.is-trimming {\n  opacity: 0;\n}", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("trim", Read("web", "wwwroot", "js", "bp-battery-page.js"), StringComparison.Ordinal); // one copy of the code
+    }
+
+    [Fact]
     public void ThePicture_ShouldSitInsideTheCardWithTheButtonsUnderTheFacts()
     {
         var hero = Read("web", "Views", "Passport", "_PassportHero.cshtml");

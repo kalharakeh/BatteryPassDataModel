@@ -297,6 +297,11 @@
 .bp-hero-compact .bp-report-identity-panel--qr { grid-area: qr; }
 .bp-hero-compact .bp-hero-picture { grid-area: picture; }
 .bp-hero-compact .bp-summary-fields-panel { grid-area: fields; }
+/* The hero picture is hidden only while bp-picture-trim.js cuts its transparent margins off (no JavaScript: it shows as it is). */
+.bp-hero-compact .bp-hero-picture img.is-trimming {
+  opacity: 0;
+}
+
 .bp-hero-compact .bp-hero-ctas { grid-area: cta; }
 
 .bp-hero-compact .bp-hero-picture {

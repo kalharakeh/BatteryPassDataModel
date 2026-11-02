@@ -27,6 +27,7 @@ public sealed class BatteryPageLayoutTests
             Assert.Contains("data-open-dialog=\"status-dialog\"", page[..page.IndexOf("</header>", StringComparison.Ordinal)], StringComparison.Ordinal);
             Assert.Contains("data-open-dialog=\"note-dialog\"", page[..page.IndexOf("</header>", StringComparison.Ordinal)], StringComparison.Ordinal);
             Assert.Contains("<script src=\"~/js/bp-battery-page.js\" asp-append-version=\"true\"></script>", page, StringComparison.Ordinal);
+            Assert.Contains("<script src=\"~/js/bp-picture-trim.js\" asp-append-version=\"true\"></script>", page, StringComparison.Ordinal);
             Assert.Contains("@await Html.PartialAsync(\"_StatusHelp\")", page, StringComparison.Ordinal);
         }
 
@@ -75,8 +76,8 @@ public sealed class BatteryPageLayoutTests
         var css = File.ReadAllText(DppTestFiles.RepoFile("web", "wwwroot", "css", "bp-product-data.css")).Replace("\r\n", "\n", StringComparison.Ordinal);
         var box = css[css.IndexOf(".bp-bh-picture {\n", StringComparison.Ordinal)..];
         Assert.DoesNotContain("min-width", box[..box.IndexOf('}')], StringComparison.Ordinal);
-        var trim = File.ReadAllText(DppTestFiles.RepoFile("web", "wwwroot", "js", "bp-battery-page.js"));
-        Assert.Contains("document.querySelector('.bp-bh-picture img')", trim, StringComparison.Ordinal);
+        var trim = File.ReadAllText(DppTestFiles.RepoFile("web", "wwwroot", "js", "bp-picture-trim.js"));
+        Assert.Contains("document.querySelector('.bp-bh-picture img, .bp-hero-picture img')", trim, StringComparison.Ordinal);
         Assert.Contains("image.dataset.trimmed = 'true';", trim, StringComparison.Ordinal);
         Assert.True(header.IndexOf("bp-bh-picture", StringComparison.Ordinal) < header.IndexOf("<div class=\"bp-bh-id\">", StringComparison.Ordinal)
             && header.IndexOf("<div class=\"bp-bh-id\">", StringComparison.Ordinal) < header.IndexOf("<div class=\"bp-bh-facts-row\">", StringComparison.Ordinal));
