@@ -277,6 +277,109 @@
   font-size: 0.85rem;
 }
 
+/* The public hero (owner's item 10): the picture inside the card, top right, at its own shape and the height of the
+   top block; the facts at the card's full width; "View more" in the card. Scoped to .bp-hero-compact, so site.css and
+   every other page stay as they are. The battery pages' header picture follows the same sizes (bp-product-data.css). */
+.bp-hero-compact .bp-report-hero-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.bp-hero-compact .bp-report-hero-info.bp-summary-identity-grid {
+  grid-template-columns: minmax(220px, 1fr) minmax(260px, 1.2fr) minmax(150px, 190px) auto;
+  grid-template-areas:
+    "battery ids qr picture"
+    "fields fields fields fields"
+    "cta cta cta cta";
+}
+
+.bp-hero-compact .bp-report-identity-panel--battery { grid-area: battery; }
+.bp-hero-compact .bp-report-identity-panel--identifiers { grid-area: ids; }
+.bp-hero-compact .bp-report-identity-panel--qr { grid-area: qr; }
+.bp-hero-compact .bp-hero-picture { grid-area: picture; }
+.bp-hero-compact .bp-summary-fields-panel { grid-area: fields; }
+.bp-hero-compact .bp-hero-ctas { grid-area: cta; }
+
+.bp-hero-compact .bp-hero-picture {
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  border: 1px solid var(--bp-border);
+  border-radius: 8px;
+  background: #f3f6fa;
+}
+
+.bp-hero-compact .bp-hero-picture .bp-image-wrap {
+  width: auto;
+  height: auto;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.bp-hero-compact .bp-hero-picture .bp-battery-image {
+  width: auto;
+  height: 160px;
+  max-width: 220px;
+  max-height: none;
+  aspect-ratio: auto;
+  object-fit: contain;
+  filter: none;
+}
+
+.bp-hero-compact .bp-hero-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.bp-hero-compact .bp-hero-ctas .bp-report-hero-cta {
+  width: auto;
+}
+
+@media (max-width: 1180px) {
+  .bp-hero-compact .bp-report-hero-info.bp-summary-identity-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    grid-template-areas:
+      "battery battery picture"
+      "ids qr qr"
+      "fields fields fields"
+      "cta cta cta";
+  }
+}
+
+@media (max-width: 760px) {
+  .bp-hero-compact .bp-report-hero-info.bp-summary-identity-grid {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "battery picture"
+      "ids ids"
+      "qr qr"
+      "fields fields"
+      "cta cta";
+  }
+
+  /* On a phone the picture sits small beside the battery's name, never on a row of its own. */
+  .bp-hero-compact .bp-hero-picture {
+    align-self: start;
+    padding: 6px;
+  }
+
+  .bp-hero-compact .bp-hero-picture .bp-battery-image {
+    height: 100px;
+    max-width: 120px;
+  }
+
+  .bp-hero-compact .bp-hero-ctas {
+    justify-content: stretch;
+  }
+
+  .bp-hero-compact .bp-hero-ctas .bp-report-hero-cta {
+    width: 100%;
+  }
+}
+
 /* ---- Dark ---------------------------------------------------------------------------------------------------------- */
 [data-theme="dark"] .bp-badge { background: transparent; }
 [data-theme="dark"] .bp-badge.is-original { border-color: #64748b; color: #cbd5e1; }
@@ -295,3 +398,4 @@
 [data-theme="dark"] .bp-status-help { background: #101f35; }
 [data-theme="dark"] .bp-test-tag { border-color: #b45309; background: transparent; color: #fcd34d; }
 [data-theme="dark"] .bp-test-note { color: #fcd34d; }
+[data-theme="dark"] .bp-hero-compact .bp-hero-picture { background: #e9eef5; }

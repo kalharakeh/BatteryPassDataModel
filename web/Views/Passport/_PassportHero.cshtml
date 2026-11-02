@@ -21,7 +21,9 @@
         </form>
     </details>
 }
-<section class="bp-report-hero-card">
+@* The picture sits inside the card, top right, and the facts use the card's full width (owner's item 10, redesign R3).
+   The facts leave out the passport status: the Passport badge shows #2 to everyone (owner, 2 Nov 2026). *@
+<section class="bp-report-hero-card bp-hero-compact">
     <div class="bp-report-hero-layout">
         <article class="bp-report-hero-info bp-summary-identity-grid bp-report-identity-grid">
             <section class="bp-summary-id-panel bp-report-identity-panel bp-report-identity-panel--battery bp-report-header bp-report-title-block">
@@ -99,6 +101,15 @@
                 </a>
             </section>
 
+            @if (Model.PictureHref is not null)
+            {
+                <div class="bp-report-hero-media bp-hero-picture">
+                    <div class="bp-image-wrap">
+                        <img src="@Model.PictureHref" alt="Picture of the @Model.FamilyName battery family" class="bp-battery-image" />
+                    </div>
+                </div>
+            }
+
             <dl class="bp-field-grid bp-report-hero-fields bp-summary-fields-panel">
                 <div><dt>Battery family</dt><dd>@(Model.FamilyName ?? "-")</dd></div>
                 <div><dt>Battery serial number</dt><dd>@Model.Text(11)</dd></div>
@@ -111,7 +122,6 @@
                     }</dd></div>
                 }
                 <div><dt>Category</dt><dd>@Model.Text(20)</dd></div>
-                <div><dt>Passport status</dt><dd>@Model.Text(2)</dd></div>
                 <div><dt>Weight</dt><dd>@Model.Text(21)</dd></div>
                 <div><dt>Manufactured date</dt><dd>@Model.Text(17)</dd></div>
                 <div><dt>Manufactured by</dt><dd>@manufacturer</dd></div>
@@ -121,35 +131,29 @@
                     <div><dt>Signature</dt><dd>@(Model.SignatureHolds ? "Verified" : "Doesn't match the signed passport")</dd></div>
                 }
             </dl>
-        </article>
 
-        <aside class="bp-report-hero-media">
-            @if (Model.PictureHref is not null)
-            {
-                <div class="bp-image-wrap">
-                    <img src="@Model.PictureHref" alt="Picture of the @Model.FamilyName battery family" class="bp-battery-image" />
-                </div>
-            }
-            @if (detail)
-            {
-                <a class="bp-report-hero-cta" href="@PassportPages.SummaryHref(Model.Address)">&lt;- Back to summary</a>
-                @if (ViewData["ManageHref"] is string manageHref)
+            <div class="bp-hero-ctas">
+                @if (detail)
                 {
-                    <a class="bp-report-hero-cta" href="@manageHref">Manage this battery -&gt;</a>
+                    <a class="bp-report-hero-cta" href="@PassportPages.SummaryHref(Model.Address)">&lt;- Back to summary</a>
+                    @if (ViewData["ManageHref"] is string manageHref)
+                    {
+                        <a class="bp-report-hero-cta" href="@manageHref">Manage this battery -&gt;</a>
+                    }
                 }
-            }
-            else if (signedIn && Model.ReaderSeesMore)
-            {
-                <a class="bp-report-hero-cta" href="@detailHref">View more about this passport -&gt;</a>
-            }
-            else if (signedIn)
-            {
-                <a class="bp-report-hero-cta bp-report-hero-cta-warning" href="@(signIn)&switchAccount=true">Your account sees the public data only. Sign in with another account to see more.</a>
-            }
-            else
-            {
-                <a class="bp-report-hero-cta bp-report-hero-cta-warning" href="@signIn">Sign in to see more about this passport.</a>
-            }
-        </aside>
+                else if (signedIn && Model.ReaderSeesMore)
+                {
+                    <a class="bp-report-hero-cta" href="@detailHref">View more about this passport -&gt;</a>
+                }
+                else if (signedIn)
+                {
+                    <a class="bp-report-hero-cta bp-report-hero-cta-warning" href="@(signIn)&switchAccount=true">Your account sees the public data only. Sign in with another account to see more.</a>
+                }
+                else
+                {
+                    <a class="bp-report-hero-cta bp-report-hero-cta-warning" href="@signIn">Sign in to see more about this passport.</a>
+                }
+            </div>
+        </article>
     </div>
 </section>

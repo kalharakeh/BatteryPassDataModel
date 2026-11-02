@@ -11,7 +11,7 @@ public sealed class AdminFeedbackFollowupTests
         var hero = File.ReadAllText(RepoFile("web", "Views", "Passport", "_PassportHero.cshtml"));
 
         Assert.DoesNotContain("bp-pill bp-pill-muted", hero);
-        Assert.Contains("<div><dt>Passport status</dt><dd>@Model.Text(2)</dd></div>", hero);
+        Assert.Contains("@await Html.PartialAsync(\"_StatusBadge\", StatusBadge.Passport(", hero); // the badge shows it (redesign R3)
     }
 
     [Fact]
