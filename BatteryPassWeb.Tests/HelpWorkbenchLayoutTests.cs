@@ -184,6 +184,8 @@ public sealed class HelpWorkbenchLayoutTests
             "writeLiveValues",
             "previewLiveValues",
             "readLiveHistory24h",
+            "sendUpload",
+            "previewUpload",
             "listBatches",
             "listOperators",
             "createBattery",

@@ -193,6 +193,17 @@
                             </td>
                         </tr>
                         <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">POST</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/uploads</code><small>An upload of many batteries</small></span></td>
+                            <td><span class="bp-help-access-pill">Read-write</span></td>
+                            <td>Send one file with values for many batteries; each battery is saved or refused on its own.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-uploads" aria-expanded="false" aria-controls="api-detail-uploads" aria-label="Show upload endpoint details" title="Show upload endpoint details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">GET</span></td>
                             <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/batteries/{id}/passports</code><small>Passport versions</small></span></td>
                             <td><span class="bp-help-access-pill">Read</span></td>
@@ -340,7 +351,7 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                         <p>The battery system's call. <code>values</code> holds the live values by key; a bare number is enough, and the app adds the unit. <code>measuredAt</code> is when they were measured (ISO 8601 with its offset); without it, the time of the call is used. A cluster token changes the published batteries of its own clusters; a team token any battery, drafts included. Each value is checked on its own: one refused value doesn't stop the others, and an empty value never overwrites. Add <code>?preview=true</code> to check without saving.</p>
                         <p>The live values:</p>
                         <ul>@foreach (var live in BatteryPassWeb.Dpp.Api.BatteryApi.LiveSet) { <li><code>@live.Property</code> (@live.Label, @live.Name@(live.Unit is null ? "" : $", in {live.Unit}"))</li> }</ul>
-                        <p>Any other attribute is refused here: static values change on the team's pages.</p>
+                        <p>Any other attribute is refused here: static values change on the team's pages or by upload.</p>
                     </div>
                     <pre class="bp-help-pre"><code>POST @Model.BasePath/batteries/{id}/live-values
 {
@@ -356,6 +367,29 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                 <article id="api-detail-history" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
                     <div><span class="bp-summary-title">Live value history</span><h3>Read the live values saved for a battery.</h3><p>Each saved live value, newest measurement first, with its unit, when it was measured and saved, and where it came from: the battery system, a form or an upload. <code>hours</code> counts back from now, from 1 to 168 (the default). Cut like the passport: only the live values this token may see.</p></div>
                     <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/{id}/live-values/history?hours=24</code></pre>
+                </article>
+
+                <article id="api-detail-uploads" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
+                    <div>
+                        <span class="bp-summary-title">Uploads</span>
+                        <h3>Send values for many batteries in one file.</h3>
+                        <p>The body is the upload file. Name each battery by <code>uniqueProductIdentifier</code> (its battery ID) or <code>batterySerialNumber</code>; <code>measuredAt</code> is when its values were measured, and <code>values</code> holds them by key, as on the live values call. A cluster token sends as its battery system, so only the live values of its own clusters' published batteries are saved; a team token may also set a battery's own values where the team's pages allow it. Each battery is saved or refused on its own, and each value is checked on its own. A battery the file names twice, or whose passport is no longer active, is refused. Up to @BatteryPassWeb.Dpp.Uploads.UploadService.MaxBatteries batteries and 2 MB per file. Add <code>?preview=true</code> to check without saving.</p>
+                    </div>
+                    <pre class="bp-help-pre"><code>POST @Model.BasePath/uploads
+{
+  "format": "dpp-v3-upload/1",
+  "batteries": [
+    {
+      "batterySerialNumber": "VPC8C05-6788",
+      "measuredAt": "2026-10-27T10:02:59Z",
+      "values": {
+        "stateOfChargeSoC": 76,
+        "numberOfFullChargingAndDischargingCycles": 412,
+        "temperatureInformation": 23
+      }
+    }
+  ]
+}</code></pre>
                 </article>
 
                 <article id="api-detail-passport-list" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
@@ -403,6 +437,8 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                                 <option value="writeLiveValues">Send live values</option>
                                 <option value="previewLiveValues">Check live values without saving</option>
                                 <option value="readLiveHistory24h">Read live value history 24h</option>
+                                <option value="sendUpload">Send an upload of many batteries</option>
+                                <option value="previewUpload">Check an upload without saving</option>
                             </optgroup>
                             <optgroup label="Team token: create and publish">
                                 <option value="listBatches">List batches</option>
@@ -608,6 +644,20 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                 }
             }, null, 2);
 
+            const uploadBody = JSON.stringify({
+                format: 'dpp-v3-upload/1',
+                batteries: [
+                    {
+                        uniqueProductIdentifier: '{batteryId}',
+                        measuredAt: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
+                        values: {
+                            stateOfChargeSoC: 76,
+                            temperatureInformation: 23
+                        }
+                    }
+                ]
+            }, null, 2);
+
             const templates = {
                 readFull: {
                     method: 'GET',
@@ -668,6 +718,16 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                     method: 'GET',
                     pathTemplate: `${basePath}/batteries/{batteryId}/live-values/history?hours=24`,
                     body: ''
+                },
+                sendUpload: {
+                    method: 'POST',
+                    pathTemplate: `${basePath}/uploads`,
+                    body: uploadBody
+                },
+                previewUpload: {
+                    method: 'POST',
+                    pathTemplate: `${basePath}/uploads?preview=true`,
+                    body: uploadBody
                 },
                 listBatches: {
                     method: 'GET',
@@ -941,7 +1001,7 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
 
                 methodEl.value = template.method;
                 pathEl.value = resolveTemplatePath(template.pathTemplate, getWorkbenchContext());
-                bodyEl.value = template.body;
+                bodyEl.value = resolveTemplatePath(template.body, getWorkbenchContext());
                 syncRawRequestFromControls();
                 showCallParts(templateKey);
             };

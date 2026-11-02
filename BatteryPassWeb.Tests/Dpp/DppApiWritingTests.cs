@@ -30,6 +30,7 @@ public sealed class DppApiWritingTests(MongoFixture mongo)
                 ["batteries"] = SecurityRateLimitPolicyNames.ExternalApiWrite,
                 ["batteries/{id}/live-values"] = SecurityRateLimitPolicyNames.ExternalApiWrite,
                 ["batteries/{id}/publish"] = SecurityRateLimitPolicyNames.ExternalApiLifecycle,
+                ["uploads"] = SecurityRateLimitPolicyNames.ExternalApiWrite,
             },
             posts);
         Assert.Null(type.Assembly.GetType("BatteryPassWeb.Controllers.ExternalApiController"));
@@ -226,7 +227,7 @@ public sealed class DppApiWritingTests(MongoFixture mongo)
     }
 
     /// <summary>Tokens of each access mode for the seed pack's cluster (north), another cluster (south) and the team (global).</summary>
-    private static async Task<Dictionary<string, string>> TokensAsync(PublicationRig rig)
+    internal static async Task<Dictionary<string, string>> TokensAsync(PublicationRig rig)
     {
         var repository = DppApiControllerTests.Repository(rig);
         var tokens = new Dictionary<string, string>();

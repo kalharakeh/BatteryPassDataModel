@@ -8,6 +8,7 @@ using BatteryPassWeb.Dpp.Catalog;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Pages;
 using BatteryPassWeb.Dpp.Publication;
+using BatteryPassWeb.Dpp.Uploads;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -23,7 +24,7 @@ namespace BatteryPassWeb.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/external/v1")]
-public sealed class DppApiController(ExternalApiRepository tokens, ClusterRepository clusters, PassportApi api, BatteryApi writing) : ControllerBase
+public sealed class DppApiController(ExternalApiRepository tokens, ClusterRepository clusters, PassportApi api, BatteryApi writing, UploadService uploads) : ControllerBase
 {
     public const string NoPassport = "No published battery passport has this ID.";
     public const string NoBattery = "No battery this token may change has this ID.";
@@ -332,6 +333,48 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
                 saved = result.Saved,
                 measuredAt = measuredAt is null ? null : PassportApi.Timestamp(measuredAt.Value),
                 values = Keys(result.Keys),
+            });
+    }
+
+    /// <summary>
+    /// An upload of many batteries (design 8.1, step 5a): the native format, through the one save pipeline. A cluster
+    /// token sends as its battery system, so only live values are saved (J-10); a global token sends as the team.
+    /// </summary>
+    [HttpPost("uploads")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiWrite)]
+    [RequestSizeLimit(UploadService.MaxBytes)]
+    public async Task<IActionResult> Upload([FromBody] JsonElement body, [FromQuery] bool preview, CancellationToken cancellationToken)
+    {
+        var (token, error) = await TokenAsync(ExternalTokenRequirement.Write, cancellationToken);
+        if (token is null)
+        {
+            return error!;
+        }
+
+        var report = await uploads.RunAsync(DppReaders.SenderFor(token), JsonNode.Parse(body.GetRawText()), "api", null, preview, cancellationToken);
+        if (report.Problem is not null)
+        {
+            return Envelope(StatusCodes.Status400BadRequest, $"The file can't be read: {report.Problem}.");
+        }
+
+        return Envelope(
+            report.AnySaved ? StatusCodes.Status200OK : StatusCodes.Status422UnprocessableEntity,
+            !report.AnySaved ? "No value was saved; see each battery." : preview ? "Preview only: nothing was saved." : "Upload saved.",
+            new
+            {
+                uploadId = report.UploadId,
+                format = report.Format,
+                preview,
+                saved = !preview && report.AnySaved,
+                batteries = report.Batteries.Select(battery => new
+                {
+                    entry = battery.Entry,
+                    namedAs = battery.NamedAs,
+                    batteryId = battery.BatteryId,
+                    outcome = battery.Outcome,
+                    problem = battery.Problem,
+                    values = Keys(battery.Values),
+                }).ToArray(),
             });
     }
 
