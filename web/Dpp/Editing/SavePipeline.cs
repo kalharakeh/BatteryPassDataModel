@@ -72,7 +72,19 @@ public sealed class SavePipeline(
 
     private readonly IPackChangeListener[] _listeners = listeners.ToArray();
 
-    public async Task<SaveResult> SaveAsync(ChangeSender sender, ChangeSet changes, bool preview = false, CancellationToken cancellationToken = default)
+    public Task<SaveResult> SaveAsync(ChangeSender sender, ChangeSet changes, bool preview = false, CancellationToken cancellationToken = default) =>
+        SaveCoreAsync(sender, changes, preview, statusChange: false, cancellationToken);
+
+    /// <summary>
+    /// The status change's own way in (design 6.2 step 6 and 7.4, step 4b): the battery status (#22) and its re-stated
+    /// values, which every other change set is refused. Rights and values are checked as for any change, and it is all
+    /// or nothing: one refused or empty key saves none. Only <see cref="StatusChangeService"/> calls it, after its own
+    /// checks of the transition.
+    /// </summary>
+    public Task<SaveResult> SaveStatusChangeAsync(ChangeSender sender, string packId, IReadOnlyDictionary<string, JsonNode?> values, CancellationToken cancellationToken = default) =>
+        SaveCoreAsync(sender, new ChangeSet(TargetKind.Pack, packId, values, "form"), preview: false, statusChange: true, cancellationToken);
+
+    private async Task<SaveResult> SaveCoreAsync(ChangeSender sender, ChangeSet changes, bool preview, bool statusChange, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(sender);
         ArgumentNullException.ThrowIfNull(changes);
@@ -83,7 +95,7 @@ public sealed class SavePipeline(
             return new SaveResult(false, false, []);
         }
 
-        var evaluation = Evaluate(sender, changes.Target, target.ClusterId, changes.Values);
+        var evaluation = EvaluateCore(sender, changes.Target, target.ClusterId, changes.Values, statusChange);
         if (changes.Target == TargetKind.Pack)
         {
             evaluation = await CheckPackRulesAsync(changes.TargetId, evaluation, cancellationToken);
@@ -92,7 +104,8 @@ public sealed class SavePipeline(
         var removals = await EvaluateRemovalsAsync(sender, changes, target, cancellationToken);
         var results = evaluation.Results.Concat(removals).ToArray();
         var removed = removals.Where(result => result.Outcome == KeyOutcome.Removed).Select(result => result.Key).ToArray();
-        if (preview || (evaluation.Accepted.Count == 0 && removed.Length == 0))
+        if (preview || (evaluation.Accepted.Count == 0 && removed.Length == 0)
+            || (statusChange && results.Any(result => result.Outcome != KeyOutcome.Saved)))
         {
             return new SaveResult(true, false, results);
         }
@@ -119,7 +132,7 @@ public sealed class SavePipeline(
                 cancellationToken: cancellationToken);
             foreach (var listener in _listeners)
             {
-                await listener.ValuesSavedAsync(changes.Target, changes.TargetId, stored.Keys.Concat(removed).ToArray(), sender.Who, cancellationToken);
+                await listener.ValuesSavedAsync(changes.Target, changes.TargetId, stored.Keys.Concat(removed).ToArray(), sender, cancellationToken);
             }
         }
 
@@ -142,7 +155,7 @@ public sealed class SavePipeline(
         var results = new List<KeyResult>();
         foreach (var key in removals.Distinct(StringComparer.Ordinal))
         {
-            var (outcome, message, _) = EvaluateKey(sender, changes.Target, target.ClusterId, key, JsonValue.Create("remove"), checkValue: false);
+            var (outcome, message, _) = EvaluateKey(sender, changes.Target, target.ClusterId, key, JsonValue.Create("remove"), statusChange: false, checkValue: false);
             if (outcome != KeyOutcome.Saved)
             {
                 results.Add(new KeyResult(key, outcome, message));
@@ -252,7 +265,10 @@ public sealed class SavePipeline(
 
     /// <summary>Judges every key without saving anything; also used when a pack is created.</summary>
     /// <param name="packClusterId">The pack's cluster; null for other record kinds.</param>
-    public Evaluation Evaluate(ChangeSender sender, TargetKind target, string? packClusterId, IReadOnlyDictionary<string, JsonNode?> values)
+    public Evaluation Evaluate(ChangeSender sender, TargetKind target, string? packClusterId, IReadOnlyDictionary<string, JsonNode?> values) =>
+        EvaluateCore(sender, target, packClusterId, values, statusChange: false);
+
+    private Evaluation EvaluateCore(ChangeSender sender, TargetKind target, string? packClusterId, IReadOnlyDictionary<string, JsonNode?> values, bool statusChange)
     {
         ArgumentNullException.ThrowIfNull(sender);
         ArgumentNullException.ThrowIfNull(values);
@@ -260,7 +276,7 @@ public sealed class SavePipeline(
         var accepted = new Dictionary<string, JsonNode>(StringComparer.Ordinal);
         foreach (var (key, raw) in values)
         {
-            var (outcome, message, value) = EvaluateKey(sender, target, packClusterId, key, raw);
+            var (outcome, message, value) = EvaluateKey(sender, target, packClusterId, key, raw, statusChange);
             results.Add(new KeyResult(key, outcome, message));
             if (outcome == KeyOutcome.Saved)
             {
@@ -271,9 +287,10 @@ public sealed class SavePipeline(
         return new Evaluation(results, accepted);
     }
 
+    /// <param name="statusChange">True for the status change's own keys (#22 and the re-stated values), which only it may send.</param>
     /// <param name="checkValue">False when only the attribute and the sender's rights are judged (a removal).</param>
     private (KeyOutcome Outcome, string Message, JsonNode? Value) EvaluateKey(
-        ChangeSender sender, TargetKind target, string? packClusterId, string key, JsonNode? raw, bool checkValue = true)
+        ChangeSender sender, TargetKind target, string? packClusterId, string key, JsonNode? raw, bool statusChange, bool checkValue = true)
     {
         if (AttributeCatalog.FindByProperty(key) is not { } attribute)
         {
@@ -290,9 +307,10 @@ public sealed class SavePipeline(
             return (KeyOutcome.Rejected, $"{attribute.Label} is stored on the {RecordName(attribute.Storage)}, not on the {target.ToString().ToLowerInvariant()}", null);
         }
 
-        if (target == TargetKind.Pack && (attribute.Change is ChangeRule.OnStatusChange or ChangeRule.RestatedOnStatusChange))
+        var throughStatusChange = target == TargetKind.Pack && attribute.Change is ChangeRule.OnStatusChange or ChangeRule.RestatedOnStatusChange;
+        if (throughStatusChange != statusChange)
         {
-            return (KeyOutcome.Rejected, $"{attribute.Label} changes only through the status change", null);
+            return (KeyOutcome.Rejected, statusChange ? $"{attribute.Label} isn't part of the status change" : $"{attribute.Label} changes only through the status change", null);
         }
 
         if (!EditRights.MayEdit(sender, attribute, packClusterId))

@@ -43,9 +43,9 @@ public sealed class SavePipelineListenerTests(MongoFixture mongo)
     {
         public List<(TargetKind Target, string TargetId, string[] Keys, string Who)> Calls { get; } = [];
 
-        public Task ValuesSavedAsync(TargetKind target, string targetId, IReadOnlyCollection<string> keys, string who, CancellationToken cancellationToken)
+        public Task ValuesSavedAsync(TargetKind target, string targetId, IReadOnlyCollection<string> keys, ChangeSender sender, CancellationToken cancellationToken)
         {
-            Calls.Add((target, targetId, keys.ToArray(), who));
+            Calls.Add((target, targetId, keys.ToArray(), sender.Who));
             return Task.CompletedTask;
         }
     }

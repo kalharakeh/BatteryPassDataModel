@@ -41,6 +41,7 @@ public sealed class DppServiceWiringTests
         Assert.Same(provider.GetRequiredService<AttributeForms>(), provider.GetRequiredService<RecordEditor>().Forms);
         Assert.NotNull(provider.GetRequiredService<BatteryPages>());
         Assert.NotNull(provider.GetRequiredService<ClusterBatteryPages>());
+        Assert.NotNull(provider.GetRequiredService<StatusChangeService>());
         Assert.NotNull(provider.GetRequiredService<DppReaders>());
         Assert.NotNull(provider.GetRequiredService<ReaderPages>());
         Assert.NotNull(provider.GetRequiredService<PassportApi>());

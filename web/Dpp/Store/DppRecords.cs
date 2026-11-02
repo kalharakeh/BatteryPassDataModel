@@ -115,6 +115,33 @@ public sealed class BatteryPack : IDppRecord
 
     /// <summary>The pack's modules, by position (decision 31). App data, not passport data; empty until listed.</summary>
     public List<BatteryModule> Modules { get; set; } = [];
+
+    /// <summary>
+    /// The pack's repair history (design 7.9, decision 19), oldest first. App data, not passport data: it isn't in the
+    /// passport JSON and is shown with the battery status to the same readers. Entries are never changed or removed
+    /// (decision 34).
+    /// </summary>
+    public List<RepairEntry> Repairs { get; set; } = [];
+}
+
+/// <summary>One repair of a pack (design 7.9): when, what was repaired, and who recorded it when.</summary>
+public sealed class RepairEntry
+{
+    /// <summary>The day of the repair, as yyyy-MM-dd.</summary>
+    public required string Date { get; init; }
+
+    public required string Description { get; init; }
+
+    public required string RecordedBy { get; init; }
+
+    /// <summary>The team or the battery's cluster (a <c>SenderKind</c>): the detail page says which, not who.</summary>
+    public string RecordedAs { get; init; } = "Team";
+
+    /// <summary>A note that corrects the history (decision 34): entries are never changed, so a mistake gets one of these.</summary>
+    public bool IsCorrection { get; init; }
+
+    [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+    public required DateTime RecordedAtUtc { get; init; }
 }
 
 /// <summary>One module of a pack, as the battery system's export lists it: its position and its IDs (decision 31).</summary>

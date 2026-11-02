@@ -50,13 +50,14 @@ public sealed class PublicationService(
     {
         ArgumentNullException.ThrowIfNull(sender);
         return sender.Kind == SenderKind.Team
-            ? PublishCoreAsync(packId, sender.Who, retryOnConflict: true, cancellationToken)
+            ? PublishCoreAsync(packId, sender, retryOnConflict: true, cancellationToken)
             : Task.FromResult(new PublicationResult(null, null, "only the team publishes passports"));
     }
 
-    public async Task ValuesSavedAsync(TargetKind target, string targetId, IReadOnlyCollection<string> keys, string who, CancellationToken cancellationToken)
+    public async Task ValuesSavedAsync(TargetKind target, string targetId, IReadOnlyCollection<string> keys, ChangeSender sender, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(keys);
+        ArgumentNullException.ThrowIfNull(sender);
         var packIds = target switch
         {
             TargetKind.Pack => [targetId],
@@ -83,12 +84,12 @@ public sealed class PublicationService(
                 continue;
             }
 
-            var result = await PublishCoreAsync(packId, who, retryOnConflict: true, cancellationToken);
+            var result = await PublishCoreAsync(packId, sender, retryOnConflict: true, cancellationToken);
             if (result.Problem is not null)
             {
                 await audit.AppendApplicationAuditEventAsync(
                     BlockedEvent,
-                    who,
+                    sender.Who,
                     "system",
                     "publication",
                     $"A new version of pack {packId} was blocked; version {active.Number} stays active",
@@ -100,8 +101,10 @@ public sealed class PublicationService(
         }
     }
 
-    private async Task<PublicationResult> PublishCoreAsync(string packId, string who, bool retryOnConflict, CancellationToken cancellationToken)
+    /// <param name="sender">Who the new version is published for; the log names them (a cluster admin's status change, step 4b).</param>
+    private async Task<PublicationResult> PublishCoreAsync(string packId, ChangeSender sender, bool retryOnConflict, CancellationToken cancellationToken)
     {
+        var who = sender.Who;
         var sources = await store.LoadSourcesAsync(packId, cancellationToken);
         if (sources is null)
         {
@@ -144,14 +147,14 @@ public sealed class PublicationService(
         catch (MongoWriteException exception) when (retryOnConflict && exception.WriteError.Category == ServerErrorCategory.DuplicateKey)
         {
             // Another save published this pack at the same moment: start again from the new state, once.
-            return await PublishCoreAsync(packId, who, retryOnConflict: false, cancellationToken);
+            return await PublishCoreAsync(packId, sender, retryOnConflict: false, cancellationToken);
         }
 
         await store.ArchiveOtherVersionsAsync(packId, version.Id, cancellationToken);
         await audit.AppendApplicationAuditEventAsync(
             PublishedEvent,
             who,
-            "team",
+            sender.Kind.ToString(),
             "publication",
             $"Version {version.Number} of pack {packId} published",
             new BsonDocument

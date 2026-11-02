@@ -32,6 +32,7 @@ public static class DppServiceCollectionExtensions
         services.AddSingleton<IIdentifierScheme, TestIdentifierScheme>();
         services.AddSingleton<SavePipeline>();
         services.AddSingleton<PackCreationService>();
+        services.AddSingleton<StatusChangeService>();
         services.AddSingleton<PassportSigner>();
         services.AddSingleton<PublicationChecks>();
         services.AddSingleton<PublicationService>();

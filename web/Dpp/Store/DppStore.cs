@@ -179,6 +179,16 @@ public sealed class DppStore
         return result.MatchedCount == 1;
     }
 
+    /// <summary>Adds an entry to a pack's repair history (design 7.9). False when the pack doesn't exist.</summary>
+    public async Task<bool> AddRepairAsync(string packId, RepairEntry entry, CancellationToken cancellationToken = default)
+    {
+        var result = await Collection<BatteryPack>().UpdateOneAsync(
+            pack => pack.Id == packId,
+            Builders<BatteryPack>.Update.Push(pack => pack.Repairs, entry),
+            cancellationToken: cancellationToken);
+        return result.MatchedCount == 1;
+    }
+
     /// <summary>Replaces a pack's module list (decision 31). False when the pack doesn't exist.</summary>
     public async Task<bool> SetPackModulesAsync(string packId, IReadOnlyList<BatteryModule> modules, CancellationToken cancellationToken = default)
     {
