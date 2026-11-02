@@ -1,0 +1,264 @@
+/* ==== The two statuses, on every page (redesign R3, decision 36) ====================================================
+   Loaded by the layout, so the public pages, the Registry and the battery pages draw the same badges. The battery status
+   (#22, what happened to the battery) is a square "Battery" tag; the passport status (#2, whether this passport counts)
+   a round "Passport" pill. Each status has its own colour and icon (Views/Shared/_Icons.cshtml), so they never look
+   alike. site.css is not changed. */
+
+/* Icons: one inline SVG sprite; each icon is a stroke drawing in the text colour. */
+.bp-i {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 2px 10px 2px 7px;
+  border: 1px solid;
+  font-size: 0.86rem;
+  font-weight: 650;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.bp-badge .bp-i {
+  width: 16px;
+  height: 16px;
+}
+
+.bp-badge-kind {
+  margin-right: 2px;
+  font-size: 0.66rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+.bp-badge small {
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.bp-badge.is-battery {
+  border-radius: 6px;
+}
+
+.bp-badge.is-passport {
+  border-radius: 999px;
+}
+
+/* Battery status #22: what happened to the battery. Calm colours, one per status. */
+.bp-badge.is-original { border-color: #cbd5e1; background: #f8fafc; color: #334155; }
+.bp-badge.is-reused { border-color: #99f6e4; background: #f0fdfa; color: #0f5e57; }
+.bp-badge.is-repurposed { border-color: #ddd6fe; background: #f5f3ff; color: #5b21b6; }
+.bp-badge.is-remanufactured { border-color: #bfdbfe; background: #eff6ff; color: #1e40af; }
+.bp-badge.is-waste { border-color: #a8a29e; background: #f5f5f4; color: #44403c; }
+
+/* Passport status #2: green while it counts, grey once retired, red when something is wrong. */
+.bp-badge.is-active { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
+.bp-badge.is-draft { border-style: dashed; border-color: #94a3b8; background: transparent; color: #475569; }
+.bp-badge.is-inactive,
+.bp-badge.is-archived { border-color: #cbd5e1; background: #f1f5f9; color: #475569; }
+.bp-badge.is-invalid { border-color: #fca5a5; background: #fef2f2; color: #991b1b; }
+.bp-badge.is-marked { border-style: dashed; border-color: #f87171; background: #fff; color: #991b1b; }
+
+.bp-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.bp-badges.is-compact .bp-badge {
+  min-height: 24px;
+  font-size: 0.78rem;
+}
+
+/* "What do the two statuses mean?": a small round button opening the explainer (a popover, no script needed). */
+.bp-status-help-button {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--bp-muted);
+}
+
+.bp-status-help-button:hover,
+.bp-status-help-button:focus-visible {
+  background: rgba(42, 110, 207, 0.08);
+  color: var(--bp-primary);
+}
+
+.bp-status-help {
+  width: min(100% - 32px, 560px);
+  max-height: calc(100% - 48px);
+  padding: 20px;
+  border: 1px solid var(--bp-border);
+  border-radius: 12px;
+  background: var(--bp-surface);
+  color: var(--bp-text);
+  box-shadow: 0 22px 44px rgba(15, 23, 42, 0.24);
+}
+
+.bp-status-help::backdrop {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.bp-status-help h2 {
+  margin: 0 0 6px;
+  font-size: 1.2rem;
+}
+
+.bp-status-help dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 14px;
+  align-items: center;
+  margin: 12px 0 16px;
+}
+
+.bp-status-help dd {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* An earlier or newer passport: a calm chip beside the passport badge and one plain line, never a banner (Q4). */
+.bp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 1px 10px 1px 7px;
+  border: 1px solid var(--bp-border);
+  border-radius: 999px;
+  background: var(--bp-surface);
+  color: var(--bp-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.bp-chip .bp-i {
+  width: 15px;
+  height: 15px;
+}
+
+.bp-chip:hover {
+  border-color: var(--bp-primary);
+}
+
+.bp-lineage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 0;
+  color: var(--bp-muted);
+  font-size: 0.88rem;
+}
+
+.bp-lineage .bp-i {
+  width: 15px;
+  height: 15px;
+}
+
+/* A notice that matters (invalid, marked for deletion): one slim line with its action in reach. */
+.bp-status-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 0;
+  padding: 8px 10px 8px 12px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #7f1d1d;
+  font-size: 0.92rem;
+}
+
+.bp-status-notice > span {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.bp-status-notice.is-quiet {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+  color: #334155;
+}
+
+/* The Registry's waiting card stands out (owner's point 12), and the top bar counts what waits. */
+.bp-wait {
+  border-left: 5px solid var(--bp-primary);
+  background: linear-gradient(90deg, rgba(42, 110, 207, 0.07), transparent 60%), var(--bp-surface);
+}
+
+.bp-wait-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bp-wait-bell {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--bp-primary);
+  color: #fff;
+}
+
+.bp-wait-bell .bp-i {
+  width: 22px;
+  height: 22px;
+}
+
+.bp-nav-count {
+  margin-left: 6px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #1f2937;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.bp-with-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* ---- Dark ---------------------------------------------------------------------------------------------------------- */
+[data-theme="dark"] .bp-badge { background: transparent; }
+[data-theme="dark"] .bp-badge.is-original { border-color: #64748b; color: #cbd5e1; }
+[data-theme="dark"] .bp-badge.is-reused { border-color: #2dd4bf; color: #5eead4; }
+[data-theme="dark"] .bp-badge.is-repurposed { border-color: #a78bfa; color: #c4b5fd; }
+[data-theme="dark"] .bp-badge.is-remanufactured { border-color: #60a5fa; color: #93c5fd; }
+[data-theme="dark"] .bp-badge.is-waste { border-color: #a8a29e; color: #d6d3d1; }
+[data-theme="dark"] .bp-badge.is-active { border-color: #22c55e; color: #86efac; }
+[data-theme="dark"] .bp-badge.is-draft,
+[data-theme="dark"] .bp-badge.is-inactive,
+[data-theme="dark"] .bp-badge.is-archived { border-color: #64748b; color: #cbd5e1; }
+[data-theme="dark"] .bp-badge.is-invalid,
+[data-theme="dark"] .bp-badge.is-marked { border-color: #f87171; color: #fca5a5; }
+[data-theme="dark"] .bp-status-notice { border-color: #7f1d1d; background: rgba(127, 29, 29, 0.25); color: #fecaca; }
+[data-theme="dark"] .bp-status-notice.is-quiet { border-color: var(--bp-border); background: transparent; color: var(--bp-text); }
+[data-theme="dark"] .bp-status-help { background: #101f35; }
