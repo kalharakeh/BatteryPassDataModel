@@ -182,7 +182,7 @@
                         }
                         @if (!publication.IsPublished)
                         {
-                            <a href="@href?section=overview#remove" class="is-danger"><svg class="bp-i" aria-hidden="true"><use href="#i-trash" /></svg><span>Remove this draft battery…<small>Only while nothing is published</small></span></a>
+                            <a href="@href?section=overview&open=remove#remove" class="is-danger"><svg class="bp-i" aria-hidden="true"><use href="#i-trash" /></svg><span>Remove this draft battery…<small>Only while nothing is published</small></span></a>
                         }
                     </div>
                 </details>
@@ -322,7 +322,7 @@
 
                 @if (!publication.IsPublished)
                 {
-                    <details class="bp-card bp-remove-record mt-4" id="remove" open="@(card == "remove")">
+                    <details class="bp-card bp-remove-record mt-4" id="remove" open="@(card == "remove" || Context.Request.Query["open"] == "remove")">
                         <summary>Remove this battery</summary>
                         @{ await CardMessagesAsync("remove"); }
                         @if (Model.Removal.Blocked is { } blocked)
