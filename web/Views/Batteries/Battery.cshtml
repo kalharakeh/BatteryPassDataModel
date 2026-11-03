@@ -110,9 +110,9 @@
                 <details class="bp-bh-details" open data-fold-on-phone>
                     <summary>More details</summary>
                     <dl class="bp-bh-facts">
-                        <div><dt>Batch</dt><dd title="@Model.BatchLabel"><a href="/admin/batches/@Uri.EscapeDataString(sources.Batch.Id)">@Model.BatchLabel</a></dd></div>
-                        <div><dt>Economic operator</dt><dd title="@sources.Operator.Name"><a href="@ProductDataPages.SitesHref("operator", sources.Operator.Id)">@sources.Operator.Name</a></dd></div>
-                        <div><dt>Cluster <button type="button" class="bp-text-button" data-open-dialog="cluster-dialog">Change</button></dt><dd class="@(Model.Pack.ClusterId is null ? "bp-batteries-muted" : null)">@Model.ClusterLabel</dd></div>
+                        <div><dt>Batch</dt><dd class="text-wrap" title="@Model.BatchLabel"><a href="/admin/batches/@Uri.EscapeDataString(sources.Batch.Id)">@Model.BatchLabel</a></dd></div>
+                        <div><dt>Economic operator</dt><dd class="text-wrap" title="@sources.Operator.Name"><a href="@ProductDataPages.SitesHref("operator", sources.Operator.Id)">@sources.Operator.Name</a></dd></div>
+                        <div><dt>Cluster <button type="button" class="bp-text-button" data-open-dialog="cluster-dialog">Change</button></dt><dd class="text-wrap@(Model.Pack.ClusterId is null ? " bp-batteries-muted" : null)">@Model.ClusterLabel</dd></div>
                         @if (publication.IsPublished)
                         {
                             <div><dt>Made <span class="bp-attr-number">#17</span> · warranty <span class="bp-attr-number">#19</span></dt><dd>@Month(Value("manufacturingDate")) · @Period(Value("warrantyPeriod"))</dd></div>

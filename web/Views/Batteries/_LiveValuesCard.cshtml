@@ -33,7 +33,7 @@
                 {
                     <div>
                         <dt>@field.Attribute.Name <span class="bp-attr-number">@field.Attribute.Label</span></dt>
-                        <dd>@string.Join(", ", ValueWords.Lines(field.Form, stored.Value).Select(line => line.Text)) <small class="d-block text-secondary">@ValueWords.Time(stored.GeneratedAtUtc), @BatteryCards.Source(stored.Source)</small></dd>
+                        <dd class="text-wrap">@string.Join(", ", ValueWords.Lines(field.Form, stored.Value).Select(line => line.Text)) <small class="d-block text-secondary">@ValueWords.Time(stored.GeneratedAtUtc), @BatteryCards.Source(stored.Source)</small></dd>
                     </div>
                 }
             }
