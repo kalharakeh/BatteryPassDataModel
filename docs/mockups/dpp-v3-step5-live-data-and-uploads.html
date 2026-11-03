@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DPP V3 step 5 — uploads on each battery's page</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<!-- The app's own stylesheets, so the screens look exactly like the app. site.css is not changed. -->
+<link rel="stylesheet" href="../../web/wwwroot/css/site.css" data-app-css>
+<link rel="stylesheet" href="../../web/wwwroot/css/bp-product-data.css" data-app-css>
+<style data-step-5>
+/* ==== Uploads on each battery's page (step 5c) =====================================================================
+   The few new pieces step 5 adds to bp-product-data.css: the check's value table, its outcome tags and the notes.
+   Everything else is the app's existing classes. */
+
+.bp-upload-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.bp-soft-tag.is-refused {
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.bp-soft-tag.is-saved {
+  border-color: #86efac;
+  color: #166534;
+}
+
+/* The values: what the battery has now, what the file brings, and what happens. */
+.bp-upload-values {
+  width: 100%;
+  margin-top: 8px;
+  font-size: 0.92rem;
+}
+
+.bp-upload-values th {
+  font-weight: 600;
+  color: var(--bp-muted);
+}
+
+.bp-upload-values th,
+.bp-upload-values td {
+  padding: 5px 10px 5px 0;
+  vertical-align: top;
+}
+
+.bp-upload-values .is-refused {
+  color: #991b1b;
+}
+
+.bp-upload-notes {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--bp-muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  .bp-upload-values thead {
+    display: none;
+  }
+
+  .bp-upload-values tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    padding: 6px 0;
+    border-bottom: 1px solid var(--bp-border);
+  }
+
+  .bp-upload-values td:first-child,
+  .bp-upload-values td:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .bp-upload-values td:first-child {
+    font-weight: 600;
+  }
+
+  .bp-upload-values td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    color: var(--bp-muted);
+    font-size: 0.8rem;
+  }
+}
+
+[data-theme="dark"] .bp-soft-tag.is-refused,
+[data-theme="dark"] .bp-upload-values .is-refused {
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .bp-soft-tag.is-saved {
+  color: #86efac;
+}
+</style>
+<style>
+  /* Mock-up notes only (mk-*); everything else is the app's own classes or step 5's block above. */
+  body { padding-bottom: 60px; }
+  .mk-intro, .mk-caption { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+  .mk-intro { padding-top: 20px; }
+  .mk-intro h1 { font-size: 1.6rem; }
+  .mk-intro ol { padding-left: 20px; }
+  .mk-caption { margin-top: 44px; border-top: 3px solid #041e42; padding-top: 12px; }
+  .mk-caption h2 { font-size: 1.25rem; margin-bottom: 4px; }
+  .mk-caption p { color: #475569; margin-bottom: 0; max-width: 900px; }
+  .mk-part { display: inline-block; margin-right: 8px; padding: 1px 8px; border-radius: 999px; background: #041e42; color: #fff; font-size: .8rem; font-weight: 600; vertical-align: 2px; }
+  main.bp-page { max-width: 1180px; margin-left: auto; margin-right: auto; padding-left: 16px; padding-right: 16px; }
+  .mk-later { outline: 2px dashed #94a3b8; outline-offset: 4px; }
+  .mk-later-tag { float: right; font-size: .78rem; color: #64748b; }
+  .mk-dim { opacity: .55; }
+  [data-theme="dark"] .mk-caption p, [data-theme="dark"] .mk-intro p { color: #9fb1c8; }
+  [data-theme="dark"] .mk-caption { border-top-color: #7ab6ff; }
+</style>
+</head>
+<body>
+<div class="mk-intro">
+  <h1>Step 5 — uploads on each battery's page</h1>
+  <p class="text-secondary">Mock-up only; nothing here is built yet. It replaces the earlier central "Uploads" tab (the product owner, 2 Nov 2026): a file is uploaded on the page of the battery it is for, by the team or the battery's cluster admins. It uses the app's own stylesheets; <code>site.css</code> is not changed.</p>
+  <ol class="text-secondary">
+    <li><span class="mk-part">5c</span>"Upload a file" on both battery pages, the check before saving, Save, and the battery's earlier uploads.</li>
+    <li><span class="mk-part">5d</span>Status changes and repairs by upload, shown in the same check (dashed).</li>
+  </ol>
+  <p class="text-secondary mb-0">Faded cards are the page's existing cards, for where the new card sits.</p>
+</div>
+
+<!-- ============================================================================================ B1 the card -->
+<div class="mk-caption" id="b1">
+  <h2><span class="mk-part">5c</span>B1 · The team's battery page: "Upload a file"</h2>
+  <p>A new card after "Measured on the battery". One JSON file for this battery: the app's upload format, or the battery system's export as it is. "Check the file" saves nothing. The modules card loses its own "Fill from export": an export sets the module list through this card. Earlier uploads of this battery are listed under the button, newest first, each opening in place.</p>
+</div>
+<main class="bp-page bp-admin-page">
+  <section class="bp-card bp-console-form-card bp-battery-card mt-4 mk-dim">
+    <span class="bp-summary-title">Live values</span>
+    <h2>Measured on the battery</h2>
+    <p class="mb-0">Its battery system sends these; type them here before it does, for example the end-of-line values, or to correct one.</p>
+  </section>
+
+  <section class="bp-card bp-console-form-card bp-battery-card mt-4" id="upload">
+    <span class="bp-summary-title">Upload a file</span>
+    <h2>Values from a file</h2>
+    <p class="mb-0">A JSON file for this battery: the app's upload format, or the battery system's export as it is (it also sets the module list). You see what would change before anything is saved. The help page has an example of each.</p>
+    <form class="bp-attr-upload bp-module-upload">
+      <div class="bp-attr-file">
+        <label class="bp-secondary-button bp-button-compact bp-document-smart-upload position-relative text-nowrap mb-0">
+          Choose file
+          <input type="file" class="bp-document-hidden-file" accept="application/json,.json" aria-label="File to upload">
+        </label>
+        <span class="bp-help-text">battery-passport_DEMO-C7M-0001.json</span>
+      </div>
+      <div class="bp-live-save">
+        <small class="bp-field-help">One file, up to 2 MB, for this battery only.</small>
+        <button type="button" class="bp-secondary-button">Check the file</button>
+      </div>
+    </form>
+    <h3 class="h6 mt-4 mb-2">Earlier uploads</h3>
+    <section class="bp-list-card" style="--bp-row-columns: minmax(0, 1.3fr) minmax(0, 1.7fr) minmax(0, 1.2fr) 96px" aria-label="Earlier uploads">
+      <details class="bp-row">
+        <summary>
+          <span class="bp-row-title"><strong>1 Nov 2026, 09:05</strong><code>Page</code></span>
+          <span><span class="bp-row-label">Who and what</span>demo.north.admin@example.test · readings.json</span>
+          <span><span class="bp-row-label">Result</span>2 values saved</span>
+          <span class="bp-row-open"><span class="is-open">Open</span><span class="is-close">Close</span></span>
+        </summary>
+      </details>
+      <details class="bp-row">
+        <summary>
+          <span class="bp-row-title"><strong>31 Oct 2026, 22:10</strong><code>API</code></span>
+          <span><span class="bp-row-label">Who and what</span>north-bms token · battery system export</span>
+          <span><span class="bp-row-label">Result</span>6 values saved</span>
+          <span class="bp-row-open"><span class="is-open">Open</span><span class="is-close">Close</span></span>
+        </summary>
+      </details>
+    </section>
+  </section>
+
+  <section class="bp-card bp-console-form-card bp-battery-card mt-4">
+    <span class="bp-summary-title">Modules <em class="bp-field-marker">Not passport data</em></span>
+    <h2>8 modules</h2>
+    <p class="mb-0">The battery system's export sets this list through "Upload a file"; type or correct it here. The module IDs are seen only by the battery's cluster, market surveillance and the team.</p>
+    <details class="bp-module-edit mt-2"><summary>Type or correct the list</summary></details>
+  </section>
+</main>
+
+<!-- ============================================================================================ B2 the check -->
+<div class="mk-caption" id="b2">
+  <h2><span class="mk-part">5c</span><span class="mk-part">5d</span>B2 · Check before saving</h2>
+  <p>The card shows what the file would do to this battery. The checked file is kept for one hour, so "Save" doesn't need it again. A refused value doesn't stop the others. 5d adds a status change or repair to the same check (dashed).</p>
+</div>
+<main class="bp-page bp-admin-page">
+  <section class="bp-card bp-console-form-card bp-battery-card mt-4">
+    <span class="bp-summary-title">Upload a file</span>
+    <div class="bp-upload-head">
+      <h2 class="mb-0">Check before saving</h2>
+      <span class="text-secondary">battery-passport_DEMO-C7M-0001.json · battery system export · measured 2 Nov 2026, 13:39</span>
+      <span class="bp-soft-tag is-saved">Will change</span>
+    </div>
+    <p class="bp-help-text mt-2 mb-0">Nothing is saved yet. Live values change the passport in place; the battery's own values and status changes make a new version.</p>
+    <table class="bp-upload-values">
+      <thead><tr><th>Value</th><th>Now</th><th>In the file</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>#63 State of charge</td><td data-label="Now">76 %</td><td data-label="In the file">27 %</td><td>Will be saved</td></tr>
+        <tr><td>#83 Full cycles</td><td data-label="Now">10</td><td data-label="In the file">12</td><td>Will be saved</td></tr>
+        <tr><td>E1 Time above the boundary</td><td data-label="Now">0 min</td><td data-label="In the file">59 min</td><td>Will be saved</td></tr>
+        <tr><td>E3, E4 Charging above, below</td><td data-label="Now">0 min</td><td data-label="In the file">0 min</td><td>Will be saved</td></tr>
+      </tbody>
+    </table>
+    <p class="bp-help-text mt-2 mb-0">The module list would be set: 8 modules.</p>
+    <ul class="bp-upload-notes">
+      <li>The export has no pack temperature yet, so #87 is left as it is.</li>
+      <li>The manufacturing date in the file isn't used.</li>
+    </ul>
+
+    <div class="mk-later mt-3 p-2">
+      <span class="mk-later-tag">added in 5d</span>
+      <p class="mb-1"><strong>Repaired</strong> on 30 Oct 2026: “Cell module 2 replaced.” The status becomes <strong>re-used</strong>, with a new version.</p>
+      <table class="bp-upload-values">
+        <thead><tr><th>Value</th><th>Now</th><th>In the file</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>#59 Capacity fade</td><td data-label="Now">3 %</td><td data-label="In the file">6 %</td><td>Will be saved</td></tr>
+          <tr><td>#69 Power fade</td><td data-label="Now">2 %</td><td data-label="In the file"></td><td class="text-secondary">Kept: not in the file</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="bp-dialog-actions mt-3">
+      <button type="button" class="bp-secondary-button">Start again</button>
+      <button type="button" class="bp-primary-button">Save</button>
+    </div>
+  </section>
+
+  <section class="bp-card bp-console-form-card bp-battery-card mt-4">
+    <span class="bp-summary-title">Upload a file</span>
+    <h2>Values from a file</h2>
+    <div class="alert bp-status-line is-problem mt-2" role="status">Not checked: the file is for battery DEMO-C7M-0002, not this one.</div>
+  </section>
+</main>
+
+<!-- ============================================================================================ B3 saved -->
+<div class="mk-caption" id="b3">
+  <h2><span class="mk-part">5c</span>B3 · After "Save"</h2>
+  <p>One message line; the upload is first among the earlier uploads, open. It is also in the team's audit log. A check older than an hour asks for the file again.</p>
+</div>
+<main class="bp-page bp-admin-page">
+  <section class="bp-card bp-console-form-card bp-battery-card mt-4">
+    <span class="bp-summary-title">Upload a file</span>
+    <h2>Values from a file</h2>
+    <div class="alert bp-status-line is-done mt-2" role="status">Saved: 4 values, and the module list (8 modules).</div>
+    <h3 class="h6 mt-4 mb-2">Earlier uploads</h3>
+    <section class="bp-list-card" style="--bp-row-columns: minmax(0, 1.3fr) minmax(0, 1.7fr) minmax(0, 1.2fr) 96px" aria-label="Earlier uploads">
+      <details class="bp-row" open>
+        <summary>
+          <span class="bp-row-title"><strong>2 Nov 2026, 14:12</strong><code>Page</code></span>
+          <span><span class="bp-row-label">Who and what</span>team@example.com · battery-passport_DEMO-C7M-0001.json</span>
+          <span><span class="bp-row-label">Result</span>4 values saved</span>
+          <span class="bp-row-open"><span class="is-open">Open</span><span class="is-close">Close</span></span>
+        </summary>
+        <div class="bp-row-panel bp-console-form-card">
+          <section class="bp-subcard">
+            <table class="bp-upload-values">
+              <thead><tr><th>Value</th><th>In the file</th><th>Result</th></tr></thead>
+              <tbody>
+                <tr><td>#63 State of charge</td><td data-label="In the file">27 %</td><td>Saved</td></tr>
+                <tr><td>#83 Full cycles</td><td data-label="In the file">12</td><td>Saved</td></tr>
+                <tr><td>E1 Time above the boundary</td><td data-label="In the file">59 min</td><td>Saved</td></tr>
+              </tbody>
+            </table>
+            <p class="bp-help-text mt-2 mb-0">The module list was set: 8 modules.</p>
+            <ul class="bp-upload-notes"><li>The export has no pack temperature yet, so #87 is left as it is.</li></ul>
+          </section>
+        </div>
+      </details>
+    </section>
+  </section>
+</main>
+
+<!-- ============================================================================================ B4 cluster admin -->
+<div class="mk-caption" id="b4">
+  <h2><span class="mk-part">5c</span>B4 · The cluster admin's battery page</h2>
+  <p>The same card on <code>/cluster-admin/batteries/{id}</code>. A cluster admin's file changes the live values and the module list (and, from 5d, records status changes and repairs); other values are refused with the reason. Their earlier uploads list their cluster's uploads (their admins' and their battery system's), not the team's.</p>
+</div>
+<main class="bp-page bp-admin-page">
+  <section class="bp-card bp-console-form-card bp-battery-card mt-4" id="upload-cluster">
+    <span class="bp-summary-title">Upload a file</span>
+    <h2>Values from a file</h2>
+    <p class="mb-0">A JSON file for this battery: your battery system's export as it is, or the app's upload format. It changes the live values and the module list. You see what would change before anything is saved.</p>
+    <form class="bp-attr-upload bp-module-upload">
+      <div class="bp-attr-file">
+        <label class="bp-secondary-button bp-button-compact bp-document-smart-upload position-relative text-nowrap mb-0">
+          Choose file
+          <input type="file" class="bp-document-hidden-file" accept="application/json,.json" aria-label="File to upload">
+        </label>
+        <span class="bp-help-text">No file chosen</span>
+      </div>
+      <div class="bp-live-save">
+        <small class="bp-field-help">One file, up to 2 MB, for this battery only.</small>
+        <button type="button" class="bp-secondary-button">Check the file</button>
+      </div>
+    </form>
+    <h3 class="h6 mt-4 mb-2">Earlier uploads</h3>
+    <section class="bp-list-card" style="--bp-row-columns: minmax(0, 1.3fr) minmax(0, 1.7fr) minmax(0, 1.2fr) 96px" aria-label="Earlier uploads">
+      <details class="bp-row">
+        <summary>
+          <span class="bp-row-title"><strong>31 Oct 2026, 22:10</strong><code>API</code></span>
+          <span><span class="bp-row-label">Who and what</span>north-bms token · battery system export</span>
+          <span><span class="bp-row-label">Result</span>6 values saved</span>
+          <span class="bp-row-open"><span class="is-open">Open</span><span class="is-close">Close</span></span>
+        </summary>
+      </details>
+    </section>
+  </section>
+</main>
+</body>
+</html>

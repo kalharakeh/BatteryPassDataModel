@@ -267,7 +267,7 @@ The file's DIN note on #22 asks for a repair history and for a repair to be reco
 ### 8.1 Three ways in, one pipeline
 
 - **Form** on the pack page, for the team and the battery's cluster admins.
-- **Upload page:** one JSON file, many packs, with a preview before saving. The file can carry static per-pack values or live values and status changes (decision 8). Step 3 of the pipeline decides what each sender may change: static per-pack values are team-only.
+- **On each battery's page** (product owner, 2 Nov 2026, decision 35): "Upload a file" takes one JSON file for that battery, the app's format or the battery system's export, with a check before saving and the battery's earlier uploads. The file can carry static per-pack values or live values and status changes (decision 8). Step 3 of the pipeline decides what each sender may change: static per-pack values are team-only. A file for many batteries goes through the external API.
 - **External API:** the battery-system feed posts the native JSON or the BMS export with a cluster token to one upload endpoint (`POST api/external/v1/uploads`, with the same preview flag).
 
 ### 8.2 Native upload format
@@ -441,7 +441,7 @@ Step 5 is planned in four parts (product owner, 2 Nov 2026, decision 35), each e
 
 - **5a, the upload engine, the upload log and the API's upload endpoint:** the native format (8.2) read by its adapter, each battery found as the API finds it and its values through the save pipeline, a battery that can't be changed refused on its own, each upload logged in `dpp_uploads`, and `POST api/external/v1/uploads` with its preview; also the step 4 wrap-up's follow-up (hand-overs compare normalised cluster IDs). Planned in `docs/superpowers/plans/2026-11-02-dpp-v3-step5a-upload-engine.md`.
 - **5b, the battery system's export** (8.3, mapping BMS2_ACO) on the same endpoint: the live values, E1–E4 in whole minutes, #17 for the team's drafts and the module list, and the remaining capacity kept for the fade suggestion. Planned in `docs/superpowers/plans/2026-11-02-dpp-v3-step5b-battery-system-export.md`.
-- **5c, the upload page** with its preview, for the team and the battery's cluster admins, and the upload log on it.
+- **5c, "Upload a file" on each battery's page** (the product owner's change of 2 Nov 2026), a side-menu section of the team's and the cluster admin's battery pages, never on a read-only one: one file for that battery, the check before saving, Save, and the battery's earlier uploads; "Fill from export" merges into it. Mock-up approved on 2 Nov 2026 (`docs/mockups/dpp-v3-step5-live-data-and-uploads.html`), its place on the redesigned pages on 3 Nov. Planned in `docs/superpowers/plans/2026-11-02-dpp-v3-step5c-upload-card.md`.
 - **5d, status changes and repairs by upload** (7.4, 7.9), through the status change, and the demo example.
 
 Before 5c, the battery pages are redesigned in four parts (product owner, 2 Nov 2026, decision 36), each ending with a working app, after the owner tried step 4 and found the battery page long and confusing:
