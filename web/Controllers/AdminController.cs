@@ -52,6 +52,13 @@ public class AdminController : Controller
     [HttpGet("help")]
     public IActionResult Help() => Redirect("/help/team");
 
+    /// <summary>Where the audit log finds the battery whose history it shows (redesign R6).</summary>
+    public const string AuditBatteryKey = "AuditBattery";
+
+    /// <summary>The old app's "Manage passports" address leads to the batteries (redesign R6; the cluster admins' one already does).</summary>
+    [HttpGet("passports")]
+    public IActionResult Passports() => Redirect("/admin/batteries");
+
     [HttpGet("audit")]
     public async Task<IActionResult> AuditLog(
         [FromQuery] string? q,
@@ -65,6 +72,14 @@ public class AdminController : Controller
         [FromServices] AuditLines auditLines,
         CancellationToken cancellationToken)
     {
+        // Opened from a battery's History link (q is its pack ID): say whose history it is, and lead back (redesign R6).
+        if (!string.IsNullOrWhiteSpace(q) && await _dppStore.GetAsync<BatteryPack>(q.Trim(), cancellationToken) is { } pack)
+        {
+            ViewData[AuditBatteryKey] = new AuditBattery(
+                pack.Values.GetValueOrDefault("batterySerialNumber")?.Value?.GetValue<string>() ?? pack.Id,
+                BatteryPassWeb.Dpp.Pages.BatteryPages.BatteryHref(pack.Id));
+        }
+
         // 50 events at a time; one more is read to know whether "Show 50 more" has anything to show.
         const int PageSize = 50;
         var shown = Math.Clamp(show ?? PageSize, PageSize, 1000);
@@ -1033,3 +1048,6 @@ public class AdminController : Controller
     }
 
 }
+
+/// <summary>The battery whose history the audit log shows: its serial number and its page (redesign R6).</summary>
+public sealed record AuditBattery(string SerialNumber, string Href);

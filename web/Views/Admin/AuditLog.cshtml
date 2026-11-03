@@ -33,6 +33,11 @@
         <symbol id="audit-i-chevron" viewBox="0 0 12 12"><path d="M4.5 2.5L8 6l-3.5 3.5" /></symbol>
     </svg>
 
+    @if (ViewData[BatteryPassWeb.Controllers.AdminController.AuditBatteryKey] is BatteryPassWeb.Controllers.AuditBattery battery)
+    {
+        @* Opened from a battery's History link: whose history this is, and the ways back (redesign R6). *@
+        <p class="bp-audit-battery mt-4 mb-0">History of battery <strong>@battery.SerialNumber</strong> · <a href="@battery.Href">Back to the battery page</a> · <a href="/admin/audit">The whole audit log</a></p>
+    }
     <section class="bp-card bp-console-form-card bp-product-editor-section mt-4">
         <form method="get" class="bp-auditlog-filters">
             <label class="bp-auditlog-search">
