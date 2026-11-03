@@ -13,11 +13,16 @@ public class HomeController(PassportPages pages) : Controller
     /// <summary>Address parts that aren't an ID: the passport pages' prefix and suffixes, and today's old ones.</summary>
     private static readonly HashSet<string> RouteWords = new(StringComparer.OrdinalIgnoreCase) { "dpp", "detail", "summary", "latest" };
 
+    /// <summary>Where the home page finds the sample battery's ID: a published demo battery, or none (redesign R6).</summary>
+    public const string SampleKey = "SampleBatteryId";
+
     [HttpGet("")]
-    public IActionResult Index([FromQuery] string? q, [FromQuery] string? notFound)
+    public async Task<IActionResult> Index([FromQuery] string? q, [FromQuery] string? notFound, [FromServices] BatteryPages batteries, CancellationToken cancellationToken)
     {
         ViewData["SearchQuery"] = q?.Trim() ?? string.Empty;
         ViewData["SearchNotFound"] = string.Equals(notFound, "1", StringComparison.OrdinalIgnoreCase);
+        // A sample to open, as the old app had: a published demo battery, never a real one (as the API help, 30 Oct 2026).
+        ViewData[SampleKey] = await batteries.ExampleBatteryIdAsync(cancellationToken);
         return View();
     }
 

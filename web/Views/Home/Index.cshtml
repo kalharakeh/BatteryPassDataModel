@@ -33,6 +33,11 @@
                 Enter a serial number, battery ID or passport ID, or use the QR icon inside the field before searching.
             </p>
         </form>
+        @if (ViewData[BatteryPassWeb.Controllers.HomeController.SampleKey] is string { Length: > 0 } sample)
+        {
+            @* A published demo battery to try, while demo data exists (redesign R6, the owner's choice 7). *@
+            <p class="bp-landing-sample mt-3 mb-0"><a href="/dpp/@Uri.EscapeDataString(sample)">Open a sample battery passport</a></p>
+        }
     </div>
 
     <div class="bp-qr-modal" data-qr-modal hidden>

@@ -197,7 +197,7 @@ public sealed class PassportControllerTests(MongoFixture mongo)
     {
         var home = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Home", "Index.cshtml"));
 
-        Assert.DoesNotContain("sample", home, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("SamplePassportId", home, StringComparison.Ordinal); // not the old app's sample; R6 links a published demo battery instead
         Assert.DoesNotContain("DID", home, StringComparison.Ordinal);
         Assert.Contains("placeholder=\"Serial number, battery ID or passport ID\"", home, StringComparison.Ordinal);
     }
