@@ -238,7 +238,7 @@ public sealed class DppApiControllerTests(MongoFixture mongo)
         };
     }
 
-    private static PassportsApiController PassportsController(PublicationRig rig) => new(
+    internal static PassportsApiController PassportsController(PublicationRig rig) => new(
         new DppReaders(new ClusterRepository(rig.Context)),
         BatteryTesting.Pages(rig),
         PassportApiTests.Api(rig),

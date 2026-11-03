@@ -20,7 +20,9 @@ public sealed class RegistryController(DppReaders readers, BatteryPages batterie
     {
         var reader = await readers.ForAsync(User, cancellationToken);
         var editor = await readers.EditorForAsync(User, cancellationToken);
-        return View(RegistryList.Build(reader, await batteries.ListAsync(q, cancellationToken), editor) with
+        // One row per battery, the newest passport this reader may see (redesign R5, owner's item 3).
+        var list = await batteries.ListOnePerBatteryAsync(q, row => RegistryList.MayList(reader, row), cancellationToken);
+        return View(RegistryList.Build(reader, list, editor) with
         {
             Waiting = editor is null ? [] : await handOvers.WaitingForAsync(editor, cancellationToken),
         });

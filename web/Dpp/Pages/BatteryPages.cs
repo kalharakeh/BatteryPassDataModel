@@ -36,6 +36,9 @@ public sealed record BatteryRow(
 
     /// <summary>The battery status (#22), shown as a badge only to its readers (redesign R3); null before it has one.</summary>
     public string? BatteryStatus { get; init; }
+
+    /// <summary>The pack whose passport this one replaces (design 7.5); null for a battery placed on the market new.</summary>
+    public string? SuccessorOf { get; init; }
 }
 
 public sealed record BatteriesPage(IReadOnlyList<BatteryRow> Rows, string Query, int Total);
@@ -222,7 +225,60 @@ public sealed class BatteryPages(
     /// Every battery, newest model first by name, filtered by <paramref name="query"/>: a passport ID (#5, any version), a
     /// battery ID (#6), a serial number (#11) or a cluster's ID or name, ignoring case; part of one is enough.
     /// </summary>
+    /// <summary>Every battery pack, each with its own row: the API's lists, which name every battery ID (redesign R5 leaves them as they are).</summary>
     public async Task<BatteriesPage> ListAsync(string? query, CancellationToken cancellationToken = default)
+    {
+        var (rows, versions) = await RowsAsync(cancellationToken);
+        var wanted = query?.Trim() ?? string.Empty;
+        var shown = Sorted(rows.Where(row => wanted.Length == 0 || Matches(row, wanted, versions[row.PackId])));
+        return new BatteriesPage(shown, wanted, rows.Count);
+    }
+
+    /// <summary>
+    /// The batteries a reader's list shows, one row each (redesign R5, owner's item 3): a battery placed on the market
+    /// again has a pack per passport with the same serial number, and only the newest one the reader may see is listed.
+    /// Searching for an earlier passport's IDs finds the battery's row; its page links the earlier passport.
+    /// </summary>
+    /// <param name="mayList">The rows this reader may see (every row for the team; the Registry's rule for the others).</param>
+    public async Task<BatteriesPage> ListOnePerBatteryAsync(string? query, Func<BatteryRow, bool> mayList, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(mayList);
+        var (rows, versions) = await RowsAsync(cancellationToken);
+        var batteries = OnePerBattery(rows.Where(mayList).ToArray());
+        var byPack = rows.ToDictionary(row => row.PackId, StringComparer.Ordinal);
+        var wanted = query?.Trim() ?? string.Empty;
+        var shown = Sorted(batteries.Where(row => wanted.Length == 0 || Earlier(row, byPack).Prepend(row).Any(each => Matches(each, wanted, versions[each.PackId]))));
+        return new BatteriesPage(shown, wanted, batteries.Count);
+    }
+
+    /// <summary>
+    /// The rows left when each battery keeps only its newest pack among them: a row goes when another of the rows replaces
+    /// it. A newer pack the reader may not see (a draft, for the Registry) leaves the one they see in place.
+    /// </summary>
+    public static IReadOnlyList<BatteryRow> OnePerBattery(IReadOnlyList<BatteryRow> rows)
+    {
+        ArgumentNullException.ThrowIfNull(rows);
+        var replaced = rows.Select(row => row.SuccessorOf).OfType<string>().ToHashSet(StringComparer.Ordinal);
+        return rows.Where(row => !replaced.Contains(row.PackId)).ToArray();
+    }
+
+    /// <summary>The packs a row's pack replaces, newest first (a chain, guarded against loops).</summary>
+    private static IEnumerable<BatteryRow> Earlier(BatteryRow row, IReadOnlyDictionary<string, BatteryRow> byPack)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal) { row.PackId };
+        for (var at = row.SuccessorOf; at is not null && seen.Add(at) && byPack.TryGetValue(at, out var earlier); at = earlier.SuccessorOf)
+        {
+            yield return earlier;
+        }
+    }
+
+    private static BatteryRow[] Sorted(IEnumerable<BatteryRow> rows) => rows
+        .OrderBy(row => row.FamilyName, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(row => row.ModelName, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(row => row.SerialNumber, StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+
+    private async Task<(List<BatteryRow> Rows, ILookup<string, PassportVersion> Versions)> RowsAsync(CancellationToken cancellationToken)
     {
         var packs = await store.ListAsync<BatteryPack>(cancellationToken);
         var batches = (await store.ListAsync<ProductionBatch>(cancellationToken)).ToDictionary(batch => batch.Id, StringComparer.Ordinal);
@@ -253,17 +309,11 @@ public sealed class BatteryPages(
             {
                 Latest = versions[pack.Id].MaxBy(version => version.Number),
                 BatteryStatus = StatusChangeService.CurrentStatus(pack),
+                SuccessorOf = pack.SuccessorOf,
             });
         }
 
-        var wanted = query?.Trim() ?? string.Empty;
-        var shown = rows
-            .Where(row => wanted.Length == 0 || Matches(row, wanted, versions[row.PackId]))
-            .OrderBy(row => row.FamilyName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(row => row.ModelName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(row => row.SerialNumber, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-        return new BatteriesPage(shown, wanted, rows.Count);
+        return (rows, versions);
     }
 
     /// <summary>The API help's example battery: a published demo battery's ID, or none. The help is open to everyone, so it
