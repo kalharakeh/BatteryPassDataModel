@@ -12,7 +12,7 @@
     // readings when there are any; an older version leads to the current one instead.
     var liveValues = Model.Audiences.SelectMany(section => section.Values).Where(value => value.Attribute.Change == BatteryPassWeb.Dpp.Catalog.ChangeRule.Live).ToArray();
     var live = Model.Current is null && liveValues.Length > 0
-        ? new LiveTab(liveValues, ViewData["LiveHistory"] as IReadOnlyList<BatteryPassWeb.Dpp.Api.LiveHistoryEntry> ?? [])
+        ? new LiveTab(liveValues, ViewData["LiveHistory"] as IReadOnlyList<BatteryPassWeb.Dpp.Api.LiveHistoryEntry> ?? [], ViewData["LiveWeekEnd"] as DateTime?)
         : null;
     var modules = Model.Modules is { Count: > 0 } listed ? listed : null;
     var extra = new List<(string Key, string Tab)>();

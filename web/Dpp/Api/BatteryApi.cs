@@ -179,12 +179,28 @@ public sealed class BatteryApi(
     /// log, which keeps every saved value with its measurement time; an entry written before 3c-2 has none, and its save
     /// time stands in.
     /// </summary>
-    public async Task<IReadOnlyList<LiveHistoryEntry>> HistoryAsync(Reader reader, string packId, int hours, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<LiveHistoryEntry>> HistoryAsync(Reader reader, string packId, int hours, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(reader);
         ArgumentOutOfRangeException.ThrowIfLessThan(hours, 1);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(hours, MaxHistoryHours);
-        var sinceUtc = clock.GetUtcNow().UtcDateTime.AddHours(-hours);
+        return ReadAsync(reader, packId, clock.GetUtcNow().UtcDateTime.AddHours(-hours), null, cancellationToken);
+    }
+
+    /// <summary>
+    /// The detail page's week of live values (redesign R7, the owner's choice "Latest week with data"): the last 7 days
+    /// while the battery reported in them; otherwise the 7 days ending at <paramref name="lastReadingUtc"/>, its last
+    /// reading (from its stored values: no history scan). One query from the week's start; the same rule of who sees what.
+    /// </summary>
+    public async Task<(IReadOnlyList<LiveHistoryEntry> Week, DateTime EndUtc)> LatestWeekAsync(Reader reader, string packId, DateTime? lastReadingUtc, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(reader);
+        var endUtc = BatteryPassWeb.Dpp.Pages.LiveTrends.WeekEnd(lastReadingUtc, clock.GetUtcNow().UtcDateTime);
+        return (await ReadAsync(reader, packId, endUtc.AddHours(-MaxHistoryHours), endUtc, cancellationToken), endUtc);
+    }
+
+    private async Task<IReadOnlyList<LiveHistoryEntry>> ReadAsync(Reader reader, string packId, DateTime sinceUtc, DateTime? untilUtc, CancellationToken cancellationToken)
+    {
         var batteryClusters = await store.FindPublishedClusterIdsUsingAsync(packId: packId, cancellationToken: cancellationToken);
         var visible = LiveSet.Where(attribute => AudienceRules.MaySee(reader, attribute, batteryClusters)).ToDictionary(attribute => attribute.Property, StringComparer.Ordinal);
         if (visible.Count == 0)
@@ -209,7 +225,7 @@ public sealed class BatteryApi(
                 }
 
                 var measuredAt = Moment(key.GetValue("generatedAt", BsonNull.Value) is BsonString generated ? generated.Value : null) ?? savedAt;
-                if (measuredAt >= sinceUtc)
+                if (measuredAt >= sinceUtc && (untilUtc is null || measuredAt <= untilUtc))
                 {
                     entries.Add(new LiveHistoryEntry(attribute, value, measuredAt, savedAt, change.GetValue("source", string.Empty).ToString()!));
                 }

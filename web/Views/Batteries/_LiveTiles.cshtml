@@ -1,8 +1,13 @@
 @using BatteryPassWeb.Dpp.Pages
 @model IReadOnlyList<LiveTile>
-@* The overview's tiles (redesign R4, the owner's improvement 4): each value now, with a small line of its last 7 days. *@
+@* The overview's tiles (redesign R4, the owner's improvement 4): each value now, with a small line of its last 7 days,
+   or of its last week of readings when the battery stopped reporting (R7). *@
 @if (Model.Count > 0)
 {
+    @if (Model[0].Period != LiveTrends.LastSevenDays)
+    {
+        <p class="bp-help-text mb-2">No reading in the last 7 days: the lines show the last week of readings, @Model[0].Period.</p>
+    }
     <div class="bp-tiles">
         @foreach (var tile in Model)
         {

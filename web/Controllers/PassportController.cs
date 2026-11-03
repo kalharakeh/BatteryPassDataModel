@@ -72,7 +72,14 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
         // change log and the same rule as the API's history.
         if (liveHistory is not null && page.Current is null) // the battery's latest passport, active or not (redesign R6)
         {
-            ViewData["LiveHistory"] = await liveHistory.HistoryAsync(reader, page.Version.PackId, BatteryApi.MaxHistoryHours, cancellationToken);
+            // The latest week with readings (R7): the last 7 days, or the week ending at the battery's last reading.
+            var lastReading = page.Audiences.SelectMany(section => section.Values)
+                .Where(value => value.Attribute.Change == BatteryPassWeb.Dpp.Catalog.ChangeRule.Live && value.Attribute.Property != BatteryPassWeb.Dpp.Documents.DocumentService.Accidents && value.Origin is not null) // the accident reports' page isn't a reading
+                .Select(value => (DateTime?)value.Origin!.GeneratedAtUtc)
+                .Max();
+            var (week, weekEnd) = await liveHistory.LatestWeekAsync(reader, page.Version.PackId, lastReading, cancellationToken);
+            ViewData["LiveHistory"] = week;
+            ViewData["LiveWeekEnd"] = weekEnd;
         }
 
         // The battery's cluster admins manage it from here too (step 4a); read it while its passport is marked (R6b).

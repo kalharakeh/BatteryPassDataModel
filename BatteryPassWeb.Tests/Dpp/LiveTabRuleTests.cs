@@ -57,7 +57,7 @@ public sealed class LiveTabRuleTests
 
         Assert.Contains("var live = Model.Current is null && liveValues.Length > 0", tabs, StringComparison.Ordinal);
         Assert.Contains("Model.Audiences.SelectMany(section => section.Values).Where(value => value.Attribute.Change == BatteryPassWeb.Dpp.Catalog.ChangeRule.Live)", tabs, StringComparison.Ordinal); // only what this reader may see
-        Assert.Contains("0 => \"No reading in the last 7 days\"", live, StringComparison.Ordinal);
+        Assert.Contains("0 => older ? \"No reading that week\" : \"No reading in the last 7 days\"", live, StringComparison.Ordinal); // R7: an older week says "that week"
         Assert.Contains("if (liveHistory is not null && page.Current is null)", controller, StringComparison.Ordinal);
     }
 }

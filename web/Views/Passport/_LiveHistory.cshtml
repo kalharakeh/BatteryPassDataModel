@@ -11,10 +11,21 @@
     const int Width = 300;
     const int Height = 70;
     string Reading(LiveHistoryEntry entry) => string.Join(", ", ValueWords.Lines(Forms.For(entry.Attribute), entry.Value).Select(line => line.Text));
-    var charts = LiveTrends.ForTab(Model.Latest, Model.History, Clock.GetUtcNow().UtcDateTime, Reading);
+    var now = Clock.GetUtcNow().UtcDateTime;
+    var end = Model.WeekEndUtc ?? now;
+    var older = LiveTrends.IsOlderWeek(end, now); // the battery stopped reporting: its last week of readings (R7)
+    var charts = LiveTrends.ForTab(Model.Latest, Model.History, now, Reading, end);
+    var week = older ? "that week" : "this week";
 }
-<h2 class="h5 mb-2">The last 7 days</h2>
-<p class="bp-help-text">Each value's latest reading and when it was taken, and how it went over the last week when the battery sent readings. Every reading of the week, with when it was measured and how it arrived, is under the charts.</p>
+<h2 class="h5 mb-2">@LiveTrends.WeekTitle(end, now)</h2>
+@if (older)
+{
+    <p class="bp-help-text">The battery has sent no reading since @ValueWords.Time(end), so the charts show its last week of readings. Every reading of that week, with when it was measured and how it arrived, is under the charts.</p>
+}
+else
+{
+    <p class="bp-help-text">Each value's latest reading and when it was taken, and how it went over the last week when the battery sent readings. Every reading of the week, with when it was measured and how it arrived, is under the charts.</p>
+}
 <div class="bp-live-charts">
     @foreach (var chart in charts)
     {
@@ -35,7 +46,7 @@
             }
             else
             {
-                <span class="bp-live-chart-flat">@(chart.Readings switch { 0 => "No reading in the last 7 days", 1 => "One reading this week", _ => $"{Words.Count(chart.Readings, "reading")} this week" })</span>
+                <span class="bp-live-chart-flat">@(chart.Readings switch { 0 => older ? "No reading that week" : "No reading in the last 7 days", 1 => $"One reading {week}", _ => $"{Words.Count(chart.Readings, "reading")} {week}" })</span>
             }
             <small>@chart.Note</small>
         </figure>
