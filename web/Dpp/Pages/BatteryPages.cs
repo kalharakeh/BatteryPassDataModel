@@ -124,6 +124,9 @@ public sealed record BatteryPage(
     /// <summary>The overview's tiles: state of charge, cycles, temperature and capacity fade, with their last 7 days (redesign R4).</summary>
     public IReadOnlyList<LiveTile> Tiles { get; init; } = [];
 
+    /// <summary>The battery's passports, oldest first, when it was placed on the market again (redesign R6); empty otherwise.</summary>
+    public IReadOnlyList<ChainLink> Chain { get; init; } = [];
+
     /// <summary>The team's "Passport status" card (mock-up S5, step 4c-2): invalid, marked for deletion, and their undo.</summary>
     public PassportMarkView Marks => new(
         Publication.Active is not null ? DppStatuses.Active : Publication.Latest?.DppStatus,
@@ -477,6 +480,7 @@ public sealed class BatteryPages(
         {
             Status = await status.CardAsync(sources, active is not null, href, forTeam: true, cancellationToken: cancellationToken),
             Tiles = trends is null ? [] : await trends.TilesAsync(sources.Pack, sources.Model, cancellationToken),
+            Chain = await PassportChains.ForAsync(store, sources.Pack, cancellationToken),
             HandOverTo = await store.FindWaitingHandOverAsync(packId, cancellationToken) is { } waiting
                 ? clusterChoices.FirstOrDefault(cluster => string.Equals(cluster.Id, waiting.ToClusterId, StringComparison.OrdinalIgnoreCase))?.Name ?? waiting.ToClusterId
                 : null,

@@ -128,6 +128,11 @@
                         }
                     </dl>
                 }
+                @if (tab.Key == BatteryPassWeb.Dpp.Catalog.AttributeDefinition.HeaderSection && Model.Chain.Count > 1)
+                {
+                    @* The battery's passports, for the team and market surveillance (redesign R6, the owner's item 12). *@
+                    <div class="mt-4">@await Html.PartialAsync("_PassportChain", new ChainView(Model.Chain, ChainReader.Detail))</div>
+                }
                 @if (tab.Key == "purchaser" && Model.Repairs is { } repairs)
                 {
                     <h3 class="h6 mt-3 mb-0">Repair history</h3>

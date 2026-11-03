@@ -30,7 +30,8 @@ public sealed class BatteryHistoryLinkTests(MongoFixture mongo)
         var battery = Assert.IsType<AuditBattery>(history.ViewData[AdminController.AuditBatteryKey]);
         var whole = Assert.IsType<ViewResult>(await DemoCardTests.Controller(rig).AuditLog("Repaired", null, null, null, null, null, null, null, lines, CancellationToken.None));
 
-        Assert.Equal(new AuditBattery(serial, BatteryPages.BatteryHref(pack.Id)), battery);
+        Assert.Equal((serial, BatteryPages.BatteryHref(pack.Id)), (battery.SerialNumber, battery.Href));
+        Assert.Empty(battery.OtherPassports ?? []); // one passport only; a battery placed on the market again links its others (R6 T19)
         Assert.False(whole.ViewData.ContainsKey(AdminController.AuditBatteryKey)); // an ordinary search names no battery
     }
 

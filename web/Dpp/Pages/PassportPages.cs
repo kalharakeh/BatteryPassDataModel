@@ -83,6 +83,12 @@ public sealed record PassportPage(
     /// <summary>The key figures card (redesign R5): public values only, the same on the summary and the detail page.</summary>
     public KeyFigures? KeyFigures { get; init; }
 
+    /// <summary>
+    /// The battery's passports, oldest first, on the detail page for the team and market surveillance (redesign R6, the
+    /// owner's item 12); empty for everyone else, who read "replaces an earlier passport" as before.
+    /// </summary>
+    public IReadOnlyList<ChainLink> Chain { get; init; } = [];
+
     /// <summary>Why the passport is invalid and who said so, for the team and market surveillance only (decision 34); null otherwise.</summary>
     public string? MarkReason { get; init; }
 
@@ -301,6 +307,9 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
             recycled)
         {
             KeyFigures = KeyFigures.From(number => Find(everyone, AttributeCatalog.ByNumber(number)), Words, carbon, recycled),
+            Chain = detail && (who.Roles.Contains(ReaderRole.Team) || who.Roles.Contains(ReaderRole.MarketSurveillance))
+                ? await PassportChains.ForAsync(store, sources.Pack, cancellationToken)
+                : [],
             ModuleCount = sources.Pack.Modules.Count,
             ModuleDescription = sources.Model.ModuleDescription,
             Modules = detail && AudienceRules.MaySeePurchaserData(who, clusters) ? sources.Pack.Modules : null,

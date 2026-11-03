@@ -29,6 +29,9 @@ public sealed record ClusterBatteryPage(
     /// <summary>The overview's tiles, as on the team's page (redesign R4).</summary>
     public IReadOnlyList<LiveTile> Tiles { get; init; } = [];
 
+    /// <summary>The battery's passports, oldest first, when it was placed on the market again (redesign R6); empty otherwise.</summary>
+    public IReadOnlyList<ChainLink> Chain { get; init; } = [];
+
     /// <summary>The "Hand over" card (step 4d): the waiting hand-over, or the window to ask for one.</summary>
     public HandOverCardView HandOver { get; init; } = new(string.Empty, string.Empty, null, null);
 
@@ -146,6 +149,7 @@ public sealed class ClusterBatteryPages(
         {
             Status = await status.CardAsync(sources, active: true, href, forTeam: false, cancellationToken: cancellationToken),
             Tiles = trends is null ? [] : await trends.TilesAsync(sources.Pack, sources.Model, cancellationToken),
+            Chain = await PassportChains.ForAsync(store, pack, cancellationToken),
             HandOver = new HandOverCardView($"{href}/handover", serial, waiting, waiting is null ? null : names.GetValueOrDefault(waiting.ToClusterId) ?? waiting.ToClusterId),
             History = history is null ? [] : await history.ForAsync(pack, sender.ClusterIds, cancellationToken),
         };

@@ -36,7 +36,14 @@
     @if (ViewData[BatteryPassWeb.Controllers.AdminController.AuditBatteryKey] is BatteryPassWeb.Controllers.AuditBattery battery)
     {
         @* Opened from a battery's History link: whose history this is, and the ways back (redesign R6). *@
-        <p class="bp-audit-battery mt-4 mb-0">History of battery <strong>@battery.SerialNumber</strong> · <a href="@battery.Href">Back to the battery page</a> · <a href="/admin/audit">The whole audit log</a></p>
+        <p class="bp-audit-battery mt-4 mb-0">History of battery <strong>@battery.SerialNumber</strong> · <a href="@battery.Href">Back to the battery page</a> · <a href="/admin/audit">The whole audit log</a>@if (battery.OtherPassports is { Count: > 0 } others)
+            {
+                <text> · Its other passports' histories: </text>
+                @for (var index = 0; index < others.Count; index++)
+                {
+                    <a href="@others[index].Href">@others[index].Label</a>@(index < others.Count - 1 ? ", " : null)
+                }
+            }</p>
     }
     <section class="bp-card bp-console-form-card bp-product-editor-section mt-4">
         <form method="get" class="bp-auditlog-filters">

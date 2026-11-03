@@ -75,9 +75,15 @@ public class AdminController : Controller
         // Opened from a battery's History link (q is its pack ID): say whose history it is, and lead back (redesign R6).
         if (!string.IsNullOrWhiteSpace(q) && await _dppStore.GetAsync<BatteryPack>(q.Trim(), cancellationToken) is { } pack)
         {
+            // Its other passports' histories, when it was placed on the market again (redesign R6, the owner's item 12).
+            var others = (await BatteryPassWeb.Dpp.Pages.PassportChains.ForAsync(_dppStore, pack, cancellationToken))
+                .Where(link => !link.IsThis)
+                .Select(link => new AuditBatteryLink($"Passport {link.Number}", $"/admin/audit?q={Uri.EscapeDataString(link.PackId)}"))
+                .ToArray();
             ViewData[AuditBatteryKey] = new AuditBattery(
                 pack.Values.GetValueOrDefault("batterySerialNumber")?.Value?.GetValue<string>() ?? pack.Id,
-                BatteryPassWeb.Dpp.Pages.BatteryPages.BatteryHref(pack.Id));
+                BatteryPassWeb.Dpp.Pages.BatteryPages.BatteryHref(pack.Id),
+                others);
         }
 
         // 50 events at a time; one more is read to know whether "Show 50 more" has anything to show.
@@ -1050,4 +1056,7 @@ public class AdminController : Controller
 }
 
 /// <summary>The battery whose history the audit log shows: its serial number and its page (redesign R6).</summary>
-public sealed record AuditBattery(string SerialNumber, string Href);
+public sealed record AuditBattery(string SerialNumber, string Href, IReadOnlyList<AuditBatteryLink>? OtherPassports = null);
+
+/// <summary>Another passport of the same battery, and its history (redesign R6).</summary>
+public sealed record AuditBatteryLink(string Label, string Href);

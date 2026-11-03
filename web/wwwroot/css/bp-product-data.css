@@ -3576,3 +3576,59 @@ main .bp-field-marker.is-published {
     grid-template-columns: 1fr;
   }
 }
+
+/* "Passports of this battery" (redesign R6): one line per passport, oldest first, this one marked. */
+.bp-passport-chain {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bp-passport-chain li {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--bp-border);
+  border-radius: 10px;
+}
+
+.bp-passport-chain li.is-this {
+  border-color: var(--bp-primary);
+}
+
+.bp-passport-chain-number {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(42, 110, 207, 0.1);
+  color: var(--bp-primary);
+  font-weight: 700;
+}
+
+.bp-passport-chain-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.bp-passport-chain-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+@media (max-width: 575.98px) {
+  .bp-passport-chain li {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .bp-passport-chain-links {
+    grid-column: 2;
+  }
+}

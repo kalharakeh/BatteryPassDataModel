@@ -365,6 +365,7 @@
                 @await Html.PartialAsync("~/Views/Batteries/_ModulesCard.cshtml", Model.Cards)
             </div>
             <div data-section="versions" hidden="@Hidden("versions")">
+                @await Html.PartialAsync("_PassportChain", new ChainView(Model.Chain, ChainReader.Team))
                 @await Html.PartialAsync("~/Views/Batteries/_VersionsCard.cshtml", Model.Cards)
             </div>
         </div>
