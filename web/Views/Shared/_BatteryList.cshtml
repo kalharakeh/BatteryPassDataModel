@@ -1,8 +1,8 @@
 @using BatteryPassWeb.Dpp.Pages
 @model BatteryListView
-@* One battery list for the team's Batteries page and the Registry (redesign R7, the owner's choice 4, "One shared
-   list"): the same search, columns and row icons; cards on a phone. The battery ID is behind the copy icon (copied in
-   full, shown on hover). *@
+@* One battery list for the team's Batteries page and the Registry (redesign R7, the owner's choices 3 and 4): the same
+   search, columns and row icons, every row on one line at 1280 px; cards on a phone. The battery ID is behind the copy
+   icon (copied in full) and on the serial number's hover; long text ends in "…", whole on hover. *@
 <section class="bp-console-toolbar bp-battery-list-tools mt-4">
     <form method="get" action="@Model.Action" class="bp-batteries-search" role="search">
         <label class="visually-hidden" for="battery-search">Search batteries</label>
@@ -30,7 +30,7 @@
                 <text> <a href="@Model.Action">Show all</a></text>
             }</p>
         <div class="bp-table-scroll">
-            <table class="table align-middle bp-console-table bp-batteries-table bp-mobile-card-table">
+            <table class="table align-middle bp-console-table bp-batteries-table bp-mobile-card-table bp-one-line-list">
                 <thead>
                     <tr>
                         <th>Serial number</th>
@@ -50,10 +50,10 @@
                     {
                         <tr>
                             <td data-label="Serial number">
-                                <span class="bp-id-copy-row" title="Battery ID (#6): @row.Identifier"><a href="@Model.OpenHref(row)" class="bp-battery-link">@row.SerialNumber</a>@await Html.PartialAsync("_CopyIdButton", row.Identifier)</span>
+                                <span class="bp-id-copy-row"><a href="@Model.OpenHref(row)" class="bp-battery-link bp-one-line-clip is-serial" title="@row.SerialNumber · battery ID @row.Identifier">@row.SerialNumber</a>@await Html.PartialAsync("_CopyIdButton", row.Identifier)</span>
                             </td>
-                            <td data-label="Model" title="@row.FamilyName family">@row.ModelName</td>
-                            <td data-label="Batch">@row.BatchLabel</td>
+                            <td data-label="Model"><span class="bp-one-line-clip" title="@row.ModelName · @row.FamilyName family">@row.ModelName</span></td>
+                            <td data-label="Batch"><span class="bp-one-line-clip" title="@row.BatchLabel">@row.BatchLabel</span></td>
                             @if (Model.ShowClusters)
                             {
                                 <td data-label="Cluster">
@@ -63,7 +63,7 @@
                                     }
                                     else
                                     {
-                                        @row.ClusterLabel
+                                        <span class="bp-one-line-clip" title="@row.ClusterLabel">@row.ClusterLabel</span>
                                     }
                                 </td>
                             }

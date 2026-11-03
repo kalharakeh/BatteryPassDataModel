@@ -3643,3 +3643,76 @@ main .bp-field-marker.is-published {
   justify-content: space-between;
   gap: 12px;
 }
+
+/* The serial number with its copy icon. */
+.bp-one-line-list .bp-id-copy-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Every row on one line from tablet width up (redesign R7, the owner's item 3); a phone keeps its cards. The two statuses
+   side by side, told apart by their shape (a square battery tag, a round passport pill) and named for screen readers; a
+   long serial number, model, batch or cluster name ends in "…" with the whole of it on hover. */
+@media (min-width: 768px) {
+  /* site.css pads every console cell 14 px with !important; this list needs the room. */
+  .bp-console-table.bp-one-line-list :is(th, td) {
+    padding-inline: 7px !important;
+  }
+
+  .bp-one-line-list .bp-icon-action-row {
+    gap: 4px;
+  }
+
+  /* 32 px row icons (37.6 px elsewhere), still well above the 24 px a finger needs. */
+  .bp-one-line-list .bp-report-action {
+    inline-size: 2rem;
+    block-size: 2rem;
+    min-inline-size: 2rem;
+    min-block-size: 2rem;
+  }
+
+  .bp-console-table.bp-one-line-list td,
+  .bp-console-table.bp-one-line-list td:is([data-label="Batch"], [data-label="Cluster"]) {
+    white-space: nowrap;
+  }
+
+  /* A cell's max-width isn't kept by a table's automatic layout, so the clip is on the text itself. */
+  .bp-one-line-list .bp-one-line-clip {
+    display: inline-block;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+  }
+
+  /* Any serial number fits at 1280 px: about 17 characters show, the demo's whole, a longer one ends in "…". */
+  .bp-one-line-list .bp-one-line-clip.is-serial {
+    max-width: 165px;
+  }
+
+  .bp-one-line-list .bp-badges {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  .bp-one-line-list .bp-badge-kind {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* The last row icon's name opens to its left, so it stays inside the list (centred, it made the list scroll sideways). */
+.bp-one-line-list .bp-icon-action-row > .bp-report-action:last-child::after {
+  right: 0;
+  left: auto;
+  transform: translateY(4px);
+}
+
+.bp-one-line-list .bp-icon-action-row > .bp-report-action:last-child:is(:hover, :focus-visible)::after {
+  transform: translateY(0);
+}
