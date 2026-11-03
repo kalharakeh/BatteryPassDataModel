@@ -26,9 +26,9 @@ public sealed class OneRowPerBatteryTests(MongoFixture mongo)
         var every = await pages.ListAsync(null);
         var oldRow = every.Rows.Single(row => row.PackId == rig.PackId);
 
-        var list = await pages.ListOnePerBatteryAsync(null, _ => true);
-        var byOldId = await pages.ListOnePerBatteryAsync(oldRow.Identifier, _ => true);
-        var byOldPassport = await pages.ListOnePerBatteryAsync(oldRow.Latest!.DigitalProductPassportId, _ => true);
+        var list = await pages.ListOnePerBatteryAsync(null, _ => true, matchClusters: true);
+        var byOldId = await pages.ListOnePerBatteryAsync(oldRow.Identifier, _ => true, matchClusters: true);
+        var byOldPassport = await pages.ListOnePerBatteryAsync(oldRow.Latest!.DigitalProductPassportId, _ => true, matchClusters: true);
 
         Assert.Equal(2, every.Rows.Count(row => row.SerialNumber == oldRow.SerialNumber)); // the API's list: a row per battery ID
         Assert.Equal(successorId, Assert.Single(list.Rows, row => row.SerialNumber == oldRow.SerialNumber).PackId);
@@ -46,8 +46,8 @@ public sealed class OneRowPerBatteryTests(MongoFixture mongo)
         var pages = BatteryTesting.Pages(rig);
         var surveillance = Reader.With("msa@example.com", ReaderRole.MarketSurveillance);
 
-        var team = await pages.ListOnePerBatteryAsync(null, _ => true);
-        var registry = await pages.ListOnePerBatteryAsync(null, row => RegistryList.MayList(surveillance, row));
+        var team = await pages.ListOnePerBatteryAsync(null, _ => true, matchClusters: true);
+        var registry = await pages.ListOnePerBatteryAsync(null, row => RegistryList.MayList(surveillance, row), matchClusters: false);
 
         Assert.Contains(team.Rows, row => row.PackId == successorId);
         Assert.DoesNotContain(team.Rows, row => row.PackId == rig.PackId);
@@ -84,8 +84,8 @@ public sealed class OneRowPerBatteryTests(MongoFixture mongo)
     [Fact]
     public void TheTeamsListAndTheRegistry_ShouldListOneRowPerBattery_AndTheApiEveryPack()
     {
-        Assert.Contains("pages.ListOnePerBatteryAsync(q, _ => true, cancellationToken)", View("Controllers", "BatteriesController.cs"), StringComparison.Ordinal);
-        Assert.Contains("batteries.ListOnePerBatteryAsync(q, row => RegistryList.MayList(reader, row), cancellationToken)", View("Controllers", "RegistryController.cs"), StringComparison.Ordinal);
+        Assert.Contains("pages.ListOnePerBatteryAsync(q, _ => true, matchClusters: true, cancellationToken)", View("Controllers", "BatteriesController.cs"), StringComparison.Ordinal);
+        Assert.Contains("batteries.ListOnePerBatteryAsync(q, row => RegistryList.MayList(reader, row), RegistryList.ShowsClusters(reader), cancellationToken)", View("Controllers", "RegistryController.cs"), StringComparison.Ordinal);
         Assert.Contains("await batteries.ListAsync(q, cancellationToken)", View("Controllers", "PassportsApiController.cs"), StringComparison.Ordinal);
         Assert.Contains("await batteries.ListAsync(null, cancellationToken)", View("Dpp", "Api", "PassportApi.cs"), StringComparison.Ordinal);
     }

@@ -239,14 +239,15 @@ public sealed class BatteryPages(
     /// Searching for an earlier passport's IDs finds the battery's row; its page links the earlier passport.
     /// </summary>
     /// <param name="mayList">The rows this reader may see (every row for the team; the Registry's rule for the others).</param>
-    public async Task<BatteriesPage> ListOnePerBatteryAsync(string? query, Func<BatteryRow, bool> mayList, CancellationToken cancellationToken = default)
+    /// <param name="matchClusters">Whether the search finds batteries by their cluster: only for readers who may see clusters (R6).</param>
+    public async Task<BatteriesPage> ListOnePerBatteryAsync(string? query, Func<BatteryRow, bool> mayList, bool matchClusters, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(mayList);
         var (rows, versions) = await RowsAsync(cancellationToken);
         var batteries = OnePerBattery(rows.Where(mayList).ToArray());
         var byPack = rows.ToDictionary(row => row.PackId, StringComparer.Ordinal);
         var wanted = query?.Trim() ?? string.Empty;
-        var shown = Sorted(batteries.Where(row => wanted.Length == 0 || Earlier(row, byPack).Prepend(row).Any(each => Matches(each, wanted, versions[each.PackId]))));
+        var shown = Sorted(batteries.Where(row => wanted.Length == 0 || Earlier(row, byPack).Prepend(row).Any(each => Matches(each, wanted, versions[each.PackId], matchClusters))));
         return new BatteriesPage(shown, wanted, batteries.Count);
     }
 
@@ -332,15 +333,17 @@ public sealed class BatteryPages(
     }
 
     /// <summary>True when the search text is part of the battery's passport IDs, battery ID, serial number or cluster.</summary>
-    public static bool Matches(BatteryRow row, string query, IEnumerable<PassportVersion> versions)
+    /// <param name="clusters">Whether the cluster counts: false for a reader who may not see clusters (redesign R6), or a
+    /// search by a customer's name would tell them which batteries are that customer's.</param>
+    public static bool Matches(BatteryRow row, string query, IEnumerable<PassportVersion> versions, bool clusters = true)
     {
         ArgumentNullException.ThrowIfNull(row);
         ArgumentNullException.ThrowIfNull(versions);
         bool Has(string? text) => text is not null && text.Contains(query, StringComparison.OrdinalIgnoreCase);
         return Has(row.SerialNumber)
             || Has(row.Identifier)
-            || Has(row.ClusterId)
-            || (row.ClusterId is not null && Has(row.ClusterLabel))
+            || (clusters && Has(row.ClusterId))
+            || (clusters && row.ClusterId is not null && Has(row.ClusterLabel))
             || versions.Any(version => Has(version.DigitalProductPassportId));
     }
 

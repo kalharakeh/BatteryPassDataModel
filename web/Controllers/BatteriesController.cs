@@ -31,7 +31,7 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
 
     [HttpGet("")]
     public async Task<IActionResult> Batteries([FromQuery] string? q, CancellationToken cancellationToken) =>
-        View(await pages.ListOnePerBatteryAsync(q, _ => true, cancellationToken)); // one row per battery (redesign R5)
+        View(await pages.ListOnePerBatteryAsync(q, _ => true, matchClusters: true, cancellationToken)); // one row per battery (redesign R5)
 
     [HttpGet("new")]
     public async Task<IActionResult> NewBattery([FromQuery] string? batch, CancellationToken cancellationToken) =>

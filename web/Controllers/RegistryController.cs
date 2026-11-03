@@ -21,7 +21,8 @@ public sealed class RegistryController(DppReaders readers, BatteryPages batterie
         var reader = await readers.ForAsync(User, cancellationToken);
         var editor = await readers.EditorForAsync(User, cancellationToken);
         // One row per battery, the newest passport this reader may see (redesign R5, owner's item 3).
-        var list = await batteries.ListOnePerBatteryAsync(q, row => RegistryList.MayList(reader, row), cancellationToken);
+        // A cluster is the team's and its members' business: only they find batteries by it (redesign R6).
+        var list = await batteries.ListOnePerBatteryAsync(q, row => RegistryList.MayList(reader, row), RegistryList.ShowsClusters(reader), cancellationToken);
         return View(RegistryList.Build(reader, list, editor) with
         {
             Waiting = editor is null ? [] : await handOvers.WaitingForAsync(editor, cancellationToken),
