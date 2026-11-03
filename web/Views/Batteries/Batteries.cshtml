@@ -64,7 +64,8 @@
                             <tr>
                                 <td data-label="Serial number">
                                     <a href="@BatteryPages.BatteryHref(row.PackId)" class="bp-battery-link">@row.SerialNumber</a>
-                                    <small class="bp-battery-id" title="Battery ID (#6): @row.Identifier">@BatteryPages.ShortId(row.Identifier)</small>
+                                    @* The full battery ID to copy, as the old list had (redesign R6, the owner's choice 3). *@
+                                    <span class="bp-id-copy-row"><small class="bp-battery-id" title="Battery ID (#6): @row.Identifier">@BatteryPages.ShortId(row.Identifier)</small>@await Html.PartialAsync("_CopyIdButton", row.Identifier)</span>
                                 </td>
                                 <td data-label="Model">@row.ModelName <small class="bp-batteries-muted">@row.FamilyName</small></td>
                                 <td data-label="Batch">@row.BatchLabel</td>
@@ -85,8 +86,13 @@
                                         {
                                             @await Html.PartialAsync("_StatusBadge", battery)
                                         }
-                                        @await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(row.IsDraft ? null : row.StatusName).With((row.Active ?? row.Latest) is { } version ? $"· version {version.Number}" : null))
+                                        @await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(row.IsDraft ? null : row.StatusName))
                                     </div>
+                                    @* The version and when it was last updated, as on the Registry (redesign R6, the owner's choice 3). *@
+                                    @if ((row.Active ?? row.Latest) is { } shown)
+                                    {
+                                        <small class="d-block text-secondary mt-1">Version @shown.Number · updated @ValueWords.Time(shown.LastUpdatedUtc)</small>
+                                    }
                                 </td>
                                 <td class="bp-action-cell" data-label="Actions">
                                     @* Icons named on hover, like the old app's row actions (redesign R5, owner's item 1). *@
