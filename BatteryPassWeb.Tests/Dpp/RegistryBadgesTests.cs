@@ -57,7 +57,7 @@ public sealed class RegistryBadgesTests(MongoFixture mongo)
         Assert.True(waiting.IndexOf("value=\"true\"", StringComparison.Ordinal) < waiting.IndexOf("value=\"false\"", StringComparison.Ordinal)); // Accept first
         Assert.Contains("@if (Model.BatteryStatusShown.Contains(row.PackId) && StatusBadge.Battery(row.BatteryStatus) is { } battery)", registry, StringComparison.Ordinal);
         Assert.Contains("StatusBadge.Passport(shown.DppStatus)", registry, StringComparison.Ordinal);
-        Assert.Contains("aria-label=\"Open the battery page of @row.SerialNumber\">Open<svg", registry, StringComparison.Ordinal);
+        Assert.Contains("_RowActions", registry, StringComparison.Ordinal); // the Open button became the row's icons (R5)
         Assert.DoesNotContain(">Manage</a>", registry, StringComparison.Ordinal);
         Assert.Contains("StatusBadge.Battery(row.BatteryStatus)", View("Batteries", "Batteries.cshtml"), StringComparison.Ordinal);
     }

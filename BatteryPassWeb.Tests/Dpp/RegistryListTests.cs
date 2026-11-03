@@ -53,7 +53,7 @@ public sealed class RegistryListTests
 
         Assert.Contains("/dpp/@Uri.EscapeDataString(row.Identifier)/detail", view);
         Assert.DoesNotContain("_BatteryTable", view); // the old model's table is gone from the Registry
-        Assert.Contains("Model.ManageHref(row)", view); // step 4a: the cluster admin's "Manage" link
+        Assert.Contains("Model.Actions(row)", view); // step 4a's link to the cluster admin's page, among the row's icons since R5
     }
 
     [Fact]

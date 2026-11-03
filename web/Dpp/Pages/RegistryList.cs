@@ -22,6 +22,16 @@ public sealed record RegistryPage(IReadOnlyList<BatteryRow> Rows, string Query, 
         ArgumentNullException.ThrowIfNull(row);
         return row.Active is not null && row.ClusterId is { } cluster && ManagedClusterIds.Contains(cluster) ? ClusterBatteryPages.BatteryHref(row.PackId) : null;
     }
+
+    /// <summary>True for the team: its rows open the team's battery page and its history (redesign R5).</summary>
+    public bool Team { get; init; }
+
+    /// <summary>A row's icon actions (redesign R5, owner's item 1): the team's or the cluster admin's battery page, the public and detail pages, and for the team the history.</summary>
+    public RowActions Actions(BatteryRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        return RowActions.For(row, Team ? BatteryPages.BatteryHref(row.PackId) : ManageHref(row), Team);
+    }
 }
 
 /// <summary>
@@ -72,6 +82,7 @@ public static class RegistryList
             ShowsClusters(reader),
             Scope(reader))
         {
+            Team = reader.Roles.Contains(ReaderRole.Team),
             ManagedClusterIds = editor is { Kind: SenderKind.ClusterAdmin } ? editor.ClusterIds.ToHashSet(StringComparer.Ordinal) : new HashSet<string>(StringComparer.Ordinal),
             BatteryStatusShown = batteries.Rows
                 .Where(row => AudienceRules.MaySeePurchaserData(reader, row.ClusterId is { } cluster ? [cluster] : []))

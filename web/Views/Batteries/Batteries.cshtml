@@ -55,6 +55,7 @@
                             <th>Batch</th>
                             <th>Cluster</th>
                             <th>Status</th>
+                            <th class="bp-actions-column"><span class="visually-hidden">Actions</span></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -63,7 +64,7 @@
                             <tr>
                                 <td data-label="Serial number">
                                     <a href="@BatteryPages.BatteryHref(row.PackId)" class="bp-battery-link">@row.SerialNumber</a>
-                                    <small class="bp-battery-id" title="Battery ID (#6)">@row.Identifier</small>
+                                    <small class="bp-battery-id" title="Battery ID (#6): @row.Identifier">@BatteryPages.ShortId(row.Identifier)</small>
                                 </td>
                                 <td data-label="Model">@row.ModelName <small class="bp-batteries-muted">@row.FamilyName</small></td>
                                 <td data-label="Batch">@row.BatchLabel</td>
@@ -86,6 +87,10 @@
                                         }
                                         @await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(row.IsDraft ? null : row.StatusName).With((row.Active ?? row.Latest) is { } version ? $"· version {version.Number}" : null))
                                     </div>
+                                </td>
+                                <td class="bp-action-cell" data-label="Actions">
+                                    @* Icons named on hover, like the old app's row actions (redesign R5, owner's item 1). *@
+                                    @await Html.PartialAsync("_RowActions", RowActions.For(row, BatteryPages.BatteryHref(row.PackId), team: true))
                                 </td>
                             </tr>
                         }

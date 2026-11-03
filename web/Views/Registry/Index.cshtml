@@ -71,10 +71,7 @@
                                 <th>Cluster</th>
                             }
                             <th>Status</th>
-                            @if (Model.ManagedClusterIds.Count > 0)
-                            {
-                                <th><span class="visually-hidden">Open</span></th>
-                            }
+                            <th class="bp-actions-column"><span class="visually-hidden">Actions</span></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -83,7 +80,7 @@
                             <tr>
                                 <td data-label="Serial number">
                                     <a href="/dpp/@Uri.EscapeDataString(row.Identifier)/detail"><strong>@row.SerialNumber</strong></a>
-                                    <small class="d-block text-secondary">@row.Identifier</small>
+                                    <small class="d-block text-secondary" title="Battery ID (#6): @row.Identifier">@BatteryPages.ShortId(row.Identifier)</small>
                                 </td>
                                 <td data-label="Model">@row.ModelName <small class="d-block text-secondary">@row.FamilyName</small></td>
                                 <td data-label="Batch">@row.BatchLabel</td>
@@ -102,16 +99,10 @@
                                     </div>
                                     <small class="d-block text-secondary mt-1">Version @shown.Number · updated @ValueWords.Time(shown.LastUpdatedUtc)</small>
                                 </td>
-                                @if (Model.ManagedClusterIds.Count > 0)
-                                {
-                                    <td data-label="">
-                                        @if (Model.ManageHref(row) is { } manage)
-                                        {
-                                            @* A labelled button where a small "Manage" link was (owner's point 11). *@
-                                            <a class="bp-secondary-button bp-button-compact bp-with-icon" href="@manage" aria-label="Open the battery page of @row.SerialNumber">Open<svg class="bp-i" aria-hidden="true"><use href="#i-arrow" /></svg></a>
-                                        }
-                                    </td>
-                                }
+                                <td class="bp-action-cell" data-label="Actions">
+                                    @* Icons named on hover, like the old app's row actions (redesign R5, owner's item 1). *@
+                                    @await Html.PartialAsync("_RowActions", Model.Actions(row))
+                                </td>
                             </tr>
                         }
                     </tbody>

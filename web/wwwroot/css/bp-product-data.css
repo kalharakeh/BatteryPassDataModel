@@ -1685,6 +1685,11 @@ dialog.bp-dialog::backdrop {
   overflow-wrap: anywhere;
 }
 
+/* The battery lists keep their row icons in view at 1280 px (redesign R5): the batch and the cluster wrap instead. */
+.bp-console-table:has(.bp-actions-column) td:is([data-label="Batch"], [data-label="Cluster"]) {
+  white-space: normal;
+}
+
 .bp-battery-link {
   font-weight: 650;
   text-decoration: none;
