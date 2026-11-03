@@ -32,7 +32,7 @@
                 <div class="bp-bh-picture"><img src="@picture" alt="Picture of the @Model.Sources.Model.Name battery model" /></div>
             }
             <div class="bp-bh-id">
-                <span class="bp-summary-title">Battery · @Model.Sources.Model.Name of @Model.Family.Name</span>
+                <span class="bp-summary-title">Battery · @Model.Sources.Model.Name · @Model.Family.Name family</span>
                 <h1>@Model.SerialNumber</h1>
                 <div class="bp-badges">
                     @if (StatusBadge.Battery(Model.Status?.Status) is { } battery)
@@ -93,7 +93,11 @@
                     }
                 </div>
             }
-            <a class="bp-secondary-button bp-with-icon" href="@Model.Href?section=handover"><svg class="bp-i" aria-hidden="true"><use href="#i-handover" /></svg>Hand over…</a>
+            @if (Model.HandOver.Waiting is null)
+            {
+                @* Opens the window directly, like marking a passport (redesign R5, the owner's answer c). *@
+                <button type="button" class="bp-secondary-button bp-with-icon" data-open-dialog="handover-dialog"><svg class="bp-i" aria-hidden="true"><use href="#i-handover" /></svg>Hand over…</button>
+            }
             <nav class="bp-bh-open" aria-label="This battery elsewhere">
                 <a class="bp-ilink" href="/dpp/@batteryKey" target="_blank" rel="noreferrer" title="The public summary, as anyone sees it"><svg class="bp-i" aria-hidden="true"><use href="#i-globe" /></svg>Public page</a>
                 <a class="bp-ilink" href="/dpp/@batteryKey/detail" target="_blank" rel="noreferrer" title="Everything your cluster sees"><svg class="bp-i" aria-hidden="true"><use href="#i-doc" /></svg>Detail page</a>
@@ -143,6 +147,12 @@
     @if (Model.Status is { } statusWindows)
     {
         @await Html.PartialAsync("~/Views/Batteries/_StatusDialog.cshtml", statusWindows)
+    }
+    @if (Model.HandOver.Waiting is null)
+    {
+        <div class="bp-console-form-card bp-dialog-host">
+            @await Html.PartialAsync("~/Views/ClusterAdmin/_HandOverDialog.cshtml", Model.HandOver)
+        </div>
     }
 </main>
 

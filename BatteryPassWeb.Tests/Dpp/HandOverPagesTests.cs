@@ -143,16 +143,17 @@ public sealed class HandOverPagesTests(MongoFixture mongo)
     {
         var cluster = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "ClusterAdmin", "Battery.cshtml"));
         var card = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "ClusterAdmin", "_HandOverCard.cshtml"));
+        var window = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "ClusterAdmin", "_HandOverDialog.cshtml")); // at page level since R5
         var registry = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Registry", "Index.cshtml"));
         var battery = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Batteries", "Battery.cshtml"));
         var script = File.ReadAllText(DppTestFiles.RepoFile("web", "wwwroot", "js", "bp-record-editor.js"));
         var styles = File.ReadAllText(DppTestFiles.RepoFile("web", "wwwroot", "css", "bp-product-data.css"));
 
         Assert.Contains("~/Views/ClusterAdmin/_HandOverCard.cshtml\", Model.HandOver", cluster, StringComparison.Ordinal);
-        Assert.Contains("data-open-on-load=\"@(found ? \"true\" : \"false\")\"", card, StringComparison.Ordinal);
-        Assert.Contains("name=\"checkedId\"", card, StringComparison.Ordinal);
-        Assert.Contains("TempData[ClusterBatteriesController.HandOverToKey] as string", card, StringComparison.Ordinal); // read once, so the window opens only right after "Find the cluster"
-        Assert.DoesNotContain("TempData.Peek", card, StringComparison.Ordinal);
+        Assert.Contains("data-open-on-load=\"@(found ? \"true\" : \"false\")\"", window, StringComparison.Ordinal);
+        Assert.Contains("name=\"checkedId\"", window, StringComparison.Ordinal);
+        Assert.Contains("TempData[ClusterBatteriesController.HandOverToKey] as string", window, StringComparison.Ordinal); // read once, so the window opens only right after "Find the cluster"
+        Assert.DoesNotContain("TempData.Peek", window, StringComparison.Ordinal);
         Assert.Contains("Cancel the hand-over</button>", cluster, StringComparison.Ordinal); // one Cancel, on the header's line (redesign R4)
         Assert.DoesNotContain("/cancel", card, StringComparison.Ordinal);
         Assert.Contains("foreach (var waiting in Model.Waiting)", registry, StringComparison.Ordinal);

@@ -69,7 +69,7 @@
                 <div class="bp-bh-picture"><img src="@picture" alt="Picture of the @sources.Model.Name battery model" /></div>
             }
             <div class="bp-bh-id">
-                <span class="bp-summary-title">Battery · <a href="@ProductDataPages.FamilyHref(sources.Model.FamilyId, sources.Model.Id)">@sources.Model.Name</a> of @Model.Family.Name</span>
+                <span class="bp-summary-title">Battery · <a href="@ProductDataPages.FamilyHref(sources.Model.FamilyId, sources.Model.Id)">@sources.Model.Name</a> · @Model.Family.Name family</span>
                 <h1>@Model.SerialNumber</h1>
                 <div class="bp-badges">
                     @if (StatusBadge.Battery(Model.Status?.Status) is { } battery)
@@ -233,9 +233,10 @@
                                 <p class="mb-0"><span class="bp-missing-note">@Words.Count(publication.MissingCount, "value") missing</span> that the passport needs by February 2027.</p>
                             }
                         </div>
+                        @* One Publish button, the header's (redesign R5's page review). *@
                         @if (!publication.IsPublished && publication.Ready)
                         {
-                            <button type="button" class="bp-primary-button text-nowrap" data-open-dialog="publish-dialog">Publish passport</button>
+                            <p class="bp-help-text mb-0">Publish it with <strong>Publish passport</strong> among the page's actions.</p>
                         }
                     </div>
                     @{ await CardMessagesAsync("publication"); }

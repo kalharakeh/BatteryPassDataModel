@@ -1,14 +1,7 @@
-@using BatteryPassWeb.Controllers
 @using BatteryPassWeb.Dpp.Pages
 @model HandOverCardView
-@* The "Hand over" card and window (step 4d, mock-up S2 and S8): the sender names the receiving cluster by its ID, sees its
-   name, and asks; while it waits, the battery stays here and the sender can cancel. *@
-@{
-    // Read (not peeked), so they are gone on the next visit: the window opens only right after "Find the cluster".
-    var typed = TempData[ClusterBatteriesController.HandOverToKey] as string;
-    var name = TempData[ClusterBatteriesController.HandOverNameKey] as string;
-    var found = typed is not null && name is not null && Model.Waiting is null;
-}
+@* The "Hand over" card (step 4d, mock-up S2): what a hand-over does, or the one waiting. The window is at page level
+   (_HandOverDialog), opened by the header's "Hand over…" (redesign R5, the owner's answer c), so no second button here. *@
 <section class="bp-card bp-console-form-card bp-battery-card mt-4" id="handover">
     @if (Model.Waiting is { } waiting)
     {
@@ -25,26 +18,9 @@
                 <span class="bp-summary-title">Hand over <em class="bp-field-marker">Not passport data</em></span>
                 <h2>Sold or moved to another customer?</h2>
                 <p class="mb-0">Hand the battery over to their cluster. It moves once their cluster admin accepts; your cluster then no longer sees its purchaser data. The passport doesn't change.</p>
+                <p class="bp-help-text mt-2 mb-0">Start it with <strong>Hand over…</strong> among the page's actions.</p>
             </div>
-            <button type="button" class="bp-secondary-button" data-open-dialog="handover-dialog">Hand over…</button>
         </div>
         @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "handover")
-        <dialog id="handover-dialog" class="bp-modal-panel bp-dialog" aria-labelledby="handover-dialog-title" data-open-on-load="@(found ? "true" : "false")">
-            <form method="post" action="@Model.Action" class="bp-dialog-form">
-                @Html.AntiForgeryToken()
-                <h2 id="handover-dialog-title">Hand @Model.SerialNumber over</h2>
-                <p class="bp-help-text">Ask the receiving customer for their cluster ID.</p>
-                <label><span>Receiving cluster ID</span><input type="text" name="toClusterId" value="@typed" autocomplete="off" required /></label>
-                @if (found)
-                {
-                    <input type="hidden" name="checkedId" value="@typed" />
-                    <p class="bp-done-note mb-0">@name</p>
-                }
-                <div class="bp-dialog-actions">
-                    <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
-                    <button type="submit" class="bp-primary-button">@(found ? "Ask them to accept" : "Find the cluster")</button>
-                </div>
-            </form>
-        </dialog>
     }
 </section>

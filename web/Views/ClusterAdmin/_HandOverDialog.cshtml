@@ -1,0 +1,28 @@
+@using BatteryPassWeb.Controllers
+@using BatteryPassWeb.Dpp.Pages
+@model HandOverCardView
+@* The "Hand over…" window (step 4d, mock-up S8), at page level so the header's "Hand over…" opens it from any section
+   (redesign R5, the owner's answer c): the sender names the receiving cluster by its ID, sees its name, and asks. *@
+@{
+    // Read (not peeked), so they are gone on the next visit: the window opens only right after "Find the cluster".
+    var typed = TempData[ClusterBatteriesController.HandOverToKey] as string;
+    var name = TempData[ClusterBatteriesController.HandOverNameKey] as string;
+    var found = typed is not null && name is not null && Model.Waiting is null;
+}
+<dialog id="handover-dialog" class="bp-modal-panel bp-dialog" aria-labelledby="handover-dialog-title" data-open-on-load="@(found ? "true" : "false")">
+    <form method="post" action="@Model.Action" class="bp-dialog-form">
+        @Html.AntiForgeryToken()
+        <h2 id="handover-dialog-title">Hand @Model.SerialNumber over</h2>
+        <p class="bp-help-text">Ask the receiving customer for their cluster ID.</p>
+        <label><span>Receiving cluster ID</span><input type="text" name="toClusterId" value="@typed" autocomplete="off" required /></label>
+        @if (found)
+        {
+            <input type="hidden" name="checkedId" value="@typed" />
+            <p class="bp-done-note mb-0">@name</p>
+        }
+        <div class="bp-dialog-actions">
+            <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
+            <button type="submit" class="bp-primary-button">@(found ? "Ask them to accept" : "Find the cluster")</button>
+        </div>
+    </form>
+</dialog>

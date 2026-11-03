@@ -34,6 +34,13 @@ public static class ValueWords
             return [new ValueLine(null, Time(updated))];
         }
 
+        // The passport status (#2) in the badge's words ("Active"); the passport keeps the schema's value (redesign R5).
+        // The schema holds it as { "dppStatusValue": "active" }.
+        if (form.Attribute.Number == 2 && (value is JsonObject holder ? holder["dppStatusValue"] : value) is JsonValue status && status.TryGetValue<string>(out var stored))
+        {
+            return [new ValueLine(null, BatteryPassWeb.Dpp.Store.DppStatuses.Words(stored))];
+        }
+
         switch (form.Kind)
         {
             case FormKind.Link:

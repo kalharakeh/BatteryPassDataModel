@@ -65,7 +65,7 @@ public sealed class PassportPagesTests(MongoFixture mongo)
             page.Sections.Select(section => section.Tab));
         Assert.Null(page.Value(22));
         Assert.Equal("VPC8C05-6788", page.Text(11));
-        Assert.Equal("active", page.Text(2));
+        Assert.Equal("Active", page.Text(2)); // the badge's words; the passport keeps "active" (R5)
     }
 
     [Fact]
@@ -183,7 +183,7 @@ public sealed class PassportPagesTests(MongoFixture mongo)
         Assert.Equal(second.Id, page.Current?.Id);
         Assert.Equal(first.DigitalProductPassportId, page.Address);
         Assert.Equal(first.DigitalProductPassportId, (await Pages(rig).LocateAsync(first.DigitalProductPassportId))!.Address);
-        Assert.Equal("archived", page.Text(2));
+        Assert.Equal("Archived", page.Text(2)); // the badge's words (R5)
         Assert.Equal("512.5 kg", page.Text(21));
         Assert.Null(page.Value(21)!.Origin);
         var purchaser = page.Audiences.Single(section => section.Key == "purchaser").Values.Select(value => value.Attribute.Number).ToArray();

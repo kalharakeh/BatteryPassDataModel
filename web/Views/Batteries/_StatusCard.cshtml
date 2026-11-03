@@ -18,16 +18,11 @@
             </div>
             <p class="mb-0">@(Model.WhyNot ?? (Model.Status == "waste" ? "The battery is waste, which is final. Mistyped values can still be corrected." : "A status change also re-states the fades and the expected lifetime, and publishes a new version of this passport."))</p>
         </div>
-        <div class="d-flex flex-wrap gap-2">
-            @if (Model.MayAddNote)
-            {
-                <button type="button" class="bp-secondary-button bp-with-icon" data-open-dialog="note-dialog"><svg class="bp-i" aria-hidden="true"><use href="#i-note" /></svg>Add a note</button>
-            }
-            @if (Model.CanChange)
-            {
-                <button type="button" class="bp-primary-button bp-with-icon" data-open-dialog="status-dialog"><svg class="bp-i" aria-hidden="true"><use href="#i-swap" /></svg>Change status</button>
-            }
-        </div>
+        @* Change status and Add a note are the header's actions only (redesign R5's page review: one place per action). *@
+        @if (Model.CanChange || Model.MayAddNote)
+        {
+            <p class="bp-help-text mb-0">@(Model.CanChange && Model.MayAddNote ? "Change status and Add a note are" : Model.CanChange ? "Change status is" : "Add a note is") among the page's actions.</p>
+        }
     </div>
     @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "status")
     @if (Model.Succession is { Linked: false } next)
