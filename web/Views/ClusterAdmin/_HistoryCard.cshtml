@@ -3,7 +3,23 @@
 @model IReadOnlyList<AuditLine>
 @* The cluster admin's History (redesign R6, the owner's choice 9): what happened while the battery was in their cluster,
    and its moves in and out, newest first. Read-only; the sentence, its values and its time only, never the team's
-   technical details. *@
+   technical details. The latest 10 lines show; the others fold away (R6 review). *@
+@{
+    Func<AuditLine, object> row = @<li>
+        <span class="bp-cluster-history-when">@(item.When is { } when ? ValueWords.Time(when.UtcDateTime) : "—")</span>
+        <span>
+            @foreach (var word in item.Sentence) { if (word.Strong) {<strong>@word.Text</strong>} else {@word.Text} }
+            @if (item.Change is { } change)
+            {
+                <span class="bp-batteries-muted"> · @change</span>
+            }
+            @if (item.Values.Count > 0)
+            {
+                <span class="d-block small text-secondary">@string.Join("; ", item.Values.Select(value => $"{value.Name}: {value.After}"))</span>
+            }
+        </span>
+    </li>;
+}
 <section class="bp-card bp-console-form-card bp-battery-card" id="history">
     <span class="bp-summary-title">History <em class="bp-field-marker">Read only</em></span>
     <h2>@(Model.Count == 0 ? "Nothing yet" : Model.Count >= ClusterHistory.Shown ? $"The latest {ClusterHistory.Shown} events" : Words.Count(Model.Count, "event"))</h2>
@@ -11,33 +27,22 @@
     @if (Model.Count > 0)
     {
         <ol class="bp-cluster-history">
-            @foreach (var line in Model)
+            @foreach (var line in Model.Take(ClusterHistory.ShownOpen))
             {
-                <li>
-                    <span class="bp-cluster-history-when">@(line.When is { } when ? ValueWords.Time(when.UtcDateTime) : "—")</span>
-                    <span>
-                        @foreach (var word in line.Sentence)
-                        {
-                            if (word.Strong)
-                            {
-                                <strong>@word.Text</strong>
-                            }
-                            else
-                            {
-                                @word.Text
-                            }
-                        }
-                        @if (line.Change is { } change)
-                        {
-                            <span class="bp-batteries-muted"> · @change</span>
-                        }
-                        @if (line.Values.Count > 0)
-                        {
-                            <span class="d-block small text-secondary">@string.Join("; ", line.Values.Select(row => $"{row.Name}: {row.After}"))</span>
-                        }
-                    </span>
-                </li>
+                @row(line)
             }
         </ol>
+    }
+    @if (Model.Count > ClusterHistory.ShownOpen)
+    {
+        <details class="bp-cluster-history-more mt-2">
+            <summary>Show @Words.Count(Model.Count - ClusterHistory.ShownOpen, "earlier event")</summary>
+            <ol class="bp-cluster-history">
+                @foreach (var line in Model.Skip(ClusterHistory.ShownOpen))
+                {
+                    @row(line)
+                }
+            </ol>
+        </details>
     }
 </section>

@@ -49,10 +49,52 @@ public sealed class ClusterHistory(ApplicationAuditService audit, AuditLines lin
         ArgumentNullException.ThrowIfNull(pack);
         ArgumentNullException.ThrowIfNull(clusterIds);
         var events = await audit.ListEntityTimelineAsync("dpp-pack", pack.Id, cancellationToken);
-        var picked = Pick(events, pack.ClusterId, clusterIds).Take(Shown).ToArray();
+        var picked = Grouped(Pick(events, pack.ClusterId, clusterIds)).Take(Shown).ToArray();
         var described = new Queue<AuditLine>(await lines.DescribeAsync(picked.Where(item => item.Own is null).Select(item => item.Event).ToArray(), cancellationToken));
-        return picked.Select(item => item.Own ?? AfterOnly(described.Dequeue())).ToArray(); // the described lines come back in order
+        return picked.Select(item => item.Own ?? Readings(AfterOnly(described.Dequeue()), item.Readings)).ToArray(); // the described lines come back in order
     }
+
+    /// <summary>The newest lines shown open; the others fold away (redesign R6 review: no list over 20 rows).</summary>
+    public const int ShownOpen = 10;
+
+    /// <summary>
+    /// A run of saves of live values only, by the same sender, as one line: the newest, with how many readings it stands
+    /// for (redesign R6 review: 28 demo readings filled the History; the Live values tab has them all).
+    /// </summary>
+    public static IEnumerable<(BsonDocument Event, AuditLine? Own, int Readings)> Grouped(IEnumerable<(BsonDocument Event, AuditLine? Own)> newestFirst)
+    {
+        (BsonDocument Event, AuditLine? Own, int Readings)? run = null;
+        foreach (var item in newestFirst)
+        {
+            if (run is { } open && open.Own is null && item.Own is null && LiveOnly(open.Event) && LiveOnly(item.Event)
+                && BsonHelpers.GetString(open.Event, "actor") == BsonHelpers.GetString(item.Event, "actor"))
+            {
+                run = open with { Readings = open.Readings + 1 };
+                continue;
+            }
+
+            if (run is { } done)
+            {
+                yield return done;
+            }
+
+            run = (item.Event, item.Own, 1);
+        }
+
+        if (run is { } last)
+        {
+            yield return last;
+        }
+    }
+
+    private static bool LiveOnly(BsonDocument item) =>
+        BsonHelpers.GetString(item, "eventType") == SavePipeline.AuditEventType
+        && item.TryGetValue("metadata", out var metadata) && metadata.IsBsonDocument
+        && metadata.AsBsonDocument.TryGetValue("keys", out var keys) && keys.IsBsonArray && keys.AsBsonArray.Count > 0
+        && keys.AsBsonArray.OfType<BsonDocument>().All(key => AttributeCatalog.FindByProperty(BsonHelpers.GetString(key, "key"))?.Change == ChangeRule.Live);
+
+    private static AuditLine Readings(AuditLine line, int readings) =>
+        readings < 2 ? line : line with { Change = $"the latest of {readings} live readings" };
 
     /// <summary>
     /// A line with the new values only: a value before a change may date from before the battery was theirs, e.g. the

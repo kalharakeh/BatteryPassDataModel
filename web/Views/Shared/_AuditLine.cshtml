@@ -11,17 +11,8 @@
         <time class="bp-auditlog-time" datetime="@Model.When?.ToString("O")">@(local?.ToString("HH:mm") ?? "–")</time>
         <span class="bp-auditlog-icon"><svg aria-hidden="true" focusable="false"><use href="#audit-i-@icon" /></svg></span>
         <span class="bp-auditlog-text">
-            @foreach (var word in Model.Sentence)
-            {
-                if (word.Strong)
-                {
-                    <b>@word.Text</b>
-                }
-                else
-                {
-                    @word.Text
-                }
-            }
+            @* One line, so no space shows between the words (redesign R6 review: "team : Battery"). *@
+            @foreach (var word in Model.Sentence) { if (word.Strong) {<b>@word.Text</b>} else {@word.Text} }
             @if (Model.Change is not null)
             {
                 <span class="bp-auditlog-change">@Model.Change</span>

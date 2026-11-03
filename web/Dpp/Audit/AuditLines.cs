@@ -370,6 +370,18 @@ public sealed class AuditLines(DppStore store, DocumentStore documents, Attribut
         }
 
         var form = forms.For(attribute);
+        // The schema's codes in words, as the pages say them ("Re-used"), and the accident reports' page by its name, not
+        // its internal address (redesign R6 review).
+        if (attribute.Number is 2 or 20 or 22)
+        {
+            return Clip(string.Join(", ", ValueWords.Lines(form, node).Select(line => line.Text)), 200);
+        }
+
+        if (attribute.Property == DocumentService.Accidents)
+        {
+            return "the accident reports page";
+        }
+
         if (form.Kind is FormKind.Link or FormKind.Upload)
         {
             return Clip(Plain(node["title"]) is { Length: > 0 } title ? title : Plain(node["url"]) is { Length: > 0 } url ? url : "a document", 200);
