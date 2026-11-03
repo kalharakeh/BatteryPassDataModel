@@ -44,7 +44,7 @@ public static class BatterySections
     /// <summary>The section a card's messages belong to: the publication, cluster and removal cards live in the overview.</summary>
     public static string Of(string card) => card switch
     {
-        "publication" or "remove" or "cluster" => Overview,
+        "publication" or "remove" or "cluster" or "mark" => Overview,
         "module-list" => "modules",
         _ => card,
     };

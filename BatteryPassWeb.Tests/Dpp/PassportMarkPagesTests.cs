@@ -18,17 +18,17 @@ public sealed class PassportMarkPagesTests(MongoFixture mongo)
     private const string Reason = "Demo: wrong carbon footprint figures";
 
     [Fact]
-    public async Task TheTeamsPage_ShouldMarkInvalidAndUndoItFromThePassportStatusCard()
+    public async Task TheTeamsPage_ShouldMarkInvalidFromTheWindowAndUndoItInTheHeader()
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         var controller = BatteriesControllerTests.Controller(rig, new Dictionary<string, string>());
 
         Assert.True((await BatteryTesting.Pages(rig).BatteryAsync(rig.PackId))!.Marks.Active);
-        var marked = Assert.IsType<RedirectResult>(await controller.MarkInvalid(rig.PackId, Reason, CancellationToken.None));
+        var marked = Assert.IsType<RedirectResult>(await controller.Mark(rig.PackId, "invalid", Reason, CancellationToken.None));
         var card = (await BatteryTesting.Pages(rig).BatteryAsync(rig.PackId))!.Marks;
         await controller.UndoMark(rig.PackId, CancellationToken.None);
 
-        Assert.Equal($"{BatteryPages.BatteryHref(rig.PackId)}#passport-status", marked.Url);
+        Assert.Equal(BatteryPages.BatteryHref(rig.PackId), marked.Url); // the message shows in the header (R5)
         Assert.True(card.Marked);
         Assert.Equal(DppStatuses.Invalid, card.Status);
         Assert.Equal(Reason, card.Mark!.Reason);
@@ -42,7 +42,7 @@ public sealed class PassportMarkPagesTests(MongoFixture mongo)
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         var controller = BatteriesControllerTests.Controller(rig, new Dictionary<string, string>());
 
-        await controller.MarkForDeletion(rig.PackId, CancellationToken.None);
+        await controller.Mark(rig.PackId, "deletion", "Recycled", CancellationToken.None);
 
         Assert.Equal($"Nothing changed: {PassportMarks.OnlyWaste}.", controller.TempData[BatteriesController.CardErrorKey]);
         Assert.False((await BatteryTesting.Pages(rig).BatteryAsync(rig.PackId))!.Marks.Waste);
@@ -144,7 +144,7 @@ public sealed class PassportMarkPagesTests(MongoFixture mongo)
         var hero = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Passport", "_PassportHero.cshtml"));
         var registry = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Registry", "Index.cshtml"));
 
-        Assert.Contains("~/Views/Batteries/_PassportStatusCard.cshtml\", marks", battery, StringComparison.Ordinal);
+        Assert.Contains("~/Views/Batteries/_MarkDialog.cshtml\", markable", battery, StringComparison.Ordinal); // a window since R5
         Assert.Contains("Model.MayMarkInvalid", hero, StringComparison.Ordinal);
         Assert.Contains("Model.MarkReason is { } reason", hero, StringComparison.Ordinal);
         Assert.Contains("StatusBadge.Passport(shown.DppStatus)", registry, StringComparison.Ordinal); // a badge since redesign R3

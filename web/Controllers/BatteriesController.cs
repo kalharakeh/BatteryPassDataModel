@@ -220,17 +220,16 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
         return Redirect($"{BatteryPages.BatteryHref(packId)}#status");
     }
 
-    /// <summary>The team marks the passport invalid, with a reason (design 7.7).</summary>
-    [HttpPost("{packId}/mark/invalid")]
+    /// <summary>
+    /// The team marks the passport invalid (design 7.7) or, for a waste battery, for deletion (design 7.6), with a reason,
+    /// from the "Mark…" window that "More" opens (redesign R5, owner's item 2).
+    /// </summary>
+    [HttpPost("{packId}/mark")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> MarkInvalid(string packId, [FromForm] string? reason, CancellationToken cancellationToken) =>
-        MarkResult(packId, await marks.MarkInvalidAsync(ChangeSender.Team(Who), packId, reason, cancellationToken), "The passport is marked invalid. Every page says so; only the team undoes it.");
-
-    /// <summary>The team marks a waste battery's passport for deletion (design 7.6).</summary>
-    [HttpPost("{packId}/mark/deletion")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> MarkForDeletion(string packId, CancellationToken cancellationToken) =>
-        MarkResult(packId, await marks.MarkForDeletionAsync(ChangeSender.Team(Who), packId, cancellationToken), "The passport is marked for deletion. It stays readable until it is deleted.");
+    public async Task<IActionResult> Mark(string packId, [FromForm] string? what, [FromForm] string? reason, CancellationToken cancellationToken) =>
+        what == "deletion"
+            ? MarkResult(packId, await marks.MarkForDeletionAsync(ChangeSender.Team(Who), packId, reason, cancellationToken), "The passport is marked for deletion. It stays readable until it is deleted.")
+            : MarkResult(packId, await marks.MarkInvalidAsync(ChangeSender.Team(Who), packId, reason, cancellationToken), "The passport is marked invalid. Every page says so; only the team undoes it.");
 
     /// <summary>The team undoes "invalid" or "marked for deletion" (J-8).</summary>
     [HttpPost("{packId}/mark/undo")]
@@ -240,8 +239,9 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
 
     private RedirectResult MarkResult(string packId, string? problem, string done)
     {
-        Card("passport-status", problem is null ? done : null, problem is null ? null : $"Nothing changed: {problem}.");
-        return Redirect($"{BatteryPages.BatteryHref(packId)}#passport-status");
+        // The message shows in the header, by the red line that says what the passport is (redesign R5).
+        Card("mark", problem is null ? done : null, problem is null ? null : $"Nothing changed: {problem}.");
+        return Redirect(BatteryPages.BatteryHref(packId));
     }
 
     [HttpPost("{packId}/remove")]

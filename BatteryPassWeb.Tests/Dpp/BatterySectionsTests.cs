@@ -24,6 +24,7 @@ public sealed class BatterySectionsTests(MongoFixture mongo)
     [InlineData(null, "publication", false, "overview")] // publishing, the cluster and removing live in the overview
     [InlineData(null, "cluster", false, "overview")]
     [InlineData(null, "passport-status", false, "overview")] // not on this menu
+    [InlineData(null, "mark", false, "overview")] // marking says so in the header (R5)
     [InlineData(null, null, true, "values")] // the values editor was just saved
     [InlineData("status", "live", true, "status")] // asking wins
     [InlineData(null, null, false, "overview")]
@@ -41,23 +42,24 @@ public sealed class BatterySectionsTests(MongoFixture mongo)
         var published = (await BatteryTesting.Pages(rig).BatteryAsync(rig.PackId))!.Sections;
         var unpublished = (await BatteryTesting.Pages(draft).BatteryAsync(draft.PackId))!.Sections;
 
-        Assert.Equal(["overview", "values", "status", "live", "accidents", "modules", "versions", "passport-status"], published.Select(section => section.Id));
+        Assert.Equal(["overview", "values", "status", "live", "accidents", "modules", "versions"], published.Select(section => section.Id)); // no Passport status section (R5)
         Assert.Equal("Nothing needs you", published[0].Hint);
         Assert.Equal("Original", published.Single(section => section.Id == "status").Hint);
         Assert.Equal(1, published.Single(section => section.Id == "versions").Count);
-        Assert.Equal(["overview", "values", "status", "live", "accidents", "modules", "versions"], unpublished.Select(section => section.Id)); // no passport status before publishing
+        Assert.Equal(["overview", "values", "status", "live", "accidents", "modules", "versions"], unpublished.Select(section => section.Id));
         Assert.EndsWith("to do", unpublished[0].Hint, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task AnInvalidPassport_ShouldSaySoInTheMenu()
+    public async Task AnInvalidPassport_ShouldSaySoInTheHeader_NotInASection()
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         await PassportMarkTests.Service(rig).MarkInvalidAsync(ChangeSender.MarketSurveillance("msa@example.com"), rig.PackId, "Demo: wrong carbon footprint figures");
 
         var sections = (await BatteryTesting.Pages(rig).BatteryAsync(rig.PackId))!.Sections;
 
-        Assert.Equal("Invalid", sections.Single(section => section.Id == "passport-status").Hint);
+        Assert.DoesNotContain(sections, section => section.Id == "passport-status"); // the header's red line says it (R5)
+        Assert.True((await BatteryTesting.Pages(rig).BatteryAsync(rig.PackId))!.Marks.Marked);
     }
 
     [Fact]

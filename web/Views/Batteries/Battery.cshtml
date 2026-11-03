@@ -139,6 +139,7 @@
                 <button type="submit" class="bp-secondary-button bp-button-compact">Undo: make it active again</button>
             </form>
         }
+        @{ await CardMessagesAsync("mark"); }
         @if (Model.HandOverTo is { } receiver)
         {
             <form method="post" action="@href/handover/cancel" class="bp-status-notice is-quiet">
@@ -169,14 +170,15 @@
                     }
                 </div>
             }
-            @if ((sections.Any(section => section.Id == "passport-status") && !Model.Marks.Marked) || !publication.IsPublished)
+            @if (Model.Marks is { Active: true, Marked: false } || !publication.IsPublished)
             {
                 <details class="bp-more">
                     <summary class="bp-secondary-button bp-with-icon"><svg class="bp-i" aria-hidden="true"><use href="#i-more" /></svg>More</summary>
                     <div class="bp-more-list">
-                        @if (sections.Any(section => section.Id == "passport-status") && !Model.Marks.Marked)
+                        @if (Model.Marks is { Active: true, Marked: false })
                         {
-                            <a href="@href?section=passport-status" class="is-danger"><svg class="bp-i" aria-hidden="true"><use href="#i-alert" /></svg><span>Mark as invalid or for deletion…<small>Freezes the passport; every page says so</small></span></a>
+                            @* Opens a window, like Change status (redesign R5, owner's item 2). *@
+                            <button type="button" class="is-danger" data-open-dialog="mark-dialog"><svg class="bp-i" aria-hidden="true"><use href="#i-alert" /></svg><span>Mark as invalid or for deletion…<small>Freezes the passport; every page says so</small></span></button>
                         }
                         @if (!publication.IsPublished)
                         {
@@ -364,12 +366,6 @@
             <div data-section="versions" hidden="@Hidden("versions")">
                 @await Html.PartialAsync("~/Views/Batteries/_VersionsCard.cshtml", Model.Cards)
             </div>
-            @if (Model.Marks is { } marks && (marks.Active || marks.Marked))
-            {
-                <div data-section="passport-status" hidden="@Hidden("passport-status")">
-                    @await Html.PartialAsync("~/Views/Batteries/_PassportStatusCard.cshtml", marks)
-                </div>
-            }
         </div>
     </div>
 
@@ -417,6 +413,11 @@
     @if (Model.Status is { } statusWindows)
     {
         @await Html.PartialAsync("~/Views/Batteries/_StatusDialog.cshtml", statusWindows)
+    }
+
+    @if (Model.Marks is { Active: true, Marked: false } markable)
+    {
+        @await Html.PartialAsync("~/Views/Batteries/_MarkDialog.cshtml", markable)
     }
 </main>
 

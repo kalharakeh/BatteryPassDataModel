@@ -45,7 +45,8 @@ public sealed class PassportMarks(DppStore store, ApplicationAuditService audit,
         return await MarkAsync(sender, packId, DppStatuses.Invalid, why.Length > MaxReason ? why[..MaxReason] : why, cancellationToken);
     }
 
-    public async Task<string?> MarkForDeletionAsync(ChangeSender sender, string packId, CancellationToken cancellationToken = default)
+    /// <param name="reason">Why, as the team gives it in the "Mark…" window (redesign R5); optional.</param>
+    public async Task<string?> MarkForDeletionAsync(ChangeSender sender, string packId, string? reason = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(sender);
         if (sender.Kind != SenderKind.Team)
@@ -59,7 +60,8 @@ public sealed class PassportMarks(DppStore store, ApplicationAuditService audit,
             return OnlyWaste;
         }
 
-        return await MarkAsync(sender, packId, DppStatuses.MarkedForDeletion, null, cancellationToken);
+        var why = reason?.Trim() ?? string.Empty;
+        return await MarkAsync(sender, packId, DppStatuses.MarkedForDeletion, why.Length == 0 ? null : why.Length > MaxReason ? why[..MaxReason] : why, cancellationToken);
     }
 
     /// <summary>The team puts an invalid or marked-for-deletion passport back to active (J-8).</summary>

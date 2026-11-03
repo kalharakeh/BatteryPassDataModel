@@ -172,11 +172,9 @@ public sealed record BatteryPage(
             sections.Add(new("accidents", "Accident reports", "accident", Count: AccidentReports.Count));
             sections.Add(new("modules", "Modules", "modules", Count: Pack.Modules.Count));
             sections.Add(new("versions", "Versions", "versions", Count: Versions.Count));
-            if (Marks.Active || Marks.Marked)
-            {
-                sections.Add(new("passport-status", "Passport status", "shield", Marks.Marked ? DppStatuses.Words(Marks.Status!) : "Mark invalid or for deletion"));
-            }
 
+            // No "Passport status" section (redesign R5, owner's item 2): marking opens a window from "More", and a marked
+            // passport's reason and Undo are on the header's red line.
             return sections;
         }
     }

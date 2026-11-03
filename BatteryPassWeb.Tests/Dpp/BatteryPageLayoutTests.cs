@@ -13,7 +13,7 @@ public sealed class BatteryPageLayoutTests
     {
         foreach (var (page, ids) in new[]
         {
-            (View("Batteries", "Battery.cshtml"), new[] { "overview", "values", "status", "live", "accidents", "modules", "versions", "passport-status" }),
+            (View("Batteries", "Battery.cshtml"), new[] { "overview", "values", "status", "live", "accidents", "modules", "versions" }),
             (View("ClusterAdmin", "Battery.cshtml"), new[] { "overview", "status", "live", "accidents", "handover", "modules", "versions" }),
         })
         {
@@ -44,7 +44,7 @@ public sealed class BatteryPageLayoutTests
         var header = page[page.IndexOf("<header class=\"bp-bh\">", StringComparison.Ordinal)..page.IndexOf("</header>", StringComparison.Ordinal)];
 
         Assert.Contains("<form method=\"post\" action=\"@Model.Marks.Action/undo\" class=\"bp-status-notice\" id=\"mark-notice\">", header, StringComparison.Ordinal); // point 17
-        Assert.DoesNotContain("/undo", View("Batteries", "_PassportStatusCard.cshtml"), StringComparison.Ordinal); // one Undo, in the header
+        Assert.Single(page.Split("/undo\"").Skip(1)); // one Undo, in the header (the Passport status section is gone, R5)
         Assert.Contains("@await Html.PartialAsync(\"_TestTag\", \"Test ID\")", header, StringComparison.Ordinal); // point 7: a tag that explains itself on a tap
         Assert.DoesNotContain("Test identifiers: this battery's IDs start with TEST-", page, StringComparison.Ordinal);
         Assert.Contains(">Earlier passport</a>", header, StringComparison.Ordinal);

@@ -1,0 +1,23 @@
+@using BatteryPassWeb.Dpp.Editing
+@using BatteryPassWeb.Dpp.Pages
+@model PassportMarkView
+@* "Mark as invalid or for deletion…" from the header's "More" (redesign R5, owner's item 2): a window at page level, like
+   Change status. Choose, give the reason, confirm. Once marked, the header's red line carries the reason and the one Undo. *@
+<div class="bp-console-form-card bp-dialog-host">
+    <dialog id="mark-dialog" class="bp-modal-panel bp-dialog" aria-labelledby="mark-dialog-title">
+        <form method="post" action="@Model.Action" class="bp-dialog-form">
+            @Html.AntiForgeryToken()
+            <h2 id="mark-dialog-title">Mark the passport</h2>
+            <p class="bp-help-text">Every page then says so, and nothing on the passport changes until the team undoes it.</p>
+            <div class="bp-choice-list">
+                <label class="bp-choice"><input type="radio" name="what" value="invalid" checked /><strong>Invalid</strong><small>For example after a market surveillance finding.</small></label>
+                <label class="bp-choice"><input type="radio" name="what" value="deletion" disabled="@(!Model.Waste)" /><strong>For deletion</strong><small>@(Model.Waste ? "After recycling or export. The passport stays readable until it is deleted." : "Only for a battery whose status is waste.")</small></label>
+            </div>
+            <label><span>Reason (seen only by your team and market surveillance)</span><input type="text" name="reason" maxlength="@PassportMarks.MaxReason" placeholder="e.g. Declared values don't match the test report" required /></label>
+            <div class="bp-dialog-actions">
+                <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
+                <button type="submit" class="bp-danger-button">Mark the passport</button>
+            </div>
+        </form>
+    </dialog>
+</div>

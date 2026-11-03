@@ -586,7 +586,7 @@ public sealed class DemoDataService(
         }
         else if (mark.Deletion)
         {
-            problem = await marks.MarkForDeletionAsync(team, packId, cancellationToken);
+            problem = await marks.MarkForDeletionAsync(team, packId, cancellationToken: cancellationToken);
         }
 
         if (problem is not null)
