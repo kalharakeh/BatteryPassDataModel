@@ -219,7 +219,7 @@
         <section class="bp-card bp-console-form-card bp-setting-card mt-4" data-demo-data-card>
             <div>
                 <h2>Demo data <span class="bp-soft-tag ms-1" data-demo-data-state>@(Model.HasDemoData ? "Loaded" : "Not loaded")</span></h2>
-                <p>The Compact and Core families with six batteries in several states, three demo clusters, an account for every role but the team admin, and API tokens. Real data is never changed. Sign in with your own team account; the demo accounts cover the other roles.</p>
+                <p>The Compact and Core families with @Model.DemoBatteryCount batteries in several states, three demo clusters, an account for every role but the team admin, and API tokens. Real data is never changed. Sign in with your own team account; the demo accounts cover the other roles.</p>
                 @if (!Model.DemoAccountsPossible)
                 {
                     <p class="mt-1" data-demo-data-no-accounts>@BatteryPassWeb.Dpp.Demo.DemoDataService.NoPassword</p>

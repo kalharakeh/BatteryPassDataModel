@@ -213,6 +213,7 @@ public class AdminController : Controller
             GeneratedCredentials = TempData["GeneratedCredentials"] is string tokens ? JsonSerializer.Deserialize<List<DemoToken>>(tokens) ?? [] : [],
             HasDemoData = await _demoData.HasDemoDataAsync(cancellationToken),
             DemoAccountsPossible = _demoData.AccountsPossible,
+            DemoBatteryCount = BatteryPassWeb.Dpp.Demo.DemoDataService.BatteryCount,
             SessionTimeoutMinutes = await _applicationSettingsService.GetSessionTimeoutMinutesAsync(cancellationToken)
         };
 

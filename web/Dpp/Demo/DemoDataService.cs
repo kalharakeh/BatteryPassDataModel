@@ -59,6 +59,9 @@ public sealed class DemoDataService(
 
     private IMongoDatabase Database => mongo.Database ?? throw new InvalidOperationException("MongoDB is not configured (MONGODB_URI).");
 
+    /// <summary>How many batteries the demo has (a battery placed on the market again counts once, not once per passport).</summary>
+    public static int BatteryCount { get; } = DemoCatalogue.Load().Packs.Count;
+
     /// <summary>True when the demo accounts can be made: DEMO_USERS_PASSWORD is set.</summary>
     public bool AccountsPossible => !string.IsNullOrWhiteSpace(options.Value.DemoUsersPassword);
 

@@ -17,6 +17,7 @@ public sealed class AdminClusterViewModel
     public IReadOnlyList<DemoToken> GeneratedCredentials { get; init; } = [];
     public bool HasDemoData { get; init; }
     public bool DemoAccountsPossible { get; init; }
+    public int DemoBatteryCount { get; init; }
     public int SessionTimeoutMinutes { get; init; } = 180;
 }
 
