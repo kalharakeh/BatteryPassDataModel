@@ -445,3 +445,47 @@ th .bp-status-help-words {
 [data-theme="dark"] .bp-test-tag { border-color: #b45309; background: transparent; color: #fcd34d; }
 [data-theme="dark"] .bp-test-note { color: #fcd34d; }
 [data-theme="dark"] .bp-hero-compact .bp-hero-picture { background: #e9eef5; }
+
+/* ==== Key figures (redesign R5, owner's item 4, decision 37) =========================================================
+   The public values a reader wants first, as tiles, on the summary and on the detail page under the hero. */
+.bp-kf-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
+.bp-kf-head p { margin: 0; color: var(--bp-muted); font-size: 0.88rem; }
+.bp-kf-group { margin: 16px 0 8px; color: var(--bp-muted); font-size: 0.72rem; font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; }
+.bp-kf-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.bp-kf { min-width: 0; padding: 14px 16px; border: 1px solid var(--bp-border); border-radius: 12px; background: var(--bp-surface); }
+.bp-kf.is-wide { grid-column: span 2; }
+.bp-kf-label { display: flex; align-items: center; gap: 8px; color: var(--bp-muted); font-size: 0.8rem; font-weight: 650; }
+.bp-kf-label .bp-i { width: 18px; height: 18px; color: var(--bp-primary); }
+.bp-kf-value { margin-top: 6px; font-size: 1.45rem; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.bp-kf-value small { color: var(--bp-muted); font-size: 0.9rem; font-weight: 600; }
+.bp-kf-sub { margin: 2px 0 0; color: var(--bp-muted); font-size: 0.84rem; line-height: 1.35; }
+.bp-kf-class { display: inline-block; margin-left: 8px; padding: 1px 9px; border: 1px solid #86efac; border-radius: 999px; background: #f0fdf4; color: #166534; font-size: 0.8rem; font-weight: 700; vertical-align: 4px; }
+.bp-kf-stack { display: flex; height: 12px; margin-top: 10px; overflow: hidden; border-radius: 999px; background: #e2e8f0; }
+.bp-kf-stack span { display: block; height: 100%; }
+.bp-kf-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 0 0; padding: 0; list-style: none; color: var(--bp-muted); font-size: 0.8rem; }
+.bp-kf-legend i { display: inline-block; width: 9px; height: 9px; margin-right: 5px; border-radius: 2px; }
+.bp-kf-legend b { color: var(--bp-text); font-weight: 650; }
+.bp-kf-bars { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 6px 10px; margin-top: 10px; font-size: 0.84rem; }
+.bp-kf-track { height: 8px; overflow: hidden; border-radius: 999px; background: #e2e8f0; }
+.bp-kf-track span { display: block; height: 100%; border-radius: 999px; background: #08a348; }
+.bp-kf-bars b { font-weight: 650; text-align: right; }
+
+/* On the detail page a figure's title leads down to its full entry, which is marked for a moment where it lands. */
+.bp-kf-label a { display: inline-flex; align-items: center; gap: 8px; color: inherit; text-decoration: none; }
+.bp-kf-label a:hover, .bp-kf-label a:focus-visible { color: var(--bp-primary); text-decoration: underline; text-underline-offset: 3px; }
+.bp-kf-down { color: var(--bp-primary); font-weight: 700; }
+.bp-field-grid > div { scroll-margin-top: 96px; }
+.bp-field-grid > div.is-landed { border-radius: 8px; background: rgba(42, 110, 207, 0.08); box-shadow: 0 0 0 2px rgba(42, 110, 207, 0.55); }
+
+@media (max-width: 991.98px) {
+  .bp-kf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 575.98px) {
+  .bp-kf { padding: 12px; }
+  .bp-kf-value { font-size: 1.25rem; }
+}
+
+[data-theme="dark"] .bp-kf-stack,
+[data-theme="dark"] .bp-kf-track { background: #334155; }
+[data-theme="dark"] .bp-kf-class { border-color: #166534; background: #052e16; color: #86efac; }

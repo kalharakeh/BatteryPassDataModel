@@ -45,7 +45,8 @@
                         @foreach (var value in tab.Values)
                         {
                             var single = value.Lines.Count == 1 && value.Lines[0].Label is null;
-                            <div>
+                            @* Each entry has an id, where the key figures' links land (redesign R5). *@
+                            <div id="@KeyFigures.Anchor(value.Attribute.Number)">
                                 <dt>@(value.Attribute.IsExtension ? $"{value.Attribute.Label} {value.Attribute.Name}" : value.Attribute.Name)</dt>
                                 <dd>
                                     @for (var line = 0; line < value.Lines.Count; line++)

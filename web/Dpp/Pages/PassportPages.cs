@@ -80,6 +80,9 @@ public sealed record PassportPage(
     /// <summary>The line about an inactive passport or one that replaces an earlier passport (S7); null otherwise.</summary>
     public PassportNotice? Notice { get; init; }
 
+    /// <summary>The key figures card (redesign R5): public values only, the same on the summary and the detail page.</summary>
+    public KeyFigures? KeyFigures { get; init; }
+
     /// <summary>Why the passport is invalid and who said so, for the team and market surveillance only (decision 34); null otherwise.</summary>
     public string? MarkReason { get; init; }
 
@@ -277,6 +280,9 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
                 .ToArray()
             : [];
 
+        var carbon = Chart(everyone, CarbonStages, "kgCO2EquivalentPerKilowattHourValue", "kgCO2-eq/kWh");
+        var recycled = Chart(everyone, RecycledShares, "percentageValue", "%");
+        string? Words(int number) => sections.SelectMany(section => section.Values).FirstOrDefault(value => value.Attribute.Number == number)?.Lines.FirstOrDefault()?.Text;
         return new PassportPage(
             version,
             current,
@@ -291,9 +297,10 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
             AttributeCatalog.All.Any(a => a.Audience != Audience.Public && AudienceRules.MaySee(who, a, clusters)),
             sections,
             audiences,
-            Chart(everyone, CarbonStages, "kgCO2EquivalentPerKilowattHourValue", "kgCO2-eq/kWh"),
-            Chart(everyone, RecycledShares, "percentageValue", "%"))
+            carbon,
+            recycled)
         {
+            KeyFigures = KeyFigures.From(number => Find(everyone, AttributeCatalog.ByNumber(number)), Words, carbon, recycled),
             ModuleCount = sources.Pack.Modules.Count,
             ModuleDescription = sources.Model.ModuleDescription,
             Modules = detail && AudienceRules.MaySeePurchaserData(who, clusters) ? sources.Pack.Modules : null,

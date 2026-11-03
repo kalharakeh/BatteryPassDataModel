@@ -62,7 +62,7 @@ public sealed class AdminFeedbackFollowupTests
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.Contains("bp-report-hero-card", hero);
-        Assert.Contains("bp-report-wide-section", summary);
+        Assert.Contains("bp-report-wide-section", File.ReadAllText(RepoFile("web", "Views", "Passport", "_KeyFigures.cshtml"))); // the report card is Key figures since R5
         Assert.Contains("bp-report-wide-section", tabs);
         Assert.Contains("bp-report-hero-layout", hero);
         Assert.Contains("bp-report-hero-media", hero);
@@ -109,12 +109,13 @@ public sealed class AdminFeedbackFollowupTests
     }
 
     [Fact]
-    public void ReportCharts_ShouldUseTableLegendsAndOriginalPowerHeading()
+    public void ReportCharts_ShouldBeTheKeyFiguresCard()
     {
-        var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
+        // The "Summary report" card became "Key figures" (redesign R5); its legend is a list beside one bar.
+        var card = File.ReadAllText(RepoFile("web", "Views", "Passport", "_KeyFigures.cshtml"));
 
-        Assert.Contains("<h3 class=\"bp-subheading\">Original power capability</h3>", summary);
-        Assert.Contains("bp-chart-value-legend", summary);
+        Assert.Contains(">Key figures</span>", card);
+        Assert.Contains("bp-kf-legend", card);
     }
 
     [Fact]
@@ -129,7 +130,7 @@ public sealed class AdminFeedbackFollowupTests
         Assert.Contains("bp-report-identity-panel--identifiers", hero);
         Assert.Contains("bp-report-identity-panel--qr", hero);
         Assert.DoesNotContain("bp-report-media-code-row", hero);
-        Assert.Contains("CultureInfo.InvariantCulture", summary);
+        Assert.Contains("CultureInfo.InvariantCulture", File.ReadAllText(RepoFile("web", "Views", "Passport", "_KeyFigures.cshtml"))); // the percent widths, in Key figures since R5
         Assert.Contains("grid-template-columns: minmax(220px, 1fr) minmax(280px, 1.2fr) minmax(160px, 220px);", css);
         Assert.Contains(".bp-report-identity-panel--qr", css);
         Assert.Contains("@media (max-width: 1180px)", css);

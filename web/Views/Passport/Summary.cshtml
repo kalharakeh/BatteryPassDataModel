@@ -1,98 +1,17 @@
-@using System.Globalization
 @using BatteryPassWeb.Dpp.Pages
 @model PassportPage
 @{
     // The public summary (design 12): no sign-in, opened from the battery's QR code. Public data only.
     ViewData["Title"] = $"Battery passport · {Model.Text(11)}";
     ViewData["Detail"] = false;
-    var colours = new[] { "#22577a", "#38a3a5", "#f2a541", "#57cc99" };
-    var carbonTotal = Model.Carbon.Sum(part => part.Value);
-    var power = Model.Value(67);
-
-    string Pie()
-    {
-        var start = 0m;
-        var slices = new List<string>();
-        for (var index = 0; index < Model.Carbon.Count; index++)
-        {
-            var end = carbonTotal == 0 ? 0 : start + Model.Carbon[index].Value / carbonTotal * 100;
-            slices.Add($"{colours[index]} {start.ToString("0.##", CultureInfo.InvariantCulture)}% {end.ToString("0.##", CultureInfo.InvariantCulture)}%");
-            start = end;
-        }
-
-        return carbonTotal == 0 ? "conic-gradient(#d1d5db 0% 100%)" : $"conic-gradient({string.Join(", ", slices)})";
-    }
 }
 <main class="bp-page">
     <partial name="_PassportHero" model="Model" view-data="ViewData" />
 
-    @if (power is not null || Model.Carbon.Count > 0 || Model.Recycled.Count > 0)
+    @* Key figures (redesign R5, owner's item 4): the old report card, renamed and widened. *@
+    @if (Model.KeyFigures is { } keyFigures)
     {
-        // One row on wide screens: power, carbon footprint and recycled content side by side; stacked on narrow ones.
-        <section class="bp-card bp-report-wide-section">
-            <span class="bp-summary-title">Summary report</span>
-            <div class="row g-4 mt-1">
-                @if (power is not null)
-                {
-                    <div class="col-12 col-md-6 col-xl-3 bp-summary-report-row bp-summary-report-row--power">
-                        <h3 class="bp-subheading">Original power capability</h3>
-                        <div class="bp-metric-grid mt-2" style="grid-template-columns: 1fr;">
-                            @foreach (var line in power.Lines)
-                            {
-                                <div class="bp-metric"><p>@(line.Label ?? "Power")</p><strong>@line.Text</strong></div>
-                            }
-                        </div>
-                    </div>
-                }
-                @if (Model.Carbon.Count > 0)
-                {
-                    <div class="col-12 col-md-6 col-xl-5 bp-summary-report-row bp-summary-report-row--carbon">
-                        <h3 class="bp-subheading">Carbon footprint</h3>
-                        @if (Model.Value(30) is { } perUnit)
-                        {
-                            <p class="text-secondary small mb-2">@perUnit.Lines[0].Text per functional unit</p>
-                        }
-                        <div class="bp-pie-row">
-                            <div class="bp-pie" style="width:140px;height:140px;background:@Pie();"></div>
-                            <table class="bp-chart-value-legend" style="flex:1 1 200px;width:auto;min-width:0;" aria-label="Carbon footprint per life-cycle stage">
-                                <tbody>
-                                    @for (var index = 0; index < Model.Carbon.Count; index++)
-                                    {
-                                        <tr>
-                                            <td><span class="bp-dot" style="background:@colours[index]"></span>@Model.Carbon[index].Label</td>
-                                            <td>@ValueWords.Number(Model.Carbon[index].Value) @Model.Carbon[index].Unit</td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                }
-                @if (Model.Recycled.Count > 0)
-                {
-                    <div class="col-12 col-xl-4 bp-summary-report-row bp-summary-report-row--recycled">
-                        <h3 class="bp-subheading">Recycled content share</h3>
-                        <div class="row g-2 mt-1">
-                            @foreach (var share in Model.Recycled)
-                            {
-                                var percent = Math.Clamp(share.Value, 0, 100).ToString("0.##", CultureInfo.InvariantCulture);
-                                <div class="col-6 col-sm-3 col-xl-6">
-                                    <div class="bp-donut-card d-flex align-items-center gap-2">
-                                        <div class="bp-donut flex-shrink-0 m-0" style="width:48px;height:48px;background:conic-gradient(#08a348 0 @(percent)%, #d1d5db @(percent)% 100%);" aria-hidden="true">
-                                            <div class="bp-donut-hole" style="width:26px;height:26px;"></div>
-                                        </div>
-                                        <div class="lh-sm">
-                                            <span class="d-block small text-secondary">@share.Label</span>
-                                            <strong>@ValueWords.Number(share.Value) %</strong>
-                                        </div>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                }
-            </div>
-        </section>
+        <partial name="_KeyFigures" model="keyFigures" />
     }
 
     <partial name="_PassportTabs" model="Model" />

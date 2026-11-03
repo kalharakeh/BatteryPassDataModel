@@ -1,0 +1,14 @@
+@using BatteryPassWeb.Dpp.Pages
+@model KeyFigure
+@* One key figure's tile (redesign R5): what it is, its value, and a line under it. *@
+<div class="bp-kf@(ViewData["Wide"] is true ? " is-wide" : null)">
+    @await Html.PartialAsync("_KeyFigureLabel", (Model.Icon, Model.Label, Model.Anchor))
+    <div class="bp-kf-value">@Model.Value@if (Model.Small is { } small)
+        {
+            <small> @small</small>
+        }</div>
+    @if (Model.Under is { } under)
+    {
+        <p class="bp-kf-sub">@under</p>
+    }
+</div>

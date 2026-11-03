@@ -12,6 +12,11 @@
         <p class="bp-warning" role="status">@marked</p>
     }
     <partial name="_PassportHero" model="Model" view-data="ViewData" />
+    @* The same key figures as the summary, under the hero (redesign R5). *@
+    @if (Model.KeyFigures is { } keyFigures)
+    {
+        <partial name="_KeyFigures" model="keyFigures" />
+    }
     <partial name="_PassportTabs" model="Model" />
     @if (Model.Modules is { Count: > 0 } modules)
     {
@@ -41,3 +46,7 @@
         <partial name="_LiveHistory" model="history" />
     }
 </main>
+
+@section Scripts {
+    <script src="~/js/bp-passport-links.js" asp-append-version="true"></script>
+}
