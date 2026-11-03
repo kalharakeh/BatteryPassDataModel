@@ -71,7 +71,27 @@
     // its Cancel button (formmethod="dialog") closes it without sending anything.
     document.querySelectorAll('[data-open-dialog]').forEach((button) => {
         const dialog = document.getElementById(button.dataset.openDialog);
-        button.addEventListener('click', () => dialog?.showModal());
+        button.addEventListener('click', () => {
+            // Opened from the More menu: the menu closes, and focus comes back to "More" when the window does (R6).
+            const menu = button.closest('details.bp-more');
+            if (menu) {
+                menu.open = false;
+                dialog?.addEventListener('close', () => menu.querySelector(':scope > summary')?.focus(), { once: true });
+            }
+
+            dialog?.showModal();
+        });
+    });
+    // Escape closes an open More menu as it closes a window, and leaves focus on "More" (redesign R6).
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') {
+            return;
+        }
+
+        document.querySelectorAll('details.bp-more[open]').forEach((menu) => {
+            menu.open = false;
+            menu.querySelector(':scope > summary')?.focus();
+        });
     });
     // A dialog marked data-open-on-load="true" opens at once, e.g. the "Hand over" window once the cluster is named (step
     // 4d). (Razor writes data- attributes even when false, so the value says it.)
