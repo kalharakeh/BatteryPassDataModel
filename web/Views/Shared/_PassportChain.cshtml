@@ -8,7 +8,7 @@
     <section class="bp-card bp-console-form-card bp-battery-card mb-4" id="passport-chain">
         <span class="bp-summary-title">Passports of this battery</span>
         <h2>@Words.Count(Model.Shown.Count, "passport")</h2>
-        <p class="mb-0">The battery was placed on the market again, and each time got a new passport.@(Model.Reader == ChainReader.ClusterAdmin ? " Only public facts are shown: an earlier passport may have belonged to another customer." : null)</p>
+        <p class="mb-0">The battery was placed on the market again, and each time got a new passport.@(Model.Reader switch { ChainReader.ClusterAdmin => " Only public facts are shown: an earlier passport may have belonged to another customer.", ChainReader.Team => " An earlier passport's page shows it as it was when it was replaced, to read only.", _ => null })</p>
         <ol class="bp-passport-chain">
             @foreach (var link in Model.Shown)
             {
@@ -33,11 +33,12 @@
                         @switch (Model.Reader)
                         {
                             case ChainReader.Team:
+                                @* What each link leads to, in its words (redesign R7, the owner's item 2). *@
                                 @if (!link.IsThis)
                                 {
-                                    <a href="@BatteryPages.BatteryHref(link.PackId)">Battery page</a>
+                                    <a href="@BatteryPages.BatteryHref(link.PackId)" title="@(link.IsNewest ? "The newest passport's battery page" : "This passport's battery page as it was when it was replaced; nothing on it changes")">@(link.IsNewest ? "Newest passport's page" : $"Passport {link.Number}'s page (read only)")</a>
                                 }
-                                <a href="/admin/audit?q=@Uri.EscapeDataString(link.PackId)">History</a>
+                                <a href="/admin/audit?q=@Uri.EscapeDataString(link.PackId)" title="Everything that happened to passport @link.Number">History</a>
                                 break;
                             case ChainReader.Detail:
                                 @if (!link.IsThis)

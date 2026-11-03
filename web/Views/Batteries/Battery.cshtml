@@ -91,11 +91,17 @@
                     }
                     @await Html.PartialAsync("_StatusHelp")
                 </div>
-                @if (Model.Status?.Predecessor is { } replaced)
+                @* An earlier passport of a battery placed on the market again: one line says so, with the way to the newest
+                   (redesign R7, the owner's item 2); it replaces the two lines below. *@
+                @if (Model.Chain.FirstOrDefault(link => link.IsThis) is { IsNewest: false } thisPassport && Model.Chain.FirstOrDefault(link => link.IsNewest) is { } newestPassport)
+                {
+                    <p class="bp-lineage" id="earlier-passport"><svg class="bp-i" aria-hidden="true"><use href="#i-history" /></svg>Passport @thisPassport.Number of @Model.Chain.Count, an earlier passport, read only: nothing on it changes. <a href="@BatteryPages.BatteryHref(newestPassport.PackId)">Open the newest passport's page</a></p>
+                }
+                else if (Model.Status?.Predecessor is { } replaced)
                 {
                     <p class="bp-lineage"><svg class="bp-i" aria-hidden="true"><use href="#i-history" /></svg>New passport of @replaced.SerialNumber, whose passport @(replaced.Inactive ? "is now inactive" : "becomes inactive when this one is published").</p>
                 }
-                @if (Model.Status?.Succession is { Linked: true } linked && Model.Pack.Succession is { } succession)
+                @if (Model.Chain.FirstOrDefault(link => link.IsThis) is not { IsNewest: false } && Model.Status?.Succession is { Linked: true } linked && Model.Pack.Succession is { } succession)
                 {
                     <p class="bp-lineage"><svg class="bp-i" aria-hidden="true"><use href="#i-history" /></svg>@(StatusBadge.Battery(succession.Status)?.Words ?? succession.Status) on @ValueWords.Day(succession.StartedAtUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))@(linked.OtherPassport is { } other ? $" by {linked.OtherOperatorInfo ?? linked.OtherOperatorId}, which issued its new passport: {other}" : "; the battery continues on its new passport").</p>
                 }
@@ -112,7 +118,7 @@
                     <dl class="bp-bh-facts">
                         <div><dt>Batch</dt><dd class="text-wrap" title="@Model.BatchLabel"><a href="/admin/batches/@Uri.EscapeDataString(sources.Batch.Id)">@Model.BatchLabel</a></dd></div>
                         <div><dt>Economic operator</dt><dd class="text-wrap" title="@sources.Operator.Name"><a href="@ProductDataPages.SitesHref("operator", sources.Operator.Id)">@sources.Operator.Name</a></dd></div>
-                        <div><dt>Cluster <button type="button" class="bp-text-button" data-open-dialog="cluster-dialog">Change</button></dt><dd class="text-wrap@(Model.Pack.ClusterId is null ? " bp-batteries-muted" : null)">@Model.ClusterLabel</dd></div>
+                        <div><dt>Cluster @if (!publication.Replaced) {<button type="button" class="bp-text-button" data-open-dialog="cluster-dialog">Change</button>}</dt><dd class="text-wrap@(Model.Pack.ClusterId is null ? " bp-batteries-muted" : null)">@Model.ClusterLabel</dd></div>
                         @if (publication.IsPublished)
                         {
                             <div><dt>Made <span class="bp-attr-number">#17</span> · warranty <span class="bp-attr-number">#19</span></dt><dd>@Month(Value("manufacturingDate")) · @Period(Value("warrantyPeriod"))</dd></div>

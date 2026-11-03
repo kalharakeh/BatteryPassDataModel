@@ -35,7 +35,11 @@
             </table>
         </div>
     }
-    @if (Model.ForTeam)
+    @if (Model.ForTeam && Model.Replaced)
+    {
+        <p class="bp-help-text mt-2 mb-0" data-frozen>The module list stays as it was on this earlier passport; change it on the newest one.</p>
+    }
+    else if (Model.ForTeam)
     {
         <form method="post" action="@Model.Href/modules/from-export" enctype="multipart/form-data" class="bp-attr-upload bp-module-upload" data-upload-row>
             @Html.AntiForgeryToken()

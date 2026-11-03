@@ -80,6 +80,9 @@ public sealed record PublicationView(
     /// <summary>Published once and no longer active: inactive, invalid or marked for deletion (step 4c).</summary>
     public bool NoLongerActive => Active is null && Latest is not null;
 
+    /// <summary>An earlier passport, replaced by a newer one (redesign R7): kept as it was.</summary>
+    public bool Replaced => Active is null && Latest?.DppStatus == DppStatuses.Inactive;
+
     public bool Ready => Missing.Count == 0 && Problems.Count == 0;
 
     public int MissingCount => Missing.Sum(group => group.Attributes.Count);
@@ -528,6 +531,11 @@ public sealed class BatteryPages(
             return "the battery was not found";
         }
 
+        if (await store.PassportStatusAsync(packId, cancellationToken) == DppStatuses.Inactive)
+        {
+            return EarlierPassport;
+        }
+
         var wanted = string.IsNullOrWhiteSpace(clusterId) ? null : clusterId.Trim();
         if (string.Equals(wanted, pack.ClusterId, StringComparison.OrdinalIgnoreCase))
         {
@@ -566,6 +574,9 @@ public sealed class BatteryPages(
     }
 
     /// <summary>The battery's module list as the team typed it (decision 31). Null when it was saved.</summary>
+    /// <summary>Why an earlier passport takes no change (redesign R7): it is kept as it was when it was replaced.</summary>
+    public const string EarlierPassport = "it is an earlier passport, kept as it was when it was replaced; change the newest passport instead";
+
     public Task<string?> SetModulesAsync(string who, string packId, string? text, CancellationToken cancellationToken = default) =>
         SaveModulesAsync(who, packId, _ => ModuleList.FromText(text), "typed", cancellationToken);
 
@@ -590,6 +601,11 @@ public sealed class BatteryPages(
         if (pack is null)
         {
             return "the battery was not found";
+        }
+
+        if (await store.PassportStatusAsync(packId, cancellationToken) == DppStatuses.Inactive)
+        {
+            return EarlierPassport;
         }
 
         var serial = Text(pack, "batterySerialNumber");

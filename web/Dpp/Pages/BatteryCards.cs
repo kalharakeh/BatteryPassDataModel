@@ -29,6 +29,9 @@ public sealed record BatteryCards(
     /// <summary>Whether nothing on the passport changes any more (step 4c).</summary>
     public bool Frozen => FrozenAs is not null;
 
+    /// <summary>An earlier passport, replaced by a newer one: kept as it was, its modules too (redesign R7).</summary>
+    public bool Replaced => FrozenAs == DppStatuses.Inactive;
+
     /// <summary>Why nothing on the passport changes, in words that fit its status (redesign R1); null while it can change.</summary>
     public string? FrozenNote => FrozenAs switch
     {
