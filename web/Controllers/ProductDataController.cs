@@ -148,7 +148,7 @@ public sealed class ProductDataController(ProductDataPages pages, RecordEditor e
             ? "choose a PNG or JPEG picture first"
             : await pages.SetModelPictureAsync(Who, modelId, picture.FileName, await ReadAsync(picture, cancellationToken), cancellationToken);
         TempData[problem is null ? StatusKey : ErrorKey] = problem is null
-            ? "Picture saved. Its batteries' public summary shows it instead of the family's."
+            ? "Picture saved. Its batteries' public page shows it instead of the family's."
             : $"The picture was not saved: {problem}.";
         return Redirect($"{ProductDataPages.FamilyHref(model.FamilyId, modelId)}#modules");
     }

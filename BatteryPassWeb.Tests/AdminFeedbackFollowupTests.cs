@@ -25,7 +25,7 @@ public sealed class AdminFeedbackFollowupTests
         var combined = string.Join(Environment.NewLine, registry, hero, rowActions);
         Assert.Contains("bp-report-action", combined);
         Assert.Contains("View more about this passport", hero);
-        Assert.Contains("Back to summary", hero);
+        Assert.Contains("Back to the public page", hero);
         Assert.Contains("bp-report-action-icon", combined);
         Assert.Contains(".bp-report-action::after", css);
         Assert.Contains("top: calc(-100% -", css);
@@ -41,7 +41,7 @@ public sealed class AdminFeedbackFollowupTests
         Assert.Contains("bp-report-title-block", hero);
         Assert.Contains("bp-report-hero-cta", hero);
         Assert.Contains("View more about this passport", hero);
-        Assert.Contains("Back to summary", hero);
+        Assert.Contains("Back to the public page", hero);
         Assert.DoesNotContain("bp-report-header-actions", hero);
         Assert.DoesNotContain("bp-report-action-strip", hero);
         Assert.DoesNotContain("bp-report-action-label", hero);
@@ -68,7 +68,7 @@ public sealed class AdminFeedbackFollowupTests
         Assert.Contains("bp-report-hero-layout", hero);
         Assert.Contains("bp-report-hero-media", hero);
         Assert.Contains("View more about this passport", hero);
-        Assert.Contains("Back to summary", hero);
+        Assert.Contains("Back to the public page", hero);
         Assert.Contains("bp-report-hero-qr", hero);
         Assert.Contains(".bp-report-hero-card", css);
         Assert.Contains(".bp-report-wide-section", css);

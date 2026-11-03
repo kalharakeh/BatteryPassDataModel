@@ -46,7 +46,7 @@
                 </form>
                 <form method="post" action="/admin/families/@familyId/picture" enctype="multipart/form-data" class="bp-family-identity-field" data-upload-row>
                     @Html.AntiForgeryToken()
-                    <span>Picture, shown on the public summary (PNG or JPEG)</span>
+                    <span>Picture, shown on the public page (PNG or JPEG)</span>
                     <div class="d-flex gap-2">
                         <input type="text" readonly value="@(hasPicture ? "A picture is set" : "No picture yet")" aria-label="Current picture" data-upload-name />
                         <label class="bp-secondary-button bp-button-compact bp-document-smart-upload position-relative text-nowrap flex-shrink-0 mb-0">
@@ -148,7 +148,7 @@
                 </div>
                 <div class="d-grid gap-2">
                     <span><strong>Picture of @selected.Name</strong> <em class="bp-field-marker">Not passport data</em></span>
-                    <small class="bp-field-help">@(selected.PictureFileId is null ? "It shows the family's picture. Give it its own when it looks different, for example a double stack." : "Its own picture: its batteries' public summary shows it instead of the family's.")</small>
+                    <small class="bp-field-help">@(selected.PictureFileId is null ? "It shows the family's picture. Give it its own when it looks different, for example a double stack." : "Its own picture: its batteries' public page shows it instead of the family's.")</small>
                     <div class="bp-attr-file">
                         <label class="bp-secondary-button bp-button-compact bp-document-smart-upload position-relative text-nowrap mb-0">
                             Choose picture
@@ -171,7 +171,7 @@
                 <label for="module-description">Module description of @selected.Name <em class="bp-field-marker">Not passport data</em></label>
                 <textarea id="module-description" name="description" rows="2" maxlength="@ModuleList.MaxDescriptionLength" placeholder="e.g. 8 lithium-ion modules, 2 strings of 4">@selected.ModuleDescription</textarea>
                 <div class="bp-live-save">
-                    <small class="bp-field-help">Shown on the public summary of this model's batteries, with each battery's module count. Each battery's modules are listed on its own page.</small>
+                    <small class="bp-field-help">Shown on the public page of this model's batteries, with each battery's module count. Each battery's modules are listed on its own page.</small>
                     <button type="submit" class="bp-secondary-button bp-button-compact text-nowrap">Save description</button>
                 </div>
             </form>

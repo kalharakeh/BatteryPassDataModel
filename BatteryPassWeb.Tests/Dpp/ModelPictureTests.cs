@@ -74,7 +74,7 @@ public sealed class ModelPictureTests(MongoFixture mongo)
         var removed = Assert.IsType<RedirectResult>(await controller.RemoveModelPicture("model-test", CancellationToken.None));
 
         Assert.Equal($"{ProductDataPages.FamilyHref("family-test", "model-test")}#modules", saved.Url);
-        Assert.Equal("Picture saved. Its batteries' public summary shows it instead of the family's.", savedMessage);
+        Assert.Equal("Picture saved. Its batteries' public page shows it instead of the family's.", savedMessage);
         Assert.Equal($"{ProductDataPages.FamilyHref("family-test", "model-test")}#modules", removed.Url);
         Assert.Equal("Picture removed. Its batteries show the family's picture again.", controller.TempData[ProductDataController.StatusKey]);
         Assert.Contains("action=\"/admin/models/@selected.Id/picture\"", page, StringComparison.Ordinal);
