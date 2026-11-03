@@ -122,7 +122,7 @@ public sealed class PassportMarkPagesTests(MongoFixture mongo)
     }
 
     [Fact]
-    public async Task TheRegistry_ShouldKeepAnInvalidBatteryWithItsStatusButNoManageLink()
+    public async Task TheRegistry_ShouldKeepAnInvalidBatteryWithItsStatus_AndItsReadOnlyPage()
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         await PassportMarkTests.Service(rig).MarkInvalidAsync(PublicationTesting.Team, rig.PackId, Reason);
@@ -134,7 +134,8 @@ public sealed class PassportMarkPagesTests(MongoFixture mongo)
 
         var row = Assert.Single(surveillance.Rows);
         Assert.Equal(DppStatuses.Invalid, row.StatusName);
-        Assert.Null(admin.ManageHref(Assert.Single(admin.Rows))); // nothing on it changes, so there is nothing to manage
+        // Nothing on it changes, but its cluster admin reads its page, read-only (redesign R6b, the owner's choice).
+        Assert.Equal(ClusterBatteryPages.BatteryHref(rig.PackId), admin.ManageHref(Assert.Single(admin.Rows)));
     }
 
     [Fact]

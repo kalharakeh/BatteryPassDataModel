@@ -16,11 +16,16 @@ public sealed record RegistryPage(IReadOnlyList<BatteryRow> Rows, string Query, 
     /// <summary>The batteries whose status (#22, purchaser data) the reader may see: the team, market surveillance, their cluster's (redesign R3).</summary>
     public IReadOnlySet<string> BatteryStatusShown { get; init; } = new HashSet<string>(StringComparer.Ordinal);
 
-    /// <summary>The cluster admin's page of a battery of a cluster they are admin of; null otherwise.</summary>
+    /// <summary>
+    /// The cluster admin's page of a battery of a cluster they are admin of, while its passport is active or marked (read
+    /// only then, redesign R6b); null otherwise.
+    /// </summary>
     public string? ManageHref(BatteryRow row)
     {
         ArgumentNullException.ThrowIfNull(row);
-        return row.Active is not null && row.ClusterId is { } cluster && ManagedClusterIds.Contains(cluster) ? ClusterBatteryPages.BatteryHref(row.PackId) : null;
+        return (row.Active is not null || DppStatuses.IsMarked(row.Latest?.DppStatus)) && row.ClusterId is { } cluster && ManagedClusterIds.Contains(cluster)
+            ? ClusterBatteryPages.BatteryHref(row.PackId)
+            : null;
     }
 
     /// <summary>True for the team: its rows open the team's battery page and its history (redesign R5).</summary>

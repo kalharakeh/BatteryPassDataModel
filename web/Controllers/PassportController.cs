@@ -75,8 +75,8 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
             ViewData["LiveHistory"] = await liveHistory.HistoryAsync(reader, page.Version.PackId, BatteryApi.MaxHistoryHours, cancellationToken);
         }
 
-        // The battery's cluster admins manage it from here too (step 4a).
-        if (manage is not null && page.IsCurrent)
+        // The battery's cluster admins manage it from here too (step 4a); read it while its passport is marked (R6b).
+        if (manage is not null && (page.IsCurrent || BatteryPassWeb.Dpp.Store.DppStatuses.IsMarked(page.Version.DppStatus)))
         {
             ViewData[ClusterBatteryPages.ManageHrefKey] = await manage.ManageHrefAsync(await readers.EditorForAsync(User, cancellationToken), page.Version.PackId, cancellationToken);
         }

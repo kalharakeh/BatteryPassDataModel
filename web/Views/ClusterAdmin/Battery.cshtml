@@ -8,6 +8,8 @@
 @{
     ViewData["Title"] = $"Battery {Model.SerialNumber}";
     var active = Model.Versions.Select(row => row.Version).FirstOrDefault(version => version.DppStatus == BatteryPassWeb.Dpp.Store.DppStatuses.Active);
+    // A marked passport's newest version (redesign R6b): the page is read-only then.
+    var shown = active ?? (Model.ReadOnly ? Model.Versions.Select(row => row.Version).FirstOrDefault() : null);
     var batteryKey = Uri.EscapeDataString(Model.Identifier);
     var card = (TempData.Peek(BatteriesController.CardKey) ?? ViewData[BatteriesController.CardKey]) as string;
     var sections = Model.Sections;
@@ -39,7 +41,7 @@
                     {
                         @await Html.PartialAsync("_StatusBadge", battery)
                     }
-                    @await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(active?.DppStatus).With(active is null ? null : $"· version {active.Number}"))
+                    @await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(shown?.DppStatus).With(shown is null ? null : $"· version {shown.Number}"))
                     @if (testIds)
                     {
                         @await Html.PartialAsync("_TestTag", "Test ID")
@@ -68,9 +70,20 @@
             </div>
         </div>
 
-        @* The page opens only while the passport is active (step 4a): an invalid or inactive battery shows on the Registry
+        @* The page opens while the passport is active (step 4a), and read-only while it is marked invalid or for deletion
+           (redesign R6b): the mark's fact and date, not its reason (decision 34). An inactive battery shows on the Registry
            row and the detail page instead. A waiting hand-over is one line here, with its one Cancel (redesign R4). *@
-        @if (Model.HandOver.Waiting is { } waiting)
+        @if (Model.FrozenAs is { } frozen)
+        {
+            <p class="bp-status-notice" id="mark-notice">
+                <svg class="bp-i" aria-hidden="true"><use href="#i-shield" /></svg>
+                <span>
+                    <strong>@BatteryPassWeb.Dpp.Store.DppStatuses.Words(frozen) since @(Model.MarkedSince is { } since ? ValueWords.Time(since) : "—").</strong>
+                    Nothing on the passport changes until the team undoes the mark, so this page is to read only.
+                </span>
+            </p>
+        }
+        @if (!Model.ReadOnly && Model.HandOver.Waiting is { } waiting)
         {
             <form method="post" action="@Model.HandOver.Action/cancel" class="bp-status-notice is-quiet">
                 @Html.AntiForgeryToken()
@@ -93,7 +106,7 @@
                     }
                 </div>
             }
-            @if (Model.HandOver.Waiting is null)
+            @if (!Model.ReadOnly && Model.HandOver.Waiting is null)
             {
                 @* Opens the window directly, like marking a passport (redesign R5, the owner's answer c). *@
                 <button type="button" class="bp-secondary-button bp-with-icon" data-open-dialog="handover-dialog"><svg class="bp-i" aria-hidden="true"><use href="#i-handover" /></svg>Hand over…</button>
@@ -114,8 +127,16 @@
             <div data-section="overview" hidden="@Hidden("overview")">
                 <section class="bp-card bp-console-form-card bp-battery-card" id="overview">
                     <span class="bp-summary-title">Overview</span>
-                    <h2>@(active is null ? "Not published" : $"Published · version {active.Number}")</h2>
-                    <p class="mb-0">Your cluster's battery. Change its status after a repair or when it's used again, keep its live values and accident reports, or hand it over to another customer. The team keeps its passport values.</p>
+                    @if (Model.FrozenAs is { } frozenAs && shown is not null)
+                    {
+                        <h2>@BatteryPassWeb.Dpp.Store.DppStatuses.Words(frozenAs) · version @shown.Number</h2>
+                        <p class="mb-0">Your cluster's battery, to read only: its passport is @BatteryPassWeb.Dpp.Store.DppStatuses.Words(frozenAs).ToLowerInvariant(), so nothing on it changes until the team undoes the mark. Its status, live values, modules, versions and history stay here; its accident reports are on the Accident page.</p>
+                    }
+                    else
+                    {
+                        <h2>@(active is null ? "Not published" : $"Published · version {active.Number}")</h2>
+                        <p class="mb-0">Your cluster's battery. Change its status after a repair or when it's used again, keep its live values and accident reports, or hand it over to another customer. The team keeps its passport values.</p>
+                    }
                     @await Html.PartialAsync("~/Views/Batteries/_LiveTiles.cshtml", Model.Tiles)
                 </section>
             </div>
@@ -128,12 +149,15 @@
             <div data-section="live" hidden="@Hidden("live")">
                 @await Html.PartialAsync("~/Views/Batteries/_LiveValuesCard.cshtml", Model.Cards)
             </div>
-            <div data-section="accidents" hidden="@Hidden("accidents")">
-                @await Html.PartialAsync("~/Views/Batteries/_AccidentsCard.cshtml", Model.Cards)
-            </div>
-            <div data-section="handover" hidden="@Hidden("handover")">
-                @await Html.PartialAsync("~/Views/ClusterAdmin/_HandOverCard.cshtml", Model.HandOver)
-            </div>
+            @if (!Model.ReadOnly)
+            {
+                <div data-section="accidents" hidden="@Hidden("accidents")">
+                    @await Html.PartialAsync("~/Views/Batteries/_AccidentsCard.cshtml", Model.Cards)
+                </div>
+                <div data-section="handover" hidden="@Hidden("handover")">
+                    @await Html.PartialAsync("~/Views/ClusterAdmin/_HandOverCard.cshtml", Model.HandOver)
+                </div>
+            }
             <div data-section="modules" hidden="@Hidden("modules")">
                 @await Html.PartialAsync("~/Views/Batteries/_ModulesCard.cshtml", Model.Cards)
             </div>
@@ -148,11 +172,11 @@
     </div>
 
     @* The windows, at page level: one inside a hidden section can't open. *@
-    @if (Model.Status is { } statusWindows)
+    @if (!Model.ReadOnly && Model.Status is { } statusWindows)
     {
         @await Html.PartialAsync("~/Views/Batteries/_StatusDialog.cshtml", statusWindows)
     }
-    @if (Model.HandOver.Waiting is null)
+    @if (!Model.ReadOnly && Model.HandOver.Waiting is null)
     {
         <div class="bp-console-form-card bp-dialog-host">
             @await Html.PartialAsync("~/Views/ClusterAdmin/_HandOverDialog.cshtml", Model.HandOver)

@@ -6,7 +6,11 @@
     <span class="bp-summary-title">Live values</span>
     <h2>Measured on the battery</h2>
     <p class="mb-0">
-        @if (Model.ForTeam)
+        @if (Model.Frozen)
+        {
+            <text>The last values measured on the battery, to read: nothing on the passport changes any more.</text>
+        }
+        else if (Model.ForTeam)
         {
             <text>Its battery system sends these; type them here before it does, for example the end-of-line values, or to
             correct one. They change the passport in place, without a new version.</text>
@@ -21,6 +25,19 @@
     @if (Model.FrozenNote is { } frozen)
     {
         <p class="bp-help-text mt-2 mb-0" data-frozen>@frozen</p>
+        @* The last values still show, to read (redesign R6b): what the battery last measured, and when. *@
+        <dl class="bp-bh-facts bp-frozen-values mt-3" data-frozen-values>
+            @foreach (var field in Model.Live.Sections.SelectMany(section => section.Fields))
+            {
+                @if (Model.Pack.Values.GetValueOrDefault(field.Attribute.Property) is { Value: not null } stored)
+                {
+                    <div>
+                        <dt>@field.Attribute.Name <span class="bp-attr-number">@field.Attribute.Label</span></dt>
+                        <dd>@string.Join(", ", ValueWords.Lines(field.Form, stored.Value).Select(line => line.Text)) <small class="d-block text-secondary">@ValueWords.Time(stored.GeneratedAtUtc), @BatteryCards.Source(stored.Source)</small></dd>
+                    </div>
+                }
+            }
+        </dl>
     }
     else
     {

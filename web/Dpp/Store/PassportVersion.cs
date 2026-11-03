@@ -23,6 +23,9 @@ public static class DppStatuses
     /// <summary>A passport no longer active (step 4c): it takes no changes and gets no new version.</summary>
     public static bool IsNoLongerActive(string? status) => status is Inactive or Invalid or MarkedForDeletion;
 
+    /// <summary>Frozen by a mark (step 4c-2): still the battery's newest passport, unlike an inactive one (redesign R6b).</summary>
+    public static bool IsMarked(string? status) => status is Invalid or MarkedForDeletion;
+
     /// <summary>A DPP status in words, for pills and tables: "Active", "Marked for deletion".</summary>
     public static string Words(string status) => status switch
     {

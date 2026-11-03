@@ -176,6 +176,28 @@ public sealed class ClusterBatteriesControllerTests(MongoFixture mongo)
         return Assert.IsType<ViewResult>(await controller.Detail(PassportPagesTests.Identifier(rig), CancellationToken.None, manage: ClusterBatteryPagesTests.Pages(rig)));
     }
 
+    [Fact]
+    public async Task AMarkedBattery_ShouldOpenReadOnly_AndRefuseEveryPost()
+    {
+        // Redesign R6b: the page opens read-only for a passport marked invalid; every change is still refused.
+        var rig = await RigAsync();
+        Assert.Null(await PassportMarkTests.Service(rig).MarkInvalidAsync(PublicationTesting.Team, rig.PackId, "Demo: wrong figures"));
+        var live = await LiveFormAsync(rig, "temperatureInformation", "21");
+
+        var page = Assert.IsType<ClusterBatteryPage>(Assert.IsType<ViewResult>(await Controller(rig, NorthAdmin, "clusterAdmin").Battery(rig.PackId, CancellationToken.None)).Model);
+        Assert.True(page.ReadOnly);
+        Assert.Equal(ClusterBatteryPages.BatteryHref(rig.PackId), (await DetailAsync(rig, NorthAdmin, "clusterAdmin")).ViewData[ClusterBatteryPages.ManageHrefKey]); // the detail page leads to it
+        Assert.Null((await DetailAsync(rig, SouthAdmin, "clusterAdmin")).ViewData[ClusterBatteryPages.ManageHrefKey]);
+        Assert.IsType<NotFoundResult>(await Controller(rig, NorthAdmin, "clusterAdmin", live).SaveLiveValues(rig.PackId, CancellationToken.None));
+        Assert.IsType<NotFoundResult>(await Controller(rig, NorthAdmin, "clusterAdmin").AddAccidentReport(rig.PackId, Upload("report.pdf", "%PDF-1.4 report"u8.ToArray()), "Report", "en", CancellationToken.None));
+        Assert.IsType<NotFoundResult>(await Controller(rig, NorthAdmin, "clusterAdmin").ChangeStatus(rig.PackId, "Repaired", "2026-11-03", "A repair.", CancellationToken.None));
+        Assert.IsType<NotFoundResult>(await Controller(rig, NorthAdmin, "clusterAdmin").AddHistoryNote(rig.PackId, "A note.", CancellationToken.None));
+        Assert.IsType<NotFoundResult>(await Controller(rig, NorthAdmin, "clusterAdmin").OtherOperator(rig.PackId, "Other", "Somewhere", null, false, CancellationToken.None));
+        await Controller(rig, NorthAdmin, "clusterAdmin").HandOver(rig.PackId, BatteryTesting.South, BatteryTesting.South, HandOverTests.Service(rig), CancellationToken.None);
+        Assert.Null(await rig.Store.FindWaitingHandOverAsync(rig.PackId));
+        Assert.NotEqual(21, (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!.Values["temperatureInformation"].Value!["celsiusValue"]!.GetValue<int>());
+    }
+
     private async Task<PublicationRig> RigAsync()
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();

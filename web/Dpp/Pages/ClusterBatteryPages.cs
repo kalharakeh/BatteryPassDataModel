@@ -38,8 +38,17 @@ public sealed record ClusterBatteryPage(
     /// <summary>What happened while the battery was in this cluster, as its admin may read it (redesign R6), newest first.</summary>
     public IReadOnlyList<BatteryPassWeb.Dpp.Audit.AuditLine> History { get; init; } = [];
 
-    /// <summary>The team page's cards, without what only the team does (step 4a).</summary>
-    public BatteryCards Cards => new(Pack, Href, Live, AccidentReports, Versions, Live.Languages, ForTeam: false);
+    /// <summary>The mark that froze the passport (invalid, marked for deletion); null while it is active (redesign R6b).</summary>
+    public string? FrozenAs { get; init; }
+
+    /// <summary>When the passport was marked; its reason is the team's and market surveillance's (decision 34).</summary>
+    public DateTime? MarkedSince { get; init; }
+
+    /// <summary>A marked passport's page: to read only, nothing on it changes (redesign R6b, the owner's choice).</summary>
+    public bool ReadOnly => FrozenAs is not null;
+
+    /// <summary>The team page's cards, without what only the team does (step 4a); frozen while the passport is marked.</summary>
+    public BatteryCards Cards => new(Pack, Href, Live, AccidentReports, Versions, Live.Languages, ForTeam: false, FrozenAs: FrozenAs);
 
     /// <summary>The header's thumbnail, as on the team's page.</summary>
     public string? PictureHref => BatteryPages.PictureHref(Sources.Model, Family);
@@ -56,8 +65,12 @@ public sealed record ClusterBatteryPage(
             }
 
             sections.Add(new("live", "Live values", "live", BatterySections.LiveHint(Pack, Live)));
-            sections.Add(new("accidents", "Accident reports", "accident", Count: AccidentReports.Count));
-            sections.Add(new("handover", "Hand over", "handover", HandOver.Waiting is null ? "To another cluster" : "Waiting for their answer"));
+            if (!ReadOnly) // a marked passport takes no report and can't be handed over; its reports stay on the Accident page
+            {
+                sections.Add(new("accidents", "Accident reports", "accident", Count: AccidentReports.Count));
+                sections.Add(new("handover", "Hand over", "handover", HandOver.Waiting is null ? "To another cluster" : "Waiting for their answer"));
+            }
+
             sections.Add(new("modules", "Modules", "modules", Count: Pack.Modules.Count));
             sections.Add(new("versions", "Versions", "versions", Count: Versions.Count));
             sections.Add(new("history", "History", "history", "While it was your cluster's")); // redesign R6
@@ -73,6 +86,7 @@ public sealed record HandOverCardView(string Action, string SerialNumber, HandOv
 /// The cluster admin's battery page (design 6.1 and 12, step 4a). A cluster admin manages only a battery of a cluster
 /// they are admin of, and only once its passport is published and active: a draft is the team's (J-6). Every change
 /// goes through the save pipeline as the cluster admin, which allows the live values and accident reports (design 6.1).
+/// A passport marked invalid or for deletion opens read-only, every change still refused (redesign R6b).
 /// </summary>
 public sealed class ClusterBatteryPages(
     DppStore store,
@@ -96,12 +110,12 @@ public sealed class ClusterBatteryPages(
     public async Task<string?> ManageHrefAsync(ChangeSender? sender, string packId, CancellationToken cancellationToken = default) =>
         sender is null ? null
         : sender.Kind == SenderKind.Team ? (await store.GetAsync<BatteryPack>(packId, cancellationToken) is null ? null : BatteryPages.BatteryHref(packId))
-        : await ManagedAsync(sender, packId, cancellationToken) is not null ? BatteryHref(packId) : null;
+        : await ReadableAsync(sender, packId, cancellationToken) is not null ? BatteryHref(packId) : null;
 
     /// <summary>The battery's page; with <paramref name="live"/>, the live form as typed after a refused save. Null when the sender may not manage it.</summary>
     public async Task<ClusterBatteryPage?> BatteryAsync(ChangeSender sender, string packId, EditorState? live = null, CancellationToken cancellationToken = default)
     {
-        if (await ManagedAsync(sender, packId, cancellationToken) is not { } pack)
+        if (await ReadableAsync(sender, packId, cancellationToken) is not ({ } pack, var frozenAs))
         {
             return null;
         }
@@ -147,11 +161,13 @@ public sealed class ClusterBatteryPages(
             versions.OrderByDescending(version => version.Number).Select(version => new VersionRow(version, PassportReader.Verify(version))).ToArray(),
             await documentStore.ListAsync(TargetKind.Pack, pack.Id, DocumentService.Accidents, cancellationToken))
         {
-            Status = await status.CardAsync(sources, active: true, href, forTeam: false, cancellationToken: cancellationToken),
+            Status = await status.CardAsync(sources, active: frozenAs is null, href, forTeam: false, cancellationToken: cancellationToken),
             Tiles = trends is null ? [] : await trends.TilesAsync(sources.Pack, sources.Model, cancellationToken),
             Chain = await PassportChains.ForAsync(store, pack, cancellationToken),
             HandOver = new HandOverCardView($"{href}/handover", serial, waiting, waiting is null ? null : names.GetValueOrDefault(waiting.ToClusterId) ?? waiting.ToClusterId),
             History = history is null ? [] : await history.ForAsync(pack, sender.ClusterIds, cancellationToken),
+            FrozenAs = frozenAs,
+            MarkedSince = frozenAs is null ? null : pack.Mark?.AtUtc,
         };
     }
 
@@ -211,7 +227,15 @@ public sealed class ClusterBatteryPages(
     }
 
     /// <summary>The pack, when it belongs to a cluster the sender is admin of and its passport is published and active.</summary>
-    private async Task<BatteryPack?> ManagedAsync(ChangeSender sender, string packId, CancellationToken cancellationToken)
+    /// <summary>A battery of the sender's cluster whose passport is active: the one the cluster admin may change.</summary>
+    private async Task<BatteryPack?> ManagedAsync(ChangeSender sender, string packId, CancellationToken cancellationToken) =>
+        await ReadableAsync(sender, packId, cancellationToken) is (var pack, null) ? pack : null;
+
+    /// <summary>
+    /// A battery of the sender's cluster whose newest passport is active, or marked invalid or for deletion; the mark, or
+    /// null while it is active. A draft, or a passport a newer one replaced, gives nothing (redesign R6b).
+    /// </summary>
+    private async Task<(BatteryPack Pack, string? FrozenAs)?> ReadableAsync(ChangeSender sender, string packId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(sender);
         if (sender.Kind != SenderKind.ClusterAdmin
@@ -221,6 +245,9 @@ public sealed class ClusterBatteryPages(
             return null;
         }
 
-        return await store.GetActiveVersionAsync(pack.Id, cancellationToken) is null ? null : pack;
+        var status = await store.PassportStatusAsync(pack.Id, cancellationToken);
+        return status == DppStatuses.Active ? (pack, null)
+            : DppStatuses.IsMarked(status) ? (pack, status)
+            : null;
     }
 }
