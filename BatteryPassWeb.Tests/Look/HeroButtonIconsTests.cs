@@ -18,7 +18,7 @@ public sealed class HeroButtonIconsTests
         Assert.DoesNotContain("-&gt;", hero, StringComparison.Ordinal);
         Assert.Contains("<use href=\"#i-back\" /></svg>Back to summary</a>", hero, StringComparison.Ordinal);
         Assert.Contains("View more about this passport<svg class=\"bp-i\" aria-hidden=\"true\"><use href=\"#i-arrow\" /></svg></a>", hero, StringComparison.Ordinal);
-        Assert.Contains("Manage this battery<svg class=\"bp-i\" aria-hidden=\"true\"><use href=\"#i-arrow\" /></svg></a>", hero, StringComparison.Ordinal);
+        Assert.Contains("Open the battery page<svg class=\"bp-i\" aria-hidden=\"true\"><use href=\"#i-arrow\" /></svg></a>", hero, StringComparison.Ordinal); // one name since R6 T6
         Assert.Contains(".bp-report-hero-cta { gap: 8px; }", css, StringComparison.Ordinal);
     }
 }

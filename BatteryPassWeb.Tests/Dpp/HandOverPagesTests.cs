@@ -85,7 +85,7 @@ public sealed class HandOverPagesTests(MongoFixture mongo)
         var accepted = Assert.IsType<RedirectResult>(await receiver.Answer(asked.HandOver!.Id, accept: true, HandOverTests.Service(rig), CancellationToken.None));
 
         Assert.Equal("/registry", accepted.Url);
-        Assert.Equal("Accepted. The battery is now your cluster's; manage it from its row below.", receiver.TempData[ProductDataController.StatusKey]);
+        Assert.Equal("Accepted. The battery is now your cluster's; open its battery page from its row below.", receiver.TempData[ProductDataController.StatusKey]);
         var after = (RegistryPage)((ViewResult)await receiver.Index(null, HandOverTests.Service(rig), CancellationToken.None)).Model!;
         Assert.Empty(after.Waiting);
         Assert.NotNull(after.ManageHref(Assert.Single(after.Rows)));

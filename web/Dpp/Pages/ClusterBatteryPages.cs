@@ -78,12 +78,17 @@ public sealed class ClusterBatteryPages(
 {
     public static string BatteryHref(string packId) => $"/cluster-admin/batteries/{Uri.EscapeDataString(packId)}";
 
-    /// <summary>Where the detail page finds the "Manage this battery" link, for the battery's cluster admins only.</summary>
+    /// <summary>Where the detail page finds its "Open the battery page" link, for those who may change the battery.</summary>
     public const string ManageHrefKey = "ManageHref";
 
-    /// <summary>The battery's page, when the sender may manage it; null otherwise.</summary>
+    /// <summary>
+    /// The battery's page for this sender: the team's battery page for the team (redesign R6: the team had no way back
+    /// from the detail page), the cluster admin's for the battery's cluster admins; null for anyone else.
+    /// </summary>
     public async Task<string?> ManageHrefAsync(ChangeSender? sender, string packId, CancellationToken cancellationToken = default) =>
-        sender is not null && await ManagedAsync(sender, packId, cancellationToken) is not null ? BatteryHref(packId) : null;
+        sender is null ? null
+        : sender.Kind == SenderKind.Team ? (await store.GetAsync<BatteryPack>(packId, cancellationToken) is null ? null : BatteryPages.BatteryHref(packId))
+        : await ManagedAsync(sender, packId, cancellationToken) is not null ? BatteryHref(packId) : null;
 
     /// <summary>The battery's page; with <paramref name="live"/>, the live form as typed after a refused save. Null when the sender may not manage it.</summary>
     public async Task<ClusterBatteryPage?> BatteryAsync(ChangeSender sender, string packId, EditorState? live = null, CancellationToken cancellationToken = default)

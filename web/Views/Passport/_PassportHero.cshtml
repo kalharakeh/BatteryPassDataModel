@@ -125,7 +125,7 @@
                     <a class="bp-report-hero-cta" href="@PassportPages.SummaryHref(Model.Address)"><svg class="bp-i" aria-hidden="true"><use href="#i-back" /></svg>Back to summary</a>
                     @if (ViewData["ManageHref"] is string manageHref)
                     {
-                        <a class="bp-report-hero-cta" href="@manageHref">Manage this battery<svg class="bp-i" aria-hidden="true"><use href="#i-arrow" /></svg></a>
+                        <a class="bp-report-hero-cta" href="@manageHref">Open the battery page<svg class="bp-i" aria-hidden="true"><use href="#i-arrow" /></svg></a>
                     }
                 }
                 else if (signedIn && Model.ReaderSeesMore)
