@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
+using BatteryPassWeb.Dpp.Api;
 using BatteryPassWeb.Dpp.Catalog;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Store;
@@ -18,8 +19,42 @@ public sealed record TrendPoint(DateTime AtUtc, decimal Value);
 /// <param name="Note">What the small print says under the value: when it was measured, or how the value changes.</param>
 public sealed record LiveTile(string Title, string Property, decimal? Value, string Unit, string Note, IReadOnlyList<TrendPoint> Points)
 {
-    /// <summary>The value with its unit, or a dash before there is one.</summary>
-    public string Shown => Value is { } value ? $"{ValueWords.Number(value)}{(Unit.Length == 0 ? string.Empty : $" {Unit}")}" : "—";
+    /// <summary>The value with its unit; the latest reading in words for a value that isn't a number; a dash before there is one.</summary>
+    public string Shown => Value is { } value ? $"{ValueWords.Number(value)}{(Unit.Length == 0 ? string.Empty : $" {Unit}")}" : Latest ?? "—";
+
+    /// <summary>The latest reading in words (the detail page's charts, redesign R5); null on the overview.</summary>
+    public string? Latest { get; init; }
+
+    /// <summary>How many readings the last 7 days had (the detail page's charts).</summary>
+    public int Readings { get; init; }
+
+    /// <summary>The time axis's ends, the last 7 days (the detail page's charts); null: the readings' own first and last.</summary>
+    public DateTime? FromUtc { get; init; }
+
+    public DateTime? ToUtc { get; init; }
+
+    /// <summary>The lowest and highest reading of the last 7 days; null without a number.</summary>
+    public decimal? Low => Points.Count > 0 ? Points.Min(point => point.Value) : null;
+
+    public decimal? High => Points.Count > 0 ? Points.Max(point => point.Value) : null;
+
+    /// <summary>The axis's days: where each day starts across the box, and its label ("2 Nov" for the first, then the day).</summary>
+    public IReadOnlyList<(double X, string Label)> Days(int width)
+    {
+        if (FromUtc is not { } from || ToUtc is not { } to || to <= from)
+        {
+            return [];
+        }
+
+        var days = new List<(double X, string Label)>();
+        for (var day = from.Date.AddDays(1); day < to; day = day.AddDays(1))
+        {
+            var x = (double)(day.Ticks - from.Ticks) / (to.Ticks - from.Ticks) * width;
+            days.Add((x, days.Count == 0 ? day.ToString("d MMM", CultureInfo.InvariantCulture) : day.Day.ToString(CultureInfo.InvariantCulture)));
+        }
+
+        return days;
+    }
 
     /// <summary>The trend in words, for readers who can't see the line.</summary>
     public string TrendWords => Points.Count < 2
@@ -37,8 +72,8 @@ public sealed record LiveTile(string Title, string Property, decimal? Value, str
             return null;
         }
 
-        var first = Points[0].AtUtc.Ticks;
-        var span = Math.Max(1, Points[^1].AtUtc.Ticks - first);
+        var first = (FromUtc ?? Points[0].AtUtc).Ticks;
+        var span = Math.Max(1, (ToUtc ?? Points[^1].AtUtc).Ticks - first);
         var low = Points.Min(point => point.Value);
         var high = Points.Max(point => point.Value);
         var range = high - low;
@@ -67,6 +102,49 @@ public sealed class LiveTrends(ApplicationAuditService audit, TimeProvider clock
         (87, "Temperature", "°C"),
         (59, "Capacity fade", "%"),
     ];
+
+    /// <summary>
+    /// The detail page's live values as charts (redesign R5, the owner's item 7): one per value in the reader's live
+    /// history (so who sees what is unchanged), in the catalogue's order, each with the last 7 days on a fixed time axis.
+    /// A value that isn't a number (a document) shows its latest reading in words.
+    /// </summary>
+    /// <param name="words">A reading in words, as the readings table shows it.</param>
+    public static IReadOnlyList<LiveTile> Charts(IReadOnlyList<LiveHistoryEntry> history, DateTime nowUtc, Func<LiveHistoryEntry, string> words)
+    {
+        ArgumentNullException.ThrowIfNull(history);
+        ArgumentNullException.ThrowIfNull(words);
+        var order = AttributeCatalog.All.Select((attribute, index) => (attribute.Number, index)).ToDictionary(pair => pair.Number, pair => pair.index);
+        return history
+            .GroupBy(entry => entry.Attribute.Number)
+            .OrderBy(group => order.GetValueOrDefault(group.Key, int.MaxValue))
+            .Select(group =>
+            {
+                var attribute = group.First().Attribute;
+                var latest = group.MaxBy(entry => entry.MeasuredAtUtc)!;
+                var unit = attribute.Unit ?? string.Empty;
+                var name = attribute.IsExtension ? $"{attribute.Label} {attribute.Name}" : attribute.Name;
+                var points = group
+                    .Select(entry => (entry.MeasuredAtUtc, Value: Number(entry.Value)))
+                    .Where(point => point.Value is not null)
+                    .Select(point => new TrendPoint(point.MeasuredAtUtc, point.Value!.Value))
+                    .OrderBy(point => point.AtUtc)
+                    .ToArray();
+                return new LiveTile(
+                    unit.Length == 0 ? name : $"{name} ({unit})",
+                    attribute.Property,
+                    Number(latest.Value),
+                    unit,
+                    $"Measured {ValueWords.Time(latest.MeasuredAtUtc)} · {PassportPages.SourceWord(latest.Source)}",
+                    points)
+                {
+                    Latest = words(latest),
+                    Readings = group.Count(),
+                    FromUtc = nowUtc.AddHours(-Hours),
+                    ToUtc = nowUtc,
+                };
+            })
+            .ToArray();
+    }
 
     public async Task<IReadOnlyList<LiveTile>> TilesAsync(BatteryPack pack, BatteryModel model, CancellationToken cancellationToken = default)
     {

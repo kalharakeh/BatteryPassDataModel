@@ -489,3 +489,19 @@ th .bp-status-help-words {
 [data-theme="dark"] .bp-kf-stack,
 [data-theme="dark"] .bp-kf-track { background: #334155; }
 [data-theme="dark"] .bp-kf-class { border-color: #166534; background: #052e16; color: #86efac; }
+
+/* ==== The detail page's live values as charts (redesign R5, the owner's item 7) ======================================
+   One small chart per value: the latest large, the last 7 days on a day axis, its low and high; every reading folded. */
+.bp-live-charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.bp-live-chart { display: grid; gap: 4px; min-width: 0; margin: 0; padding: 14px 16px; border: 1px solid var(--bp-border); border-radius: 12px; background: var(--bp-surface); }
+.bp-live-chart figcaption { color: var(--bp-muted); font-size: 0.8rem; font-weight: 650; }
+.bp-live-chart-value { font-size: 1.35rem; line-height: 1.2; overflow-wrap: anywhere; }
+.bp-live-chart-plot { width: 100%; height: auto; overflow: visible; }
+.bp-live-chart-plot polyline { fill: none; stroke: var(--bp-primary); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.bp-live-chart-day { stroke: var(--bp-border); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.bp-live-chart-label { fill: var(--bp-muted); font-size: 11px; text-anchor: middle; }
+.bp-live-chart-range { color: var(--bp-text); font-size: 0.8rem; }
+.bp-live-chart-flat { color: var(--bp-muted); font-size: 0.85rem; }
+.bp-live-chart small { color: var(--bp-muted); }
+.bp-live-all { margin-top: 16px; }
+.bp-live-all > summary { cursor: pointer; color: var(--bp-primary); font-weight: 600; }

@@ -6,29 +6,76 @@
     var tabs = Model.Audiences.Select(section => (Section: section, Restricted: true))
         .Concat(Model.Sections.Select(section => (Section: section, Restricted: false)))
         .ToArray();
+    // Live values and Modules are tabs too (redesign R5, the owner's item 8), after the audiences' tabs, each only for a
+    // reader it has something for: the live history is cut for the reader, the modules are null for those who may not see them.
+    var live = Model.IsCurrent && ViewData["LiveHistory"] is IReadOnlyList<BatteryPassWeb.Dpp.Api.LiveHistoryEntry> { Count: > 0 } history ? history : null;
+    var modules = Model.Modules is { Count: > 0 } listed ? listed : null;
+    var extra = new List<(string Key, string Tab)>();
+    if (live is not null)
+    {
+        extra.Add(("live", "Live values"));
+    }
+
+    if (modules is not null)
+    {
+        extra.Add(("modules", "Modules"));
+    }
+
+    var buttons = tabs.Take(Model.Audiences.Count).Select(tab => (tab.Section.Key, tab.Section.Tab, Restricted: true))
+        .Concat(extra.Select(tab => (tab.Key, tab.Tab, Restricted: true)))
+        .Concat(tabs.Skip(Model.Audiences.Count).Select(tab => (tab.Section.Key, tab.Section.Tab, Restricted: false)))
+        .ToArray();
 }
 <section class="bp-card bp-report-wide-section">
     <ul class="nav nav-tabs bp-tabs" id="passport-tabs" role="tablist" style="flex-wrap:wrap;overflow-x:visible">
-        @for (var index = 0; index < tabs.Length; index++)
+        @for (var index = 0; index < buttons.Length; index++)
         {
-            var (tab, restricted) = tabs[index];
+            var (key, label, restricted) = buttons[index];
             <li class="nav-item" role="presentation">
-                <button class="nav-link@(index == 0 ? " active" : string.Empty)" data-bs-toggle="tab" data-bs-target="#tab-@tab.Key" type="button" role="tab" aria-selected="@(index == 0 ? "true" : "false")">
+                <button class="nav-link@(index == 0 ? " active" : string.Empty)" data-bs-toggle="tab" data-bs-target="#tab-@key" type="button" role="tab" aria-selected="@(index == 0 ? "true" : "false")">
                     @if (restricted)
                     {
                         <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="vertical-align:-2px;margin-right:4px"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5" /><path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7" /></svg>
                     }
-                    @tab.Tab
+                    @label
                 </button>
             </li>
         }
     </ul>
 
     <div class="tab-content pt-4">
+        @if (live is not null)
+        {
+            <div class="tab-pane fade@(buttons[0].Key == "live" ? " show active" : string.Empty)" id="tab-live" role="tabpanel">
+                <partial name="_LiveHistory" model="live" />
+            </div>
+        }
+        @if (modules is not null)
+        {
+            <div class="tab-pane fade@(buttons[0].Key == "modules" ? " show active" : string.Empty)" id="tab-modules" role="tabpanel">
+                <h2 class="h5 mb-2">@Words.Count(modules.Count, "module")</h2>
+                <p class="bp-help-text">Seen only by the battery's cluster, market surveillance and the manufacturer's team.</p>
+                <div class="bp-table-scroll">
+                    <table class="table align-middle bp-console-table bp-mobile-card-table mb-0">
+                        <thead><tr><th>Position</th><th>Serial number</th><th>Connectivity ID</th></tr></thead>
+                        <tbody>
+                            @foreach (var module in modules)
+                            {
+                                <tr>
+                                    <td data-label="Position">@module.Position</td>
+                                    <td data-label="Serial number">@(module.SerialNumber ?? "-")</td>
+                                    <td data-label="Connectivity ID">@(module.ConnectivityId ?? "-")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
         @for (var index = 0; index < tabs.Length; index++)
         {
             var (tab, _) = tabs[index];
-            <div class="tab-pane fade@(index == 0 ? " show active" : string.Empty)" id="tab-@tab.Key" role="tabpanel">
+            <div class="tab-pane fade@(buttons[0].Key == tab.Key ? " show active" : string.Empty)" id="tab-@tab.Key" role="tabpanel">
                 <h2 class="h5 mb-2">@tab.Title</h2>
                 <p class="bp-help-text">@tab.Note</p>
                 @if (tab.Key == "purchaser" && Model.Current is not null)
