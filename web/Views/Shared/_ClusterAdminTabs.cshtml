@@ -9,12 +9,13 @@
 
 <div class="bp-admin-heading">
     <h1>Cluster admin</h1>
-    <p>Users and API tokens for @(string.IsNullOrWhiteSpace(scope) ? "the clusters you run" : scope).</p>
+    <p>Batteries, users and API tokens for @(string.IsNullOrWhiteSpace(scope) ? "the clusters you run" : scope).</p>
 </div>
 
 <form class="bp-admin-mobile-tab-form mt-4" aria-label="Cluster administration section">
     <label for="bp-cluster-admin-mobile-tab-select">Cluster admin section</label>
     <select id="bp-cluster-admin-mobile-tab-select" data-admin-mobile-tab-select>
+        <option value="/registry">Batteries</option>
         <option value="/cluster-admin/users" selected="@IsSelected("users")">Users</option>
         <option value="/cluster-admin/api-tokens" selected="@IsSelected("api-tokens")">API tokens</option>
     </select>
@@ -22,6 +23,8 @@
 
 <nav class="bp-local-admin-nav" aria-label="Local admin tabs">
     <div class="bp-tab-row">
+        @* The cluster's batteries are in the Registry (decision 30); the tab leads there, as the old app's own tab did (R6). *@
+        <a class="@TabClass("batteries")" href="/registry">Batteries</a>
         <a class="@TabClass("users")" href="/cluster-admin/users">Users</a>
         <a class="@TabClass("api-tokens")" href="/cluster-admin/api-tokens">API tokens</a>
     </div>
