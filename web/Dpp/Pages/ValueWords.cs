@@ -21,6 +21,9 @@ public static class ValueWords
 {
     private static readonly CultureInfo English = CultureInfo.GetCultureInfo("en-GB");
 
+    /// <summary>What a web link is called instead of its address (redesign R6, the owner's choice 6).</summary>
+    private static readonly Dictionary<int, string> LinkWords = new() { [36] = "Carbon footprint study" };
+
     /// <summary>The battery category (#20) in words: "industrial/non-stationary battery" reads "Industrial, non-stationary battery".</summary>
     public static string CategoryWords(string code)
     {
@@ -93,7 +96,8 @@ public static class ValueWords
             case FormKind.Single:
                 var only = form.Inputs[0];
                 var single = Part(only, only.Path.Length == 0 ? value : value[only.Path]);
-                return single is null ? [] : [new ValueLine(null, single, only.Kind == InputKind.Url ? single : null)];
+                // A web link reads as what it is when the passport has words for it (#36, redesign R6); its address shows on hover.
+                return single is null ? [] : [new ValueLine(null, only.Kind == InputKind.Url && LinkWords.GetValueOrDefault(form.Attribute.Number) is { } words ? words : single, only.Kind == InputKind.Url ? single : null)];
             default:
                 return form.Inputs
                     .Select(input => (input.Label, Text: Part(input, value[input.Path])))
