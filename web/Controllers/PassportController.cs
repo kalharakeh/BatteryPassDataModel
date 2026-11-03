@@ -70,7 +70,7 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
 
         // The current version's live values over the last week, for those who may see them (decision 30), from the same
         // change log and the same rule as the API's history.
-        if (liveHistory is not null && page.IsCurrent)
+        if (liveHistory is not null && page.Current is null) // the battery's latest passport, active or not (redesign R6)
         {
             ViewData["LiveHistory"] = await liveHistory.HistoryAsync(reader, page.Version.PackId, BatteryApi.MaxHistoryHours, cancellationToken);
         }

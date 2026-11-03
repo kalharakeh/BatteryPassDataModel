@@ -3,7 +3,7 @@
 @using BatteryPassWeb.Dpp.Pages
 @inject AttributeForms Forms
 @inject TimeProvider Clock
-@model IReadOnlyList<LiveHistoryEntry>
+@model LiveTab
 @{
     // The live values of the last week (decision 30), as this reader may see them: one small chart per value (redesign
     // R5, the owner's item 7), then every reading, newest first, folded. The detail page's "Live values" tab (item 8).
@@ -11,10 +11,10 @@
     const int Width = 300;
     const int Height = 70;
     string Reading(LiveHistoryEntry entry) => string.Join(", ", ValueWords.Lines(Forms.For(entry.Attribute), entry.Value).Select(line => line.Text));
-    var charts = LiveTrends.Charts(Model, Clock.GetUtcNow().UtcDateTime, Reading);
+    var charts = LiveTrends.ForTab(Model.Latest, Model.History, Clock.GetUtcNow().UtcDateTime, Reading);
 }
 <h2 class="h5 mb-2">The last 7 days</h2>
-<p class="bp-help-text">Each value now, and how it went over the last week. Every reading, with when it was measured and how it arrived, is under the charts.</p>
+<p class="bp-help-text">Each value's latest reading and when it was taken, and how it went over the last week when the battery sent readings. Every reading of the week, with when it was measured and how it arrived, is under the charts.</p>
 <div class="bp-live-charts">
     @foreach (var chart in charts)
     {
@@ -35,20 +35,22 @@
             }
             else
             {
-                <span class="bp-live-chart-flat">@(chart.Readings == 1 ? "One reading this week" : $"{Words.Count(chart.Readings, "reading")} this week")</span>
+                <span class="bp-live-chart-flat">@(chart.Readings switch { 0 => "No reading in the last 7 days", 1 => "One reading this week", _ => $"{Words.Count(chart.Readings, "reading")} this week" })</span>
             }
             <small>@chart.Note</small>
         </figure>
     }
 </div>
+@if (Model.History.Count > 0)
+{
 <details class="bp-live-all">
-    <summary>All readings (@Model.Count)</summary>
-    <p class="text-secondary small mt-2">Newest first.@(Model.Count > Shown ? $" The latest {Shown} of {Model.Count}." : string.Empty)</p>
+    <summary>All readings (@Model.History.Count)</summary>
+    <p class="text-secondary small mt-2">Newest first.@(Model.History.Count > Shown ? $" The latest {Shown} of {Model.History.Count}." : string.Empty)</p>
     <div class="bp-table-scroll">
         <table class="table align-middle bp-console-table bp-mobile-card-table mb-0">
             <thead><tr><th>Measured</th><th>Value</th><th>Reading</th><th>Came from</th></tr></thead>
             <tbody>
-                @foreach (var entry in Model.Take(Shown))
+                @foreach (var entry in Model.History.Take(Shown))
                 {
                     <tr>
                         <td data-label="Measured">@ValueWords.Time(entry.MeasuredAtUtc)</td>
@@ -61,3 +63,4 @@
         </table>
     </div>
 </details>
+}

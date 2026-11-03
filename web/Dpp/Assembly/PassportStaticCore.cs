@@ -39,9 +39,10 @@ public static class PassportStaticCore
     }
 
     /// <summary>
-    /// The passport readers see: the signed core with the version's #2 and #4 and, for the active version, the pack's
-    /// live values. Archived versions get no live values, because live values aren't versioned; so an archived passport
-    /// lacks the required live set and doesn't pass the schema's required lists. That is expected.
+    /// The passport readers see: the signed core with the version's #2 and #4 and, for the battery's newest passport (active,
+    /// or frozen by a mark), the pack's live values. Archived and inactive versions get no live values, because live values
+    /// aren't versioned; so such a passport lacks the required live set and doesn't pass the schema's required lists. That
+    /// is expected.
     /// </summary>
     public static JsonObject Compose(JsonNode core, string dppStatus, DateTime lastUpdatedUtc, IReadOnlyDictionary<string, AttributeValue>? liveValues)
     {

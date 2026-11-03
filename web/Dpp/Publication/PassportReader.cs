@@ -40,9 +40,17 @@ public sealed class PassportReader(DppStore store)
 
     private async Task<PublishedPassport> ComposeAsync(PassportVersion version, CancellationToken cancellationToken)
     {
-        var liveValues = version.DppStatus == DppStatuses.Active
+        var liveValues = IsNewest(version.DppStatus)
             ? (await store.GetAsync<BatteryPack>(version.PackId, cancellationToken))?.Values
             : null;
         return new PublishedPassport(version, PassportStaticCore.Compose(version.StaticCore, version.DppStatus, version.LastUpdatedUtc, liveValues));
     }
+
+    /// <summary>
+    /// The battery's newest passport carries its live values: the active one, or one a mark has frozen (invalid, marked
+    /// for deletion), which keeps the last values it had (redesign R6). An older version of the same passport (archived)
+    /// and a passport a newer one replaced (inactive) have none.
+    /// </summary>
+    private static bool IsNewest(string status) =>
+        status is DppStatuses.Active or DppStatuses.Invalid or DppStatuses.MarkedForDeletion;
 }

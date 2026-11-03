@@ -77,8 +77,8 @@ public sealed class LiveChartsTests
         Assert.DoesNotContain("bp-passport-module-list", detail, StringComparison.Ordinal);
         Assert.DoesNotContain("<partial name=\"_LiveHistory\"", detail, StringComparison.Ordinal);
         Assert.Contains("<partial name=\"_PassportTabs\" model=\"Model\" view-data=\"ViewData\" />", detail, StringComparison.Ordinal);
-        Assert.Contains("<summary>All readings (@Model.Count)</summary>", live, StringComparison.Ordinal);
-        Assert.Contains("var charts = LiveTrends.Charts(Model, Clock.GetUtcNow().UtcDateTime, Reading);", live, StringComparison.Ordinal);
+        Assert.Contains("<summary>All readings (@Model.History.Count)</summary>", live, StringComparison.Ordinal); // the tab's own model since R6
+        Assert.Contains("var charts = LiveTrends.ForTab(Model.Latest, Model.History, Clock.GetUtcNow().UtcDateTime, Reading);", live, StringComparison.Ordinal);
         Assert.Contains("a[href^=\"#tab-\"]", Read("wwwroot", "js", "bp-passport-links.js"), StringComparison.Ordinal);
     }
 }

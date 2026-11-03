@@ -8,7 +8,12 @@
         .ToArray();
     // Live values and Modules are tabs too (redesign R5, the owner's item 8), after the audiences' tabs, each only for a
     // reader it has something for: the live history is cut for the reader, the modules are null for those who may not see them.
-    var live = Model.IsCurrent && ViewData["LiveHistory"] is IReadOnlyList<BatteryPassWeb.Dpp.Api.LiveHistoryEntry> { Count: > 0 } history ? history : null;
+    // Live values: whenever this reader may see one on the battery's latest passport (redesign R6), with the last week's
+    // readings when there are any; an older version leads to the current one instead.
+    var liveValues = Model.Audiences.SelectMany(section => section.Values).Where(value => value.Attribute.Change == BatteryPassWeb.Dpp.Catalog.ChangeRule.Live).ToArray();
+    var live = Model.Current is null && liveValues.Length > 0
+        ? new LiveTab(liveValues, ViewData["LiveHistory"] as IReadOnlyList<BatteryPassWeb.Dpp.Api.LiveHistoryEntry> ?? [])
+        : null;
     var modules = Model.Modules is { Count: > 0 } listed ? listed : null;
     var extra = new List<(string Key, string Tab)>();
     if (live is not null)

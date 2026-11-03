@@ -9,6 +9,9 @@ using MongoDB.Bson;
 
 namespace BatteryPassWeb.Dpp.Pages;
 
+/// <summary>The detail page's Live values tab: the reader's latest live values and the last week's readings (redesign R6).</summary>
+public sealed record LiveTab(IReadOnlyList<ShownValue> Latest, IReadOnlyList<LiveHistoryEntry> History);
+
 /// <summary>One reading of a tile's trend line: when it was measured, and the value.</summary>
 public sealed record TrendPoint(DateTime AtUtc, decimal Value);
 
@@ -142,6 +145,42 @@ public sealed class LiveTrends(ApplicationAuditService audit, TimeProvider clock
                     FromUtc = nowUtc.AddHours(-Hours),
                     ToUtc = nowUtc,
                 };
+            })
+            .ToArray();
+    }
+
+    /// <summary>
+    /// The detail page's Live values tab (redesign R6, the managing session's rule): one tile per live value the reader
+    /// may see (<paramref name="latest"/>, from their passport tabs), each with its latest reading and its date, even when
+    /// that is older than the last 7 days, and the week's line when the week had readings (<paramref name="history"/>).
+    /// </summary>
+    public static IReadOnlyList<LiveTile> ForTab(IReadOnlyList<ShownValue> latest, IReadOnlyList<LiveHistoryEntry> history, DateTime nowUtc, Func<LiveHistoryEntry, string> words)
+    {
+        ArgumentNullException.ThrowIfNull(latest);
+        ArgumentNullException.ThrowIfNull(history);
+        var week = Charts(history.Where(entry => entry.MeasuredAtUtc >= nowUtc.AddHours(-Hours)).ToArray(), nowUtc, words)
+            .ToDictionary(chart => chart.Property, StringComparer.Ordinal);
+        var order = AttributeCatalog.All.Select((attribute, index) => (attribute.Number, index)).ToDictionary(pair => pair.Number, pair => pair.index);
+        return latest
+            .Where(value => value.Attribute.Change == ChangeRule.Live)
+            .OrderBy(value => order.GetValueOrDefault(value.Attribute.Number, int.MaxValue))
+            .Select(value =>
+            {
+                var unit = value.Attribute.Unit ?? string.Empty;
+                var name = value.Attribute.IsExtension ? $"{value.Attribute.Label} {value.Attribute.Name}" : value.Attribute.Name;
+                var note = value.Origin is { } origin
+                    ? $"{(origin.Measured ? "Measured" : "Entered")} {ValueWords.Time(origin.GeneratedAtUtc)} · {PassportPages.SourceWord(origin.Source)}"
+                    : "When it was measured isn't known";
+                var shown = string.Join(", ", value.Lines.Select(line => line.Text));
+                return week.TryGetValue(value.Attribute.Property, out var chart)
+                    ? chart with { Value = null, Note = note, Latest = shown }
+                    : new LiveTile(unit.Length == 0 ? name : $"{name} ({unit})", value.Attribute.Property, null, unit, note, [])
+                    {
+                        Latest = shown,
+                        Readings = 0,
+                        FromUtc = nowUtc.AddHours(-Hours),
+                        ToUtc = nowUtc,
+                    };
             })
             .ToArray();
     }
