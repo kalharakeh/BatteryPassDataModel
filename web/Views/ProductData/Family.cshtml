@@ -272,12 +272,15 @@
             <form method="post" action="@Model.Removal.Action" class="d-flex flex-wrap align-items-center gap-3 mt-2">
                 @Html.AntiForgeryToken()
                 <span>It has no models. Removing it deletes its name and picture; this can't be undone.</span>
-                <button type="submit" class="bp-danger-button bp-button-compact text-nowrap">Remove battery family</button>
+                <button type="submit" class="bp-danger-button bp-button-compact text-nowrap" data-confirm-action data-confirm-title="Remove battery family" data-confirm-message="Remove this battery family, its name and picture? It can't be undone." data-confirm-submit="Remove">Remove battery family</button>
             </form>
         }
     </details>
+    @* Asks before a removal that can't be undone (redesign R6). *@
+    @await Html.PartialAsync("_ConfirmModal")
 </main>
 
 @section Scripts {
     <script src="~/js/bp-record-editor.js" asp-append-version="true"></script>
+    <script src="~/js/bp-confirm.js" asp-append-version="true"></script>
 }

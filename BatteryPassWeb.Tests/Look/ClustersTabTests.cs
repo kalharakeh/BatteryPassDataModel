@@ -87,7 +87,8 @@ public sealed class ClustersTabTests(MongoFixture mongo)
         Assert.DoesNotContain("data-confirm-modal hidden", page, StringComparison.Ordinal);
         Assert.Contains("document.querySelectorAll('[data-open-dialog]')", script, StringComparison.Ordinal);
         Assert.Contains("document.querySelectorAll('dialog[data-open-on-load=\"true\"]')", script, StringComparison.Ordinal);
-        Assert.Contains("document.querySelectorAll('[data-confirm-action]')", script, StringComparison.Ordinal);
+        Assert.Contains("document.querySelectorAll('[data-confirm-action]')", File.ReadAllText(DppTestFiles.RepoFile("web", "wwwroot", "js", "bp-confirm.js")), StringComparison.Ordinal); // its own script since R6
+        Assert.Contains("<script src=\"~/js/bp-confirm.js\" asp-append-version=\"true\"></script>", page, StringComparison.Ordinal);
         Assert.Contains("data-confirm-modal hidden", File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Shared", "_ConfirmModal.cshtml")), StringComparison.Ordinal);
     }
 

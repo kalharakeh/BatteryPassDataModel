@@ -219,7 +219,7 @@
         <form method="post" action="@Model.Removal.Action" class="d-flex flex-wrap align-items-center gap-3 mt-2">
             @Html.AntiForgeryToken()
             <span>Nothing uses it yet. Removing it deletes its values@(Model.Kind is TargetKind.Model or TargetKind.Batch ? " and uploaded documents" : string.Empty); this can't be undone.</span>
-            <button type="submit" class="bp-danger-button bp-button-compact text-nowrap">Remove @kindWord</button>
+            <button type="submit" class="bp-danger-button bp-button-compact text-nowrap" data-confirm-action data-confirm-title="Remove @kindWord" data-confirm-message="Remove this @kindWord and its values? It can't be undone." data-confirm-submit="Remove">Remove @kindWord</button>
         </form>
     }
 </details>

@@ -100,8 +100,11 @@
     {
         <div class="bp-card mt-4">Choose a site or an operator above to edit its passport values.</div>
     }
+    @* Asks before a removal that can't be undone (redesign R6). *@
+    @await Html.PartialAsync("_ConfirmModal")
 </main>
 
 @section Scripts {
     <script src="~/js/bp-record-editor.js" asp-append-version="true"></script>
+    <script src="~/js/bp-confirm.js" asp-append-version="true"></script>
 }

@@ -145,7 +145,7 @@ public sealed class DemoCardTests(MongoFixture mongo)
     {
         var page = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
         var card = page[page.IndexOf("data-demo-data-card", StringComparison.Ordinal)..page.IndexOf("@if (selectedTab == \"users\")", StringComparison.Ordinal)];
-        var script = File.ReadAllText(DppTestFiles.RepoFile("web", "wwwroot", "js", "bp-admin-pages.js"));
+        var script = File.ReadAllText(DppTestFiles.RepoFile("web", "wwwroot", "js", "bp-confirm.js")); // the confirm window's own script since R6
 
         Assert.Equal(2, card.Split("data-confirm-busy=\"").Length - 1);
         Assert.Contains("data-confirm-busy=\"Resetting the demo data… This takes a little over a minute. Keep this page open; it reloads when done.\"", card, StringComparison.Ordinal);

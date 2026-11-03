@@ -53,8 +53,11 @@
 
     @await Html.PartialAsync("_Messages")
     @await Html.PartialAsync("_RecordEditor", Model.Editor)
+    @* Asks before a removal that can't be undone (redesign R6). *@
+    @await Html.PartialAsync("_ConfirmModal")
 </main>
 
 @section Scripts {
     <script src="~/js/bp-record-editor.js" asp-append-version="true"></script>
+    <script src="~/js/bp-confirm.js" asp-append-version="true"></script>
 }
