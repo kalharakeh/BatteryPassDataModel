@@ -1900,6 +1900,43 @@ main .bp-field-marker.is-published {
   margin-top: 16px;
 }
 
+/* A frozen passport: why adding is off, and the way to the new passport (redesign R5, item 6). */
+.bp-accident-frozen {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--bp-border);
+  border-radius: 10px;
+  background: rgba(100, 116, 139, 0.06);
+}
+
+.bp-accident-frozen .bp-i {
+  margin-top: 2px;
+  color: var(--bp-muted);
+}
+
+/* How the passport's readers see the reports: a small link, after the work. */
+.bp-accident-readers {
+  margin: 16px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--bp-border);
+  font-size: 0.85rem;
+}
+
+.bp-accident-readers a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.bp-accident-readers .bp-i {
+  width: 16px;
+  height: 16px;
+}
+
 /* A new battery: where it comes from, then its own values. */
 .bp-new-battery-part + .bp-new-battery-part {
   margin-top: 22px;

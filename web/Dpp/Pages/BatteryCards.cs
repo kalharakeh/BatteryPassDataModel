@@ -12,6 +12,7 @@ namespace BatteryPassWeb.Dpp.Pages;
 /// <param name="ModuleDescriptionHref">Where the team types the model's module description; null on the cluster admin's page.</param>
 /// <param name="FrozenAs">The DPP status (#2) of a passport that is no longer active (inactive, invalid or marked for
 /// deletion); null while it is active or a draft.</param>
+/// <param name="NewPassportHref">An inactive passport's new passport, where the battery's reports go now (redesign R5); null otherwise.</param>
 public sealed record BatteryCards(
     BatteryPack Pack,
     string Href,
@@ -22,7 +23,8 @@ public sealed record BatteryCards(
     bool ForTeam,
     string? ModuleDescriptionHref = null,
     bool HasModuleDescription = false,
-    string? FrozenAs = null)
+    string? FrozenAs = null,
+    string? NewPassportHref = null)
 {
     /// <summary>Whether nothing on the passport changes any more (step 4c).</summary>
     public bool Frozen => FrozenAs is not null;
