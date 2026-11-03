@@ -532,8 +532,12 @@ public sealed class DppStore
             return [];
         }
 
+        // The battery's newest passport counts while it is active, and while a mark freezes it (invalid, marked for
+        // deletion): its cluster reads it as when it was active (redesign R7, like PassportReader's live values). An
+        // archived version or a passport a newer one replaced (inactive) doesn't.
         return await Collection<PassportVersion>()
-            .Find(version => packIds.Contains(version.PackId) && version.DppStatus == DppStatuses.Active)
+            .Find(version => packIds.Contains(version.PackId)
+                && (version.DppStatus == DppStatuses.Active || version.DppStatus == DppStatuses.Invalid || version.DppStatus == DppStatuses.MarkedForDeletion))
             .Project(version => version.PackId)
             .ToListAsync(cancellationToken);
     }
