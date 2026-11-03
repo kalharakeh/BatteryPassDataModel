@@ -37,7 +37,7 @@ public sealed class AccidentSectionTests(MongoFixture mongo)
 
         Assert.Contains("See and add this battery's accident reports here.", card, StringComparison.Ordinal);
         Assert.True(list > 0 && upload > list && readers > upload);
-        Assert.Contains("<p class=\"bp-accident-readers\"><a href=\"@ReaderPages.AccidentsHref(Model.Pack.Id)\" target=\"_blank\" rel=\"noreferrer\">", card, StringComparison.Ordinal);
+        Assert.Contains("<p class=\"bp-accident-readers\"><a href=\"@ReaderPages.AccidentsHref(Model.Pack.Id)\">", card, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -48,7 +48,7 @@
                 </div>
                 @if (Model.Status?.Predecessor is { } replaced)
                 {
-                    <p class="bp-lineage"><svg class="bp-i" aria-hidden="true"><use href="#i-history" /></svg>New passport of @replaced.SerialNumber. Its <a href="/dpp/@batteryKey/detail" target="_blank" rel="noreferrer">detail page</a> links the earlier one.</p>
+                    <p class="bp-lineage"><svg class="bp-i" aria-hidden="true"><use href="#i-history" /></svg>New passport of @replaced.SerialNumber. Its <a href="/dpp/@batteryKey/detail">detail page</a> links the earlier one.</p>
                 }
             </div>
             <div class="bp-bh-facts-row">
@@ -99,8 +99,8 @@
                 <button type="button" class="bp-secondary-button bp-with-icon" data-open-dialog="handover-dialog"><svg class="bp-i" aria-hidden="true"><use href="#i-handover" /></svg>Hand over…</button>
             }
             <nav class="bp-bh-open" aria-label="This battery elsewhere">
-                <a class="bp-ilink" href="/dpp/@batteryKey" target="_blank" rel="noreferrer" title="The public summary, as anyone sees it"><svg class="bp-i" aria-hidden="true"><use href="#i-globe" /></svg>Public page</a>
-                <a class="bp-ilink" href="/dpp/@batteryKey/detail" target="_blank" rel="noreferrer" title="Everything your cluster sees"><svg class="bp-i" aria-hidden="true"><use href="#i-doc" /></svg>Detail page</a>
+                <a class="bp-ilink" href="/dpp/@batteryKey" title="The public summary, as anyone sees it"><svg class="bp-i" aria-hidden="true"><use href="#i-globe" /></svg>Public page</a>
+                <a class="bp-ilink" href="/dpp/@batteryKey/detail" title="Everything your cluster sees"><svg class="bp-i" aria-hidden="true"><use href="#i-doc" /></svg>Detail page</a>
                 <a class="bp-ilink" href="@ReaderPages.AccidentsHref(Model.Pack.Id)" title="The battery's accident reports, as readers see them"><svg class="bp-i" aria-hidden="true"><use href="#i-accident" /></svg>Accident page</a>
             </nav>
         </div>

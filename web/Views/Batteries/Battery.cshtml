@@ -190,8 +190,8 @@
             <nav class="bp-bh-open" aria-label="This battery elsewhere">
                 @if (publication.IsPublished)
                 {
-                    <a class="bp-ilink" href="/dpp/@batteryKey" target="_blank" rel="noreferrer" title="The public summary, as anyone sees it"><svg class="bp-i" aria-hidden="true"><use href="#i-globe" /></svg>Public page</a>
-                    <a class="bp-ilink" href="/dpp/@batteryKey/detail" target="_blank" rel="noreferrer" title="Everything its readers see, by who they are"><svg class="bp-i" aria-hidden="true"><use href="#i-doc" /></svg>Detail page</a>
+                    <a class="bp-ilink" href="/dpp/@batteryKey" title="The public summary, as anyone sees it"><svg class="bp-i" aria-hidden="true"><use href="#i-globe" /></svg>Public page</a>
+                    <a class="bp-ilink" href="/dpp/@batteryKey/detail" title="Everything its readers see, by who they are"><svg class="bp-i" aria-hidden="true"><use href="#i-doc" /></svg>Detail page</a>
                 }
                 <a class="bp-ilink" href="/qr/@batteryKey/svg" target="_blank" rel="noreferrer" title="@(publication.IsPublished ? "Opens the public summary" : "Opens the public summary once the passport is published")"><svg class="bp-i" aria-hidden="true"><use href="#i-qr" /></svg>QR code</a>
                 <a class="bp-ilink" href="/qr/@batteryKey/download" title="Save the QR code as a picture"><svg class="bp-i" aria-hidden="true"><use href="#i-download" /></svg>Save QR</a>
