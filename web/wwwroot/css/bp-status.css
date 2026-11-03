@@ -505,3 +505,7 @@ th .bp-status-help-words {
 .bp-live-chart small { color: var(--bp-muted); }
 .bp-live-all { margin-top: 16px; }
 .bp-live-all > summary { cursor: pointer; color: var(--bp-primary); font-weight: 600; }
+
+/* The passport hero's buttons carry the app's arrow icons, not typed arrows (redesign R6). */
+.bp-report-hero-cta { gap: 8px; }
+.bp-report-hero-cta .bp-i { width: 18px; height: 18px; flex: none; }
