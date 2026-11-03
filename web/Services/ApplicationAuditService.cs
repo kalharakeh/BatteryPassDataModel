@@ -177,6 +177,22 @@ public sealed class ApplicationAuditService
             .ToListAsync(cancellationToken);
     }
 
+    /// <summary>Every event of one record, newest first: a battery's whole timeline (redesign R6, the cluster admin's History).</summary>
+    public async Task<IReadOnlyList<BsonDocument>> ListEntityTimelineAsync(string entityType, string entityId, CancellationToken cancellationToken = default)
+    {
+        if (GetApplicationAuditEventsCollection() is not { } collection)
+        {
+            return [];
+        }
+
+        var filter = Builders<BsonDocument>.Filter;
+        return await collection
+            .Find(filter.Eq("entityType", entityType) & filter.Eq("entityId", entityId))
+            .Sort(Builders<BsonDocument>.Sort.Descending("createdAt"))
+            .Limit(5000)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<BsonDocument>> ListApplicationAuditEventsAsync(
         ApplicationAuditFilter filter,
         CancellationToken cancellationToken = default)

@@ -14,7 +14,7 @@ public sealed class BatteryPageLayoutTests
         foreach (var (page, ids) in new[]
         {
             (View("Batteries", "Battery.cshtml"), new[] { "overview", "values", "status", "live", "accidents", "modules", "versions" }),
-            (View("ClusterAdmin", "Battery.cshtml"), new[] { "overview", "status", "live", "accidents", "handover", "modules", "versions" }),
+            (View("ClusterAdmin", "Battery.cshtml"), new[] { "overview", "status", "live", "accidents", "handover", "modules", "versions", "history" }),
         })
         {
             var start = page.IndexOf("<div class=\"bp-bpanel\">", StringComparison.Ordinal);

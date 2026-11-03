@@ -3548,3 +3548,31 @@ main .bp-field-marker.is-published {
 .bp-bpanel .bp-console-table td[data-label="Published"] {
   white-space: normal;
 }
+
+/* The cluster admin's History (redesign R6): one line per event, its time first. */
+.bp-cluster-history {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bp-cluster-history li {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 4px 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--bp-border);
+}
+
+.bp-cluster-history-when {
+  color: var(--bp-muted);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 575.98px) {
+  .bp-cluster-history li {
+    grid-template-columns: 1fr;
+  }
+}

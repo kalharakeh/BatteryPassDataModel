@@ -60,6 +60,7 @@ public static class DppServiceCollectionExtensions
         services.AddSingleton<UploadService>();
         services.AddSingleton<PassportPages>();
         services.AddSingleton<AuditLines>();
+        services.AddSingleton<ClusterHistory>();
         return services;
     }
 }

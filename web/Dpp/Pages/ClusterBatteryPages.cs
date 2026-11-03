@@ -32,6 +32,9 @@ public sealed record ClusterBatteryPage(
     /// <summary>The "Hand over" card (step 4d): the waiting hand-over, or the window to ask for one.</summary>
     public HandOverCardView HandOver { get; init; } = new(string.Empty, string.Empty, null, null);
 
+    /// <summary>What happened while the battery was in this cluster, as its admin may read it (redesign R6), newest first.</summary>
+    public IReadOnlyList<BatteryPassWeb.Dpp.Audit.AuditLine> History { get; init; } = [];
+
     /// <summary>The team page's cards, without what only the team does (step 4a).</summary>
     public BatteryCards Cards => new(Pack, Href, Live, AccidentReports, Versions, Live.Languages, ForTeam: false);
 
@@ -54,6 +57,7 @@ public sealed record ClusterBatteryPage(
             sections.Add(new("handover", "Hand over", "handover", HandOver.Waiting is null ? "To another cluster" : "Waiting for their answer"));
             sections.Add(new("modules", "Modules", "modules", Count: Pack.Modules.Count));
             sections.Add(new("versions", "Versions", "versions", Count: Versions.Count));
+            sections.Add(new("history", "History", "history", "While it was your cluster's")); // redesign R6
             return sections;
         }
     }
@@ -74,7 +78,8 @@ public sealed class ClusterBatteryPages(
     DocumentStore documentStore,
     ClusterRepository clusters,
     StatusPages status,
-    LiveTrends? trends = null)
+    LiveTrends? trends = null,
+    BatteryPassWeb.Dpp.Audit.ClusterHistory? history = null)
 {
     public static string BatteryHref(string packId) => $"/cluster-admin/batteries/{Uri.EscapeDataString(packId)}";
 
@@ -142,6 +147,7 @@ public sealed class ClusterBatteryPages(
             Status = await status.CardAsync(sources, active: true, href, forTeam: false, cancellationToken: cancellationToken),
             Tiles = trends is null ? [] : await trends.TilesAsync(sources.Pack, sources.Model, cancellationToken),
             HandOver = new HandOverCardView($"{href}/handover", serial, waiting, waiting is null ? null : names.GetValueOrDefault(waiting.ToClusterId) ?? waiting.ToClusterId),
+            History = history is null ? [] : await history.ForAsync(pack, sender.ClusterIds, cancellationToken),
         };
     }
 

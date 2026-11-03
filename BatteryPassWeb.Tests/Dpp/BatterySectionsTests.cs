@@ -69,6 +69,6 @@ public sealed class BatterySectionsTests(MongoFixture mongo)
 
         var page = (await ClusterBatteryPagesTests.Pages(rig).BatteryAsync(ChangeSender.ClusterAdmin("north-admin@example.com", BatteryTesting.North), rig.PackId))!;
 
-        Assert.Equal(["overview", "status", "live", "accidents", "handover", "modules", "versions"], page.Sections.Select(section => section.Id));
+        Assert.Equal(["overview", "status", "live", "accidents", "handover", "modules", "versions", "history"], page.Sections.Select(section => section.Id));
     }
 }
