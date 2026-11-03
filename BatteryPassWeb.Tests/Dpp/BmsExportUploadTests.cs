@@ -44,6 +44,7 @@ public sealed class BmsExportUploadTests(MongoFixture mongo)
         Assert.Equal([(1, null, "MD-A1"), (2, "MD-2", "MD-A2")], entry.Modules!.Select(module => (module.Position, module.SerialNumber, module.ConnectivityId)));
         Assert.Equal([BmsExportFormat.NoTemperature], entry.Notes);
         Assert.Equal(["manufacturingDate"], entry.FillOnly);
+        Assert.Equal(126.0m, entry.RemainingCapacityAh);
     }
 
     [Fact]
@@ -167,6 +168,26 @@ public sealed class BmsExportUploadTests(MongoFixture mongo)
     }
 
     internal const string DateNotUsed = "the manufacturing date in the file isn't used";
+
+    [Fact]
+    public async Task TheRemainingCapacity_ShouldBeKeptForTheStatusWindowUnlessANewerOneIs()
+    {
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
+        var feed = ChangeSender.Feed("north-feed", BatteryTesting.North);
+        var older = Export(UploadServiceTests.Serial(rig));
+        older["metadata"]!["exportedAt"] = "2026-10-27T07:00:00Z";
+        older["values"]!["remainingCapacityAh"]!["formatted"] = "150.0 Ah";
+
+        await Run(rig, feed, Export(UploadServiceTests.Serial(rig)), preview: true);
+        Assert.Null((await rig.Store.GetAsync<BatteryPack>(rig.PackId))!.RemainingCapacity);
+        await Run(rig, feed, Export(UploadServiceTests.Serial(rig)));
+        await Run(rig, feed, older);
+
+        var kept = (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!.RemainingCapacity!;
+        Assert.Equal((126.0m, new DateTime(2026, 10, 28, 7, 40, 26, 319, DateTimeKind.Utc)), (kept.Ah, kept.MeasuredAtUtc));
+        var card = (await BatteryTesting.Pages(rig).BatteryAsync(rig.PackId))!.Status!;
+        Assert.Equal(126.0m, card.Remaining!.Ah);
+    }
 
     [Fact]
     public async Task TheSameModulesAgain_ShouldBeLeftAsTheyAreAndAPreviewShouldSaveNone()

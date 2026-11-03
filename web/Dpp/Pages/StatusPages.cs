@@ -39,6 +39,7 @@ public sealed record PredecessorView(string SerialNumber, string Href, bool Inac
 /// </summary>
 /// <param name="CanChange">False for a draft or a waste battery; the window isn't offered then.</param>
 /// <param name="RatedCapacityAh">The model's rated capacity (#57), for the fade suggestion; null when it has none.</param>
+/// <param name="Remaining">The latest remaining capacity the battery system exported, which the suggestion starts with (step 5b).</param>
 public sealed record StatusCardView(
     string Status,
     DateTime? Since,
@@ -52,7 +53,8 @@ public sealed record StatusCardView(
     bool ForTeam,
     bool MayAddNote = false,
     SuccessionView? Succession = null,
-    PredecessorView? Predecessor = null)
+    PredecessorView? Predecessor = null,
+    RemainingCapacityReading? Remaining = null)
 {
     /// <summary>Where "Add a note to the history" posts (decision 34).</summary>
     public string NoteAction => $"{Restated.SaveAction}/note";
@@ -137,7 +139,8 @@ public sealed class StatusPages(DppStore store, RecordEditor editor, StatusChang
             forTeam,
             MayAddNote: active,
             Succession: successionView,
-            Predecessor: await PredecessorAsync(pack, forTeam, cancellationToken));
+            Predecessor: await PredecessorAsync(pack, forTeam, cancellationToken),
+            Remaining: pack.RemainingCapacity);
     }
 
     private async Task<SuccessionView?> SuccessionAsync(BatteryPack pack, string href, bool forTeam, CancellationToken cancellationToken)

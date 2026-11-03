@@ -116,6 +116,13 @@ public sealed partial class BmsExportFormat : IUploadAdapter
             values["manufacturingDate"] = produced;
         }
 
+        // The remaining capacity isn't passport data; it is kept to suggest the capacity fade (J-11, Q16).
+        decimal? remaining = null;
+        if (Formatted(exportValues, "remainingCapacityAh") is { } capacity && AmpereHours().Match(capacity) is { Success: true } ah)
+        {
+            remaining = decimal.Parse(ah.Groups[1].Value, CultureInfo.InvariantCulture);
+        }
+
         IReadOnlyList<BatteryModule> modules = [];
         string? problem = null;
         if (device is not null)
@@ -128,7 +135,7 @@ public sealed partial class BmsExportFormat : IUploadAdapter
             notes.Add($"the module list wasn't read: {problem}");
         }
 
-        return new UploadDocument(format, [new UploadEntry(1, serial, measuredAt, values, Modules: modules, Notes: notes, FillOnly: ["manufacturingDate"])]);
+        return new UploadDocument(format, [new UploadEntry(1, serial, measuredAt, values, Modules: modules, Notes: notes, FillOnly: ["manufacturingDate"], RemainingCapacityAh: remaining)]);
     }
 
     private static int Minutes(double seconds) => (int)Math.Floor(seconds / 60);
@@ -149,4 +156,7 @@ public sealed partial class BmsExportFormat : IUploadAdapter
 
     [GeneratedRegex(@"^\d{4}-(0[1-9]|1[0-2])$")]
     private static partial Regex YearMonth();
+
+    [GeneratedRegex(@"^(\d{1,6}(?:\.\d+)?)\s*Ah$")]
+    private static partial Regex AmpereHours();
 }

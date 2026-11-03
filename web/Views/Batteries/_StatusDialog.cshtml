@@ -38,9 +38,9 @@
                         @if (field.Attribute.Number == 59 && Model.RatedCapacityAh is { } rated)
                         {
                             <div class="bp-suggest" data-fade-suggest data-rated="@rated.ToString(System.Globalization.CultureInfo.InvariantCulture)">
-                                <label><span>Measured remaining capacity (Ah)</span><input type="text" inputmode="decimal" data-fade-remaining /></label>
+                                <label><span>Measured remaining capacity (Ah)</span><input type="text" inputmode="decimal" data-fade-remaining value="@(Model.Remaining?.Ah.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture))" /></label>
                                 <button type="button" class="bp-text-button" data-fade-button>Suggest the fade</button>
-                                <small class="bp-field-help" data-fade-note>1 − remaining / @ValueWords.Number(rated) Ah rated. The measured capacity isn't stored.</small>
+                                <small class="bp-field-help" data-fade-note>1 − remaining / @ValueWords.Number(rated) Ah rated.@(Model.Remaining is { } reading ? $" It starts with the battery system's last export, {ValueWords.Time(reading.MeasuredAtUtc)}." : " The measured capacity isn't part of the passport.")</small>
                             </div>
                         }
                     }

@@ -128,6 +128,11 @@ public sealed class UploadService(
             notes = [.. notes, .. unused];
             var result = await pipeline.SaveAsync(sender, new ChangeSet(TargetKind.Pack, pack.Id, values, source, entry.MeasuredAtUtc), preview, cancellationToken);
             var modules = await ModulesAsync(sender, pack, entry.Modules, preview, cancellationToken);
+            if (!preview && entry.RemainingCapacityAh is { } remaining)
+            {
+                await store.SetRemainingCapacityAsync(pack.Id, new RemainingCapacityReading { Ah = remaining, MeasuredAtUtc = entry.MeasuredAtUtc ?? clock.GetUtcNow().UtcDateTime }, cancellationToken);
+            }
+
             var outcome = result.Keys.Any(key => key.Outcome == KeyOutcome.Saved) || modules is { Changed: true } ? Saved : NothingSaved;
             reports.Add(new UploadedBatteryReport(entry.Number, entry.NamedAs, target!.Identifier, pack.Id, outcome, null, result.Keys, modules?.Words, notes));
         }

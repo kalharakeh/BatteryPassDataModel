@@ -128,6 +128,9 @@ public sealed class BatteryPack : IDppRecord
     /// </summary>
     public List<RepairEntry> Repairs { get; set; } = [];
 
+    /// <summary>The latest remaining capacity its battery system exported (step 5b); null when none was.</summary>
+    public RemainingCapacityReading? RemainingCapacity { get; set; }
+
     /// <summary>
     /// Placed on the market again (design 7.5, step 4c-1): what the status was, and the battery's new passport, Scania's
     /// (a new pack) or another operator's. Null while the battery isn't waiting for a new passport. App data.
@@ -297,6 +300,18 @@ public sealed class UploadedValue
     public required string Outcome { get; init; }
 
     public string? Message { get; init; }
+}
+
+/// <summary>
+/// The battery's latest measured remaining capacity from its battery system's export (decision 35, step 5b). App data,
+/// not passport data: the status window offers it to suggest the capacity fade (#59, J-11).
+/// </summary>
+public sealed class RemainingCapacityReading
+{
+    public decimal Ah { get; init; }
+
+    [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+    public DateTime MeasuredAtUtc { get; init; }
 }
 
 /// <summary>One repair of a pack (design 7.9): when, what was repaired, and who recorded it when.</summary>

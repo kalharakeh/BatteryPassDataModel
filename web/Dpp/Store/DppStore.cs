@@ -253,6 +253,21 @@ public sealed class DppStore
         return result.MatchedCount == 1;
     }
 
+    /// <summary>
+    /// Keeps a remaining capacity reading (step 5b) unless the pack already has a newer one. False when nothing changed.
+    /// </summary>
+    public async Task<bool> SetRemainingCapacityAsync(string packId, RemainingCapacityReading reading, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(reading);
+        var result = await Collection<BatteryPack>().UpdateOneAsync(
+            Builders<BatteryPack>.Filter.Eq(pack => pack.Id, packId)
+            & (Builders<BatteryPack>.Filter.Eq(pack => pack.RemainingCapacity, null)
+               | Builders<BatteryPack>.Filter.Lte(pack => pack.RemainingCapacity!.MeasuredAtUtc, reading.MeasuredAtUtc)),
+            Builders<BatteryPack>.Update.Set(pack => pack.RemainingCapacity, reading),
+            cancellationToken: cancellationToken);
+        return result.ModifiedCount == 1;
+    }
+
     /// <summary>Replaces a pack's module list (decision 31). False when the pack doesn't exist.</summary>
     public async Task<bool> SetPackModulesAsync(string packId, IReadOnlyList<BatteryModule> modules, CancellationToken cancellationToken = default)
     {
