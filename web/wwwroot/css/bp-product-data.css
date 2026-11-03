@@ -3539,3 +3539,12 @@ main .bp-field-marker.is-published {
   color: var(--bp-primary);
 }
 
+/* The battery page's tables fit the panel beside the side menu (redesign R6): site.css gives console tables a
+   1080 px minimum, wider than the panel at 1280 px, which hid the right-hand columns behind a sideways scroll. */
+.bp-bpanel .bp-console-table {
+  min-width: 0;
+}
+
+.bp-bpanel .bp-console-table td[data-label="Published"] {
+  white-space: normal;
+}
