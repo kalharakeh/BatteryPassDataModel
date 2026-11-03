@@ -81,11 +81,11 @@
                     {
                         @await Html.PartialAsync("_TestTag", "Test ID")
                     }
-                    @if (Model.Status?.Predecessor is { } earlier)
+                    @if (Model.Chain.Count == 0 && Model.Status?.Predecessor is { } earlier)
                     {
                         <a class="bp-chip" href="@earlier.Href"><svg class="bp-i" aria-hidden="true"><use href="#i-history" /></svg>Earlier passport</a>
                     }
-                    @if (Model.Status?.Succession is { Linked: true } next && (next.SuccessorHref ?? next.OtherPassport) is { } newPassport)
+                    @if (Model.Chain.Count == 0 && Model.Status?.Succession is { Linked: true } next && (next.SuccessorHref ?? next.OtherPassport) is { } newPassport)
                     {
                         <a class="bp-chip" href="@newPassport"><svg class="bp-i" aria-hidden="true"><use href="#i-arrow" /></svg>New passport</a>
                     }
