@@ -12,7 +12,7 @@
 6. **Key figures** (task 6; the owner chose the recommended set R of `docs/mockups/dpp-v3-key-figures.html`: "yes your recomended"). The public summary's "Summary report" card (power, the carbon pie, recycled content) becomes "Key figures": eight public values in three groups, as tiles. *Using it:* capacity and voltage (#57, #66, #64, #65), power (#67, #70, the stored watts shown in kW), expected lifetime (#82, #85, warranty #19), round-trip efficiency (#71, #72). *Environment:* the carbon footprint and its class (#30, #35) with one bar split by the four life-cycle stages instead of the pie (#31–#34), recycled content per material (#49–#52) and the renewable share (#53). *Safety:* chemistry and critical raw materials (#41, #42), safe idle temperatures and the fire extinguishing agent (#88, #89, #26). Public attributes only, read from the passport as everyone sees it, so the card is the same for every reader; nothing is worked out. The same card shows on the detail page between the hero and the data sections, where each title links down to its full entry with its date and source (owner: "yes add links"): the link opens the entry's tab and any folded part, scrolls to it and marks it. The summary's card has no links.
 7. **The detail page's live values as small charts** (task 7; owner: "why is the last 7 days list very long? … can we make them a plot or graph"). One chart per live value the reader may see (the same values as before): the latest value large, the last 7 days as a line on a day axis, its low and high and how many readings, units in the title. A value with one reading says "One reading this week". Every reading stays, newest first, folded under the charts as "All readings (N)".
 8. **Live values and Modules are tabs** (task 7; owner: "modules and live values should be in their each own tab as well"), after the audiences' tabs, each only for a reader it has something for. The cards under the tabs are gone; a `#tab-live` link opens its tab.
-9. **What the page review found** (task 8): each action has one place, the header ("Change status" and "Add a note" were repeated on the Status section, "Publish passport" in the overview), and the label names the model and its family clearly ("Compact 7M · Compact family", not "Compact 7M of Compact").
+9. **What the page review found** (task 8): each action has one place, the header ("Change status" and "Add a note" were repeated on the Status section, "Publish passport" in the overview), and the label names the model and its family clearly ("Compact 7M · Compact family", not "Compact 7M of Compact"). With the managing session's answers: **the passport status (#2) shows in the badge's words** wherever a page shows it ("Active", not "active"; the passport and the API keep the schema's value), and **the cluster admin's "Hand over…" opens its window directly** from the header, like marking a passport: the window moves to page level (`_HandOverDialog`), and the Hand over section keeps the explanation and the waiting state without a second button.
 
 **Architecture:**
 - `Dpp/Pages/RowActions.cs` and `Views/Shared/_RowActions.cshtml` (task 1) draw a row's icons with the old app's `.bp-report-action` styles, which `site.css` still has (tooltips and dark mode included). `RegistryPage.Actions` gives the team its own battery page and history, a cluster admin theirs.
@@ -41,7 +41,7 @@
   - Run every `dotnet test` and `dotnet build` with `--disable-build-servers`, in a shell where `export MSBUILDDISABLENODEREUSE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0` was run first. The whole suite also takes `--blame-hang --blame-hang-timeout 10m`.
   - **Each task runs only its own tests** (the filter in its steps); **the whole suite runs once**, in the final checks. Never run two whole suites at once.
   - Runs have sometimes taken far longer while the machine was busy with other sessions: a slowdown, not a stuck test. If a run seems stuck for more than 20 minutes, stop only the `dotnet` and `testhost` processes your own run started (by their process IDs, never by name) and run it again.
-- **Baseline:** `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --disable-build-servers` shows `Passed:  2329`. After this plan: 2360. The suite takes about three minutes.
+- **Baseline:** `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --disable-build-servers` shows `Passed:  2329`. After this plan: 2364. The suite takes about three minutes.
 - **Patches:** changed files are given as patches. Save each block to the file it names, outside the worktree (e.g. `../r5-task1-code.patch`), and run `git apply ../<name>` from the worktree root. New files are given whole; a removed file has its `git rm`.
 - **Commits:** each task's commit command carries the `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` line. Never push.
 - **`site.css` is not changed.** The new styles go to `bp-product-data.css` (battery pages and lists) and `bp-status.css` (every page).
@@ -54,6 +54,7 @@
 - `AdminFeedbackFollowupTests` finds the report card's styles in `_KeyFigures` instead of `Summary.cshtml` (task 6).
 - `DppApiControllerTests.PassportsController` becomes `internal`, so `OneRowPerBatteryTests` can check that the API's lists keep both rows (task 2).
 - `_PassportStatusCard.cshtml` is removed (task 3); nothing else is. The detail page's Modules and live-values cards move into tabs (task 7).
+- `PassportPagesTests` reads #2 as "Active" and "Archived", and `HandOverPagesTests` finds the hand-over window in `_HandOverDialog` (task 8).
 
 ---
 
@@ -2901,25 +2902,88 @@ git commit -m "feat(dpp): the detail page's live values as charts, and Live valu
 
 ### Task 8: What the page review found: one place per action, clearer words
 
-The whole-page review at 1280 px. Change status, Add a note and Publish passport are only among the header's actions (the Status section and the overview say so instead of repeating them), and the label reads "Compact 7M · Compact family".
+The whole-page review at 1280 px. Change status, Add a note and Publish passport are only among the header's actions (the Status section and the overview say so instead of repeating them), and the label reads "Compact 7M · Compact family". The passport status shows in the badge's words ("Active"), and the cluster admin's "Hand over…" opens its window from the header, with no second button in the section.
 
 **Files:**
+- Test (modify): `BatteryPassWeb.Tests/Dpp/HandOverPagesTests.cs`
 - Test (create): `BatteryPassWeb.Tests/Dpp/PageReviewFixesTests.cs`
+- Test (modify): `BatteryPassWeb.Tests/Dpp/PassportPagesTests.cs`
+- Modify: `web/Dpp/Pages/ValueWords.cs`
 - Modify: `web/Views/Batteries/Battery.cshtml`
 - Modify: `web/Views/Batteries/_StatusCard.cshtml`
 - Modify: `web/Views/ClusterAdmin/Battery.cshtml`
+- Modify: `web/Views/ClusterAdmin/_HandOverCard.cshtml`
+- Create: `web/Views/ClusterAdmin/_HandOverDialog.cshtml`
 
 - [ ] **Step 1: Write the failing tests**
+
+Patch `r5-task8-tests.patch` (`BatteryPassWeb.Tests/Dpp/HandOverPagesTests.cs`, `BatteryPassWeb.Tests/Dpp/PassportPagesTests.cs`). Save the block as `../r5-task8-tests.patch`, outside the worktree, and run `git apply ../r5-task8-tests.patch` from the worktree root:
+
+```diff
+diff --git a/BatteryPassWeb.Tests/Dpp/HandOverPagesTests.cs b/BatteryPassWeb.Tests/Dpp/HandOverPagesTests.cs
+index f65161b..baddce3 100644
+--- a/BatteryPassWeb.Tests/Dpp/HandOverPagesTests.cs
++++ b/BatteryPassWeb.Tests/Dpp/HandOverPagesTests.cs
+@@ -143,16 +143,17 @@ public sealed class HandOverPagesTests(MongoFixture mongo)
+     {
+         var cluster = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "ClusterAdmin", "Battery.cshtml"));
+         var card = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "ClusterAdmin", "_HandOverCard.cshtml"));
++        var window = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "ClusterAdmin", "_HandOverDialog.cshtml")); // at page level since R5
+         var registry = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Registry", "Index.cshtml"));
+         var battery = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Batteries", "Battery.cshtml"));
+         var script = File.ReadAllText(DppTestFiles.RepoFile("web", "wwwroot", "js", "bp-record-editor.js"));
+         var styles = File.ReadAllText(DppTestFiles.RepoFile("web", "wwwroot", "css", "bp-product-data.css"));
+ 
+         Assert.Contains("~/Views/ClusterAdmin/_HandOverCard.cshtml\", Model.HandOver", cluster, StringComparison.Ordinal);
+-        Assert.Contains("data-open-on-load=\"@(found ? \"true\" : \"false\")\"", card, StringComparison.Ordinal);
+-        Assert.Contains("name=\"checkedId\"", card, StringComparison.Ordinal);
+-        Assert.Contains("TempData[ClusterBatteriesController.HandOverToKey] as string", card, StringComparison.Ordinal); // read once, so the window opens only right after "Find the cluster"
+-        Assert.DoesNotContain("TempData.Peek", card, StringComparison.Ordinal);
++        Assert.Contains("data-open-on-load=\"@(found ? \"true\" : \"false\")\"", window, StringComparison.Ordinal);
++        Assert.Contains("name=\"checkedId\"", window, StringComparison.Ordinal);
++        Assert.Contains("TempData[ClusterBatteriesController.HandOverToKey] as string", window, StringComparison.Ordinal); // read once, so the window opens only right after "Find the cluster"
++        Assert.DoesNotContain("TempData.Peek", window, StringComparison.Ordinal);
+         Assert.Contains("Cancel the hand-over</button>", cluster, StringComparison.Ordinal); // one Cancel, on the header's line (redesign R4)
+         Assert.DoesNotContain("/cancel", card, StringComparison.Ordinal);
+         Assert.Contains("foreach (var waiting in Model.Waiting)", registry, StringComparison.Ordinal);
+diff --git a/BatteryPassWeb.Tests/Dpp/PassportPagesTests.cs b/BatteryPassWeb.Tests/Dpp/PassportPagesTests.cs
+index 126bd48..2f1933c 100644
+--- a/BatteryPassWeb.Tests/Dpp/PassportPagesTests.cs
++++ b/BatteryPassWeb.Tests/Dpp/PassportPagesTests.cs
+@@ -65,7 +65,7 @@ public sealed class PassportPagesTests(MongoFixture mongo)
+             page.Sections.Select(section => section.Tab));
+         Assert.Null(page.Value(22));
+         Assert.Equal("VPC8C05-6788", page.Text(11));
+-        Assert.Equal("active", page.Text(2));
++        Assert.Equal("Active", page.Text(2)); // the badge's words; the passport keeps "active" (R5)
+     }
+ 
+     [Fact]
+@@ -183,7 +183,7 @@ public sealed class PassportPagesTests(MongoFixture mongo)
+         Assert.Equal(second.Id, page.Current?.Id);
+         Assert.Equal(first.DigitalProductPassportId, page.Address);
+         Assert.Equal(first.DigitalProductPassportId, (await Pages(rig).LocateAsync(first.DigitalProductPassportId))!.Address);
+-        Assert.Equal("archived", page.Text(2));
++        Assert.Equal("Archived", page.Text(2)); // the badge's words (R5)
+         Assert.Equal("512.5 kg", page.Text(21));
+         Assert.Null(page.Value(21)!.Origin);
+         var purchaser = page.Audiences.Single(section => section.Key == "purchaser").Values.Select(value => value.Attribute.Number).ToArray();
+```
 
 `BatteryPassWeb.Tests/Dpp/PageReviewFixesTests.cs`:
 
 ```csharp
+using System.Text.Json.Nodes;
+using BatteryPassWeb.Dpp.Catalog;
+using BatteryPassWeb.Dpp.Pages;
+
 namespace BatteryPassWeb.Tests.Dpp;
 
 /// <summary>
 /// Redesign R5, the whole-page review at 1280 px (manager's request): one place per action, the header's (the Status
 /// section and the overview repeated Change status, Add a note and Publish passport), and a clearer label for the model
-/// and its family ("Compact 7M · Compact family", not "Compact 7M of Compact").
+/// and its family ("Compact 7M · Compact family", not "Compact 7M of Compact"). The manager's answers: the passport status
+/// in the badge's words wherever it shows (b), and the cluster admin's "Hand over…" opening its window directly (c).
 /// </summary>
 public sealed class PageReviewFixesTests
 {
@@ -2942,6 +3006,32 @@ public sealed class PageReviewFixesTests
         Assert.Contains("among the page's actions.", card, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("active", "Active")]
+    [InlineData("marked-for-deletion", "Marked for deletion")]
+    [InlineData("inactive", "Inactive")]
+    public void ThePassportStatus_ShouldShowInTheBadgesWords(string stored, string shown)
+    {
+        var lines = ValueWords.Lines(AttributeFormsTests.Forms.For(AttributeCatalog.ByNumber(2)), new JsonObject { ["dppStatusValue"] = stored }); // the schema's shape
+
+        Assert.Equal(shown, Assert.Single(lines).Text);
+    }
+
+    [Fact]
+    public void TheClusterAdminsHandOver_ShouldOpenItsWindowFromTheHeader_WithNoSecondButton()
+    {
+        var page = View("ClusterAdmin", "Battery.cshtml");
+        var header = page[..page.IndexOf("</header>", StringComparison.Ordinal)];
+        var card = View("ClusterAdmin", "_HandOverCard.cshtml");
+
+        Assert.Contains("data-open-dialog=\"handover-dialog\"><svg class=\"bp-i\" aria-hidden=\"true\"><use href=\"#i-handover\" /></svg>Hand over…</button>", header, StringComparison.Ordinal);
+        Assert.DoesNotContain("section=handover", page, StringComparison.Ordinal);
+        Assert.Contains("@await Html.PartialAsync(\"~/Views/ClusterAdmin/_HandOverDialog.cshtml\", Model.HandOver)", page[page.IndexOf("</header>", StringComparison.Ordinal)..], StringComparison.Ordinal);
+        Assert.DoesNotContain("<button", card, StringComparison.Ordinal);
+        Assert.DoesNotContain("<dialog", card, StringComparison.Ordinal);
+        Assert.Contains("Waiting for @Model.ReceiverName", card, StringComparison.Ordinal); // the section keeps the waiting state
+    }
+
     [Fact]
     public void TheLabel_ShouldNameTheModelAndItsFamily()
     {
@@ -2953,14 +3043,32 @@ public sealed class PageReviewFixesTests
 
 - [ ] **Step 2: Run them to see them fail**
 
-Run: `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --disable-build-servers --filter "FullyQualifiedName~PageReviewFixesTests"`
-Expected: `Failed:     2, Passed:     0` (failing: `PageReviewFixesTests.EachAction_ShouldBeInTheHeaderOnly`, `PageReviewFixesTests.TheLabel_ShouldNameTheModelAndItsFamily`).
+Run: `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --disable-build-servers --filter "FullyQualifiedName~HandOverPagesTests | FullyQualifiedName~PageReviewFixesTests | FullyQualifiedName~PassportPagesTests"`
+Expected: `Failed:     9, Passed:    21` (failing: `HandOverPagesTests.ThePages_ShouldDrawTheCardTheWindowAndTheWaitingRows`, `PageReviewFixesTests.EachAction_ShouldBeInTheHeaderOnly`, `PageReviewFixesTests.TheClusterAdminsHandOver_ShouldOpenItsWindowFromTheHeader_WithNoSecondButton`, `PageReviewFixesTests.TheLabel_ShouldNameTheModelAndItsFamily`, `PassportPagesTests.AnArchivedVersion_ShouldShowItsOwnDataAndLinkToTheCurrentOne`, `PassportPagesTests.TheSummary_ShouldShowEveryPublicValueAndNothingElseWhoeverReads`).
 
 - [ ] **Step 3: Write the code**
 
-Patch `r5-task8-code.patch` (`web/Views/Batteries/Battery.cshtml`, `web/Views/Batteries/_StatusCard.cshtml`, `web/Views/ClusterAdmin/Battery.cshtml`). Save the block as `../r5-task8-code.patch`, outside the worktree, and run `git apply ../r5-task8-code.patch` from the worktree root:
+Patch `r5-task8-code.patch` (`web/Dpp/Pages/ValueWords.cs`, `web/Views/Batteries/Battery.cshtml`, `web/Views/Batteries/_StatusCard.cshtml`, `web/Views/ClusterAdmin/Battery.cshtml`, `web/Views/ClusterAdmin/_HandOverCard.cshtml`). Save the block as `../r5-task8-code.patch`, outside the worktree, and run `git apply ../r5-task8-code.patch` from the worktree root:
 
 ```diff
+diff --git a/web/Dpp/Pages/ValueWords.cs b/web/Dpp/Pages/ValueWords.cs
+index 82e7cda..0e59351 100644
+--- a/web/Dpp/Pages/ValueWords.cs
++++ b/web/Dpp/Pages/ValueWords.cs
+@@ -34,6 +34,13 @@ public static class ValueWords
+             return [new ValueLine(null, Time(updated))];
+         }
+ 
++        // The passport status (#2) in the badge's words ("Active"); the passport keeps the schema's value (redesign R5).
++        // The schema holds it as { "dppStatusValue": "active" }.
++        if (form.Attribute.Number == 2 && (value is JsonObject holder ? holder["dppStatusValue"] : value) is JsonValue status && status.TryGetValue<string>(out var stored))
++        {
++            return [new ValueLine(null, BatteryPassWeb.Dpp.Store.DppStatuses.Words(stored))];
++        }
++
+         switch (form.Kind)
+         {
+             case FormKind.Link:
 diff --git a/web/Views/Batteries/Battery.cshtml b/web/Views/Batteries/Battery.cshtml
 index 629aef7..c180a32 100644
 --- a/web/Views/Batteries/Battery.cshtml
@@ -3013,7 +3121,7 @@ index 2f929af..f88c904 100644
      @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "status")
      @if (Model.Succession is { Linked: false } next)
 diff --git a/web/Views/ClusterAdmin/Battery.cshtml b/web/Views/ClusterAdmin/Battery.cshtml
-index 44f4c4b..be03877 100644
+index 44f4c4b..40de0cb 100644
 --- a/web/Views/ClusterAdmin/Battery.cshtml
 +++ b/web/Views/ClusterAdmin/Battery.cshtml
 @@ -32,7 +32,7 @@
@@ -3025,17 +3133,125 @@ index 44f4c4b..be03877 100644
                  <h1>@Model.SerialNumber</h1>
                  <div class="bp-badges">
                      @if (StatusBadge.Battery(Model.Status?.Status) is { } battery)
+@@ -93,7 +93,11 @@
+                     }
+                 </div>
+             }
+-            <a class="bp-secondary-button bp-with-icon" href="@Model.Href?section=handover"><svg class="bp-i" aria-hidden="true"><use href="#i-handover" /></svg>Hand over…</a>
++            @if (Model.HandOver.Waiting is null)
++            {
++                @* Opens the window directly, like marking a passport (redesign R5, the owner's answer c). *@
++                <button type="button" class="bp-secondary-button bp-with-icon" data-open-dialog="handover-dialog"><svg class="bp-i" aria-hidden="true"><use href="#i-handover" /></svg>Hand over…</button>
++            }
+             <nav class="bp-bh-open" aria-label="This battery elsewhere">
+                 <a class="bp-ilink" href="/dpp/@batteryKey" target="_blank" rel="noreferrer" title="The public summary, as anyone sees it"><svg class="bp-i" aria-hidden="true"><use href="#i-globe" /></svg>Public page</a>
+                 <a class="bp-ilink" href="/dpp/@batteryKey/detail" target="_blank" rel="noreferrer" title="Everything your cluster sees"><svg class="bp-i" aria-hidden="true"><use href="#i-doc" /></svg>Detail page</a>
+@@ -144,6 +148,12 @@
+     {
+         @await Html.PartialAsync("~/Views/Batteries/_StatusDialog.cshtml", statusWindows)
+     }
++    @if (Model.HandOver.Waiting is null)
++    {
++        <div class="bp-console-form-card bp-dialog-host">
++            @await Html.PartialAsync("~/Views/ClusterAdmin/_HandOverDialog.cshtml", Model.HandOver)
++        </div>
++    }
+ </main>
+ 
+ @section Scripts {
+diff --git a/web/Views/ClusterAdmin/_HandOverCard.cshtml b/web/Views/ClusterAdmin/_HandOverCard.cshtml
+index 8640afa..f6d5e4e 100644
+--- a/web/Views/ClusterAdmin/_HandOverCard.cshtml
++++ b/web/Views/ClusterAdmin/_HandOverCard.cshtml
+@@ -1,14 +1,7 @@
+-@using BatteryPassWeb.Controllers
+ @using BatteryPassWeb.Dpp.Pages
+ @model HandOverCardView
+-@* The "Hand over" card and window (step 4d, mock-up S2 and S8): the sender names the receiving cluster by its ID, sees its
+-   name, and asks; while it waits, the battery stays here and the sender can cancel. *@
+-@{
+-    // Read (not peeked), so they are gone on the next visit: the window opens only right after "Find the cluster".
+-    var typed = TempData[ClusterBatteriesController.HandOverToKey] as string;
+-    var name = TempData[ClusterBatteriesController.HandOverNameKey] as string;
+-    var found = typed is not null && name is not null && Model.Waiting is null;
+-}
++@* The "Hand over" card (step 4d, mock-up S2): what a hand-over does, or the one waiting. The window is at page level
++   (_HandOverDialog), opened by the header's "Hand over…" (redesign R5, the owner's answer c), so no second button here. *@
+ <section class="bp-card bp-console-form-card bp-battery-card mt-4" id="handover">
+     @if (Model.Waiting is { } waiting)
+     {
+@@ -25,26 +18,9 @@
+                 <span class="bp-summary-title">Hand over <em class="bp-field-marker">Not passport data</em></span>
+                 <h2>Sold or moved to another customer?</h2>
+                 <p class="mb-0">Hand the battery over to their cluster. It moves once their cluster admin accepts; your cluster then no longer sees its purchaser data. The passport doesn't change.</p>
++                <p class="bp-help-text mt-2 mb-0">Start it with <strong>Hand over…</strong> among the page's actions.</p>
+             </div>
+-            <button type="button" class="bp-secondary-button" data-open-dialog="handover-dialog">Hand over…</button>
+         </div>
+         @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "handover")
+-        <dialog id="handover-dialog" class="bp-modal-panel bp-dialog" aria-labelledby="handover-dialog-title" data-open-on-load="@(found ? "true" : "false")">
+-            <form method="post" action="@Model.Action" class="bp-dialog-form">
+-                @Html.AntiForgeryToken()
+-                <h2 id="handover-dialog-title">Hand @Model.SerialNumber over</h2>
+-                <p class="bp-help-text">Ask the receiving customer for their cluster ID.</p>
+-                <label><span>Receiving cluster ID</span><input type="text" name="toClusterId" value="@typed" autocomplete="off" required /></label>
+-                @if (found)
+-                {
+-                    <input type="hidden" name="checkedId" value="@typed" />
+-                    <p class="bp-done-note mb-0">@name</p>
+-                }
+-                <div class="bp-dialog-actions">
+-                    <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
+-                    <button type="submit" class="bp-primary-button">@(found ? "Ask them to accept" : "Find the cluster")</button>
+-                </div>
+-            </form>
+-        </dialog>
+     }
+ </section>
+```
+
+`web/Views/ClusterAdmin/_HandOverDialog.cshtml`:
+
+```cshtml
+@using BatteryPassWeb.Controllers
+@using BatteryPassWeb.Dpp.Pages
+@model HandOverCardView
+@* The "Hand over…" window (step 4d, mock-up S8), at page level so the header's "Hand over…" opens it from any section
+   (redesign R5, the owner's answer c): the sender names the receiving cluster by its ID, sees its name, and asks. *@
+@{
+    // Read (not peeked), so they are gone on the next visit: the window opens only right after "Find the cluster".
+    var typed = TempData[ClusterBatteriesController.HandOverToKey] as string;
+    var name = TempData[ClusterBatteriesController.HandOverNameKey] as string;
+    var found = typed is not null && name is not null && Model.Waiting is null;
+}
+<dialog id="handover-dialog" class="bp-modal-panel bp-dialog" aria-labelledby="handover-dialog-title" data-open-on-load="@(found ? "true" : "false")">
+    <form method="post" action="@Model.Action" class="bp-dialog-form">
+        @Html.AntiForgeryToken()
+        <h2 id="handover-dialog-title">Hand @Model.SerialNumber over</h2>
+        <p class="bp-help-text">Ask the receiving customer for their cluster ID.</p>
+        <label><span>Receiving cluster ID</span><input type="text" name="toClusterId" value="@typed" autocomplete="off" required /></label>
+        @if (found)
+        {
+            <input type="hidden" name="checkedId" value="@typed" />
+            <p class="bp-done-note mb-0">@name</p>
+        }
+        <div class="bp-dialog-actions">
+            <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
+            <button type="submit" class="bp-primary-button">@(found ? "Ask them to accept" : "Find the cluster")</button>
+        </div>
+    </form>
+</dialog>
 ```
 
 - [ ] **Step 4: Run them to see them pass**
 
-Run: `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --disable-build-servers --filter "FullyQualifiedName~PageReviewFixesTests"`
-Expected: `Passed!  - Failed:     0, Passed:     2`. The whole suite runs once, in the final checks.
+Run: `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --disable-build-servers --filter "FullyQualifiedName~HandOverPagesTests | FullyQualifiedName~PageReviewFixesTests | FullyQualifiedName~PassportPagesTests"`
+Expected: `Passed!  - Failed:     0, Passed:    30`. The whole suite runs once, in the final checks.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add BatteryPassWeb.Tests/Dpp/PageReviewFixesTests.cs web/Views/Batteries/Battery.cshtml web/Views/Batteries/_StatusCard.cshtml web/Views/ClusterAdmin/Battery.cshtml
+git add BatteryPassWeb.Tests/Dpp/HandOverPagesTests.cs BatteryPassWeb.Tests/Dpp/PageReviewFixesTests.cs BatteryPassWeb.Tests/Dpp/PassportPagesTests.cs web/Dpp/Pages/ValueWords.cs web/Views/Batteries/Battery.cshtml web/Views/Batteries/_StatusCard.cshtml web/Views/ClusterAdmin/Battery.cshtml web/Views/ClusterAdmin/_HandOverCard.cshtml web/Views/ClusterAdmin/_HandOverDialog.cshtml
 git commit -m "fix(dpp): one place per action on the battery pages, and the model named with its family" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
@@ -3046,7 +3262,7 @@ git commit -m "fix(dpp): one place per action on the battery pages, and the mode
 - [ ] **Step 1: Run the whole suite**
 
 Run: `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --disable-build-servers --blame-hang --blame-hang-timeout 10m`
-Expected: `Passed!  - Failed:     0, Passed:  2360, Skipped:     0, Total:  2360` (31 more than the 2329 before).
+Expected: `Passed!  - Failed:     0, Passed:  2364, Skipped:     0, Total:  2364` (35 more than the 2329 before).
 
 - [ ] **Step 2: Build without warnings**
 
@@ -3066,7 +3282,7 @@ Expected: nothing listed by either.
 4. **DEMO-C7M-0001 → Accident reports:** the report, then "Add a report", then "How readers see it". **DEMO-C13M-0001's earlier passport → Accident reports:** "Adding reports is off on this passport" and "Add them on the new passport".
 5. **As the demo North admin:** the Registry rows end in the icons, without History.
 6. **DEMO-C7M-0001's public page:** "Key figures" with eight tiles in three groups and no links. **Its detail page:** the same card under the hero; "Capacity and voltage ↓" opens the Performance tab and marks "Rated capacity" with its date and source. The Live values tab shows seven small charts and "All readings" folded; the Modules tab the seven modules.
-7. **DEMO-C7M-0001 → Status & repairs:** no second Change status or Add a note; the label reads "Compact 7M · Compact family".
+7. **DEMO-C7M-0001 → Status & repairs:** no second Change status or Add a note; the label reads "Compact 7M · Compact family". Its detail page's Passport tab says "DPP Status: Active". **As the demo North admin:** "Hand over…" in the header opens the window from any section.
 
 ## Next
 
