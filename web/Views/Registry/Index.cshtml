@@ -44,77 +44,11 @@
         </section>
     }
 
-    <section class="bp-console-toolbar bp-battery-table-toolbar">
-        <form action="/registry" class="bp-search-form" role="search">
-            <input name="q" value="@Model.Query" placeholder="Serial number, battery ID or passport ID" aria-label="Search the registry" />
-            <button type="submit">Search</button>
-        </form>
-    </section>
-
-    <section class="bp-card bp-console-form-card bp-product-editor-section mt-4">
-        @if (Model.Rows.Count == 0)
-        {
-            @* A search says what it looked for and how to see every battery again, like the team's list (redesign R6). *@
-            <p class="mb-0">@(string.IsNullOrWhiteSpace(Model.Query) ? "No batteries to show." : $"No battery you may open matches “{Model.Query}”.")@if (!string.IsNullOrWhiteSpace(Model.Query))
-                {
-                    <text> <a href="/registry">Show all</a></text>
-                }</p>
-        }
-        else
-        {
-            <p class="text-secondary">@(string.IsNullOrWhiteSpace(Model.Query) ? $"{Words.Count(Model.Rows.Count, "battery", "batteries")}." : $"{Words.Count(Model.Rows.Count, "battery", "batteries")} match “{Model.Query}”.")@if (!string.IsNullOrWhiteSpace(Model.Query))
-                {
-                    <text> <a href="/registry">Show all</a></text>
-                }</p>
-            <div class="bp-table-scroll">
-                <table class="table align-middle bp-console-table bp-mobile-card-table mb-0">
-                    <thead>
-                        <tr>
-                            <th>Serial number</th>
-                            <th>Model</th>
-                            <th>Batch</th>
-                            @if (Model.ShowClusters)
-                            {
-                                <th>Cluster</th>
-                            }
-                            <th>Status @await Html.PartialAsync("_StatusHelp")</th>
-                            <th class="bp-actions-column"><span class="visually-hidden">Actions</span></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var row in Model.Rows)
-                        {
-                            <tr>
-                                <td data-label="Serial number">
-                                    <a href="/dpp/@Uri.EscapeDataString(row.Identifier)/detail"><strong>@row.SerialNumber</strong></a>
-                                    <small class="d-block text-secondary" title="Battery ID (#6): @row.Identifier">@BatteryPages.ShortId(row.Identifier)</small>
-                                </td>
-                                <td data-label="Model">@row.ModelName <small class="d-block text-secondary">@row.FamilyName</small></td>
-                                <td data-label="Batch">@row.BatchLabel</td>
-                                @if (Model.ShowClusters)
-                                {
-                                    <td data-label="Cluster">@row.ClusterLabel</td>
-                                }
-                                @{ var shown = (row.Active ?? row.Latest)!; }
-                                <td data-label="Status">
-                                    <div class="bp-badges is-compact">
-                                        @if (Model.BatteryStatusShown.Contains(row.PackId) && StatusBadge.Battery(row.BatteryStatus) is { } battery)
-                                        {
-                                            @await Html.PartialAsync("_StatusBadge", battery)
-                                        }
-                                        @await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(shown.DppStatus))
-                                    </div>
-                                    <small class="d-block text-secondary mt-1">Version @shown.Number · updated @ValueWords.Time(shown.LastUpdatedUtc)</small>
-                                </td>
-                                <td class="bp-action-cell" data-label="Actions">
-                                    @* Icons named on hover, like the old app's row actions (redesign R5, owner's item 1). *@
-                                    @await Html.PartialAsync("_RowActions", Model.Actions(row))
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        }
-    </section>
+    @* The shared list (redesign R7, the owner's choice "One shared list"): the same search, columns and icons as the
+       team's Batteries page; each reader's rows, clusters and battery statuses as before. *@
+    @await Html.PartialAsync("_BatteryList", new BatteryListView("/registry", Model.Query, Model.Rows, Model.ShowClusters,
+        Model.OpenHref, Model.Actions, row => Model.BatteryStatusShown.Contains(row.PackId))
+    {
+        Empty = Model.Scope,
+    })
 </main>

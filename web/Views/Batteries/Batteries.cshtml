@@ -18,91 +18,13 @@
                 One passport per battery. A new battery is a draft, seen only by your team, until its passport is published.
             </p>
         </div>
-        <div class="bp-batteries-tools mt-3">
-            <form method="get" action="/admin/batteries" class="bp-batteries-search" role="search">
-                <label class="visually-hidden" for="battery-search">Search batteries</label>
-                <input id="battery-search" type="search" name="q" value="@Model.Query" placeholder="Passport ID, battery ID, serial or cluster" />
-                <button type="submit" class="bp-secondary-button">Search</button>
-                @if (Model.Query.Length > 0)
-                {
-                    <a href="/admin/batteries" class="bp-batteries-clear">Show all</a>
-                }
-            </form>
-            <a href="/admin/batteries/new" class="bp-primary-button text-nowrap">Create battery</a>
-        </div>
     </section>
 
-    @if (Model.Total == 0)
+    @* The shared list (redesign R7, the owner's choice "One shared list"): every battery, drafts too, and Create. *@
+    @await Html.PartialAsync("_BatteryList", new BatteryListView("/admin/batteries", Model.Query, Model.Rows, ShowClusters: true,
+        row => BatteryPages.BatteryHref(row.PackId), row => RowActions.For(row, BatteryPages.BatteryHref(row.PackId), team: true), _ => true)
     {
-        <div class="bp-card mt-4">No batteries yet. Use Create battery to add the first; it starts as a draft.</div>
-    }
-    else if (Model.Rows.Count == 0)
-    {
-        <div class="bp-card mt-4">No battery matches “@Model.Query”. Search by passport ID, battery ID, serial number or cluster, or <a href="/admin/batteries">show all</a>.</div>
-    }
-    else
-    {
-        <section class="bp-card bp-table-card bp-batteries-card mt-4">
-            <p class="bp-batteries-count">
-                @(Model.Query.Length > 0 ? $"{Words.Count(Model.Rows.Count, "battery", "batteries")} of {Model.Total} match “{Model.Query}”." : $"{Words.Count(Model.Total, "battery", "batteries")}.")
-            </p>
-            <div class="bp-table-scroll">
-                <table class="table align-middle bp-console-table bp-batteries-table bp-mobile-card-table">
-                    <thead>
-                        <tr>
-                            <th>Serial number</th>
-                            <th>Model</th>
-                            <th>Batch</th>
-                            <th>Cluster</th>
-                            <th>Status @await Html.PartialAsync("_StatusHelp")</th>
-                            <th class="bp-actions-column"><span class="visually-hidden">Actions</span></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var row in Model.Rows)
-                        {
-                            <tr>
-                                <td data-label="Serial number">
-                                    <a href="@BatteryPages.BatteryHref(row.PackId)" class="bp-battery-link">@row.SerialNumber</a>
-                                    @* The full battery ID to copy, as the old list had (redesign R6, the owner's choice 3). *@
-                                    <span class="bp-id-copy-row"><small class="bp-battery-id" title="Battery ID (#6): @row.Identifier">@BatteryPages.ShortId(row.Identifier)</small>@await Html.PartialAsync("_CopyIdButton", row.Identifier)</span>
-                                </td>
-                                <td data-label="Model">@row.ModelName <small class="bp-batteries-muted">@row.FamilyName</small></td>
-                                <td data-label="Batch">@row.BatchLabel</td>
-                                <td data-label="Cluster">
-                                    @if (row.ClusterId is null)
-                                    {
-                                        <span class="bp-batteries-muted">No cluster yet</span>
-                                    }
-                                    else
-                                    {
-                                        @row.ClusterLabel
-                                    }
-                                </td>
-                                <td data-label="Status">
-                                    @* Both statuses as badges, as everywhere (redesign R3). *@
-                                    <div class="bp-badges is-compact">
-                                        @if (StatusBadge.Battery(row.BatteryStatus) is { } battery)
-                                        {
-                                            @await Html.PartialAsync("_StatusBadge", battery)
-                                        }
-                                        @await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(row.IsDraft ? null : row.StatusName))
-                                    </div>
-                                    @* The version and when it was last updated, as on the Registry (redesign R6, the owner's choice 3). *@
-                                    @if ((row.Active ?? row.Latest) is { } shown)
-                                    {
-                                        <small class="d-block text-secondary mt-1">Version @shown.Number · updated @ValueWords.Time(shown.LastUpdatedUtc)</small>
-                                    }
-                                </td>
-                                <td class="bp-action-cell" data-label="Actions">
-                                    @* Icons named on hover, like the old app's row actions (redesign R5, owner's item 1). *@
-                                    @await Html.PartialAsync("_RowActions", RowActions.For(row, BatteryPages.BatteryHref(row.PackId), team: true))
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </section>
-    }
+        CreateHref = "/admin/batteries/new",
+        Empty = "No batteries yet. Use Create battery to add the first; it starts as a draft.",
+    })
 </main>

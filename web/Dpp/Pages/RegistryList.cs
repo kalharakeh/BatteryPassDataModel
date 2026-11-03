@@ -28,6 +28,16 @@ public sealed record RegistryPage(IReadOnlyList<BatteryRow> Rows, string Query, 
             : null;
     }
 
+    /// <summary>
+    /// Where a battery's serial number leads (redesign R7): its battery page for the team and its cluster admins, as the
+    /// pencil does; its detail page for everyone else.
+    /// </summary>
+    public string OpenHref(BatteryRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        return (Team ? BatteryPages.BatteryHref(row.PackId) : ManageHref(row)) ?? PassportPages.DetailHref(row.Identifier);
+    }
+
     /// <summary>True for the team: its rows open the team's battery page and its history (redesign R5).</summary>
     public bool Team { get; init; }
 

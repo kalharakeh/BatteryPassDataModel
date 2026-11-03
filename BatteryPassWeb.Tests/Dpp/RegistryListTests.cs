@@ -51,9 +51,11 @@ public sealed class RegistryListTests
     {
         var view = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Registry", "Index.cshtml"));
 
-        Assert.Contains("/dpp/@Uri.EscapeDataString(row.Identifier)/detail", view);
+        // Since R7 a serial number opens the battery page for the team and its cluster admins, the detail page for the
+        // others (RegistryPage.OpenHref, tested in SharedBatteryListTests).
+        Assert.Contains("Model.OpenHref, Model.Actions", view);
         Assert.DoesNotContain("_BatteryTable", view); // the old model's table is gone from the Registry
-        Assert.Contains("Model.Actions(row)", view); // step 4a's link to the cluster admin's page, among the row's icons since R5
+        Assert.Contains("<a href=\"@Model.OpenHref(row)\" class=\"bp-battery-link", File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Shared", "_BatteryList.cshtml")));
     }
 
     [Fact]

@@ -20,11 +20,12 @@ public sealed class AdminDenseConsoleLayoutTests
     public void Registry_ShouldUseDenseConsoleTableAndToolbar()
     {
         var registry = File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml"));
+        var list = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryList.cshtml")); // the shared list since R7
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.Contains("bp-registry-page", registry);
-        Assert.Contains("bp-console-toolbar", registry);
-        Assert.Contains("bp-console-table", registry); // the Registry's own table on the new model (decision 30)
+        Assert.Contains("bp-console-toolbar", list);
+        Assert.Contains("bp-console-table", list); // the Registry's own table on the new model (decision 30)
         Assert.Contains(".bp-console-table", css);
         Assert.Contains(".bp-battery-id-cell", css);
         Assert.Contains("white-space: nowrap", css);

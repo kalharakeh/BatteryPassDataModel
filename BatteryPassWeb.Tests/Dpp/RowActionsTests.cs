@@ -82,13 +82,13 @@ public sealed class RowActionsTests(MongoFixture mongo)
             Assert.Contains($"data-tooltip=\"{name}\"><svg class=\"bp-report-action-icon\" aria-hidden=\"true\"><use href=\"#{icon}\" />", icons, StringComparison.Ordinal);
         }
 
-        Assert.Contains("@await Html.PartialAsync(\"_RowActions\", Model.Actions(row))", registry, StringComparison.Ordinal);
-        Assert.Contains("@await Html.PartialAsync(\"_RowActions\", RowActions.For(row, BatteryPages.BatteryHref(row.PackId), team: true))", team, StringComparison.Ordinal);
-        Assert.DoesNotContain(">Open<svg", registry, StringComparison.Ordinal); // R3's Open button is gone
-        // The icons stay in view at 1280 px: the battery ID shortened in the middle, the batch and cluster wrapping.
-        Assert.Contains("@BatteryPages.ShortId(row.Identifier)</small>", team, StringComparison.Ordinal);
-        Assert.Contains("@BatteryPages.ShortId(row.Identifier)</small>", registry, StringComparison.Ordinal);
+        // One shared list since R7: each page brings its own icons, the list draws them at the end of each row.
+        var list = View("Shared", "_BatteryList.cshtml");
+        Assert.Contains("@await Html.PartialAsync(\"_RowActions\", Model.Actions(row))", list, StringComparison.Ordinal);
+        Assert.Contains("Model.OpenHref, Model.Actions,", registry, StringComparison.Ordinal);
+        Assert.Contains("row => RowActions.For(row, BatteryPages.BatteryHref(row.PackId), team: true)", team, StringComparison.Ordinal);
+        Assert.DoesNotContain(">Open<svg", list, StringComparison.Ordinal); // R3's Open button is gone
         Assert.Contains(".bp-console-table:has(.bp-actions-column) td:is([data-label=\"Batch\"], [data-label=\"Cluster\"]) {", File.ReadAllText(DppTestFiles.RepoFile("web", "wwwroot", "css", "bp-product-data.css")), StringComparison.Ordinal);
-        Assert.Equal(2, team.Split("<span class=\"visually-hidden\">Actions</span>").Length - 1 + registry.Split("<span class=\"visually-hidden\">Actions</span>").Length - 1);
+        Assert.Equal(1, list.Split("<span class=\"visually-hidden\">Actions</span>").Length - 1);
     }
 }

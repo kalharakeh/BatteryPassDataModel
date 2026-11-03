@@ -25,9 +25,11 @@ public sealed class StatusHelpLinkTests
     [Fact]
     public void BothLists_ShouldExplainTheStatusesInTheirHeading()
     {
+        // Both lists are one shared list since R7 (the owner's choice "One shared list").
+        Assert.Contains("<th>Status @await Html.PartialAsync(\"_StatusHelp\")</th>", Read("web", "Views", "Shared", "_BatteryList.cshtml"), StringComparison.Ordinal);
         foreach (var view in new[] { Read("web", "Views", "Batteries", "Batteries.cshtml"), Read("web", "Views", "Registry", "Index.cshtml") })
         {
-            Assert.Contains("<th>Status @await Html.PartialAsync(\"_StatusHelp\")</th>", view, StringComparison.Ordinal);
+            Assert.Contains("@await Html.PartialAsync(\"_BatteryList\", new BatteryListView(", view, StringComparison.Ordinal);
         }
     }
 }

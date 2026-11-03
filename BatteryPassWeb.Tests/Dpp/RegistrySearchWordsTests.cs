@@ -12,11 +12,12 @@ public sealed class RegistrySearchWordsTests
     [Fact]
     public void TheRegistrysSearch_ShouldSayWhatItMatched_AndOfferShowAll()
     {
-        var registry = View("Registry", "Index.cshtml");
+        var registry = View("Shared", "_BatteryList.cshtml"); // the Registry's list is the shared list since R7
 
         Assert.Contains("$\"{Words.Count(Model.Rows.Count, \"battery\", \"batteries\")} match “{Model.Query}”.\"", registry, StringComparison.Ordinal);
-        Assert.Contains("$\"No battery you may open matches “{Model.Query}”.\"", registry, StringComparison.Ordinal);
-        Assert.Equal(2, registry.Split("<a href=\"/registry\">Show all</a>").Length - 1);
+        Assert.Contains("$\"No battery matches “{Model.Query}”.\"", registry, StringComparison.Ordinal);
+        Assert.Equal(2, registry.Split("<a href=\"@Model.Action\">Show all</a>").Length - 1);
+        Assert.Contains("new BatteryListView(\"/registry\", Model.Query", View("Registry", "Index.cshtml"), StringComparison.Ordinal);
     }
 
     [Fact]

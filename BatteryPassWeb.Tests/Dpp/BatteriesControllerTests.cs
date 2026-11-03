@@ -178,7 +178,7 @@ public sealed class BatteriesControllerTests(MongoFixture mongo)
 
         Assert.All(new[] { list, battery, create }, view => Assert.Contains("~/css/bp-product-data.css", view, StringComparison.Ordinal));
         Assert.Contains("PartialAsync(\"_AdminTabs\", \"batteries\")", list, StringComparison.Ordinal);
-        Assert.Contains("Passport ID, battery ID, serial or cluster", list, StringComparison.Ordinal);
+        Assert.Contains("\"Serial number, battery ID, passport ID or cluster\"", File.ReadAllText(DppTestFiles.RepoFile("web", "Dpp", "Pages", "BatteryListView.cs")), StringComparison.Ordinal); // the shared list's search since R7
         foreach (var card in new[] { "publication", "values", "live", "accidents", "versions", "remove" })
         {
             Assert.Contains($"id=\"{card}\"", battery, StringComparison.Ordinal);

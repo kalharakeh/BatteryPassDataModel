@@ -3632,3 +3632,14 @@ main .bp-field-marker.is-published {
     grid-column: 2;
   }
 }
+
+/* ==== One battery list (redesign R7, the owner's item 4) ============================================================ */
+
+/* The search and, for the team, Create battery: one row above the list on both pages. */
+.bp-battery-list-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}

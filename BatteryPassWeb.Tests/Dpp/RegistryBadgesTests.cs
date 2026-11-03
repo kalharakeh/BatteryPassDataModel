@@ -55,10 +55,12 @@ public sealed class RegistryBadgesTests(MongoFixture mongo)
         Assert.Contains("bp-wait mt-4\" id=\"waiting\"", registry, StringComparison.Ordinal);
         Assert.Contains("<use href=\"#i-bell\" />", waiting, StringComparison.Ordinal);
         Assert.True(waiting.IndexOf("value=\"true\"", StringComparison.Ordinal) < waiting.IndexOf("value=\"false\"", StringComparison.Ordinal)); // Accept first
-        Assert.Contains("@if (Model.BatteryStatusShown.Contains(row.PackId) && StatusBadge.Battery(row.BatteryStatus) is { } battery)", registry, StringComparison.Ordinal);
-        Assert.Contains("StatusBadge.Passport(shown.DppStatus)", registry, StringComparison.Ordinal);
-        Assert.Contains("_RowActions", registry, StringComparison.Ordinal); // the Open button became the row's icons (R5)
-        Assert.DoesNotContain(">Manage</a>", registry, StringComparison.Ordinal);
-        Assert.Contains("StatusBadge.Battery(row.BatteryStatus)", View("Batteries", "Batteries.cshtml"), StringComparison.Ordinal);
+        // The shared list (R7) draws both badges; the Registry says whose battery status (#22) the reader may see.
+        var list = View("Shared", "_BatteryList.cshtml");
+        Assert.Contains("row => Model.BatteryStatusShown.Contains(row.PackId)", registry, StringComparison.Ordinal);
+        Assert.Contains("@if (Model.ShowsBatteryStatus(row) && StatusBadge.Battery(row.BatteryStatus) is { } battery)", list, StringComparison.Ordinal);
+        Assert.Contains("StatusBadge.Passport(row.IsDraft ? null : (row.Active ?? row.Latest)!.DppStatus)", list, StringComparison.Ordinal);
+        Assert.Contains("_RowActions", list, StringComparison.Ordinal); // the Open button became the row's icons (R5)
+        Assert.DoesNotContain(">Manage</a>", list, StringComparison.Ordinal);
     }
 }
