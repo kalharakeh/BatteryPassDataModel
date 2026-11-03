@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** The owner's 4 findings from testing their own batteries, as approved in the prototype. Each task ends with a working app:
+**Goal:** The owner's 4 findings from testing their own batteries, as approved in the prototype, and one gap the page review found (task 5). Each task ends with a working app:
 
 1. **Live values show the latest week with readings** (task 1, "live values have no plots anymore, is that intended?"). The charts needed 2 or more readings in the last 7 days; the owner's batteries had none this week, so no line showed. Now, when a battery has no reading in the last 7 days, its charts show the 7 days ending at its last reading:
    - the detail page's Live values tab is titled "Last week of readings: 17–24 Oct" (not "The last 7 days") and says "The battery has sent no reading since 24 Oct 2026, 18:21, so the charts show its last week of readings."; each chart's axis runs over that week; "All readings" lists it; a value with no reading that week says "No reading that week";
@@ -12,16 +12,18 @@
 2. **An earlier passport says what it is** (task 2, "why do the old batteries passports cards in the versions have each battery page link on them?", kept but made self-explanatory). In "Passports of this battery" (team), an earlier passport's link reads "Passport 1's page (read only)" (on hover: "This passport's battery page as it was when it was replaced; nothing on it changes"), the newest one's "Newest passport's page", and the intro adds "An earlier passport's page shows it as it was when it was replaced, to read only." That page says, in one line under its badges: "Passport 1 of 3, an earlier passport, read only: nothing on it changes. Open the newest passport's page". Two things on it still invited edits, and the app saved them: the header's cluster "Change" and the module list (upload and typed). Neither is offered now ("The module list stays as it was on this earlier passport; change it on the newest one."), and the app refuses both ("it is an earlier passport, kept as it was when it was replaced; change the newest passport instead"). Marked passports are unchanged.
 3. **One shared battery list** (task 3, "open registry and batteries page have the same content but behave differently", the choice "One shared list"). Both pages draw `_BatteryList`: the same search ("Serial number, battery ID, passport ID or cluster"; without "or cluster" for readers who may not search clusters, R6), count line ("3 batteries match “DEMO-C7M”. Show all"), columns (Serial number with its copy icon, Model, Batch, Cluster for those who see clusters, Status, Updated "v3 · 3 Nov", in full on hover) and row icons. A serial number opens the battery page for the team (on the Registry too, which opened the detail page) and the battery's cluster admins, the detail page for everyone else. Each page keeps its rows and rules: the team's Batteries lists drafts and has Create battery; the Registry lists published batteries, a cluster admin only their cluster's; #22 where it was shown; the Registry's hand-over box.
 4. **Every list row on one line at 1280 px** (task 4, "Copy icon only"). The two statuses sit side by side, told apart by their shape (a square battery tag, a round passport pill), their "Battery"/"Passport" words kept for screen readers; a serial number ends in "…" after 165 px (the demo's are about 140 px; any serial fits) and a model, batch or cluster name after 180 px, each whole on hover; the row icons are 32 px; the cells a little narrower; the last icon's name opens to its left. A phone keeps its cards. `site.css` is unchanged.
+5. **A marked battery's cluster reads it as when it was active** (task 5, the page review's gap, the owner's "Yes, fix it"). A battery's cluster counted only while its passport was active, so once the passport was marked invalid or for deletion, its own cluster admin and members got "Not available" on its accident page (the read-only page's "Accident page" link, R6b, and #92 on the detail page) and lost its purchaser data on the detail page, though the team kept them. The cluster now counts while the battery's newest passport is marked, as its live values already did (`PassportReader`, R6): the owning cluster reads the battery exactly as when it was active. A replaced passport, another cluster and the public stay as they were.
 
 **Architecture:**
 - `LiveTrends.WeekEnd`, `WeekTitle`, `WeekDates` (task 1) pick and name the week; `ForTab` takes the week's end; `TilesAsync` finds the last reading in the pack's stored live values; `LiveTile.Period` names the week in its words. `BatteryApi.LatestWeekAsync` loads the week ending at the last reading (`ReadAsync`, shared with `HistoryAsync`); `PassportController.Detail` gives it the last reading from the page's live values; `LiveTab` carries the week's end to `_LiveHistory`.
 - `BatteryPages.EarlierPassport`, `PublicationView.Replaced` and `BatteryCards.Replaced` (task 2); `SetClusterAsync` and `SaveModulesAsync` refuse an inactive passport.
 - `BatteryListView` and `_BatteryList` (task 3); `RegistryPage.OpenHref`. The two pages pass their own rows, links and rules.
 - `bp-product-data.css` (task 4): the list's one-line rules, scoped to `.bp-one-line-list` from 768 px up.
+- `DppStore.FindPublishedPackIdsUsingAsync` (task 5), behind `FindPublishedClusterIdsUsingAsync` and `HasPublishedPackUsingAsync`: an invalid or marked-for-deletion version counts like an active one (only the newest version of a pack can carry either).
 
 **Tech Stack:** .NET 10, ASP.NET Core MVC with Razor views, MongoDB.Driver 3.9, xUnit 2.9, EphemeralMongo 3.2.0. Nothing new is downloaded.
 
-**Spec:** the product owner's 4 findings after testing their own batteries (3 Nov 2026), their choices ("Latest week with data", "keep as now but make it more intuitive and self-explanatory", "Copy icon only", "One shared list"), the approved prototype (shots in the managing session's notes, `redesign-pictures/r7-prototype/`), and the managing session's addition: a serial-number cap so a long real serial can't make the list scroll sideways. Decisions 30, 34, 36 and 37 stand: who sees what is unchanged.
+**Spec:** the product owner's 4 findings after testing their own batteries (3 Nov 2026), their choices ("Latest week with data", "keep as now but make it more intuitive and self-explanatory", "Copy icon only", "One shared list"), the approved prototype (shots in the managing session's notes, `redesign-pictures/r7-prototype/`), and the managing session's addition: a serial-number cap so a long real serial can't make the list scroll sideways. Decisions 30, 34, 36 and 37 stand. Who sees what changes only in task 5, as the owner chose: a marked battery's own cluster reads it as when it was active.
 
 **Learning-mode contribution spot:** `LiveTrends.WeekEnd` (task 1), when a battery counts as still reporting; its tests say what it must do.
 
@@ -37,7 +39,7 @@
   - Run every `dotnet test` and `dotnet build` with `--disable-build-servers`, in a shell where `export MSBUILDDISABLENODEREUSE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0` was run first. The whole suite also takes `--blame-hang --blame-hang-timeout 10m`.
   - **Each task runs only its own tests** (the filter in its steps); **the whole suite runs once**, in the final checks. Never run two whole suites at once.
   - Runs have sometimes taken far longer while the machine was busy with other sessions: a slowdown, not a stuck test. If a run seems stuck for more than 20 minutes, stop only the `dotnet` and `testhost` processes your own run started (by their process IDs, never by name) and run it again.
-- **Baseline:** `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --disable-build-servers` shows `Passed:  2440`. After this plan: 2454. The suite takes about three minutes.
+- **Baseline:** `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --disable-build-servers` shows `Passed:  2440`. After this plan: 2459. The suite takes about three minutes.
 - **Patches:** changed files are given as patches. Save each block to the file it names, outside the worktree (e.g. `../r7-task1-code.patch`), and run `git apply ../<name>` from the worktree root. New files are given whole; a removed file has its `git rm`.
 - **Commits:** each task's commit command carries the `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` line. Never push.
 - **`site.css` is not changed.** The new styles go to `bp-product-data.css` (battery pages and lists) and `bp-status.css` (every page).
@@ -1671,12 +1673,155 @@ git commit -m "fix(dpp): every row of the battery list on one line at 1280 px" -
 
 ---
 
-### Task 5: Final checks
+### Task 5: A marked battery's cluster reads it as when it was active
+
+A battery's cluster also counts while its newest passport is marked invalid or for deletion, so its cluster admin and members open its accident page and see its purchaser data, as when it was active. A replaced passport, another cluster and the public stay as they were.
+
+**Files:**
+- Test (create): `BatteryPassWeb.Tests/Dpp/MarkedBatteryClusterTests.cs`
+- Modify: `web/Dpp/Store/DppStore.cs`
+
+- [ ] **Step 1: Write the failing tests**
+
+`BatteryPassWeb.Tests/Dpp/MarkedBatteryClusterTests.cs`:
+
+```csharp
+using BatteryPassWeb.Dpp.Access;
+using BatteryPassWeb.Dpp.Editing;
+using BatteryPassWeb.Dpp.Store;
+
+namespace BatteryPassWeb.Tests.Dpp;
+
+/// <summary>
+/// Redesign R7, task 5 (the page review's gap, the owner's "Yes, fix it"): a battery's cluster counted only while its
+/// passport was active, so once the passport was marked invalid or for deletion its own cluster lost the accident page
+/// ("Not available") and the purchaser data, though the team kept them. The cluster now counts while the battery's newest
+/// passport is marked, as live values already do (PassportReader): the owning cluster reads it exactly as when it was
+/// active. A replaced passport, another cluster and the public stay as they were.
+/// </summary>
+[Collection(MongoCollection.Name)]
+public sealed class MarkedBatteryClusterTests(MongoFixture mongo)
+{
+    private static readonly Reader NorthAdmin = Reader.With("north-admin", ReaderRole.ClusterAdmin, BatteryTesting.North);
+    private static readonly Reader NorthUser = Reader.With("north-user", ReaderRole.ClusterUser, BatteryTesting.North);
+    private static readonly Reader SouthAdmin = Reader.With("south-admin", ReaderRole.ClusterAdmin, BatteryTesting.South);
+
+    private async Task<PublicationRig> MarkedAsync(bool forDeletion)
+    {
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
+        if (forDeletion)
+        {
+            await StatusChangeTests.Service(rig).ChangeAsync(PublicationTesting.Team, rig.PackId, new StatusChange(StatusEvent.Waste, await StatusChangeTests.CurrentAsync(rig)));
+            Assert.Null(await PassportMarkTests.Service(rig).MarkForDeletionAsync(PublicationTesting.Team, rig.PackId));
+        }
+        else
+        {
+            Assert.Null(await PassportMarkTests.Service(rig).MarkInvalidAsync(PublicationTesting.Team, rig.PackId, "Demo: wrong figures"));
+        }
+
+        return rig;
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AMarkedBatterysCluster_ShouldOpenItsAccidentPage_AsWhenItWasActive(bool forDeletion)
+    {
+        var rig = await MarkedAsync(forDeletion);
+        var documents = PageTesting.Documents(rig);
+
+        Assert.NotNull(await documents.AccidentReportsAsync(NorthAdmin, rig.PackId));
+        Assert.NotNull(await documents.AccidentReportsAsync(NorthUser, rig.PackId));
+        Assert.Equal([BatteryTesting.North], await rig.Store.FindPublishedClusterIdsUsingAsync(packId: rig.PackId));
+    }
+
+    [Fact]
+    public async Task AnotherCluster_AndThePublic_ShouldStillNotOpenIt()
+    {
+        var rig = await MarkedAsync(forDeletion: false);
+        var documents = PageTesting.Documents(rig);
+
+        Assert.Null(await documents.AccidentReportsAsync(SouthAdmin, rig.PackId));
+        Assert.Null(await documents.AccidentReportsAsync(Reader.Anonymous, rig.PackId)); // nothing new becomes public
+    }
+
+    [Fact]
+    public async Task AMarkedBatterysDetailPage_ShouldShowItsClusterThePurchaserData_AndThePublicNoMore()
+    {
+        var rig = await MarkedAsync(forDeletion: false);
+        var id = (await rig.Store.GetLatestVersionAsync(rig.PackId))!.DigitalProductPassportId;
+        var pages = PassportPagesTests.Pages(rig);
+
+        var member = (await pages.DetailAsync(NorthUser, id))!;
+        var anyone = (await pages.SummaryAsync(Reader.Anonymous, id))!;
+
+        Assert.Contains(member.Audiences, section => section.Key == "purchaser");
+        Assert.Empty(anyone.Audiences);
+    }
+
+    [Fact]
+    public async Task AReplacedPassport_ShouldStillNotCountForItsCluster()
+    {
+        var rig = await new SuccessionTests(mongo).InactiveAsync();
+        await rig.Store.SetPackClusterAsync(rig.PackId, BatteryTesting.North);
+
+        Assert.Equal(DppStatuses.Inactive, await rig.Store.PassportStatusAsync(rig.PackId));
+        Assert.Empty(await rig.Store.FindPublishedClusterIdsUsingAsync(packId: rig.PackId));
+        Assert.Null(await PageTesting.Documents(rig).AccidentReportsAsync(NorthAdmin, rig.PackId));
+    }
+}
+```
+
+- [ ] **Step 2: Run them to see them fail**
+
+Run: `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --disable-build-servers --filter "FullyQualifiedName~MarkedBatteryClusterTests"`
+Expected: `Failed:     3, Passed:     2` (failing: `MarkedBatteryClusterTests.AMarkedBatterysDetailPage_ShouldShowItsClusterThePurchaserData_AndThePublicNoMore`).
+
+- [ ] **Step 3: Write the code**
+
+Patch `r7-task5-code.patch` (`web/Dpp/Store/DppStore.cs`). Save the block as `../r7-task5-code.patch`, outside the worktree, and run `git apply ../r7-task5-code.patch` from the worktree root:
+
+```diff
+diff --git a/web/Dpp/Store/DppStore.cs b/web/Dpp/Store/DppStore.cs
+index a1284a9..65b483e 100644
+--- a/web/Dpp/Store/DppStore.cs
++++ b/web/Dpp/Store/DppStore.cs
+@@ -532,8 +532,12 @@ public sealed class DppStore
+             return [];
+         }
+ 
++        // The battery's newest passport counts while it is active, and while a mark freezes it (invalid, marked for
++        // deletion): its cluster reads it as when it was active (redesign R7, like PassportReader's live values). An
++        // archived version or a passport a newer one replaced (inactive) doesn't.
+         return await Collection<PassportVersion>()
+-            .Find(version => packIds.Contains(version.PackId) && version.DppStatus == DppStatuses.Active)
++            .Find(version => packIds.Contains(version.PackId)
++                && (version.DppStatus == DppStatuses.Active || version.DppStatus == DppStatuses.Invalid || version.DppStatus == DppStatuses.MarkedForDeletion))
+             .Project(version => version.PackId)
+             .ToListAsync(cancellationToken);
+     }
+```
+
+- [ ] **Step 4: Run them to see them pass**
+
+Run: `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --disable-build-servers --filter "FullyQualifiedName~MarkedBatteryClusterTests"`
+Expected: `Passed!  - Failed:     0, Passed:     5`. The whole suite runs once, in the final checks.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add BatteryPassWeb.Tests/Dpp/MarkedBatteryClusterTests.cs web/Dpp/Store/DppStore.cs
+git commit -m "fix(dpp): a marked battery's cluster reads it as when it was active" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 6: Final checks
 
 - [ ] **Step 1: Run the whole suite**
 
 Run: `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --disable-build-servers --blame-hang --blame-hang-timeout 10m`
-Expected: `Passed!  - Failed:     0, Passed:  2454, Skipped:     0, Total:  2454` (14 more than the 2440 before).
+Expected: `Passed!  - Failed:     0, Passed:  2459, Skipped:     0, Total:  2459` (19 more than the 2440 before).
 
 - [ ] **Step 2: Build without warnings**
 
@@ -1699,6 +1844,9 @@ Expected: nothing listed by either.
    says "Last week of readings: …" with lines; its battery page's overview says the same above the tiles. A demo battery
    reports now, so its tab still says "The last 7 days" (a demo reset seeds a fresh week).
 5. **As market surveillance, Registry:** no Cluster column; a serial opens the detail page.
+6. **As demo.north.admin@example.test, DEMO-C7M-0003 (invalid) → its battery page → "Accident page":** the accident
+   information page opens (it said "Not available"); as demo.south.admin@example.test there is no pencil, and the
+   address alone gives "Not available".
 
 ## Next
 
