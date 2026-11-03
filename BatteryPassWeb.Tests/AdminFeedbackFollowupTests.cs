@@ -21,7 +21,8 @@ public sealed class AdminFeedbackFollowupTests
         var hero = File.ReadAllText(RepoFile("web", "Views", "Passport", "_PassportHero.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        var combined = string.Join(Environment.NewLine, registry, hero);
+        var rowActions = File.ReadAllText(RepoFile("web", "Views", "Shared", "_RowActions.cshtml")); // the lists' icons since R5
+        var combined = string.Join(Environment.NewLine, registry, hero, rowActions);
         Assert.Contains("bp-report-action", combined);
         Assert.Contains("View more about this passport", hero);
         Assert.Contains("Back to summary", hero);
@@ -46,7 +47,7 @@ public sealed class AdminFeedbackFollowupTests
         Assert.DoesNotContain("bp-report-action-label", hero);
         Assert.DoesNotContain(">Latest</span>", hero);
         Assert.DoesNotContain(">Detailed report</span>", hero);
-        Assert.Contains("bp-latest-passport-action-icon", hero);
+        Assert.Contains(">Open the current version</a>", hero); // one link, under the badges (R6)
         Assert.Contains(".bp-report-title-block", css);
         Assert.Contains(".bp-report-hero-cta", css);
         Assert.Contains("font-weight: 400;", css);

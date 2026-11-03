@@ -38,8 +38,8 @@ public sealed class BatteryRouteAndRegistryTests
 
         Assert.Contains("<h1>@Model.Text(11)</h1>", hero);
         Assert.DoesNotContain(">Open latest passport<", hero);
-        Assert.Contains("aria-label=\"Open the current version\"", hero);
-        Assert.Contains("bp-latest-passport-action-icon", hero);
+        Assert.Contains("An older version of this passport. <a href=", hero); // one link to the current version (R6)
+        Assert.DoesNotContain("bp-latest-passport-action-icon", hero);
     }
 
     [Fact]

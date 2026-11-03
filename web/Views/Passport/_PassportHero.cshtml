@@ -41,19 +41,7 @@
                     {
                         <a class="bp-chip" href="@lineageHref"><svg class="bp-i" aria-hidden="true"><use href="#i-@(lineage.Pill == "Active" ? "history" : "arrow")" /></svg>@lineage.LinkText</a>
                     }
-                    @if (!Model.IsCurrent)
-                    {
-                        @if (Model.Current is not null)
-                        {
-                            <a href="@(detail ? PassportPages.DetailHref(Model.Identifier) : PassportPages.SummaryHref(Model.Identifier))" class="bp-report-action" aria-label="Open the current version" title="Open the current version" data-tooltip="Open the current version" data-action-icon="latest">
-                                <svg class="bp-report-action-icon bp-latest-passport-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="M12 5a7 7 0 1 1-6.32 4" />
-                                    <path d="M5 5v4h4" />
-                                    <path d="M12 8v4l3 2" />
-                                </svg>
-                            </a>
-                        }
-                    }
+                    @* An older version links the current one once, in the line under the badges (redesign R6). *@
                     @if (Model.IsTest)
                     {
                         @* A tag, not a banner (owner's point 7); a tap or a hover explains it. *@
