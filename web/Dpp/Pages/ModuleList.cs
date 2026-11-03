@@ -81,6 +81,13 @@ public static class ModuleList
             return ([], $"the file is for battery {exported ?? "without a serial number"}, not {batterySerialNumber}");
         }
 
+        return FromDevice(device);
+    }
+
+    /// <summary>The modules an export lists under one device (its <c>childrenIdentifiers</c>), used by uploads (step 5b).</summary>
+    public static (IReadOnlyList<BatteryModule> Modules, string? Problem) FromDevice(JsonObject device)
+    {
+        ArgumentNullException.ThrowIfNull(device);
         if (device["childrenIdentifiers"] is not JsonArray children || children.Count == 0)
         {
             return ([], "the file lists no modules");

@@ -1,7 +1,9 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using BatteryPassWeb.Dpp.Api;
+using BatteryPassWeb.Dpp.Catalog;
 using BatteryPassWeb.Dpp.Editing;
+using BatteryPassWeb.Dpp.Pages;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Services;
 using MongoDB.Bson;
@@ -11,6 +13,8 @@ namespace BatteryPassWeb.Dpp.Uploads;
 /// <summary>What happened to one battery of an upload.</summary>
 /// <param name="Outcome">One of <see cref="UploadService.Saved"/>, <see cref="UploadService.NothingSaved"/> or <see cref="UploadService.Refused"/>.</param>
 /// <param name="Problem">Why the battery was refused as a whole; null when it wasn't.</param>
+/// <param name="Modules">What happened to the battery's module list, when the file had one; null otherwise.</param>
+/// <param name="Notes">What the file's adapter wants the sender to know, e.g. a value it couldn't read.</param>
 public sealed record UploadedBatteryReport(
     int Entry,
     string NamedAs,
@@ -18,7 +22,9 @@ public sealed record UploadedBatteryReport(
     string? PackId,
     string Outcome,
     string? Problem,
-    IReadOnlyList<KeyResult> Values);
+    IReadOnlyList<KeyResult> Values,
+    string? Modules = null,
+    IReadOnlyList<string>? Notes = null);
 
 /// <summary>An upload's result: per battery what happened, or why the file couldn't be read at all.</summary>
 /// <param name="UploadId">The log entry; null for a preview or an unreadable file, which aren't logged.</param>
@@ -50,7 +56,7 @@ public sealed class UploadService(
     public const string NothingSaved = "nothing saved";
     public const string Refused = "refused";
 
-    public const string NotAnUpload = "the file isn't an upload this app reads: give \"format\": \"dpp-v3-upload/1\" and the batteries";
+    public const string NotAnUpload = "the file isn't an upload this app reads: give \"format\": \"dpp-v3-upload/1\" and the batteries, or send the battery system's export (mapping BMS2_ACO)";
     public const string NotFound = "no battery you may change has this ID";
     public const string NotYours = "this battery belongs to another cluster";
     public const string Ambiguous = "more than one battery has this serial number; use the battery ID";
@@ -104,22 +110,26 @@ public sealed class UploadService(
         foreach (var (entry, target, problem) in found)
         {
             var pack = target?.Pack;
+            var notes = entry.Notes ?? [];
             if (problem is not null || pack is null || twice.Contains(pack.Id))
             {
-                reports.Add(new UploadedBatteryReport(entry.Number, entry.NamedAs, target?.Identifier, pack?.Id, Refused, problem ?? NamedTwice, []));
+                reports.Add(new UploadedBatteryReport(entry.Number, entry.NamedAs, target?.Identifier, pack?.Id, Refused, problem ?? NamedTwice, [], Notes: notes));
                 continue;
             }
 
             if (await store.PassportStatusAsync(pack.Id, cancellationToken) is { } status && DppStatuses.IsNoLongerActive(status))
             {
-                reports.Add(new UploadedBatteryReport(entry.Number, entry.NamedAs, target!.Identifier, pack.Id, Refused, SavePipeline.NoLongerChanges(status), []));
+                reports.Add(new UploadedBatteryReport(entry.Number, entry.NamedAs, target!.Identifier, pack.Id, Refused, SavePipeline.NoLongerChanges(status), [], Notes: notes));
                 continue;
             }
 
-            var source = sender.Kind == SenderKind.BatterySystemFeed ? BatteryApi.FeedSource : "upload";
-            var result = await pipeline.SaveAsync(sender, new ChangeSet(TargetKind.Pack, pack.Id, entry.Values, source, entry.MeasuredAtUtc), preview, cancellationToken);
-            var outcome = result.Keys.Any(key => key.Outcome == KeyOutcome.Saved) ? Saved : NothingSaved;
-            reports.Add(new UploadedBatteryReport(entry.Number, entry.NamedAs, target!.Identifier, pack.Id, outcome, null, result.Keys));
+            var source = Source(sender);
+            var (values, unused) = await FillOnlyAsync(sender, pack, entry, cancellationToken);
+            notes = [.. notes, .. unused];
+            var result = await pipeline.SaveAsync(sender, new ChangeSet(TargetKind.Pack, pack.Id, values, source, entry.MeasuredAtUtc), preview, cancellationToken);
+            var modules = await ModulesAsync(sender, pack, entry.Modules, preview, cancellationToken);
+            var outcome = result.Keys.Any(key => key.Outcome == KeyOutcome.Saved) || modules is { Changed: true } ? Saved : NothingSaved;
+            reports.Add(new UploadedBatteryReport(entry.Number, entry.NamedAs, target!.Identifier, pack.Id, outcome, null, result.Keys, modules?.Words, notes));
         }
 
         string? uploadId = null;
@@ -129,6 +139,75 @@ public sealed class UploadService(
         }
 
         return new UploadReport(document.Format, preview, reports, null, uploadId);
+    }
+
+    /// <summary>
+    /// The entry's values without the fill-only ones it may not use (decision 35, Q15): such a value (the export's #17)
+    /// fills a draft without one, from a sender who may set it. Otherwise it is left out with a note, not refused, so
+    /// the pipeline's rules aren't bent and a battery system's report isn't one refusal longer each time.
+    /// </summary>
+    private async Task<(IReadOnlyDictionary<string, JsonNode?> Values, IReadOnlyList<string> Unused)> FillOnlyAsync(
+        ChangeSender sender, BatteryPack pack, UploadEntry entry, CancellationToken cancellationToken)
+    {
+        if (entry.FillOnly is not { Count: > 0 } fillOnly || !entry.Values.Keys.Any(fillOnly.Contains))
+        {
+            return (entry.Values, []);
+        }
+
+        var draft = await store.GetLatestVersionNumberAsync(pack.Id, cancellationToken) == 0;
+        var values = new Dictionary<string, JsonNode?>(entry.Values, StringComparer.Ordinal);
+        var unused = new List<string>();
+        foreach (var key in entry.Values.Keys.Where(fillOnly.Contains))
+        {
+            var attribute = AttributeCatalog.FindByProperty(key)!;
+            if (!draft || pack.Values.ContainsKey(key) || !EditRights.MayEdit(sender, attribute, pack.ClusterId))
+            {
+                values.Remove(key);
+                unused.Add($"the {char.ToLowerInvariant(attribute.Name[0])}{attribute.Name[1..]} in the file isn't used");
+            }
+        }
+
+        return (values, unused);
+    }
+
+    private static string Source(ChangeSender sender) => sender.Kind == SenderKind.BatterySystemFeed ? BatteryApi.FeedSource : "upload";
+
+    /// <summary>
+    /// The battery's module list from the file (decision 31): app data, not passport data, so it is set beside the save
+    /// pipeline, without a new version. An empty list never overwrites; an unchanged list isn't saved again.
+    /// </summary>
+    private async Task<(bool Changed, string Words)?> ModulesAsync(ChangeSender sender, BatteryPack pack, IReadOnlyList<BatteryModule>? modules, bool preview, CancellationToken cancellationToken)
+    {
+        if (modules is not { Count: > 0 })
+        {
+            return null;
+        }
+
+        static string Key(BatteryModule module) => $"{module.Position}|{module.SerialNumber}|{module.ConnectivityId}";
+        if (pack.Modules.Select(Key).SequenceEqual(modules.OrderBy(module => module.Position).Select(Key)))
+        {
+            return (false, "the module list is unchanged");
+        }
+
+        var count = Words.Count(modules.Count, "module");
+        if (preview)
+        {
+            return (true, $"the module list would be set: {count}");
+        }
+
+        await store.SetPackModulesAsync(pack.Id, modules, cancellationToken);
+        var serial = pack.Values.GetValueOrDefault("batterySerialNumber")?.Value?.GetValue<string>() ?? pack.Id;
+        await audit.AppendApplicationAuditEventAsync(
+            BatteryPages.ModulesSetEvent,
+            sender.Who,
+            sender.Kind.ToString(),
+            Source(sender),
+            $"Modules of battery {serial} set from the battery system's export: {count}",
+            new BsonDocument { ["from"] = pack.Modules.Count, ["to"] = modules.Count },
+            entityType: "dpp-pack",
+            entityId: pack.Id,
+            cancellationToken: cancellationToken);
+        return (true, $"the module list was set: {count}");
     }
 
     private async Task<(UploadEntry Entry, WriteTarget? Target, string? Problem)> FindAsync(ChangeSender sender, UploadEntry entry, CancellationToken cancellationToken)
@@ -172,6 +251,8 @@ public sealed class UploadService(
                 PackId = report.PackId,
                 Outcome = report.Outcome,
                 Problem = report.Problem,
+                Modules = report.Modules,
+                Notes = report.Notes?.ToList() ?? [],
                 Values = report.Values.Select(value => new UploadedValue
                 {
                     Key = value.Key,
@@ -187,7 +268,7 @@ public sealed class UploadService(
             UploadedEvent,
             sender.Who,
             sender.Kind.ToString(),
-            sender.Kind == SenderKind.BatterySystemFeed ? BatteryApi.FeedSource : "upload",
+            Source(sender),
             $"Upload of {reports.Count} {(reports.Count == 1 ? "battery" : "batteries")}: {Count(Saved)} saved, {Count(NothingSaved)} with nothing saved, {Count(Refused)} refused",
             new BsonDocument { ["upload"] = upload.Id, ["format"] = format, ["channel"] = channel },
             entityType: "dpp-upload",

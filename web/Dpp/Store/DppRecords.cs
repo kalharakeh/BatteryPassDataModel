@@ -281,6 +281,12 @@ public sealed class UploadedBattery
     public string? Problem { get; init; }
 
     public List<UploadedValue> Values { get; init; } = [];
+
+    /// <summary>What happened to the battery's module list, when the file had one (step 5b).</summary>
+    public string? Modules { get; init; }
+
+    /// <summary>What the file's adapter wanted the sender to know, e.g. a value it couldn't read (step 5b).</summary>
+    public List<string> Notes { get; init; } = [];
 }
 
 /// <summary>One value of an upload: its key, its outcome ("Saved", "KeptEmpty", "Ignored", "Rejected") and why.</summary>

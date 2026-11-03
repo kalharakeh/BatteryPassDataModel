@@ -337,7 +337,8 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
     }
 
     /// <summary>
-    /// An upload of many batteries (design 8.1, step 5a): the native format, through the one save pipeline. A cluster
+    /// An upload of many batteries (design 8.1, steps 5a and 5b): the native format or the battery system's export
+    /// (mapping BMS2_ACO), through the one save pipeline. A cluster
     /// token sends as its battery system, so only live values are saved (J-10); a global token sends as the team.
     /// </summary>
     [HttpPost("uploads")]
@@ -374,6 +375,8 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
                     outcome = battery.Outcome,
                     problem = battery.Problem,
                     values = Keys(battery.Values),
+                    modules = battery.Modules,
+                    notes = battery.Notes ?? [],
                 }).ToArray(),
             });
     }

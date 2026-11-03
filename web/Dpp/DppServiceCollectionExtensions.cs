@@ -57,6 +57,7 @@ public static class DppServiceCollectionExtensions
         services.AddSingleton<PassportApi>();
         services.AddSingleton<BatteryApi>();
         services.AddSingleton<IUploadAdapter, NativeUploadFormat>();
+        services.AddSingleton<IUploadAdapter, BmsExportFormat>();
         services.AddSingleton<UploadService>();
         services.AddSingleton<PassportPages>();
         services.AddSingleton<AuditLines>();

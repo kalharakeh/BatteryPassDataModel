@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using BatteryPassWeb.Dpp.Store;
 
 namespace BatteryPassWeb.Dpp.Uploads;
 
@@ -12,12 +13,18 @@ namespace BatteryPassWeb.Dpp.Uploads;
 /// <param name="NamedAs">The battery ID (#6) or serial number (#11) the file names the battery by.</param>
 /// <param name="MeasuredAtUtc">When every value of the entry was generated; the upload time when null.</param>
 /// <param name="Problem">Why the entry can't be used as it is; null when it can.</param>
+/// <param name="Modules">The battery's module list, when the file has one (the battery system's export, decision 31).</param>
+/// <param name="Notes">What the file's adapter wants the sender to know, e.g. a value it couldn't read.</param>
+/// <param name="FillOnly">Keys that only fill a battery without a value, left out silently otherwise (the export's #17).</param>
 public sealed record UploadEntry(
     int Number,
     string NamedAs,
     DateTime? MeasuredAtUtc,
     IReadOnlyDictionary<string, JsonNode?> Values,
-    string? Problem = null);
+    string? Problem = null,
+    IReadOnlyList<BatteryModule>? Modules = null,
+    IReadOnlyList<string>? Notes = null,
+    IReadOnlyCollection<string>? FillOnly = null);
 
 /// <summary>A file read by its format's adapter: the format, its entries, or why it can't be read at all.</summary>
 public sealed record UploadDocument(string? Format, IReadOnlyList<UploadEntry> Entries, string? Problem = null)
