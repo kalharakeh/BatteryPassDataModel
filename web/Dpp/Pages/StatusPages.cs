@@ -119,7 +119,7 @@ public sealed class StatusPages(DppStore store, RecordEditor editor, StatusChang
         var status = StatusChangeService.CurrentStatus(pack) ?? "original";
         var passportStatus = await store.PassportStatusAsync(pack.Id, cancellationToken);
         var successionView = await SuccessionAsync(pack, href, forTeam, cancellationToken);
-        var whyNot = DppStatuses.IsNoLongerActive(passportStatus) ? $"The passport is {passportStatus}: nothing on it changes any more."
+        var whyNot = DppStatuses.IsNoLongerActive(passportStatus) ? $"The passport is {DppStatuses.Words(passportStatus!).ToLowerInvariant()}: nothing on it changes any more."
             : !active ? "The status changes once the passport is published."
             : status == "waste" && !forTeam ? "The battery is waste, which is final."
             : successionView is not null && !forTeam ? "The battery is waiting for its new passport."

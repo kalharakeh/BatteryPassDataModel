@@ -21,6 +21,22 @@ public static class ValueWords
 {
     private static readonly CultureInfo English = CultureInfo.GetCultureInfo("en-GB");
 
+    /// <summary>The battery category (#20) in words: "industrial/non-stationary battery" reads "Industrial, non-stationary battery".</summary>
+    public static string CategoryWords(string code)
+    {
+        ArgumentNullException.ThrowIfNull(code);
+        var words = code.Trim().Replace("/", ", ", StringComparison.Ordinal);
+        return words.Length == 0 ? words : char.ToUpperInvariant(words[0]) + words[1..];
+    }
+
+    /// <summary>A coded value: the text itself, or the one text in the schema's small object around it.</summary>
+    private static string? Code(JsonNode? value) => value switch
+    {
+        JsonValue text when text.TryGetValue<string>(out var code) => code,
+        JsonObject holder => holder.Select(pair => pair.Value).OfType<JsonValue>().Select(inner => inner.TryGetValue<string>(out var code) ? code : null).FirstOrDefault(code => code is not null),
+        _ => null,
+    };
+
     public static IReadOnlyList<ValueLine> Lines(AttributeForm form, JsonNode? value)
     {
         ArgumentNullException.ThrowIfNull(form);
@@ -34,11 +50,17 @@ public static class ValueWords
             return [new ValueLine(null, Time(updated))];
         }
 
-        // The passport status (#2) in the badge's words ("Active"); the passport keeps the schema's value (redesign R5).
-        // The schema holds it as { "dppStatusValue": "active" }.
-        if (form.Attribute.Number == 2 && (value is JsonObject holder ? holder["dppStatusValue"] : value) is JsonValue status && status.TryGetValue<string>(out var stored))
+        // A code from the schema's lists in words: the passport status (#2, "Active"), the battery category (#20) and the
+        // battery status (#22, "Re-used"), as the badges say them (redesign R5 and R6). The passport keeps the schema's
+        // code; the schema holds each in a small object, e.g. { "dppStatusValue": "active" }.
+        if (form.Attribute.Number is 2 or 20 or 22 && Code(value) is { } code)
         {
-            return [new ValueLine(null, BatteryPassWeb.Dpp.Store.DppStatuses.Words(stored))];
+            return [new ValueLine(null, form.Attribute.Number switch
+            {
+                2 => BatteryPassWeb.Dpp.Store.DppStatuses.Words(code),
+                22 => StatusBadge.Battery(code)?.Words ?? code,
+                _ => CategoryWords(code),
+            })];
         }
 
         switch (form.Kind)

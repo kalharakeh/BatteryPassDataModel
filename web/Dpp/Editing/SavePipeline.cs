@@ -203,7 +203,7 @@ public sealed class SavePipeline(
     }
 
     /// <summary>Why a value of a passport that is no longer active is refused.</summary>
-    public static string NoLongerChanges(string status) => $"the passport is {status}; nothing on it changes";
+    public static string NoLongerChanges(string status) => $"the passport is {DppStatuses.Words(status).ToLowerInvariant()}; nothing on it changes";
 
     /// <summary>Why a pack's fixed value (#11, #17, #19) is refused after publication.</summary>
     public const string FixedOncePublished = "fixed once the passport is published";

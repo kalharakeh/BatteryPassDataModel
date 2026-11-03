@@ -32,7 +32,7 @@ public sealed class PublicationService(
     public const string InactiveEvent = "dpp.passport-inactive";
 
     /// <summary>Why a passport that is no longer active gets no new version.</summary>
-    public static string NoNewVersion(string status) => $"the passport is {status}, so it gets no new version";
+    public static string NoNewVersion(string status) => $"the passport is {DppStatuses.Words(status).ToLowerInvariant()}, so it gets no new version";
 
     /// <summary>
     /// The checks the pack's passport would meet if it were published now, without publishing anything (the battery

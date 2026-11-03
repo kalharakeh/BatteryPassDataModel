@@ -13,8 +13,8 @@ public sealed class ValueWordsTests
     [InlineData(17, "\"2026-09\"", "September 2026")]
     [InlineData(19, "\"P8Y\"", "8 years")]
     [InlineData(19, "\"P1Y6M\"", "1 year 6 months")]
-    [InlineData(20, """{"batteryCategoryValue":"industrial/non-stationary battery"}""", "industrial/non-stationary battery")]
-    [InlineData(22, """{"batteryStatusValues":"original"}""", "original")]
+    [InlineData(20, """{"batteryCategoryValue":"industrial/non-stationary battery"}""", "Industrial, non-stationary battery")] // in words (R6)
+    [InlineData(22, """{"batteryStatusValues":"original"}""", "Original")] // the badge's words (R6)
     [InlineData(81, "12", "12 years")]
     [InlineData(82, "4000", "4,000")]
     [InlineData(63, """{"percentUnit":"%","percentageValue":76}""", "76 %")]
