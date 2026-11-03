@@ -15,7 +15,7 @@
   - It leaves out a fill-only value unless the battery is a draft without it and the sender may change it (`EditRights`), and notes it instead.
   - It saves the module list beside the pipeline (app data, no new version; logged as `dpp.pack-modules-set`).
   - It reports per battery what happened to the module list and the adapter's notes, in its answer and in the upload log.
-- **The remaining capacity** (task 2): `BatteryPack.RemainingCapacity` (Ah and measurement time), set only when it is newer than the one kept; `StatusCardView.Remaining` fills the window's box and says when it was measured.
+- **The remaining capacity** (task 2): `BatteryPack.RemainingCapacity` (Ah and measurement time), set only when it is newer than the one kept; `StatusCardView.Remaining` fills the "Change status" window's box and says when it was measured. The window is in `_StatusDialog.cshtml`, where the redesign (R4) put the status windows at page level.
 - **The API's answer** gains `modules` and `notes` per battery; the help page describes the export.
 
 **Tech Stack:** .NET 10, ASP.NET Core MVC with Razor views, MongoDB.Driver 3.9, xUnit 2.9, EphemeralMongo 3.2.0. Nothing new is downloaded.
@@ -27,15 +27,17 @@
 ## Before you start
 
 - Work in the worktree `.worktrees/cloned-kassem-rewrite`, from its root, in Git Bash.
-- **Branch:** `feature/dpp-v3-step2d-team-pages` (local only). This plan starts at c99c6b7 (the end of plan 5a's run), plus the commit that adds this plan. Check with `git branch --show-current` and `git log --oneline -5`.
+- **Branch:** `feature/dpp-v3-step2d-team-pages` (local only). This plan starts at 6f2a982 (plan 5a's run and the battery-page redesign R1–R7), plus the commit that adds this plan. Check with `git branch --show-current` and `git log --oneline -5`.
 - **The local app must be closed.** While the v3 launcher runs the app from this worktree (localhost:5186), it locks `web/bin/Debug`, and the builds below fail with MSB3027. Never stop it yourself: ask the product owner to close it.
 - **Nothing here touches Atlas.** The tests use a throwaway MongoDB (EphemeralMongo). No new collection: the remaining capacity is a new field on the battery records, empty until an export brings one.
 - **Builds and test runs:**
-  - Run every `dotnet test` and `dotnet build` with `--disable-build-servers`, in a shell where `export MSBUILDDISABLENODEREUSE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0` was run first. Whole-suite runs also take `--blame-hang --blame-hang-timeout 10m`.
+  - Run every `dotnet test` and `dotnet build` with `--disable-build-servers`, in a shell where `export MSBUILDDISABLENODEREUSE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0` was run first. The whole suite also takes `--blame-hang --blame-hang-timeout 10m`.
+  - **Each task runs only its own tests** (the filter in its steps); **the whole suite runs once**, in the final checks. Never run two whole suites at once.
   - Runs have sometimes taken far longer while the machine was busy with other sessions: a slowdown, not a stuck test. If a run seems stuck for more than 20 minutes, stop only the `dotnet` and `testhost` processes your own run started (by their process IDs, never by name) and run it again.
-- **Baseline:** `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --disable-build-servers` shows `Passed:  2255`. After this plan: 2265. The suite takes about two to four minutes.
+- **Baseline:** `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --disable-build-servers` shows `Passed:  2459`. After this plan: 2469. The suite takes about four minutes.
 - **Patches:** changed files are given as patches. Save each block to the file it names, outside the worktree (e.g. `../5b-task1-code.patch`), and run `git apply ../<name>` from the worktree root. New files are given whole.
 - **Commits:** each task's commit command carries the `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` line. Never push.
+- **`site.css` is not changed.**
 - **Old app:** keep the tag `app-v1.2-before-dpp-v3` and the branch `security/demo-api-hardening`. The running app on Elastic Beanstalk and its database `battery_pass_demo` are never touched.
 
 ## Decisions taken with the product owner (2 Nov 2026, through the managing session)
@@ -56,6 +58,7 @@ Decision 35 holds step 5's answers; this plan's commit adds 5b's and corrects de
 - **The newer sample's modules have connectivity IDs but no serial numbers;** the module list already accepts one of the two.
 - **The export's #87 field doesn't exist yet** (design 8.5, item 3): every export's notes say so until the export team adds it.
 - **A number set in code** (rather than parsed) is read through its JSON text, so the adapter never mistakes an integer for something else.
+- **Updated onto the battery-page redesign (R1–R7, 3 Nov 2026):** the code is as written before, except that the remaining capacity fills the box in `_StatusDialog.cshtml` (R4 moved the "Change status" window there). An upload still refuses a passport that is no longer active (marked invalid or for deletion, or an earlier passport replaced by a new one) as a whole, so neither its values nor its module list nor its remaining capacity change there. The upload's audit entries read in the redesign's History: the live values of an export join the run of "the latest of N live readings" (the upload's own `dpp.upload` entry is the upload's, not the battery's), and a changed module list reads "Modules of battery … set from the battery system's export: 8 modules".
 
 ## What happens to the old tests
 
@@ -383,10 +386,10 @@ index 2a2ca37..04d0619 100644
              });
      }
 diff --git a/web/Dpp/DppServiceCollectionExtensions.cs b/web/Dpp/DppServiceCollectionExtensions.cs
-index 3d9cd89..900a4dd 100644
+index f909db4..2922de4 100644
 --- a/web/Dpp/DppServiceCollectionExtensions.cs
 +++ b/web/Dpp/DppServiceCollectionExtensions.cs
-@@ -56,6 +56,7 @@ public static class DppServiceCollectionExtensions
+@@ -57,6 +57,7 @@ public static class DppServiceCollectionExtensions
          services.AddSingleton<PassportApi>();
          services.AddSingleton<BatteryApi>();
          services.AddSingleton<IUploadAdapter, NativeUploadFormat>();
@@ -413,10 +416,10 @@ index 09de16e..da0e5f8 100644
          {
              return ([], "the file lists no modules");
 diff --git a/web/Dpp/Store/DppRecords.cs b/web/Dpp/Store/DppRecords.cs
-index ca2bd2f..58523c3 100644
+index e1e8247..577c5cd 100644
 --- a/web/Dpp/Store/DppRecords.cs
 +++ b/web/Dpp/Store/DppRecords.cs
-@@ -276,6 +276,12 @@ public sealed class UploadedBattery
+@@ -281,6 +281,12 @@ public sealed class UploadedBattery
      public string? Problem { get; init; }
  
      public List<UploadedValue> Values { get; init; } = [];
@@ -805,14 +808,9 @@ public sealed partial class BmsExportFormat : IUploadAdapter
 - [ ] **Step 4: Run them to see them pass**
 
 Run: `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --disable-build-servers --filter "FullyQualifiedName~BmsExportUploadTests | FullyQualifiedName~UploadServiceTests | FullyQualifiedName~DppApiUploadTests"`
-Expected: `Passed!  - Failed:     0, Passed:    30`.
+Expected: `Passed!  - Failed:     0, Passed:    30`. The whole suite runs once, in the final checks.
 
-- [ ] **Step 5: Run the whole suite**
-
-Run: `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --disable-build-servers --blame-hang --blame-hang-timeout 10m`
-Expected: `Passed!  - Failed:     0, Passed:  2264`.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add BatteryPassWeb.Tests/Dpp/BmsExportUploadTests.cs BatteryPassWeb.Tests/Dpp/UploadServiceTests.cs web/Controllers/DppApiController.cs web/Dpp/DppServiceCollectionExtensions.cs web/Dpp/Pages/ModuleList.cs web/Dpp/Store/DppRecords.cs web/Dpp/Uploads/BmsExportFormat.cs web/Dpp/Uploads/UploadFile.cs web/Dpp/Uploads/UploadService.cs web/Views/Help/Index.cshtml
@@ -833,7 +831,7 @@ The export's remaining capacity isn't passport data (J-11). The latest reading i
 - Modify: `web/Dpp/Uploads/BmsExportFormat.cs`
 - Modify: `web/Dpp/Uploads/UploadFile.cs`
 - Modify: `web/Dpp/Uploads/UploadService.cs`
-- Modify: `web/Views/Batteries/_StatusCard.cshtml`
+- Modify: `web/Views/Batteries/_StatusDialog.cshtml`
 - Modify: `web/Views/Help/Index.cshtml`
 
 - [ ] **Step 1: Write the failing tests**
@@ -889,11 +887,11 @@ Expected: the build fails with CS1061 (for example `error CS1061 'BatteryPack' d
 
 - [ ] **Step 3: Write the code**
 
-Patch `5b-task2-code.patch` (`web/Dpp/Pages/StatusPages.cs`, `web/Dpp/Store/DppRecords.cs`, `web/Dpp/Store/DppStore.cs`, `web/Dpp/Uploads/BmsExportFormat.cs`, `web/Dpp/Uploads/UploadFile.cs`, `web/Dpp/Uploads/UploadService.cs`, `web/Views/Batteries/_StatusCard.cshtml`, `web/Views/Help/Index.cshtml`). Save the block as `../5b-task2-code.patch`, outside the worktree, and run `git apply ../5b-task2-code.patch` from the worktree root:
+Patch `5b-task2-code.patch` (`web/Dpp/Pages/StatusPages.cs`, `web/Dpp/Store/DppRecords.cs`, `web/Dpp/Store/DppStore.cs`, `web/Dpp/Uploads/BmsExportFormat.cs`, `web/Dpp/Uploads/UploadFile.cs`, `web/Dpp/Uploads/UploadService.cs`, `web/Views/Batteries/_StatusDialog.cshtml`, `web/Views/Help/Index.cshtml`). Save the block as `../5b-task2-code.patch`, outside the worktree, and run `git apply ../5b-task2-code.patch` from the worktree root:
 
 ```diff
 diff --git a/web/Dpp/Pages/StatusPages.cs b/web/Dpp/Pages/StatusPages.cs
-index c764f9d..606996a 100644
+index 19a0ea7..695f5c3 100644
 --- a/web/Dpp/Pages/StatusPages.cs
 +++ b/web/Dpp/Pages/StatusPages.cs
 @@ -39,6 +39,7 @@ public sealed record PredecessorView(string SerialNumber, string Href, bool Inac
@@ -925,10 +923,10 @@ index c764f9d..606996a 100644
  
      private async Task<SuccessionView?> SuccessionAsync(BatteryPack pack, string href, bool forTeam, CancellationToken cancellationToken)
 diff --git a/web/Dpp/Store/DppRecords.cs b/web/Dpp/Store/DppRecords.cs
-index 58523c3..2700a37 100644
+index 577c5cd..ad2e08e 100644
 --- a/web/Dpp/Store/DppRecords.cs
 +++ b/web/Dpp/Store/DppRecords.cs
-@@ -123,6 +123,9 @@ public sealed class BatteryPack : IDppRecord
+@@ -128,6 +128,9 @@ public sealed class BatteryPack : IDppRecord
      /// </summary>
      public List<RepairEntry> Repairs { get; set; } = [];
  
@@ -938,7 +936,7 @@ index 58523c3..2700a37 100644
      /// <summary>
      /// Placed on the market again (design 7.5, step 4c-1): what the status was, and the battery's new passport, Scania's
      /// (a new pack) or another operator's. Null while the battery isn't waiting for a new passport. App data.
-@@ -294,6 +297,18 @@ public sealed class UploadedValue
+@@ -299,6 +302,18 @@ public sealed class UploadedValue
      public string? Message { get; init; }
  }
  
@@ -958,10 +956,10 @@ index 58523c3..2700a37 100644
  public sealed class RepairEntry
  {
 diff --git a/web/Dpp/Store/DppStore.cs b/web/Dpp/Store/DppStore.cs
-index d1ba179..95ae7d3 100644
+index 65b483e..e6b3988 100644
 --- a/web/Dpp/Store/DppStore.cs
 +++ b/web/Dpp/Store/DppStore.cs
-@@ -233,6 +233,21 @@ public sealed class DppStore
+@@ -253,6 +253,21 @@ public sealed class DppStore
          return result.MatchedCount == 1;
      }
  
@@ -1056,22 +1054,22 @@ index 0b5774b..df1511b 100644
              var outcome = result.Keys.Any(key => key.Outcome == KeyOutcome.Saved) || modules is { Changed: true } ? Saved : NothingSaved;
              reports.Add(new UploadedBatteryReport(entry.Number, entry.NamedAs, target!.Identifier, pack.Id, outcome, null, result.Keys, modules?.Words, notes));
          }
-diff --git a/web/Views/Batteries/_StatusCard.cshtml b/web/Views/Batteries/_StatusCard.cshtml
-index cc1c82c..5f86ba5 100644
---- a/web/Views/Batteries/_StatusCard.cshtml
-+++ b/web/Views/Batteries/_StatusCard.cshtml
-@@ -150,9 +150,9 @@
-                             @if (field.Attribute.Number == 59 && Model.RatedCapacityAh is { } rated)
-                             {
-                                 <div class="bp-suggest" data-fade-suggest data-rated="@rated.ToString(System.Globalization.CultureInfo.InvariantCulture)">
--                                    <label><span>Measured remaining capacity (Ah)</span><input type="text" inputmode="decimal" data-fade-remaining /></label>
-+                                    <label><span>Measured remaining capacity (Ah)</span><input type="text" inputmode="decimal" data-fade-remaining value="@(Model.Remaining?.Ah.ToString(System.Globalization.CultureInfo.InvariantCulture))" /></label>
-                                     <button type="button" class="bp-text-button" data-fade-button>Suggest the fade</button>
--                                    <small class="bp-field-help" data-fade-note>1 − remaining / @ValueWords.Number(rated) Ah rated. The measured capacity isn't stored.</small>
-+                                    <small class="bp-field-help" data-fade-note>1 − remaining / @ValueWords.Number(rated) Ah rated.@(Model.Remaining is { } reading ? $" It starts with the battery system's last export, {ValueWords.Time(reading.MeasuredAtUtc)}." : " The measured capacity isn't part of the passport.")</small>
-                                 </div>
-                             }
+diff --git a/web/Views/Batteries/_StatusDialog.cshtml b/web/Views/Batteries/_StatusDialog.cshtml
+index 57d2158..29ecd55 100644
+--- a/web/Views/Batteries/_StatusDialog.cshtml
++++ b/web/Views/Batteries/_StatusDialog.cshtml
+@@ -38,9 +38,9 @@
+                         @if (field.Attribute.Number == 59 && Model.RatedCapacityAh is { } rated)
+                         {
+                             <div class="bp-suggest" data-fade-suggest data-rated="@rated.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+-                                <label><span>Measured remaining capacity (Ah)</span><input type="text" inputmode="decimal" data-fade-remaining /></label>
++                                <label><span>Measured remaining capacity (Ah)</span><input type="text" inputmode="decimal" data-fade-remaining value="@(Model.Remaining?.Ah.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture))" /></label>
+                                 <button type="button" class="bp-text-button" data-fade-button>Suggest the fade</button>
+-                                <small class="bp-field-help" data-fade-note>1 − remaining / @ValueWords.Number(rated) Ah rated. The measured capacity isn't stored.</small>
++                                <small class="bp-field-help" data-fade-note>1 − remaining / @ValueWords.Number(rated) Ah rated.@(Model.Remaining is { } reading ? $" It starts with the battery system's last export, {ValueWords.Time(reading.MeasuredAtUtc)}." : " The measured capacity isn't part of the passport.")</small>
+                             </div>
                          }
+                     }
 diff --git a/web/Views/Help/Index.cshtml b/web/Views/Help/Index.cshtml
 index bb42af4..ff92db6 100644
 --- a/web/Views/Help/Index.cshtml
@@ -1090,17 +1088,12 @@ index bb42af4..ff92db6 100644
 - [ ] **Step 4: Run them to see them pass**
 
 Run: `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --disable-build-servers --filter "FullyQualifiedName~BmsExportUploadTests | FullyQualifiedName~StatusPagesTests"`
-Expected: `Passed!  - Failed:     0, Passed:    24`.
+Expected: `Passed!  - Failed:     0, Passed:    24`. The whole suite runs once, in the final checks.
 
-- [ ] **Step 5: Run the whole suite**
-
-Run: `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --disable-build-servers --blame-hang --blame-hang-timeout 10m`
-Expected: `Passed!  - Failed:     0, Passed:  2265`.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add BatteryPassWeb.Tests/Dpp/BmsExportUploadTests.cs web/Dpp/Pages/StatusPages.cs web/Dpp/Store/DppRecords.cs web/Dpp/Store/DppStore.cs web/Dpp/Uploads/BmsExportFormat.cs web/Dpp/Uploads/UploadFile.cs web/Dpp/Uploads/UploadService.cs web/Views/Batteries/_StatusCard.cshtml web/Views/Help/Index.cshtml
+git add BatteryPassWeb.Tests/Dpp/BmsExportUploadTests.cs web/Dpp/Pages/StatusPages.cs web/Dpp/Store/DppRecords.cs web/Dpp/Store/DppStore.cs web/Dpp/Uploads/BmsExportFormat.cs web/Dpp/Uploads/UploadFile.cs web/Dpp/Uploads/UploadService.cs web/Views/Batteries/_StatusDialog.cshtml web/Views/Help/Index.cshtml
 git commit -m "feat(dpp): the export's remaining capacity starts the fade suggestion" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
@@ -1111,7 +1104,7 @@ git commit -m "feat(dpp): the export's remaining capacity starts the fade sugges
 - [ ] **Step 1: Run the whole suite**
 
 Run: `dotnet test BatteryPassWeb.Tests/BatteryPassWeb.Tests.csproj --disable-build-servers --blame-hang --blame-hang-timeout 10m`
-Expected: `Passed!  - Failed:     0, Passed:  2265, Skipped:     0, Total:  2265`. From the 2255 before: 2264 after Task 1, 2265 after Task 2.
+Expected: `Passed!  - Failed:     0, Passed:  2469, Skipped:     0, Total:  2469`. From the 2459 before: 10 new tests.
 
 - [ ] **Step 2: Build without warnings**
 
@@ -1120,18 +1113,19 @@ Expected: `Build succeeded.`, `0 Warning(s)`, `0 Error(s)`.
 
 - [ ] **Step 3: Confirm everything is committed and `site.css` is untouched**
 
-Run: `git status --short` and `git diff --stat c99c6b7 -- web/wwwroot/css/site.css`
+Run: `git status --short` and `git diff --stat 6f2a982 -- web/wwwroot/css/site.css`
 Expected: nothing listed by either.
 
 ## After this plan: the product owner's look
 
-Not steps of this plan. The upload page comes with 5c; until then exports go through the API. The managing session brings these to the product owner:
+Not steps of this plan. Uploading on a battery's page comes with 5c; until then exports go through the API. The managing session brings these to the product owner:
 
 1. **Restart the app with the usual launcher**, sign in with a team account and press "Reset demo data" at the end of the Clusters tab.
 2. **The help page** (Help, then "API reference and workbench"): the uploads row's details now describe the battery system's export.
 3. **Send an export in the workbench:** make a read-write token for demo-north on the API tokens tab (its value is shown once) and paste it in the workbench. Choose "Send an upload of many batteries" and replace the body with a battery system export whose serial number is changed to `DEMO-C7M-0001`. The answer lists the saved live values, "the module list was set", and the notes (no pack temperature yet). Delete the token afterwards.
-4. **DEMO-C7M-0001's page:** the live values show "from the battery system", the module list is the export's, and "Change status" → "Repaired" starts the measured remaining capacity box with the export's value, saying when it was measured.
+4. **DEMO-C7M-0001's page** (Batteries, then the battery): "Live values" in the side menu shows the values "from the battery system"; "Modules" shows the export's list; "Change status" among the page's actions → "Repaired" → "Next" starts the "Measured remaining capacity (Ah)" box with the export's value, saying when it was measured. "History" among the page's links opens the audit log for this battery: the export's values, from "The API", and "Modules of battery DEMO-C7M-0001 set from the battery system's export: 8 modules".
+5. **As demo-north's cluster admin** (`demo.north.admin@example.test`), the same battery's page ("Manage" on the Registry): the same box in "Change status", and "History" in the side menu: their battery system's readings as one line ("the latest of N live readings" after several) and the module list's change, by "Your battery system".
 
 ## Next
 
-The mock-up's approval, then 5c (the upload page) and 5d (status changes and repairs by upload, and the demo example).
+5c: "Upload a file" on each battery's page (mock-up B1–B4, approved), with "Fill from export" merged into it. Then 5d: status changes and repairs by upload, the help page's sample files and the demo example.
