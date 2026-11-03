@@ -113,8 +113,6 @@
 
             <dl class="bp-field-grid bp-report-hero-fields bp-summary-fields-panel">
                 <div><dt>Battery family</dt><dd>@(Model.FamilyName ?? "-")</dd></div>
-                <div><dt>Battery serial number</dt><dd>@Model.Text(11)</dd></div>
-                <div><dt>Battery model</dt><dd>@Model.Text(10)</dd></div>
                 @if (Model.ModuleCount > 0 || Model.ModuleDescription is not null)
                 {
                     <div class="bp-passport-modules"><dt>Modules</dt><dd>@(Model.ModuleCount > 0 ? Model.ModuleCount.ToString(System.Globalization.CultureInfo.InvariantCulture) : "-")@if (Model.ModuleDescription is { } moduleDescription)

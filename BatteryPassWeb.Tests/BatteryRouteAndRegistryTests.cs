@@ -15,8 +15,20 @@ public sealed class BatteryRouteAndRegistryTests
         Assert.Contains("Passport ID", hero);
         // Active, archived, inactive, … as a badge (step 4c-1, redesign R3).
         Assert.Contains("StatusBadge.Passport(Model.IsCurrent ? BatteryPassWeb.Dpp.Store.DppStatuses.Active : Model.Version.DppStatus)", hero);
-        Assert.Contains("Battery model", hero);
+        Assert.Contains("Model: @Model.Text(10)", hero); // the line under the title; the fact row is gone
         Assert.DoesNotContain("Battery version", hero);
+    }
+
+    [Fact]
+    public void ThePassportHero_ShouldNotRepeatTheSerialNumberAndModelTheTitleAndTheLineUnderItShow()
+    {
+        var hero = File.ReadAllText(RepoFile("web", "Views", "Passport", "_PassportHero.cshtml"));
+
+        Assert.Contains("<h1>@Model.Text(11)</h1>", hero);
+        Assert.Contains("Model: @Model.Text(10)", hero);
+        Assert.DoesNotContain("<dt>Battery serial number</dt>", hero);
+        Assert.DoesNotContain("<dt>Battery model</dt>", hero);
+        Assert.Contains("<dt>Battery family</dt>", hero); // the other facts stay
     }
 
     [Fact]
