@@ -261,12 +261,9 @@ public sealed class SavePipeline(
         return new Evaluation(results, accepted);
     }
 
-    /// <summary>The pack and the passports linked to it (its predecessor and successor), which share its serial number.</summary>
-    private async Task<IReadOnlyCollection<string>> LinkedPacksAsync(string packId, CancellationToken cancellationToken)
-    {
-        var pack = await store.GetAsync<BatteryPack>(packId, cancellationToken);
-        return new[] { packId, pack?.SuccessorOf, pack?.Succession?.SuccessorPackId }.OfType<string>().ToArray();
-    }
+    /// <summary>The pack and every earlier and later passport of the same battery, which share its serial number (R6).</summary>
+    private Task<IReadOnlyCollection<string>> LinkedPacksAsync(string packId, CancellationToken cancellationToken) =>
+        store.ChainPackIdsAsync(packId, cancellationToken);
 
     private async Task<bool> UsedByPublishedPassportAsync(TargetKind target, string id, CancellationToken cancellationToken)
     {

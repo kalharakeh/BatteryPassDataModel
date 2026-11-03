@@ -69,10 +69,11 @@ public sealed class PackCreationService(
             return new PackCreationResult(null, evaluation.Results, "the battery serial number (#11) is required");
         }
 
-        // A battery's new linked passport keeps its serial number (design 7.5 and 8.2): the old pack may share it.
+        // A battery's new linked passport keeps its serial number (design 7.5 and 8.2): its earlier passports may share it,
+        // all of them, not only the one it replaces (redesign R6: a battery placed on the market twice).
         if (await store.SerialNumberTakenAsync(
             evaluation.Accepted["batterySerialNumber"].GetValue<string>(),
-            request.PredecessorPackId is null ? [] : [request.PredecessorPackId],
+            request.PredecessorPackId is null ? [] : await store.ChainPackIdsAsync(request.PredecessorPackId, cancellationToken),
             cancellationToken))
         {
             var keys = evaluation.Results

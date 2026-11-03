@@ -179,6 +179,26 @@ public sealed class DppStore
     }
 
     /// <summary>All packs with this serial number (#11). Serial numbers are not unique.</summary>
+    /// <summary>
+    /// The pack and every earlier and later passport of the same battery (design 7.5): they share its serial number. A
+    /// battery placed on the market twice has three, not just a pack's direct neighbours (redesign R6).
+    /// </summary>
+    public async Task<IReadOnlyCollection<string>> ChainPackIdsAsync(string packId, CancellationToken cancellationToken = default)
+    {
+        var ids = new List<string>();
+        for (var at = (string?)packId; at is not null && !ids.Contains(at); at = (await GetAsync<BatteryPack>(at, cancellationToken))?.SuccessorOf)
+        {
+            ids.Add(at);
+        }
+
+        for (var at = (await GetAsync<BatteryPack>(packId, cancellationToken))?.Succession?.SuccessorPackId; at is not null && !ids.Contains(at); at = (await GetAsync<BatteryPack>(at, cancellationToken))?.Succession?.SuccessorPackId)
+        {
+            ids.Add(at);
+        }
+
+        return ids;
+    }
+
     public async Task<IReadOnlyList<BatteryPack>> FindPacksBySerialNumberAsync(string serialNumber, CancellationToken cancellationToken = default)
     {
         if (_database is null || string.IsNullOrWhiteSpace(serialNumber))
