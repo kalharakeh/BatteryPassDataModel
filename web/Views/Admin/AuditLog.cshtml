@@ -58,8 +58,7 @@
                     @Option("cluster", "Clusters", filter.EntityType)
                     @Option("apiToken", "API tokens", filter.EntityType)
                     @Option("account", "Accounts", filter.EntityType)
-                    @Option("passport", "Old passports", filter.EntityType)
-                    @Option("battery", "Old batteries", filter.EntityType)
+                    @* The old model's entity types are gone: its data was reset (decision 1; redesign R6). *@
                 </select>
             </label>
             <label>
@@ -88,9 +87,6 @@
                             @Option("dpp", "Product data and passports", filter.Category)
                             @Option("security", "Sign-ins, accounts and tokens", filter.Category)
                             @Option("admin", "Clusters and other admin", filter.Category)
-                            @Option("passport", "Old passports", filter.Category)
-                            @Option("battery", "Old batteries", filter.Category)
-                            @Option("file", "Old passport files", filter.Category)
                         </select>
                     </label>
                     <label>
