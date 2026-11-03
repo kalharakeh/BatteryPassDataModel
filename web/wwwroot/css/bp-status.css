@@ -84,22 +84,63 @@
 }
 
 /* "What do the two statuses mean?": a small round button opening the explainer (a popover, no script needed). */
+/* "What do these mean?": a calm text link with its icon beside the badges, easy to spot (redesign R5, item 5). */
 .bp-status-help-button {
-  display: inline-grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 2px 9px 2px 5px;
   border: 0;
-  border-radius: 50%;
+  border-radius: 999px;
   background: none;
-  color: var(--bp-muted);
+  color: var(--bp-primary);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgba(42, 110, 207, 0.35);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.bp-status-help-button .bp-i {
+  width: 17px;
+  height: 17px;
 }
 
 .bp-status-help-button:hover,
 .bp-status-help-button:focus-visible {
   background: rgba(42, 110, 207, 0.08);
-  color: var(--bp-primary);
+  text-decoration-color: currentColor;
+}
+
+/* In a list's Status heading: the "?" alone, in a small ring; its words stay for screen readers. */
+th .bp-status-help-button {
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  min-height: 0;
+  margin-left: 4px;
+  padding: 0;
+  border: 1px solid var(--bp-border);
+  color: var(--bp-muted);
+  text-decoration: none;
+  vertical-align: -5px;
+}
+
+th .bp-status-help-button .bp-i {
+  width: 14px;
+  height: 14px;
+}
+
+th .bp-status-help-words {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .bp-status-help {
