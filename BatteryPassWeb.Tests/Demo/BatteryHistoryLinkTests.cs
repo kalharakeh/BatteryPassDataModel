@@ -21,7 +21,9 @@ public sealed class BatteryHistoryLinkTests(MongoFixture mongo)
     {
         using var rig = await DemoRig.StartAsync(mongo);
         await rig.Demo.SeedAsync(DemoRig.Who);
-        var pack = (await rig.Store.ListAsync<BatteryPack>()).First();
+        // A battery with one passport, by serial: "the first" pack had no order and was sometimes DEMO-C13M-0001, whose chain
+        // of three passports made the OtherPassports check fail by chance.
+        var pack = (await rig.Store.ListAsync<BatteryPack>()).Single(p => p.Values.TryGetValue("batterySerialNumber", out var s) && s.Value?.GetValue<string>() == "DEMO-C7M-0001");
         var serial = pack.Values["batterySerialNumber"].Value!.GetValue<string>();
         var controller = DemoCardTests.Controller(rig);
         var lines = rig.Services.GetRequiredService<AuditLines>();
