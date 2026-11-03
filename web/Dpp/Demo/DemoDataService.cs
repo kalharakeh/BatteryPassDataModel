@@ -429,9 +429,23 @@ public sealed class DemoDataService(
             await ChangeStatusAsync(team, packId, demo, status, cancellationToken);
             if (status.Successor is { } next)
             {
-                await MakeSuccessorAsync(team, packId, demo, next, cancellationToken);
+                var newest = await MakeSuccessorAsync(team, packId, demo, next, cancellationToken);
                 successors++;
                 published++;
+
+                // Placed on the market again in turn: a chain of passports (redesign R6, the owner's item 12).
+                for (var then = next.Then; then is not null; then = then.Successor?.Then)
+                {
+                    await ChangeStatusAsync(team, newest, demo, then, cancellationToken);
+                    if (then.Successor is not { } again)
+                    {
+                        break;
+                    }
+
+                    newest = await MakeSuccessorAsync(team, newest, demo, again, cancellationToken);
+                    successors++;
+                    published++;
+                }
             }
         }
 
@@ -554,7 +568,7 @@ public sealed class DemoDataService(
     /// Scania's new passport of a demo battery placed on the market again (step 4c-1), the way the team makes it: made
     /// from the old battery with its operator, given a warranty, published, which makes the old passport inactive.
     /// </summary>
-    private async Task MakeSuccessorAsync(ChangeSender team, string packId, DemoPack demo, DemoSuccessor next, CancellationToken cancellationToken)
+    private async Task<string> MakeSuccessorAsync(ChangeSender team, string packId, DemoPack demo, DemoSuccessor next, CancellationToken cancellationToken)
     {
         var old = await store.GetAsync<BatteryPack>(packId, cancellationToken) ?? throw new InvalidOperationException($"The demo battery {demo.Serial} is missing.");
         var (successorId, problem) = await successions.CreateSuccessorAsync(team, packId, old.OperatorId, cancellationToken);
@@ -570,6 +584,8 @@ public sealed class DemoDataService(
         {
             throw new InvalidOperationException($"The demo battery {demo.Serial}'s new passport couldn't be published: {result.Problem ?? string.Join("; ", result.Report?.Blocking ?? [])}.");
         }
+
+        return successorId;
     }
 
     /// <summary>

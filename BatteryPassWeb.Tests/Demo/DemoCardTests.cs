@@ -51,7 +51,7 @@ public sealed class DemoCardTests(MongoFixture mongo)
         var result = await controller.ResetDemoData();
 
         Assert.Equal("/admin/clusters?tab=clusters", Assert.IsType<RedirectResult>(result).Url);
-        Assert.Equal("Demo data reset: There was no demo data to clear; 2 families, 3 models, 2 sites, 2 operators and 3 batches; 9 batteries, 6 of them published; 12 accounts and 7 API tokens.", controller.TempData["StatusMessage"]);
+        Assert.Equal("Demo data reset: There was no demo data to clear; 2 families, 3 models, 2 sites, 2 operators and 3 batches; 10 batteries, 7 of them published; 12 accounts and 7 API tokens.", controller.TempData["StatusMessage"]);
         var tokens = JsonSerializer.Deserialize<List<DemoToken>>((string)controller.TempData["GeneratedCredentials"]!)!;
         Assert.Equal(7, tokens.Count);
         Assert.All(tokens, token => Assert.False(string.IsNullOrWhiteSpace(token.Value)));
@@ -66,7 +66,7 @@ public sealed class DemoCardTests(MongoFixture mongo)
 
         await controller.ClearDemoData();
 
-        Assert.StartsWith("Demo data cleared: 9 batteries removed; ", (string)controller.TempData["StatusMessage"]!, StringComparison.Ordinal);
+        Assert.StartsWith("Demo data cleared: 10 batteries removed; ", (string)controller.TempData["StatusMessage"]!, StringComparison.Ordinal);
         Assert.Null(controller.TempData["GeneratedCredentials"]);
         Assert.Equal(0, await rig.Count(DppStore.Packs));
     }

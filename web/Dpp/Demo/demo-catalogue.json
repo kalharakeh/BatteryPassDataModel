@@ -981,7 +981,18 @@
           "expectedLifetimeInCalendarYears": 6
         },
         "successor": {
-          "warranty": "P3Y"
+          "warranty": "P3Y",
+          "then": {
+            "what": "Remanufactured",
+            "restated": {
+              "capacityFade": 3,
+              "powerFade": 2,
+              "expectedLifetimeInCalendarYears": 9
+            },
+            "successor": {
+              "warranty": "P5Y"
+            }
+          }
         }
       }
     },
