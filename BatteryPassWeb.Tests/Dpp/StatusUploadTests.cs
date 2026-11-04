@@ -1,9 +1,12 @@
 using System.Text;
 using System.Text.Json.Nodes;
+using BatteryPassWeb.Controllers;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Dpp.Uploads;
 using BatteryPassWeb.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
@@ -11,7 +14,8 @@ namespace BatteryPassWeb.Tests.Dpp;
 
 /// <summary>
 /// Status changes and repairs by upload (design 8.2, decision 35 Q20–Q25; step 5d): read from the app's format, made
-/// through the status change on the battery's page only, shown in the check with the kept values and refused by the API.
+/// through the status change on the battery's page only, shown in the check with the kept values, refused by the API, and
+/// the help page's sample files.
 /// </summary>
 [Collection(MongoCollection.Name)]
 public sealed class StatusUploadTests(MongoFixture mongo)
@@ -149,6 +153,30 @@ public sealed class StatusUploadTests(MongoFixture mongo)
         Assert.Equal(("Battery system · upload file", "1 value saved", (string?)null), (history[0].WhoAndWhat, history[0].Result, history[0].Status));
         Assert.Equal("Status changed", history[1].Result);
         Assert.Equal("Repaired on 20 Oct 2026: “Cell module 2 replaced.” The status became re-used, with a new version.", history[1].Status);
+    }
+
+    [Fact]
+    public void TheHelpsSamples_ShouldBeForSignedInTeamsAndClusterAdmins_AndReadable()
+    {
+        var action = typeof(HelpController).GetMethod(nameof(HelpController.Sample))!;
+        var controller = new HelpController(null!);
+        var clock = new MutableTimeProvider(DppStoreTesting.Now);
+
+        var upload = Assert.IsType<FileContentResult>(controller.Sample(UploadSamples.UploadFileName, clock));
+        var export = Assert.IsType<FileContentResult>(controller.Sample(UploadSamples.ExportFileName, clock));
+
+        Assert.Equal("ClusterAdminOrAdmin", Assert.Single(action.GetCustomAttributes(typeof(AuthorizeAttribute), false).Cast<AuthorizeAttribute>()).Policy);
+        Assert.Empty(action.GetCustomAttributes(typeof(AllowAnonymousAttribute), false));
+        Assert.IsType<NotFoundResult>(controller.Sample("other.json", clock));
+        var entry = Assert.Single(Format.Read(JsonNode.Parse(upload.FileContents)!.AsObject()).Entries);
+        Assert.Equal((UploadSamples.Serial, StatusEvent.Repaired), (entry.NamedAs, entry.Status!.What));
+        var exported = Assert.Single(new BmsExportFormat().Read(JsonNode.Parse(export.FileContents)!.AsObject()).Entries);
+        Assert.Equal((UploadSamples.Serial, 7, "74"), (exported.NamedAs, exported.Modules!.Count, exported.Values["stateOfChargeSoC"]!.ToJsonString()));
+        var guide = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Help", "Guide.cshtml"));
+        Assert.Contains("/help/samples/@BatteryPassWeb.Dpp.Uploads.UploadSamples.UploadFileName", guide, StringComparison.Ordinal);
+        Assert.Contains("/help/samples/@BatteryPassWeb.Dpp.Uploads.UploadSamples.ExportFileName", guide, StringComparison.Ordinal);
+        var api = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Help", "Index.cshtml"));
+        Assert.Contains("@BatteryPassWeb.Dpp.Uploads.UploadService.StatusOnThePage", api, StringComparison.Ordinal); // decision (d)
     }
 
     private static byte[] Repair(string serial, string values) => Encoding.UTF8.GetBytes(UploadServiceTests.File(

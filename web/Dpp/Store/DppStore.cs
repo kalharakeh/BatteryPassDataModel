@@ -130,6 +130,10 @@ public sealed class DppStore
         }
     }
 
+    /// <summary>Marks an upload as the demo data's (decision 32); clearing the demo data removes it.</summary>
+    public Task SetUploadDemoAsync(string uploadId, CancellationToken cancellationToken = default) =>
+        Collection<UploadRecord>().UpdateOneAsync(upload => upload.Id == uploadId, Builders<UploadRecord>.Update.Set(upload => upload.IsDemo, true), cancellationToken: cancellationToken);
+
     /// <summary>The latest uploads, newest first.</summary>
     public async Task<IReadOnlyList<UploadRecord>> ListUploadsAsync(int limit, CancellationToken cancellationToken = default)
     {

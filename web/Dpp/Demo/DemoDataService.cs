@@ -7,6 +7,7 @@ using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Pages;
 using BatteryPassWeb.Dpp.Publication;
 using BatteryPassWeb.Dpp.Store;
+using BatteryPassWeb.Dpp.Uploads;
 using BatteryPassWeb.Services;
 using Microsoft.Extensions.Options;
 using MongoDB.Bson;
@@ -45,7 +46,8 @@ public sealed class DemoDataService(
     ExternalApiRepository tokens,
     ApplicationAuditService audit,
     IOptions<BatteryPassOptions> options,
-    TimeProvider clock)
+    TimeProvider clock,
+    UploadService uploads)
 {
     public const string SeededEvent = "demo.seeded";
     public const string ClearedEvent = "demo.cleared";
@@ -176,7 +178,9 @@ public sealed class DemoDataService(
         var successors = outcomes.Sum(outcome => outcome.Successors);
         notes.AddRange(outcomes.SelectMany(outcome => outcome.Notes));
 
-        demoTokens.AddRange(await SeedTokensAsync(who, catalogue, cancellationToken));
+        var writeTokens = new Dictionary<string, string>(StringComparer.Ordinal);
+        demoTokens.AddRange(await SeedTokensAsync(who, catalogue, cancellationToken, writeTokens));
+        await SeedUploadsAsync(catalogue, writeTokens, cancellationToken);
 
         var done = new List<string>
         {
@@ -211,8 +215,11 @@ public sealed class DemoDataService(
         var removed = new Dictionary<string, int>(StringComparer.Ordinal);
         void Count(string what) => removed[what] = removed.GetValueOrDefault(what) + 1;
 
-        // Batteries first: nothing real can depend on a demo battery. Their versions and documents go with them.
-        foreach (var packId in await DemoIdsAsync(DppStore.Packs, cancellationToken))
+        // Batteries first: nothing real can depend on a demo battery. Their versions and documents go with them, and their
+        // kept upload checks in one delete (step 5d).
+        var demoPacks = await DemoIdsAsync(DppStore.Packs, cancellationToken);
+        await Collection(DppStore.UploadChecks).DeleteManyAsync(Builders<BsonDocument>.Filter.In("PackId", demoPacks), cancellationToken);
+        foreach (var packId in demoPacks)
         {
             await Collection(DppStore.Versions).DeleteManyAsync(Builders<BsonDocument>.Filter.Eq("PackId", packId), cancellationToken);
             await Collection(DppStore.HandOvers).DeleteManyAsync(Builders<BsonDocument>.Filter.Eq("PackId", packId), cancellationToken);
@@ -220,6 +227,9 @@ public sealed class DemoDataService(
             await store.DeleteAsync<BatteryPack>(packId, cancellationToken);
             Count("batteries");
         }
+
+        // The demo uploads go with them (step 5d); a real upload naming a demo battery stays in the log.
+        await Collection(DppStore.Uploads).DeleteManyAsync(Builders<BsonDocument>.Filter.Eq("IsDemo", true), cancellationToken);
 
         await ClearUnlessUsedAsync<ProductionBatch>(DppStore.Batches, "batches", (DppStore.Packs, "BatchId"), "real batteries", TargetKind.Batch, notes, Count, cancellationToken);
         await ClearUnlessUsedAsync<EconomicOperator>(DppStore.Operators, "operators", (DppStore.Packs, "OperatorId"), "real batteries", null, notes, Count, cancellationToken);
@@ -340,7 +350,7 @@ public sealed class DemoDataService(
 
     /// <summary>Each demo cluster's read and read-write tokens, and one team token with full access; values shown once.
     /// The cluster tokens are the cluster's own (autoClusterId), so the app's start adds no others for a demo cluster.</summary>
-    private async Task<List<DemoToken>> SeedTokensAsync(string who, DemoCatalogue catalogue, CancellationToken cancellationToken)
+    private async Task<List<DemoToken>> SeedTokensAsync(string who, DemoCatalogue catalogue, CancellationToken cancellationToken, Dictionary<string, string>? writeTokens = null)
     {
         var made = new List<DemoToken>();
         foreach (var cluster in catalogue.Clusters)
@@ -350,6 +360,10 @@ public sealed class DemoDataService(
                 var (document, value) = await tokens.CreateTokenAsync($"{cluster.Name} ({access.ToLowerInvariant()})", mode, [cluster.Id], false, false, who, autoClusterId: cluster.Id, cancellationToken: cancellationToken);
                 await MarkAccountRecordAsync("apiTokens", Builders<BsonDocument>.Filter.Eq("_id", document["_id"]), cancellationToken);
                 made.Add(new DemoToken($"{cluster.Name}", access, value));
+                if (mode == ExternalTokenAccessMode.ReadWrite && writeTokens is not null)
+                {
+                    writeTokens[cluster.Id] = document["_id"].ToString()!;
+                }
             }
         }
 
@@ -654,6 +668,39 @@ public sealed class DemoDataService(
             },
         };
         return Encoding.UTF8.GetBytes(export.ToJsonString());
+    }
+
+    /// <summary>
+    /// The demo uploads (step 5d, Q25), after the tokens: for each battery the catalogue marks, an export from its
+    /// cluster's battery system (its read-write token) two hours ago, and a file of live values from its cluster admin half
+    /// an hour ago, through the one upload engine. Both are marked as demo data. No status change: the battery's demo
+    /// repair is 4b's.
+    /// </summary>
+    private async Task SeedUploadsAsync(DemoCatalogue catalogue, IReadOnlyDictionary<string, string> writeTokens, CancellationToken cancellationToken)
+    {
+        var now = clock.GetUtcNow().UtcDateTime;
+        foreach (var demo in catalogue.Packs.Where(pack => pack.Uploads && pack.Publish))
+        {
+            var admin = catalogue.Accounts.FirstOrDefault(account => account.Cluster == demo.Cluster && account.ClusterRole == "clusterAdmin");
+            var made = new List<string?>();
+            if (writeTokens.TryGetValue(demo.Cluster, out var tokenId))
+            {
+                var export = await uploads.RunAsync(ChangeSender.Feed($"api-token:{tokenId}", demo.Cluster), UploadSamples.Export(demo.Serial, now.AddHours(-2), demo.Modules), "api", null, preview: false, cancellationToken);
+                made.Add(export.UploadId);
+            }
+
+            if (admin is not null)
+            {
+                var file = JsonNode.Parse(UploadSamples.LiveValuesFile(demo.Serial, now.AddMinutes(-30), 71, 22));
+                var readings = await uploads.RunAsync(ChangeSender.ClusterAdmin(admin.Email, demo.Cluster), file, "page", "readings.json", preview: false, cancellationToken);
+                made.Add(readings.UploadId);
+            }
+
+            foreach (var id in made.OfType<string>())
+            {
+                await store.SetUploadDemoAsync(id, cancellationToken);
+            }
+        }
     }
 
     private IMongoCollection<BsonDocument> Collection(string name) => Database.GetCollection<BsonDocument>(name);

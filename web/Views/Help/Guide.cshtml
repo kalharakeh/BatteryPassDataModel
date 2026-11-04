@@ -56,6 +56,15 @@
                         <li><strong><a href="/registry">Look after your batteries</a></strong><p>In the Registry, "Manage" opens a battery's page: correct its live values and add accident reports. Its modules and versions are shown there too; the team keeps the rest.</p></li>
                     </ol>
                 </section>
+                <section class="bp-card bp-help-part" id="upload">
+                    <h2>Upload a file <span class="bp-soft-tag">Team and cluster admins</span></h2>
+                    <p>On a battery's page, "Upload a file" takes one JSON file for that battery: the app's upload format, or the battery system's export as it is. You see what would change before anything is saved. A marked or earlier passport takes no file.</p>
+                    <ul>
+                        <li><a href="/help/samples/@BatteryPassWeb.Dpp.Uploads.UploadSamples.UploadFileName" download>An upload file</a>: live values and a repair, with one re-stated value, for the demo battery @BatteryPassWeb.Dpp.Uploads.UploadSamples.Serial. A status change goes in the same way: <code>"batteryStatus": "waste"</code> (or re-used, remanufactured, repurposed) among the values.</li>
+                        <li><a href="/help/samples/@BatteryPassWeb.Dpp.Uploads.UploadSamples.ExportFileName" download>A battery system export</a> (mapping BMS2_ACO) of the same demo battery, with made-up values.</li>
+                    </ul>
+                    <p class="bp-help-text mb-0">Status changes and repairs are made on the battery's page only; the API refuses them. Many batteries in one file go through the API's upload.</p>
+                </section>
             }
 
             @if (isTeam)

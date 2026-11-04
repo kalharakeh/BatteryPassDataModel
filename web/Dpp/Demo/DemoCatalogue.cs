@@ -58,7 +58,8 @@ public sealed record DemoPack(
     string? Accident = null,
     DemoStatus? Status = null,
     DemoMark? Mark = null,
-    string? HandOverTo = null);
+    string? HandOverTo = null,
+    bool Uploads = false);
 
 /// <summary>
 /// What the demo data seed makes (decision 32): the Compact and Core families of the old demo on the new model, with

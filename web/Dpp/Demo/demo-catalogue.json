@@ -893,6 +893,7 @@
       "history": true,
       "modules": 7,
       "accident": "Coolant leak found at the 12-month service; module 4 replaced.",
+      "uploads": true,
       "status": {
         "what": "Repaired",
         "daysAgo": 10,

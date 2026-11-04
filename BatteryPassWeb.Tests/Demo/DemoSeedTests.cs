@@ -159,13 +159,30 @@ public sealed class DemoSeedTests(MongoFixture mongo)
     }
 
     [Fact]
+    public async Task TheUploadExample_ShouldShowAnExportAndAFileOnTheCompact7M()
+    {
+        using var rig = await DemoRig.StartAsync(mongo);
+
+        await rig.Demo.SeedAsync(DemoRig.Who);
+
+        var pack = (await rig.All(DppStore.Packs, Eq("Values.batterySerialNumber.Value", "DEMO-C7M-0001"))).Single();
+        var uploads = (await rig.All(DppStore.Uploads)).OrderBy(upload => upload["AtUtc"].ToUniversalTime()).ToList();
+        Assert.Equal(
+            [("api", "BatterySystemFeed", "BMS2_ACO 01.32.07", "saved"), ("page", "ClusterAdmin", "dpp-v3-upload/1", "saved")],
+            uploads.Select(upload => (upload["Channel"].AsString, upload["SentAs"].AsString, upload["Format"].AsString, upload["Batteries"][0]["Outcome"].AsString)));
+        Assert.All(uploads, upload => Assert.Equal(pack["_id"].AsString, upload["Batteries"].AsBsonArray.Single()["PackId"].AsString));
+        Assert.Equal(71, pack["Values"]["stateOfChargeSoC"]["Value"]["percentageValue"].ToInt32()); // the file came last
+        Assert.Equal(7, pack["Modules"].AsBsonArray.Count); // the export names the seed's modules: none added
+    }
+
+    [Fact]
     public async Task EveryRecordItMakes_ShouldBeMarkedAsDemoData()
     {
         using var rig = await DemoRig.StartAsync(mongo);
 
         await rig.Demo.SeedAsync(DemoRig.Who);
 
-        foreach (var collection in new[] { DppStore.Families, DppStore.Models, DppStore.Sites, DppStore.Batches, DppStore.Operators, DppStore.Packs })
+        foreach (var collection in new[] { DppStore.Families, DppStore.Models, DppStore.Sites, DppStore.Batches, DppStore.Operators, DppStore.Packs, DppStore.Uploads })
         {
             Assert.All(await rig.All(collection), record => Assert.True(record["IsDemo"].AsBoolean, $"{collection} {record["_id"]}"));
         }
