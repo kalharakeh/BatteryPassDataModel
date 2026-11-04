@@ -29,11 +29,15 @@ public sealed class RedesignFixesTests
     [Fact]
     public void TheStatusWindow_ShouldKeepItsButtonsInViewWhileItsValuesScroll()
     {
-        // "Save and publish a new version" sat below every re-stated value (point 3).
+        // "Save and publish a new version" sat below every re-stated value (point 3). The buttons stay in view below the
+        // values, which scroll on their own; a sticky bar over them hid the last choice (the owner's step-5 test).
         var actions = Block(Css, "[data-status-dialog] .bp-dialog-actions {");
+        var body = Block(Css, "[data-status-dialog] .bp-dialog-body {");
 
-        Assert.Contains("position: sticky;", actions, StringComparison.Ordinal);
-        Assert.Contains("bottom: 0;", actions, StringComparison.Ordinal);
+        Assert.Contains("overflow-y: auto;", body, StringComparison.Ordinal);
+        Assert.Contains("min-height: 0;", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("sticky", actions, StringComparison.Ordinal);
+        Assert.Contains("border-top: 1px solid var(--bp-border);", actions, StringComparison.Ordinal);
         Assert.Contains("background: #101f35;", Block(Css, "[data-theme=\"dark\"] [data-status-dialog] .bp-dialog-actions {"), StringComparison.Ordinal);
     }
 

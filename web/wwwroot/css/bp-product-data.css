@@ -2553,12 +2553,46 @@ main .bp-field-marker.is-published {
   color: #86efac;
 }
 
-/* The status window's buttons stay at its bottom edge while its values scroll (redesign R1, owner's point 3). */
+/* The status window (redesign R1, owner's point 3; the owner's step-5 test, 4 Nov 2026): each step's head and buttons
+   stay put and only the body between them scrolls, so nothing hides under the buttons. The buttons were a sticky bar
+   with a negative margin, which left the window 20 px shorter than its content, covered the last choice and gave the
+   window nothing to scroll. */
+[data-status-dialog][open] {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+[data-status-dialog] .bp-dialog-form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+[data-status-dialog] [data-status-step] {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+[data-status-dialog] .bp-dialog-head {
+  padding: 20px 20px 12px;
+}
+
+[data-status-dialog] .bp-dialog-body {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 14px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 20px 16px;
+}
+
 [data-status-dialog] .bp-dialog-actions {
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
-  margin: 0 -20px -20px;
   padding: 12px 20px 16px;
   border-top: 1px solid var(--bp-border);
   background: #fff;
@@ -2897,7 +2931,7 @@ main .bp-field-marker.is-published {
 }
 
 [data-status-dialog].is-step-2 [data-status-step="2"] {
-  display: block;
+  display: flex;
 }
 
 /* Hand-overs waiting for a cluster admin on the Registry (step 4d, mock-up S1): one row each, with its two answers. */

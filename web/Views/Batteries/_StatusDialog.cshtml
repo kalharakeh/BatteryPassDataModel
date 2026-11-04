@@ -10,14 +10,19 @@
     <dialog id="status-dialog" class="bp-modal-panel bp-dialog bp-dialog-wide" aria-labelledby="status-dialog-title" data-status-dialog>
         <form method="post" action="@Model.Restated.SaveAction" class="bp-dialog-form">
             @Html.AntiForgeryToken()
+            @* Each step: its head, a body that alone scrolls, and its buttons below the body (the owner's step-5 test). *@
             <div data-status-step="1">
-                <h2 id="status-dialog-title">Change the battery status</h2>
-                <p class="bp-help-text">Now: <strong>@Model.Status</strong>. What happened to the battery?</p>
-                <div class="bp-choice-list">
-                    @foreach (var (what, label, help) in Model.Choices)
-                    {
-                        <label class="bp-choice"><input type="radio" name="what" value="@what" checked="@(what == Model.Choices[0].What)" data-status-choice="@label" /><strong>@label</strong><small>@help</small></label>
-                    }
+                <div class="bp-dialog-head">
+                    <h2 id="status-dialog-title">Change the battery status</h2>
+                    <p class="bp-help-text">Now: <strong>@Model.Status</strong>. What happened to the battery?</p>
+                </div>
+                <div class="bp-dialog-body">
+                    <div class="bp-choice-list">
+                        @foreach (var (what, label, help) in Model.Choices)
+                        {
+                            <label class="bp-choice"><input type="radio" name="what" value="@what" checked="@(what == Model.Choices[0].What)" data-status-choice="@label" /><strong>@label</strong><small>@help</small></label>
+                        }
+                    </div>
                 </div>
                 <div class="bp-dialog-actions">
                     <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
@@ -25,25 +30,29 @@
                 </div>
             </div>
             <div data-status-step="2">
-                <h2><span data-status-chosen>@Model.Choices[0].Label</span>: re-state the values</h2>
-                <p class="bp-help-text">Check each value; they start as the battery's current ones.</p>
-                <div data-status-repair>
-                    <label><span>Day of the repair</span><input type="date" name="repairDate" value="@Model.Today" max="@Model.Today" /></label>
-                    <label><span>What was repaired</span><input type="text" name="repairDescription" maxlength="@StatusChangeService.MaxDescription" placeholder="e.g. Module 4 replaced after a coolant leak" /></label>
+                <div class="bp-dialog-head">
+                    <h2><span data-status-chosen>@Model.Choices[0].Label</span>: re-state the values</h2>
+                    <p class="bp-help-text">Check each value; they start as the battery's current ones.</p>
                 </div>
-                <div class="bp-attr-list">
-                    @foreach (var field in Model.Restated.Sections.SelectMany(section => section.Fields))
-                    {
-                        @await Html.PartialAsync("~/Views/ProductData/_EditorField.cshtml", new EditorFieldView(Model.Restated, field))
-                        @if (field.Attribute.Number == 59 && Model.RatedCapacityAh is { } rated)
+                <div class="bp-dialog-body">
+                    <div data-status-repair>
+                        <label><span>Day of the repair</span><input type="date" name="repairDate" value="@Model.Today" max="@Model.Today" /></label>
+                        <label><span>What was repaired</span><input type="text" name="repairDescription" maxlength="@StatusChangeService.MaxDescription" placeholder="e.g. Module 4 replaced after a coolant leak" /></label>
+                    </div>
+                    <div class="bp-attr-list">
+                        @foreach (var field in Model.Restated.Sections.SelectMany(section => section.Fields))
                         {
-                            <div class="bp-suggest" data-fade-suggest data-rated="@rated.ToString(System.Globalization.CultureInfo.InvariantCulture)">
-                                <label><span>Measured remaining capacity (Ah)</span><input type="text" inputmode="decimal" data-fade-remaining value="@(Model.Remaining?.Ah.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture))" /></label>
-                                <button type="button" class="bp-text-button" data-fade-button>Suggest the fade</button>
-                                <small class="bp-field-help" data-fade-note>1 − remaining / @ValueWords.Number(rated) Ah rated.@(Model.Remaining is { } reading ? $" It starts with the battery system's last export, {ValueWords.Time(reading.MeasuredAtUtc)}." : " The measured capacity isn't part of the passport.")</small>
-                            </div>
+                            @await Html.PartialAsync("~/Views/ProductData/_EditorField.cshtml", new EditorFieldView(Model.Restated, field))
+                            @if (field.Attribute.Number == 59 && Model.RatedCapacityAh is { } rated)
+                            {
+                                <div class="bp-suggest" data-fade-suggest data-rated="@rated.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                                    <label><span>Measured remaining capacity (Ah)</span><input type="text" inputmode="decimal" data-fade-remaining value="@(Model.Remaining?.Ah.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture))" /></label>
+                                    <button type="button" class="bp-text-button" data-fade-button>Suggest the fade</button>
+                                    <small class="bp-field-help" data-fade-note>1 − remaining / @ValueWords.Number(rated) Ah rated.@(Model.Remaining is { } reading ? $" It starts with the battery system's last export, {ValueWords.Time(reading.MeasuredAtUtc)}." : " The measured capacity isn't part of the passport.")</small>
+                                </div>
+                            }
                         }
-                    }
+                    </div>
                 </div>
                 <div class="bp-dialog-actions">
                     <button type="button" class="bp-secondary-button" data-status-back>Back</button>
