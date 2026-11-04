@@ -22,7 +22,8 @@ public sealed record UploadCheckView(
     string? Problem,
     IReadOnlyList<UploadValueRow> Values,
     string? Modules,
-    IReadOnlyList<string> Notes);
+    IReadOnlyList<string> Notes,
+    string? Status = null);
 
 /// <summary>One earlier upload of the battery (mock-up B1, B3), cut to this battery's line.</summary>
 public sealed record UploadHistoryRow(
@@ -34,7 +35,8 @@ public sealed record UploadHistoryRow(
     string? Problem,
     IReadOnlyList<UploadValueRow> Values,
     string? Modules,
-    IReadOnlyList<string> Notes);
+    IReadOnlyList<string> Notes,
+    string? Status = null);
 
 /// <summary>The "Upload a file" card of a battery page (decision 35, step 5c, mock-up B1–B4).</summary>
 /// <param name="Action">Where the card's forms post: the battery page plus "/upload".</param>
@@ -73,9 +75,10 @@ public sealed class UploadPages(UploadService uploads, AttributeForms forms, Att
                 FormatWords(shown.Report.Format),
                 battery.Outcome == UploadService.Saved,
                 battery.Problem is null ? null : Capitalise(battery.Problem),
-                Rows(pack, battery.Values.Select(value => (value.Key, value.Outcome, value.Message, battery.Sent?.GetValueOrDefault(value.Key))), preview: true),
+                Rows(pack, battery.Values.Select(value => (value.Key, value.Outcome, value.Message, battery.Sent?.GetValueOrDefault(value.Key), battery.Kept?.Contains(value.Key) == true)), preview: true),
                 battery.Modules is null ? null : Capitalise(battery.Modules),
-                (battery.Notes ?? []).Select(Capitalise).ToArray());
+                (battery.Notes ?? []).Select(Capitalise).ToArray(),
+                battery.Status);
         }
 
         var history = (await uploads.HistoryAsync(pack, forTeam, cancellationToken))
@@ -83,21 +86,23 @@ public sealed class UploadPages(UploadService uploads, AttributeForms forms, Att
             .Select(upload =>
             {
                 var battery = upload.Batteries[0];
-                var values = Rows(pack, battery.Values.Select(value => (value.Key, Enum.Parse<KeyOutcome>(value.Outcome), value.Message ?? string.Empty, value.Value)), preview: false);
+                var values = Rows(pack, battery.Values.Select(value => (value.Key, Enum.Parse<KeyOutcome>(value.Outcome), value.Message ?? string.Empty, value.Value, value.Kept)), preview: false);
                 var saved = battery.Values.Count(value => value.Outcome == nameof(KeyOutcome.Saved));
                 var result = battery.Outcome == UploadService.Refused
                     ? "Refused"
+                    : battery.Status is not null ? "Status changed"
                     : saved == 0 && battery.Modules?.Contains("was set", StringComparison.Ordinal) != true ? "Nothing saved" : $"{Words.Count(saved, "value")} saved";
                 return new UploadHistoryRow(
                     upload.Id,
                     ValueWords.Time(upload.AtUtc),
                     upload.Channel == "api" ? "API" : "Page",
-                    $"{upload.Who} · {upload.FileName ?? FormatWords(upload.Format)}",
+                    $"{(upload.SentAs == nameof(SenderKind.BatterySystemFeed) ? "Battery system" : upload.Who)} · {upload.FileName ?? FormatWords(upload.Format)}",
                     result,
                     battery.Problem is null ? null : Capitalise(battery.Problem),
                     values,
                     battery.Modules is null ? null : Capitalise(battery.Modules),
-                    battery.Notes.Select(Capitalise).ToArray());
+                    battery.Notes.Select(Capitalise).ToArray(),
+                    battery.Status);
             })
             .ToArray();
         return new UploadCardView($"{href}/upload", forTeam, check, history, openId);
@@ -153,16 +158,16 @@ public sealed class UploadPages(UploadService uploads, AttributeForms forms, Att
 
         var saved = battery.Values.Count(value => value.Outcome == KeyOutcome.Saved);
         var modules = battery.Modules?.Contains("was set", StringComparison.Ordinal) == true ? $", and {battery.Modules}" : string.Empty;
-        return $"Saved: {Words.Count(saved, "value")}{modules}.";
+        return battery.Status is { } status ? $"Saved. {status}" : $"Saved: {Words.Count(saved, "value")}{modules}.";
     }
 
-    private UploadValueRow[] Rows(BatteryPack pack, IEnumerable<(string Key, KeyOutcome Outcome, string Message, string? Sent)> values, bool preview) =>
+    private UploadValueRow[] Rows(BatteryPack pack, IEnumerable<(string Key, KeyOutcome Outcome, string Message, string? Sent, bool Kept)> values, bool preview) =>
         values.Select(value =>
         {
             var attribute = AttributeCatalog.FindByProperty(value.Key);
             var label = attribute is null ? value.Key : $"{attribute.Label} {attribute.Name}";
             var sent = value.Sent is null ? null : JsonNode.Parse(value.Sent);
-            var result = value.Outcome switch
+            var result = value.Kept && value.Outcome == KeyOutcome.Saved ? "Kept: the battery's current value" : value.Outcome switch
             {
                 KeyOutcome.Saved => preview ? "Will be saved" : "Saved",
                 KeyOutcome.KeptEmpty => "Kept: empty in the file",
@@ -175,7 +180,7 @@ public sealed class UploadPages(UploadService uploads, AttributeForms forms, Att
                 attribute is null ? sent?.ToJsonString() ?? string.Empty : Text(attribute, sent is null ? null : normalizer.Normalize(attribute, sent)),
                 result,
                 value.Outcome == KeyOutcome.Rejected,
-                value.Outcome is KeyOutcome.Ignored or KeyOutcome.KeptEmpty);
+                value.Outcome is KeyOutcome.Ignored or KeyOutcome.KeptEmpty || value.Kept);
         }).ToArray();
 
     private string Text(AttributeDefinition attribute, JsonNode? value)

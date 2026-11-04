@@ -101,6 +101,56 @@ public sealed class StatusUploadTests(MongoFixture mongo)
         Assert.Equal("original", StatusChangeService.CurrentStatus((await rig.Store.GetAsync<BatteryPack>(rig.PackId))!));
     }
 
+    [Fact]
+    public async Task TheCheck_ShouldShowTheStatusLineAndTheKeptValuesInWords()
+    {
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
+        var check = await UploadServiceTests.Service(rig).CheckBatteryFileAsync(PublicationTesting.Team, rig.PackId, "repair.json", Repair(UploadServiceTests.Serial(rig), """{ "capacityFade": 7 }"""));
+        var pack = (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!;
+
+        var view = (await UploadCheckTests.Pages(rig).CardAsync(pack, "/admin/batteries/x", forTeam: true, check.CheckId, null)).Check!;
+
+        Assert.True(view.WillChange);
+        Assert.StartsWith("Repaired on 20 Oct 2026", view.Status, StringComparison.Ordinal);
+        Assert.Equal("Will be saved", Assert.Single(view.Values, row => row.Label.StartsWith("#59", StringComparison.Ordinal)).Result);
+        var kept = Assert.Single(view.Values, row => row.Label.StartsWith("#69", StringComparison.Ordinal));
+        Assert.Equal(("Kept: the battery's current value", string.Empty, true), (kept.Result, kept.InFile, kept.Quiet));
+        var card = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Batteries", "_UploadCard.cshtml"));
+        Assert.Contains("check.Status is { } status", card, StringComparison.Ordinal);
+        Assert.Contains("upload.Status is { } uploadStatus", card, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TheCheck_ShouldSayWhyAStatusChangeIsRefused_AndOfferNoSave()
+    {
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
+        var check = await UploadServiceTests.Service(rig).CheckBatteryFileAsync(PublicationTesting.Team, rig.PackId, "repair.json", RepairWithoutWords(UploadServiceTests.Serial(rig)));
+        var pack = (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!;
+
+        var view = (await UploadCheckTests.Pages(rig).CardAsync(pack, "/admin/batteries/x", forTeam: true, check.CheckId, null)).Check!;
+
+        Assert.Equal((false, "Say what was repaired.", (string?)null), (view.WillChange, view.Problem, view.Status));
+    }
+
+    [Fact]
+    public async Task TheEarlierUploads_ShouldSayStatusChanged_AndNameABatterySystemSo()
+    {
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
+        var service = UploadServiceTests.Service(rig);
+        var check = await service.CheckBatteryFileAsync(PublicationTesting.Team, rig.PackId, "repair.json", Repair(UploadServiceTests.Serial(rig), """{ "capacityFade": 7 }"""));
+        await service.SaveCheckedAsync(PublicationTesting.Team, rig.PackId, check.CheckId);
+        rig.Clock.Now = rig.Clock.Now.AddMinutes(5);
+        var feed = ChangeSender.Feed("api-token:feed-1", BatteryTesting.North);
+        await service.RunAsync(feed, JsonNode.Parse(UploadServiceTests.File($$"""{ "batterySerialNumber": "{{UploadServiceTests.Serial(rig)}}", "values": { "stateOfChargeSoC": 40 } }""")), "api", null, preview: false);
+        var pack = (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!;
+
+        var history = (await UploadCheckTests.Pages(rig).CardAsync(pack, "/admin/batteries/x", forTeam: true, null, null)).History;
+
+        Assert.Equal(("Battery system · upload file", "1 value saved", (string?)null), (history[0].WhoAndWhat, history[0].Result, history[0].Status));
+        Assert.Equal("Status changed", history[1].Result);
+        Assert.Equal("Repaired on 20 Oct 2026: “Cell module 2 replaced.” The status became re-used, with a new version.", history[1].Status);
+    }
+
     private static byte[] Repair(string serial, string values) => Encoding.UTF8.GetBytes(UploadServiceTests.File(
         $$"""{ "batterySerialNumber": "{{serial}}", "reason": "repair", "repairDescription": "Cell module 2 replaced.", "repairDate": "2026-10-20", "values": {{values}} }"""));
 

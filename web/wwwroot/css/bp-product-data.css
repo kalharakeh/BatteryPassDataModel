@@ -3760,6 +3760,11 @@ main .bp-field-marker.is-published {
   color: #991b1b;
 }
 
+/* A status change or repair in the check (step 5d, mock-up B2's dashed line). */
+.bp-upload-status {
+  font-weight: 600;
+}
+
 .bp-upload-notes {
   margin: 8px 0 0;
   padding-left: 18px;

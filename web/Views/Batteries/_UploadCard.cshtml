@@ -14,7 +14,11 @@
             <span class="text-secondary">@check.FileName · @check.FormatWords</span>
             <span class="bp-soft-tag @(check.WillChange ? "is-saved" : "is-refused")">@(check.WillChange ? "Will change" : "Nothing to save")</span>
         </div>
-        <p class="bp-help-text mt-2 mb-0">Nothing is saved yet. Live values change the passport in place; the battery's own values make a new version.</p>
+        <p class="bp-help-text mt-2 mb-0">Nothing is saved yet. Live values change the passport in place; the battery's own values and a status change make a new version.</p>
+        @if (check.Status is { } status)
+        {
+            <p class="bp-upload-status mt-2 mb-0" data-upload-status>@status</p>
+        }
         @if (check.Problem is { } problem)
         {
             <p class="mt-2 mb-0">@problem</p>
@@ -102,6 +106,10 @@
                             @if (upload.Problem is { } refused)
                             {
                                 <p class="mb-0">@refused</p>
+                            }
+                            @if (upload.Status is { } uploadStatus)
+                            {
+                                <p class="bp-upload-status mb-0">@uploadStatus</p>
                             }
                             @if (upload.Values.Count > 0)
                             {
