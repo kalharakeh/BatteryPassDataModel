@@ -20,12 +20,22 @@
 <h2 class="h5 mb-2">@LiveTrends.WeekTitle(end, now)</h2>
 @if (older)
 {
-    <p class="bp-help-text">The battery has sent no reading since @ValueWords.Time(end), so the charts show its last week of readings. Every reading of that week, with when it was measured and how it arrived, is under the charts.</p>
+    <p class="bp-help-text d-print-none">The battery has sent no reading since @ValueWords.Time(end), so the charts show its last week of readings. Every reading of that week, with when it was measured and how it arrived, is under the charts.</p>
 }
 else
 {
-    <p class="bp-help-text">Each value's latest reading and when it was taken, and how it went over the last week when the battery sent readings. Every reading of the week, with when it was measured and how it arrived, is under the charts.</p>
+    <p class="bp-help-text d-print-none">Each value's latest reading and when it was taken, and how it went over the last week when the battery sent readings. Every reading of the week, with when it was measured and how it arrived, is under the charts.</p>
 }
+@* On paper, each value's latest reading instead of the charts (step 6a-2, the owner's P3). *@
+<table class="bp-print-live d-none d-print-table">
+    <thead><tr><th>Value</th><th>Latest reading</th><th>When and from where</th></tr></thead>
+    <tbody>
+        @foreach (var chart in charts)
+        {
+            <tr><td>@chart.Title</td><td>@chart.Shown</td><td>@chart.Note</td></tr>
+        }
+    </tbody>
+</table>
 <div class="bp-live-charts">
     @foreach (var chart in charts)
     {

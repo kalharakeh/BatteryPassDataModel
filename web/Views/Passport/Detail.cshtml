@@ -6,6 +6,8 @@
     ViewData["Title"] = $"Battery passport detail · {Model.Text(11)}";
     ViewData["Detail"] = true;
 }
+@* The paper version (step 6a-2). *@
+<link rel="stylesheet" href="~/css/bp-print.css" media="print" asp-append-version="true" />
 <main class="bp-page">
     @if (TempData[BatteryPassWeb.Controllers.PassportController.MarkMessageKey] is string marked)
     {

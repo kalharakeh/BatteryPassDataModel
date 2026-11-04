@@ -1,5 +1,7 @@
 @using BatteryPassWeb.Dpp.Pages
 @model PassportPage
+@inject BatteryPassWeb.Dpp.Documents.DppLinks Links
+@inject TimeProvider Clock
 @{
     // The battery card of both passport pages (today's look, decision 23), with the new data underneath.
     var detail = ViewData["Detail"] is true;
@@ -87,6 +89,11 @@
                 <a class="bp-report-hero-qr" href="@PassportPages.QrDownloadHref(Model.Identifier)" aria-label="Save the QR code of battery @Model.Text(11)">
                     <img src="@PassportPages.QrHref(Model.Identifier)" alt="QR code of battery @Model.Text(11)" />
                 </a>
+                @* On paper only (step 6a-2, the owner's P4): the printed page's address and when it was printed. *@
+                @if (Links.IsConfigured)
+                {
+                    <p class="bp-print-address d-none d-print-block">@(Links.PassportUrl(Model.Address) + (detail ? "/detail" : string.Empty))<br />Printed @ValueWords.Time(Clock.GetUtcNow().UtcDateTime)</p>
+                }
             </section>
 
             @if (Model.PictureHref is not null)

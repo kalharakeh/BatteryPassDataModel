@@ -1,0 +1,210 @@
+/*
+ * The passport pages on paper (step 6a-2; the owner's answers P1–P5, 4 Nov 2026). Loaded with media="print" by the
+ * public summary and the detail page only. P1: both pages. P2: every tab and section open. P3: the live values as a
+ * table of each value's latest reading, not the charts. P4: the QR code and the page's address at the top of the first
+ * page. P5: no top bar, menus, buttons or footer.
+ */
+
+@page {
+  size: A4;
+  margin: 14mm 12mm;
+}
+
+html,
+body {
+  background: #fff !important;
+  color: #111 !important;
+  font-size: 10.5pt;
+}
+
+/* P5: what only works on screen. */
+header.bp-header,
+footer.bp-footer,
+.bp-hero-ctas,
+#passport-tabs,
+[data-mark-invalid],
+.bp-copy-id-button,
+.bp-status-help-button,
+[popover],
+.bp-live-charts,
+.bp-live-all,
+script {
+  display: none !important;
+}
+
+/* Width media queries see the whole sheet (about 794 px) while the page lays out inside the margins (about 703 px), so
+   the screen layouts for that width overflow; a centred flex column then cuts their left side. On paper the page is a
+   plain column, and the hero has its own grid. */
+.bp-shell,
+main.bp-main,
+main.bp-page {
+  display: block !important;
+  width: auto !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.bp-report-hero-layout,
+.bp-report-hero-info {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 24mm 34mm !important;
+  grid-template-areas:
+    "battery picture qr"
+    "ids ids ids"
+    "fields fields fields" !important;
+  gap: 4mm !important;
+  width: auto !important;
+}
+
+.bp-report-hero-layout {
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-areas: none !important;
+}
+
+.bp-report-hero-info > * {
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+
+.bp-hero-picture img {
+  max-width: 24mm !important;
+  max-height: 34mm !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+.bp-summary-qr-panel {
+  display: block !important;
+}
+
+.bp-report-hero-fields {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.bp-kf-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.bp-field-grid:not(.bp-report-hero-fields) {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+/* Cards print flat: a thin rule instead of a shadow, and no colour fills to waste ink. */
+.bp-card,
+.bp-report-hero-card,
+.bp-kf-card {
+  box-shadow: none !important;
+  border: 1px solid #bbb !important;
+  background: #fff !important;
+  margin: 0 0 6mm !important;
+  padding: 5mm !important;
+}
+
+/* On screen the hero and the wide cards break out of the column to the window's width (100vw, margin-inline: 50%,
+   translateX(-50%), in site.css); on paper 100vw is the whole sheet, so they would start left of the page. */
+.bp-report-hero-card,
+.bp-report-wide-section {
+  width: auto !important;
+  margin-inline: 0 !important;
+  transform: none !important;
+}
+
+/* P4: the hero (statuses, IDs, QR code and now the page's address) starts the first page. */
+.bp-report-hero-card {
+  break-inside: avoid;
+}
+
+.bp-report-hero-card {
+  border: 0 !important;
+  padding: 0 !important;
+}
+
+.bp-report-hero-qr img {
+  display: block;
+  width: 26mm !important;
+  height: 26mm !important;
+  max-width: 100% !important;
+}
+
+.bp-print-address {
+  margin: 2mm 0 0;
+  font-size: 8pt;
+  overflow-wrap: anywhere;
+}
+
+/* The test tag keeps its words on paper, without its "?" icon. */
+.bp-test-tag {
+  border: 1px solid #b45309 !important;
+  background: none !important;
+}
+
+.bp-test-tag .bp-i {
+  display: none !important;
+}
+
+/* P2: every tab prints, one after another, each under its own heading. */
+.tab-content > .tab-pane {
+  display: block !important;
+  opacity: 1 !important;
+}
+
+.tab-content > .tab-pane + .tab-pane {
+  margin-top: 6mm;
+  padding-top: 4mm;
+  border-top: 1px solid #bbb;
+}
+
+.tab-content {
+  padding-top: 0 !important;
+}
+
+.bp-field-grid > div,
+.bp-kf,
+.bp-print-live tr {
+  break-inside: avoid;
+}
+
+.tab-pane h2,
+.bp-kf-head {
+  break-after: avoid;
+}
+
+/* A paper copy can't follow a link: a document link shows its address after its title. */
+.bp-field-grid dd a[target="_blank"]::after {
+  content: " (" attr(href) ")";
+  font-size: 8pt;
+  color: #444;
+  overflow-wrap: anywhere;
+}
+
+/* P3: the live values' latest readings. */
+.bp-print-live {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9.5pt;
+}
+
+.bp-print-live th,
+.bp-print-live td {
+  padding: 1.5mm 2mm;
+  border-bottom: 1px solid #ccc;
+  text-align: left;
+  vertical-align: top;
+}
+
+/* Tables that scroll sideways on screen print whole. */
+.bp-table-scroll {
+  overflow: visible !important;
+  margin: 0 !important;
+}
+
+.bp-table-scroll table {
+  width: 100% !important;
+  margin: 0 !important;
+}
+
+a {
+  color: #111 !important;
+  text-decoration: none !important;
+}

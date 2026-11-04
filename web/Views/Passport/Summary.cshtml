@@ -5,6 +5,8 @@
     ViewData["Title"] = $"Battery passport · {Model.Text(11)}";
     ViewData["Detail"] = false;
 }
+@* The paper version (step 6a-2). *@
+<link rel="stylesheet" href="~/css/bp-print.css" media="print" asp-append-version="true" />
 <main class="bp-page">
     <partial name="_PassportHero" model="Model" view-data="ViewData" />
 
