@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Store;
 
 namespace BatteryPassWeb.Dpp.Uploads;
@@ -16,6 +17,7 @@ namespace BatteryPassWeb.Dpp.Uploads;
 /// <param name="Modules">The battery's module list, when the file has one (the battery system's export, decision 31).</param>
 /// <param name="Notes">What the file's adapter wants the sender to know, e.g. a value it couldn't read.</param>
 /// <param name="FillOnly">Keys that only fill a battery without a value, left out silently otherwise (the export's #17).</param>
+/// <param name="Status">A status change or repair the entry asks for (step 5d); null for values only.</param>
 /// <param name="RemainingCapacityAh">The measured remaining capacity, kept as app data for the fade suggestion (J-11).</param>
 public sealed record UploadEntry(
     int Number,
@@ -26,7 +28,14 @@ public sealed record UploadEntry(
     IReadOnlyList<BatteryModule>? Modules = null,
     IReadOnlyList<string>? Notes = null,
     IReadOnlyCollection<string>? FillOnly = null,
-    decimal? RemainingCapacityAh = null);
+    decimal? RemainingCapacityAh = null,
+    UploadStatus? Status = null);
+
+/// <summary>
+/// A status change in an upload entry (design 8.2, decision 35 Q20): what happened, and for a repair its day
+/// (yyyy-MM-dd; the day of measuredAt when the file gives none) and what was repaired.
+/// </summary>
+public sealed record UploadStatus(StatusEvent What, string? RepairDate = null, string? RepairDescription = null);
 
 /// <summary>A file read by its format's adapter: the format, its entries, or why it can't be read at all.</summary>
 public sealed record UploadDocument(string? Format, IReadOnlyList<UploadEntry> Entries, string? Problem = null)
@@ -103,17 +112,62 @@ public sealed class NativeUploadFormat : IUploadAdapter
             measuredAt = parsed.UtcDateTime;
         }
 
-        if (entry["values"] is not JsonObject values || values.Count == 0)
+        var repair = Text(entry["reason"]) is { } reason
+            ? reason == "repair" ? true : (bool?)null
+            : false;
+        if (repair is null)
+        {
+            return Broken(number, namedAs, "the only reason an entry gives is \"repair\"");
+        }
+
+        if ((entry["values"] is not JsonObject values || values.Count == 0) && repair != true)
         {
             return Broken(number, namedAs, "the entry has no values (\"values\": {...})");
         }
 
-        return new UploadEntry(
-            number,
-            namedAs,
-            measuredAt,
-            values.ToDictionary(pair => pair.Key, pair => pair.Value?.DeepClone(), StringComparer.Ordinal));
+        var given = (entry["values"] as JsonObject ?? new JsonObject()).ToDictionary(pair => pair.Key, pair => pair.Value?.DeepClone(), StringComparer.Ordinal);
+        UploadStatus? status = null;
+        var named = given.Remove(StatusProperty, out var statusValue) ? StatusText(statusValue) : null;
+        if (repair == true)
+        {
+            if (named is not null)
+            {
+                return Broken(number, namedAs, "a repair sets the battery status itself; leave batteryStatus out");
+            }
+
+            var date = Text(entry["repairDate"]);
+            if (date is not null && !DateOnly.TryParseExact(date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
+            {
+                return Broken(number, namedAs, "repairDate isn't a day, such as 2026-10-30");
+            }
+
+            status = new UploadStatus(StatusEvent.Repaired, date ?? measuredAt?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Text(entry["repairDescription"]));
+        }
+        else if (statusValue is not null)
+        {
+            StatusEvent? what = named switch
+            {
+                "waste" => StatusEvent.Waste,
+                "re-used" => StatusEvent.PlacedOnMarketAgain,
+                "remanufactured" => StatusEvent.Remanufactured,
+                "repurposed" => StatusEvent.Repurposed,
+                _ => null,
+            };
+            if (what is null)
+            {
+                return Broken(number, namedAs, $"batteryStatus \"{named}\" can't be set by upload; it takes waste, re-used, remanufactured or repurposed, or a repair");
+            }
+
+            status = new UploadStatus(what.Value);
+        }
+
+        return new UploadEntry(number, namedAs, measuredAt, given, Status: status);
     }
+
+    private const string StatusProperty = "batteryStatus";
+
+    /// <summary>The battery status as a bare word or in the schema's own form.</summary>
+    private static string? StatusText(JsonNode? value) => Text(value) ?? Text(value?["batteryStatusValues"]);
 
     private static UploadEntry Broken(int number, string namedAs, string problem) =>
         new(number, namedAs, null, new Dictionary<string, JsonNode?>(), problem);

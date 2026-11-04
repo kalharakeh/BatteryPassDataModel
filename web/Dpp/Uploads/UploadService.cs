@@ -16,6 +16,8 @@ namespace BatteryPassWeb.Dpp.Uploads;
 /// <param name="Modules">What happened to the battery's module list, when the file had one; null otherwise.</param>
 /// <param name="Notes">What the file's adapter wants the sender to know, e.g. a value it couldn't read.</param>
 /// <param name="Sent">The values the battery's entry sent, as JSON text, by key (step 5c).</param>
+/// <param name="Status">The status change or repair in words (step 5d); null when the entry asked for none.</param>
+/// <param name="Kept">Re-stated values the file left out, taken from the battery's current ones (Q8).</param>
 public sealed record UploadedBatteryReport(
     int Entry,
     string NamedAs,
@@ -27,7 +29,9 @@ public sealed record UploadedBatteryReport(
     string? Modules = null,
     IReadOnlyList<string>? Notes = null,
     string? ClusterId = null,
-    IReadOnlyDictionary<string, string?>? Sent = null);
+    IReadOnlyDictionary<string, string?>? Sent = null,
+    string? Status = null,
+    IReadOnlyCollection<string>? Kept = null);
 
 /// <summary>An upload's result: per battery what happened, or why the file couldn't be read at all.</summary>
 /// <param name="UploadId">The log entry; null for a preview or an unreadable file, which aren't logged.</param>
@@ -50,8 +54,12 @@ public sealed class UploadService(
     BatteryApi batteries,
     ApplicationAuditService audit,
     TimeProvider clock,
+    StatusChangeService statusChanges,
     IEnumerable<IUploadAdapter> adapters)
 {
+    /// <summary>Why an API upload's battery with a status change is refused (decision 35, Q7 and Q23).</summary>
+    public const string StatusOnThePage = "status changes are made on the battery's page";
+
     public const int MaxBatteries = 500;
     public const int MaxBytes = 2 * 1024 * 1024;
     public const string UploadedEvent = "dpp.upload";
@@ -142,19 +150,58 @@ public sealed class UploadService(
                 continue;
             }
 
+            // A status change or repair first (Q22): refused, nothing of the battery is saved; the API takes none (Q23).
+            string? statusWords = null;
+            IReadOnlyList<KeyResult> statusKeys = [];
+            IReadOnlyCollection<string> kept = [];
+            var restatedSent = new Dictionary<string, string?>(StringComparer.Ordinal);
+            var current = entry;
+            if (entry.Status is { } asked)
+            {
+                if (channel != "page")
+                {
+                    reports.Add(new UploadedBatteryReport(entry.Number, entry.NamedAs, target!.Identifier, pack.Id, Refused, StatusOnThePage, [], Notes: notes, ClusterId: Cluster(pack)));
+                    continue;
+                }
+
+                var (changed, keptKeys, restated, day) = await StatusAsync(sender, pack, entry, asked, preview, cancellationToken);
+                statusKeys = changed.Keys.Where(key => key.Key != StatusProperty).ToArray();
+                kept = keptKeys;
+                foreach (var key in restated.Keys)
+                {
+                    restatedSent[key] = keptKeys.Contains(key) ? null : restated[key]?.ToJsonString();
+                }
+
+                if (changed.Problem is { } refused)
+                {
+                    reports.Add(new UploadedBatteryReport(entry.Number, entry.NamedAs, target!.Identifier, pack.Id, Refused, refused, statusKeys, Notes: notes, ClusterId: Cluster(pack), Sent: restatedSent, Kept: kept));
+                    continue;
+                }
+
+                statusWords = StatusWords(asked, day, changed.NewStatus ?? string.Empty, done: !preview);
+                current = entry with { Values = entry.Values.Where(pair => !restated.ContainsKey(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal) };
+            }
+
             var source = Source(sender);
-            var (values, unused) = await FillOnlyAsync(sender, pack, entry, cancellationToken);
+            var (values, unused) = await FillOnlyAsync(sender, pack, current, cancellationToken);
             notes = [.. notes, .. unused];
-            var result = await pipeline.SaveAsync(sender, new ChangeSet(TargetKind.Pack, pack.Id, values, source, entry.MeasuredAtUtc), preview, cancellationToken);
+            var result = values.Count == 0
+                ? new SaveResult(true, false, [])
+                : await pipeline.SaveAsync(sender, new ChangeSet(TargetKind.Pack, pack.Id, values, source, entry.MeasuredAtUtc), preview, cancellationToken);
             var modules = await ModulesAsync(sender, pack, entry.Modules, preview, cancellationToken);
             if (!preview && entry.RemainingCapacityAh is { } remaining)
             {
                 await store.SetRemainingCapacityAsync(pack.Id, new RemainingCapacityReading { Ah = remaining, MeasuredAtUtc = entry.MeasuredAtUtc ?? clock.GetUtcNow().UtcDateTime }, cancellationToken);
             }
 
-            var outcome = result.Keys.Any(key => key.Outcome == KeyOutcome.Saved) || modules is { Changed: true } ? Saved : NothingSaved;
+            var outcome = statusWords is not null || result.Keys.Any(key => key.Outcome == KeyOutcome.Saved) || modules is { Changed: true } ? Saved : NothingSaved;
             var sent = values.ToDictionary(pair => pair.Key, pair => pair.Value?.ToJsonString(), StringComparer.Ordinal);
-            reports.Add(new UploadedBatteryReport(entry.Number, entry.NamedAs, target!.Identifier, pack.Id, outcome, null, result.Keys, modules?.Words, notes, Cluster(pack), sent));
+            foreach (var (key, value) in restatedSent)
+            {
+                sent[key] = value;
+            }
+
+            reports.Add(new UploadedBatteryReport(entry.Number, entry.NamedAs, target!.Identifier, pack.Id, outcome, null, [.. statusKeys, .. result.Keys], modules?.Words, notes, Cluster(pack), sent, statusWords, kept));
         }
 
         string? uploadId = null;
@@ -320,6 +367,53 @@ public sealed class UploadService(
 
     private static string? Cluster(BatteryPack? pack) => pack?.ClusterId is { } cluster ? ClusterRepository.NormalizeClusterId(cluster) : null;
 
+    private const string StatusProperty = "batteryStatus";
+
+    /// <summary>
+    /// The entry's status change through <see cref="StatusChangeService"/> (Q20–Q22), as the upload: the re-stated values
+    /// it gives, and the battery's current ones for those it leaves out (Q8, "kept"). A repair's day is the file's
+    /// repairDate, else the day of measuredAt, else today.
+    /// </summary>
+    private async Task<(StatusChangeResult Result, IReadOnlyCollection<string> Kept, IReadOnlyDictionary<string, JsonNode?> Restated, string Day)> StatusAsync(
+        ChangeSender sender, BatteryPack pack, UploadEntry entry, UploadStatus asked, bool preview, CancellationToken cancellationToken)
+    {
+        var sources = await store.LoadSourcesAsync(pack.Id, cancellationToken);
+        var restated = new Dictionary<string, JsonNode?>(StringComparer.Ordinal);
+        var kept = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var attribute in sources is null ? [] : StatusChangeService.RestatedAttributes(sources.Model))
+        {
+            if (entry.Values.TryGetValue(attribute.Property, out var given) && given is not null
+                && !(given.GetValueKind() == JsonValueKind.String && string.IsNullOrWhiteSpace(given.GetValue<string>())))
+            {
+                restated[attribute.Property] = given;
+            }
+            else
+            {
+                restated[attribute.Property] = (pack.Values.GetValueOrDefault(attribute.Property)?.Value ?? sources!.Model.Values.GetValueOrDefault(attribute.Property)?.Value)?.DeepClone();
+                kept.Add(attribute.Property);
+            }
+        }
+
+        var day = asked.RepairDate ?? clock.GetUtcNow().UtcDateTime.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        var result = await statusChanges.ChangeAsync(sender, pack.Id, new StatusChange(asked.What, restated, day, asked.RepairDescription), cancellationToken, preview, "upload");
+        return (result, kept, restated, day);
+    }
+
+    /// <summary>The status change in words, for the check (Q21) and, once saved, the battery's earlier uploads.</summary>
+    public static string StatusWords(UploadStatus asked, string day, string to, bool done)
+    {
+        ArgumentNullException.ThrowIfNull(asked);
+        var becomes = done ? "became" : "becomes";
+        var description = asked.RepairDescription?.Trim() ?? string.Empty;
+        var said = description.EndsWith('.') || description.EndsWith('!') || description.EndsWith('?') ? $"“{description}”" : $"“{description}.”";
+        return asked.What switch
+        {
+            StatusEvent.Repaired => $"Repaired on {ValueWords.Day(day)}: {said} The status {becomes} {to}, with a new version.",
+            StatusEvent.Waste => $"The status {becomes} waste, with a new version.",
+            _ => $"The status {becomes} {to}, with a new version. Then name who places the battery on the market again, on this page.",
+        };
+    }
+
     private static string Source(ChangeSender sender) => sender.Kind == SenderKind.BatterySystemFeed ? BatteryApi.FeedSource : "upload";
 
     /// <summary>
@@ -404,10 +498,12 @@ public sealed class UploadService(
                 Problem = report.Problem,
                 Modules = report.Modules,
                 Notes = report.Notes?.ToList() ?? [],
+                Status = report.Status,
                 Values = report.Values.Select(value => new UploadedValue
                 {
                     Key = value.Key,
                     Value = report.Sent?.GetValueOrDefault(value.Key),
+                    Kept = report.Kept?.Contains(value.Key) == true,
                     Outcome = value.Outcome.ToString(),
                     Message = string.IsNullOrEmpty(value.Message) ? null : value.Message,
                 }).ToList(),

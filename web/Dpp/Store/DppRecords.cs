@@ -318,6 +318,9 @@ public sealed class UploadedBattery
 
     /// <summary>What the file's adapter wanted the sender to know, e.g. a value it couldn't read (step 5b).</summary>
     public List<string> Notes { get; init; } = [];
+
+    /// <summary>The status change or repair the upload made, in words (step 5d); null when it made none.</summary>
+    public string? Status { get; init; }
 }
 
 /// <summary>One value of an upload: its key, its outcome ("Saved", "KeptEmpty", "Ignored", "Rejected") and why.</summary>
@@ -327,6 +330,9 @@ public sealed class UploadedValue
 
     /// <summary>The value as the file sent it (JSON text), shown in the battery's upload history (step 5c).</summary>
     public string? Value { get; init; }
+
+    /// <summary>A re-stated value the file left out, taken from the battery's current one (step 5d, Q8).</summary>
+    public bool Kept { get; init; }
 
     public required string Outcome { get; init; }
 

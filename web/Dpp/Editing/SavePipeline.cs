@@ -81,8 +81,10 @@ public sealed class SavePipeline(
     /// or nothing: one refused or empty key saves none. Only <see cref="StatusChangeService"/> calls it, after its own
     /// checks of the transition.
     /// </summary>
-    public Task<SaveResult> SaveStatusChangeAsync(ChangeSender sender, string packId, IReadOnlyDictionary<string, JsonNode?> values, CancellationToken cancellationToken = default) =>
-        SaveCoreAsync(sender, new ChangeSet(TargetKind.Pack, packId, values, "form"), preview: false, statusChange: true, cancellationToken);
+    /// <param name="preview">True for an upload's check (step 5d): every key is judged, nothing is saved.</param>
+    /// <param name="source">"form", or "upload" for a status change in an uploaded file (step 5d).</param>
+    public Task<SaveResult> SaveStatusChangeAsync(ChangeSender sender, string packId, IReadOnlyDictionary<string, JsonNode?> values, CancellationToken cancellationToken = default, bool preview = false, string source = "form") =>
+        SaveCoreAsync(sender, new ChangeSet(TargetKind.Pack, packId, values, source), preview, statusChange: true, cancellationToken);
 
     private async Task<SaveResult> SaveCoreAsync(ChangeSender sender, ChangeSet changes, bool preview, bool statusChange, CancellationToken cancellationToken)
     {

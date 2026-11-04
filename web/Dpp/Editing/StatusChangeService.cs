@@ -132,7 +132,9 @@ public sealed class StatusChangeService(
         return pack.Values.GetValueOrDefault(StatusProperty)?.Value?["batteryStatusValues"]?.GetValue<string>();
     }
 
-    public async Task<StatusChangeResult> ChangeAsync(ChangeSender sender, string packId, StatusChange change, CancellationToken cancellationToken = default)
+    /// <param name="preview">True for an upload's check (step 5d): every rule is checked and nothing changes.</param>
+    /// <param name="source">"form", or "upload" for a status change in an uploaded file (step 5d).</param>
+    public async Task<StatusChangeResult> ChangeAsync(ChangeSender sender, string packId, StatusChange change, CancellationToken cancellationToken = default, bool preview = false, string source = "form")
     {
         ArgumentNullException.ThrowIfNull(sender);
         ArgumentNullException.ThrowIfNull(change);
@@ -222,7 +224,14 @@ public sealed class StatusChangeService(
             values[attribute.Property] = change.Restated.GetValueOrDefault(attribute.Property)?.DeepClone();
         }
 
-        var saved = await pipeline.SaveStatusChangeAsync(sender, packId, values, cancellationToken);
+        var saved = await pipeline.SaveStatusChangeAsync(sender, packId, values, cancellationToken, preview, source);
+        if (preview)
+        {
+            return saved.Keys.All(key => key.Outcome == KeyOutcome.Saved)
+                ? new StatusChangeResult(true, null, saved.Keys, null, to)
+                : new StatusChangeResult(true, null, saved.Keys, ValuesRefused);
+        }
+
         if (!saved.Saved)
         {
             return new StatusChangeResult(true, null, saved.Keys, ValuesRefused);
@@ -257,7 +266,7 @@ public sealed class StatusChangeService(
             ChangedEvent,
             sender.Who,
             sender.Kind.ToString(),
-            "form",
+            source,
             change.What switch
             {
                 StatusEvent.Repaired => $"Battery {serial} repaired: {repair!.Description} Status {to}.",

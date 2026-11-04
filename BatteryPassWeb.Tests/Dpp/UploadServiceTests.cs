@@ -63,11 +63,11 @@ public sealed class UploadServiceTests(MongoFixture mongo)
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
 
-        var report = await Run(rig, NorthFeed, File(Entry(Serial(rig), """{ "stateOfChargeSoC": 40, "manufacturingDate": "2026-01", "batteryStatus": "waste" }""")));
+        var report = await Run(rig, NorthFeed, File(Entry(Serial(rig), """{ "stateOfChargeSoC": 40, "manufacturingDate": "2026-01" }""")));
 
         var battery = Assert.Single(report.Batteries);
         Assert.Equal(UploadService.Saved, battery.Outcome);
-        Assert.Equal([KeyOutcome.Saved, KeyOutcome.Rejected, KeyOutcome.Rejected], battery.Values.Select(value => value.Outcome));
+        Assert.Equal([KeyOutcome.Saved, KeyOutcome.Rejected], battery.Values.Select(value => value.Outcome));
         Assert.Equal("feed", (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!.Values["stateOfChargeSoC"].Source);
         Assert.Equal("BatterySystemFeed", Assert.Single(await rig.Store.ListUploadsAsync(10)).SentAs);
     }
@@ -190,7 +190,7 @@ public sealed class UploadServiceTests(MongoFixture mongo)
     }
 
     internal static UploadService Service(PublicationRig rig) =>
-        new(rig.Store, rig.Pipeline, BatteryApiTests.Api(rig), new ApplicationAuditService(rig.Context), rig.Clock, [new NativeUploadFormat(), new BmsExportFormat()]);
+        new(rig.Store, rig.Pipeline, BatteryApiTests.Api(rig), new ApplicationAuditService(rig.Context), rig.Clock, StatusChangeTests.Service(rig), [new NativeUploadFormat(), new BmsExportFormat()]);
 
     internal static Task<UploadReport> Run(PublicationRig rig, ChangeSender sender, string file, bool preview = false) =>
         Service(rig).RunAsync(sender, JsonNode.Parse(file), "page", "batteries.json", preview);
