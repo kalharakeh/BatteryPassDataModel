@@ -87,8 +87,11 @@ public sealed partial class StatusBadgeTests
         Assert.Contains("popovertarget=\"status-help\" aria-label=\"What do the two statuses mean?\"", help, StringComparison.Ordinal);
         Assert.Contains("<div id=\"status-help\" class=\"bp-status-help\" popover>", help, StringComparison.Ordinal);
         Assert.Contains("@if (!Context.Items.ContainsKey(\"status-help\"))", help, StringComparison.Ordinal);
-        Assert.Equal(5, help.Split("StatusBadge.Battery(").Length - 1);
-        Assert.Equal(6, help.Split("StatusBadge.Passport(").Length - 1);
+        // The statuses in words live in one shared list, also the Help's "Statuses" part (step 6b-1).
+        var meanings = Read("web", "Views", "Shared", "_StatusMeanings.cshtml");
+        Assert.Contains("@await Html.PartialAsync(\"_StatusMeanings\")", help, StringComparison.Ordinal);
+        Assert.Equal(5, meanings.Split("StatusBadge.Battery(").Length - 1);
+        Assert.Equal(6, meanings.Split("StatusBadge.Passport(").Length - 1);
     }
 
     [Fact]

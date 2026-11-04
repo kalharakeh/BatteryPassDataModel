@@ -10,19 +10,7 @@
     <div id="status-help" class="bp-status-help" popover>
         <h2>Two statuses</h2>
         <p class="mb-0"><strong>Battery</strong> (square tag) says what has happened to the battery. <strong>Passport</strong> (round pill) says whether this passport is the one that counts.</p>
-        <dl>
-            <dt>@await Html.PartialAsync("_StatusBadge", StatusBadge.Battery("original"))</dt><dd>As made; never repaired or reused.</dd>
-            <dt>@await Html.PartialAsync("_StatusBadge", StatusBadge.Battery("re-used"))</dt><dd>Back in use for its first purpose: after a repair (same passport), or prepared for re-use and placed on the market again (new passport).</dd>
-            <dt>@await Html.PartialAsync("_StatusBadge", StatusBadge.Battery("repurposed"))</dt><dd>Now used for a different purpose. It gets a new passport.</dd>
-            <dt>@await Html.PartialAsync("_StatusBadge", StatusBadge.Battery("remanufactured"))</dt><dd>Rebuilt to work as new. It gets a new passport.</dd>
-            <dt>@await Html.PartialAsync("_StatusBadge", StatusBadge.Battery("waste"))</dt><dd>Taken out of use for recycling. Final; the team can then mark the passport for deletion.</dd>
-            <dt>@await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(DppStatuses.Active))</dt><dd>The passport that counts now.</dd>
-            <dt>@await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(DppStatuses.Archived))</dt><dd>An older version of this passport; a newer one counts.</dd>
-            <dt>@await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(DppStatuses.Inactive))</dt><dd>Replaced by the battery's new passport after it was placed on the market again.</dd>
-            <dt>@await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(DppStatuses.Invalid))</dt><dd>Its data shouldn't be relied on, for example after a market surveillance finding. Only the team undoes it.</dd>
-            <dt>@await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(DppStatuses.MarkedForDeletion))</dt><dd>The battery is waste and gone; the passport will be deleted.</dd>
-            <dt>@await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(null))</dt><dd>Not published yet; only the team sees it.</dd>
-        </dl>
+        @await Html.PartialAsync("_StatusMeanings")
         <div class="d-flex justify-content-end"><button type="button" class="bp-secondary-button" popovertarget="status-help" popovertargetaction="hide">Close</button></div>
     </div>
 }

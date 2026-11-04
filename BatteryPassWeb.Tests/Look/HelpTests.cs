@@ -57,13 +57,13 @@ public sealed class HelpTests(MongoFixture mongo)
     [Fact]
     public void TheTeamsPart_ShouldWalkFromProductDataToAPublishedPassport()
     {
-        var workflow = Guide[Guide.IndexOf("id=\"workflow\"", StringComparison.Ordinal)..Guide.IndexOf("id=\"words\"", StringComparison.Ordinal)];
+        var workflow = Guide[Guide.IndexOf("id=\"workflow\"", StringComparison.Ordinal)..Guide.IndexOf("id=\"lifecycle\"", StringComparison.Ordinal)];
 
         Assert.Contains("<a href=\"/admin/families\">Set up product data</a>", workflow, StringComparison.Ordinal);
         Assert.Contains("<a href=\"/admin/batteries/new\">Create the battery</a>", workflow, StringComparison.Ordinal);
         Assert.Contains("Only \"required by Feb 2027\" blocks publishing", workflow, StringComparison.Ordinal);
         Assert.Contains("checks the passport against the official schema, signs it and publishes it", workflow, StringComparison.Ordinal);
-        Assert.Contains("<dt>Archived version</dt>", Guide, StringComparison.Ordinal);
+        Assert.Contains("<h2>Statuses</h2>", Guide, StringComparison.Ordinal); // step 6b-1: every status, in place of "Status words"
         foreach (var gone in new[] { "Validate passport", "Sign passport", "Dirty", "Evidence readiness", "Trust &amp; conformance" })
         {
             Assert.DoesNotContain(gone, Guide, StringComparison.Ordinal);
@@ -78,7 +78,7 @@ public sealed class HelpTests(MongoFixture mongo)
         Assert.Contains("<a href=\"/cluster-admin/users\">Add your people</a>", part, StringComparison.Ordinal);
         Assert.Contains("<a href=\"/cluster-admin/api-tokens\">Give your systems a token</a>", part, StringComparison.Ordinal);
         Assert.Contains("it is shown once", part, StringComparison.Ordinal);
-        Assert.Contains("\"Manage\" opens a battery's page", part, StringComparison.Ordinal); // step 4a
+        Assert.Contains("a battery's icon opens its page", part, StringComparison.Ordinal); // the Registry's row icons (decision 37)
     }
 
     [Fact]

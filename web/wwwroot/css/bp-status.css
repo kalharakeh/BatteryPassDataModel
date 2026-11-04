@@ -163,7 +163,8 @@ th .bp-status-help-words {
   font-size: 1.2rem;
 }
 
-.bp-status-help dl {
+/* The statuses in words: in the badges' explainer window and in the Help's "Statuses" part (step 6b-1). */
+.bp-status-meanings {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   gap: 8px 14px;
@@ -171,7 +172,7 @@ th .bp-status-help-words {
   margin: 12px 0 16px;
 }
 
-.bp-status-help dd {
+.bp-status-meanings dd {
   margin: 0;
   font-size: 0.9rem;
 }

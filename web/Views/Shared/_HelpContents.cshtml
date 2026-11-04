@@ -7,12 +7,36 @@
     var signedIn = User.Identity?.IsAuthenticated == true;
     var isTeam = User.IsInRole(AccessControlService.RoleAdmin);
     var runsACluster = isTeam || User.IsInRole(AccessControlService.RoleClusterAdmin);
+    var inACluster = !isTeam && !runsACluster && User.IsInRole(AccessControlService.RoleNormalUser);
+    var isMsa = User.IsInRole(AccessControlService.RoleMarketSurveillanceAuthority);
+    var addsAccess = new[] { AccessControlService.RoleNotifiedBody, AccessControlService.RoleCommission, AccessControlService.RoleLiRepair, AccessControlService.RoleLiRecycling, AccessControlService.RoleLiTreatment }.Any(User.IsInRole);
     string Part(string id) => onGuide ? $"#{id}" : $"/help#{id}";
 }
 <nav class="bp-help-contents" aria-label="Help contents">
     <p>For everyone</p>
     <a href="@Part("find")">Find a passport</a>
     <a href="@Part("see")">What each reader sees</a>
+    <a href="@Part("statuses")">Statuses</a>
+    @if (signedIn)
+    {
+        <a href="@Part("print")">Print a passport</a>
+    }
+    @if (inACluster || isMsa || addsAccess)
+    {
+        <p>For you</p>
+        @if (inACluster)
+        {
+            <a href="@Part("your-batteries")">Your cluster's batteries</a>
+        }
+        @if (isMsa)
+        {
+            <a href="@Part("msa")">Market surveillance</a>
+        }
+        @if (addsAccess)
+        {
+            <a href="@Part("your-access")">What your account adds</a>
+        }
+    }
     @if (signedIn && !runsACluster)
     {
         <a href="@Part("access")">Need more access?</a>
@@ -21,14 +45,19 @@
     {
         <p>For cluster admins</p>
         <a href="@Part("cluster")">Your cluster</a>
+        <a href="@Part("look-after")">Look after a battery</a>
+        <a href="@Part("upload")">Upload a file</a>
     }
     @if (isTeam)
     {
         <p>For the team</p>
         <a href="@Part("workflow")">From product data to a published passport</a>
-        <a href="@Part("words")">Status words</a>
+        <a href="@Part("lifecycle")">After publishing</a>
         <a href="@Part("ready")">Before you call a battery ready</a>
     }
-    <p>For systems</p>
-    <a href="/help/api" aria-current="@(onGuide ? null : "page")">API reference and workbench</a>
+    @if (signedIn)
+    {
+        <p>For systems</p>
+        <a href="/help/api" aria-current="@(onGuide ? null : "page")">API reference and workbench</a>
+    }
 </nav>

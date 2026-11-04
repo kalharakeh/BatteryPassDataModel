@@ -1,11 +1,22 @@
 @using BatteryPassWeb.Services
 @{
     // The one Help place (step 3e): each reader sees only the parts for their role. The team's workflow used to be its
-    // own page under the admin tabs (/help/team and /admin/help now lead here).
+    // own page under the admin tabs (/help/team and /admin/help now lead here). Step 6b-1: a part for every kind of
+    // reader of design 5.2, the statuses in words, and printing.
     ViewData["Title"] = "Help";
     var signedIn = User.Identity?.IsAuthenticated == true;
     var isTeam = User.IsInRole(AccessControlService.RoleAdmin);
     var runsACluster = isTeam || User.IsInRole(AccessControlService.RoleClusterAdmin);
+    var inACluster = !isTeam && !runsACluster && User.IsInRole(AccessControlService.RoleNormalUser);
+    var isMsa = User.IsInRole(AccessControlService.RoleMarketSurveillanceAuthority);
+    var authorityOrInterest = new[]
+    {
+        (Role: AccessControlService.RoleNotifiedBody, Who: "Notified body", Sees: "the authorities' values: the economic operator's and manufacturer's IDs, the service provider and the test reports"),
+        (Role: AccessControlService.RoleCommission, Who: "Commission", Sees: "the shared values (materials, dismantling manuals, part numbers, spare parts, safety measures) and the authorities' values; not the purchaser's values"),
+        (Role: AccessControlService.RoleLiRepair, Who: "Repair, repurposing and remanufacturing", Sees: "the materials, the dismantling manuals, the part numbers, the spare parts sources and the safety measures"),
+        (Role: AccessControlService.RoleLiRecycling, Who: "Recycling and battery treatment", Sees: "the materials, the dismantling manuals and the safety measures"),
+        (Role: AccessControlService.RoleLiTreatment, Who: "Authorised treatment and WEEE facilities", Sees: "the safety measures"),
+    }.Where(role => User.IsInRole(role.Role)).ToArray();
 }
 <main class="bp-page bp-help-page">
     <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
@@ -37,6 +48,59 @@
                 <p class="mt-3 mb-0">Signed in, the passport's detail page shows one section per group you belong to. Each value says when it was measured or entered, and how.</p>
             </section>
 
+            <section class="bp-card bp-help-part" id="statuses">
+                <h2>Statuses</h2>
+                <p>Every passport page shows two badges. <strong>Battery</strong> (square tag) says what has happened to the battery; only the battery's cluster, market surveillance and the team see it. <strong>Passport</strong> (round pill) says whether this passport is the one that counts; everyone sees it.</p>
+                @await Html.PartialAsync("_StatusMeanings")
+            </section>
+
+            @* Signed out, the Help is the three parts above (the owner, Q1 of step 6b). *@
+            @if (signedIn)
+            {
+                <section class="bp-card bp-help-part" id="print">
+                    <h2>Print a passport</h2>
+                    <p class="mb-0">Print the public page or the detail page from the browser (Ctrl+P), or save it as PDF. The paper copy starts with the QR code, the page's address and when it was printed, and shows every section open. Live values print as their latest readings.</p>
+                </section>
+            }
+
+            @if (inACluster)
+            {
+                <section class="bp-card bp-help-part" id="your-batteries">
+                    <h2>Your cluster's batteries <span class="bp-soft-tag">Cluster users</span></h2>
+                    <ol class="bp-steps">
+                        <li><strong><a href="/registry">The Registry</a></strong><p>Lists your cluster's batteries, each with its two badges. Its icons open the battery's public page and detail page.</p></li>
+                        <li><strong>The detail page</strong><p>The purchaser values, the repair history and the shared values. "Live values" shows the last week's readings as small charts; "Modules" lists the battery's modules.</p></li>
+                        <li><strong>Changes</strong><p>Your cluster admins correct live values, add accident reports, record repairs and hand batteries over. Ask them, or the manufacturer's team.</p></li>
+                    </ol>
+                </section>
+            }
+
+            @if (isMsa)
+            {
+                <section class="bp-card bp-help-part" id="msa">
+                    <h2>Market surveillance <span class="bp-soft-tag">Market surveillance</span></h2>
+                    <ol class="bp-steps">
+                        <li><strong><a href="/registry">Every published passport</a></strong><p>The Registry lists them all, invalid and marked ones included. The detail page shows every section: purchaser, shared and authorities' values, the live values and the modules.</p></li>
+                        <li><strong>Mark as invalid…</strong><p>On an active passport's detail page: give the reason, then confirm. The public page then says the passport is invalid, with the date. The reason is seen only by you and the manufacturer's team, and only the team can undo it. An invalid passport takes no new versions, status changes or live values.</p></li>
+                    </ol>
+                </section>
+            }
+
+            @if (authorityOrInterest.Length > 0)
+            {
+                <section class="bp-card bp-help-part" id="your-access">
+                    <h2>What your account adds</h2>
+                    <dl class="bp-word-list">
+                        @foreach (var role in authorityOrInterest)
+                        {
+                            <dt>@role.Who</dt>
+                            <dd>Besides the public values: @role.Sees.</dd>
+                        }
+                    </dl>
+                    <p class="mt-3 mb-0">The <a href="/registry">Registry</a> lists every published passport; open its detail page to see these values. The manufacturer's team gives this access to named accounts.</p>
+                </section>
+            }
+
             @if (signedIn && !runsACluster)
             {
                 <section class="bp-card bp-help-part" id="access">
@@ -53,9 +117,29 @@
                         <li><strong><a href="/cluster-admin/users">Add your people</a></strong><p>Under Cluster admin, Users: add someone as a user (sees your cluster's batteries) or as a cluster admin (also looks after its users and tokens).</p></li>
                         <li><strong><a href="/cluster-admin/api-tokens">Give your systems a token</a></strong><p>Under Cluster admin, API tokens: "Read" reads your batteries' passports; "Read + write" also sends their live values. Copy the value when it is shown: it is shown once.</p></li>
                         <li><strong><a href="/registry">Check what they see</a></strong><p>Your users find your cluster's batteries in the Registry, with the purchaser values on the detail page.</p></li>
-                        <li><strong><a href="/registry">Look after your batteries</a></strong><p>In the Registry, "Manage" opens a battery's page: correct its live values and add accident reports. Its modules and versions are shown there too; the team keeps the rest.</p></li>
                     </ol>
                 </section>
+
+                <section class="bp-card bp-help-part" id="look-after">
+                    <h2>Look after a battery <span class="bp-soft-tag">Cluster admins</span></h2>
+                    <p>In the <a href="/registry">Registry</a>, a battery's icon opens its page; its side menu has one section at a time.</p>
+                    <dl class="bp-word-list">
+                        <dt>Live values</dt>
+                        <dd>Correct the state of charge, cycles, temperature and the extreme-temperature times. The battery system usually sends them.</dd>
+                        <dt>Accident reports</dt>
+                        <dd>"Add a report" uploads one; the passport's accident page lists them for its readers.</dd>
+                        <dt>Change status</dt>
+                        <dd>"What happened?": Repaired, Prepared for re-use and placed on the market again, Remanufactured, Repurposed or Waste. The window asks for the re-stated fades and lifetime, filled in with the current ones. A repair keeps the passport and adds to its repair history. The three that place the battery on the market again lead to a new linked passport, from Scania or another operator. Waste is final.</dd>
+                        <dt>Add a note</dt>
+                        <dd>A correction to the repair history; nothing in the history is changed or removed.</dd>
+                        <dt>Hand over…</dt>
+                        <dd>Type the receiving cluster's ID; the app shows its name to confirm. Until its admins accept on their Registry's "Waiting for you" card, the battery stays yours. Afterwards your cluster no longer sees its purchaser values.</dd>
+                        <dt>Waiting for you</dt>
+                        <dd>A battery another cluster hands to you: Accept or Decline.</dd>
+                    </dl>
+                    <p class="mt-3 mb-0">A passport that is invalid, marked for deletion or replaced by a new passport is read only.</p>
+                </section>
+
                 <section class="bp-card bp-help-part" id="upload">
                     <h2>Upload a file <span class="bp-soft-tag">Team and cluster admins</span></h2>
                     <p>On a battery's page, "Upload a file" takes one JSON file for that battery: the app's upload format, or the battery system's export as it is. You see what would change before anything is saved. A marked or earlier passport takes no file.</p>
@@ -80,15 +164,19 @@
                     <p class="mt-3 mb-0">Other systems get <a href="/admin/clusters?tab=api-token-management">API tokens</a>: a cluster token reads that cluster's batteries and, with "Read + write", sends their live values; only a token for all batteries creates and publishes them.</p>
                 </section>
 
-                <section class="bp-card bp-help-part" id="words">
-                    <h2>Status words <span class="bp-soft-tag">Team</span></h2>
+                <section class="bp-card bp-help-part" id="lifecycle">
+                    <h2>After publishing <span class="bp-soft-tag">Team</span></h2>
                     <dl class="bp-word-list">
-                        <dt>Draft</dt>
-                        <dd>Not published yet; only the team sees it, on the Batteries tab.</dd>
-                        <dt>Published</dt>
-                        <dd>Its current version is public and signed. Public search and the QR code open only published passports.</dd>
-                        <dt>Archived version</dt>
-                        <dd>An earlier version, kept with its signature when a newer one was published.</dd>
+                        <dt>Everything a cluster admin does</dt>
+                        <dd>Live values, accident reports, status changes, notes and uploads, on any battery. Only the team gets "Correct the values" in the status window: the status stays, and a new version is published.</dd>
+                        <dt>A new passport</dt>
+                        <dd>After "placed on the market again", "Remanufactured" or "Repurposed", the battery page asks who places it on the market. Scania's new passport starts from the old battery as a draft; publishing it makes the old one inactive. Another operator's passport is linked by its ID or web address. Until then, the team can cancel the new passport.</dd>
+                        <dt>More: Mark as invalid or for deletion…</dt>
+                        <dd>Invalid, with a reason, for an active passport; for deletion, for a waste battery after recycling. The header then shows the reason and the one Undo.</dd>
+                        <dt>Cluster: Change</dt>
+                        <dd>Moves a battery to another cluster at once, logged; or cancel a waiting hand-over.</dd>
+                        <dt><a href="/admin/clusters?tab=clusters">Demo data</a></dt>
+                        <dd>At the end of the Clusters tab: "Reset demo data" makes the demo clusters, accounts, tokens and batteries again; "Clear demo data" removes them and keeps real data.</dd>
                     </dl>
                 </section>
 
@@ -103,11 +191,14 @@
                 </section>
             }
 
-            <section class="bp-card bp-help-part" id="api">
-                <h2>API reference and workbench</h2>
-                <p class="mb-2">Every call, with examples for the demo clusters (<code>demo-north</code>, <code>demo-south</code>, <code>demo-fleet</code>), and a workbench to try a call with a token.</p>
-                <a class="bp-secondary-button bp-button-compact" href="/help/api">Open the API reference</a>
-            </section>
+            @if (signedIn)
+            {
+                <section class="bp-card bp-help-part" id="api">
+                    <h2>API reference and workbench</h2>
+                    <p class="mb-2">Every call, with examples for the demo clusters (<code>demo-north</code>, <code>demo-south</code>, <code>demo-fleet</code>), and a workbench to try a call with a token.</p>
+                    <a class="bp-secondary-button bp-button-compact" href="/help/api">Open the API reference</a>
+                </section>
+            }
         </div>
     </div>
 </main>
