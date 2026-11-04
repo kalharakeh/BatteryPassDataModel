@@ -20,6 +20,11 @@ DotEnvLoader.Load(Path.Combine(currentDirectory, "web", ".env.local"));
 
 var builder = WebApplication.CreateBuilder(args);
 
+if (DeploymentSecurityConfiguration.MissingDatabaseName(builder.Environment.IsProduction(), Environment.GetEnvironmentVariable("MONGODB_DB")) is { } missingDatabase)
+{
+    throw new InvalidOperationException(missingDatabase);
+}
+
 var enableRateLimiting = ParseFeatureFlag(
     EnvironmentOrConfig(builder.Configuration, "ENABLE_RATE_LIMITING", "EnableRateLimiting"),
     BatteryPassOptions.DefaultEnableRateLimiting);
