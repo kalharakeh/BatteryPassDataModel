@@ -50,7 +50,7 @@
                 @await Html.PartialAsync("~/Views/ProductData/_EditorField.cshtml", new EditorFieldView(Model.Live, field))
                 @if (Model.Pack.Values.GetValueOrDefault(field.Attribute.Property) is { } stored)
                 {
-                    <p class="bp-live-meta">Last value @ValueWords.Time(stored.GeneratedAtUtc), @BatteryCards.Source(stored.Source)@(string.IsNullOrEmpty(stored.Who) ? string.Empty : $" by {stored.Who}").</p>
+                    <p class="bp-live-meta">Last value @ValueWords.Time(stored.GeneratedAtUtc), @BatteryCards.Source(stored.Source)@BatteryCards.By(stored.Who).</p>
                 }
             }
         </div>

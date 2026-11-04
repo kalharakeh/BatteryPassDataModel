@@ -51,6 +51,13 @@ public sealed record BatteryCards(
             ? $"{(bytes / 1024.0).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)} KB"
             : $"{(bytes / 1048576.0).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)} MB";
 
+    /// <summary>
+    /// " by …" after where a value came from: the person's e-mail, or nothing for an API token, whose ID
+    /// ("api-token:…") is the app's own key; "from the battery system" already says who sent it (step 5's review).
+    /// </summary>
+    public static string By(string? who) =>
+        string.IsNullOrEmpty(who) || who.StartsWith("api-token:", StringComparison.Ordinal) ? string.Empty : $" by {who}";
+
     /// <summary>Where a stored value came from, in plain words.</summary>
     public static string Source(string? source) => source switch
     {

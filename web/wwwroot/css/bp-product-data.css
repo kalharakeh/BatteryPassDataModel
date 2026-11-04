@@ -3765,6 +3765,13 @@ main .bp-field-marker.is-published {
   font-weight: 600;
 }
 
+/* An e-mail or file name is one long word: it wraps in the check's head and the earlier uploads' rows (step 5's review). */
+.bp-upload-head > span,
+[data-upload-row] > summary > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .bp-upload-notes {
   margin: 8px 0 0;
   padding-left: 18px;

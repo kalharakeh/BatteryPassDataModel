@@ -96,7 +96,7 @@ public sealed class UploadPages(UploadService uploads, AttributeForms forms, Att
                     upload.Id,
                     ValueWords.Time(upload.AtUtc),
                     upload.Channel == "api" ? "API" : "Page",
-                    $"{(upload.SentAs == nameof(SenderKind.BatterySystemFeed) ? "Battery system" : upload.Who)} · {upload.FileName ?? FormatWords(upload.Format)}",
+                    $"{Sender(upload)} · {upload.FileName ?? FormatWords(upload.Format)}",
                     result,
                     battery.Problem is null ? null : Capitalise(battery.Problem),
                     values,
@@ -136,6 +136,12 @@ public sealed class UploadPages(UploadService uploads, AttributeForms forms, Att
             ? (SavedWords(report), report.UploadId, null)
             : (null, null, UploadService.CheckExpired);
     }
+
+    /// <summary>Who sent an upload, in words: a battery system or an API token by what it is, never by its token's ID.</summary>
+    private static string Sender(UploadRecord upload) =>
+        upload.SentAs == nameof(SenderKind.BatterySystemFeed) ? "Battery system"
+        : upload.Who.StartsWith("api-token:", StringComparison.Ordinal) ? "API token"
+        : upload.Who;
 
     /// <summary>"battery system export (BMS2_ACO 01.32.07)" or "upload file", for the format a file was read as.</summary>
     public static string FormatWords(string? format) => format switch
