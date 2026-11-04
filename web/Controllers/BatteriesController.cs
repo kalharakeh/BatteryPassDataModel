@@ -2,6 +2,7 @@ using System.Globalization;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Pages;
+using BatteryPassWeb.Dpp.Uploads;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,7 +15,7 @@ namespace BatteryPassWeb.Controllers;
 /// </summary>
 [Authorize(Policy = "AdminOnly")]
 [Route("admin/batteries")]
-public sealed class BatteriesController(BatteryPages pages, DocumentService documents, StatusPages status, PassportMarks marks) : Controller
+public sealed class BatteriesController(BatteryPages pages, DocumentService documents, StatusPages status, PassportMarks marks, UploadPages uploads) : Controller
 {
     /// <summary>Which card of the battery page a message belongs to, so it shows where the action was taken.</summary>
     public const string CardKey = "BatteryCard";
@@ -60,8 +61,31 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     [HttpGet("{packId}")]
     public async Task<IActionResult> Battery(string packId, CancellationToken cancellationToken)
     {
-        var page = await pages.BatteryAsync(packId, cancellationToken: cancellationToken);
+        var page = await WithUploadAsync(await pages.BatteryAsync(packId, cancellationToken: cancellationToken), cancellationToken);
         return page is null ? NotFound() : View(page);
+    }
+
+    /// <summary>"Check the file" in the "Upload a file" section (decision 35, step 5c): the check shows in the section.</summary>
+    [HttpPost("{packId}/upload")]
+    [ValidateAntiForgeryToken]
+    [RequestSizeLimit(UploadService.MaxBytes + 65536)]
+    public async Task<IActionResult> CheckUpload(string packId, IFormFile? file, CancellationToken cancellationToken)
+    {
+        var (checkId, problem) = await uploads.CheckAsync(ChangeSender.Team(Who), packId, file?.FileName, file?.OpenReadStream(), file?.Length ?? 0, cancellationToken);
+        TempData[UploadPages.CheckKey] = checkId;
+        Card("upload", null, problem is null ? null : $"Not checked: {problem}.");
+        return Redirect($"{BatteryPages.BatteryHref(packId)}?section=upload");
+    }
+
+    /// <summary>"Save" after the check (step 5c): the kept file goes through the save pipeline as the team.</summary>
+    [HttpPost("{packId}/upload/save")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveUpload(string packId, [FromForm] string? checkId, CancellationToken cancellationToken)
+    {
+        var (done, uploadId, problem) = await uploads.SaveAsync(ChangeSender.Team(Who), packId, checkId, cancellationToken);
+        TempData[UploadPages.OpenKey] = uploadId;
+        Card("upload", done, problem is null ? null : $"Not saved: {problem}.");
+        return Redirect($"{BatteryPages.BatteryHref(packId)}?section=upload");
     }
 
     [HttpPost("{packId}")]
@@ -93,8 +117,6 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
         return Redirect(BatteryPages.BatteryHref(packId));
     }
 
-    /// <summary>The largest JSON export taken for the module list; the battery system's are a few kilobytes.</summary>
-    public const long MaxExportBytes = 1024 * 1024;
 
     [HttpPost("{packId}/modules")]
     [ValidateAntiForgeryToken]
@@ -102,30 +124,6 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     {
         var problem = await pages.SetModulesAsync(Who, packId, modules, cancellationToken);
         Card("module-list", problem is null ? "Modules saved. The passport didn't change: modules aren't passport data." : null, problem is null ? null : $"The modules weren't saved: {problem}.");
-        return Redirect($"{BatteryPages.BatteryHref(packId)}#modules");
-    }
-
-    [HttpPost("{packId}/modules/from-export")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ImportModules(string packId, IFormFile? file, CancellationToken cancellationToken)
-    {
-        string? problem;
-        if (file is null || file.Length == 0)
-        {
-            problem = "choose the battery system's JSON export first";
-        }
-        else if (file.Length > MaxExportBytes)
-        {
-            problem = "the file is larger than an export (1 MB)";
-        }
-        else
-        {
-            using var buffer = new MemoryStream();
-            await file.CopyToAsync(buffer, cancellationToken);
-            problem = await pages.ImportModulesAsync(Who, packId, buffer.ToArray(), cancellationToken);
-        }
-
-        Card("modules", problem is null ? "Modules filled from the export. The passport didn't change: modules aren't passport data." : null, problem is null ? null : $"The modules weren't filled: {problem}.");
         return Redirect($"{BatteryPages.BatteryHref(packId)}#modules");
     }
 
@@ -261,6 +259,16 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
 
     private string Who => AccessControlService.CurrentEmail(User) is { Length: > 0 } email ? email : "admin";
 
+    /// <summary>
+    /// The page with its "Upload a file" section: the check kept by "Check the file" and the upload just saved. A page
+    /// that takes no changes (a marked or earlier passport) gets none.
+    /// </summary>
+    private async Task<BatteryPage?> WithUploadAsync(BatteryPage? page, CancellationToken cancellationToken) =>
+        page is null || page.Cards.FrozenAs is not null ? page : page with
+        {
+            Upload = await uploads.CardAsync(page.Pack, BatteryPages.BatteryHref(page.Pack.Id), forTeam: true, TempData[UploadPages.CheckKey] as string, TempData[UploadPages.OpenKey] as string, cancellationToken),
+        };
+
     private void Card(string card, string? status, string? error)
     {
         TempData[CardKey] = card;
@@ -306,18 +314,18 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
             case EditorOutcome.NotFound:
                 return NotFound();
             case EditorOutcome.NeedsConfirmation:
-                return View("Battery", await pages.BatteryAsync(packId, values: state, cancellationToken: cancellationToken));
+                return View("Battery", await WithUploadAsync(await pages.BatteryAsync(packId, values: state, cancellationToken: cancellationToken), cancellationToken));
             case EditorOutcome.Refused:
                 var refused = $"{done} {Words.Count(save.RefusedCount, "value")} not saved; {(save.RefusedCount == 1 ? "it's" : "they're")} marked below.{version}".TrimStart();
                 if (liveValues)
                 {
                     ViewData[CardKey] = "live";
                     ViewData[CardErrorKey] = refused;
-                    return View("Battery", await pages.BatteryAsync(packId, live: state, cancellationToken: cancellationToken));
+                    return View("Battery", await WithUploadAsync(await pages.BatteryAsync(packId, live: state, cancellationToken: cancellationToken), cancellationToken));
                 }
 
                 ViewData[ProductDataController.EditorErrorKey] = refused;
-                return View("Battery", await pages.BatteryAsync(packId, values: state, cancellationToken: cancellationToken));
+                return View("Battery", await WithUploadAsync(await pages.BatteryAsync(packId, values: state, cancellationToken: cancellationToken), cancellationToken));
             case EditorOutcome.NothingChanged:
                 if (liveValues)
                 {

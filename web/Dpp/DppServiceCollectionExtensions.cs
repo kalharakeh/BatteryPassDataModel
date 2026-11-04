@@ -59,6 +59,7 @@ public static class DppServiceCollectionExtensions
         services.AddSingleton<IUploadAdapter, NativeUploadFormat>();
         services.AddSingleton<IUploadAdapter, BmsExportFormat>();
         services.AddSingleton<UploadService>();
+        services.AddSingleton<UploadPages>();
         services.AddSingleton<PassportPages>();
         services.AddSingleton<AuditLines>();
         services.AddSingleton<ClusterHistory>();

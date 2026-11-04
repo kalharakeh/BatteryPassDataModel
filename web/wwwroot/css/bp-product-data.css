@@ -3716,3 +3716,91 @@ main .bp-field-marker.is-published {
 .bp-one-line-list .bp-icon-action-row > .bp-report-action:last-child:is(:hover, :focus-visible)::after {
   transform: translateY(0);
 }
+
+/* ==== Uploads on each battery's page (step 5c) =====================================================================
+   The few new pieces step 5 adds to bp-product-data.css: the check's value table, its outcome tags and the notes.
+   Everything else is the app's existing classes. */
+
+.bp-upload-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.bp-soft-tag.is-refused {
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.bp-soft-tag.is-saved {
+  border-color: #86efac;
+  color: #166534;
+}
+
+/* The values: what the battery has now, what the file brings, and what happens. */
+.bp-upload-values {
+  width: 100%;
+  margin-top: 8px;
+  font-size: 0.92rem;
+}
+
+.bp-upload-values th {
+  font-weight: 600;
+  color: var(--bp-muted);
+}
+
+.bp-upload-values th,
+.bp-upload-values td {
+  padding: 5px 10px 5px 0;
+  vertical-align: top;
+}
+
+.bp-upload-values .is-refused {
+  color: #991b1b;
+}
+
+.bp-upload-notes {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--bp-muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  .bp-upload-values thead {
+    display: none;
+  }
+
+  .bp-upload-values tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    padding: 6px 0;
+    border-bottom: 1px solid var(--bp-border);
+  }
+
+  .bp-upload-values td:first-child,
+  .bp-upload-values td:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .bp-upload-values td:first-child {
+    font-weight: 600;
+  }
+
+  .bp-upload-values td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    color: var(--bp-muted);
+    font-size: 0.8rem;
+  }
+}
+
+[data-theme="dark"] .bp-soft-tag.is-refused,
+[data-theme="dark"] .bp-upload-values .is-refused {
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .bp-soft-tag.is-saved {
+  color: #86efac;
+}

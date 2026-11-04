@@ -173,7 +173,7 @@ public sealed class HandOverPagesTests(MongoFixture mongo)
     }
 
     private static ClusterBatteriesController ClusterController(PublicationRig rig, string email) =>
-        With(new ClusterBatteriesController(ClusterBatteryPagesTests.Pages(rig), new DppReaders(new ClusterRepository(rig.Context))), email);
+        With(new ClusterBatteriesController(ClusterBatteryPagesTests.Pages(rig), new DppReaders(new ClusterRepository(rig.Context)), UploadCheckTests.Pages(rig)), email);
 
     private static RegistryController RegistryController(PublicationRig rig, string email) =>
         With(new RegistryController(new DppReaders(new ClusterRepository(rig.Context)), BatteryTesting.Pages(rig)), email);

@@ -1,7 +1,9 @@
 using System.Text;
 using BatteryPassWeb.Dpp.Editing;
+using BatteryPassWeb.Dpp.Pages;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Dpp.Uploads;
+using BatteryPassWeb.Dpp.Values;
 
 namespace BatteryPassWeb.Tests.Dpp;
 
@@ -126,6 +128,9 @@ public sealed class UploadCheckTests(MongoFixture mongo)
         Assert.Equal("51", team[0].Batteries[0].Values[0].Value);
         Assert.Equal(["north-feed"], clusterAdmins.Select(upload => upload.Who)); // not the team's (Q19)
     }
+
+    internal static UploadPages Pages(PublicationRig rig) =>
+        new(UploadServiceTests.Service(rig), AttributeFormsTests.Forms, new AttributeValueNormalizer(DppStoreTesting.Schemas));
 
     internal static byte[] Native(string serial, int stateOfCharge) =>
         Encoding.UTF8.GetBytes(UploadServiceTests.File(UploadServiceTests.Entry(serial, $$"""{ "stateOfChargeSoC": {{stateOfCharge}} }""")));

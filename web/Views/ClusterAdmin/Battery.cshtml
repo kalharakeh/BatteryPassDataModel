@@ -149,6 +149,12 @@
             <div data-section="live" hidden="@Hidden("live")">
                 @await Html.PartialAsync("~/Views/Batteries/_LiveValuesCard.cshtml", Model.Cards)
             </div>
+            @if (Model.Upload is { } upload)
+            {
+                <div data-section="upload" hidden="@Hidden("upload")">
+                    @await Html.PartialAsync("~/Views/Batteries/_UploadCard.cshtml", upload)
+                </div>
+            }
             @if (!Model.ReadOnly)
             {
                 <div data-section="accidents" hidden="@Hidden("accidents")">

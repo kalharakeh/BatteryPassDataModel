@@ -39,7 +39,7 @@ public sealed class RedesignFixesTests
 
     [Theory]
     [InlineData("Batteries", "_AccidentsCard.cshtml", "a PDF, PNG or JPEG", "@AppOptions.Value.MaxUploadBytes")]
-    [InlineData("Batteries", "_ModulesCard.cshtml", "a JSON file", "@BatteryPassWeb.Controllers.BatteriesController.MaxExportBytes")]
+    [InlineData("Batteries", "_UploadCard.cshtml", "a JSON file", "@BatteryPassWeb.Dpp.Uploads.UploadService.MaxBytes")] // "Fill from export" merged into "Upload a file" (step 5c)
     [InlineData("ProductData", "_EditorField.cshtml", "a PDF, PNG or JPEG", "@Options.Value.MaxUploadBytes")]
     [InlineData("ProductData", "Family.cshtml", "a PNG or JPEG", "@AppOptions.Value.MaxUploadBytes")]
     public void EveryUpload_ShouldSayWhichKindAndHowLargeAFileItTakes(string folder, string view, string kind, string limit)
@@ -55,7 +55,7 @@ public sealed class RedesignFixesTests
     public void TheAccidentAndModuleUploads_ShouldShowTheChosenFile()
     {
         // The script finds the chosen-file line through the form's data-upload-row; these two forms had none (point 13).
-        foreach (var view in new[] { "_AccidentsCard.cshtml", "_ModulesCard.cshtml" })
+        foreach (var view in new[] { "_AccidentsCard.cshtml", "_UploadCard.cshtml" })
         {
             var page = Read("web", "Views", "Batteries", view);
             var upload = page.IndexOf("enctype=\"multipart/form-data\"", StringComparison.Ordinal);

@@ -2,6 +2,7 @@ using BatteryPassWeb.Dpp.Access;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Pages;
+using BatteryPassWeb.Dpp.Uploads;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,7 +16,7 @@ namespace BatteryPassWeb.Controllers;
 /// </summary>
 [Authorize(Policy = "ClusterAdminOrAdmin")]
 [Route("cluster-admin/batteries")]
-public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppReaders readers) : Controller
+public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppReaders readers, UploadPages uploads) : Controller
 {
     private const string PageView = "~/Views/ClusterAdmin/Battery.cshtml";
 
@@ -33,7 +34,7 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
             return Redirect(BatteryPages.BatteryHref(packId));
         }
 
-        var page = sender is null ? null : await pages.BatteryAsync(sender, packId, cancellationToken: cancellationToken);
+        var page = sender is null ? null : await WithUploadAsync(await pages.BatteryAsync(sender, packId, cancellationToken: cancellationToken), cancellationToken);
         return page is null ? NotFound() : View(PageView, page);
     }
 
@@ -68,7 +69,7 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
             case EditorOutcome.Refused:
                 ViewData[BatteriesController.CardKey] = "live";
                 ViewData[BatteriesController.CardErrorKey] = $"{done} {Words.Count(save.RefusedCount, "value")} not saved; {(save.RefusedCount == 1 ? "it's" : "they're")} marked below.".TrimStart();
-                return View(PageView, await pages.BatteryAsync(sender, packId, new EditorState(post, save), cancellationToken));
+                return View(PageView, await WithUploadAsync(await pages.BatteryAsync(sender, packId, new EditorState(post, save), cancellationToken), cancellationToken));
             case EditorOutcome.NothingChanged:
                 TempData[BatteriesController.CardKey] = "live";
                 TempData[BatteriesController.CardInfoKey] = "Nothing changed.";
@@ -208,6 +209,46 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
     }
 
     /// <summary>The signed-in user as a cluster admin; null for the team (it has its own page) and for anyone else.</summary>
+    /// <summary>"Check the file" in the "Upload a file" section (decision 35, step 5c), as the battery's cluster admin.</summary>
+    [HttpPost("{packId}/upload")]
+    [ValidateAntiForgeryToken]
+    [RequestSizeLimit(UploadService.MaxBytes + 65536)]
+    public async Task<IActionResult> CheckUpload(string packId, IFormFile? file, CancellationToken cancellationToken)
+    {
+        if (await ClusterAdminAsync(cancellationToken) is not { } sender || await pages.BatteryAsync(sender, packId, cancellationToken: cancellationToken) is not { ReadOnly: false })
+        {
+            return NotFound();
+        }
+
+        var (checkId, problem) = await uploads.CheckAsync(sender, packId, file?.FileName, file?.OpenReadStream(), file?.Length ?? 0, cancellationToken);
+        TempData[UploadPages.CheckKey] = checkId;
+        Card("upload", null, problem is null ? null : $"Not checked: {problem}.");
+        return Redirect($"{ClusterBatteryPages.BatteryHref(packId)}?section=upload");
+    }
+
+    /// <summary>"Save" after the check (step 5c): the kept file goes through the save pipeline as the cluster admin.</summary>
+    [HttpPost("{packId}/upload/save")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveUpload(string packId, [FromForm] string? checkId, CancellationToken cancellationToken)
+    {
+        if (await ClusterAdminAsync(cancellationToken) is not { } sender || await pages.BatteryAsync(sender, packId, cancellationToken: cancellationToken) is not { ReadOnly: false })
+        {
+            return NotFound();
+        }
+
+        var (done, uploadId, problem) = await uploads.SaveAsync(sender, packId, checkId, cancellationToken);
+        TempData[UploadPages.OpenKey] = uploadId;
+        Card("upload", done, problem is null ? null : $"Not saved: {problem}.");
+        return Redirect($"{ClusterBatteryPages.BatteryHref(packId)}?section=upload");
+    }
+
+    /// <summary>The page with its "Upload a file" section; a read-only page (a marked passport) gets none.</summary>
+    private async Task<ClusterBatteryPage?> WithUploadAsync(ClusterBatteryPage? page, CancellationToken cancellationToken) =>
+        page is null || page.ReadOnly ? page : page with
+        {
+            Upload = await uploads.CardAsync(page.Pack, ClusterBatteryPages.BatteryHref(page.Pack.Id), forTeam: false, TempData[UploadPages.CheckKey] as string, TempData[UploadPages.OpenKey] as string, cancellationToken),
+        };
+
     private async Task<ChangeSender?> ClusterAdminAsync(CancellationToken cancellationToken) =>
         await readers.EditorForAsync(User, cancellationToken) is { Kind: SenderKind.ClusterAdmin } sender ? sender : null;
 

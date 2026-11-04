@@ -217,6 +217,55 @@ public sealed class ClusterBatteriesControllerTests(MongoFixture mongo)
         return form;
     }
 
+    [Fact]
+    public async Task TheClusterAdmin_ShouldUploadLiveValuesButNotTheTeamsValues()
+    {
+        var rig = await RigAsync();
+        var bytes = System.Text.Encoding.UTF8.GetBytes(UploadServiceTests.File(UploadServiceTests.Entry(UploadServiceTests.Serial(rig), """{ "stateOfChargeSoC": 33, "warrantyPeriod": "P9Y" }""")));
+        var checking = Controller(rig, NorthAdmin, "clusterAdmin");
+
+        await checking.CheckUpload(rig.PackId, Upload("readings.json", bytes), CancellationToken.None);
+        var checkId = Assert.IsType<string>(checking.TempData[UploadPages.CheckKey]);
+        var showing = Controller(rig, NorthAdmin, "clusterAdmin");
+        showing.TempData[UploadPages.CheckKey] = checkId;
+        var card = Assert.IsType<ClusterBatteryPage>(Assert.IsType<ViewResult>(await showing.Battery(rig.PackId, CancellationToken.None)).Model).Upload!;
+        var saving = Controller(rig, NorthAdmin, "clusterAdmin");
+        await saving.SaveUpload(rig.PackId, checkId, CancellationToken.None);
+
+        Assert.False(card.ForTeam);
+        Assert.Equal($"{ClusterBatteryPages.BatteryHref(rig.PackId)}/upload", card.Action);
+        Assert.Equal(["Will be saved", "Not saved: #19 can't be changed by this sender"], card.Check!.Values.Select(row => row.Result));
+        Assert.Equal("Saved: 1 value.", saving.TempData[BatteriesController.CardStatusKey]);
+        Assert.Equal(33, (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!.Values["stateOfChargeSoC"].Value!["percentageValue"]!.GetValue<int>());
+        Assert.IsType<NotFoundResult>(await Controller(rig, SouthAdmin, "clusterAdmin").CheckUpload(rig.PackId, Upload("readings.json", bytes), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task AMarkedPassport_ShouldOfferAndTakeNoUploadForItsClusterAdmin()
+    {
+        var rig = await RigAsync();
+        var bytes = UploadCheckTests.Native(UploadServiceTests.Serial(rig), 41);
+        Assert.Null(await PassportMarkTests.Service(rig).MarkInvalidAsync(PublicationTesting.Team, rig.PackId, "Wrong figures"));
+
+        var page = Assert.IsType<ClusterBatteryPage>(Assert.IsType<ViewResult>(await Controller(rig, NorthAdmin, "clusterAdmin").Battery(rig.PackId, CancellationToken.None)).Model);
+        var check = await Controller(rig, NorthAdmin, "clusterAdmin").CheckUpload(rig.PackId, Upload("readings.json", bytes), CancellationToken.None);
+
+        Assert.True(page.ReadOnly);
+        Assert.Null(page.Upload);
+        Assert.DoesNotContain(page.Sections, section => section.Id == "upload");
+        Assert.IsType<NotFoundResult>(check);
+    }
+
+    [Fact]
+    public void BothBatteryPages_ShouldDrawTheUploadCardAfterTheLiveValues()
+    {
+        foreach (var page in new[] { DppTestFiles.RepoFile("web", "Views", "ClusterAdmin", "Battery.cshtml"), DppTestFiles.RepoFile("web", "Views", "Batteries", "Battery.cshtml") })
+        {
+            var text = File.ReadAllText(page);
+            Assert.True(text.IndexOf("_LiveValuesCard", StringComparison.Ordinal) < text.IndexOf("_UploadCard", StringComparison.Ordinal));
+        }
+    }
+
     private static ClusterBatteriesController Controller(PublicationRig rig, string email, string role, IReadOnlyDictionary<string, string>? form = null)
     {
         var http = new DefaultHttpContext
@@ -224,7 +273,7 @@ public sealed class ClusterBatteriesControllerTests(MongoFixture mongo)
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Email, email), new Claim(ClaimTypes.Role, role)], "test")),
         };
         http.Request.Form = new FormCollection((form ?? new Dictionary<string, string>()).ToDictionary(entry => entry.Key, entry => new StringValues(entry.Value)));
-        return new ClusterBatteriesController(ClusterBatteryPagesTests.Pages(rig), new DppReaders(new ClusterRepository(rig.Context)))
+        return new ClusterBatteriesController(ClusterBatteryPagesTests.Pages(rig), new DppReaders(new ClusterRepository(rig.Context)), UploadCheckTests.Pages(rig))
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, new NoTempDataStorage()),

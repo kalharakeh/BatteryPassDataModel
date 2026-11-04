@@ -124,6 +124,9 @@ public sealed record BatteryPage(
     /// <summary>The receiving cluster's name while a hand-over waits for its answer (step 4d); null otherwise.</summary>
     public string? HandOverTo { get; init; }
 
+    /// <summary>The "Upload a file" section (step 5c); the controller adds it, never to a read-only page.</summary>
+    public UploadCardView? Upload { get; init; }
+
     /// <summary>The overview's tiles: state of charge, cycles, temperature and capacity fade, with their last 7 days (redesign R4).</summary>
     public IReadOnlyList<LiveTile> Tiles { get; init; } = [];
 
@@ -176,6 +179,11 @@ public sealed record BatteryPage(
             }
 
             sections.Add(new("live", "Live values", "live", BatterySections.LiveHint(Pack, Live)));
+            if (Upload is { } upload)
+            {
+                sections.Add(new("upload", "Upload a file", "upload", upload.Hint)); // step 5c, mock-up B1
+            }
+
             sections.Add(new("accidents", "Accident reports", "accident", Count: AccidentReports.Count));
             sections.Add(new("modules", "Modules", "modules", Count: Pack.Modules.Count));
             sections.Add(new("versions", "Versions", "versions", Count: Versions.Count));

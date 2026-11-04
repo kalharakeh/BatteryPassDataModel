@@ -38,6 +38,9 @@ public sealed record ClusterBatteryPage(
     /// <summary>What happened while the battery was in this cluster, as its admin may read it (redesign R6), newest first.</summary>
     public IReadOnlyList<BatteryPassWeb.Dpp.Audit.AuditLine> History { get; init; } = [];
 
+    /// <summary>The "Upload a file" section (step 5c); the controller adds it, never to a read-only page.</summary>
+    public UploadCardView? Upload { get; init; }
+
     /// <summary>The mark that froze the passport (invalid, marked for deletion); null while it is active (redesign R6b).</summary>
     public string? FrozenAs { get; init; }
 
@@ -65,6 +68,11 @@ public sealed record ClusterBatteryPage(
             }
 
             sections.Add(new("live", "Live values", "live", BatterySections.LiveHint(Pack, Live)));
+            if (Upload is { } upload && !ReadOnly)
+            {
+                sections.Add(new("upload", "Upload a file", "upload", upload.Hint)); // step 5c, mock-up B4
+            }
+
             if (!ReadOnly) // a marked passport takes no report and can't be handed over; its reports stay on the Accident page
             {
                 sections.Add(new("accidents", "Accident reports", "accident", Count: AccidentReports.Count));

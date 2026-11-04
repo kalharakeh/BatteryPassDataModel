@@ -193,6 +193,64 @@ public sealed class BatteriesControllerTests(MongoFixture mongo)
     /// <summary>The controller as a team member reaches it, with this form posted (also used by the status tests, step 4b).</summary>
     internal static BatteriesController Controller(PublicationRig rig, IReadOnlyDictionary<string, string> form) => Controller(rig, form.ToArray());
 
+    [Fact]
+    public async Task AFileOnTheBatterysPage_ShouldBeCheckedThenSavedAndListed()
+    {
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
+        var bytes = UploadCheckTests.Native(UploadServiceTests.Serial(rig), 41);
+        var checking = Controller(rig);
+
+        Assert.IsType<RedirectResult>(await checking.CheckUpload(rig.PackId, new FormFile(new MemoryStream(bytes), 0, bytes.Length, "file", "readings.json"), CancellationToken.None));
+        var checkId = Assert.IsType<string>(checking.TempData[UploadPages.CheckKey]);
+        var showing = Controller(rig);
+        showing.TempData[UploadPages.CheckKey] = checkId;
+        var check = Assert.IsType<BatteryPage>(Assert.IsType<ViewResult>(await showing.Battery(rig.PackId, CancellationToken.None)).Model).Upload!.Check!;
+
+        Assert.Equal(("readings.json", "upload file", true), (check.FileName, check.FormatWords, check.WillChange));
+        Assert.Equal(new UploadValueRow("#63 State of Charge (SoC)", "76 %", "41 %", "Will be saved", false, false), Assert.Single(check.Values));
+
+        var saving = Controller(rig, ("checkId", checkId));
+        Assert.IsType<RedirectResult>(await saving.SaveUpload(rig.PackId, checkId, CancellationToken.None));
+        Assert.Equal("Saved: 1 value.", saving.TempData[BatteriesController.CardStatusKey]);
+        var after = Controller(rig);
+        after.TempData[UploadPages.OpenKey] = saving.TempData[UploadPages.OpenKey];
+        var card = Assert.IsType<BatteryPage>(Assert.IsType<ViewResult>(await after.Battery(rig.PackId, CancellationToken.None)).Model).Upload!;
+
+        Assert.Null(card.Check);
+        var row = Assert.Single(card.History);
+        Assert.Equal((row.Id, "Page", "team@example.com · readings.json", "1 value saved"), (card.OpenId, row.Channel, row.WhoAndWhat, row.Result));
+        Assert.Equal("Saved", Assert.Single(row.Values).Result);
+        Assert.Equal(41, (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!.Values["stateOfChargeSoC"].Value!["percentageValue"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public async Task AMarkedPassportsPage_ShouldHaveNoUploadSection()
+    {
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
+        var open = Assert.IsType<BatteryPage>(Assert.IsType<ViewResult>(await Controller(rig).Battery(rig.PackId, CancellationToken.None)).Model);
+        Assert.Null(await PassportMarkTests.Service(rig).MarkInvalidAsync(PublicationTesting.Team, rig.PackId, "Wrong figures"));
+
+        var marked = Assert.IsType<BatteryPage>(Assert.IsType<ViewResult>(await Controller(rig).Battery(rig.PackId, CancellationToken.None)).Model);
+
+        Assert.Equal("upload", open.Sections[open.Sections.ToList().FindIndex(section => section.Id == "live") + 1].Id);
+        Assert.Null(marked.Upload);
+        Assert.DoesNotContain(marked.Sections, section => section.Id == "upload");
+    }
+
+    [Fact]
+    public async Task AFileForAnotherBattery_ShouldBeRefusedOnTheCard()
+    {
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
+        var bytes = UploadCheckTests.Native("VPC9-9999", 41);
+        var controller = Controller(rig);
+
+        await controller.CheckUpload(rig.PackId, new FormFile(new MemoryStream(bytes), 0, bytes.Length, "file", "other.json"), CancellationToken.None);
+        await Controller(rig).CheckUpload(rig.PackId, null, CancellationToken.None);
+
+        Assert.Equal(("upload", "Not checked: the file is for battery VPC9-9999, not this one."), (controller.TempData[BatteriesController.CardKey], controller.TempData[BatteriesController.CardErrorKey]));
+        Assert.Null(controller.TempData[UploadPages.CheckKey]);
+    }
+
     private static BatteriesController Controller(PublicationRig rig, params KeyValuePair<string, string>[] form)
     {
         var http = new DefaultHttpContext
@@ -202,7 +260,7 @@ public sealed class BatteriesControllerTests(MongoFixture mongo)
                 "test")),
         };
         http.Request.Form = new FormCollection(form.ToDictionary(entry => entry.Key, entry => new StringValues(entry.Value)));
-        return new BatteriesController(BatteryTesting.Pages(rig), PageTesting.Documents(rig), StatusChangeTests.Pages(rig), PassportMarkTests.Service(rig))
+        return new BatteriesController(BatteryTesting.Pages(rig), PageTesting.Documents(rig), StatusChangeTests.Pages(rig), PassportMarkTests.Service(rig), UploadCheckTests.Pages(rig))
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, new NoTempDataStorage()),

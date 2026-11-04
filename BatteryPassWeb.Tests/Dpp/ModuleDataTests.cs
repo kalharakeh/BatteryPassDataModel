@@ -154,7 +154,8 @@ public sealed class ModuleDataTests(MongoFixture mongo)
         var family = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "ProductData", "Family.cshtml"));
         var hero = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Passport", "_PassportHero.cshtml"));
 
-        Assert.Contains("action=\"@Model.Href/modules/from-export\"", battery);
+        Assert.DoesNotContain("modules/from-export", battery); // merged into "Upload a file" (decision 35, Q18)
+        Assert.Contains("~/Views/Batteries/_UploadCard.cshtml", battery);
         Assert.Contains("action=\"@Model.Href/modules\"", battery);
         Assert.Contains("action=\"/admin/models/@selected.Id/module-description\"", family);
         Assert.Contains("Model.ModuleCount", hero);

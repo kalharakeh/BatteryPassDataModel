@@ -8,11 +8,12 @@
         @if (Model.ForTeam)
         {
             <text>The public page shows how many modules the battery has, with the model's
-            <a href="@Model.ModuleDescriptionHref">module description</a>@(Model.HasModuleDescription ? string.Empty : " (not typed yet)").</text>
+            <a href="@Model.ModuleDescriptionHref">module description</a>@(Model.HasModuleDescription ? string.Empty : " (not typed yet)"). The battery
+            system's export sets this list through "Upload a file"; type or correct it here.</text>
         }
         else
         {
-            <text>The team keeps this list.</text>
+            <text>The battery system's export sets this list, through "Upload a file" or the API; the team corrects it.</text>
         }
         The module IDs are seen only by the battery's cluster, market surveillance and @Model.Team.
     </p>
@@ -41,20 +42,6 @@
     }
     else if (Model.ForTeam)
     {
-        <form method="post" action="@Model.Href/modules/from-export" enctype="multipart/form-data" class="bp-attr-upload bp-module-upload" data-upload-row>
-            @Html.AntiForgeryToken()
-            <div class="bp-attr-file">
-                <label class="bp-secondary-button bp-button-compact bp-document-smart-upload position-relative text-nowrap mb-0">
-                    Choose file
-                    <input type="file" name="file" class="bp-document-hidden-file" accept="application/json,.json" data-kind-words="a JSON file" data-max-bytes="@BatteryPassWeb.Controllers.BatteriesController.MaxExportBytes" data-upload-file />
-                </label>
-                <span class="bp-help-text" data-upload-chosen>No file chosen</span>
-            </div>
-            <div class="bp-live-save">
-                <small class="bp-field-help">The battery system's JSON export of this battery. It replaces the list.</small>
-                <button type="submit" class="bp-secondary-button" data-upload-button>Fill from export</button>
-            </div>
-        </form>
         var listCard = (TempData.Peek(BatteryPassWeb.Controllers.BatteriesController.CardKey) ?? ViewData[BatteryPassWeb.Controllers.BatteriesController.CardKey]) as string;
         <details class="bp-module-edit" open="@(listCard == "module-list")">
             <summary>Type or correct the list</summary>
