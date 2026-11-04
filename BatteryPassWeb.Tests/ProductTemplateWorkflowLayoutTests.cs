@@ -22,19 +22,6 @@ public sealed class ProductTemplateWorkflowLayoutTests
         Assert.DoesNotContain("products/{productId}/versions/{productVersion}/software/{softwareVersion}/push", adminController);
     }
 
-    [Fact]
-    public void Documentation_ShouldExplainProductTemplateWorkflow()
-    {
-        var guide = File.ReadAllText(RepoFile("docs", "end-user-testing-guide.md"));
-        var accounts = File.ReadAllText(RepoFile("docs", "sample-cluster-test-accounts.md"));
-
-        Assert.Contains("product template", guide, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Compact 7M", guide);
-        Assert.Contains("Compact 13M", guide);
-        Assert.Contains("Core", guide);
-        Assert.DoesNotContain("sample-end-user-storage-001", accounts);
-        Assert.DoesNotContain("demo-draft-incomplete-001", accounts);
-    }
 
     private static string RepoFile(params string[] parts)
     {

@@ -1,197 +1,139 @@
 # QA Tester Pack
 
-Product Template is the internal implementation name for Battery Family. In the UI and tester workflows, Product Template and Battery Family mean the same stored template concept.
+The starting point for anyone testing the battery passport app without knowing the project. It covers the new app (DPP V3): one passport per battery, built from the V3 attribute list, with a reader's role deciding what they see.
 
-This is the starting point for someone testing the Battery Pass app without prior project context. Use it together with:
+Keep these open while testing:
 
-- `docs/end-user-testing-guide.md` for detailed reference.
-- `docs/sample-cluster-test-accounts.md` for seeded accounts and battery/passport access.
-- `/help` inside the running app for the current generated API demo Battery ID, latest Passport ID, fixed tokens, examples, and request workbench.
-- `/admin/help` inside the running app for the admin workflow dense reference console.
+- `docs/end-user-testing-guide.md`: the step-by-step script per role.
+- `docs/sample-cluster-test-accounts.md`: the demo accounts, clusters and batteries.
+- `/help` in the app: each role's own help, including "Statuses" (the two badges).
+- `/help/api` in the app: every API call, with a workbench to try one.
 
 ## Quick start
 
 1. Open the app link provided by the project owner in a browser.
-2. Log in as the general admin:
-   - Email: `admin@example.test`
-   - Password: `Password123!`
-3. Open `/admin/clusters?tab=products`.
-4. Press **Reset battery-family passports** to restore the known test data.
-5. Open `/help` and copy the sample Battery ID and sample latest Passport ID.
-6. Use that generated sample Battery ID as the main happy-path API and search test battery.
-7. Legacy compatibility check: searching `did:web:acme.battery.pass:sample-customer-north-001` should resolve to the generated Demo API battery.
-8. Keep `/help`, `/admin/help`, and this file open while testing.
-
-Expected baseline after reset:
-
-- Eight batteries and nine passport snapshots exist: one unassigned demonstrator, one Demo API battery with two passports, and six clustered customer/fleet batteries.
-- The Demo API battery is linked to `demo-cluster`, has one historical passport and one latest passport, and is the sample used by `/help`.
-- Battery families exist for Compact 7M, Compact 13M, and Core.
-- Each Battery Family has Battery Models, and each Battery Model has its own software parameters.
-- Published sample passports are signed, clean, and QR-ready unless a test intentionally changes them.
+2. **The known start:** a team member signs in, opens Clusters, and at the end of the Clusters tab presses **Reset demo data**.
+   - This makes the demo clusters, accounts, batteries and API tokens again.
+   - The tokens' values are shown once, in the window that follows. Copy them then: they are never shown again and never written here.
+3. **Passwords:** the demo accounts share one password, which the project owner gives you. It is set on the server (`DEMO_USERS_PASSWORD`) and never written in this pack or in the app.
+4. **One browser:** test in one browser window. Sign out and in as each account in turn: some faults only show when the same browser changes accounts.
+5. **Every element fully visible:** on every page and in every window, scroll each choice, field and button into view and check it is fully shown, not under a bar or cut. Reaching the last button isn't enough.
 
 ## Tester accounts
 
-Shared seeded password: `Password123!`
+| Who | Account | Cluster | What to check |
+|---|---|---|---|
+| Team | the team's own account (from the project owner) | all | Product data, creating and publishing batteries, every battery page, marking passports, demo data, tokens |
+| Cluster admin | `demo.north.admin@example.test` | demo-north | Their batteries' pages: live values, accident reports, status changes and repairs, hand-overs, uploads; their users and tokens. Their Registry also shows DEMO-CORE-0001 waiting to be accepted. |
+| Cluster user | `demo.north.user@example.test` | demo-north | Their batteries in the Registry and on the detail page, read only |
+| Other cluster admin | `demo.south.admin@example.test`, `demo.fleet.admin@example.test` | demo-south, demo-fleet | They see demo-north's batteries as the public does; demo-north's admin's "Waiting for you" from demo-fleet |
+| Other cluster users | `demo.south.user@example.test`, `demo.fleet.user@example.test` | demo-south, demo-fleet | As above, read only |
+| Market surveillance | `demo.msa@example.test` | — | Every published passport, every section, "Mark as invalid…" |
+| Notified body | `demo.notified-body@example.test` | — | Public and authorities' values |
+| Commission | `demo.commission@example.test` | — | Public, shared and authorities' values; no purchaser values |
+| Repair, repurposing, remanufacturing | `demo.repair@example.test` | — | Public and the shared values #43, #45–#48 |
+| Recycling, battery treatment | `demo.recycling@example.test` | — | Public and #43, #45, #48 |
+| Authorised treatment, WEEE | `demo.treatment@example.test` | — | Public and #48 |
+| Anyone | not signed in | — | The public page only |
 
-| Purpose | Account | What to verify |
-| --- | --- | --- |
-| General admin | `admin@example.test` | Full admin workflow, Battery families, validation, signing, publishing, document evidence, API tokens, sign tokens. |
-| Demo API user | `demo.user@example.test` | Can view the Demo API battery in registry and detailed report. |
-| Demo API local admin | `demo.admin@example.test` | Can use cluster admin tools for `demo-cluster` and local battery fields. |
-| North customer | `customer_001_001@customer.org` / `12345` | Can open North Operations Cluster batteries such as CP7M-NORTH-001. |
-| North normal user | `north.user@example.test` | Can view North cluster battery details only. |
-| North local admin | `north.admin@example.test` | Can use cluster admin tools for North cluster and local battery fields. |
-| South normal user | `south.user@example.test` | Can view South cluster battery details only. |
-| Fleet normal user | `fleet.user@example.test` | Can view Fleet cluster battery details only. |
+## Demo batteries
 
-Main battery IDs:
+| Battery | Cluster | What it shows |
+|---|---|---|
+| DEMO-C7M-0001 | demo-north | Published, several versions, repaired (status re-used, with its repair history), an accident report, live values with a week of history, 7 modules, two earlier uploads |
+| DEMO-C7M-0002 | demo-north | A draft with missing values: the publication checks |
+| DEMO-C7M-0003 | demo-north | Marked invalid by market surveillance ("Demo: wrong carbon footprint figures") |
+| DEMO-C13M-0001 | demo-south | Repurposed, then remanufactured: three linked passports, the two older inactive |
+| DEMO-C13M-0002 | demo-south | A draft |
+| DEMO-CORE-0001 | demo-fleet | Published, an accident report, handed over to demo-north and waiting |
+| DEMO-CORE-0002 | demo-fleet | A draft |
+| DEMO-CORE-0003 | demo-fleet | Waste, marked for deletion |
 
-| Purpose | How to get it |
-| --- | --- |
-| Main happy path | Copy the sample Battery ID from `/help` after reset. |
-| Latest passport for API signing/publishing tests | Copy the sample latest Passport ID from `/help` after reset. |
-| Historical passport check | Open the Demo API battery history from `/admin/clusters?tab=batteries`; it should show one historical passport and one latest passport. |
-| Legacy alias check | Search `did:web:acme.battery.pass:sample-customer-north-001`; it should resolve to the generated Demo API battery. |
-| North, South, Fleet access checks | Copy generated Battery IDs from `/admin/clusters?tab=batteries` and use the cluster/user mapping in `docs/sample-cluster-test-accounts.md`. |
+All demo IDs start with `TEST-`; the pages show a "Test passport" tag for them.
 
 ## Scenario matrix
 
-| Area | Scenario | What should happen |
-| --- | --- | --- |
-| Public search | Search for a published Passport ID from `/`. | The public summary opens. |
-| Battery ID search | Search for a generated Battery ID from `/`. | The battery-level history page opens with linked passports and actions. |
-| Latest route | Open `/{batteryId}/latest`. | The latest passport summary opens. |
-| Legacy sample search | Search `did:web:acme.battery.pass:sample-customer-north-001`. | It resolves to the generated Demo API battery/latest passport. |
-| Public unpublished search | Search for an unpublished or draft passport as a guest. | The public search should not expose it. |
-| QR | Click/download the QR from the summary and scan/upload it from `/`. | It resolves to the latest passport for the Battery ID. |
-| Summary page | Open `/{passportId}/summary`. | Shows Battery ID, Passport ID, battery facts, software version parameter, QR, charts, and no internal conformance/proof diagnostics. |
-| Detailed report | Open `/{passportId}` while logged in with access. | Shows General, General tab software parameters, Material, Performance, Compliance, Supply chain, Circularity, Carbon Footprint, and admin-only Trust tab when allowed. |
-| General tab software parameters | Patch Battery Model through `/help` workbench or cURL. | API response says a new passport, validation, signing, and publishing are required; after that workflow, Summary and General tab show the Battery Model software parameters. |
-| Battery families | Edit a Battery Model, save it, then push that saved Battery Model to matching batteries. Software metadata is part of the saved Battery Model. | Template-owned fields update, manual overrides are preserved, and changed signed core data requires a new signed passport snapshot. |
-| Admin create battery | Create a new battery from the batteries admin page. | Battery ID is generated from Battery Family and serial number; Passport ID is not entered during battery creation. |
-| Admin create passport | Create a passport for an existing battery. | A new snapshot Passport ID is generated from Battery ID, Battery Model, and timestamp. |
-| Admin dense tables | Open `/admin/clusters?tab=batteries`, `/admin/clusters?tab=battery`, `/admin/clusters?tab=clusters`, `/admin/clusters?tab=users`, `/admin/clusters?tab=local-editable-fields`, and `/admin/clusters?tab=api-token-management`. | Pages use compact dense table layouts, separated columns, and inline icon actions. Local editable field sections are collapsed by default. |
-| Battery cluster assignments | Open `/admin/clusters?tab=battery` and change one battery cluster assignment. | One row per battery is shown, Battery ID and Battery Family are separate columns, and only assignment controls appear inline. |
-| User multi-cluster memberships | Open `/admin/clusters?tab=users`, expand a user action drawer, and add a second cluster membership with a different role. | The table row still shows one user, Username and Email are separate, Cluster memberships shows the membership count, and the drawer handles multiple cluster memberships plus password confirmation/reveal. |
-| API Token Management | Open `/admin/clusters?tab=api-token-management`. | API tokens and sign tokens are managed on one dense page. Token ID has its own copy column, Token Value is still the secret used for API calls, Scope shows a scope count with cluster-name details, and unused generated tokens can be cleaned up. |
-| API help and admin help | Open `/help` and `/admin/help`, then expand a row detail. | The detail panel opens as an inline row directly under the selected endpoint or workflow row, not at the bottom of the table. |
-| Validate, sign, publish | Open conformance, validate, sign, publish. | Signing requires zero blockers; publishing requires a current valid proof. |
-| Dirty recovery | Edit signed battery data such as weight, save, then create a new passport, validate, sign, and publish again. | Old passport remains historical; the new latest passport exposes the changed battery snapshot. |
-| Document evidence | Upload or replace required document evidence. | Hash is stored, evidence becomes part of validation/signature flow, changed evidence requires a new signature. |
-| Access control | Try restricted document download as the wrong user or guest. | Access is denied with 403. Authorized admins/cluster users can access permitted files. |
-| API auth | Call external API with read token, read-write token, bad token, and wrong cluster scope. | Correct responses: read succeeds, write requires read-write, bad token is 401, wrong scope is 403. |
-| API battery creation | Call `POST /api/external/v1/batteries` with Battery Family, Battery Model, software version, unique serial, and token-scoped cluster. Repeat with the same serial. | First response returns `201 Created`, generated Battery ID, and audit event `battery.created` with `external-api` source/token ID. Duplicate serial returns `400 Bad Request`. |
-| API telemetry | Post telemetry to a Battery ID. | Latest passport detail charts update and passport trust state does not become dirty. |
-| API model validation | Patch Battery Model to an unknown model. | API returns `400 Bad Request` with allowed models. |
-| API passport creation | POST `/api/external/v1/batteries/{batteryId}/passports` with the fixed sign token. | Response returns `201 Created` and the new Passport ID. |
+What each reader should get. ✓ = allowed or shown, – = not shown or refused. "Own" means the battery is in the reader's cluster.
+
+| Reader | Public page | Detail page | Purchaser tab | Shared tab | Authorities tab | Live values, Modules tabs | Registry lists | Battery page (manage) | Mark as invalid |
+|---|---|---|---|---|---|---|---|---|---|
+| Anyone, not signed in | ✓ | – (sign-in) | – | – | – | – | – | – | – |
+| Cluster user, own battery | ✓ | ✓ | ✓ | ✓ | – | ✓ | own cluster's | – | – |
+| Cluster admin, own battery | ✓ | ✓ | ✓ | ✓ | – | ✓ | own cluster's | ✓ | – |
+| Cluster user or admin, other cluster's battery | ✓ | public only | – | – | – | – | own cluster's | – (refused) | – |
+| Team | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | every battery (Batteries tab) | ✓ | ✓ (and undo) |
+| Market surveillance | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | every published | – | ✓ |
+| Notified body | ✓ | ✓ | – | – | ✓ | – | every published | – | – |
+| Commission | ✓ | ✓ | – | ✓ | ✓ | – | every published | – | – |
+| Repair | ✓ | ✓ | – | #43, #45–#48 | – | – | every published | – | – |
+| Recycling | ✓ | ✓ | – | #43, #45, #48 | – | – | every published | – | – |
+| Treatment | ✓ | ✓ | – | #48 | – | – | every published | – | – |
+
+**Battery page actions** (team and the battery's cluster admins, on an active passport):
+
+| Action | Team | Own cluster admin |
+|---|---|---|
+| Live values, Accident reports ("Add a report"), Upload a file | ✓ | ✓ |
+| Change status: Repaired, placed on the market again, Remanufactured, Repurposed, Waste | ✓ | ✓ |
+| Change status: Correct the values | ✓ | – |
+| Add a note | ✓ | ✓ |
+| Hand over… / Accept or Decline on "Waiting for you" | moves directly, or cancels a waiting one | ✓ |
+| Mark as invalid or for deletion…, and Undo | ✓ | – |
+| Edit product data, create and publish batteries | ✓ | – |
+
+**API** (`/api/external/v1`, a token in the `Authorization` header):
+
+| Token | Reads | Writes |
+|---|---|---|
+| A cluster's "Read" token | that cluster's batteries, as its cluster user would | nothing |
+| A cluster's "Read and write live values" token | the same | the live values (#63, #83, #87, E1–E4) and uploads of live values, for that cluster's batteries |
+| The team's "Full access" token | every battery | creating batteries, publishing, live values, uploads |
+| Any token | — | never a status change or repair (made on the battery's page only) |
+
+`/api/passports` (the list of all passports) is for the team only.
 
 ## Acceptance checklist
 
-Mark each item pass/fail during a formal test run.
-
-| Check | Pass/Fail | Notes |
-| --- | --- | --- |
-| Reset battery-family passports restores eight batteries and nine passport snapshots. |  |  |
-| `/help` shows the generated Demo API Battery ID, latest Passport ID, and fixed demo tokens. |  |  |
-| Public search opens a published passport summary. |  |  |
-| Battery ID search opens the battery-level passport history page. |  |  |
-| Public summary shows linked Battery ID, software version parameter, and no trust/conformance diagnostics. |  |  |
-| QR download/scan opens the latest passport for the same Battery ID. |  |  |
-| Detailed report General tab software parameters shows product, product ID, version, release date, and latest update. |  |  |
-| General admin can validate, sign, and publish a passport. |  |  |
-| Editing signed battery data requires a new passport snapshot. |  |  |
-| Re-validating, signing, and publishing returns the latest passport to clean. |  |  |
-| API telemetry update does not dirty the passport. |  |  |
-| API battery creation returns a generated Battery ID, logs `battery.created`, enforces cluster scope, and rejects duplicate serial values. |  |  |
-| Battery Model API change to an allowed model requires a new passport, validation, signing, and publishing. |  |  |
-| Battery Model API change to an unknown model returns 400. |  |  |
-| Battery family push preserves manual overrides. |  |  |
-| Required/optional fields are managed from Battery families, not a global data requirements page. |  |  |
-| Admin dense table pages use separated columns, inline icon actions, and no card-heavy layout. |  |  |
-| Battery cluster assignments page shows one row per battery with assignment-only controls. |  |  |
-| Users page shows Username and Email separately, a membership count, and supports multiple cluster memberships from the inline drawer. |  |  |
-| User password change requires confirmation and includes a reveal icon. |  |  |
-| Local editable fields sections are collapsed by default. |  |  |
-| API Token Management has a separate Token ID copy column and Scope count/details without cluster IDs in the visible table scope text. |  |  |
-| `/help` and `/admin/help` detail controls open inline row panels under the selected row. |  |  |
-| Required document evidence stores a SHA-256 hash. |  |  |
-| Replacing signed evidence requires validation/signing again. |  |  |
-| Restricted document access is denied to unauthorized users. |  |  |
-| North user cannot open South, Fleet, Demo API, or unassigned detailed reports. |  |  |
-| Local cluster admin can use cluster-scoped tools but not global admin tools. |  |  |
-
-## Suggested test order
-
-1. Reset data from `/admin/clusters?tab=products`.
-2. Verify `/help` sample IDs, fixed tokens, API request workbench, and Demo API battery history.
-3. Verify admin dense tables, user multi-cluster membership behavior, API Token Management scope display, and inline row help details.
-4. Verify public summary, QR, Battery ID search, Passport ID search, and detailed report tabs.
-5. Verify role-based access with normal users and local admins.
-6. Verify admin trust workflow: validate, sign, publish.
-7. Verify dirty recovery after a battery data edit and new passport snapshot.
-8. Verify document evidence upload, hash, signature, and access control.
-9. Verify API reads, battery creation, telemetry writes, operations patch, passport creation, and battery-model patch.
-10. Verify Battery family edit/push behavior.
-11. File bugs using the template below.
+- [ ] "Reset demo data" finishes and shows the tokens once.
+- [ ] Every row of the scenario matrix holds, for every reader.
+- [ ] The two badges show on every passport page with the right status. The Battery badge never shows to the public.
+- [ ] DEMO-C7M-0002 lists what blocks publication; filling it in and pressing Publish gives a signed version 1 with a QR code.
+- [ ] A repair on DEMO-C7M-0001 sets re-used, adds to the repair history and makes a new version.
+- [ ] Hand-over: demo-fleet's DEMO-CORE-0001 waits on demo-north's Registry; Accept moves it, and demo-fleet then sees it as the public does.
+- [ ] Market surveillance marks a passport invalid; the public page says so; only the team undoes it.
+- [ ] Uploading the help's sample files on DEMO-C7M-0001 shows the check before saving, then saves.
+- [ ] The API answers each token as in the API table, and refuses what it should with a plain message.
+- [ ] The public and detail pages print on A4 with every tab open (browser print).
+- [ ] Every page works at a phone's width (375 px) and at 150 % Windows scaling, with every element fully visible.
 
 ## Known limitations
 
-- This is still a demonstrator, not the final production deployment.
-- Battery families and seeded batteries are realistic enough for testing but are not official production master data.
-- The reset action intentionally deletes older sample/demo data and restores eight batteries with nine passport snapshots.
-- External API writes are limited to battery creation, telemetry, operations metadata, Battery Model changes, software version changes, and passport snapshot creation for an existing battery.
-- API telemetry does not require signing; Battery Model API changes require a new passport, validation, signing, and publishing.
-- Signing verifies the canonical passport core and referenced evidence hashes; it does not parse PDF contents.
-- Camera QR scanning depends on browser/device permissions. Image upload scanning is the fallback.
-- Some browser, OS, and camera permission failures are expected; manual ID search should still work.
+- **Test identifiers:** all IDs start with `TEST-` until the identifier scheme is built (DUNS, plan 6d).
+- **Pack temperature:** the battery system's export has no pack temperature yet; each export's notes say so.
+- **Hand-overs:** no e-mail; the receiver sees them on their Registry. A waiting hand-over isn't cancelled by itself when the passport stops being active; accepting is then refused with a reason.
+- **Signatures:** each version is signed when published; live values and accident reports change it in place without a new signature, by design.
 
 ## Bug report template
 
-Use this format for every issue.
-
 ```text
 Title:
-
-Environment:
-- App URL:
-- Browser:
-- Logged-in account:
-- Battery ID:
-- Passport ID:
-- Time/date:
-
-Steps to reproduce:
+Account (role) used:
+Battery (serial number) and page address:
+Screen width and browser:
+Steps:
 1.
 2.
 3.
-
-Expected result:
-
-Actual result:
-
-Screenshots or files:
-
-Console/network errors:
-
-Does it reproduce after reset? Yes/No
-
-Severity:
-- Blocker / Major / Minor / Polish
-
-Notes or improvement suggestion:
+Expected:
+What happened:
+Screenshot or file:
 ```
 
 ## Improvement suggestion template
 
 ```text
-Area:
-
-Current experience:
-
-Suggested improvement:
-
-Why it helps:
-
-Risk or tradeoff:
+Page:
+Who would use it (role):
+What is hard today:
+Suggestion:
 ```

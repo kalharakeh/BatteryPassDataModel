@@ -6,16 +6,6 @@ namespace BatteryPassWeb.Tests;
 public sealed class BatteryFamilyAccessApiRevisedTests
 {
 
-    [Fact]
-    public void ProductTemplateSource_ShouldDocumentBatteryFamilyMapping()
-    {
-        var docs = File.ReadAllText(RepoFile("docs", "end-user-testing-guide.md"))
-            + File.ReadAllText(RepoFile("docs", "qa-test-pack.md"));
-
-        Assert.Contains("Battery Family", docs);
-        Assert.Contains("Product Template", docs);
-        Assert.Contains("Product Template is the internal implementation name for Battery Family", docs);
-    }
 
     [Fact]
     public void UserFacingViews_ShouldNotUseRemovedIdentityLabels()

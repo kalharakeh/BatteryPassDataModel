@@ -53,17 +53,6 @@ public sealed class ExternalApiBatteryCreateTests
         Assert.DoesNotContain("passport snapshot", help);
     }
 
-    [Fact]
-    public void QaDocs_ShouldIncludeExternalApiBatteryCreationChecks()
-    {
-        var guide = File.ReadAllText(RepoFile("docs", "end-user-testing-guide.md"));
-        var qa = File.ReadAllText(RepoFile("docs", "qa-test-pack.md"));
-
-        Assert.Contains("POST /api/external/v1/batteries", guide);
-        Assert.Contains("duplicate serial", guide, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("POST /api/external/v1/batteries", qa);
-        Assert.Contains("battery.created", qa);
-    }
 
     private static string RepoFile(params string[] parts)
     {
