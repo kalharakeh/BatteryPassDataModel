@@ -293,8 +293,9 @@ The file's DIN note on #22 asks for a repair history and for a repair to be reco
 - **Keys** are the schema's property names, which are unique across its sections (Appendix B).
 - **Values:** the schema's own JSON form is always accepted. For attributes that are a single value with a fixed unit (percentages, °C, Ah, kg, years, counts, status), a bare value is also accepted and the app adds the unit. For #79, a bare number is the pack value.
 - **Time:** `measuredAt` is the generation time of every value in the entry. Without it, the upload time is used.
-- **Status change:** `batteryStatus` goes in the same entry as the re-stated values. For "re-used", "remanufactured" and "repurposed", the next operator is then named on the pack page (7.5).
-- **Repair:** the entry carries `"reason": "repair"` and a `"repairDescription"` next to `measuredAt`, plus the re-stated values. The app sets the status as 7.9 says.
+- **Status change:** `batteryStatus` goes in the same entry as the re-stated values: waste, re-used, remanufactured or repurposed, as a bare word or in the schema's own form ("original" can't be set by upload). A re-stated value the entry leaves out is the battery's current one. For "re-used", "remanufactured" and "repurposed", the next operator is then named on the pack page (7.5).
+- **Repair:** the entry carries `"reason": "repair"`, a `"repairDescription"` and a `"repairDate"` (else the day of `measuredAt`), plus the re-stated values, and no `batteryStatus`. The app sets the status as 7.9 says.
+- **Where status changes and repairs are made** (decision 35, step 5d): on the battery's page only ("Upload a file"), by the team or the battery's cluster admins, through the page's status change (the same rules, version and audit line). The status change is saved first, then the entry's other values; a refused status change saves nothing of the battery. The external API refuses a battery with a status change or a repair.
 
 ### 8.3 The BMS export (mapping `BMS2_ACO`, version 01.32.07; decision 17)
 
@@ -442,7 +443,7 @@ Step 5 is planned in four parts (product owner, 2 Nov 2026, decision 35), each e
 - **5a, the upload engine, the upload log and the API's upload endpoint:** the native format (8.2) read by its adapter, each battery found as the API finds it and its values through the save pipeline, a battery that can't be changed refused on its own, each upload logged in `dpp_uploads`, and `POST api/external/v1/uploads` with its preview; also the step 4 wrap-up's follow-up (hand-overs compare normalised cluster IDs). Planned in `docs/superpowers/plans/2026-11-02-dpp-v3-step5a-upload-engine.md`.
 - **5b, the battery system's export** (8.3, mapping BMS2_ACO) on the same endpoint: the live values, E1–E4 in whole minutes, #17 for the team's drafts and the module list, and the remaining capacity kept for the fade suggestion. Planned in `docs/superpowers/plans/2026-11-02-dpp-v3-step5b-battery-system-export.md`.
 - **5c, "Upload a file" on each battery's page** (the product owner's change of 2 Nov 2026), a side-menu section of the team's and the cluster admin's battery pages, never on a read-only one: one file for that battery, the check before saving, Save, and the battery's earlier uploads; "Fill from export" merges into it. Mock-up approved on 2 Nov 2026 (`docs/mockups/dpp-v3-step5-live-data-and-uploads.html`), its place on the redesigned pages on 3 Nov. Planned in `docs/superpowers/plans/2026-11-02-dpp-v3-step5c-upload-card.md`.
-- **5d, status changes and repairs by upload** (7.4, 7.9), through the status change, and the demo example.
+- **5d, status changes and repairs by upload** (7.4, 7.9), on the battery's page only, through the status change; the help page's two sample files; and DEMO-C7M-0001's two demo uploads. Shots approved on 4 Nov 2026. Planned in `docs/superpowers/plans/2026-11-04-dpp-v3-step5d-status-uploads.md`.
 
 Before 5c, the battery pages are redesigned in four parts (product owner, 2 Nov 2026, decision 36), each ending with a working app, after the owner tried step 4 and found the battery page long and confusing:
 
