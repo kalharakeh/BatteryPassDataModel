@@ -15,6 +15,7 @@ namespace BatteryPassWeb.Dpp.Uploads;
 /// <param name="Problem">Why the battery was refused as a whole; null when it wasn't.</param>
 /// <param name="Modules">What happened to the battery's module list, when the file had one; null otherwise.</param>
 /// <param name="Notes">What the file's adapter wants the sender to know, e.g. a value it couldn't read.</param>
+/// <param name="Sent">The values the battery's entry sent, as JSON text, by key (step 5c).</param>
 public sealed record UploadedBatteryReport(
     int Entry,
     string NamedAs,
@@ -24,11 +25,14 @@ public sealed record UploadedBatteryReport(
     string? Problem,
     IReadOnlyList<KeyResult> Values,
     string? Modules = null,
-    IReadOnlyList<string>? Notes = null);
+    IReadOnlyList<string>? Notes = null,
+    string? ClusterId = null,
+    IReadOnlyDictionary<string, string?>? Sent = null);
 
 /// <summary>An upload's result: per battery what happened, or why the file couldn't be read at all.</summary>
 /// <param name="UploadId">The log entry; null for a preview or an unreadable file, which aren't logged.</param>
-public sealed record UploadReport(string? Format, bool Preview, IReadOnlyList<UploadedBatteryReport> Batteries, string? Problem, string? UploadId)
+/// <param name="CheckId">The checked file kept for "Save" on a battery's page (step 5c); null otherwise.</param>
+public sealed record UploadReport(string? Format, bool Preview, IReadOnlyList<UploadedBatteryReport> Batteries, string? Problem, string? UploadId, string? CheckId = null)
 {
     /// <summary>True when at least one battery had a value saved (or, in a preview, would have).</summary>
     public bool AnySaved => Batteries.Any(battery => battery.Outcome == UploadService.Saved);
@@ -62,6 +66,21 @@ public sealed class UploadService(
     public const string Ambiguous = "more than one battery has this serial number; use the battery ID";
     public const string NamedTwice = "the file names this battery more than once";
     public const string InTheFuture = "measuredAt lies in the future";
+    public const string TooLarge = "the file is larger than 2 MB";
+    public const string NotJson = "the file isn't a JSON file";
+    public const string CheckExpired = "the check has expired; choose the file again";
+
+    /// <summary>How long a checked file is kept for "Save" (decision 35).</summary>
+    public static readonly TimeSpan CheckKeptFor = TimeSpan.FromHours(1);
+
+    /// <summary>How many earlier uploads a battery's page lists.</summary>
+    public const int HistoryLength = 5;
+
+    /// <summary>Why a file on a battery's page is refused: it names another battery.</summary>
+    public static string NotThisBattery(string namedAs) => $"the file is for battery {namedAs}, not this one";
+
+    /// <summary>Why a file on a battery's page is refused: it names several batteries.</summary>
+    public static string OneBatteryOnly(int count) => $"the file lists {count} batteries; a battery's page takes a file for that battery only";
 
     private readonly IUploadAdapter[] _adapters = adapters.ToArray();
 
@@ -113,13 +132,13 @@ public sealed class UploadService(
             var notes = entry.Notes ?? [];
             if (problem is not null || pack is null || twice.Contains(pack.Id))
             {
-                reports.Add(new UploadedBatteryReport(entry.Number, entry.NamedAs, target?.Identifier, pack?.Id, Refused, problem ?? NamedTwice, [], Notes: notes));
+                reports.Add(new UploadedBatteryReport(entry.Number, entry.NamedAs, target?.Identifier, pack?.Id, Refused, problem ?? NamedTwice, [], Notes: notes, ClusterId: Cluster(pack)));
                 continue;
             }
 
             if (await store.PassportStatusAsync(pack.Id, cancellationToken) is { } status && DppStatuses.IsNoLongerActive(status))
             {
-                reports.Add(new UploadedBatteryReport(entry.Number, entry.NamedAs, target!.Identifier, pack.Id, Refused, SavePipeline.NoLongerChanges(status), [], Notes: notes));
+                reports.Add(new UploadedBatteryReport(entry.Number, entry.NamedAs, target!.Identifier, pack.Id, Refused, SavePipeline.NoLongerChanges(status), [], Notes: notes, ClusterId: Cluster(pack)));
                 continue;
             }
 
@@ -134,7 +153,8 @@ public sealed class UploadService(
             }
 
             var outcome = result.Keys.Any(key => key.Outcome == KeyOutcome.Saved) || modules is { Changed: true } ? Saved : NothingSaved;
-            reports.Add(new UploadedBatteryReport(entry.Number, entry.NamedAs, target!.Identifier, pack.Id, outcome, null, result.Keys, modules?.Words, notes));
+            var sent = values.ToDictionary(pair => pair.Key, pair => pair.Value?.ToJsonString(), StringComparer.Ordinal);
+            reports.Add(new UploadedBatteryReport(entry.Number, entry.NamedAs, target!.Identifier, pack.Id, outcome, null, result.Keys, modules?.Words, notes, Cluster(pack), sent));
         }
 
         string? uploadId = null;
@@ -174,6 +194,131 @@ public sealed class UploadService(
 
         return (values, unused);
     }
+
+    /// <summary>
+    /// A file chosen on a battery's page (decision 35, step 5c): it must name that battery only, and is checked like a
+    /// preview. It is kept for an hour, so the page can show the check and its checker can "Save" it.
+    /// </summary>
+    public async Task<UploadReport> CheckBatteryFileAsync(ChangeSender sender, string packId, string fileName, byte[] content, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sender);
+        ArgumentNullException.ThrowIfNull(content);
+        if (content.Length > MaxBytes)
+        {
+            return new UploadReport(null, true, [], TooLarge, null);
+        }
+
+        if (Parse(content) is not { } json)
+        {
+            return new UploadReport(null, true, [], NotJson, null);
+        }
+
+        var document = json is JsonObject root
+            ? _adapters.FirstOrDefault(adapter => adapter.Reads(root))?.Read(root) ?? UploadDocument.Unreadable(NotAnUpload)
+            : UploadDocument.Unreadable(NotAnUpload);
+        var problem = document.Problem
+            ?? (document.Entries.Count != 1 ? OneBatteryOnly(document.Entries.Count) : null)
+            ?? document.Entries[0].Problem;
+        if (problem is null)
+        {
+            var named = await batteries.FindAsync(sender, document.Entries[0].NamedAs, cancellationToken);
+            if (named.Pack?.Id != packId)
+            {
+                problem = NotThisBattery(document.Entries[0].NamedAs);
+            }
+            else if (await store.PassportStatusAsync(packId, cancellationToken) is { } status && DppStatuses.IsNoLongerActive(status))
+            {
+                problem = SavePipeline.NoLongerChanges(status); // a read-only page has no upload section; this guards a stale form
+            }
+        }
+
+        if (problem is not null)
+        {
+            return new UploadReport(document.Format, true, [], problem, null);
+        }
+
+        var report = await RunAsync(sender, json, "page", fileName, preview: true, cancellationToken);
+        var check = new UploadCheck
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            PackId = packId,
+            Who = sender.Who,
+            SentAs = sender.Kind.ToString(),
+            FileName = fileName,
+            Json = json.ToJsonString(),
+            ExpiresAtUtc = clock.GetUtcNow().UtcDateTime + CheckKeptFor,
+        };
+        await store.InsertAsync(check, cancellationToken);
+        return report with { CheckId = check.Id };
+    }
+
+    /// <summary>
+    /// Saves a checked file (step 5c): only for the person who checked it, on the same battery, within the hour. It is
+    /// run again, so the result is what the save pipeline says now. Null when it expired or isn't theirs.
+    /// </summary>
+    public async Task<UploadReport?> SaveCheckedAsync(ChangeSender sender, string packId, string? checkId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sender);
+        if (string.IsNullOrWhiteSpace(checkId) || await store.GetAsync<UploadCheck>(checkId, cancellationToken) is not { } check
+            || check.PackId != packId || check.Who != sender.Who || check.SentAs != sender.Kind.ToString()
+            || check.ExpiresAtUtc <= clock.GetUtcNow().UtcDateTime)
+        {
+            return null;
+        }
+
+        await store.DeleteAsync<UploadCheck>(check.Id, cancellationToken);
+        return await RunAsync(sender, JsonNode.Parse(check.Json), "page", check.FileName, preview: false, cancellationToken);
+    }
+
+    /// <summary>
+    /// A kept check shown again on its battery's page (step 5c): run as a preview now, as its checker (the team on the
+    /// team's page, the battery's cluster admin on theirs). Null when it expired or is another battery's.
+    /// </summary>
+    public async Task<(UploadCheck Check, UploadReport Report)?> ShowCheckAsync(BatteryPack pack, bool forTeam, string? checkId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(pack);
+        if (string.IsNullOrWhiteSpace(checkId) || await store.GetAsync<UploadCheck>(checkId, cancellationToken) is not { } check
+            || check.PackId != pack.Id || check.ExpiresAtUtc <= clock.GetUtcNow().UtcDateTime
+            || check.SentAs != (forTeam ? nameof(SenderKind.Team) : nameof(SenderKind.ClusterAdmin)))
+        {
+            return null;
+        }
+
+        var sender = forTeam ? ChangeSender.Team(check.Who) : ChangeSender.ClusterAdmin(check.Who, Cluster(pack) ?? string.Empty);
+        return (check, await RunAsync(sender, JsonNode.Parse(check.Json), "page", check.FileName, preview: true, cancellationToken));
+    }
+
+    /// <summary>
+    /// The battery's latest uploads, each cut to this battery's line (step 5c, Q19). The team sees them all; a cluster
+    /// admin those sent for the battery's cluster (its admins and its battery system), not the team's.
+    /// </summary>
+    public async Task<IReadOnlyList<UploadRecord>> HistoryAsync(BatteryPack pack, bool forTeam, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(pack);
+        var packId = pack.Id;
+        var cluster = Cluster(pack);
+        var uploads = await store.ListUploadsForPackAsync(packId, HistoryLength * 4, cancellationToken);
+        return uploads
+            .Where(upload => forTeam
+                || (upload.SentAs != nameof(SenderKind.Team) && cluster is not null && upload.ClusterIds.Contains(cluster)))
+            .Take(HistoryLength)
+            .Select(upload => new UploadRecord
+            {
+                Id = upload.Id,
+                AtUtc = upload.AtUtc,
+                Who = upload.Who,
+                SentAs = upload.SentAs,
+                ClusterIds = upload.ClusterIds,
+                Channel = upload.Channel,
+                FileName = upload.FileName,
+                Format = upload.Format,
+                IsDemo = upload.IsDemo,
+                Batteries = upload.Batteries.Where(battery => battery.PackId == packId).ToList(),
+            })
+            .ToArray();
+    }
+
+    private static string? Cluster(BatteryPack? pack) => pack?.ClusterId is { } cluster ? ClusterRepository.NormalizeClusterId(cluster) : null;
 
     private static string Source(ChangeSender sender) => sender.Kind == SenderKind.BatterySystemFeed ? BatteryApi.FeedSource : "upload";
 
@@ -254,6 +399,7 @@ public sealed class UploadService(
                 Entry = report.Entry,
                 NamedAs = report.NamedAs,
                 PackId = report.PackId,
+                ClusterId = report.ClusterId,
                 Outcome = report.Outcome,
                 Problem = report.Problem,
                 Modules = report.Modules,
@@ -261,6 +407,7 @@ public sealed class UploadService(
                 Values = report.Values.Select(value => new UploadedValue
                 {
                     Key = value.Key,
+                    Value = report.Sent?.GetValueOrDefault(value.Key),
                     Outcome = value.Outcome.ToString(),
                     Message = string.IsNullOrEmpty(value.Message) ? null : value.Message,
                 }).ToList(),

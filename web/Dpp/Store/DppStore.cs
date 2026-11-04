@@ -22,6 +22,7 @@ public sealed class DppStore
     public const string Versions = "dpp_passport_versions";
     public const string HandOvers = "dpp_transfers";
     public const string Uploads = "dpp_uploads";
+    public const string UploadChecks = "dpp_upload_checks";
 
     private const string UniqueProductIdentifierField = "Values.uniqueProductIdentifier.Value";
     private const string SerialNumberField = "Values.batterySerialNumber.Value";
@@ -37,6 +38,7 @@ public sealed class DppStore
         [typeof(PassportVersion)] = Versions,
         [typeof(HandOver)] = HandOvers,
         [typeof(UploadRecord)] = Uploads,
+        [typeof(UploadCheck)] = UploadChecks,
     };
 
     private readonly IMongoDatabase? _database;
@@ -106,8 +108,15 @@ public sealed class DppStore
                 Builders<HandOver>.IndexKeys.Ascending(handOver => handOver.ToClusterId).Ascending(handOver => handOver.State),
                 new CreateIndexOptions { Name = "to_state" }),
         ], cancellationToken);
-        await Collection<UploadRecord>().Indexes.CreateOneAsync(
+        await Collection<UploadRecord>().Indexes.CreateManyAsync(
+        [
             new CreateIndexModel<UploadRecord>(Builders<UploadRecord>.IndexKeys.Descending(upload => upload.AtUtc), new CreateIndexOptions { Name = "at" }),
+            new CreateIndexModel<UploadRecord>(Builders<UploadRecord>.IndexKeys.Ascending("Batteries.PackId").Descending(upload => upload.AtUtc), new CreateIndexOptions { Name = "pack_at" }),
+        ], cancellationToken);
+        await Collection<UploadCheck>().Indexes.CreateOneAsync(
+            new CreateIndexModel<UploadCheck>(
+                Builders<UploadCheck>.IndexKeys.Ascending(check => check.ExpiresAtUtc),
+                new CreateIndexOptions { Name = "expires", ExpireAfter = TimeSpan.Zero }),
             cancellationToken: cancellationToken);
     }
 
@@ -130,6 +139,21 @@ public sealed class DppStore
         }
 
         return await Collection<UploadRecord>().Find(Builders<UploadRecord>.Filter.Empty).SortByDescending(upload => upload.AtUtc).Limit(limit).ToListAsync(cancellationToken);
+    }
+
+    /// <summary>The latest uploads that named this battery, newest first (step 5c).</summary>
+    public async Task<IReadOnlyList<UploadRecord>> ListUploadsForPackAsync(string packId, int limit, CancellationToken cancellationToken = default)
+    {
+        if (_database is null)
+        {
+            return [];
+        }
+
+        return await Collection<UploadRecord>()
+            .Find(Builders<UploadRecord>.Filter.ElemMatch(upload => upload.Batteries, battery => battery.PackId == packId))
+            .SortByDescending(upload => upload.AtUtc)
+            .Limit(limit)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<T?> GetAsync<T>(string id, CancellationToken cancellationToken = default)

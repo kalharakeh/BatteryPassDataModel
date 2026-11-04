@@ -265,6 +265,31 @@ public sealed class UploadRecord : IDppRecord
     public bool IsDemo { get; set; }
 }
 
+/// <summary>
+/// A file checked on a battery's page and kept for an hour (step 5c), so "Save" doesn't need it again. Only the person
+/// who checked it saves it, for that battery; the database drops it when it expires.
+/// </summary>
+public sealed class UploadCheck : IDppRecord
+{
+    [BsonId]
+    public required string Id { get; init; }
+
+    public required string PackId { get; init; }
+
+    public required string Who { get; init; }
+
+    /// <summary>The sender's kind (<c>SenderKind</c>) when the file was checked.</summary>
+    public required string SentAs { get; init; }
+
+    public required string FileName { get; init; }
+
+    /// <summary>The file's JSON text.</summary>
+    public required string Json { get; init; }
+
+    [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+    public required DateTime ExpiresAtUtc { get; init; }
+}
+
 /// <summary>What happened to one battery of an upload: found or not, refused or not, and each value's outcome.</summary>
 public sealed class UploadedBattery
 {
@@ -276,6 +301,9 @@ public sealed class UploadedBattery
 
     /// <summary>The battery found; null when none was.</summary>
     public string? PackId { get; init; }
+
+    /// <summary>The battery's cluster when the upload ran (step 5c).</summary>
+    public string? ClusterId { get; init; }
 
     /// <summary>"saved", "nothing saved" or "refused".</summary>
     public required string Outcome { get; init; }
@@ -296,6 +324,9 @@ public sealed class UploadedBattery
 public sealed class UploadedValue
 {
     public required string Key { get; init; }
+
+    /// <summary>The value as the file sent it (JSON text), shown in the battery's upload history (step 5c).</summary>
+    public string? Value { get; init; }
 
     public required string Outcome { get; init; }
 
