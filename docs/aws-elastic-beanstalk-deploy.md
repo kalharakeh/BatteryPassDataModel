@@ -1,5 +1,7 @@
 # AWS Elastic Beanstalk Deploy Runbook
 
+> **The live site now runs the new app (DPP V3).** Its cut-over and roll-back are in [aws-v3-cutover.md](aws-v3-cutover.md). This runbook describes how the old app (branch `security/demo-api-hardening`) was first set up.
+
 This runbook deploys the current ASP.NET app to AWS Elastic Beanstalk while keeping the existing MongoDB Atlas database and data.
 
 Target shape:
