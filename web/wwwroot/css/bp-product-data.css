@@ -1755,7 +1755,11 @@ main .bp-field-marker.is-published {
   gap: 6px;
 }
 
+/* At least 24 px tall, for WCAG 2.5.8 (step 6a). */
 .bp-text-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
   margin-left: 8px;
   padding: 0;
   border: 0;
@@ -3064,7 +3068,16 @@ main .bp-field-marker.is-published {
   white-space: nowrap;
 }
 
+/* The header facts' links (Batch, Economic operator) are at least 24 px tall too (step 6a). */
+.bp-bh-facts dd a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+}
+
+/* Its 24 px box overhangs its label's line instead of growing it, so the Cluster value stays level with the others. */
 .bp-bh-facts dt .bp-text-button {
+  margin-block: -4px;
   margin-left: 6px;
   font-size: 0.78rem;
 }
