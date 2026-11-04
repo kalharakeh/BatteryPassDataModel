@@ -71,11 +71,11 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
                 ViewData[BatteriesController.CardErrorKey] = $"{done} {Words.Count(save.RefusedCount, "value")} not saved; {(save.RefusedCount == 1 ? "it's" : "they're")} marked below.".TrimStart();
                 return View(PageView, await WithUploadAsync(await pages.BatteryAsync(sender, packId, new EditorState(post, save), cancellationToken), cancellationToken));
             case EditorOutcome.NothingChanged:
-                TempData[BatteriesController.CardKey] = "live";
-                TempData[BatteriesController.CardInfoKey] = "Nothing changed.";
+                CardMessages.Put(TempData, packId, BatteriesController.CardKey, "live");
+                CardMessages.Put(TempData, packId, BatteriesController.CardInfoKey, "Nothing changed.");
                 break;
             default:
-                Card("live", $"{done} Live values change the passport in place, without a new version.", null);
+                Card(packId, "live", $"{done} Live values change the passport in place, without a new version.", null);
                 break;
         }
 
@@ -93,7 +93,7 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
 
         if (file is null || file.Length == 0)
         {
-            Card("accidents", null, "Choose a file first.");
+            Card(packId, "accidents", null, "Choose a file first.");
             return Redirect($"{ClusterBatteryPages.BatteryHref(packId)}#accidents");
         }
 
@@ -104,7 +104,7 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
             return NotFound();
         }
 
-        Card("accidents", added.Problem is null ? $"{added.Document!.FileName} added." : null, added.Problem is null ? null : $"The report wasn't added: {added.Problem}.");
+        Card(packId, "accidents", added.Problem is null ? $"{added.Document!.FileName} added." : null, added.Problem is null ? null : $"The report wasn't added: {added.Problem}.");
         return Redirect($"{ClusterBatteryPages.BatteryHref(packId)}#accidents");
     }
 
@@ -126,7 +126,7 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
         }
 
         var (done, problem) = pages.StatusMessage(result, before);
-        Card("status", done, problem);
+        Card(packId, "status", done, problem);
         return Redirect($"{ClusterBatteryPages.BatteryHref(packId)}#status");
     }
 
@@ -141,7 +141,7 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
             return NotFound();
         }
 
-        Card("status", message.Done, message.Problem);
+        Card(packId, "status", message.Done, message.Problem);
         return Redirect($"{ClusterBatteryPages.BatteryHref(packId)}#status");
     }
 
@@ -156,7 +156,7 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
             return NotFound();
         }
 
-        Card("status", message.Done, message.Problem);
+        Card(packId, "status", message.Done, message.Problem);
         return Redirect(link && message.Problem is null ? "/registry" : $"{ClusterBatteryPages.BatteryHref(packId)}#status");
     }
 
@@ -178,7 +178,7 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
         var asked = await handOvers.AskAsync(sender, packId, typed, confirm, cancellationToken);
         if (asked.Problem is { } problem)
         {
-            Card("handover", null, $"Not asked: {problem}.");
+            Card(packId, "handover", null, $"Not asked: {problem}.");
         }
         else if (asked.HandOver is null)
         {
@@ -187,7 +187,7 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
         }
         else
         {
-            Card("handover", $"Asked. The battery stays with your cluster until {asked.ReceiverName} accepts.", null);
+            Card(packId, "handover", $"Asked. The battery stays with your cluster until {asked.ReceiverName} accepts.", null);
         }
 
         return Redirect($"{ClusterBatteryPages.BatteryHref(packId)}#handover");
@@ -204,7 +204,7 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
         }
 
         var problem = await handOvers.CancelAsync(sender, packId, cancellationToken);
-        Card("handover", problem is null ? "Hand-over cancelled. The battery stays with your cluster." : null, problem is null ? null : $"Not cancelled: {problem}.");
+        Card(packId, "handover", problem is null ? "Hand-over cancelled. The battery stays with your cluster." : null, problem is null ? null : $"Not cancelled: {problem}.");
         return Redirect($"{ClusterBatteryPages.BatteryHref(packId)}#handover");
     }
 
@@ -221,8 +221,8 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
         }
 
         var (checkId, problem) = await uploads.CheckAsync(sender, packId, file?.FileName, file?.OpenReadStream(), file?.Length ?? 0, cancellationToken);
-        TempData[UploadPages.CheckKey] = checkId;
-        Card("upload", null, problem is null ? null : $"Not checked: {problem}.");
+        CardMessages.Put(TempData, packId, UploadPages.CheckKey, checkId);
+        Card(packId, "upload", null, problem is null ? null : $"Not checked: {problem}.");
         return Redirect($"{ClusterBatteryPages.BatteryHref(packId)}?section=upload");
     }
 
@@ -237,25 +237,35 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
         }
 
         var (done, uploadId, problem) = await uploads.SaveAsync(sender, packId, checkId, cancellationToken);
-        TempData[UploadPages.OpenKey] = uploadId;
-        Card("upload", done, problem is null ? null : $"Not saved: {problem}.");
+        CardMessages.Put(TempData, packId, UploadPages.OpenKey, uploadId);
+        Card(packId, "upload", done, problem is null ? null : $"Not saved: {problem}.");
         return Redirect($"{ClusterBatteryPages.BatteryHref(packId)}?section=upload");
     }
 
     /// <summary>The page with its "Upload a file" section; a read-only page (a marked passport) gets none.</summary>
-    private async Task<ClusterBatteryPage?> WithUploadAsync(ClusterBatteryPage? page, CancellationToken cancellationToken) =>
-        page is null || page.ReadOnly ? page : page with
+    /// <remarks>The battery's one-time messages move from TempData into ViewData here, on every path that shows the page.</remarks>
+    private async Task<ClusterBatteryPage?> WithUploadAsync(ClusterBatteryPage? page, CancellationToken cancellationToken)
+    {
+        if (page is null)
         {
-            Upload = await uploads.CardAsync(page.Pack, ClusterBatteryPages.BatteryHref(page.Pack.Id), forTeam: false, TempData[UploadPages.CheckKey] as string, TempData[UploadPages.OpenKey] as string, cancellationToken),
+            return null;
+        }
+
+        CardMessages.Take(TempData, ViewData, page.Pack.Id);
+        return page.ReadOnly ? page : page with
+        {
+            Upload = await uploads.CardAsync(page.Pack, ClusterBatteryPages.BatteryHref(page.Pack.Id), forTeam: false, ViewData[UploadPages.CheckKey] as string, ViewData[UploadPages.OpenKey] as string, cancellationToken,
+                viewer: AccessControlService.CurrentEmail(User).Trim().ToLowerInvariant()),
         };
+    }
 
     private async Task<ChangeSender?> ClusterAdminAsync(CancellationToken cancellationToken) =>
         await readers.EditorForAsync(User, cancellationToken) is { Kind: SenderKind.ClusterAdmin } sender ? sender : null;
 
-    private void Card(string card, string? status, string? error)
+    private void Card(string packId, string card, string? status, string? error)
     {
-        TempData[BatteriesController.CardKey] = card;
-        TempData[BatteriesController.CardStatusKey] = status;
-        TempData[BatteriesController.CardErrorKey] = error;
+        CardMessages.Put(TempData, packId, BatteriesController.CardKey, card);
+        CardMessages.Put(TempData, packId, BatteriesController.CardStatusKey, status);
+        CardMessages.Put(TempData, packId, BatteriesController.CardErrorKey, error);
     }
 }

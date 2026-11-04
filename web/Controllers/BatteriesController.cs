@@ -72,8 +72,8 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     public async Task<IActionResult> CheckUpload(string packId, IFormFile? file, CancellationToken cancellationToken)
     {
         var (checkId, problem) = await uploads.CheckAsync(ChangeSender.Team(Who), packId, file?.FileName, file?.OpenReadStream(), file?.Length ?? 0, cancellationToken);
-        TempData[UploadPages.CheckKey] = checkId;
-        Card("upload", null, problem is null ? null : $"Not checked: {problem}.");
+        CardMessages.Put(TempData, packId, UploadPages.CheckKey, checkId);
+        Card(packId, "upload", null, problem is null ? null : $"Not checked: {problem}.");
         return Redirect($"{BatteryPages.BatteryHref(packId)}?section=upload");
     }
 
@@ -83,8 +83,8 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     public async Task<IActionResult> SaveUpload(string packId, [FromForm] string? checkId, CancellationToken cancellationToken)
     {
         var (done, uploadId, problem) = await uploads.SaveAsync(ChangeSender.Team(Who), packId, checkId, cancellationToken);
-        TempData[UploadPages.OpenKey] = uploadId;
-        Card("upload", done, problem is null ? null : $"Not saved: {problem}.");
+        CardMessages.Put(TempData, packId, UploadPages.OpenKey, uploadId);
+        Card(packId, "upload", done, problem is null ? null : $"Not saved: {problem}.");
         return Redirect($"{BatteryPages.BatteryHref(packId)}?section=upload");
     }
 
@@ -103,7 +103,7 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     public async Task<IActionResult> SetCluster(string packId, [FromForm] string? clusterId, CancellationToken cancellationToken)
     {
         var problem = await pages.SetClusterAsync(Who, packId, clusterId, cancellationToken);
-        Card("cluster", problem is null ? "Cluster changed. The passport didn't change: the cluster isn't passport data." : null, problem is null ? null : $"The cluster wasn't changed: {problem}.");
+        Card(packId, "cluster", problem is null ? "Cluster changed. The passport didn't change: the cluster isn't passport data." : null, problem is null ? null : $"The cluster wasn't changed: {problem}.");
         return Redirect(BatteryPages.BatteryHref(packId));
     }
 
@@ -113,7 +113,7 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     public async Task<IActionResult> CancelHandOver(string packId, [FromServices] HandOverService handOvers, CancellationToken cancellationToken)
     {
         var problem = await handOvers.CancelAsync(ChangeSender.Team(Who), packId, cancellationToken);
-        Card("cluster", problem is null ? "Hand-over cancelled. The battery stays in its cluster." : null, problem is null ? null : $"Not cancelled: {problem}.");
+        Card(packId, "cluster", problem is null ? "Hand-over cancelled. The battery stays in its cluster." : null, problem is null ? null : $"Not cancelled: {problem}.");
         return Redirect(BatteryPages.BatteryHref(packId));
     }
 
@@ -123,7 +123,7 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     public async Task<IActionResult> SetModules(string packId, [FromForm] string? modules, CancellationToken cancellationToken)
     {
         var problem = await pages.SetModulesAsync(Who, packId, modules, cancellationToken);
-        Card("module-list", problem is null ? "Modules saved. The passport didn't change: modules aren't passport data." : null, problem is null ? null : $"The modules weren't saved: {problem}.");
+        Card(packId, "module-list", problem is null ? "Modules saved. The passport didn't change: modules aren't passport data." : null, problem is null ? null : $"The modules weren't saved: {problem}.");
         return Redirect($"{BatteryPages.BatteryHref(packId)}#modules");
     }
 
@@ -134,11 +134,11 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
         var result = await pages.PublishAsync(Who, packId, cancellationToken);
         if (result.Version is { } version && result.Problem is null)
         {
-            Card("publication", result.Unchanged ? "Nothing new to publish: the passport is already up to date." : $"Version {version.Number} published.", null);
+            Card(packId, "publication", result.Unchanged ? "Nothing new to publish: the passport is already up to date." : $"Version {version.Number} published.", null);
         }
         else
         {
-            Card("publication", null, $"The passport wasn't published: {result.Problem}.");
+            Card(packId, "publication", null, $"The passport wasn't published: {result.Problem}.");
         }
 
         return Redirect($"{BatteryPages.BatteryHref(packId)}#publication");
@@ -150,14 +150,14 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     {
         if (file is null || file.Length == 0)
         {
-            Card("accidents", null, "Choose a file first.");
+            Card(packId, "accidents", null, "Choose a file first.");
             return Redirect($"{BatteryPages.BatteryHref(packId)}#accidents");
         }
 
         using var buffer = new MemoryStream();
         await file.CopyToAsync(buffer, cancellationToken);
         var result = await documents.AddAccidentReportAsync(ChangeSender.Team(Who), packId, new DocumentUpload(file.FileName, buffer.ToArray(), title, language), cancellationToken);
-        Card("accidents", result.Problem is null ? $"{result.Document!.FileName} added." : null, result.Problem is null ? null : $"The report wasn't added: {result.Problem}.");
+        Card(packId, "accidents", result.Problem is null ? $"{result.Document!.FileName} added." : null, result.Problem is null ? null : $"The report wasn't added: {result.Problem}.");
         return Redirect($"{BatteryPages.BatteryHref(packId)}#accidents");
     }
 
@@ -174,7 +174,7 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
         }
 
         var (done, problem) = status.Message(result, before);
-        Card("status", done, problem);
+        Card(packId, "status", done, problem);
         return Redirect($"{BatteryPages.BatteryHref(packId)}#status");
     }
 
@@ -184,7 +184,7 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     public async Task<IActionResult> AddHistoryNote(string packId, [FromForm] string? note, CancellationToken cancellationToken)
     {
         var (done, problem) = await status.AddNoteAsync(ChangeSender.Team(Who), packId, note, cancellationToken);
-        Card("status", done, problem);
+        Card(packId, "status", done, problem);
         return Redirect($"{BatteryPages.BatteryHref(packId)}#status");
     }
 
@@ -194,7 +194,7 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     public async Task<IActionResult> MakeSuccessor(string packId, [FromForm] string? operatorId, CancellationToken cancellationToken)
     {
         var (done, problem, successorId) = await status.MakeSuccessorAsync(ChangeSender.Team(Who), packId, operatorId, cancellationToken);
-        Card("status", done, problem);
+        Card(packId, "status", done, problem);
         return Redirect($"{BatteryPages.BatteryHref(successorId ?? packId)}#status");
     }
 
@@ -204,7 +204,7 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     public async Task<IActionResult> OtherOperator(string packId, [FromForm] string? operatorIdentifier, [FromForm] string? operatorInfo, [FromForm] string? passport, [FromForm] bool link, CancellationToken cancellationToken)
     {
         var (done, problem) = await status.OtherOperatorAsync(ChangeSender.Team(Who), packId, new OtherOperator(operatorIdentifier, operatorInfo, passport), link, cancellationToken);
-        Card("status", done, problem);
+        Card(packId, "status", done, problem);
         return Redirect($"{BatteryPages.BatteryHref(packId)}#status");
     }
 
@@ -214,7 +214,7 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     public async Task<IActionResult> CancelSuccessor(string packId, CancellationToken cancellationToken)
     {
         var (done, problem) = await status.CancelSuccessorAsync(ChangeSender.Team(Who), packId, cancellationToken);
-        Card("status", done, problem);
+        Card(packId, "status", done, problem);
         return Redirect($"{BatteryPages.BatteryHref(packId)}#status");
     }
 
@@ -238,7 +238,7 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     private RedirectResult MarkResult(string packId, string? problem, string done)
     {
         // The message shows in the header, by the red line that says what the passport is (redesign R5).
-        Card("mark", problem is null ? done : null, problem is null ? null : $"Nothing changed: {problem}.");
+        Card(packId, "mark", problem is null ? done : null, problem is null ? null : $"Nothing changed: {problem}.");
         return Redirect(BatteryPages.BatteryHref(packId));
     }
 
@@ -249,7 +249,7 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
         var (problem, serial) = await pages.RemoveDraftAsync(Who, packId, cancellationToken);
         if (problem is not null)
         {
-            Card("remove", null, $"The battery wasn't removed: {problem}.");
+            Card(packId, "remove", null, $"The battery wasn't removed: {problem}.");
             return Redirect($"{BatteryPages.BatteryHref(packId)}#remove");
         }
 
@@ -263,17 +263,26 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     /// The page with its "Upload a file" section: the check kept by "Check the file" and the upload just saved. A page
     /// that takes no changes (a marked or earlier passport) gets none.
     /// </summary>
-    private async Task<BatteryPage?> WithUploadAsync(BatteryPage? page, CancellationToken cancellationToken) =>
-        page is null || page.Cards.FrozenAs is not null ? page : page with
-        {
-            Upload = await uploads.CardAsync(page.Pack, BatteryPages.BatteryHref(page.Pack.Id), forTeam: true, TempData[UploadPages.CheckKey] as string, TempData[UploadPages.OpenKey] as string, cancellationToken),
-        };
-
-    private void Card(string card, string? status, string? error)
+    /// <remarks>The battery's one-time messages move from TempData into ViewData here, on every path that shows the page.</remarks>
+    private async Task<BatteryPage?> WithUploadAsync(BatteryPage? page, CancellationToken cancellationToken)
     {
-        TempData[CardKey] = card;
-        TempData[CardStatusKey] = status;
-        TempData[CardErrorKey] = error;
+        if (page is null)
+        {
+            return null;
+        }
+
+        CardMessages.Take(TempData, ViewData, page.Pack.Id);
+        return page.Cards.FrozenAs is not null ? page : page with
+        {
+            Upload = await uploads.CardAsync(page.Pack, BatteryPages.BatteryHref(page.Pack.Id), forTeam: true, ViewData[UploadPages.CheckKey] as string, ViewData[UploadPages.OpenKey] as string, cancellationToken, viewer: Who),
+        };
+    }
+
+    private void Card(string packId, string card, string? status, string? error)
+    {
+        CardMessages.Put(TempData, packId, CardKey, card);
+        CardMessages.Put(TempData, packId, CardStatusKey, status);
+        CardMessages.Put(TempData, packId, CardErrorKey, error);
     }
 
     /// <summary>
@@ -329,8 +338,8 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
             case EditorOutcome.NothingChanged:
                 if (liveValues)
                 {
-                    TempData[CardKey] = "live";
-                    TempData[CardInfoKey] = "Nothing changed.";
+                    CardMessages.Put(TempData, packId, CardKey, "live");
+                    CardMessages.Put(TempData, packId, CardInfoKey, "Nothing changed.");
                 }
                 else
                 {
@@ -341,7 +350,7 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
             default:
                 if (liveValues)
                 {
-                    Card("live", $"{done} Live values change the passport in place, without a new version.", null);
+                    Card(packId, "live", $"{done} Live values change the passport in place, without a new version.", null);
                 }
                 else
                 {

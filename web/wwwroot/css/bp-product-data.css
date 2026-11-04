@@ -267,12 +267,17 @@ main .bp-status-line.is-info {
   gap: 12px;
 }
 
-/* A native dialog (e.g. naming a new family): site.css's panel, centred over a dimmed page. */
+/* A native dialog (e.g. naming a new family): site.css's panel, centred over a dimmed page. Taller than the screen, it
+   scrolls inside itself (the owner's step-5 test, 4 Nov 2026), whatever the browser's own default. */
 dialog.bp-dialog {
   position: fixed;
   inset: 0;
   margin: auto;
   height: fit-content;
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 dialog.bp-dialog::backdrop {

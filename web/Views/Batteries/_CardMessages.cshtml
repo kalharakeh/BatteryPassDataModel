@@ -2,10 +2,11 @@
 @model string
 @* The message line under a battery card after its form was sent: done, information or a problem (both battery pages). *@
 @{
-    var card = (TempData.Peek(BatteriesController.CardKey) ?? ViewData[BatteriesController.CardKey]) as string;
-    var status = (TempData.Peek(BatteriesController.CardStatusKey) ?? ViewData[BatteriesController.CardStatusKey]) as string;
-    var error = (TempData.Peek(BatteriesController.CardErrorKey) ?? ViewData[BatteriesController.CardErrorKey]) as string;
-    var info = (TempData.Peek(BatteriesController.CardInfoKey) ?? ViewData[BatteriesController.CardInfoKey]) as string;
+    @* The controller moved this battery's messages from TempData into ViewData (CardMessages); another battery's never come. *@
+    var card = ViewData[BatteriesController.CardKey] as string;
+    var status = ViewData[BatteriesController.CardStatusKey] as string;
+    var error = ViewData[BatteriesController.CardErrorKey] as string;
+    var info = ViewData[BatteriesController.CardInfoKey] as string;
 }
 @if (card == Model)
 {

@@ -11,7 +11,7 @@
     // A marked passport's newest version (redesign R6b): the page is read-only then.
     var shown = active ?? (Model.ReadOnly ? Model.Versions.Select(row => row.Version).FirstOrDefault() : null);
     var batteryKey = Uri.EscapeDataString(Model.Identifier);
-    var card = (TempData.Peek(BatteriesController.CardKey) ?? ViewData[BatteriesController.CardKey]) as string;
+    var card = ViewData[BatteriesController.CardKey] as string;
     var sections = Model.Sections;
     var chosen = BatterySections.Chosen(sections, Context.Request.Query["section"], card, valuesMessage: false);
     bool Hidden(string id) => id != chosen;

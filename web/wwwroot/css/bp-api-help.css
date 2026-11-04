@@ -240,3 +240,16 @@
   background: var(--bp-bg);
   color: var(--bp-muted);
 }
+
+/* The calls' table fits the page's column at every width (the owner's step-5 test, 4 Nov 2026): site.css's 1040 px
+   minimum put each call's Details button past the 958 px column, behind a sideways scroll. The long paths wrap. */
+.bp-api-help-endpoint-table {
+  min-width: 0;
+}
+
+.bp-api-help-endpoint-table .bp-help-endpoint-cell code {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

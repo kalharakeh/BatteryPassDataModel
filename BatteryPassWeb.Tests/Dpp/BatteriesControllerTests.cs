@@ -203,7 +203,7 @@ public sealed class BatteriesControllerTests(MongoFixture mongo)
         Assert.IsType<RedirectResult>(await checking.CheckUpload(rig.PackId, new FormFile(new MemoryStream(bytes), 0, bytes.Length, "file", "readings.json"), CancellationToken.None));
         var checkId = Assert.IsType<string>(checking.TempData[UploadPages.CheckKey]);
         var showing = Controller(rig);
-        showing.TempData[UploadPages.CheckKey] = checkId;
+        CardMessages.Put(showing.TempData, rig.PackId, UploadPages.CheckKey, checkId);
         var check = Assert.IsType<BatteryPage>(Assert.IsType<ViewResult>(await showing.Battery(rig.PackId, CancellationToken.None)).Model).Upload!.Check!;
 
         Assert.Equal(("readings.json", "upload file", true), (check.FileName, check.FormatWords, check.WillChange));
@@ -213,7 +213,7 @@ public sealed class BatteriesControllerTests(MongoFixture mongo)
         Assert.IsType<RedirectResult>(await saving.SaveUpload(rig.PackId, checkId, CancellationToken.None));
         Assert.Equal("Saved: 1 value.", saving.TempData[BatteriesController.CardStatusKey]);
         var after = Controller(rig);
-        after.TempData[UploadPages.OpenKey] = saving.TempData[UploadPages.OpenKey];
+        CardMessages.Put(after.TempData, rig.PackId, UploadPages.OpenKey, saving.TempData[UploadPages.OpenKey]);
         var card = Assert.IsType<BatteryPage>(Assert.IsType<ViewResult>(await after.Battery(rig.PackId, CancellationToken.None)).Model).Upload!;
 
         Assert.Null(card.Check);

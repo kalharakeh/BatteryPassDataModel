@@ -42,7 +42,7 @@
     }
     else if (Model.ForTeam)
     {
-        var listCard = (TempData.Peek(BatteryPassWeb.Controllers.BatteriesController.CardKey) ?? ViewData[BatteryPassWeb.Controllers.BatteriesController.CardKey]) as string;
+        var listCard = ViewData[BatteryPassWeb.Controllers.BatteriesController.CardKey] as string;
         <details class="bp-module-edit" open="@(listCard == "module-list")">
             <summary>Type or correct the list</summary>
             @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "module-list")

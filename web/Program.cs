@@ -1,4 +1,5 @@
 using BatteryPassWeb.Configuration;
+using BatteryPassWeb.Controllers;
 using BatteryPassWeb.Dpp;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Store;
@@ -129,6 +130,9 @@ builder.Services
             context.HttpContext.RequestServices
                 .GetRequiredService<AuthenticationSessionService>()
                 .ValidatePrincipalAsync(context);
+        // The TempData cookie is the browser's: one person's battery messages never reach the next (owner's step-5 test).
+        options.Events.OnSigningIn = context => CardMessages.ForgetAsync(context.HttpContext);
+        options.Events.OnSigningOut = context => CardMessages.ForgetAsync(context.HttpContext);
     });
 
 builder.Services.AddAuthorization(options =>

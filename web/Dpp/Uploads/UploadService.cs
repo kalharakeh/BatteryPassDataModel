@@ -321,12 +321,14 @@ public sealed class UploadService(
     /// A kept check shown again on its battery's page (step 5c): run as a preview now, as its checker (the team on the
     /// team's page, the battery's cluster admin on theirs). Null when it expired or is another battery's.
     /// </summary>
-    public async Task<(UploadCheck Check, UploadReport Report)?> ShowCheckAsync(BatteryPack pack, bool forTeam, string? checkId, CancellationToken cancellationToken = default)
+    /// <param name="viewer">Who is looking: another person's kept check shows nothing (the owner's step-5 test).</param>
+    public async Task<(UploadCheck Check, UploadReport Report)?> ShowCheckAsync(BatteryPack pack, bool forTeam, string? checkId, CancellationToken cancellationToken = default, string? viewer = null)
     {
         ArgumentNullException.ThrowIfNull(pack);
         if (string.IsNullOrWhiteSpace(checkId) || await store.GetAsync<UploadCheck>(checkId, cancellationToken) is not { } check
             || check.PackId != pack.Id || check.ExpiresAtUtc <= clock.GetUtcNow().UtcDateTime
-            || check.SentAs != (forTeam ? nameof(SenderKind.Team) : nameof(SenderKind.ClusterAdmin)))
+            || check.SentAs != (forTeam ? nameof(SenderKind.Team) : nameof(SenderKind.ClusterAdmin))
+            || (viewer is not null && !string.Equals(check.Who, viewer, StringComparison.OrdinalIgnoreCase)))
         {
             return null;
         }

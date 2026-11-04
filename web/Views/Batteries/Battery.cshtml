@@ -31,7 +31,7 @@
             .Select(part => Words.Count(int.Parse(part.Item1, CultureInfo.InvariantCulture), part.Item2));
         return string.Join(" ", parts);
     }
-    var card = (TempData[BatteriesController.CardKey] ?? ViewData[BatteriesController.CardKey]) as string;
+    var card = ViewData[BatteriesController.CardKey] as string;
     var testIds = Identifiers.IsTestIdentifier(Model.Identifier) || Model.Versions.Any(row => Identifiers.IsTestIdentifier(row.Version.DigitalProductPassportId));
     var filesChanged = publication.Files.Count(file => !file.Unchanged);
     var batteryKey = Uri.EscapeDataString(Model.Identifier);

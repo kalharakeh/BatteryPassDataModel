@@ -62,11 +62,12 @@ public sealed class UploadPages(UploadService uploads, AttributeForms forms, Att
     /// <summary>The upload just saved, shown open in the history.</summary>
     public const string OpenKey = "UploadOpen";
 
-    public async Task<UploadCardView> CardAsync(BatteryPack pack, string href, bool forTeam, string? checkId, string? openId, CancellationToken cancellationToken = default)
+    /// <param name="viewer">Who is looking; the kept check shows only to the person who checked the file.</param>
+    public async Task<UploadCardView> CardAsync(BatteryPack pack, string href, bool forTeam, string? checkId, string? openId, CancellationToken cancellationToken = default, string? viewer = null)
     {
         ArgumentNullException.ThrowIfNull(pack);
         UploadCheckView? check = null;
-        if (await uploads.ShowCheckAsync(pack, forTeam, checkId, cancellationToken) is { } shown && shown.Report.Batteries.Count == 1)
+        if (await uploads.ShowCheckAsync(pack, forTeam, checkId, cancellationToken, viewer) is { } shown && shown.Report.Batteries.Count == 1)
         {
             var battery = shown.Report.Batteries[0];
             check = new UploadCheckView(

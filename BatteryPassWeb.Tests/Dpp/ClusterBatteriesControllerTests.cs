@@ -227,7 +227,7 @@ public sealed class ClusterBatteriesControllerTests(MongoFixture mongo)
         await checking.CheckUpload(rig.PackId, Upload("readings.json", bytes), CancellationToken.None);
         var checkId = Assert.IsType<string>(checking.TempData[UploadPages.CheckKey]);
         var showing = Controller(rig, NorthAdmin, "clusterAdmin");
-        showing.TempData[UploadPages.CheckKey] = checkId;
+        CardMessages.Put(showing.TempData, rig.PackId, UploadPages.CheckKey, checkId);
         var card = Assert.IsType<ClusterBatteryPage>(Assert.IsType<ViewResult>(await showing.Battery(rig.PackId, CancellationToken.None)).Model).Upload!;
         var saving = Controller(rig, NorthAdmin, "clusterAdmin");
         await saving.SaveUpload(rig.PackId, checkId, CancellationToken.None);
