@@ -163,6 +163,36 @@ th .bp-status-help-words {
   font-size: 1.2rem;
 }
 
+/* The lists' explainer: in the Status heading on a desktop; on a phone, where the heading row is hidden, beside the
+   count instead, and the hidden heading's copy takes no focus (step 6c, the owner's choice). */
+.bp-batteries-count-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.bp-batteries-count-row > .bp-status-help-button {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .bp-batteries-count-row > .bp-status-help-button {
+    display: inline-flex;
+  }
+
+  .bp-mobile-card-table thead .bp-status-help-button {
+    display: none;
+  }
+
+  /* A long badge ("Passport Marked for deletion · version 2") wraps instead of widening the page (step 6c). */
+  .bp-badge {
+    max-width: 100%;
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+}
+
 /* The statuses in words: in the badges' explainer window and in the Help's "Statuses" part (step 6b-1). */
 .bp-status-meanings {
   display: grid;
@@ -510,3 +540,16 @@ th .bp-status-help-words {
 /* The passport hero's buttons carry the app's arrow icons, not typed arrows (redesign R6). */
 .bp-report-hero-cta { gap: 8px; }
 .bp-report-hero-cta .bp-i { width: 18px; height: 18px; flex: none; }
+
+/* On a phone the statuses in words stack, each badge above its meaning, so the words get the window's width (step 6c).
+   After the list's own rule, which this overrides. */
+@media (max-width: 767px) {
+  .bp-status-meanings {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px 0;
+  }
+
+  .bp-status-meanings dd {
+    margin-bottom: 8px;
+  }
+}

@@ -35,7 +35,9 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
         }
 
         var page = sender is null ? null : await WithUploadAsync(await pages.BatteryAsync(sender, packId, cancellationToken: cancellationToken), cancellationToken);
-        return page is null ? NotFound() : View(PageView, page);
+        // A battery this admin may not manage, or none: the app's "Not allowed" page, as a cluster user gets, without
+        // saying whether it exists (step 6c; the site has no page for a bare 404).
+        return page is null ? Forbid() : View(PageView, page);
     }
 
     [HttpPost("{packId}/live")]

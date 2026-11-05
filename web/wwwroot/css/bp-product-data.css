@@ -3077,6 +3077,8 @@ main .bp-field-marker.is-published {
 
 /* Its 24 px box overhangs its label's line instead of growing it, so the Cluster value stays level with the others. */
 .bp-bh-facts dt .bp-text-button {
+  position: relative;
+  z-index: 1;
   margin-block: -4px;
   margin-left: 6px;
   font-size: 0.78rem;

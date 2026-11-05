@@ -23,5 +23,5 @@ public sealed class TapTargetTests
 
     [Fact]
     public void TheHeadersChangeButton_ShouldNotPushTheClusterValueDown() =>
-        Assert.Contains(".bp-bh-facts dt .bp-text-button {\n  margin-block: -4px;", Css(), StringComparison.Ordinal);
+        Assert.Contains(".bp-bh-facts dt .bp-text-button {\n  position: relative;\n  z-index: 1;\n  margin-block: -4px;", Css(), StringComparison.Ordinal); // drawn above the value it overhangs (step 6c)
 }

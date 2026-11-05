@@ -260,7 +260,7 @@ The file's DIN note on #22 asks for a repair history and for a repair to be reco
 - The team or the battery's cluster admins record a repair through the status change (7.4), with "repair" as the reason. An upload can do the same (8.2).
 - The repair adds a "repaired" entry to the pack's repair history: date, what was repaired, who recorded it. The history is shown with the battery status, to the same readers (5.2). The schema has no field for it, so it isn't in the passport JSON.
 - A battery with status "original" becomes "re-used". A battery that is already "re-used", "remanufactured" or "repurposed" keeps its status (J-15).
-- Like any status change, a repair asks for the re-stated values (pre-filled) and publishes a new version of the same passport.
+- Like any status change, a repair asks for the re-stated values (pre-filled). A repair that changes a passport value (the status, or a re-stated value) publishes a new version of the same passport; one that changes none keeps the version, and only the repair history grows (as built in step 4b; wording corrected in step 6c).
 
 ## 8. Live data and uploads
 

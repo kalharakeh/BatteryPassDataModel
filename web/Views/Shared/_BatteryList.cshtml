@@ -25,10 +25,14 @@
     }
     else
     {
-        <p class="bp-batteries-count">@(Model.Searched ? $"{Words.Count(Model.Rows.Count, "battery", "batteries")} match “{Model.Query}”." : $"{Words.Count(Model.Rows.Count, "battery", "batteries")}.")@if (Model.Searched)
-            {
-                <text> <a href="@Model.Action">Show all</a></text>
-            }</p>
+        <div class="bp-batteries-count-row">
+            <p class="bp-batteries-count">@(Model.Searched ? $"{Words.Count(Model.Rows.Count, "battery", "batteries")} match “{Model.Query}”." : $"{Words.Count(Model.Rows.Count, "battery", "batteries")}.")@if (Model.Searched)
+                {
+                    <text> <a href="@Model.Action">Show all</a></text>
+                }</p>
+            @* On a phone the Status heading is hidden, so its explainer shows here (step 6c, the owner's choice). *@
+            @await Html.PartialAsync("_StatusHelp")
+        </div>
         <div class="bp-table-scroll">
             <table class="table align-middle bp-console-table bp-batteries-table bp-mobile-card-table bp-one-line-list">
                 <thead>

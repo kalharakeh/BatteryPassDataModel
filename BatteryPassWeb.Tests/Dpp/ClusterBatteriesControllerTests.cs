@@ -61,11 +61,14 @@ public sealed class ClusterBatteriesControllerTests(MongoFixture mongo)
     }
 
     [Fact]
-    public async Task AnotherClustersAdmin_ShouldFindNothing()
+    public async Task AnotherClustersAdmin_ShouldBeSentToNotAllowed()
     {
+        // Step 6c: the app's "Not allowed" page, as a cluster user gets, never the browser's bare 404; and whether the
+        // battery exists stays unsaid.
         var rig = await RigAsync();
 
-        Assert.IsType<NotFoundResult>(await Controller(rig, SouthAdmin, "clusterAdmin").Battery(rig.PackId, CancellationToken.None));
+        Assert.IsType<ForbidResult>(await Controller(rig, SouthAdmin, "clusterAdmin").Battery(rig.PackId, CancellationToken.None));
+        Assert.IsType<ForbidResult>(await Controller(rig, SouthAdmin, "clusterAdmin").Battery("pack-that-does-not-exist", CancellationToken.None));
     }
 
     [Fact]

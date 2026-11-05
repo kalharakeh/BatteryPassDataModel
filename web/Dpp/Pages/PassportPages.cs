@@ -217,9 +217,11 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
         if (published.Count == 0)
         {
             // Marking a passport invalid leaves it no active version; it stays findable and says so (owner's point 10b).
+            // A battery placed on the market again has older passports with the same serial number, made inactive; the
+            // one that isn't inactive is the battery's passport (decision 34; step 6c).
             foreach (var candidate in candidates)
             {
-                if (await store.GetLatestVersionAsync(candidate.Id, cancellationToken) is { } latest)
+                if (await store.GetLatestVersionAsync(candidate.Id, cancellationToken) is { DppStatus: not DppStatuses.Inactive } latest)
                 {
                     published.Add(latest);
                 }

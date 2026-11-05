@@ -107,8 +107,11 @@ public sealed class AuditLines(DppStore store, DocumentStore documents, Attribut
     {
         var eventType = BsonHelpers.GetString(auditEvent, "eventType");
         var email = BsonHelpers.GetString(auditEvent, "actor");
-        var actor = people.GetValueOrDefault(email) ?? (email.Length > 0 ? email : "The app");
         var role = FirstNonEmpty(BsonHelpers.GetString(auditEvent, "actorRole"), BsonHelpers.GetString(auditEvent, "actorType"));
+        // A token is named by what it is, never by its ID, as in a battery's earlier uploads (step 6c).
+        var actor = email.StartsWith("api-token:", StringComparison.Ordinal)
+            ? (role == nameof(SenderKind.BatterySystemFeed) ? "Battery system" : "API token")
+            : people.GetValueOrDefault(email) ?? (email.Length > 0 ? email : "The app");
         var source = BsonHelpers.GetString(auditEvent, "source");
         var entityType = BsonHelpers.GetString(auditEvent, "entityType");
         var entityId = BsonHelpers.GetString(auditEvent, "entityId");
@@ -221,6 +224,14 @@ public sealed class AuditLines(DppStore store, DocumentStore documents, Attribut
                 words.Add(new(" uploaded values for "));
                 words.Add(new(counts[0].Replace("Upload of ", string.Empty, StringComparison.Ordinal), Strong: true));
                 change = counts.Length == 2 ? counts[1] : null;
+                break;
+            case PublicationService.InactiveEvent:
+                // An earlier passport replaced by the battery's new one (step 4c), named by the battery (step 6c).
+                icon = AuditIcon.Publish;
+                words.Add(new(" set the passport of battery "));
+                words.Add(new(record?.Name ?? entityId, Strong: true));
+                words.Add(new(" inactive"));
+                change = metadata.TryGetValue("why", out var why) && why.IsString ? why.AsString : null;
                 break;
             case PublicationService.PublishedEvent:
                 icon = AuditIcon.Publish;
