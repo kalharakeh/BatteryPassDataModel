@@ -59,12 +59,12 @@ public sealed class ReviewFixesTests
     {
         var page = DppTestFiles.BatteryPageSource();
 
-        Assert.Contains("href=\"/dpp/@batteryKey\"", page);
-        Assert.Contains("href=\"/dpp/@batteryKey/detail\"", page);
-        Assert.Contains("href=\"/qr/@batteryKey/svg\"", page);
-        Assert.Contains("href=\"/qr/@batteryKey/download\"", page);
+        Assert.Contains("href=\"@PassportPages.SummaryHref(Model.Identifier)\"", page);
+        Assert.Contains("href=\"@PassportPages.DetailHref(Model.Identifier)\"", page);
+        Assert.Contains("href=\"@PassportPages.QrHref(Model.Identifier)\"", page);
+        Assert.Contains("href=\"@PassportPages.QrDownloadHref(Model.Identifier)\"", page);
         Assert.Contains("href=\"/admin/audit?q=@Uri.EscapeDataString(Model.Pack.Id)\"", page);
-        Assert.Contains("/dpp/@Uri.EscapeDataString(row.Version.DigitalProductPassportId)/detail", page); // each version opens
+        Assert.Contains("href=\"@PassportPages.DetailHref(row.Version.DigitalProductPassportId)\"", page); // each version opens its own address (6d)
         Assert.Contains("@row.Version.Proof.Hash", page); // and shows its signature details
     }
 

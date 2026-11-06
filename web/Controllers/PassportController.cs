@@ -46,8 +46,23 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
     {
         var reader = await readers.ForAsync(User, cancellationToken);
         var page = await pages.SummaryAsync(reader, Uri.UnescapeDataString(id), cancellationToken);
-        return page is null ? NotFoundPage() : View(page);
+        return page is null ? NotFoundPage() : View(nameof(Summary), page);
     }
+
+    /// <summary>A version's own address (#5, step 6d): <c>/dpp/UN778474481VPC12221/v2</c>.</summary>
+    [HttpGet("{id}/v{version:int}")]
+    public Task<IActionResult> Version(string id, int version, [FromServices] Microsoft.Extensions.Options.IOptions<BatteryPassWeb.Configuration.BatteryPassOptions> options, CancellationToken cancellationToken) =>
+        Summary(BatteryPassWeb.Dpp.Identifiers.IdentifierForms.PassportAddress(options.Value.IdBaseUrl, Uri.UnescapeDataString(id), version), cancellationToken);
+
+    [HttpGet("{id}/v{version:int}/detail")]
+    public Task<IActionResult> VersionDetail(
+        string id,
+        int version,
+        [FromServices] Microsoft.Extensions.Options.IOptions<BatteryPassWeb.Configuration.BatteryPassOptions> options,
+        CancellationToken cancellationToken,
+        [FromServices] BatteryApi? liveHistory = null,
+        [FromServices] ClusterBatteryPages? manage = null) =>
+        Detail(BatteryPassWeb.Dpp.Identifiers.IdentifierForms.PassportAddress(options.Value.IdBaseUrl, Uri.UnescapeDataString(id), version), cancellationToken, liveHistory, manage);
 
     [HttpGet("{id}/detail")]
     public async Task<IActionResult> Detail(
@@ -89,7 +104,7 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
         }
 
         Response.Headers[HeaderNames.CacheControl] = "private, no-store";
-        return View(page);
+        return View(nameof(Detail), page);
     }
 
     /// <summary>No published passport has this ID; drafts aren't shown to anyone here (J-6).</summary>

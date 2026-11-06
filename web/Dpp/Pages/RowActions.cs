@@ -12,13 +12,12 @@ public sealed record RowActions(string Serial, string? Manage, string? Public, s
     public static RowActions For(BatteryRow row, string? manage, bool team)
     {
         ArgumentNullException.ThrowIfNull(row);
-        var key = Uri.EscapeDataString(row.Identifier);
         var published = !row.IsDraft && row.Identifier.Length > 0;
         return new RowActions(
             row.SerialNumber,
             manage,
-            published ? $"/dpp/{key}" : null,
-            published ? $"/dpp/{key}/detail" : null,
+            published ? PassportPages.SummaryHref(row.Identifier) : null,
+            published ? PassportPages.DetailHref(row.Identifier) : null,
             team ? $"/admin/audit?q={Uri.EscapeDataString(row.PackId)}" : null);
     }
 }

@@ -614,7 +614,7 @@
       "key": "plant-north",
       "name": "Demo plant North",
       "values": {
-        "uniqueManufacturerIdentifier": "urn:x-demo:manufacturer:plant-north",
+        "uniqueManufacturerIdentifier": "iso6523-actorid-upis::0060:778474481",
         "manufacturerInformation": {
           "name": "Scania Industrial Batteries (demo)",
           "registeredTradeNameOrRegisteredTrademark": "Scania Industrial Batteries",
@@ -629,7 +629,7 @@
       "key": "plant-south",
       "name": "Demo plant South",
       "values": {
-        "uniqueManufacturerIdentifier": "urn:x-demo:manufacturer:plant-south",
+        "uniqueManufacturerIdentifier": "iso6523-actorid-upis::0060:778474481",
         "manufacturerInformation": {
           "name": "Scania Industrial Batteries (demo)",
           "registeredTradeNameOrRegisteredTrademark": "Scania Industrial Batteries",
@@ -646,7 +646,7 @@
       "key": "batteries",
       "name": "Scania Industrial Batteries (demo)",
       "values": {
-        "economicOperatorId": "urn:x-demo:operator:industrial-batteries",
+        "economicOperatorId": "iso6523-actorid-upis::0060:778474481",
         "economicOperatorInformation": {
           "name": "Scania Industrial Batteries (demo)",
           "registeredTradeNameOrRegisteredTrademark": "Scania Industrial Batteries",
@@ -660,7 +660,7 @@
       "key": "fleet",
       "name": "Demo Fleet Services AB",
       "values": {
-        "economicOperatorId": "urn:x-demo:operator:fleet-services",
+        "economicOperatorId": "iso6523-actorid-upis::0060:999999999",
         "economicOperatorInformation": {
           "name": "Demo Fleet Services AB",
           "registeredTradeNameOrRegisteredTrademark": "Demo Fleet Services",

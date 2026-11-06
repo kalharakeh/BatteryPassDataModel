@@ -23,11 +23,20 @@ internal sealed class DemoRig(ServiceProvider services, IMongoDatabase database)
     public DemoDataService Demo => Services.GetRequiredService<DemoDataService>();
     public DppStore Store => Services.GetRequiredService<DppStore>();
 
-    public static async Task<DemoRig> StartAsync(MongoFixture mongo, string? password = Password, string? appBaseUrl = DocumentTesting.BaseUrl)
+    /// <summary>The owner's identifier settings (step 6d), for the rigs that issue DUNS battery IDs.</summary>
+    public static BatteryPassOptions WithDunsIds(BatteryPassOptions options)
+    {
+        options.IdAgency = "UN";
+        options.IdCompany = "778474481";
+        options.IdBaseUrl = "https://www.sib-scania-eubp.eu";
+        return options;
+    }
+
+    public static async Task<DemoRig> StartAsync(MongoFixture mongo, string? password = Password, string? appBaseUrl = DocumentTesting.BaseUrl, bool dunsIds = false)
     {
         var context = mongo.NewContext();
         var services = new ServiceCollection()
-            .AddSingleton(Options.Create(new BatteryPassOptions { AppBaseUrl = appBaseUrl ?? string.Empty, DemoUsersPassword = password }))
+            .AddSingleton(Options.Create(dunsIds ? WithDunsIds(new BatteryPassOptions { AppBaseUrl = appBaseUrl ?? string.Empty, DemoUsersPassword = password }) : new BatteryPassOptions { AppBaseUrl = appBaseUrl ?? string.Empty, DemoUsersPassword = password }))
             .AddSingleton(context)
             .AddSingleton<ApplicationAuditService>()
             .AddSingleton<ClusterRepository>()

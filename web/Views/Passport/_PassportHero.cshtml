@@ -1,3 +1,4 @@
+@using BatteryPassWeb.Dpp.Identifiers
 @using BatteryPassWeb.Dpp.Pages
 @model PassportPage
 @inject BatteryPassWeb.Dpp.Documents.DppLinks Links
@@ -76,11 +77,11 @@
 
             <section class="bp-summary-id-panel bp-report-identity-panel bp-report-identity-panel--identifiers">
                 <span class="bp-summary-title">Identifiers</span>
-                <p class="bp-passport-id"><span class="bp-id-label">Passport ID:</span><span class="bp-id-copy-row"><span class="bp-id-value">@Model.Version.DigitalProductPassportId</span>@await Html.PartialAsync("_CopyIdButton", Model.Version.DigitalProductPassportId)</span></p>
-                <p class="bp-passport-id"><span class="bp-id-label">Battery ID:</span><span class="bp-id-copy-row"><span class="bp-id-value">@Model.Identifier</span>@await Html.PartialAsync("_CopyIdButton", Model.Identifier)</span></p>
+                <p class="bp-passport-id"><span class="bp-id-label">Passport ID:</span>@if (IdentifierForms.IsWebAddress(Model.Version.DigitalProductPassportId)) { @await Html.PartialAsync("_IdValue", Model.Version.DigitalProductPassportId) } else { <span class="bp-id-copy-row"><span class="bp-id-value">@Model.Version.DigitalProductPassportId</span>@await Html.PartialAsync("_CopyIdButton", Model.Version.DigitalProductPassportId)</span> }</p>
+                <p class="bp-passport-id"><span class="bp-id-label">Battery ID:</span>@if (IdentifierForms.IsWebAddress(Model.Identifier)) { @await Html.PartialAsync("_IdValue", Model.Identifier) } else { <span class="bp-id-copy-row"><span class="bp-id-value">@Model.Identifier</span>@await Html.PartialAsync("_CopyIdButton", Model.Identifier)</span> }</p>
                 @if (Model.IsTest && detail)
                 {
-                    <p class="bp-test-note">Test identifiers: these IDs start with TEST-, so this isn't a real passport yet. Real ones come once the identifier scheme is chosen.</p>
+                    <p class="bp-test-note">Test identifiers: these IDs are marked TEST, so this isn't a real passport. Demo batteries have them.</p>
                 }
             </section>
 

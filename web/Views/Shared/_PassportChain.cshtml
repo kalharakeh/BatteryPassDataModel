@@ -15,7 +15,7 @@
                 <li class="@(link.IsThis ? "is-this" : null)">
                     <span class="bp-passport-chain-number">@link.Number</span>
                     <span class="bp-passport-chain-main">
-                        <span class="bp-id-copy-row"><span class="bp-id-value" title="@link.Identifier">@BatteryPages.ShortId(link.Identifier)</span>@await Html.PartialAsync("_CopyIdButton", link.Identifier)</span>
+                        @await Html.PartialAsync("_IdValue", link.Identifier)
                         <span class="bp-badges is-compact">
                             @await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(link.Published ? link.Status : null))
                             @if (link.IsNewest)

@@ -92,6 +92,9 @@ builder.Services.Configure<BatteryPassOptions>(options =>
     options.PasswordResetAppName = Environment.GetEnvironmentVariable("PASSWORD_RESET_APP_NAME")
         ?? builder.Configuration["BatteryPass:PasswordResetAppName"]
         ?? "Battery Pass";
+    options.IdAgency = (Environment.GetEnvironmentVariable("DPP_ID_AGENCY") ?? builder.Configuration["BatteryPass:IdAgency"] ?? string.Empty).Trim();
+    options.IdCompany = (Environment.GetEnvironmentVariable("DPP_ID_COMPANY") ?? builder.Configuration["BatteryPass:IdCompany"] ?? string.Empty).Trim();
+    options.IdBaseUrl = (Environment.GetEnvironmentVariable("DPP_ID_BASE_URL") ?? builder.Configuration["BatteryPass:IdBaseUrl"] ?? string.Empty).Trim().TrimEnd('/');
     options.AppBaseUrl = Environment.GetEnvironmentVariable("APP_BASE_URL")
         ?? Environment.GetEnvironmentVariable("APP_URL")
         ?? builder.Configuration["BatteryPass:AppBaseUrl"]

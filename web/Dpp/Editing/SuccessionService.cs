@@ -79,7 +79,7 @@ public sealed class SuccessionService(
         var values = CarriedValues
             .Where(old.Values.ContainsKey)
             .ToDictionary(key => key, key => old.Values[key].Value?.DeepClone(), StringComparer.Ordinal);
-        var created = await creation.CreateAsync(sender, new NewPack(old.BatchId, operatorId, old.ClusterId, values, "form", PredecessorPackId: old.Id), cancellationToken);
+        var created = await creation.CreateAsync(sender, new NewPack(old.BatchId, operatorId, old.ClusterId, values, "form", PredecessorPackId: old.Id, IsDemo: old.IsDemo), cancellationToken);
         if (created.Pack is not { } pack)
         {
             return (null, created.Problem ?? "the new passport couldn't be made");

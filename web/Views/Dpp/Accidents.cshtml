@@ -16,11 +16,11 @@
         <span class="bp-summary-title">Accident information</span>
         <h1 class="h3 mt-2 mb-2" title="Battery serial number">@Model.SerialNumber</h1>
         <dl class="bp-field-grid mb-0">
-            <div><dt>Battery ID</dt><dd class="bp-id-value">@Model.Identifier</dd></div>
+            <div><dt>Battery ID</dt><dd>@await Html.PartialAsync("_IdValue", Model.Identifier)</dd></div>
         </dl>
         @if (Identifiers.IsTestIdentifier(Model.Identifier))
         {
-            <p class="text-secondary small mt-2 mb-0">Test identifiers: this battery's IDs start with TEST-. Real ones come once the identifier scheme is chosen.</p>
+            <p class="text-secondary small mt-2 mb-0">Test identifiers: this battery's IDs are marked TEST, so it isn't a real passport.</p>
         }
     </section>
 

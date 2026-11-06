@@ -14,7 +14,8 @@ public sealed record NewPack(
     string? ClusterId,
     IReadOnlyDictionary<string, JsonNode?> Values,
     string Source = "form",
-    string? PredecessorPackId = null);
+    string? PredecessorPackId = null,
+    bool IsDemo = false);
 
 /// <summary>The created pack, or the problem that stopped it; <see cref="Keys"/> says what happened to each value.</summary>
 public sealed record PackCreationResult(BatteryPack? Pack, IReadOnlyList<KeyResult> Keys, string? Problem);
@@ -32,6 +33,9 @@ public sealed class PackCreationService(
     TimeProvider clock)
 {
     public const string AuditEventType = "dpp.pack-created";
+
+    /// <summary>The start of the refusal when the serial number can't make a battery ID (6d).</summary>
+    public const string CantGetId = "the battery can't get its battery ID";
 
     public async Task<PackCreationResult> CreateAsync(ChangeSender sender, NewPack request, CancellationToken cancellationToken = default)
     {
@@ -90,8 +94,8 @@ public sealed class PackCreationService(
             OperatorId = request.OperatorId,
             ClusterId = request.ClusterId,
             SuccessorOf = request.PredecessorPackId,
+            IsDemo = request.IsDemo, // a demo battery's ID is marked TEST
         };
-        pack.Values["uniqueProductIdentifier"] = Stored(JsonValue.Create(identifiers.NewPackIdentifier()), now, "system", sender.Who);
         pack.Values["batteryStatus"] = Stored(new JsonObject { ["batteryStatusValues"] = "original" }, now, "system", sender.Who);
         pack.Values["informationOnAccidents"] = Stored(links.AccidentPageLink(pack.Id), now, "system", sender.Who);
         foreach (var (key, value) in evaluation.Accepted)
@@ -99,7 +103,17 @@ public sealed class PackCreationService(
             pack.Values[key] = Stored(value, now, request.Source, sender.Who);
         }
 
+        // #6 (step 6d): made from the serial number (a battery's new passport adds R1, R2, …), and refused with the reason
+        // when the serial number can't make a valid one or another battery has it.
+        var made = await identifiers.NewPackIdentifierAsync(pack, cancellationToken);
+        if (made.Identifier is not { } identifier)
+        {
+            return Failed($"{CantGetId}: {made.Problem}");
+        }
+
+        pack.Values["uniqueProductIdentifier"] = Stored(JsonValue.Create(identifier), now, "system", sender.Who);
         await store.InsertAsync(pack, cancellationToken);
+
         await audit.AppendApplicationAuditEventAsync(
             AuditEventType,
             sender.Who,

@@ -158,15 +158,15 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
     private static readonly (int Number, string Label)[] RecycledShares = [(49, "Nickel"), (50, "Cobalt"), (51, "Lithium"), (52, "Lead")];
 
     /// <summary>The public summary's address. Colons stay as they are, so a battery ID reads as written.</summary>
-    public static string SummaryHref(string id) => $"/dpp/{Escape(id)}";
+    public static string SummaryHref(string id) => $"/dpp/{Identifiers.IdentifierForms.PagePath(id)}";
 
     /// <summary>The detail page's address.</summary>
-    public static string DetailHref(string id) => $"/dpp/{Escape(id)}/detail";
+    public static string DetailHref(string id) => $"/dpp/{Identifiers.IdentifierForms.PagePath(id)}/detail";
 
     /// <summary>The QR code's picture of a battery, and the same picture as a file to save.</summary>
-    public static string QrHref(string id) => $"/qr/{Escape(id)}/svg";
+    public static string QrHref(string id) => $"/qr/{Identifiers.IdentifierForms.PagePath(id)}/svg";
 
-    public static string QrDownloadHref(string id) => $"/qr/{Escape(id)}/download";
+    public static string QrDownloadHref(string id) => $"/qr/{Identifiers.IdentifierForms.PagePath(id)}/download";
 
     /// <summary>What a reader-facing source is called on the detail page.</summary>
     public static string SourceWord(string source) => source switch

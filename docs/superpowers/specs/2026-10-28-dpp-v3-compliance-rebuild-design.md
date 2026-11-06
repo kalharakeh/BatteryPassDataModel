@@ -349,7 +349,7 @@ Each attribute holds one document per owner (model, batch or pack).
 ## 10. Identifiers
 
 - #6 (pack), #7 (operator) and #12 (manufacturer) are EN 18219 identifiers; #5 identifies a passport version. The schema stores all four as URIs.
-- The scheme (EN 18219 with an ISO/IEC 15459 issuing agency) is chosen later (decision 5, open item O-1). Until then the identifier service issues test IDs marked `TEST-`, and every page of a passport with a test ID shows a banner.
+- The scheme (decision 5, O-1, chosen 5 Nov 2026, step 6d): #6 is an ISO/IEC 15459 item ID under issuing agency `UN` (DUNS), the company's DUNS `778474481` and the serial number's letters and digits, written as a web address with data identifier `25S` (ISO/IEC 18975): `https://www.sib-scania-eubp.eu/25S/UN778474481VPC12221`. A battery gets it when it is created; a successor adds `R1`, `R2`, …; a demo battery's is marked `TEST` after the DUNS. #5 is `…/dpp/<item>/v<n>`. #7 and #12 are written `iso6523-actorid-upis::0060:<DUNS>`, with only a note for another form. The settings `DPP_ID_AGENCY`, `DPP_ID_COMPANY` and `DPP_ID_BASE_URL` turn it on; without them the identifier service issues test IDs marked `TEST-`, and every page of a passport with a test ID shows a banner.
 - The QR code on the battery carries #6 and opens the public summary.
 - A successor passport gets a new #6 (J-2).
 
@@ -481,7 +481,7 @@ Choices this design makes where the file and the 21 decisions don't decide. Plea
 
 | Ref | Item | Proposal |
 |---|---|---|
-| O-1 | Identifier scheme (decision 5) | Choose the issuing agency and register before go-live. Test IDs until then. |
+| O-1 | Identifier scheme (decision 5) | Decided 5 Nov 2026: DUNS under issuing agency UN, #6 from the serial number (step 6d, section 10). |
 
 Decided on 28 Oct 2026 (decisions 17–21 in the decision record):
 

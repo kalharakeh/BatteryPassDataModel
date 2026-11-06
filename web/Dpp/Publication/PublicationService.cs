@@ -46,9 +46,14 @@ public sealed class PublicationService(
             return null;
         }
 
-        var header = new PassportHeader(identifiers.NewPassportIdentifier(), DppStatuses.Active, clock.GetUtcNow().UtcDateTime);
+        var number = await store.GetLatestVersionNumberAsync(packId, cancellationToken) + 1;
+        var header = new PassportHeader(identifiers.NewPassportIdentifier(PackIdentifier(sources.Pack), number), DppStatuses.Active, clock.GetUtcNow().UtcDateTime);
         return checks.Check(PassportAssembler.Assemble(sources, header));
     }
+
+    /// <summary>The battery ID (#6) a version's passport ID names (6d); the pack's own ID for a pack without one.</summary>
+    private static string PackIdentifier(BatteryPack pack) =>
+        pack.Values.GetValueOrDefault("uniqueProductIdentifier")?.Value?.GetValue<string>() ?? pack.Id;
 
     public async Task<PublicationResult> PublishAsync(ChangeSender sender, string packId, CancellationToken cancellationToken = default)
     {
@@ -157,7 +162,8 @@ public sealed class PublicationService(
         }
 
         var now = clock.GetUtcNow().UtcDateTime;
-        var passportId = identifiers.NewPassportIdentifier();
+        var number = await store.GetLatestVersionNumberAsync(packId, cancellationToken) + 1;
+        var passportId = identifiers.NewPassportIdentifier(PackIdentifier(sources.Pack), number);
         var passport = PassportAssembler.Assemble(sources, new PassportHeader(passportId, DppStatuses.Active, now));
         var report = checks.Check(passport);
         if (!report.CanPublish)
@@ -176,7 +182,7 @@ public sealed class PublicationService(
         {
             Id = $"version-{Guid.NewGuid():N}",
             PackId = packId,
-            Number = await store.GetLatestVersionNumberAsync(packId, cancellationToken) + 1,
+            Number = number,
             DigitalProductPassportId = passportId,
             DppStatus = DppStatuses.Active,
             PublishedAtUtc = now,

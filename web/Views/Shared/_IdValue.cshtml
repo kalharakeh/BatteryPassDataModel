@@ -1,0 +1,14 @@
+@using BatteryPassWeb.Dpp.Identifiers
+@using BatteryPassWeb.Dpp.Pages
+@inject BatteryPassWeb.Dpp.Documents.DppLinks Links
+@model string
+@* A battery or passport ID (step 6d, the owner): the short ID to read, its full web address as the link and in the copy
+   button, and the full address on paper. *@
+@if (IdentifierForms.IsWebAddress(Model) && Links.IsConfigured)
+{
+    <span class="bp-id-copy-row"><a class="bp-id-value d-print-none" href="@Links.PassportUrl(Model)" title="@Model">@IdentifierForms.Display(Model)</a><span class="bp-id-value d-none d-print-inline">@Model</span>@await Html.PartialAsync("_CopyIdButton", Model)</span>
+}
+else
+{
+    <span class="bp-id-copy-row"><span class="bp-id-value" title="@Model">@BatteryPages.ShortId(Model)</span>@await Html.PartialAsync("_CopyIdButton", Model)</span>
+}

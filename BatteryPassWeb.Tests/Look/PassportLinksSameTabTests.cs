@@ -30,7 +30,7 @@ public sealed class PassportLinksSameTabTests
         var battery = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Batteries", "Battery.cshtml"));
         var accidents = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Batteries", "_AccidentsCard.cshtml"));
 
-        Assert.Contains("href=\"/qr/@batteryKey/svg\" target=\"_blank\" rel=\"noreferrer\"", battery, StringComparison.Ordinal);
+        Assert.Contains("href=\"@PassportPages.QrHref(Model.Identifier)\" target=\"_blank\" rel=\"noreferrer\"", battery, StringComparison.Ordinal);
         Assert.Contains("<a href=\"@ReaderPages.DocumentHref(report.Id)\" target=\"_blank\" rel=\"noreferrer\">", accidents, StringComparison.Ordinal);
     }
 }

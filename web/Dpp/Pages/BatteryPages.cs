@@ -229,7 +229,7 @@ public sealed class BatteryPages(
     public static string ShortId(string id)
     {
         ArgumentNullException.ThrowIfNull(id);
-        return id.Length <= 36 ? id : $"{id[..24]}…{id[^8..]}";
+        return Identifiers.IdentifierForms.IsWebAddress(id) ? Identifiers.IdentifierForms.Display(id) : id.Length <= 36 ? id : $"{id[..24]}…{id[^8..]}";
     }
 
     public static string BatteryHref(string packId) => $"/admin/batteries/{Uri.EscapeDataString(packId)}";

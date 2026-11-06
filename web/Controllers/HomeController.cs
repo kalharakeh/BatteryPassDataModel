@@ -11,7 +11,7 @@ namespace BatteryPassWeb.Controllers;
 public class HomeController(PassportPages pages) : Controller
 {
     /// <summary>Address parts that aren't an ID: the passport pages' prefix and suffixes, and today's old ones.</summary>
-    private static readonly HashSet<string> RouteWords = new(StringComparer.OrdinalIgnoreCase) { "dpp", "detail", "summary", "latest" };
+    private static readonly HashSet<string> RouteWords = new(StringComparer.OrdinalIgnoreCase) { "dpp", "detail", "summary", "latest", "25S" };
 
     /// <summary>Where the home page finds the sample battery's ID: a published demo battery, or none (redesign R6).</summary>
     public const string SampleKey = "SampleBatteryId";

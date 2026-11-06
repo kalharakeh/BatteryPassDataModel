@@ -33,7 +33,10 @@ public sealed class DppLinks(IOptions<BatteryPassOptions> options)
     /// The public summary's full address, which a battery's QR code carries (design 10): the battery ID (#6) as written,
     /// so the code opens the battery's current passport.
     /// </summary>
-    public string PassportUrl(string identifier) => Base + BatteryPassWeb.Dpp.Pages.PassportPages.SummaryHref(identifier);
+    public string PassportUrl(string identifier) =>
+        Identifiers.IdentifierForms.Short(identifier) is { } item && Identifiers.IdentifierForms.IsItem(item)
+            ? $"{Base}/{Identifiers.IdentifierForms.DataIdentifier}/{item}"
+            : Base + BatteryPassWeb.Dpp.Pages.PassportPages.SummaryHref(identifier);
 
     /// <summary>#92's value: the pack's accident page, which lists its reports or says none were reported (J-14).</summary>
     public JsonObject AccidentPageLink(string packId) => new()

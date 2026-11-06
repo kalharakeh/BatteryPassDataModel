@@ -553,3 +553,12 @@ th .bp-status-help-words {
     margin-bottom: 8px;
   }
 }
+
+/* Step 6d: a battery or passport ID is a web address whose telling part is its end (UN778474481VPC12221/v2), so on the
+   passport pages it wraps instead of being cut with "…" (site.css cuts it on wide screens). */
+.bp-report-hero-info .bp-report-identity-panel--identifiers .bp-id-value {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

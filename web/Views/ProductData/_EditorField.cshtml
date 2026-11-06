@@ -2,6 +2,7 @@
 @using BatteryPassWeb.Configuration
 @using BatteryPassWeb.Dpp.Catalog
 @using BatteryPassWeb.Dpp.Forms
+@using BatteryPassWeb.Dpp.Identifiers
 @using BatteryPassWeb.Dpp.Pages
 @using Microsoft.Extensions.Options
 @inject IOptions<BatteryPassOptions> Options
@@ -20,7 +21,7 @@
             : $"{label} ({unit})";
 
     var required = definition.Requirement != Requirement.Conditional;
-    var hint = form.Kind switch
+    var hint = definition.Number is 7 or 12 ? IdentifierForms.ActorIdHint : form.Kind switch
     {
         FormKind.Link => "A link to the document on your website.",
         FormKind.Rows => "One row per substance. Phrases go one per line.",
@@ -132,6 +133,10 @@
         @if (hint is not null)
         {
             <small class="bp-field-help">@hint</small>
+        }
+        @if (IdentifierForms.ActorIdNote(definition.Number, field.Texts.Values.FirstOrDefault()) is { } note)
+        {
+            <small class="bp-field-help text-warning-emphasis" data-actor-id-note>@note</small>
         }
     </div>
 

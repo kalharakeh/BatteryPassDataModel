@@ -3113,10 +3113,12 @@ main .bp-field-marker.is-published {
   max-width: 100%;
 }
 
+/* Step 6d: a battery ID's telling part is its end (…TESTDEMOC13M0001R2), so it wraps on a phone instead of ending in "…". */
 .bp-bh-fact-id .bp-id-value {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .bp-bh-details > summary {

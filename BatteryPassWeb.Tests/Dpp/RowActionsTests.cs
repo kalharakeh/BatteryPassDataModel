@@ -18,7 +18,7 @@ public sealed class RowActionsTests(MongoFixture mongo)
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         var row = (await BatteryTesting.Pages(rig).ListAsync(null)).Rows.Single(candidate => candidate.PackId == rig.PackId);
-        return (row, Uri.EscapeDataString(row.Identifier));
+        return (row, BatteryPassWeb.Dpp.Identifiers.IdentifierForms.PagePath(row.Identifier)); // the passport pages' own addresses (6d)
     }
 
     [Fact]

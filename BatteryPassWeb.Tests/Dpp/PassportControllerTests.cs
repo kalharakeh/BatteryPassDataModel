@@ -46,7 +46,7 @@ public sealed class PassportControllerTests(MongoFixture mongo)
         var view = Assert.IsType<ViewResult>(await Pages(rig, null).Summary(Uri.EscapeDataString(PassportPagesTests.Identifier(rig)), CancellationToken.None));
 
         var page = Assert.IsType<PassportPage>(view.Model);
-        Assert.Null(view.ViewName);
+        Assert.Equal("Summary", view.ViewName); // named, as the version addresses reuse it (step 6d)
         Assert.Empty(page.Audiences);
         Assert.False(page.ReaderSeesMore);
         Assert.All(page.Sections.SelectMany(section => section.Values), value => Assert.Equal(Audience.Public, value.Attribute.Audience));

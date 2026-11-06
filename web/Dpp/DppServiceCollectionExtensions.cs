@@ -30,7 +30,13 @@ public static class DppServiceCollectionExtensions
         services.AddSingleton<AttributeValueValidator>();
         services.AddSingleton<AttributeValueNormalizer>();
         services.AddSingleton<DppStore>();
-        services.AddSingleton<IIdentifierScheme, TestIdentifierScheme>();
+        services.AddSingleton<IIdentifierScheme>(provider =>
+        {
+            var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<BatteryPassWeb.Configuration.BatteryPassOptions>>();
+            return IdentifierForms.IsConfigured(options.Value)
+                ? new DunsIdentifierScheme(options, provider.GetRequiredService<DppStore>())
+                : new TestIdentifierScheme();
+        });
         services.AddSingleton<SavePipeline>();
         services.AddSingleton<PackCreationService>();
         services.AddSingleton<StatusChangeService>();

@@ -30,6 +30,15 @@ public sealed class BatteryPassOptions
     public string PowerAutomateResetWebhookSecret { get; set; } = string.Empty;
     public string PasswordResetAppName { get; set; } = "Battery Pass";
     public string AppBaseUrl { get; set; } = string.Empty;
+
+    /// <summary>The identifier scheme (O-1, step 6d): the ISO/IEC 15459 issuing agency code, e.g. UN (DUNS).</summary>
+    public string IdAgency { get; set; } = string.Empty;
+
+    /// <summary>The company's code at that agency: Scania Industrial Batteries AB's DUNS, 778474481.</summary>
+    public string IdCompany { get; set; } = string.Empty;
+
+    /// <summary>The domain the IDs are written under for good, e.g. https://www.sib-scania-eubp.eu; not where the app runs.</summary>
+    public string IdBaseUrl { get; set; } = string.Empty;
     public bool RequireHttpsRedirection { get; set; } = true;
     public bool EnableDemoAdminFallback { get; set; }
     public bool EnableRateLimiting { get; set; } = DefaultEnableRateLimiting;

@@ -402,7 +402,7 @@ public sealed class DemoDataService(
     {
         var published = 0;
         var successors = 0;
-        var created = await packCreation.CreateAsync(team, new NewPack(batches[demo.Batch], operators[demo.Operator], demo.Cluster, Values(demo.Values), "form"), cancellationToken);
+        var created = await packCreation.CreateAsync(team, new NewPack(batches[demo.Batch], operators[demo.Operator], demo.Cluster, Values(demo.Values), "form", IsDemo: true), cancellationToken);
         if (created.Pack is null)
         {
             var rejected = created.Keys.Where(key => key.Outcome == KeyOutcome.Rejected).Select(key => $"{key.Key} ({key.Message})");

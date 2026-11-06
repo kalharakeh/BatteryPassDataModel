@@ -10,7 +10,6 @@
     var active = Model.Versions.Select(row => row.Version).FirstOrDefault(version => version.DppStatus == BatteryPassWeb.Dpp.Store.DppStatuses.Active);
     // A marked passport's newest version (redesign R6b): the page is read-only then.
     var shown = active ?? (Model.ReadOnly ? Model.Versions.Select(row => row.Version).FirstOrDefault() : null);
-    var batteryKey = Uri.EscapeDataString(Model.Identifier);
     var card = ViewData[BatteriesController.CardKey] as string;
     var sections = Model.Sections;
     var chosen = BatterySections.Chosen(sections, Context.Request.Query["section"], card, valuesMessage: false);
@@ -50,14 +49,14 @@
                 </div>
                 @if (Model.Status?.Predecessor is { } replaced)
                 {
-                    <p class="bp-lineage"><svg class="bp-i" aria-hidden="true"><use href="#i-history" /></svg>New passport of @replaced.SerialNumber. Its <a href="/dpp/@batteryKey/detail">detail page</a> links the earlier one.</p>
+                    <p class="bp-lineage"><svg class="bp-i" aria-hidden="true"><use href="#i-history" /></svg>New passport of @replaced.SerialNumber. Its <a href="@PassportPages.DetailHref(Model.Identifier)">detail page</a> links the earlier one.</p>
                 }
             </div>
             <div class="bp-bh-facts-row">
                 <dl class="bp-bh-facts">
                     <div class="bp-bh-fact-id">
                         <dt>Battery ID <span class="bp-attr-number">#6</span></dt>
-                        <dd><span class="bp-id-copy-row"><span class="bp-id-value" title="@Model.Identifier">@BatteryPages.ShortId(Model.Identifier)</span>@await Html.PartialAsync("_CopyIdButton", Model.Identifier)</span></dd>
+                        <dd>@await Html.PartialAsync("_IdValue", Model.Identifier)</dd>
                     </div>
                 </dl>
                 <details class="bp-bh-details" open data-fold-on-phone>
@@ -112,8 +111,8 @@
                 <button type="button" class="bp-secondary-button bp-with-icon" data-open-dialog="handover-dialog"><svg class="bp-i" aria-hidden="true"><use href="#i-handover" /></svg>Hand over…</button>
             }
             <nav class="bp-bh-open" aria-label="This battery elsewhere">
-                <a class="bp-ilink" href="/dpp/@batteryKey" title="The public page, as anyone sees it"><svg class="bp-i" aria-hidden="true"><use href="#i-globe" /></svg>Public page</a>
-                <a class="bp-ilink" href="/dpp/@batteryKey/detail" title="Everything your cluster sees"><svg class="bp-i" aria-hidden="true"><use href="#i-doc" /></svg>Detail page</a>
+                <a class="bp-ilink" href="@PassportPages.SummaryHref(Model.Identifier)" title="The public page, as anyone sees it"><svg class="bp-i" aria-hidden="true"><use href="#i-globe" /></svg>Public page</a>
+                <a class="bp-ilink" href="@PassportPages.DetailHref(Model.Identifier)" title="Everything your cluster sees"><svg class="bp-i" aria-hidden="true"><use href="#i-doc" /></svg>Detail page</a>
                 <a class="bp-ilink" href="@ReaderPages.AccidentsHref(Model.Pack.Id)" title="The battery's accident reports, as readers see them"><svg class="bp-i" aria-hidden="true"><use href="#i-accident" /></svg>Accident page</a>
             </nav>
         </div>

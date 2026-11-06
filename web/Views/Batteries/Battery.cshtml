@@ -34,7 +34,6 @@
     var card = ViewData[BatteriesController.CardKey] as string;
     var testIds = Identifiers.IsTestIdentifier(Model.Identifier) || Model.Versions.Any(row => Identifiers.IsTestIdentifier(row.Version.DigitalProductPassportId));
     var filesChanged = publication.Files.Count(file => !file.Unchanged);
-    var batteryKey = Uri.EscapeDataString(Model.Identifier);
 
     // The side menu (redesign R4): the open section comes from ?section=, the card a form just sent, or a values save.
     var valuesMessage = TempData.Peek(ProductDataController.EditorStatusKey) is not null || TempData.Peek(ProductDataController.EditorErrorKey) is not null
@@ -110,7 +109,7 @@
                 <dl class="bp-bh-facts">
                     <div class="bp-bh-fact-id">
                         <dt>Battery ID <span class="bp-attr-number">#6</span></dt>
-                        <dd><span class="bp-id-copy-row"><span class="bp-id-value" title="@Model.Identifier">@BatteryPages.ShortId(Model.Identifier)</span>@await Html.PartialAsync("_CopyIdButton", Model.Identifier)</span></dd>
+                        <dd>@await Html.PartialAsync("_IdValue", Model.Identifier)</dd>
                     </div>
                 </dl>
                 <details class="bp-bh-details" open data-fold-on-phone>
@@ -196,11 +195,11 @@
             <nav class="bp-bh-open" aria-label="This battery elsewhere">
                 @if (publication.IsPublished)
                 {
-                    <a class="bp-ilink" href="/dpp/@batteryKey" title="The public page, as anyone sees it"><svg class="bp-i" aria-hidden="true"><use href="#i-globe" /></svg>Public page</a>
-                    <a class="bp-ilink" href="/dpp/@batteryKey/detail" title="Everything its readers see, by who they are"><svg class="bp-i" aria-hidden="true"><use href="#i-doc" /></svg>Detail page</a>
+                    <a class="bp-ilink" href="@PassportPages.SummaryHref(Model.Identifier)" title="The public page, as anyone sees it"><svg class="bp-i" aria-hidden="true"><use href="#i-globe" /></svg>Public page</a>
+                    <a class="bp-ilink" href="@PassportPages.DetailHref(Model.Identifier)" title="Everything its readers see, by who they are"><svg class="bp-i" aria-hidden="true"><use href="#i-doc" /></svg>Detail page</a>
                 }
-                <a class="bp-ilink" href="/qr/@batteryKey/svg" target="_blank" rel="noreferrer" title="@(publication.IsPublished ? "Opens the public page" : "Opens the public page once the passport is published")"><svg class="bp-i" aria-hidden="true"><use href="#i-qr" /></svg>QR code</a>
-                <a class="bp-ilink" href="/qr/@batteryKey/download" title="Save the QR code as a picture"><svg class="bp-i" aria-hidden="true"><use href="#i-download" /></svg>Save QR</a>
+                <a class="bp-ilink" href="@PassportPages.QrHref(Model.Identifier)" target="_blank" rel="noreferrer" title="@(publication.IsPublished ? "Opens the public page" : "Opens the public page once the passport is published")"><svg class="bp-i" aria-hidden="true"><use href="#i-qr" /></svg>QR code</a>
+                <a class="bp-ilink" href="@PassportPages.QrDownloadHref(Model.Identifier)" title="Save the QR code as a picture"><svg class="bp-i" aria-hidden="true"><use href="#i-download" /></svg>Save QR</a>
                 <a class="bp-ilink" href="/admin/audit?q=@Uri.EscapeDataString(Model.Pack.Id)" title="Every change to this battery, in the audit log"><svg class="bp-i" aria-hidden="true"><use href="#i-history" /></svg>History</a>
             </nav>
         </div>
