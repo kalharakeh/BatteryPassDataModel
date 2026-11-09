@@ -16,6 +16,7 @@
     <label for="bp-admin-mobile-tab-select">Admin section</label>
     <select id="bp-admin-mobile-tab-select" data-admin-mobile-tab-select>
         <option value="/admin/batteries" selected="@IsSelected("batteries")">Batteries</option>
+        <option value="/admin/battery-ids" selected="@IsSelected("battery-ids")">Battery IDs</option>
         <option value="/admin/families" selected="@IsSelected("products")">Battery families</option>
         <option value="/admin/sites-and-operators" selected="@IsSelected("sites-and-operators")">Sites and operators</option>
         <option value="/admin/clusters?tab=clusters" selected="@IsSelected("clusters")">Clusters</option>
@@ -27,6 +28,7 @@
 
 <nav class="bp-tab-row mt-4" aria-label="Administration tabs">
     <a class="@TabClass("batteries")" href="/admin/batteries">Batteries</a>
+    <a class="@TabClass("battery-ids")" href="/admin/battery-ids">Battery IDs</a>
     <a class="@TabClass("products")" href="/admin/families">Battery families</a>
     <a class="@TabClass("sites-and-operators")" href="/admin/sites-and-operators">Sites and operators</a>
     <a class="@TabClass("clusters")" href="/admin/clusters?tab=clusters">Clusters</a>

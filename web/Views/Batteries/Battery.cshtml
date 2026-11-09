@@ -185,6 +185,10 @@
                             @* Opens a window, like Change status (redesign R5, owner's item 2). *@
                             <button type="button" class="is-danger" data-open-dialog="mark-dialog"><svg class="bp-i" aria-hidden="true"><use href="#i-alert" /></svg><span>Mark as invalid or for deletion…<small>Freezes the passport; every page says so</small></span></button>
                         }
+                        @if (!publication.IsPublished && ViewData[BatteriesController.SwapFromKey] is BatteryPassWeb.Dpp.Identifiers.ReleasedBatteryId)
+                        {
+                            <button type="button" data-open-dialog="swap-id-dialog"><svg class="bp-i" aria-hidden="true"><use href="#i-swap" /></svg><span>Change its battery ID…<small>Take another released ID while it is a draft</small></span></button>
+                        }
                         @if (!publication.IsPublished)
                         {
                             <a href="@href?section=overview&open=remove#remove" class="is-danger"><svg class="bp-i" aria-hidden="true"><use href="#i-trash" /></svg><span>Remove this draft battery…<small>Only while nothing is published</small></span></a>
@@ -431,6 +435,10 @@
     @if (Model.Marks is { Active: true, Marked: false } markable)
     {
         @await Html.PartialAsync("~/Views/Batteries/_MarkDialog.cshtml", markable)
+    }
+    @if (!publication.IsPublished && ViewData[BatteriesController.SwapFromKey] is BatteryPassWeb.Dpp.Identifiers.ReleasedBatteryId swapFrom)
+    {
+        @await Html.PartialAsync("~/Views/Batteries/_SwapIdDialog.cshtml", ($"{href}/battery-id", swapFrom, (IReadOnlyList<BatteryPassWeb.Dpp.Identifiers.ReleasedBatteryId>)ViewData[BatteriesController.SwapIdsKey]!))
     }
     @* Asks before a removal that can't be undone (redesign R6). *@
     @await Html.PartialAsync("_ConfirmModal")

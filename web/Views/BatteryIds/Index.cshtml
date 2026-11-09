@@ -1,0 +1,266 @@
+@using BatteryPassWeb.Controllers
+@using BatteryPassWeb.Dpp.Identifiers
+@using BatteryPassWeb.Dpp.Pages
+@model BatteryIdsPage
+@{
+    ViewData["Title"] = "Battery IDs";
+    var filter = Model.Filter;
+    var here = Context.Request.Path + Context.Request.QueryString;
+    var exportQuery = Context.Request.QueryString.HasValue ? Context.Request.QueryString.Value : string.Empty;
+    var filtered = !string.IsNullOrEmpty(filter.Status) || !string.IsNullOrEmpty(filter.Reference) || !string.IsNullOrEmpty(filter.ModelId) || !string.IsNullOrEmpty(filter.Query);
+    var problems = Model.Refusal?.Problems ?? [];
+}
+
+<main class="bp-page bp-admin-page">
+    <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/bp-battery-ids.css" asp-append-version="true" />
+    @await Html.PartialAsync("_AdminTabs", "battery-ids")
+    @await Html.PartialAsync("~/Views/ProductData/_Messages.cshtml")
+
+    <section class="bp-card bp-product-editor-section bp-console-form-card mt-4" id="release">
+        <div class="bp-product-section-heading">
+            <div>
+                <h2>Release battery IDs</h2>
+                <p class="bp-help-text mb-0">Reserve serial numbers before the batteries are made, so their labels can be printed. Each gets its battery ID (#6) now, fixed for life. A battery is then created by picking one.</p>
+            </div>
+        </div>
+
+        @if (problems.Count > 0)
+        {
+            <div class="bp-release-problems" role="alert">
+                <h3>Fix these, then release again</h3>
+                <p>@Words.Count(problems.Count, "serial number or range", "serial numbers or ranges") can't be released, so none was. The form keeps what you typed.</p>
+                <div class="bp-table-scroll">
+                    <table class="table align-middle mb-0 bp-console-table bp-problems-table">
+                        <thead><tr><th>Serial number or range</th><th>Why not</th></tr></thead>
+                        <tbody>
+                            @foreach (var problem in problems)
+                            {
+                                <tr><td data-label="Serial number or range"><code>@problem.What</code></td><td data-label="Why not">@problem.Reason</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        <form method="post" action="/admin/battery-ids" class="bp-release-form">
+            @Html.AntiForgeryToken()
+            <div class="bp-release-grid">
+                <label>
+                    <span>Reference</span>
+                    <input type="text" name="reference" value="@Model.Form.Reference" maxlength="@BatteryIdPool.MaxReference" placeholder="e.g. PO 4512, line 2" required />
+                    <small class="bp-field-help">Shown in the list and the export.</small>
+                </label>
+                <label>
+                    <span>Model <span class="bp-attr-optional">(optional)</span></span>
+                    <select name="modelId">
+                        <option value="">Any model</option>
+                        @foreach (var (id, name) in Model.Models)
+                        {
+                            <option value="@id" selected="@(id == Model.Form.ModelId)">@name</option>
+                        }
+                    </select>
+                    <small class="bp-field-help">A model's IDs are offered first when creating a battery of it, and only for it.</small>
+                </label>
+            </div>
+
+            <fieldset class="bp-release-ranges" data-ranges>
+                <legend>Ranges</legend>
+                <p class="bp-field-help">The start and end share the letters before the number and its number of digits. The quantity checks the count.</p>
+                @foreach (var range in Model.Form.Ranges)
+                {
+                    <div class="bp-release-range" data-range-row>
+                        <label><span>Start</span><input type="text" name="start" value="@range.Start" placeholder="VPC-12221" autocomplete="off" /></label>
+                        <label><span>End</span><input type="text" name="end" value="@range.End" placeholder="VPC-12230" autocomplete="off" /></label>
+                        <label><span>Quantity</span><input type="text" name="quantity" value="@range.Quantity" placeholder="10" inputmode="numeric" autocomplete="off" /></label>
+                        <button type="button" class="bp-icon-button" data-remove-range aria-label="Remove this range" title="Remove this range"><svg class="bp-i" aria-hidden="true"><use href="#i-trash" /></svg></button>
+                    </div>
+                }
+                <button type="button" class="bp-text-button" data-add-range>+ Add a range</button>
+            </fieldset>
+
+            <label class="bp-release-list">
+                <span>Individual serial numbers <span class="bp-attr-optional">(optional)</span></span>
+                <textarea name="list" rows="4" placeholder="One per line, e.g.&#10;VPC-12301&#10;VPC-12305">@Model.Form.List</textarea>
+                <small class="bp-field-help">Pasted from a list, one per line. Use them with ranges or on their own.</small>
+            </label>
+
+            <div class="bp-release-actions">
+                <small class="bp-field-help">All or nothing: if any serial number can't be released, none is, and each reason is listed.</small>
+                <button type="submit" class="bp-primary-button">Check and release</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="bp-card bp-product-editor-section bp-console-form-card mt-4" id="releases">
+        <div class="bp-product-section-heading">
+            <div>
+                <h2>Releases</h2>
+                <p class="bp-help-text mb-0">Each release with how many of its IDs are available, used by a draft, published or voided.</p>
+            </div>
+        </div>
+        @if (Model.Releases.Count == 0)
+        {
+            <p class="mb-0">No battery IDs released yet.</p>
+        }
+        else
+        {
+            <div class="bp-table-scroll">
+                <table class="table align-middle mb-0 bp-console-table bp-releases-table">
+                    <thead><tr><th>Reference</th><th>Model</th><th>Released</th><th>IDs</th><th><span class="visually-hidden">Actions</span></th></tr></thead>
+                    <tbody>
+                        @foreach (var release in Model.Releases)
+                        {
+                            <tr class="@(release.ReleaseId == filter.Reference ? "table-active" : null)">
+                                <td data-label="Reference"><strong>@release.Reference</strong></td>
+                                <td data-label="Model">@Model.ModelName(release.ModelId)</td>
+                                <td data-label="Released">@ValueWords.Time(release.ReleasedAtUtc)<small class="bp-batteries-muted d-block">by @release.ReleasedBy</small></td>
+                                <td data-label="IDs">
+                                    <span class="bp-release-counts">
+                                        <strong>@release.Total</strong>
+                                        @foreach (var status in ReleasedIdStatuses.All.Where(status => release.Count(status) > 0))
+                                        {
+                                            <span class="bp-id-status is-@status">@release.Count(status) @ReleasedIdStatuses.Words(status).ToLowerInvariant()</span>
+                                        }
+                                    </span>
+                                </td>
+                                <td data-label="Actions" class="bp-release-row-actions">
+                                    <a href="/admin/battery-ids?release=@Uri.EscapeDataString(release.ReleaseId)#released-ids">Show its IDs</a>
+                                    @if (release.Count(ReleasedIdStatuses.Available) > 0)
+                                    {
+                                        <button type="button" class="bp-text-button is-danger" data-void-unused data-release-id="@release.ReleaseId" data-release-reference="@release.Reference" data-release-available="@release.Count(ReleasedIdStatuses.Available)">Void unused…</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    <section class="bp-card bp-product-editor-section bp-console-form-card mt-4" id="released-ids">
+        <div class="bp-product-section-heading">
+            <div>
+                <h2>Released IDs</h2>
+                <p class="bp-help-text mb-0">@Words.Count(Model.Total, "ID")@(filtered ? " match" : null)@(Model.Items.Count < Model.Total ? $"; the first {Model.Items.Count} are shown, the export has them all" : null). The export has a row for each, with its QR code's full address for the label printer.</p>
+            </div>
+            <a class="bp-secondary-button bp-button-compact text-nowrap" href="/admin/battery-ids/export@(exportQuery)"><svg class="bp-i" aria-hidden="true"><use href="#i-download" /></svg>Export to Excel</a>
+        </div>
+        <form method="get" action="/admin/battery-ids#released-ids" class="bp-release-filter">
+            <label><span>Status</span>
+                <select name="status">
+                    <option value="">All</option>
+                    @foreach (var status in ReleasedIdStatuses.All)
+                    {
+                        <option value="@status" selected="@(status == filter.Status)">@ReleasedIdStatuses.Words(status)</option>
+                    }
+                </select>
+            </label>
+            <label><span>Release</span>
+                <select name="release">
+                    <option value="">All</option>
+                    @foreach (var release in Model.Releases)
+                    {
+                        <option value="@release.ReleaseId" selected="@(release.ReleaseId == filter.Reference)">@release.Reference</option>
+                    }
+                </select>
+            </label>
+            <label><span>Model</span>
+                <select name="model">
+                    <option value="">All</option>
+                    <option value="any" selected="@(filter.ModelId == "any")">Any model</option>
+                    @foreach (var (id, name) in Model.Models)
+                    {
+                        <option value="@id" selected="@(id == filter.ModelId)">@name</option>
+                    }
+                </select>
+            </label>
+            <label class="bp-release-search"><span>Serial number</span><input type="search" name="q" value="@filter.Query" placeholder="Part of one" /></label>
+            <div class="bp-release-filter-actions">
+                <button type="submit" class="bp-secondary-button bp-button-compact">Show</button>
+                @if (filtered)
+                {
+                    <a href="/admin/battery-ids#released-ids">Clear</a>
+                }
+            </div>
+        </form>
+        @if (Model.Items.Count == 0)
+        {
+            <p class="mb-0 mt-3">@(filtered ? "No released ID matches." : "No battery IDs released yet.")</p>
+        }
+        else
+        {
+            <div class="bp-table-scroll mt-3">
+                <table class="table align-middle mb-0 bp-console-table bp-released-table">
+                    <thead><tr><th>Serial number</th><th>Battery ID</th><th>Model</th><th>Reference</th><th>Status</th><th><span class="visually-hidden">Actions</span></th></tr></thead>
+                    <tbody>
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr>
+                                <td data-label="Serial number"><strong>@item.SerialNumber</strong></td>
+                                <td data-label="Battery ID">@await Html.PartialAsync("_IdValue", item.Identifier)</td>
+                                <td data-label="Model">@Model.ModelName(item.ModelId)</td>
+                                <td data-label="Reference">@item.Reference<small class="bp-batteries-muted d-block">@ValueWords.Day(item.ReleasedAtUtc.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))</small></td>
+                                <td data-label="Status">
+                                    <span class="bp-id-status is-@item.Status">@ReleasedIdStatuses.Words(item.Status)</span>
+                                    @if (item.Status == ReleasedIdStatuses.Voided)
+                                    {
+                                        <small class="bp-batteries-muted d-block">@item.VoidReason</small>
+                                    }
+                                </td>
+                                <td data-label="Actions" class="bp-release-row-actions">
+                                    @if (item.PackId is { } packId)
+                                    {
+                                        <a href="@BatteryPages.BatteryHref(packId)">Open battery</a>
+                                    }
+                                    else if (item.Status == ReleasedIdStatuses.Available)
+                                    {
+                                        <button type="button" class="bp-text-button is-danger" data-void-id data-serial="@item.SerialNumber">Void…</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    <div class="bp-console-form-card bp-dialog-host">
+        <dialog id="void-dialog" class="bp-modal-panel bp-dialog" aria-labelledby="void-dialog-title">
+            <form method="post" action="/admin/battery-ids/void" class="bp-dialog-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="serialNumber" data-void-serial-field />
+                <input type="hidden" name="returnTo" value="@here" />
+                <h2 id="void-dialog-title">Void battery ID <span data-void-serial-name></span></h2>
+                <p class="bp-help-text">A voided ID is never used again, and stays listed with its reason. Only an available ID can be voided.</p>
+                <label><span>Reason</span><input type="text" name="reason" maxlength="@BatteryIdPool.MaxReason" placeholder="e.g. Label damaged" required /></label>
+                <div class="bp-dialog-actions">
+                    <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
+                    <button type="submit" class="bp-danger-button">Void the ID</button>
+                </div>
+            </form>
+        </dialog>
+        <dialog id="@BatteryIdsController.ReleaseDialog" class="bp-modal-panel bp-dialog" aria-labelledby="void-unused-title">
+            <form method="post" action="/admin/battery-ids/void-unused" class="bp-dialog-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="releaseId" data-void-release-field />
+                <input type="hidden" name="returnTo" value="@here" />
+                <h2 id="void-unused-title">Void the unused IDs of <span data-void-release-name></span></h2>
+                <p class="bp-help-text">Its <strong data-void-release-count></strong> available IDs are voided and never used again. IDs a battery already has stay as they are.</p>
+                <label><span>Reason</span><input type="text" name="reason" maxlength="@BatteryIdPool.MaxReason" placeholder="e.g. Order cancelled" required /></label>
+                <div class="bp-dialog-actions">
+                    <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
+                    <button type="submit" class="bp-danger-button">Void the unused IDs</button>
+                </div>
+            </form>
+        </dialog>
+    </div>
+</main>
+
+@section Scripts {
+    <script src="~/js/bp-admin-pages.js" asp-append-version="true"></script>
+    <script src="~/js/bp-battery-ids.js" asp-append-version="true"></script>
+}

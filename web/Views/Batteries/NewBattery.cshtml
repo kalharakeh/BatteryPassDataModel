@@ -2,11 +2,19 @@
 @model NewBatteryPage
 @{
     ViewData["Title"] = "Create battery";
-    var fields = Model.Values.Sections.SelectMany(section => section.Fields).ToArray();
+    // With released IDs (6d) the serial number is picked, never typed: its field gives way to the picker.
+    var fields = Model.Values.Sections.SelectMany(section => section.Fields)
+        .Where(field => !Model.Picks || field.Attribute.Property != "batterySerialNumber")
+        .ToArray();
+    var byModel = Model.AvailableIds.Where(item => !item.IsDemo && item.ModelId is not null).GroupBy(item => item.ModelId!).ToArray();
+    var anyModel = Model.AvailableIds.Where(item => !item.IsDemo && item.ModelId is null).ToArray();
+    var demoIds = Model.AvailableIds.Where(item => item.IsDemo).ToArray();
+    string Option(BatteryPassWeb.Dpp.Identifiers.ReleasedBatteryId item) => $"{item.SerialNumber} · {item.Reference}";
 }
 
 <main class="bp-page bp-admin-page">
     <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/bp-battery-ids.css" asp-append-version="true" />
     <nav class="bp-breadcrumb" aria-label="Breadcrumb">
         <a href="/admin/batteries">Batteries</a>
         <span aria-current="page">Create battery</span>
@@ -37,14 +45,14 @@
             <div class="bp-new-battery-choices">
                 <label>
                     <span>Batch</span>
-                    <select name="batchId" required>
+                    <select name="batchId" required data-batch-select>
                         <option value="">Choose the model, year and site</option>
                         @foreach (var family in Model.Batches.GroupBy(choice => choice.FamilyName))
                         {
                             <optgroup label="@family.Key">
                                 @foreach (var choice in family)
                                 {
-                                    <option value="@choice.BatchId" selected="@(choice.BatchId == Model.BatchId)">@choice.Label</option>
+                                    <option value="@choice.BatchId" data-model="@choice.ModelId" selected="@(choice.BatchId == Model.BatchId)">@choice.Label</option>
                                 }
                             </optgroup>
                         }
@@ -82,9 +90,58 @@
             </div>
         </section>
 
+        @if (Model.Picks)
+        {
+            <section class="bp-new-battery-part">
+                <h2>Its serial number and battery ID</h2>
+                <p class="bp-template-sync-note">Picked from the IDs released on the <a href="/admin/battery-ids">Battery IDs</a> page: the battery takes the serial number (#11) and its battery ID (#6), whose label may already be printed. While it is a draft it can swap to another.</p>
+                @if (Model.AvailableIds.Count == 0)
+                {
+                    <p class="alert alert-warning bp-status-line mt-2 mb-0" role="status"><span>No battery ID is available. Release some on the <a href="/admin/battery-ids">Battery IDs</a> page first.</span></p>
+                }
+                else
+                {
+                    <label class="bp-id-picker">
+                        <span>Serial number</span>
+                        <select name="v.batterySerialNumber" required data-id-picker>
+                            <option value="">Choose a released serial number</option>
+                            @foreach (var group in byModel)
+                            {
+                                <optgroup label="For @Model.ModelNames.GetValueOrDefault(group.Key, group.Key)" data-model="@group.Key">
+                                    @foreach (var item in group)
+                                    {
+                                        <option value="@item.SerialNumber" selected="@(item.SerialNumber == Model.PickedSerial)">@Option(item)</option>
+                                    }
+                                </optgroup>
+                            }
+                            @if (anyModel.Length > 0)
+                            {
+                                <optgroup label="For any model" data-model="">
+                                    @foreach (var item in anyModel)
+                                    {
+                                        <option value="@item.SerialNumber" selected="@(item.SerialNumber == Model.PickedSerial)">@Option(item)</option>
+                                    }
+                                </optgroup>
+                            }
+                            @if (demoIds.Length > 0)
+                            {
+                                <optgroup label="Demo IDs (marked TEST, cleared with the demo data)" data-model="">
+                                    @foreach (var item in demoIds)
+                                    {
+                                        <option value="@item.SerialNumber" selected="@(item.SerialNumber == Model.PickedSerial)">@Option(item)</option>
+                                    }
+                                </optgroup>
+                            }
+                        </select>
+                        <small class="bp-field-help" data-id-picker-note>@Words.Count(Model.AvailableIds.Count, "ID") available. Choose the batch first to see only those its model may use.</small>
+                    </label>
+                }
+            </section>
+        }
+
         <section class="bp-new-battery-part">
             <h2>Its own values</h2>
-            <p class="bp-template-sync-note">The battery ID (#6) is issued by the app, and its status starts as “original”.</p>
+            <p class="bp-template-sync-note">@(Model.Picks ? "Its status starts as “original”." : "The battery ID (#6) is issued by the app, and its status starts as “original”.")</p>
             <div class="bp-attr-list">
                 @foreach (var field in fields)
                 {
@@ -97,7 +154,7 @@
             <span class="bp-savebar-text" data-save-status>The serial number is required; the rest can follow on the battery's page.</span>
             <div class="bp-savebar-actions">
                 <button type="button" class="bp-secondary-button" data-cancel-edits data-cancel-href="/admin/batteries">Cancel</button>
-                <button type="submit" class="bp-primary-button" disabled="@(!Model.LinksConfigured)">Create draft battery</button>
+                <button type="submit" class="bp-primary-button" disabled="@(!Model.LinksConfigured || (Model.Picks && Model.AvailableIds.Count == 0))">Create draft battery</button>
             </div>
         </div>
     </form>
@@ -117,4 +174,5 @@
 
 @section Scripts {
     <script src="~/js/bp-record-editor.js" asp-append-version="true"></script>
+    <script src="~/js/bp-battery-ids.js" asp-append-version="true"></script>
 }

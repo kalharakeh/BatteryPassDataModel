@@ -52,7 +52,8 @@ public sealed class BatteryApi(
     BatteryPages batteries,
     ClusterRepository clusters,
     ApplicationAuditService audit,
-    TimeProvider clock)
+    TimeProvider clock,
+    Identifiers.BatteryIdPool? pool = null)
 {
     /// <summary>The source stored with values a battery system sends through the API ("battery system" on the pages).</summary>
     public const string FeedSource = "feed";
@@ -275,7 +276,7 @@ public sealed class BatteryApi(
             return Problem($"cluster {cluster} doesn't exist; name a registered cluster or none");
         }
 
-        return await creation.CreateAsync(sender, new NewPack(batchId.Trim(), operatorId.Trim(), cluster, values, ApiSource), cancellationToken);
+        return await creation.CreateAsync(sender, new NewPack(batchId.Trim(), operatorId.Trim(), cluster, values, ApiSource, FromPool: pool is not null), cancellationToken);
 
         static PackCreationResult Problem(string problem) => new(null, [], problem);
     }

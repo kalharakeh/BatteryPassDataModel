@@ -59,10 +59,37 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     }
 
     [HttpGet("{packId}")]
-    public async Task<IActionResult> Battery(string packId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Battery(string packId, CancellationToken cancellationToken, [FromServices] Dpp.Identifiers.BatteryIdPool? pool = null)
     {
         var page = await WithUploadAsync(await pages.BatteryAsync(packId, cancellationToken: cancellationToken), cancellationToken);
-        return page is null ? NotFound() : View(page);
+        if (page is null)
+        {
+            return NotFound();
+        }
+
+        // A draft whose ID was picked may swap it for another available one (6d).
+        if (pool is not null && await pool.OfAsync(packId, cancellationToken) is { Status: Dpp.Identifiers.ReleasedIdStatuses.Used } picked)
+        {
+            ViewData[SwapFromKey] = picked;
+            ViewData[SwapIdsKey] = await pool.AvailableAsync(page.Sources.Model.Id, picked.IsDemo, cancellationToken);
+        }
+
+        return View(page);
+    }
+
+    /// <summary>The draft's released ID (6d), for "Change its battery ID…".</summary>
+    public const string SwapFromKey = "SwapFrom";
+
+    /// <summary>The IDs a draft may swap to: available, for its model or any.</summary>
+    public const string SwapIdsKey = "SwapIds";
+
+    [HttpPost("{packId}/battery-id")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SwapBatteryId(string packId, [FromForm] string? serialNumber, [FromServices] Dpp.Identifiers.BatteryIdPool pool, CancellationToken cancellationToken)
+    {
+        var problem = await pool.SwapAsync(Who, packId, serialNumber, cancellationToken);
+        Card(packId, "mark", problem is null ? $"The battery now has serial number {serialNumber} and its battery ID; the old one is available again." : null, problem is null ? null : $"The battery ID didn't change: {problem}.");
+        return Redirect(BatteryPages.BatteryHref(packId));
     }
 
     /// <summary>"Check the file" in the "Upload a file" section (decision 35, step 5c): the check shows in the section.</summary>

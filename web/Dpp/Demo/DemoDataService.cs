@@ -47,9 +47,16 @@ public sealed class DemoDataService(
     ApplicationAuditService audit,
     IOptions<BatteryPassOptions> options,
     TimeProvider clock,
-    UploadService uploads)
+    UploadService uploads,
+    Identifiers.BatteryIdPool? pool = null)
 {
     public const string SeededEvent = "demo.seeded";
+
+    /// <summary>The demo release's reference (6d): the demo batteries' IDs and a few spare ones to try the flow with.</summary>
+    public const string DemoReference = "Demo";
+
+    /// <summary>Spare demo IDs, released but unused, for trying the create picker and the swap.</summary>
+    public static readonly string[] SpareSerials = ["DEMO-SPARE-0001", "DEMO-SPARE-0002", "DEMO-SPARE-0003", "DEMO-SPARE-0004"];
     public const string ClearedEvent = "demo.cleared";
     public const string Mark = "IsDemo";
     public const string AccountMark = "isDemo";
@@ -173,6 +180,16 @@ public sealed class DemoDataService(
         // The batteries don't depend on each other: on a remote database each call waits for its round trip, so they are
         // made side by side, which about halves the reset (redesign R1, point 1). Each battery's own steps stay in order,
         // and every save still goes through the save rules.
+        // The demo batteries are created as real ones are (6d): from a release of TEST-marked IDs, with a few spares.
+        if (pool is not null)
+        {
+            var release = await pool.ReleaseAsync(who, new Identifiers.ReleaseRequest(DemoReference, null, [], string.Join('\n', catalogue.Packs.Select(demo => demo.Serial).Concat(SpareSerials)), IsDemo: true), cancellationToken);
+            if (!release.Done)
+            {
+                throw new InvalidOperationException($"The demo battery IDs couldn't be released: {release.Problem} {string.Join("; ", release.Problems.Select(problem => $"{problem.What}: {problem.Reason}"))}");
+            }
+        }
+
         var outcomes = await Task.WhenAll(catalogue.Packs.Select(demo => SeedPackAsync(who, team, demo, batches, operators, catalogue, cancellationToken)));
         var published = outcomes.Sum(outcome => outcome.Published);
         var successors = outcomes.Sum(outcome => outcome.Successors);
@@ -218,6 +235,7 @@ public sealed class DemoDataService(
         // Batteries first: nothing real can depend on a demo battery. Their versions and documents go with them, and their
         // kept upload checks in one delete (step 5d).
         var demoPacks = await DemoIdsAsync(DppStore.Packs, cancellationToken);
+        await Collection(DppStore.BatteryIds).DeleteManyAsync(Builders<BsonDocument>.Filter.Eq("IsDemo", true), cancellationToken); // the demo release only (6d)
         await Collection(DppStore.UploadChecks).DeleteManyAsync(Builders<BsonDocument>.Filter.In("PackId", demoPacks), cancellationToken);
         foreach (var packId in demoPacks)
         {
@@ -402,7 +420,7 @@ public sealed class DemoDataService(
     {
         var published = 0;
         var successors = 0;
-        var created = await packCreation.CreateAsync(team, new NewPack(batches[demo.Batch], operators[demo.Operator], demo.Cluster, Values(demo.Values), "form", IsDemo: true), cancellationToken);
+        var created = await packCreation.CreateAsync(team, new NewPack(batches[demo.Batch], operators[demo.Operator], demo.Cluster, Values(demo.Values), "form", IsDemo: true, FromPool: pool is not null), cancellationToken);
         if (created.Pack is null)
         {
             var rejected = created.Keys.Where(key => key.Outcome == KeyOutcome.Rejected).Select(key => $"{key.Key} ({key.Message})");

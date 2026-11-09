@@ -272,5 +272,5 @@ public sealed class DunsIdentifierTests(MongoFixture mongo)
 
     [Fact]
     public void TheVersionsAddress_ShouldShowThatVersion() =>
-        Assert.Contains("return page is null ? NotFoundPage() : View(nameof(Summary), page);", File.ReadAllText(DppTestFiles.RepoFile("web", "Controllers", "PassportController.cs")), StringComparison.Ordinal);
+        Assert.Contains("return View(nameof(Summary), page);", File.ReadAllText(DppTestFiles.RepoFile("web", "Controllers", "PassportController.cs")), StringComparison.Ordinal);
 }

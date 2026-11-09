@@ -38,6 +38,7 @@ public static class DppServiceCollectionExtensions
                 : new TestIdentifierScheme();
         });
         services.AddSingleton<SavePipeline>();
+        services.AddSingleton<BatteryIdPool>();
         services.AddSingleton<PackCreationService>();
         services.AddSingleton<StatusChangeService>();
         services.AddSingleton<SuccessionService>();

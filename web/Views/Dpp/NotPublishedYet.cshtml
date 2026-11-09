@@ -1,0 +1,16 @@
+@using BatteryPassWeb.Dpp.Identifiers
+@model ReleasedBatteryId
+@* A released battery ID scanned before its passport is published (step 6d, the owner): it is ours, but there is nothing to
+   show yet. No battery data, not even whether a battery has it. *@
+@{
+    ViewData["Title"] = "Not published yet";
+}
+<main class="bp-page">
+    <section class="bp-card bp-report-wide-section bp-not-published">
+        <span class="bp-summary-title">Battery passport</span>
+        <h1 class="h5 mt-2 mb-1">Not published yet</h1>
+        <p class="mb-2">This is a Scania Industrial Batteries battery ID, but the battery's passport isn't published yet. Its passport shows here once it is.</p>
+        <p class="bp-passport-id mb-2"><span class="bp-id-label">Battery ID:</span> <span class="bp-id-value">@IdentifierForms.Display(Model.Identifier)</span></p>
+        <p class="text-secondary small mb-0">Scanned a label on a battery that is already in use? Try again later, or <a href="/">search</a> by the battery's serial number.</p>
+    </section>
+</main>

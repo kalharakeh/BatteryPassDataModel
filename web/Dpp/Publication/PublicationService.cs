@@ -25,7 +25,8 @@ public sealed class PublicationService(
     PassportSigner signer,
     IIdentifierScheme identifiers,
     ApplicationAuditService audit,
-    TimeProvider clock) : IPackChangeListener
+    TimeProvider clock,
+    BatteryIdPool? pool = null) : IPackChangeListener
 {
     public const string PublishedEvent = "dpp.published";
     public const string BlockedEvent = "dpp.publish-blocked";
@@ -202,6 +203,11 @@ public sealed class PublicationService(
         }
 
         await store.ArchiveOtherVersionsAsync(packId, version.Id, cancellationToken);
+        if (version.Number == 1 && pool is not null)
+        {
+            await pool.MarkPublishedAsync(packId, cancellationToken); // its released ID is fixed for life (6d)
+        }
+
         if (version.Number == 1 && sources.Pack.SuccessorOf is { } predecessor)
         {
             await InactivateAsync(sender, predecessor, $"its new passport {passportId} is published", cancellationToken);

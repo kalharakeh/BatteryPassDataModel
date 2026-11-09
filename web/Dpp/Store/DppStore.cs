@@ -24,6 +24,9 @@ public sealed class DppStore
     public const string Uploads = "dpp_uploads";
     public const string UploadChecks = "dpp_upload_checks";
 
+    /// <summary>The battery IDs the team released in advance (step 6d), keyed by the serial number's letters and digits.</summary>
+    public const string BatteryIds = "dpp_battery_ids";
+
     private const string UniqueProductIdentifierField = "Values.uniqueProductIdentifier.Value";
     private const string SerialNumberField = "Values.batterySerialNumber.Value";
 
@@ -39,6 +42,7 @@ public sealed class DppStore
         [typeof(HandOver)] = HandOvers,
         [typeof(UploadRecord)] = Uploads,
         [typeof(UploadCheck)] = UploadChecks,
+        [typeof(Identifiers.ReleasedBatteryId)] = BatteryIds,
     };
 
     private readonly IMongoDatabase? _database;
@@ -50,6 +54,59 @@ public sealed class DppStore
     }
 
     public bool IsAvailable => _database is not null;
+
+    /// <summary>The released battery IDs (step 6d), for <see cref="Identifiers.BatteryIdPool"/>.</summary>
+    public IMongoCollection<Identifiers.ReleasedBatteryId> ReleasedIds => Collection<Identifiers.ReleasedBatteryId>();
+
+    /// <summary>
+    /// Stores a whole release or none of it (step 6d): in one transaction where the database has them (a replica set, as
+    /// on Atlas), otherwise in order, taking back what went in when one fails. False when an ID was already released (its
+    /// _id, the serial number's letters and digits, is unique), so two releases at once can't share one.
+    /// </summary>
+    /// <summary>
+    /// True when the database takes transactions: a replica-set primary or a sharded router (Atlas), however the app is
+    /// connected to it (a direct connection reports the cluster as standalone).
+    /// </summary>
+    public static bool SupportsTransactions(IMongoClient client) =>
+        client.Cluster.Description.Servers.Any(server => server.Type is MongoDB.Driver.Core.Servers.ServerType.ReplicaSetPrimary or MongoDB.Driver.Core.Servers.ServerType.ShardRouter);
+
+    public async Task<bool> InsertReleaseAsync(IReadOnlyList<Identifiers.ReleasedBatteryId> records, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(records);
+        var options = new InsertManyOptions { IsOrdered = true };
+        var client = RequireDatabase().Client;
+        if (SupportsTransactions(client))
+        {
+            using var session = await client.StartSessionAsync(cancellationToken: cancellationToken);
+            try
+            {
+                await session.WithTransactionAsync(
+                    async (handle, token) =>
+                    {
+                        await ReleasedIds.InsertManyAsync(handle, records, options, token);
+                        return true;
+                    },
+                    cancellationToken: cancellationToken);
+                return true;
+            }
+            catch (MongoBulkWriteException)
+            {
+                return false;
+            }
+        }
+
+        try
+        {
+            await ReleasedIds.InsertManyAsync(records, options, cancellationToken);
+            return true;
+        }
+        catch (MongoBulkWriteException)
+        {
+            var releaseIds = records.Select(record => record.ReleaseId).Distinct().ToArray();
+            await ReleasedIds.DeleteManyAsync(Builders<Identifiers.ReleasedBatteryId>.Filter.In(record => record.ReleaseId, releaseIds), CancellationToken.None);
+            return false;
+        }
+    }
 
     /// <summary>
     /// #6 is unique; serial numbers are not (design 8.2), so they are indexed for lookup only.
@@ -118,6 +175,12 @@ public sealed class DppStore
                 Builders<UploadCheck>.IndexKeys.Ascending(check => check.ExpiresAtUtc),
                 new CreateIndexOptions { Name = "expires", ExpireAfter = TimeSpan.Zero }),
             cancellationToken: cancellationToken);
+        await ReleasedIds.Indexes.CreateManyAsync(
+        [
+            new CreateIndexModel<Identifiers.ReleasedBatteryId>(Builders<Identifiers.ReleasedBatteryId>.IndexKeys.Ascending(item => item.ReleaseId), new CreateIndexOptions { Name = "release" }),
+            new CreateIndexModel<Identifiers.ReleasedBatteryId>(Builders<Identifiers.ReleasedBatteryId>.IndexKeys.Ascending(item => item.PackId), new CreateIndexOptions { Name = "pack", Sparse = true }),
+            new CreateIndexModel<Identifiers.ReleasedBatteryId>(Builders<Identifiers.ReleasedBatteryId>.IndexKeys.Ascending(item => item.Status).Ascending(item => item.ModelId), new CreateIndexOptions { Name = "status_model" }),
+        ], cancellationToken);
     }
 
     /// <summary>Logs an upload (step 5a).</summary>

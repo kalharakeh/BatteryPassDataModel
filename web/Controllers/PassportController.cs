@@ -42,11 +42,27 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> Summary(string id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Summary(string id, CancellationToken cancellationToken, [FromServices] BatteryPassWeb.Dpp.Identifiers.BatteryIdPool? pool = null)
     {
         var reader = await readers.ForAsync(User, cancellationToken);
         var page = await pages.SummaryAsync(reader, Uri.UnescapeDataString(id), cancellationToken);
-        return page is null ? NotFoundPage() : View(nameof(Summary), page);
+        if (page is not null)
+        {
+            return View(nameof(Summary), page);
+        }
+
+        // A released ID scanned before its passport is published (6d): ours, but nothing to show yet; a voided one isn't.
+        return pool is not null && await pool.FindUnpublishedAsync(Uri.UnescapeDataString(id), cancellationToken) is { Status: not BatteryPassWeb.Dpp.Identifiers.ReleasedIdStatuses.Voided } released
+            ? NotPublishedYet(released)
+            : NotFoundPage();
+    }
+
+    /// <summary>"Not published yet": a 404, so it is never read as a passport, with the scanned ID and no battery data.</summary>
+    private ViewResult NotPublishedYet(BatteryPassWeb.Dpp.Identifiers.ReleasedBatteryId released)
+    {
+        var view = View("~/Views/Dpp/NotPublishedYet.cshtml", released);
+        view.StatusCode = StatusCodes.Status404NotFound;
+        return view;
     }
 
     /// <summary>A version's own address (#5, step 6d): <c>/dpp/UN778474481VPC12221/v2</c>.</summary>

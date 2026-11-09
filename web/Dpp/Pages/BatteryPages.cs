@@ -47,6 +47,9 @@ public sealed record BatteriesPage(IReadOnlyList<BatteryRow> Rows, string Query,
 public sealed record BatchChoice(string BatchId, string FamilyName, string ModelName, int Year, string SiteName)
 {
     public string Label => $"{ModelName} · {Year} · {SiteName}";
+
+    /// <summary>The batch's model, so the create page offers that model's released IDs (6d).</summary>
+    public string ModelId { get; init; } = string.Empty;
 }
 
 /// <summary>The form for a new battery: where it comes from, and its own values as typed.</summary>
@@ -58,7 +61,19 @@ public sealed record NewBatteryPage(
     string? BatchId,
     string? OperatorId,
     string? ClusterId,
-    bool LinksConfigured);
+    bool LinksConfigured)
+{
+    /// <summary>The released IDs a new battery may take (6d); the page offers its batch's model's first, then any model's.</summary>
+    public IReadOnlyList<Identifiers.ReleasedBatteryId> AvailableIds { get; init; } = [];
+
+    /// <summary>True when batteries are created by picking a released ID (the app); false on a rig without the pool.</summary>
+    public bool Picks { get; init; }
+
+    public IReadOnlyDictionary<string, string> ModelNames { get; init; } = new Dictionary<string, string>(StringComparer.Ordinal);
+
+    /// <summary>The serial number picked before a refused create, so the page keeps it.</summary>
+    public string? PickedSerial { get; init; }
+}
 
 /// <summary>Values the passport still needs, grouped by the record that holds them, with a link to its editor.</summary>
 public sealed record MissingGroup(string Record, string Href, IReadOnlyList<AttributeDefinition> Attributes);
@@ -211,7 +226,8 @@ public sealed class BatteryPages(
     ClusterRepository clusters,
     ApplicationAuditService audit,
     StatusPages status,
-    LiveTrends? trends = null)
+    LiveTrends? trends = null,
+    Identifiers.BatteryIdPool? pool = null)
 {
     public const string ClusterChangedEvent = "dpp.pack-cluster-changed";
     public const string ModulesSetEvent = "dpp.pack-modules-set";
@@ -383,7 +399,10 @@ public sealed class BatteryPages(
                     families.GetValueOrDefault(model.FamilyId)?.Name ?? "Unknown family",
                     model.Name,
                     batch.Year,
-                    sites.GetValueOrDefault(batch.SiteId)?.Name ?? batch.SiteId);
+                    sites.GetValueOrDefault(batch.SiteId)?.Name ?? batch.SiteId)
+                {
+                    ModelId = batch.ModelId,
+                };
             })
             .OrderBy(choice => choice.FamilyName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(choice => choice.ModelName, StringComparer.OrdinalIgnoreCase)
@@ -394,7 +413,13 @@ public sealed class BatteryPages(
         var empty = new Dictionary<string, AttributeValue>(StringComparer.Ordinal);
         var sections = await editor.SectionsAsync(TargetKind.Pack, string.Empty, empty, state?.Post, state?.Save.Refusals(editor.Forms), cancellationToken);
         var values = new RecordEditorView(TargetKind.Pack, string.Empty, string.Empty, "/admin/batteries", "/admin/batteries", sections, [], 0, editor.Forms.Languages, string.Empty, new RemovalView(string.Empty, null));
-        return new NewBatteryPage(choices, operators, await ClustersAsync(cancellationToken), values, batchId, operatorId, clusterId, links.IsConfigured);
+        return new NewBatteryPage(choices, operators, await ClustersAsync(cancellationToken), values, batchId, operatorId, clusterId, links.IsConfigured)
+        {
+            Picks = pool is not null,
+            AvailableIds = pool is null ? [] : await pool.AvailableAsync(cancellationToken: cancellationToken),
+            ModelNames = models.ToDictionary(model => model.Key, model => model.Value.Name, StringComparer.Ordinal),
+            PickedSerial = state?.Post.Texts.GetValueOrDefault("v.batterySerialNumber"),
+        };
     }
 
     /// <summary>
@@ -427,7 +452,7 @@ public sealed class BatteryPages(
         }
 
         var values = post.Changed.ToDictionary(entry => entry.Key, entry => (System.Text.Json.Nodes.JsonNode?)entry.Value.DeepClone(), StringComparer.Ordinal);
-        return (await creation.CreateAsync(ChangeSender.Team(who), new NewPack(batchId, operatorId, cluster, values), cancellationToken), post);
+        return (await creation.CreateAsync(ChangeSender.Team(who), new NewPack(batchId, operatorId, cluster, values, FromPool: pool is not null), cancellationToken), post);
 
         static PackCreationResult Problem(string problem) => new(null, [], problem);
     }
@@ -657,6 +682,11 @@ public sealed class BatteryPages(
 
         await store.DeleteAsync<BatteryPack>(packId, cancellationToken);
         await documents.DeleteOwnedAsync(TargetKind.Pack, packId, cancellationToken);
+        if (pool is not null)
+        {
+            await pool.GiveBackAsync(packId, cancellationToken); // its labelled battery still needs the ID, so it is available again (6d)
+        }
+
         await audit.AppendApplicationAuditEventAsync(
             ProductDataPages.RemovedEvent,
             who,

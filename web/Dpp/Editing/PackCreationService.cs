@@ -15,7 +15,8 @@ public sealed record NewPack(
     IReadOnlyDictionary<string, JsonNode?> Values,
     string Source = "form",
     string? PredecessorPackId = null,
-    bool IsDemo = false);
+    bool IsDemo = false,
+    bool FromPool = false);
 
 /// <summary>The created pack, or the problem that stopped it; <see cref="Keys"/> says what happened to each value.</summary>
 public sealed record PackCreationResult(BatteryPack? Pack, IReadOnlyList<KeyResult> Keys, string? Problem);
@@ -30,8 +31,12 @@ public sealed class PackCreationService(
     IIdentifierScheme identifiers,
     DppLinks links,
     ApplicationAuditService audit,
-    TimeProvider clock)
+    TimeProvider clock,
+    BatteryIdPool? pool = null)
 {
+    /// <summary>Why a picked battery ID can't be used: someone took or voided it first, or it is for another model.</summary>
+    public const string NotAvailable = "that serial number isn't an available released battery ID for this battery's model; pick one released on the Battery IDs page";
+
     public const string AuditEventType = "dpp.pack-created";
 
     /// <summary>The start of the refusal when the serial number can't make a battery ID (6d).</summary>
@@ -103,16 +108,40 @@ public sealed class PackCreationService(
             pack.Values[key] = Stored(value, now, request.Source, sender.Who);
         }
 
-        // #6 (step 6d): made from the serial number (a battery's new passport adds R1, R2, …), and refused with the reason
-        // when the serial number can't make a valid one or another battery has it.
-        var made = await identifiers.NewPackIdentifierAsync(pack, cancellationToken);
-        if (made.Identifier is not { } identifier)
+        // #6 (step 6d): a battery takes a released ID, picked in one step so that no one else can; a battery's new passport
+        // makes its own from its serial number (R1, R2, …), as does a battery made without the pool (tests, scripts).
+        if (request.FromPool && request.PredecessorPackId is null && pool is not null)
         {
-            return Failed($"{CantGetId}: {made.Problem}");
+            var model = (await store.GetAsync<ProductionBatch>(request.BatchId, cancellationToken))!.ModelId;
+            if (await pool.PickAsync(evaluation.Accepted["batterySerialNumber"].GetValue<string>(), pack.Id, model, cancellationToken) is not { } picked)
+            {
+                return Failed(NotAvailable);
+            }
+
+            pack.IsDemo |= picked.IsDemo; // a demo ID makes a demo battery, which clearing the demo data removes
+            pack.Values["batterySerialNumber"] = Stored(JsonValue.Create(picked.SerialNumber), now, request.Source, sender.Who);
+            pack.Values["uniqueProductIdentifier"] = Stored(JsonValue.Create(picked.Identifier), now, "system", sender.Who);
+        }
+        else
+        {
+            var made = await identifiers.NewPackIdentifierAsync(pack, cancellationToken);
+            if (made.Identifier is not { } identifier)
+            {
+                return Failed($"{CantGetId}: {made.Problem}");
+            }
+
+            pack.Values["uniqueProductIdentifier"] = Stored(JsonValue.Create(identifier), now, "system", sender.Who);
         }
 
-        pack.Values["uniqueProductIdentifier"] = Stored(JsonValue.Create(identifier), now, "system", sender.Who);
-        await store.InsertAsync(pack, cancellationToken);
+        try
+        {
+            await store.InsertAsync(pack, cancellationToken);
+        }
+        catch when (pool is not null && request.FromPool)
+        {
+            await pool.GiveBackAsync(pack.Id, CancellationToken.None); // the ID is available again
+            throw;
+        }
 
         await audit.AppendApplicationAuditEventAsync(
             AuditEventType,
