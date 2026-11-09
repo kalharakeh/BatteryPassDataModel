@@ -113,9 +113,25 @@ Each step says what to do, then **Expected:** what should happen.
    - publishing it makes the old one inactive and links the two.
 8. Cluster: Change on a battery.
    **Expected:** it moves at once, and the move is in the audit log.
-9. Clusters tab: Demo data, Clear demo data.
+9. Battery IDs tab: release VPC-12221 to VPC-12230 with "Release new IDs": quantity 10, reference "PO 4512, line 2", model Compact 7M.
+   **Expected:** the release's page opens with "Released 10 battery IDs. Export them to Excel for the labels.", and its ten IDs Available, each with its battery ID (`UN778474481VPC12221` …).
+10. The same, with VPC-12228 to VPC-12240 and quantity 12, and VPC-12401 twice in the list.
+   **Expected:** nothing is released; the Release new IDs tab lists the reasons ("that is 13 IDs, not 12", "already released", "in this release twice") and keeps what you typed.
+11. The Releases tab, then Open on PO 4512, line 2, and Export to Excel.
    **Expected:**
-   - the demo records go and real data stays;
+   - Releases lists PO 4512, line 2 and the demo data's release, tagged Demo; the counts at the top are the real IDs only;
+   - an Excel file with that release's ten IDs, one row per ID: serial number, battery ID, QR code address, model, reference, released by and when, status.
+12. Create battery: a Compact 7M batch, pick VPC-12221.
+   **Expected:** the picker offers Compact 7M's IDs first, then any model's, then the demo spares; the draft shows `UN778474481VPC12221` and its QR code; the ID is Used.
+13. On that draft, More: Change its battery ID…, VPC-12222.
+   **Expected:** the draft now has VPC-12222 and its ID; VPC-12221 is Available again.
+14. All IDs: search VPC-12230; in its row's ⋯ menu, Void…, with a reason. Then tick "Show demo IDs".
+   **Expected:** it is Voided with the reason, and the create picker no longer offers it; the demo IDs show only once ticked.
+15. Signed out, open `/25S/UN778474481VPC12223`, then `/25S/UN778474481VPC12230`.
+   **Expected:** "Not published yet", then "Not available".
+16. Clusters tab: Demo data, Clear demo data.
+   **Expected:**
+   - the demo records go, the "Demo" release with them, and real data stays (PO 4512's IDs included);
    - Reset demo data brings them back.
 
 ## 5. Market surveillance: `demo.msa@example.test`
@@ -166,8 +182,8 @@ Use the tokens copied after the reset, on `/help/api`'s workbench or with any HT
    **Expected:** saved. The live value history shows it.
 5. The same token, `POST /api/external/v1/uploads?preview=true` with the help's upload file.
    **Expected:** the battery is refused: "status changes are made on the battery's page" (the file carries a repair).
-6. The team's "Full access" token: `GET /api/external/v1/batches`, then `POST /api/external/v1/batteries`.
-   **Expected:** a new draft battery with its battery ID.
+6. The team's "Full access" token: `GET /api/external/v1/batches`, then `POST /api/external/v1/batteries` with `"batterySerialNumber": "DEMO-SPARE-0001"`.
+   **Expected:** a new draft battery with that released ID. The same with a serial number that isn't released is refused.
 7. `GET /api/passports` with a cluster token.
    **Expected:** refused (team only).
 

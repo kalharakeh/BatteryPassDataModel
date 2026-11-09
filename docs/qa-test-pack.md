@@ -23,7 +23,7 @@ Keep these open while testing:
 
 | Who | Account | Cluster | What to check |
 |---|---|---|---|
-| Team | the team's own account (from the project owner) | all | Product data, creating and publishing batteries, every battery page, marking passports, demo data, tokens |
+| Team | the team's own account (from the project owner) | all | Product data, releasing battery IDs, creating and publishing batteries, every battery page, marking passports, demo data, tokens |
 | Cluster admin | `demo.north.admin@example.test` | demo-north | Their batteries' pages: live values, accident reports, status changes and repairs, hand-overs, uploads; their users and tokens. Their Registry also shows DEMO-CORE-0001 waiting to be accepted. |
 | Cluster user | `demo.north.user@example.test` | demo-north | Their batteries in the Registry and on the detail page, read only |
 | Other cluster admin | `demo.south.admin@example.test`, `demo.fleet.admin@example.test` | demo-south, demo-fleet | They see demo-north's batteries as the public does; demo-north's admin's "Waiting for you" from demo-fleet |
@@ -49,25 +49,27 @@ Keep these open while testing:
 | DEMO-CORE-0002 | demo-fleet | A draft |
 | DEMO-CORE-0003 | demo-fleet | Waste, marked for deletion |
 
-All demo IDs start with `TEST-`; the pages show a "Test passport" tag for them.
+The demo batteries come from a release with the reference "Demo", on the Battery IDs tab, with four spare IDs (DEMO-SPARE-0001 to DEMO-SPARE-0004) for trying the create picker and "Change its battery ID…". With the three ID settings set (`DPP_ID_AGENCY`, `DPP_ID_COMPANY`, `DPP_ID_BASE_URL`), their IDs are marked TEST after the DUNS, such as `UN778474481TESTDEMOC7M0001`. Without them they are test IDs starting with `urn:x-battery-pass:TEST-`. Either way the pages show a "Test passport" tag.
 
 ## Scenario matrix
 
 What each reader should get. ✓ = allowed or shown, – = not shown or refused. "Own" means the battery is in the reader's cluster.
 
-| Reader | Public page | Detail page | Purchaser tab | Shared tab | Authorities tab | Live values, Modules tabs | Registry lists | Battery page (manage) | Mark as invalid |
-|---|---|---|---|---|---|---|---|---|---|
-| Anyone, not signed in | ✓ | – (sign-in) | – | – | – | – | – | – | – |
-| Cluster user, own battery | ✓ | ✓ | ✓ | ✓ | – | ✓ | own cluster's | – | – |
-| Cluster admin, own battery | ✓ | ✓ | ✓ | ✓ | – | ✓ | own cluster's | ✓ | – |
-| Cluster user or admin, other cluster's battery | ✓ | public only | – | – | – | – | own cluster's | – (refused) | – |
-| Team | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | every battery (Batteries tab) | ✓ | ✓ (and undo) |
-| Market surveillance | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | every published | – | ✓ |
-| Notified body | ✓ | ✓ | – | – | ✓ | – | every published | – | – |
-| Commission | ✓ | ✓ | – | ✓ | ✓ | – | every published | – | – |
-| Repair | ✓ | ✓ | – | #43, #45–#48 | – | – | every published | – | – |
-| Recycling | ✓ | ✓ | – | #43, #45, #48 | – | – | every published | – | – |
-| Treatment | ✓ | ✓ | – | #48 | – | – | every published | – | – |
+| Reader | Public page | Detail page | Purchaser tab | Shared tab | Authorities tab | Live values, Modules tabs | Registry lists | Battery page (manage) | Mark as invalid | Battery IDs tab |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Anyone, not signed in | ✓ | – (sign-in) | – | – | – | – | – | – | – | – (sign-in) |
+| Cluster user, own battery | ✓ | ✓ | ✓ | ✓ | – | ✓ | own cluster's | – | – | – (Not allowed) |
+| Cluster admin, own battery | ✓ | ✓ | ✓ | ✓ | – | ✓ | own cluster's | ✓ | – | – (Not allowed) |
+| Cluster user or admin, other cluster's battery | ✓ | public only | – | – | – | – | own cluster's | – (refused) | – | – (Not allowed) |
+| Team | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | every battery (Batteries tab) | ✓ | ✓ (and undo) | ✓ |
+| Market surveillance | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | every published | – | ✓ | – (Not allowed) |
+| Notified body | ✓ | ✓ | – | – | ✓ | – | every published | – | – | – (Not allowed) |
+| Commission | ✓ | ✓ | – | ✓ | ✓ | – | every published | – | – | – (Not allowed) |
+| Repair | ✓ | ✓ | – | #43, #45–#48 | – | – | every published | – | – | – (Not allowed) |
+| Recycling | ✓ | ✓ | – | #43, #45, #48 | – | – | every published | – | – | – (Not allowed) |
+| Treatment | ✓ | ✓ | – | #48 | – | – | every published | – | – | – (Not allowed) |
+
+Scanning a released ID whose passport isn't published yet shows "Not published yet" to everyone, with no battery data; a voided ID shows "Not available".
 
 **Battery page actions** (team and the battery's cluster admins, on an active passport):
 
@@ -80,6 +82,7 @@ What each reader should get. ✓ = allowed or shown, – = not shown or refused.
 | Hand over… / Accept or Decline on "Waiting for you" | moves directly, or cancels a waiting one | ✓ |
 | Mark as invalid or for deletion…, and Undo | ✓ | – |
 | Edit product data, create and publish batteries | ✓ | – |
+| Release, export and void battery IDs; Change its battery ID… on a draft | ✓ | – |
 
 **API** (`/api/external/v1`, a token in the `Authorization` header):
 
@@ -87,8 +90,8 @@ What each reader should get. ✓ = allowed or shown, – = not shown or refused.
 |---|---|---|
 | A cluster's "Read" token | that cluster's batteries, as its cluster user would | nothing |
 | A cluster's "Read and write live values" token | the same | the live values (#63, #83, #87, E1–E4) and uploads of live values, for that cluster's batteries |
-| The team's "Full access" token | every battery | creating batteries, publishing, live values, uploads |
-| Any token | — | never a status change or repair (made on the battery's page only) |
+| The team's "Full access" token | every battery | creating batteries (from a released, available serial number), publishing, live values, uploads |
+| Any token | — | never a status change or repair (made on the battery's page only), and never releasing battery IDs |
 
 `/api/passports` (the list of all passports) is for the team only.
 
@@ -97,7 +100,14 @@ What each reader should get. ✓ = allowed or shown, – = not shown or refused.
 - [ ] "Reset demo data" finishes and shows the tokens once.
 - [ ] Every row of the scenario matrix holds, for every reader.
 - [ ] The two badges show on every passport page with the right status. The Battery badge never shows to the public.
-- [ ] DEMO-C7M-0002 lists what blocks publication; filling it in and pressing Publish gives a signed version 1 with a QR code.
+- [ ] Battery IDs: a range releases and opens the release's page with every ID Available; its "Export to Excel" opens with that release's IDs, one row per ID and its QR address.
+- [ ] The Battery IDs page opens on Releases, with the real IDs' counts at the top; All IDs shows demo IDs only with "Show demo IDs" ticked; Void… is in a row's ⋯ menu.
+- [ ] A release with a wrong count, a repeated or already released serial number lists every reason and releases nothing.
+- [ ] Create battery picks a released serial number (no typing); the draft shows its battery ID and QR code at once; the ID turns Used.
+- [ ] "Change its battery ID…" on a draft takes another available ID and gives the old one back; a voided ID is never offered again.
+- [ ] Scanning a released, unpublished ID shows "Not published yet"; a voided one "Not available".
+- [ ] With one of the three ID settings missing, the Battery IDs page shows a red notice naming it; nothing can be released, creating a battery from a released real ID is refused, and the demo data still works.
+- [ ] DEMO-C7M-0002 lists what blocks publication; filling it in and pressing Publish gives a signed version 1 with a QR code, and its ID turns Published.
 - [ ] A repair on DEMO-C7M-0001 sets re-used, adds to the repair history and makes a new version.
 - [ ] Hand-over: demo-fleet's DEMO-CORE-0001 waits on demo-north's Registry; Accept moves it, and demo-fleet then sees it as the public does.
 - [ ] Market surveillance marks a passport invalid; the public page says so; only the team undoes it.
@@ -108,7 +118,7 @@ What each reader should get. ✓ = allowed or shown, – = not shown or refused.
 
 ## Known limitations
 
-- **Test identifiers:** all IDs start with `TEST-` until the identifier scheme is built (DUNS, plan 6d).
+- **Real IDs need the settings:** without `DPP_ID_AGENCY`, `DPP_ID_COMPANY` and `DPP_ID_BASE_URL`, the Battery IDs page shows a red notice naming the missing ones, and nothing is released or created from a released ID. The demo data still works, with test IDs (`urn:x-battery-pass:TEST-…`), as on a developer's PC.
 - **Pack temperature:** the battery system's export has no pack temperature yet; each export's notes say so.
 - **Hand-overs:** no e-mail; the receiver sees them on their Registry. A waiting hand-over isn't cancelled by itself when the passport stops being active; accepting is then refused with a reason.
 - **Signatures:** each version is signed when published; live values and accident reports change it in place without a new signature, by design.

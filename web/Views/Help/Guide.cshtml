@@ -30,7 +30,7 @@
         <div class="bp-help-parts">
             <section class="bp-card bp-help-part" id="find">
                 <h2>Find a passport</h2>
-                <p class="mb-0">On the <a href="/">home page</a>, type the battery's serial number, battery ID or passport ID, or scan the QR code on the battery. @(signedIn ? "The Registry lists the batteries you may open." : "Signed in, the Registry also lists the batteries you may open.")</p>
+                <p class="mb-0">On the <a href="/">home page</a>, type the battery's serial number, battery ID or passport ID, or scan the QR code on the battery. A label scanned before its battery's passport is published says "Not published yet". @(signedIn ? "The Registry lists the batteries you may open." : "Signed in, the Registry also lists the batteries you may open.")</p>
             </section>
 
             <section class="bp-card bp-help-part" id="see">
@@ -157,11 +157,37 @@
                     <h2>From product data to a published passport <span class="bp-soft-tag">Team</span></h2>
                     <ol class="bp-steps">
                         <li><strong><a href="/admin/families">Set up product data</a></strong><p>Families, models and batches, and <a href="/admin/sites-and-operators">sites and operators</a>. Most values are entered once and shared by every battery made from them; the V3 attribute list decides which are required, and by when.</p></li>
-                        <li><strong><a href="/admin/batteries/new">Create the battery</a></strong><p>Choose its batch, economic operator and cluster, and type its serial number, manufacturing date and warranty. The app gives it its battery ID. It starts as a draft only the team sees.</p></li>
+                        <li><strong><a href="/admin/battery-ids">Release battery IDs</a></strong><p>Reserve the serial numbers before the batteries are made, so their labels can be printed. Each gets its battery ID at once, fixed for life.</p></li>
+                        <li><strong><a href="/admin/batteries/new">Create the battery</a></strong><p>Choose its batch, economic operator and cluster, and pick its serial number from the released IDs; then its manufacturing date and warranty. It starts as a draft only the team sees, with its battery ID and QR code.</p></li>
                         <li><strong><a href="/admin/batteries">Fill in what is missing</a></strong><p>Every field says whether it is required by Feb 2027, required later or conditional. Only "required by Feb 2027" blocks publishing, the first state of charge and temperature included.</p></li>
                         <li><strong>Publish</strong><p>On the battery page, one step checks the passport against the official schema, signs it and publishes it. Later changes ask first, then publish a new version; live values and accident reports change it in place.</p></li>
                     </ol>
                     <p class="mt-3 mb-0">Other systems get <a href="/admin/clusters?tab=api-token-management">API tokens</a>: a cluster token reads that cluster's batteries and, with "Read + write", sends their live values; only a token for all batteries creates and publishes them.</p>
+                </section>
+
+                <section class="bp-card bp-help-part" id="battery-ids">
+                    <h2>Battery IDs <span class="bp-soft-tag">Team</span></h2>
+                    <p>A battery's ID (#6) is the company's DUNS and its serial number, such as <code>UN778474481VPC12221</code>. The team releases serial numbers in advance on the <a href="/admin/battery-ids">Battery IDs</a> tab, and each battery is created from one. At the top, the real IDs by status (demo IDs aren't counted) and "Release new IDs"; below, three tabs: Releases, All IDs and Release new IDs.</p>
+                    <dl class="bp-word-list">
+                        <dt>Release new IDs</dt>
+                        <dd>Give a reference, such as the purchase order, and optionally the model. Add one or more ranges (start, end and quantity) or paste serial numbers, one per line. It is all or nothing: if one can't be released, none is, and each reason is listed. Once released, the app opens the release's page.</dd>
+                        <dt>Releases</dt>
+                        <dd>The first tab: one row per release, with its reference, model, date and counts. "Open" shows the release's page: its IDs, "Export to Excel" at the top and "Void unused…". The demo data's release is tagged Demo.</dd>
+                        <dt>All IDs</dt>
+                        <dd>Every released ID, searched by serial number and filtered by status, release and model. Demo IDs show only with "Show demo IDs" ticked.</dd>
+                        <dt>Export to Excel</dt>
+                        <dd>One row per ID, with the QR code's full address for the label printer or a mail merge. On a release's page or row, that release's IDs; on All IDs, the filtered ones.</dd>
+                        <dt>Statuses</dt>
+                        <dd>Available, Used (a draft has it), Published (fixed for life) and Voided (never used again).</dd>
+                        <dt>Void…</dt>
+                        <dd>Only an available ID, with a reason such as a damaged label: in its row's ⋯ menu. "Void unused…" voids a release's available IDs at once.</dd>
+                        <dt>A red notice</dt>
+                        <dd>"The battery ID settings aren't set": the app isn't given its DUNS and web address (<code>DPP_ID_AGENCY</code>, <code>DPP_ID_COMPANY</code>, <code>DPP_ID_BASE_URL</code>), so nothing can be released and no battery can be created from a released ID, as they would get test IDs. Whoever runs the app sets them and restarts it. The demo data works without them.</dd>
+                        <dt>Change its battery ID…</dt>
+                        <dd>On a draft's page, under More: it takes another available ID, and its old one is available again. Removing a draft gives its ID back too.</dd>
+                        <dt>A new passport</dt>
+                        <dd>The battery keeps its serial number, and its new passport's battery ID adds R1, R2, …; it isn't released.</dd>
+                    </dl>
                 </section>
 
                 <section class="bp-card bp-help-part" id="lifecycle">

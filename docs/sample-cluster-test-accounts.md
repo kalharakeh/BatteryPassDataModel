@@ -54,7 +54,7 @@ The team's account is not demo data: the project owner gives testers a team acco
 | DEMO-CORE-0002 | Core, Core | demo-fleet | Draft | |
 | DEMO-CORE-0003 | Core, Core | demo-fleet | Waste, marked for deletion | The marked-for-deletion notice |
 
-Drafts are seen by the team only. Every ID starts with `TEST-`, and the pages show a "Test passport" tag.
+Drafts are seen by the team only. The batteries come from the "Demo" release on the Battery IDs tab, which also holds four spare IDs, DEMO-SPARE-0001 to DEMO-SPARE-0004. With the three ID settings their IDs are marked TEST after the DUNS (`UN778474481TESTDEMOC7M0001`); without them they start with `urn:x-battery-pass:TEST-`. The pages show a "Test passport" tag either way.
 
 ## Sample files
 
