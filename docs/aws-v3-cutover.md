@@ -76,7 +76,9 @@ The new app reads these. "Same" means the live environment's current value stays
 | `TRUSTED_PROXY_NETWORKS`, `TRUSTED_PROXY_HOP_LIMIT` | not set | The defaults trust the load balancer's private ranges. |
 | `POWER_AUTOMATE_RESET_WEBHOOK_URL`, `…_SECRET`, `PASSWORD_RESET_APP_NAME` | same, if password reset e-mails are used | |
 | `ID_GENERATION_SECRET` | same | Only the old app reads it. Keeping it makes a roll-back simpler. |
-| After plan 6d: the identifier settings (agency `UN`, company `778474481`) | as plan 6d names them | Until then the app issues test IDs. |
+| `DPP_ID_AGENCY` | `UN` (new) | The battery IDs' issuing agency: DUNS (decision 38). |
+| `DPP_ID_COMPANY` | `778474481` (new) | Scania Industrial Batteries AB's DUNS. |
+| `DPP_ID_BASE_URL` | `https://www.sib-scania-eubp.eu` (new) | The start of every battery ID and passport ID, e.g. `https://www.sib-scania-eubp.eu/25S/UN778474481…`. Without all three, the Battery IDs page shows a red notice naming the missing ones, and every real release and create is refused (check 9). |
 
 ## 4. Why the switch is one command, and the command
 
@@ -94,6 +96,9 @@ The new app reads these. "Same" means the live environment's current value stays
   { "Namespace": "aws:elasticbeanstalk:application:environment", "OptionName": "APP_BASE_URL", "Value": "https://www.sib-scania-eubp.eu/" },
   { "Namespace": "aws:elasticbeanstalk:application:environment", "OptionName": "APP_URL", "Value": "https://www.sib-scania-eubp.eu/" },
   { "Namespace": "aws:elasticbeanstalk:application:environment", "OptionName": "BATTERY_PASS_SIGNING_PRIVATE_KEY_BASE64", "Value": "<the key from section 2.3>" },
+  { "Namespace": "aws:elasticbeanstalk:application:environment", "OptionName": "DPP_ID_AGENCY", "Value": "UN" },
+  { "Namespace": "aws:elasticbeanstalk:application:environment", "OptionName": "DPP_ID_COMPANY", "Value": "778474481" },
+  { "Namespace": "aws:elasticbeanstalk:application:environment", "OptionName": "DPP_ID_BASE_URL", "Value": "https://www.sib-scania-eubp.eu" },
   { "Namespace": "aws:elasticbeanstalk:application:environment", "OptionName": "ENABLE_DEMO_ADMIN_FALLBACK", "Value": "false" },
   { "Namespace": "aws:elasticbeanstalk:application:environment", "OptionName": "DEMO_USERS_PASSWORD", "Value": "<only if demo accounts are wanted>" }
 ]
@@ -135,6 +140,8 @@ Leave out the `DEMO_USERS_PASSWORD` line if no demo accounts are wanted.
    - Before that, a battery's signature check (check 4) can still use a version published on the PC. After it, every demo version is published on the live site.
 7. **API:** a cluster token reads its batteries at `https://www.sib-scania-eubp.eu/api/external/v1/…` (the API help page's examples).
 8. **Load:** after a day, check the instance's CPU and memory in Beanstalk's Monitoring. If the instance is short of memory, a larger instance type is a cost question for the owner.
+9. **The ID settings** (on the day): signed in as the team, open the Battery IDs tab (`/admin/battery-ids`). The page shows **no red notice**. A red notice names the missing `DPP_ID_*` settings: add them in Beanstalk (Configuration, Environment properties) and check again.
+10. **A demo battery's ID** (after check 6's "Reset demo data"): on Battery IDs, All IDs, tick "Show demo IDs". A demo ID reads `UN778474481TEST…`, and `https://www.sib-scania-eubp.eu/25S/<that ID>` opens its battery's public summary once it is published, or "Not published yet" while it isn't.
 
 ## 7. Restore points, and rolling back to the old app
 
@@ -159,4 +166,5 @@ aws elasticbeanstalk update-environment --region eu-north-1 --environment-name b
 
 - Running both apps at once: not wanted (the owner, 4 Nov 2026).
 - Moving the database or Atlas cluster.
-- E-mail and the identifier scheme's registration. Plan 6d builds the DUNS identifiers. Their settings join section 3 when it lands.
+- E-mail.
+- Registering the identifier scheme: the DUNS `778474481` is the company's own, and the IDs are on its domain (section 2.1 checks the domain's owner). The ID settings are in section 3.
