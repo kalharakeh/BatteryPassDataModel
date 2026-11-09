@@ -126,6 +126,12 @@ public sealed partial class BatteryIdPool(
         var seen = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var serial in serials)
         {
+            if (!IdentifierForms.IsSerial(serial)) // whatever the ID scheme (6d-5)
+            {
+                problems.Add(new IdProblem(serial, IdentifierForms.SerialRule));
+                continue;
+            }
+
             var made = identifiers.ItemFor(serial, request.IsDemo);
             if (made.Identifier is not { } identifier)
             {
@@ -133,7 +139,7 @@ public sealed partial class BatteryIdPool(
                 continue;
             }
 
-            var key = IdentifierForms.Clean(serial);
+            var key = IdentifierForms.Clean(serial); // without its dashes: VBC-92921 and VBC92921 are one (6d-5)
             if (seen.TryGetValue(key, out var first))
             {
                 problems.Add(new IdProblem(serial, first == serial ? "it is in this release twice" : $"it is in this release twice, also as {first}"));
@@ -561,7 +567,7 @@ public sealed partial class BatteryIdPool(
 
             if (Text(pack, "uniqueProductIdentifier") is { } identifier && IdentifierForms.Short(identifier) is var item && item != identifier)
             {
-                byKey.TryAdd(item, name);
+                byKey.TryAdd(IdentifierForms.Clean(item), name); // by its letters and digits too, as the keys are
             }
         }
 

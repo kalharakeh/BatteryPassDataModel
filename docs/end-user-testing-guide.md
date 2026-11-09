@@ -114,20 +114,20 @@ Each step says what to do, then **Expected:** what should happen.
 8. Cluster: Change on a battery.
    **Expected:** it moves at once, and the move is in the audit log.
 9. Battery IDs tab: release VPC-12221 to VPC-12230 with "Release new IDs": quantity 10, reference "PO 4512, line 2", model Compact 7M.
-   **Expected:** the release's page opens with "Released 10 battery IDs. Export them to Excel for the labels.", and its ten IDs Available, each with its battery ID (`UN778474481VPC12221` …).
-10. The same, with VPC-12228 to VPC-12240 and quantity 12, and VPC-12401 twice in the list.
-   **Expected:** nothing is released; the Release new IDs tab lists the reasons ("that is 13 IDs, not 12", "already released", "in this release twice") and keeps what you typed.
+   **Expected:** the release's page opens with "Released 10 battery IDs. Export them to Excel for the labels.", and its ten IDs Available, each with its battery ID (`UN778474481-VPC-12221` …).
+10. The same, with VPC-12228 to VPC-12240 and quantity 12, and VPC-12401 twice and vpc-12402 in the list.
+   **Expected:** nothing is released; the Release new IDs tab lists the reasons ("that is 13 IDs, not 12", "already released", "in this release twice", "only capital letters A–Z, digits 0–9 and single dashes") and keeps what you typed.
 11. The Releases tab, then Open on PO 4512, line 2, and Export to Excel.
    **Expected:**
    - Releases lists PO 4512, line 2 and the demo data's release, tagged Demo; the counts at the top are the real IDs only;
    - an Excel file with that release's ten IDs, one row per ID: serial number, battery ID, QR code address, model, reference, released by and when, status.
 12. Create battery: a Compact 7M batch, pick VPC-12221.
-   **Expected:** the picker offers Compact 7M's IDs first, then any model's, then the demo spares; the draft shows `UN778474481VPC12221` and its QR code; the ID is Used.
+   **Expected:** the picker offers Compact 7M's IDs first, then any model's, then the demo spares; the draft shows `UN778474481-VPC-12221` and its QR code; the ID is Used.
 13. On that draft, More: Change its battery ID…, VPC-12222.
    **Expected:** the draft now has VPC-12222 and its ID; VPC-12221 is Available again.
 14. All IDs: search VPC-12230; in its row's ⋯ menu, Void…, with a reason. Then tick "Show voided", and then "Show demo IDs".
    **Expected:** it leaves the list until "Show voided" is ticked, then shows as Voided with the reason; the create picker no longer offers it; the demo IDs show only once ticked.
-15. Signed out, open `/25S/UN778474481VPC12223`, then `/25S/UN778474481VPC12230`.
+15. Signed out, open `/25S/UN778474481-VPC-12223`, then `/25S/UN778474481-VPC-12230`.
    **Expected:** "Not published yet", then "Not available".
 16. Clusters tab: Demo data, Clear demo data.
    **Expected:**

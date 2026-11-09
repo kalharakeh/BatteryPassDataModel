@@ -78,7 +78,7 @@ The new app reads these. "Same" means the live environment's current value stays
 | `ID_GENERATION_SECRET` | same | Only the old app reads it. Keeping it makes a roll-back simpler. |
 | `DPP_ID_AGENCY` | `UN` (new) | The battery IDs' issuing agency: DUNS (decision 38). |
 | `DPP_ID_COMPANY` | `778474481` (new) | Scania Industrial Batteries AB's DUNS. |
-| `DPP_ID_BASE_URL` | `https://www.sib-scania-eubp.eu` (new) | The start of every battery ID and passport ID, e.g. `https://www.sib-scania-eubp.eu/25S/UN778474481…`. Without all three, the Battery IDs page shows a red notice naming the missing ones, and every real release and create is refused (check 9). |
+| `DPP_ID_BASE_URL` | `https://www.sib-scania-eubp.eu` (new) | The start of every battery ID and passport ID, e.g. `https://www.sib-scania-eubp.eu/25S/UN778474481-…`. Without all three, the Battery IDs page shows a red notice naming the missing ones, and every real release and create is refused (check 9). |
 
 ## 4. Why the switch is one command, and the command
 
@@ -141,7 +141,7 @@ Leave out the `DEMO_USERS_PASSWORD` line if no demo accounts are wanted.
 7. **API:** a cluster token reads its batteries at `https://www.sib-scania-eubp.eu/api/external/v1/…` (the API help page's examples).
 8. **Load:** after a day, check the instance's CPU and memory in Beanstalk's Monitoring. If the instance is short of memory, a larger instance type is a cost question for the owner.
 9. **The ID settings** (on the day): signed in as the team, open the Battery IDs tab (`/admin/battery-ids`). The page shows **no red notice**. A red notice names the missing `DPP_ID_*` settings: add them in Beanstalk (Configuration, Environment properties) and check again.
-10. **A demo battery's ID** (after check 6's "Reset demo data"): on Battery IDs, All IDs, tick "Show demo IDs". A demo ID reads `UN778474481TEST…`, and `https://www.sib-scania-eubp.eu/25S/<that ID>` opens its battery's public summary once it is published, or "Not published yet" while it isn't.
+10. **A demo battery's ID** (after check 6's "Reset demo data"): on Battery IDs, All IDs, tick "Show demo IDs". A demo ID reads `UN778474481-TEST-…`, and `https://www.sib-scania-eubp.eu/25S/<that ID>` opens its battery's public summary once it is published, or "Not published yet" while it isn't.
 
 ## 7. Restore points, and rolling back to the old app
 

@@ -19,7 +19,7 @@ public interface IIdentifierScheme
     Task<NewIdentifier> NewPackIdentifierAsync(BatteryPack pack, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// The battery ID a serial number makes, checked on its own (its letters and digits, its length, TEST). Whether another
+    /// The battery ID a serial number makes, checked on its own (the serial rule, its length, TEST). Whether another
     /// battery has it is the caller's check.
     /// </summary>
     NewIdentifier ItemFor(string serialNumber, bool demo);

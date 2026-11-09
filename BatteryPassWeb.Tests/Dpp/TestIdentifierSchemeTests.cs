@@ -47,6 +47,11 @@ public sealed class TestIdentifierSchemeTests
     [InlineData("https://www.sib-scania-eubp.eu/25S/UN778474481TESTDEMOC7M0001", true)]
     [InlineData("https://www.sib-scania-eubp.eu/dpp/UN778474481TESTDEMOC7M0001R1/v2", true)]
     [InlineData("https://www.sib-scania-eubp.eu/25S/UN778474481VPC12221", false)]
+    [InlineData("https://www.sib-scania-eubp.eu/25S/UN778474481-TEST-DEMO-C7M-0001", true)] // 6d-5
+    [InlineData("https://www.sib-scania-eubp.eu/dpp/UN778474481-TEST-DEMO-C7M-0001-R1/v2", true)]
+    [InlineData("https://www.sib-scania-eubp.eu/25S/UN778474481-VBC-92921", false)]
+    [InlineData("https://www.sib-scania-eubp.eu/25S/UN778474481-AB-TEST-1", false)]
+    [InlineData("https://www.sib-scania-eubp.eu/25S/UN778474481-ABUN123456789TEST1", false)] // a TEST mark only right after the company
     public void IsTestIdentifier_ShouldRecogniseOnlyMarkedIdentifiers(string identifier, bool expected)
     {
         Assert.Equal(expected, _scheme.IsTestIdentifier(identifier));

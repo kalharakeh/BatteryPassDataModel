@@ -63,7 +63,7 @@ public sealed class BatteryIdPoolTests(MongoFixture mongo)
         var items = await pool.ListAsync(new ReleasedIdFilter(Reference: result.ReleaseId));
         Assert.Equal(Enumerable.Range(12221, 10).Select(number => $"VPC-{number}"), items.Select(item => item.SerialNumber).Order(StringComparer.Ordinal));
         Assert.All(items, item => Assert.Equal(ReleasedIdStatuses.Available, item.Status));
-        Assert.Equal($"{Base}/25S/UN778474481VPC12221", items.Single(item => item.SerialNumber == "VPC-12221").Identifier);
+        Assert.Equal($"{Base}/25S/UN778474481-VPC-12221", items.Single(item => item.SerialNumber == "VPC-12221").Identifier);
         var release = (await pool.ReleasesAsync()).Single(summary => summary.ReleaseId == result.ReleaseId);
         Assert.Equal(("PO 4512, line 2", model, 10, 10), (release.Reference, release.ModelId, release.Total, release.Count(ReleasedIdStatuses.Available)));
     }
@@ -97,20 +97,34 @@ public sealed class BatteryIdPoolTests(MongoFixture mongo)
         await rig.Services.GetRequiredService<PackCreationService>().CreateAsync(ChangeSender.Team(Who), NewBattery(c7, "LEGACY-0001") with { FromPool = false });
 
         var result = await pool.ReleaseAsync(Who, new ReleaseRequest("PO 4514", null, [new IdRange("VPC-12228", "VPC-12240", "12")],
-            "VPC-12401\nVPC-12401\nvpc 12301\nTEST-9\n---\nDEMO-C7M-0001\nlegacy 0001\nvpc 12402\nVPC-12402"));
+            "VPC-12401\nVPC-12401\nVPC12301\nTEST-9\n---\nDEMO-C7M-0001\nLEGACY0001\nVPC12402\nVPC-12402\nvpc-12403\nVPC 12404"));
 
         Assert.Equal(0, result.Released);
         Assert.Null(result.ReleaseId);
         var reasons = result.Problems.ToDictionary(problem => problem.What, problem => problem.Reason);
         Assert.Equal("that is 13 IDs, not 12", reasons["VPC-12228 to VPC-12240"]);
         Assert.Equal("it is in this release twice", reasons["VPC-12401"]);
-        Assert.Equal("already released (Available, PO 4513)", reasons["vpc 12301"]);
+        Assert.Equal("already released (Available, PO 4513)", reasons["VPC12301"]); // only the dashes differ (6d-5)
         Assert.Equal(DunsIdentifierScheme.StartsWithTest, reasons["TEST-9"]);
-        Assert.Equal(DunsIdentifierScheme.NoLettersOrDigits, reasons["---"]);
+        Assert.Equal(IdentifierForms.SerialRule, reasons["---"]);
         Assert.Equal("already released (Published, Demo)", reasons["DEMO-C7M-0001"]); // one reason per serial number
-        Assert.Equal("battery LEGACY-0001 already has this serial number or battery ID", reasons["legacy 0001"]);
-        Assert.Equal("it is in this release twice, also as vpc 12402", reasons["VPC-12402"]);
+        Assert.Equal("battery LEGACY-0001 already has this serial number or battery ID", reasons["LEGACY0001"]);
+        Assert.Equal("it is in this release twice, also as VPC12402", reasons["VPC-12402"]);
+        Assert.Equal(IdentifierForms.SerialRule, reasons["vpc-12403"]); // never upper-cased silently
+        Assert.Equal(IdentifierForms.SerialRule, reasons["VPC 12404"]);
         Assert.DoesNotContain(await pool.ReleasesAsync(), release => release.Reference == "PO 4514");
+    }
+
+    [Fact]
+    public async Task TheSerialRule_ShouldHoldForEveryRelease_WhateverTheIdScheme()
+    {
+        var pool = new BatteryIdPool(new DppStore(mongo.NewContext()), new TestIdentifierScheme(), new ApplicationAuditService(mongo.NewContext()), TimeProvider.System);
+
+        var result = await pool.ReleaseAsync(Who, List("PO rule", "VBC-92921", "vbc-92922", "VBC-92923-"));
+
+        Assert.False(result.Done);
+        Assert.Equal(["vbc-92922", "VBC-92923-"], result.Problems.Select(problem => problem.What));
+        Assert.All(result.Problems, problem => Assert.Equal(IdentifierForms.SerialRule, problem.Reason));
     }
 
     [Fact]
@@ -158,7 +172,7 @@ public sealed class BatteryIdPoolTests(MongoFixture mongo)
 
         var pack = made.Pack!;
         Assert.Equal("VPC-12221", pack.Values["batterySerialNumber"].Value!.GetValue<string>()); // the released spelling
-        Assert.Equal($"{Base}/25S/UN778474481VPC12221", pack.Values["uniqueProductIdentifier"].Value!.GetValue<string>());
+        Assert.Equal($"{Base}/25S/UN778474481-VPC-12221", pack.Values["uniqueProductIdentifier"].Value!.GetValue<string>());
         Assert.Equal((ReleasedIdStatuses.Used, pack.Id), ((await pool.GetAsync("VPC-12221"))!.Status, (await pool.GetAsync("VPC-12221"))!.PackId));
         Assert.Null(again.Pack); // taken (the serial number is another battery's)
         Assert.Equal(PackCreationService.NotAvailable, never.Problem);
@@ -191,7 +205,7 @@ public sealed class BatteryIdPoolTests(MongoFixture mongo)
         Assert.Null(await pool.SwapAsync(Who, draft.Id, "SWAP-0002"));
         var swapped = (await rig.Store.GetAsync<BatteryPack>(draft.Id))!;
         Assert.Equal("SWAP-0002", swapped.Values["batterySerialNumber"].Value!.GetValue<string>());
-        Assert.EndsWith("/25S/UN778474481SWAP0002", swapped.Values["uniqueProductIdentifier"].Value!.GetValue<string>(), StringComparison.Ordinal);
+        Assert.EndsWith("/25S/UN778474481-SWAP-0002", swapped.Values["uniqueProductIdentifier"].Value!.GetValue<string>(), StringComparison.Ordinal);
         Assert.Equal(ReleasedIdStatuses.Available, (await pool.GetAsync("SWAP-0001"))!.Status);
 
         Assert.Null((await rig.Services.GetRequiredService<BatteryPages>().RemoveDraftAsync(Who, draft.Id)).Problem);
@@ -226,16 +240,29 @@ public sealed class BatteryIdPoolTests(MongoFixture mongo)
         using var __ = rig;
         await pool.ReleaseAsync(Who, List("PO scan", "SCAN-0001", "SCAN-0002"));
         await pool.VoidAsync(Who, "SCAN-0002", "Label damaged");
+        await rig.Store.ReleasedIds.InsertOneAsync(new ReleasedBatteryId // released before 6d-5, in the old form
+        {
+            Id = "OLD0001",
+            SerialNumber = "OLD-0001",
+            Identifier = $"{Base}/25S/UN778474481OLD0001",
+            ReleaseId = "old-release",
+            Reference = "PO old",
+            Status = ReleasedIdStatuses.Available,
+            ReleasedBy = Who,
+            ReleasedAtUtc = DateTime.UtcNow,
+        });
         var controller = new PassportController(new DppReaders(rig.Services.GetRequiredService<ClusterRepository>()), rig.Services.GetRequiredService<PassportPages>())
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity()) } },
         };
 
-        var available = Assert.IsType<ViewResult>(await controller.Summary("UN778474481SCAN0001", CancellationToken.None, pool));
-        var voided = Assert.IsType<ViewResult>(await controller.Summary("UN778474481SCAN0002", CancellationToken.None, pool));
-        var published = Assert.IsType<ViewResult>(await controller.Summary("UN778474481TESTDEMOC7M0001", CancellationToken.None, pool));
+        var available = Assert.IsType<ViewResult>(await controller.Summary("UN778474481-SCAN-0001", CancellationToken.None, pool));
+        var voided = Assert.IsType<ViewResult>(await controller.Summary("UN778474481-SCAN-0002", CancellationToken.None, pool));
+        var published = Assert.IsType<ViewResult>(await controller.Summary("UN778474481-TEST-DEMO-C7M-0001", CancellationToken.None, pool));
+        var old = Assert.IsType<ViewResult>(await controller.Summary("UN778474481OLD0001", CancellationToken.None, pool));
 
         Assert.Equal(("~/Views/Dpp/NotPublishedYet.cshtml", 404), (available.ViewName, available.StatusCode));
+        Assert.Equal(("~/Views/Dpp/NotPublishedYet.cshtml", 404), (old.ViewName, old.StatusCode));
         Assert.Equal(("~/Views/Dpp/NotAvailable.cshtml", 404), (voided.ViewName, voided.StatusCode));
         Assert.Equal("Summary", published.ViewName);
         var view = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Dpp", "NotPublishedYet.cshtml"));
@@ -258,7 +285,7 @@ public sealed class BatteryIdPoolTests(MongoFixture mongo)
             },
         };
 
-        var svg = Assert.IsType<ContentResult>(await qr.QrCode("UN778474481QR0001", CancellationToken.None));
+        var svg = Assert.IsType<ContentResult>(await qr.QrCode("UN778474481-QR-0001", CancellationToken.None));
 
         Assert.Contains("<svg", svg.Content, StringComparison.Ordinal); // labels can be printed before publication (decision 30)
     }
@@ -276,7 +303,7 @@ public sealed class BatteryIdPoolTests(MongoFixture mongo)
 
         Assert.Equal(DemoDataService.SpareSerials.Length, demo.Count(ReleasedIdStatuses.Available));
         Assert.True(demo.Count(ReleasedIdStatuses.Published) > 0);
-        Assert.All(spares, spare => Assert.Matches("/25S/UN778474481TESTDEMOSPARE000[1-4]$", spare.Identifier));
+        Assert.All(spares, spare => Assert.Matches("/25S/UN778474481-TEST-DEMO-SPARE-000[1-4]$", spare.Identifier));
         Assert.Equal(["REAL-0001"], (await pool.ListAsync(new ReleasedIdFilter())).Select(item => item.SerialNumber)); // real IDs stay
     }
 
@@ -291,7 +318,7 @@ public sealed class BatteryIdPoolTests(MongoFixture mongo)
         var made = await api.CreateAsync(ChangeSender.Team(Who), c7.BatchId, c7.OperatorId, c7.ClusterId, new Dictionary<string, JsonNode?> { ["batterySerialNumber"] = "API-0001" });
         var refused = await api.CreateAsync(ChangeSender.Team(Who), c7.BatchId, c7.OperatorId, c7.ClusterId, new Dictionary<string, JsonNode?> { ["batterySerialNumber"] = "API-0002" });
 
-        Assert.EndsWith("/25S/UN778474481API0001", made.Pack!.Values["uniqueProductIdentifier"].Value!.GetValue<string>(), StringComparison.Ordinal);
+        Assert.EndsWith("/25S/UN778474481-API-0001", made.Pack!.Values["uniqueProductIdentifier"].Value!.GetValue<string>(), StringComparison.Ordinal);
         Assert.Equal(PackCreationService.NotAvailable, refused.Problem);
     }
 
@@ -309,7 +336,7 @@ public sealed class BatteryIdPoolTests(MongoFixture mongo)
         var sheet = new StreamReader(zip.GetEntry("xl/worksheets/sheet1.xml")!.Open()).ReadToEnd();
         var rows = Regex.Matches(sheet, "<row r=\"(\\d+)\">(.*?)</row>").Select(row => Regex.Matches(row.Groups[2].Value, "<t xml:space=\"preserve\">(.*?)</t>").Select(cell => System.Net.WebUtility.HtmlDecode(cell.Groups[1].Value)).ToArray()).ToArray();
         Assert.Equal(["Serial number", "Battery ID", "QR code address", "Model", "Reference", "Released by", "Released (UTC)", "Status"], rows[0]);
-        Assert.Equal(["000123", "UN778474481000123", $"{Base}/25S/UN778474481000123", "Any model", "=PO Åsa; \"x\""], rows[1][..5]);
+        Assert.Equal(["000123", "UN778474481-000123", $"{Base}/25S/UN778474481-000123", "Any model", "=PO Åsa; \"x\""], rows[1][..5]);
         Assert.Equal([items[0].ReleasedBy, "Available"], rows[1][5..]); // the date cell isn't text
         Assert.DoesNotContain("<f>", sheet, StringComparison.Ordinal); // text cells: no formula, nothing turned into a number or date
         Assert.Contains("t=\"inlineStr\"", sheet, StringComparison.Ordinal);

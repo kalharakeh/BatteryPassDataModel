@@ -107,6 +107,12 @@
   background: transparent;
 }
 
+/* A reason may be long (the serial rule, 6d-5): it wraps rather than widening the page. */
+.bp-problems-table td:last-child {
+  min-width: 16rem;
+  white-space: normal;
+}
+
 .bp-release-filter {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 10rem)) minmax(0, 1fr) auto;

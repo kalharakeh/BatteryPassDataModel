@@ -49,7 +49,7 @@ Keep these open while testing:
 | DEMO-CORE-0002 | demo-fleet | A draft |
 | DEMO-CORE-0003 | demo-fleet | Waste, marked for deletion |
 
-The demo batteries come from a release with the reference "Demo", on the Battery IDs tab, with four spare IDs (DEMO-SPARE-0001 to DEMO-SPARE-0004) for trying the create picker and "Change its battery ID…". With the three ID settings set (`DPP_ID_AGENCY`, `DPP_ID_COMPANY`, `DPP_ID_BASE_URL`), their IDs are marked TEST after the DUNS, such as `UN778474481TESTDEMOC7M0001`. Without them they are test IDs starting with `urn:x-battery-pass:TEST-`. Either way the pages show a "Test passport" tag.
+The demo batteries come from a release with the reference "Demo", on the Battery IDs tab, with four spare IDs (DEMO-SPARE-0001 to DEMO-SPARE-0004) for trying the create picker and "Change its battery ID…". With the three ID settings set (`DPP_ID_AGENCY`, `DPP_ID_COMPANY`, `DPP_ID_BASE_URL`), their IDs are marked TEST after the DUNS, such as `UN778474481-TEST-DEMO-C7M-0001`. Without them they are test IDs starting with `urn:x-battery-pass:TEST-`. Either way the pages show a "Test passport" tag.
 
 ## Scenario matrix
 
@@ -102,7 +102,7 @@ Scanning a released ID whose passport isn't published yet shows "Not published y
 - [ ] The two badges show on every passport page with the right status. The Battery badge never shows to the public.
 - [ ] Battery IDs: a range releases and opens the release's page with every ID Available; its "Export to Excel" opens with that release's IDs, one row per ID and its QR address.
 - [ ] The Battery IDs page opens on Releases, with the real IDs' counts at the top; All IDs shows demo IDs only with "Show demo IDs" ticked, and voided IDs only with "Show voided" ticked (or the status Voided chosen); Releases shows a release whose IDs are all voided only with it ticked, and its own page lists every ID; Void… is in a row's ⋯ menu.
-- [ ] A release with a wrong count, a repeated or already released serial number lists every reason and releases nothing.
+- [ ] A release with a wrong count, a repeated or already released serial number, or one with lower case or a double dash lists every reason and releases nothing.
 - [ ] Create battery picks a released serial number (no typing); the draft shows its battery ID and QR code at once; the ID turns Used.
 - [ ] "Change its battery ID…" on a draft takes another available ID and gives the old one back; a voided ID is never offered again.
 - [ ] Scanning a released, unpublished ID shows "Not published yet"; a voided one "Not available".

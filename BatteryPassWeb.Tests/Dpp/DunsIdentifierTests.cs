@@ -19,9 +19,10 @@ namespace BatteryPassWeb.Tests.Dpp;
 
 /// <summary>
 /// Step 6d, the battery ID the product owner chose (O-1 and 6d, 5 Nov 2026): an ISO/IEC 15459 item ID under issuing
-/// agency UN (DUNS 778474481) and the battery's serial number with only its letters and digits, written as a web address
-/// (ISO/IEC 18975, data identifier 25S) under https://www.sib-scania-eubp.eu; made when the battery is created, a
-/// successor adding R1, R2, …; a demo battery's marked TEST. A version's passport ID is /dpp/&lt;item&gt;/v&lt;n&gt;.
+/// agency UN (DUNS 778474481), one dash and the battery's serial number as written (6d-5: capital letters, digits and
+/// single dashes), as a web address (ISO/IEC 18975, data identifier 25S) under https://www.sib-scania-eubp.eu; made when
+/// the battery is created, a successor adding -R1, -R2, …; a demo battery's marked -TEST-. A version's passport ID is
+/// /dpp/&lt;item&gt;/v&lt;n&gt;. IDs made before 6d-5 (UN778474481VPC12221) stay as they are and are still read.
 /// </summary>
 [Collection(MongoCollection.Name)]
 public sealed class DunsIdentifierTests(MongoFixture mongo)
@@ -45,17 +46,18 @@ public sealed class DunsIdentifierTests(MongoFixture mongo)
     }
 
     [Fact]
-    public async Task ABatteryId_ShouldBeTheAgencyTheDunsAndTheSerialsLettersAndDigits_AsAWebAddress()
+    public async Task ABatteryId_ShouldBeTheAgencyTheDunsADashAndTheSerialAsWritten_AsAWebAddress()
     {
         var scheme = Scheme(new DppStore(mongo.NewContext()));
 
-        var made = await scheme.NewPackIdentifierAsync(Pack("VPC-12221"));
+        var made = await scheme.NewPackIdentifierAsync(Pack("VBC-92921"));
 
-        Assert.Equal($"{Base}/25S/UN778474481VPC12221", made.Identifier);
+        Assert.Equal($"{Base}/25S/UN778474481-VBC-92921", made.Identifier);
         Assert.Null(made.Problem);
         Assert.False(scheme.IsTestIdentifier(made.Identifier!));
         Assert.Empty(new AttributeValueValidator(DppStoreTesting.Schemas).Validate(AttributeCatalog.ByNumber(6), JsonValue.Create(made.Identifier)));
-        Assert.Equal("UN778474481VPC12221", (await scheme.NewPackIdentifierAsync(Pack(" vpc 12221/ä "))).Identifier![^19..]);
+        Assert.Equal($"{Base}/dpp/UN778474481-VBC-92921/v1", scheme.NewPassportIdentifier(made.Identifier!, 1));
+        Assert.Equal($"{Base}/25S/UN778474481-VBC92921", (await scheme.NewPackIdentifierAsync(Pack("VBC92921"))).Identifier); // no other battery has it yet
     }
 
     [Fact]
@@ -65,18 +67,27 @@ public sealed class DunsIdentifierTests(MongoFixture mongo)
 
         var demo = (await scheme.NewPackIdentifierAsync(Pack("DEMO-C7M-0001", demo: true))).Identifier!;
 
-        Assert.Equal($"{Base}/25S/UN778474481TESTDEMOC7M0001", demo);
+        Assert.Equal($"{Base}/25S/UN778474481-TEST-DEMO-C7M-0001", demo);
         Assert.True(scheme.IsTestIdentifier(demo));
-        Assert.True(scheme.IsTestIdentifier($"{Base}/dpp/UN778474481TESTDEMOC7M0001R1/v2"));
-        Assert.Matches("^[A-Z0-9]{1,50}$", IdentifierForms.Short(demo)); // ISO/IEC 15459: A–Z, 0–9, at most 50
+        Assert.True(scheme.IsTestIdentifier($"{Base}/dpp/UN778474481-TEST-DEMO-C7M-0001-R1/v2"));
+        Assert.Matches("^[A-Z0-9-]{1,50}$", IdentifierForms.Short(demo)); // ISO/IEC 15459: A–Z, 0–9 and the dash, at most 50
     }
 
     [Theory]
-    [InlineData("---", false, DunsIdentifierScheme.NoLettersOrDigits)]
-    [InlineData("äöü", false, DunsIdentifierScheme.NoLettersOrDigits)]
+    [InlineData("vbc-92921", false, IdentifierForms.SerialRule)] // never upper-cased silently
+    [InlineData("VBC 92921", false, IdentifierForms.SerialRule)]
+    [InlineData("-VBC-92921", false, IdentifierForms.SerialRule)]
+    [InlineData("VBC-92921-", false, IdentifierForms.SerialRule)]
+    [InlineData("VBC--92921", false, IdentifierForms.SerialRule)]
+    [InlineData("VBC_92921", false, IdentifierForms.SerialRule)]
+    [InlineData("VBC.92921", false, IdentifierForms.SerialRule)]
+    [InlineData("VBC/92921", false, IdentifierForms.SerialRule)]
+    [InlineData("ÄBC-92921", false, IdentifierForms.SerialRule)]
+    [InlineData("---", false, IdentifierForms.SerialRule)]
+    [InlineData("", false, IdentifierForms.SerialRule)]
     [InlineData("TEST-0001", false, DunsIdentifierScheme.StartsWithTest)]
-    [InlineData("A23456789012345678901234567890123456X", false, "at most 36 letters and digits")] // 37: no room for R99 within 50
-    [InlineData("A2345678901234567890123456789012X", true, "at most 32 letters and digits")] // a demo's TEST takes 4
+    [InlineData("A234567890-234567890-234567890-2345", false, "at most 34 characters")] // 35: no room for -R99 within 50
+    [InlineData("A234567890-234567890-234567890", true, "at most 29 characters")] // a demo's TEST- takes 5
     public async Task ASerialThatCantMakeAValidId_ShouldBeRefused(string serial, bool demo, string problem)
     {
         var made = await Scheme(new DppStore(mongo.NewContext())).NewPackIdentifierAsync(Pack(serial, demo));
@@ -88,30 +99,35 @@ public sealed class DunsIdentifierTests(MongoFixture mongo)
     [Fact]
     public async Task TheLongestSerial_ShouldStillLeaveRoomForASuccessorsR99()
     {
-        var made = await Scheme(new DppStore(mongo.NewContext())).NewPackIdentifierAsync(Pack(new string('A', 36)));
+        var made = await Scheme(new DppStore(mongo.NewContext())).NewPackIdentifierAsync(Pack(new string('A', 34)));
 
-        Assert.Equal(47, IdentifierForms.Short(made.Identifier!).Length);
-        Assert.True(IdentifierForms.IsItem(IdentifierForms.Short(made.Identifier!) + "R99"));
-        Assert.False(IdentifierForms.IsItem("UN778474481" + new string('A', 40)));
+        Assert.Equal(46, IdentifierForms.Short(made.Identifier!).Length);
+        Assert.True(IdentifierForms.IsItem(IdentifierForms.Short(made.Identifier!) + "-R99"));
+        Assert.False(IdentifierForms.IsItem("UN778474481-" + new string('A', 39)));
     }
 
     [Fact]
-    public async Task AnIdAnotherBatteryHas_ShouldBeRefused_NamingThatBattery()
+    public async Task AnIdAnotherBatteryHas_ShouldBeRefused_NamingThatBattery_EvenWhenOnlyTheDashesDiffer()
     {
         var store = new DppStore(mongo.NewContext());
-        await store.InsertAsync(Pack("VPC-12221", identifier: $"{Base}/25S/UN778474481VPC12221"));
+        await store.InsertAsync(Pack("VBC-92921", identifier: $"{Base}/25S/UN778474481-VBC-92921"));
+        await store.InsertAsync(Pack("VPC-12221", identifier: $"{Base}/25S/UN778474481VPC12221")); // an ID made before 6d-5
+        var scheme = Scheme(store);
 
-        var made = await Scheme(store).NewPackIdentifierAsync(Pack("vpc 12221"));
+        var nearDuplicate = await scheme.NewPackIdentifierAsync(Pack("VBC92921"));
+        var oldForm = await scheme.NewPackIdentifierAsync(Pack("VPC-12221"));
 
-        Assert.Null(made.Identifier);
-        Assert.Equal(DunsIdentifierScheme.Taken("UN778474481VPC12221", "VPC-12221"), made.Problem);
+        Assert.Null(nearDuplicate.Identifier);
+        Assert.Equal(DunsIdentifierScheme.Taken("UN778474481-VBC-92921", "VBC-92921"), nearDuplicate.Problem);
+        Assert.Equal(DunsIdentifierScheme.Taken("UN778474481VPC12221", "VPC-12221"), oldForm.Problem);
+        Assert.Equal($"{Base}/25S/UN778474481-BC-92921", (await scheme.NewPackIdentifierAsync(Pack("BC-92921"))).Identifier); // only the whole ID counts
     }
 
     [Fact]
     public async Task ASuccessor_ShouldGetTheNextFreeRNumber()
     {
         var store = new DppStore(mongo.NewContext());
-        var first = Pack("VPC-77001", identifier: $"{Base}/25S/UN778474481VPC77001");
+        var first = Pack("VPC-77001", identifier: $"{Base}/25S/UN778474481-VPC-77001");
         await store.InsertAsync(first);
         var scheme = Scheme(store);
 
@@ -120,8 +136,30 @@ public sealed class DunsIdentifierTests(MongoFixture mongo)
         await store.InsertAsync(second);
         var r2 = (await scheme.NewPackIdentifierAsync(Pack("VPC-77001", successorOf: second.Id))).Identifier!;
 
-        Assert.Equal($"{Base}/25S/UN778474481VPC77001R1", r1);
-        Assert.Equal($"{Base}/25S/UN778474481VPC77001R2", r2);
+        Assert.Equal($"{Base}/25S/UN778474481-VPC-77001-R1", r1);
+        Assert.Equal($"{Base}/25S/UN778474481-VPC-77001-R2", r2);
+    }
+
+    [Fact]
+    public async Task ASuccessorOfABatteryWithAnIdFromBefore65_ShouldContinueThatId()
+    {
+        // Old records stay as they are (the owner, 6d-5): the new passport continues the first one's ID, whatever its serial.
+        var store = new DppStore(mongo.NewContext());
+        var old = Pack("VPC-77002", identifier: $"{Base}/25S/UN778474481VPC77002");
+        var loose = Pack("vpc 77003", identifier: $"{Base}/25S/UN778474481VPC77003"); // a serial the rule now refuses
+        await store.InsertAsync(old);
+        await store.InsertAsync(loose);
+        var scheme = Scheme(store);
+
+        var r1 = (await scheme.NewPackIdentifierAsync(Pack("VPC-77002", successorOf: old.Id))).Identifier!;
+        var second = Pack("VPC-77002", successorOf: old.Id, identifier: r1);
+        await store.InsertAsync(second);
+        var r2 = (await scheme.NewPackIdentifierAsync(Pack("VPC-77002", successorOf: second.Id))).Identifier!;
+        var looseR1 = await scheme.NewPackIdentifierAsync(Pack("vpc 77003", successorOf: loose.Id));
+
+        Assert.Equal($"{Base}/25S/UN778474481VPC77002R1", r1);
+        Assert.Equal($"{Base}/25S/UN778474481VPC77002R2", r2);
+        Assert.Equal(($"{Base}/25S/UN778474481VPC77003R1", (string?)null), (looseR1.Identifier, looseR1.Problem));
     }
 
     [Fact]
@@ -129,9 +167,9 @@ public sealed class DunsIdentifierTests(MongoFixture mongo)
     {
         var scheme = Scheme(new DppStore(mongo.NewContext()));
 
-        var passport = scheme.NewPassportIdentifier($"{Base}/25S/UN778474481VPC12221", 2);
+        var passport = scheme.NewPassportIdentifier($"{Base}/25S/UN778474481-VBC-92921-R1", 2);
 
-        Assert.Equal($"{Base}/dpp/UN778474481VPC12221/v2", passport);
+        Assert.Equal($"{Base}/dpp/UN778474481-VBC-92921-R1/v2", passport);
         Assert.False(scheme.IsTestIdentifier(passport));
         Assert.Empty(new AttributeValueValidator(DppStoreTesting.Schemas).Validate(AttributeCatalog.ByNumber(5), JsonValue.Create(passport)));
     }
@@ -149,6 +187,11 @@ public sealed class DunsIdentifierTests(MongoFixture mongo)
     [Fact]
     public void ThePagesAddresses_ShouldUseTheShortItem()
     {
+        Assert.Equal("/dpp/UN778474481-VBC-92921", PassportPages.SummaryHref($"{Base}/25S/UN778474481-VBC-92921"));
+        Assert.Equal("/dpp/UN778474481-VBC-92921-R1/v2/detail", PassportPages.DetailHref($"{Base}/dpp/UN778474481-VBC-92921-R1/v2"));
+        Assert.Equal("/qr/UN778474481-VBC-92921/svg", PassportPages.QrHref($"{Base}/25S/UN778474481-VBC-92921"));
+        Assert.Equal("UN778474481-VBC-92921", BatteryPages.ShortId($"{Base}/25S/UN778474481-VBC-92921"));
+        // IDs made before 6d-5 keep theirs.
         Assert.Equal("/dpp/UN778474481VPC12221", PassportPages.SummaryHref($"{Base}/25S/UN778474481VPC12221"));
         Assert.Equal("/dpp/UN778474481VPC12221/detail", PassportPages.DetailHref($"{Base}/25S/UN778474481VPC12221"));
         Assert.Equal("/dpp/UN778474481VPC12221R1/v2", PassportPages.SummaryHref($"{Base}/dpp/UN778474481VPC12221R1/v2"));
@@ -166,7 +209,8 @@ public sealed class DunsIdentifierTests(MongoFixture mongo)
         var live = new DppLinks(Options.Create(DemoRig.WithDunsIds(new BatteryPassOptions { AppBaseUrl = $"{Base}/" })));
         var pc = new DppLinks(Options.Create(DemoRig.WithDunsIds(new BatteryPassOptions { AppBaseUrl = "http://localhost:5186" })));
 
-        Assert.Equal($"{Base}/25S/UN778474481VPC12221", live.PassportUrl($"{Base}/25S/UN778474481VPC12221"));
+        Assert.Equal($"{Base}/25S/UN778474481-VBC-92921", live.PassportUrl($"{Base}/25S/UN778474481-VBC-92921"));
+        Assert.Equal($"{Base}/25S/UN778474481VPC12221", live.PassportUrl($"{Base}/25S/UN778474481VPC12221")); // made before 6d-5
         Assert.Equal("http://localhost:5186/25S/UN778474481VPC12221", pc.PassportUrl($"{Base}/25S/UN778474481VPC12221"));
         Assert.Equal("http://localhost:5186/dpp/urn:x-battery-pass:TEST-0f8c", pc.PassportUrl("urn:x-battery-pass:TEST-0f8c"));
     }
@@ -176,8 +220,10 @@ public sealed class DunsIdentifierTests(MongoFixture mongo)
     {
         var item = new ItemIdController();
 
-        Assert.Equal("/dpp/UN778474481VPC12221", Assert.IsType<RedirectResult>(item.Item("UN778474481VPC12221")).Url);
+        Assert.Equal("/dpp/UN778474481-VBC-92921", Assert.IsType<RedirectResult>(item.Item("UN778474481-VBC-92921")).Url);
+        Assert.Equal("/dpp/UN778474481VPC12221", Assert.IsType<RedirectResult>(item.Item("UN778474481VPC12221")).Url); // made before 6d-5
         Assert.IsType<NotFoundResult>(item.Item("not-an-id"));
+        Assert.IsType<NotFoundResult>(item.Item("UN778474481-VBC--92921"));
         Assert.Contains("\"25S\"", File.ReadAllText(DppTestFiles.RepoFile("web", "Controllers", "HomeController.cs")), StringComparison.Ordinal); // a scanned address is searched by its item
     }
 
@@ -188,7 +234,7 @@ public sealed class DunsIdentifierTests(MongoFixture mongo)
         // slashes encoded (%2F), so the lookups decode it once.
         using var rig = await DemoRig.StartAsync(mongo, dunsIds: true);
         await rig.Demo.SeedAsync(DemoRig.Who);
-        var encoded = Uri.EscapeDataString($"{Base}/25S/UN778474481TESTDEMOC7M0001").Replace("%3A", ":", StringComparison.Ordinal);
+        var encoded = Uri.EscapeDataString($"{Base}/25S/UN778474481-TEST-DEMO-C7M-0001").Replace("%3A", ":", StringComparison.Ordinal);
         var encodedPassport = Uri.EscapeDataString((await rig.Services.GetRequiredService<PassportPages>().FindAsync("DEMO-C7M-0001"))!.DigitalProductPassportId);
 
         var page = await rig.Services.GetRequiredService<PassportPages>().FindAsync(encoded);
@@ -206,6 +252,10 @@ public sealed class DunsIdentifierTests(MongoFixture mongo)
         Assert.Contains(".bp-field-grid dd {\n  min-width: 0;\n  overflow-wrap: anywhere;\n}", File.ReadAllText(DppTestFiles.RepoFile("web", "wwwroot", "css", "bp-status.css")).Replace("\r\n", "\n"), StringComparison.Ordinal);
 
     [Fact]
+    public void ALongRefusal_ShouldWrapInTheProblemsTable_RatherThanWidenThePage() => // the serial rule's words (6d-5)
+        Assert.Contains(".bp-problems-table td:last-child {\n  min-width: 16rem;\n  white-space: normal;\n}", File.ReadAllText(DppTestFiles.RepoFile("web", "wwwroot", "css", "bp-battery-ids.css")).Replace("\r\n", "\n"), StringComparison.Ordinal);
+
+    [Fact]
     public async Task TheDemoData_ShouldGetTestIds_AndSuccessorsRNumbers()
     {
         using var rig = await DemoRig.StartAsync(mongo, dunsIds: true);
@@ -217,17 +267,18 @@ public sealed class DunsIdentifierTests(MongoFixture mongo)
         Assert.All(packs, pack =>
         {
             var values = pack["Values"].AsBsonDocument;
-            var serial = IdentifierForms.Clean(values["batterySerialNumber"]["Value"].AsString);
-            Assert.Matches($"^{Regex.Escape(Base)}/25S/UN778474481TEST{serial}(R[0-9]+)?$", values["uniqueProductIdentifier"]["Value"].AsString);
+            var serial = values["batterySerialNumber"]["Value"].AsString; // as written: the demo's are in the rule's form
+            Assert.Matches($"^{Regex.Escape(Base)}/25S/UN778474481-TEST-{Regex.Escape(serial)}(-R[0-9]+)?$", values["uniqueProductIdentifier"]["Value"].AsString);
         });
         var identifiers = packs.Select(pack => pack["Values"]["uniqueProductIdentifier"]["Value"].AsString).ToArray();
-        Assert.Contains(identifiers, id => id.EndsWith("TESTDEMOC13M0001R1", StringComparison.Ordinal)); // DEMO-C13M-0001's second passport
-        Assert.Contains(identifiers, id => id.EndsWith("TESTDEMOC13M0001R2", StringComparison.Ordinal)); // and its third
+        Assert.Contains(identifiers, id => id.EndsWith("-TEST-DEMO-C13M-0001-R1", StringComparison.Ordinal)); // DEMO-C13M-0001's second passport
+        Assert.Contains(identifiers, id => id.EndsWith("-TEST-DEMO-C13M-0001-R2", StringComparison.Ordinal)); // and its third
 
         // A battery is found by its short item, its page by its version's address.
         var c7 = (await pages.FindAsync("DEMO-C7M-0001"))!;
-        Assert.Equal(c7.PackId, (await pages.FindAsync("UN778474481TESTDEMOC7M0001"))!.PackId);
-        Assert.Equal($"{Base}/dpp/UN778474481TESTDEMOC7M0001/v{c7.Number}", c7.DigitalProductPassportId);
+        Assert.Equal(c7.PackId, (await pages.FindAsync("UN778474481-TEST-DEMO-C7M-0001"))!.PackId);
+        Assert.Equal(c7.PackId, (await pages.FindAsync($"{Base}/dpp/UN778474481-TEST-DEMO-C7M-0001/v{c7.Number}"))!.PackId);
+        Assert.Equal($"{Base}/dpp/UN778474481-TEST-DEMO-C7M-0001/v{c7.Number}", c7.DigitalProductPassportId);
     }
 
     [Fact]
@@ -240,10 +291,10 @@ public sealed class DunsIdentifierTests(MongoFixture mongo)
         var before = await rig.Count(DppStore.Packs);
 
         var result = await rig.Services.GetRequiredService<PackCreationService>().CreateAsync(team, new NewPack(
-            c7.BatchId, c7.OperatorId, c7.ClusterId, new Dictionary<string, JsonNode?> { ["batterySerialNumber"] = "demo c7m 0001" }, IsDemo: true));
+            c7.BatchId, c7.OperatorId, c7.ClusterId, new Dictionary<string, JsonNode?> { ["batterySerialNumber"] = "DEMOC7M0001" }, IsDemo: true));
 
         Assert.Null(result.Pack);
-        Assert.Equal($"{PackCreationService.CantGetId}: {DunsIdentifierScheme.Taken("UN778474481TESTDEMOC7M0001", "DEMO-C7M-0001")}", result.Problem);
+        Assert.Equal($"{PackCreationService.CantGetId}: {DunsIdentifierScheme.Taken("UN778474481-TEST-DEMO-C7M-0001", "DEMO-C7M-0001")}", result.Problem);
         Assert.Equal(before, await rig.Count(DppStore.Packs));
     }
 
@@ -279,19 +330,57 @@ public sealed class DunsIdentifierTests(MongoFixture mongo)
         var text = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", folder, view));
 
         Assert.DoesNotContain("scheme is chosen", text, StringComparison.Ordinal); // chosen on 5 Nov 2026
-        Assert.DoesNotContain("start with TEST-", text, StringComparison.Ordinal); // a demo ID is UN778474481TEST…
+        Assert.DoesNotContain("start with TEST-", text, StringComparison.Ordinal); // a demo ID is UN778474481-TEST-…
         Assert.Contains("marked", text, StringComparison.Ordinal);
     }
 
     [Fact]
     public void AnId_ShouldBeShownShort_AndLinkedToItsFullAddress()
     {
+        Assert.Equal("UN778474481-VBC-92921", IdentifierForms.Display($"{Base}/25S/UN778474481-VBC-92921"));
+        Assert.Equal("UN778474481-VBC-92921-R1/v2", IdentifierForms.Display($"{Base}/dpp/UN778474481-VBC-92921-R1/v2"));
         Assert.Equal("UN778474481VPC12221", IdentifierForms.Display($"{Base}/25S/UN778474481VPC12221"));
         Assert.Equal("UN778474481VPC12221R1/v2", IdentifierForms.Display($"{Base}/dpp/UN778474481VPC12221R1/v2"));
         Assert.Equal("urn:x-battery-pass:TEST-0f8c", IdentifierForms.Display("urn:x-battery-pass:TEST-0f8c"));
         var partial = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Shared", "_IdValue.cshtml"));
         Assert.Contains("href=\"@Links.PassportUrl(Model)\"", partial, StringComparison.Ordinal);
         Assert.Contains("d-none d-print-inline\">@Model<", partial, StringComparison.Ordinal); // on paper the full address
+    }
+
+    [Theory]
+    [InlineData("UN778474481-VBC-92921", true)]
+    [InlineData("UN778474481-VBC-92921-R1", true)]
+    [InlineData("UN778474481-TEST-DEMO-C7M-0001", true)]
+    [InlineData("UN778474481-000123", true)]
+    [InlineData("UN778474481VPC12221", true)] // made before 6d-5: still read
+    [InlineData("UN778474481VPC12221R1", true)]
+    [InlineData("UN778474481TESTDEMOC7M0001", true)]
+    [InlineData("UN778474481", false)]
+    [InlineData("UN778474481-", false)]
+    [InlineData("UN778474481--VBC", false)]
+    [InlineData("UN778474481-VBC--92921", false)]
+    [InlineData("UN778474481-VBC-92921-", false)]
+    [InlineData("UN778474481-vbc-92921", false)]
+    [InlineData("UN778474481-VBC_92921", false)]
+    public void AnItemId_ShouldBeRead_InTheNewFormAndTheOldOne(string item, bool valid)
+    {
+        Assert.Equal(valid, IdentifierForms.IsItem(item));
+        Assert.Equal(valid ? item : $"{Base}/25S/{item}", IdentifierForms.Short($"{Base}/25S/{item}"));
+        Assert.Equal(valid ? $"{item}/v3" : $"{Base}/dpp/{item}/v3", IdentifierForms.Display($"{Base}/dpp/{item}/v3"));
+        Assert.Equal(valid, IdentifierForms.IsWebAddress($"{Base}/25S/{item}"));
+    }
+
+    [Fact]
+    public void TheSerialRule_ShouldBeCapitalsDigitsAndSingleDashes()
+    {
+        Assert.True(IdentifierForms.IsSerial("VBC-92921"));
+        Assert.True(IdentifierForms.IsSerial("DEMO-C7M-0001"));
+        Assert.True(IdentifierForms.IsSerial("000123"));
+        Assert.False(IdentifierForms.IsSerial("VBC--92921"));
+        Assert.False(IdentifierForms.IsSerial("vbc-92921"));
+        Assert.False(IdentifierForms.IsSerial(null));
+        Assert.Contains("capital letters A–Z, digits 0–9 and single dashes", IdentifierForms.SerialRule, StringComparison.Ordinal);
+        Assert.Equal(34, DunsIdentifierScheme.MaxItemLength - "UN778474481-".Length - "-R99".Length); // the cap: a real serial at most 34 characters
     }
 
     [Fact]

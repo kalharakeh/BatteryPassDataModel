@@ -109,7 +109,7 @@ public sealed class PackCreationService(
         }
 
         // #6 (step 6d): a battery takes a released ID, picked in one step so that no one else can; a battery's new passport
-        // makes its own from its serial number (R1, R2, …), as does a battery made without the pool (tests, scripts).
+        // continues its first one's (-R1, -R2, …), and a battery made without the pool (tests, scripts) makes its own.
         if (request.FromPool && request.PredecessorPackId is null && pool is not null)
         {
             // Never a real released ID while the ID settings are missing: the battery would keep a test ID (6d-2b).

@@ -65,7 +65,7 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
         return view;
     }
 
-    /// <summary>A version's own address (#5, step 6d): <c>/dpp/UN778474481VPC12221/v2</c>.</summary>
+    /// <summary>A version's own address (#5, step 6d): <c>/dpp/UN778474481-VBC-92921/v2</c>.</summary>
     [HttpGet("{id}/v{version:int}")]
     public Task<IActionResult> Version(string id, int version, [FromServices] Microsoft.Extensions.Options.IOptions<BatteryPassWeb.Configuration.BatteryPassOptions> options, CancellationToken cancellationToken) =>
         Summary(BatteryPassWeb.Dpp.Identifiers.IdentifierForms.PassportAddress(options.Value.IdBaseUrl, Uri.UnescapeDataString(id), version), cancellationToken);

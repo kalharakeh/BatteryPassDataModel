@@ -407,7 +407,7 @@ public sealed class DppStore
 
     /// <summary>
     /// The pack with this unique product identifier (#6), if any: as stored, or by its short item ID
-    /// ("UN778474481VPC12221") for a battery ID written as a web address (step 6d).
+    /// ("UN778474481-VBC-92921", or "UN778474481VPC12221" before 6d-5) for a battery ID written as a web address (step 6d).
     /// </summary>
     public async Task<BatteryPack?> FindPackByUniqueProductIdentifierAsync(string identifier, CancellationToken cancellationToken = default)
     {
@@ -426,12 +426,28 @@ public sealed class DppStore
     }
 
     /// <summary>
+    /// The pack whose web-form battery ID is <paramref name="item"/> but for its dashes, if any (6d-5): serial numbers
+    /// that differ only in their dashes can't both have one, and an ID made before 6d-5 (no dashes) counts too.
+    /// </summary>
+    public async Task<BatteryPack?> FindPackByItemIgnoringDashesAsync(string item, CancellationToken cancellationToken = default)
+    {
+        var key = Identifiers.IdentifierForms.Clean(item); // only A–Z and 0–9: nothing to escape
+        if (_database is null || key.Length == 0)
+        {
+            return null;
+        }
+
+        var pattern = $"/{Identifiers.IdentifierForms.DataIdentifier}/{string.Join("-?", key.Select(letter => letter.ToString()))}$";
+        return await Collection<BatteryPack>().Find(Builders<BatteryPack>.Filter.Regex(UniqueProductIdentifierField, new BsonRegularExpression(pattern, string.Empty))).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>
     /// The battery IDs (#6) that are <paramref name="address"/> or <paramref name="address"/> with a successor's R-number
-    /// (<c>…R1</c>, <c>…R2</c>), for picking the next free one (step 6d).
+    /// (<c>…-R1</c>, <c>…-R2</c>; <c>…R1</c> before 6d-5), for picking the next free one (step 6d).
     /// </summary>
     public async Task<IReadOnlySet<string>> FindPackIdentifiersWithSuffixesAsync(string address, CancellationToken cancellationToken = default)
     {
-        var filter = Builders<BatteryPack>.Filter.Regex(UniqueProductIdentifierField, new BsonRegularExpression($"^{Regex.Escape(address)}(R[0-9]+)?$", string.Empty));
+        var filter = Builders<BatteryPack>.Filter.Regex(UniqueProductIdentifierField, new BsonRegularExpression($"^{Regex.Escape(address)}(-?R[0-9]+)?$", string.Empty));
         var packs = await Collection<BatteryPack>().Find(filter).ToListAsync(cancellationToken);
         return packs.Select(pack => pack.Values["uniqueProductIdentifier"].Value!.GetValue<string>()).ToHashSet(StringComparer.Ordinal);
     }
