@@ -437,8 +437,18 @@
 }
 
 .bp-release-filter {
-  grid-template-columns: minmax(0, 1fr) repeat(3, minmax(0, 9rem)) auto auto;
+  grid-template-columns: minmax(0, 1fr) repeat(3, minmax(0, 9rem)) auto auto auto;
 }
+
+.bp-releases-voided {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.bp-releases-voided .bp-release-demo { padding-bottom: 0; }
 
 .bp-ids-list-head {
   display: flex;

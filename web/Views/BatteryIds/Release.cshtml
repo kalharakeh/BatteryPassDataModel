@@ -2,12 +2,13 @@
 @using BatteryPassWeb.Dpp.Identifiers
 @using BatteryPassWeb.Dpp.Pages
 @model ReleasePage
-@* One release's page (6d-2b): where a release lands, with its export at the top for the labels. *@
+@* One release's page (6d-2b): where a release lands, with its export at the top for the labels. It is the full record:
+   every ID with its status, voided ones too (6d-4). *@
 @{
     var release = Model.Release;
     ViewData["Title"] = release.Reference;
     var here = Context.Request.Path.ToString();
-    var export = $"/admin/battery-ids/export?release={Uri.EscapeDataString(release.ReleaseId)}";
+    var export = $"/admin/battery-ids/export?release={Uri.EscapeDataString(release.ReleaseId)}&voided=true";
 }
 
 <main class="bp-page bp-admin-page">

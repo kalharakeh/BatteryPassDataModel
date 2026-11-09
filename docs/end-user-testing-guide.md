@@ -125,8 +125,8 @@ Each step says what to do, then **Expected:** what should happen.
    **Expected:** the picker offers Compact 7M's IDs first, then any model's, then the demo spares; the draft shows `UN778474481VPC12221` and its QR code; the ID is Used.
 13. On that draft, More: Change its battery ID…, VPC-12222.
    **Expected:** the draft now has VPC-12222 and its ID; VPC-12221 is Available again.
-14. All IDs: search VPC-12230; in its row's ⋯ menu, Void…, with a reason. Then tick "Show demo IDs".
-   **Expected:** it is Voided with the reason, and the create picker no longer offers it; the demo IDs show only once ticked.
+14. All IDs: search VPC-12230; in its row's ⋯ menu, Void…, with a reason. Then tick "Show voided", and then "Show demo IDs".
+   **Expected:** it leaves the list until "Show voided" is ticked, then shows as Voided with the reason; the create picker no longer offers it; the demo IDs show only once ticked.
 15. Signed out, open `/25S/UN778474481VPC12223`, then `/25S/UN778474481VPC12230`.
    **Expected:** "Not published yet", then "Not available".
 16. Clusters tab: Demo data, Clear demo data.

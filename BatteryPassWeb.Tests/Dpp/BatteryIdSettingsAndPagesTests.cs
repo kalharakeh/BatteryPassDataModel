@@ -99,7 +99,7 @@ public sealed class BatteryIdSettingsAndPagesTests(MongoFixture mongo)
         var (rig, _, _) = await SeededAsync(mongo, dunsIds: false);
         using var __ = rig;
 
-        var page = Assert.IsType<BatteryIdsPage>(Assert.IsType<ViewResult>(await Controller(rig).Index(null, null, null, null, null, false, CancellationToken.None)).Model);
+        var page = Assert.IsType<BatteryIdsPage>(Assert.IsType<ViewResult>(await Controller(rig).Index(null, null, null, null, null, false, false, CancellationToken.None)).Model);
 
         Assert.Equal(BatteryIdsTabs.Releases, page.Tab);
         Assert.Equal(AllThree, page.MissingSettings);
@@ -115,8 +115,8 @@ public sealed class BatteryIdSettingsAndPagesTests(MongoFixture mongo)
         await pool.ReleaseAsync(Who, new ReleaseRequest("PO 2", null, [], "REAL-0001\nREAL-0002"));
         var controller = Controller(rig);
 
-        var real = Assert.IsType<BatteryIdsPage>(Assert.IsType<ViewResult>(await controller.Index(BatteryIdsTabs.Ids, null, null, null, null, false, CancellationToken.None)).Model);
-        var withDemo = Assert.IsType<BatteryIdsPage>(Assert.IsType<ViewResult>(await controller.Index(BatteryIdsTabs.Ids, null, null, null, null, true, CancellationToken.None)).Model);
+        var real = Assert.IsType<BatteryIdsPage>(Assert.IsType<ViewResult>(await controller.Index(BatteryIdsTabs.Ids, null, null, null, null, false, false, CancellationToken.None)).Model);
+        var withDemo = Assert.IsType<BatteryIdsPage>(Assert.IsType<ViewResult>(await controller.Index(BatteryIdsTabs.Ids, null, null, null, null, true, false, CancellationToken.None)).Model);
 
         Assert.Equal(["REAL-0001", "REAL-0002"], real.Items.Select(item => item.SerialNumber).Order());
         Assert.Contains(withDemo.Items, item => item.IsDemo);
@@ -135,7 +135,7 @@ public sealed class BatteryIdSettingsAndPagesTests(MongoFixture mongo)
         var done = Assert.IsType<RedirectResult>(await controller.ReleaseIds("PO 7, line 1", null, ["LBL-0001"], ["LBL-0003"], ["3"], null, CancellationToken.None));
         var release = (await pool.ReleasesAsync()).Single(summary => summary.Reference == "PO 7, line 1");
         var page = Assert.IsType<ReleasePage>(Assert.IsType<ViewResult>(await controller.Release(release.ReleaseId, true, CancellationToken.None)).Model);
-        var export = Assert.IsType<FileContentResult>(await controller.Export(null, release.ReleaseId, null, null, false, CancellationToken.None));
+        var export = Assert.IsType<FileContentResult>(await controller.Export(null, release.ReleaseId, null, null, false, false, CancellationToken.None));
 
         Assert.Equal($"/admin/battery-ids/releases/{Uri.EscapeDataString(release.ReleaseId)}?released=true", done.Url);
         Assert.Equal("Released 3 battery IDs. Export them to Excel for the labels.", controller.TempData[ProductDataController.StatusKey]);

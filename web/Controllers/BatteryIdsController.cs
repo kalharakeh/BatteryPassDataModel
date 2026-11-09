@@ -24,7 +24,8 @@ public static class BatteryIdsTabs
 
 /// <summary>
 /// What every tab of the "Battery IDs" page shows: the summary of the real IDs and the settings' state, then the chosen
-/// tab's content.
+/// tab's content. Unless "Show voided" is ticked (6d-4), <see cref="Releases"/> leaves out the releases whose IDs are all
+/// voided (<see cref="HiddenReleases"/>), and All IDs its voided IDs (<see cref="HiddenVoidedIds"/>).
 /// </summary>
 public sealed record BatteryIdsPage(
     string Tab,
@@ -36,7 +37,9 @@ public sealed record BatteryIdsPage(
     ReleaseResult? Refusal,
     IReadOnlyList<ReleasedBatteryId> Items,
     int Total,
-    ReleasedIdFilter Filter)
+    ReleasedIdFilter Filter,
+    int HiddenVoidedIds = 0,
+    int HiddenReleases = 0)
 {
     /// <summary>The most rows a list shows; the export has them all.</summary>
     public const int MaxRows = 200;
@@ -68,8 +71,9 @@ public sealed class BatteryIdsController(BatteryIdPool pool, DppStore store) : C
         [FromQuery] string? model,
         [FromQuery] string? q,
         [FromQuery] bool demo,
+        [FromQuery] bool voided,
         CancellationToken cancellationToken) =>
-        View(await PageAsync(BatteryIdsTabs.Of(tab), ReleaseForm.Empty, null, new ReleasedIdFilter(status, release, model, q, demo), cancellationToken));
+        View(await PageAsync(BatteryIdsTabs.Of(tab), ReleaseForm.Empty, null, new ReleasedIdFilter(status, release, model, q, demo, voided), cancellationToken));
 
     [HttpGet("releases/{releaseId}")]
     public async Task<IActionResult> Release(string releaseId, [FromQuery] bool released, CancellationToken cancellationToken)
@@ -79,7 +83,7 @@ public sealed class BatteryIdsController(BatteryIdPool pool, DppStore store) : C
             return NotFound();
         }
 
-        var items = await pool.ListAsync(new ReleasedIdFilter(Reference: releaseId), cancellationToken);
+        var items = await pool.ListAsync(new ReleasedIdFilter(Reference: releaseId, Voided: true), cancellationToken); // the full record
         return View(new ReleasePage(summary, items, await ModelsAsync(cancellationToken), released));
     }
 
@@ -134,7 +138,10 @@ public sealed class BatteryIdsController(BatteryIdPool pool, DppStore store) : C
         return Redirect(Back(returnTo));
     }
 
-    /// <summary>The IDs as an Excel file: one release's (<paramref name="release"/>), or All IDs as filtered.</summary>
+    /// <summary>
+    /// The IDs as an Excel file: one release's (<paramref name="release"/>, with <paramref name="voided"/> for all of
+    /// them), or All IDs as shown.
+    /// </summary>
     [HttpGet("export")]
     public async Task<IActionResult> Export(
         [FromQuery] string? status,
@@ -142,9 +149,10 @@ public sealed class BatteryIdsController(BatteryIdPool pool, DppStore store) : C
         [FromQuery] string? model,
         [FromQuery] string? q,
         [FromQuery] bool demo,
+        [FromQuery] bool voided,
         CancellationToken cancellationToken)
     {
-        var items = await pool.ListAsync(new ReleasedIdFilter(status, release, model, q, demo), cancellationToken);
+        var items = await pool.ListAsync(new ReleasedIdFilter(status, release, model, q, demo, voided), cancellationToken);
         var name = release is { Length: > 0 } && await pool.ReleaseAsync(release, cancellationToken) is { } summary ? FileWord(summary.Reference) : "all";
         return File(BatteryIdPool.Export(items, await ModelsAsync(cancellationToken)), XlsxWriter.ContentType, $"battery-ids-{name}-{DateTime.UtcNow:yyyy-MM-dd}.xlsx");
     }
@@ -152,17 +160,22 @@ public sealed class BatteryIdsController(BatteryIdPool pool, DppStore store) : C
     private async Task<BatteryIdsPage> PageAsync(string tab, ReleaseForm form, ReleaseResult? refusal, ReleasedIdFilter filter, CancellationToken cancellationToken)
     {
         var all = tab == BatteryIdsTabs.Ids ? await pool.ListAsync(filter, cancellationToken) : [];
+        var hiddenIds = tab == BatteryIdsTabs.Ids && !filter.ShowsVoided ? (await pool.ListAsync(filter with { Voided = true }, cancellationToken)).Count - all.Count : 0;
+        var releases = await pool.ReleasesAsync(cancellationToken);
+        var shown = filter.ShowsVoided ? releases : releases.Where(release => !release.AllVoided).ToArray();
         return new BatteryIdsPage(
             tab,
             await pool.RealCountsAsync(cancellationToken),
             pool.MissingSettings,
-            await pool.ReleasesAsync(cancellationToken),
+            shown,
             await ModelsAsync(cancellationToken),
             form,
             refusal,
             all.Take(BatteryIdsPage.MaxRows).ToArray(),
             all.Count,
-            filter);
+            filter,
+            hiddenIds,
+            releases.Count - shown.Count);
     }
 
     private async Task<IReadOnlyDictionary<string, string>> ModelsAsync(CancellationToken cancellationToken) =>

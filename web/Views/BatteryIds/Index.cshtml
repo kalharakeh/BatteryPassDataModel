@@ -3,14 +3,15 @@
 @using BatteryPassWeb.Dpp.Pages
 @model BatteryIdsPage
 @* The "Battery IDs" page (6d-2b, the owner's layout): the real IDs' summary and "Release new IDs" at the top, then three
-   tabs: Releases (first), All IDs, Release new IDs. A release has its own page. *@
+   tabs: Releases (first), All IDs, Release new IDs. A release has its own page. Voided IDs, and releases with only voided
+   IDs, show with "Show voided" ticked (6d-4). *@
 @{
     ViewData["Title"] = "Battery IDs";
     var filter = Model.Filter;
     var here = Context.Request.Path + Context.Request.QueryString;
     var problems = Model.Refusal?.Problems ?? [];
-    var filtered = !string.IsNullOrEmpty(filter.Status) || !string.IsNullOrEmpty(filter.Reference) || !string.IsNullOrEmpty(filter.ModelId) || !string.IsNullOrEmpty(filter.Query) || filter.Demo;
-    var exportQuery = string.Join("&", new[] { ("status", filter.Status), ("release", filter.Reference), ("model", filter.ModelId), ("q", filter.Query), ("demo", filter.Demo ? "true" : null) }
+    var filtered = !string.IsNullOrEmpty(filter.Status) || !string.IsNullOrEmpty(filter.Reference) || !string.IsNullOrEmpty(filter.ModelId) || !string.IsNullOrEmpty(filter.Query) || filter.Demo || filter.Voided;
+    var exportQuery = string.Join("&", new[] { ("status", filter.Status), ("release", filter.Reference), ("model", filter.ModelId), ("q", filter.Query), ("demo", filter.Demo ? "true" : null), ("voided", filter.Voided ? "true" : null) }
         .Where(pair => !string.IsNullOrEmpty(pair.Item2)).Select(pair => $"{pair.Item1}={Uri.EscapeDataString(pair.Item2!)}"));
     var blocked = Model.MissingSettings.Count > 0;
     string TabClass(string tab) => Model.Tab == tab ? "bp-subtab is-active" : "bp-subtab";
@@ -56,11 +57,23 @@
     @if (Model.Tab == BatteryIdsTabs.Releases)
     {
         <section class="bp-card bp-console-form-card bp-ids-tab" id="releases">
-            @if (Model.Releases.Count == 0)
+            @if (Model.Releases.Count == 0 && Model.HiddenReleases == 0)
             {
                 <p class="mb-0">No battery IDs released yet. <a href="/admin/battery-ids?tab=new">Release new IDs</a>.</p>
             }
             else
+            {
+                <form method="get" action="/admin/battery-ids" class="bp-releases-voided">
+                    <label class="bp-release-demo"><input type="checkbox" name="voided" value="true" checked="@filter.Voided" /><span>Show voided</span></label>
+                    <button type="submit" class="bp-secondary-button bp-button-compact">Show</button>
+                    @if (Model.HiddenReleases > 0)
+                    {
+                        <span class="bp-help-text">@Words.Count(Model.HiddenReleases, "release") with only voided IDs @Words.Is(Model.HiddenReleases) hidden.</span>
+                    }
+                </form>
+            }
+
+            @if (Model.Releases.Count > 0)
             {
                 <div class="bp-table-scroll">
                     <table class="table align-middle mb-0 bp-console-table bp-releases-table">
@@ -84,7 +97,7 @@
                                     </td>
                                     <td data-label="Actions" class="bp-release-row-actions">
                                         <a href="@open">Open</a>
-                                        <a href="/admin/battery-ids/export?release=@Uri.EscapeDataString(release.ReleaseId)"><svg class="bp-i" aria-hidden="true"><use href="#i-download" /></svg>Export to Excel</a>
+                                        <a href="/admin/battery-ids/export?release=@Uri.EscapeDataString(release.ReleaseId)&voided=true"><svg class="bp-i" aria-hidden="true"><use href="#i-download" /></svg>Export to Excel</a>
                                         @if (release.Count(ReleasedIdStatuses.Available) > 0)
                                         {
                                             <button type="button" class="bp-text-button" data-void-unused data-release-id="@release.ReleaseId" data-release-reference="@release.Reference" data-release-available="@release.Count(ReleasedIdStatuses.Available)">Void unused…</button>
@@ -133,6 +146,7 @@
                     </select>
                 </label>
                 <label class="bp-release-demo"><input type="checkbox" name="demo" value="true" checked="@filter.Demo" /><span>Show demo IDs</span></label>
+                <label class="bp-release-demo"><input type="checkbox" name="voided" value="true" checked="@filter.Voided" /><span>Show voided</span></label>
                 <div class="bp-release-filter-actions">
                     <button type="submit" class="bp-secondary-button bp-button-compact">Show</button>
                     @if (filtered)
@@ -142,12 +156,12 @@
                 </div>
             </form>
             <div class="bp-ids-list-head">
-                <p class="bp-help-text mb-0">@Words.Count(Model.Total, "ID")@(filtered ? " match" : null)@(Model.Items.Count < Model.Total ? $"; the first {Model.Items.Count} are shown" : null).</p>
+                <p class="bp-help-text mb-0">@Words.Count(Model.Total, "ID")@(filtered ? " match" : null)@(Model.Items.Count < Model.Total ? $"; the first {Model.Items.Count} are shown" : null)@(Model.HiddenVoidedIds > 0 ? $"; {Words.Count(Model.HiddenVoidedIds, "voided ID")} {Words.Is(Model.HiddenVoidedIds)} hidden" : null).</p>
                 <a class="bp-secondary-button bp-button-compact text-nowrap" href="/admin/battery-ids/export@(exportQuery.Length > 0 ? "?" + exportQuery : null)"><svg class="bp-i" aria-hidden="true"><use href="#i-download" /></svg>Export to Excel</a>
             </div>
             @if (Model.Items.Count == 0)
             {
-                <p class="mb-0 mt-3">@(filtered ? "No released ID matches." : "No battery IDs released yet.")</p>
+                <p class="mb-0 mt-3">@(Model.HiddenVoidedIds > 0 ? "Only voided IDs match. Tick \"Show voided\" to see them." : filtered ? "No released ID matches." : "No battery IDs released yet.")</p>
             }
             else
             {

@@ -101,7 +101,7 @@ Scanning a released ID whose passport isn't published yet shows "Not published y
 - [ ] Every row of the scenario matrix holds, for every reader.
 - [ ] The two badges show on every passport page with the right status. The Battery badge never shows to the public.
 - [ ] Battery IDs: a range releases and opens the release's page with every ID Available; its "Export to Excel" opens with that release's IDs, one row per ID and its QR address.
-- [ ] The Battery IDs page opens on Releases, with the real IDs' counts at the top; All IDs shows demo IDs only with "Show demo IDs" ticked; Void… is in a row's ⋯ menu.
+- [ ] The Battery IDs page opens on Releases, with the real IDs' counts at the top; All IDs shows demo IDs only with "Show demo IDs" ticked, and voided IDs only with "Show voided" ticked (or the status Voided chosen); Releases shows a release whose IDs are all voided only with it ticked, and its own page lists every ID; Void… is in a row's ⋯ menu.
 - [ ] A release with a wrong count, a repeated or already released serial number lists every reason and releases nothing.
 - [ ] Create battery picks a released serial number (no typing); the draft shows its battery ID and QR code at once; the ID turns Used.
 - [ ] "Change its battery ID…" on a draft takes another available ID and gives the old one back; a voided ID is never offered again.

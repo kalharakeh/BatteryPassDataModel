@@ -31,13 +31,21 @@ public sealed record ReleaseSummary(string ReleaseId, string Reference, string? 
     public int Total => Counts.Values.Sum();
 
     public int Count(string status) => Counts.GetValueOrDefault(status);
+
+    /// <summary>Every ID of the release is voided; the Releases tab hides it unless "Show voided" is ticked (6d-4).</summary>
+    public bool AllVoided => Total > 0 && Count(ReleasedIdStatuses.Voided) == Total;
 }
 
 /// <summary>
 /// Which released IDs the list shows. Demo IDs only when <see cref="Demo"/> is asked (6d-2b), or when the list is one
-/// release's (<see cref="Reference"/>), which shows all of its own.
+/// release's (<see cref="Reference"/>), which shows all of its own. Voided IDs only when <see cref="Voided"/> is asked or
+/// the status asked for is Voided (6d-4); a release's own page and export ask for them, as the full record.
 /// </summary>
-public sealed record ReleasedIdFilter(string? Status = null, string? Reference = null, string? ModelId = null, string? Query = null, bool Demo = false);
+public sealed record ReleasedIdFilter(string? Status = null, string? Reference = null, string? ModelId = null, string? Query = null, bool Demo = false, bool Voided = false)
+{
+    /// <summary>Whether the list keeps voided IDs: "Show voided" ticked, or the status filter set to Voided.</summary>
+    public bool ShowsVoided => Voided || Status == ReleasedIdStatuses.Voided;
+}
 
 /// <summary>
 /// The battery IDs the team releases in advance (step 6d, the owner, 6 Nov 2026). A release is checked whole and is
@@ -226,6 +234,11 @@ public sealed partial class BatteryIdPool(
         if (!string.IsNullOrEmpty(filter.Status))
         {
             where &= Builders<ReleasedBatteryId>.Filter.Eq(item => item.Status, filter.Status);
+        }
+
+        if (!filter.ShowsVoided)
+        {
+            where &= Builders<ReleasedBatteryId>.Filter.Ne(item => item.Status, ReleasedIdStatuses.Voided);
         }
 
         if (!string.IsNullOrEmpty(filter.Reference))
