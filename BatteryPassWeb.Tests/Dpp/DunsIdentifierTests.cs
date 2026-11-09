@@ -182,6 +182,30 @@ public sealed class DunsIdentifierTests(MongoFixture mongo)
     }
 
     [Fact]
+    public async Task AWebAddressIdInAnAddress_ShouldFindItsBattery_OnThePagesAndInTheApi()
+    {
+        // Found by the role check (6d-3): an API client puts the battery ID in the address escaped, and the route keeps its
+        // slashes encoded (%2F), so the lookups decode it once.
+        using var rig = await DemoRig.StartAsync(mongo, dunsIds: true);
+        await rig.Demo.SeedAsync(DemoRig.Who);
+        var encoded = Uri.EscapeDataString($"{Base}/25S/UN778474481TESTDEMOC7M0001").Replace("%3A", ":", StringComparison.Ordinal);
+        var encodedPassport = Uri.EscapeDataString((await rig.Services.GetRequiredService<PassportPages>().FindAsync("DEMO-C7M-0001"))!.DigitalProductPassportId);
+
+        var page = await rig.Services.GetRequiredService<PassportPages>().FindAsync(encoded);
+        var byPassport = await rig.Services.GetRequiredService<PassportPages>().FindAsync(encodedPassport);
+        var write = await rig.Services.GetRequiredService<BatteryPassWeb.Dpp.Api.BatteryApi>().FindAsync(ChangeSender.Team(DemoRig.Who), encoded);
+
+        Assert.Contains("%2F", encoded, StringComparison.Ordinal);
+        Assert.NotNull(page);
+        Assert.Equal(page.Id, byPassport!.Id);
+        Assert.Equal(page.PackId, write.Pack!.Id);
+    }
+
+    [Fact]
+    public void ALongIdValue_ShouldWrapOnAPhone_RatherThanScrollThePage() =>
+        Assert.Contains(".bp-field-grid dd {\n  min-width: 0;\n  overflow-wrap: anywhere;\n}", File.ReadAllText(DppTestFiles.RepoFile("web", "wwwroot", "css", "bp-status.css")).Replace("\r\n", "\n"), StringComparison.Ordinal);
+
+    [Fact]
     public async Task TheDemoData_ShouldGetTestIds_AndSuccessorsRNumbers()
     {
         using var rig = await DemoRig.StartAsync(mongo, dunsIds: true);

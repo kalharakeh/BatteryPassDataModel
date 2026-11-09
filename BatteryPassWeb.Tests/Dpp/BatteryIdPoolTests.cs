@@ -271,7 +271,7 @@ public sealed class BatteryIdPoolTests(MongoFixture mongo)
         await pool.ReleaseAsync(Who, List("PO real", "REAL-0001"));
 
         var demo = (await pool.ReleasesAsync()).Single(release => release.Reference == DemoDataService.DemoReference);
-        var spares = await pool.ListAsync(new ReleasedIdFilter(Query: "DEMOSPARE"));
+        var spares = await pool.ListAsync(new ReleasedIdFilter(Query: "DEMOSPARE", Demo: true));
         await rig.Demo.ClearAsync(Who);
 
         Assert.Equal(DemoDataService.SpareSerials.Length, demo.Count(ReleasedIdStatuses.Available));

@@ -31,6 +31,7 @@
         button.addEventListener('click', () => {
             voidDialog.querySelector('[data-void-serial-field]').value = button.dataset.serial;
             voidDialog.querySelector('[data-void-serial-name]').textContent = button.dataset.serial;
+            button.closest('details')?.removeAttribute('open');
             voidDialog.showModal();
         });
     });

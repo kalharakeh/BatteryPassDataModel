@@ -562,3 +562,10 @@ th .bp-status-help-words {
   white-space: normal;
   overflow-wrap: anywhere;
 }
+
+/* Step 6d: a value can be a long web address with no spaces (a passport ID, https://www.sib-scania-eubp.eu/dpp/…/v4), so
+   a field's value may break anywhere rather than push a phone's page sideways. */
+.bp-field-grid dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

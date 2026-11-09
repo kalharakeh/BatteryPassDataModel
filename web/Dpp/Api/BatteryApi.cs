@@ -87,7 +87,7 @@ public sealed class BatteryApi(
     public async Task<WriteTarget> FindAsync(ChangeSender sender, string? id, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(sender);
-        var text = id?.Trim() ?? string.Empty;
+        var text = Uri.UnescapeDataString(id?.Trim() ?? string.Empty); // a web-form ID's slashes arrive encoded (%2F) in an address (6d)
         if (text.Length == 0)
         {
             return new WriteTarget(null, WriteRefusal.NotFound);

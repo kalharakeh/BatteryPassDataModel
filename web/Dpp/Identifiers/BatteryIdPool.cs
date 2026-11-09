@@ -26,23 +26,37 @@ public sealed record ReleaseResult(int Released, string? ReleaseId, IReadOnlyLis
 }
 
 /// <summary>One release, as the list shows it.</summary>
-public sealed record ReleaseSummary(string ReleaseId, string Reference, string? ModelId, string ReleasedBy, DateTime ReleasedAtUtc, IReadOnlyDictionary<string, int> Counts)
+public sealed record ReleaseSummary(string ReleaseId, string Reference, string? ModelId, string ReleasedBy, DateTime ReleasedAtUtc, IReadOnlyDictionary<string, int> Counts, bool IsDemo = false)
 {
     public int Total => Counts.Values.Sum();
 
     public int Count(string status) => Counts.GetValueOrDefault(status);
 }
 
-/// <summary>Which released IDs the list shows.</summary>
-public sealed record ReleasedIdFilter(string? Status = null, string? Reference = null, string? ModelId = null, string? Query = null);
+/// <summary>
+/// Which released IDs the list shows. Demo IDs only when <see cref="Demo"/> is asked (6d-2b), or when the list is one
+/// release's (<see cref="Reference"/>), which shows all of its own.
+/// </summary>
+public sealed record ReleasedIdFilter(string? Status = null, string? Reference = null, string? ModelId = null, string? Query = null, bool Demo = false);
 
 /// <summary>
 /// The battery IDs the team releases in advance (step 6d, the owner, 6 Nov 2026). A release is checked whole and is
 /// all-or-nothing; each serial number gets its #6 at release, fixed for life. A battery is created by picking an available
 /// one; a draft may swap it for another; a voided one is never reused.
 /// </summary>
-public sealed partial class BatteryIdPool(DppStore store, IIdentifierScheme identifiers, ApplicationAuditService audit, TimeProvider clock)
+public sealed partial class BatteryIdPool(
+    DppStore store,
+    IIdentifierScheme identifiers,
+    ApplicationAuditService audit,
+    TimeProvider clock,
+    Microsoft.Extensions.Options.IOptions<Configuration.BatteryPassOptions>? options = null)
 {
+    /// <summary>
+    /// The ID settings that are missing (6d-2b). Real IDs are neither released nor used while any is: they would be test
+    /// IDs. Demo IDs still work, as the demo data does without the settings. Empty for a pool made without options.
+    /// </summary>
+    public IReadOnlyList<string> MissingSettings => options is null ? [] : IdentifierForms.MissingSettings(options.Value);
+
     public const string ReleasedEvent = "dpp.ids-released";
     public const string VoidedEvent = "dpp.ids-voided";
     public const string SwappedEvent = "dpp.id-swapped";
@@ -69,6 +83,11 @@ public sealed partial class BatteryIdPool(DppStore store, IIdentifierScheme iden
         if (reference.Length > MaxReference)
         {
             return Refused($"the reference is longer than {MaxReference} characters");
+        }
+
+        if (!request.IsDemo && MissingSettings is { Count: > 0 } missing)
+        {
+            return Refused(IdentifierForms.SettingsMissing(missing));
         }
 
         if (request.ModelId is { Length: > 0 } modelId && await store.GetAsync<BatteryModel>(modelId, cancellationToken) is null)
@@ -182,10 +201,21 @@ public sealed partial class BatteryIdPool(DppStore store, IIdentifierScheme iden
             {
                 var first = group.First();
                 return new ReleaseSummary(group.Key, first.Reference, first.ModelId, first.ReleasedBy, first.ReleasedAtUtc,
-                    group.GroupBy(item => item.Status).ToDictionary(status => status.Key, status => status.Count(), StringComparer.Ordinal));
+                    group.GroupBy(item => item.Status).ToDictionary(status => status.Key, status => status.Count(), StringComparer.Ordinal), first.IsDemo);
             })
             .OrderByDescending(release => release.ReleasedAtUtc)
             .ToArray();
+    }
+
+    /// <summary>One release, or null.</summary>
+    public async Task<ReleaseSummary?> ReleaseAsync(string releaseId, CancellationToken cancellationToken = default) =>
+        (await ReleasesAsync(cancellationToken)).FirstOrDefault(release => release.ReleaseId == releaseId);
+
+    /// <summary>How many real (not demo) IDs are in each status, for the page's summary (6d-2b).</summary>
+    public async Task<IReadOnlyDictionary<string, int>> RealCountsAsync(CancellationToken cancellationToken = default)
+    {
+        var real = await store.ReleasedIds.Find(item => !item.IsDemo).Project(item => item.Status).ToListAsync(cancellationToken);
+        return ReleasedIdStatuses.All.ToDictionary(status => status, status => real.Count(item => item == status), StringComparer.Ordinal);
     }
 
     /// <summary>The released IDs the filter keeps, newest release first, then by serial number.</summary>
@@ -201,6 +231,10 @@ public sealed partial class BatteryIdPool(DppStore store, IIdentifierScheme iden
         if (!string.IsNullOrEmpty(filter.Reference))
         {
             where &= Builders<ReleasedBatteryId>.Filter.Eq(item => item.ReleaseId, filter.Reference);
+        }
+        else if (!filter.Demo)
+        {
+            where &= Builders<ReleasedBatteryId>.Filter.Eq(item => item.IsDemo, false);
         }
 
         if (!string.IsNullOrEmpty(filter.ModelId))

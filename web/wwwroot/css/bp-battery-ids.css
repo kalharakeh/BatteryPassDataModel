@@ -322,3 +322,243 @@
     overflow-wrap: anywhere;
   }
 }
+
+/* 6d-2b, the owner's layout: the summary with "Release new IDs", the three tabs, the per-row menu and a release's page. */
+.bp-ids-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 20px;
+}
+
+.bp-ids-summary h2 {
+  margin: 0 0 2px;
+  font-size: 1.25rem;
+}
+
+.bp-ids-counts {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+}
+
+.bp-ids-counts > div {
+  min-width: 84px;
+  padding: 8px 12px;
+  border: 1px solid var(--bp-border);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.bp-ids-counts dt {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--bp-muted);
+}
+
+.bp-ids-counts dd {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--bp-text);
+}
+
+.bp-ids-counts .is-available dd { color: #17663f; }
+.bp-ids-counts .is-voided dd { color: #6b7280; }
+.bp-ids-release-button[aria-disabled="true"] { opacity: 0.55; pointer-events: none; }
+
+.bp-subtabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--bp-border);
+}
+
+.bp-subtab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: -1px;
+  padding: 10px 14px;
+  border-bottom: 3px solid transparent;
+  color: var(--bp-muted);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.bp-subtab:hover { color: var(--bp-text); }
+
+.bp-subtab.is-active {
+  border-bottom-color: var(--bp-primary);
+  color: var(--bp-text);
+}
+
+.bp-subtab-count {
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--bp-border);
+  font-size: 0.78rem;
+}
+
+.bp-ids-tab {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.bp-release-name { font-weight: 700; }
+
+.bp-id-demo {
+  display: inline-flex;
+  margin-left: 8px;
+  padding: 0 7px;
+  border: 1px solid #f0c36d;
+  border-radius: 999px;
+  background: #fff8e6;
+  color: #7a4b00;
+  font-size: 0.72rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.bp-release-row-actions a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.bp-release-demo {
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+  align-self: end;
+  padding-bottom: 8px;
+  white-space: nowrap;
+}
+
+.bp-release-filter {
+  grid-template-columns: minmax(0, 1fr) repeat(3, minmax(0, 9rem)) auto auto;
+}
+
+.bp-ids-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0 8px;
+}
+
+.bp-release-fields {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.bp-row-menu { position: relative; display: inline-block; }
+.bp-row-menu > summary { list-style: none; cursor: pointer; display: inline-flex; padding: 4px 8px; border: 1px solid var(--bp-border); border-radius: 8px; color: var(--bp-muted); }
+.bp-row-menu > summary::-webkit-details-marker { display: none; }
+.bp-row-menu-list {
+  position: absolute;
+  right: 0;
+  z-index: 5;
+  display: grid;
+  min-width: 190px;
+  margin-top: 4px;
+  padding: 6px;
+  border: 1px solid var(--bp-border);
+  border-radius: 10px;
+  background: var(--bp-surface);
+  box-shadow: 0 10px 28px rgba(10, 40, 80, 0.14);
+  text-align: left;
+  white-space: normal;
+}
+
+.bp-row-menu-list button {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--bp-text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bp-row-menu-list button:hover { background: rgba(42, 110, 207, 0.08); }
+.bp-row-menu-list small { display: block; color: var(--bp-muted); font-size: 0.78rem; font-weight: 400; }
+
+.bp-release-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px 24px;
+  align-items: start;
+}
+
+.bp-release-head h1 { margin: 2px 0 4px; font-size: 1.6rem; }
+.bp-release-head-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+.bp-release-head-actions .bp-primary-button { display: inline-flex; align-items: center; gap: 6px; }
+.bp-release-next { grid-column: 1 / -1; }
+
+[data-theme="dark"] .bp-id-demo { border-color: rgba(240, 195, 109, 0.5); background: rgba(240, 195, 109, 0.12); color: #f5d38f; }
+[data-theme="dark"] .bp-ids-counts .is-available dd { color: #86efac; }
+
+@media (max-width: 767px) {
+  .bp-ids-summary { grid-template-columns: minmax(0, 1fr); }
+  .bp-ids-counts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bp-ids-release-button { justify-self: start; }
+  .bp-subtabs { overflow-x: auto; }
+  .bp-subtab { padding: 10px 10px; white-space: nowrap; }
+  .bp-release-filter { grid-template-columns: minmax(0, 1fr); }
+  .bp-release-demo { padding-bottom: 0; }
+  .bp-ids-list-head { flex-wrap: wrap; }
+  .bp-release-head { grid-template-columns: minmax(0, 1fr); }
+  .bp-release-head-actions { justify-content: flex-start; }
+  .bp-releases-table td:nth-child(5) { display: flex !important; flex-wrap: wrap; gap: 6px 16px; }
+  .bp-releases-table td:nth-child(5) > * + * { margin-left: 0 !important; }
+  .bp-row-menu-list { right: auto; left: 0; }
+}
+
+/* The missing-settings notice (6d-2b): a red box, as the refusals', not a quiet status line. */
+.bp-settings-missing {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border: 1px solid #e08080;
+  border-left-width: 5px;
+  border-radius: 12px;
+  background: #fff1f1;
+  color: #5c1010;
+}
+
+.bp-settings-missing svg {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: #b42318;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bp-settings-missing h2 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #a12020;
+}
+
+.bp-settings-missing p { margin: 0; }
+
+.bp-release-fields:disabled .bp-primary-button { opacity: 0.5; cursor: not-allowed; }
+
+[data-theme="dark"] .bp-settings-missing { border-color: rgba(248, 113, 113, 0.6); background: rgba(127, 29, 29, 0.3); color: #fde2e2; }
+[data-theme="dark"] .bp-settings-missing h2 { color: #fca5a5; }
+[data-theme="dark"] .bp-settings-missing svg { stroke: #fca5a5; }

@@ -112,6 +112,12 @@ public sealed class PackCreationService(
         // makes its own from its serial number (R1, R2, …), as does a battery made without the pool (tests, scripts).
         if (request.FromPool && request.PredecessorPackId is null && pool is not null)
         {
+            // Never a real released ID while the ID settings are missing: the battery would keep a test ID (6d-2b).
+            if (pool.MissingSettings is { Count: > 0 } missing && await pool.GetAsync(evaluation.Accepted["batterySerialNumber"].GetValue<string>(), cancellationToken) is { IsDemo: false })
+            {
+                return Failed(IdentifierForms.SettingsMissing(missing));
+            }
+
             var model = (await store.GetAsync<ProductionBatch>(request.BatchId, cancellationToken))!.ModelId;
             if (await pool.PickAsync(evaluation.Accepted["batterySerialNumber"].GetValue<string>(), pack.Id, model, cancellationToken) is not { } picked)
             {

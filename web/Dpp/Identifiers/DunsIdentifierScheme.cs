@@ -103,6 +103,36 @@ public static partial class IdentifierForms
 
     public const string TestMarker = "TEST";
 
+    /// <summary>
+    /// The ID settings that aren't set or aren't valid (6d-2b): DPP_ID_AGENCY (two or three capital letters),
+    /// DPP_ID_COMPANY (nine digits) and DPP_ID_BASE_URL (an https address). Empty when the scheme is complete.
+    /// </summary>
+    public static IReadOnlyList<string> MissingSettings(BatteryPassOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        var missing = new List<string>();
+        if (!AgencyCode().IsMatch(options.IdAgency ?? string.Empty))
+        {
+            missing.Add("DPP_ID_AGENCY");
+        }
+
+        if (!CompanyCode().IsMatch(options.IdCompany ?? string.Empty))
+        {
+            missing.Add("DPP_ID_COMPANY");
+        }
+
+        if (!Uri.TryCreate(options.IdBaseUrl, UriKind.Absolute, out var url) || url.Scheme != Uri.UriSchemeHttps)
+        {
+            missing.Add("DPP_ID_BASE_URL");
+        }
+
+        return missing;
+    }
+
+    /// <summary>Why real battery IDs can't be released or used while the settings are missing (6d-2b).</summary>
+    public static string SettingsMissing(IReadOnlyList<string> missing) =>
+        $"the battery ID settings aren't set, so batteries would get test IDs instead of their real battery IDs. Not set or not valid: {string.Join(", ", missing)}. Whoever runs the app sets them and restarts it";
+
     /// <summary>True when the settings give a full scheme; otherwise the app issues test IDs.</summary>
     public static bool IsConfigured(BatteryPassOptions options) =>
         AgencyCode().IsMatch(options.IdAgency) && CompanyCode().IsMatch(options.IdCompany) && Uri.TryCreate(options.IdBaseUrl, UriKind.Absolute, out var url) && url.Scheme == Uri.UriSchemeHttps;

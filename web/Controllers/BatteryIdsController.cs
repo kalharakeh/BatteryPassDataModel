@@ -12,26 +12,47 @@ public sealed record ReleaseForm(string? Reference, string? ModelId, IReadOnlyLi
     public static readonly ReleaseForm Empty = new(null, null, [new IdRange(null, null, null)], null);
 }
 
-/// <summary>The "Battery IDs" page: the release form, its refusals, the releases and the released IDs.</summary>
+/// <summary>The "Battery IDs" page's tabs (6d-2b): the releases (first), all IDs, and the release form.</summary>
+public static class BatteryIdsTabs
+{
+    public const string Releases = "releases";
+    public const string Ids = "ids";
+    public const string New = "new";
+
+    public static string Of(string? tab) => tab is Ids or New ? tab : Releases;
+}
+
+/// <summary>
+/// What every tab of the "Battery IDs" page shows: the summary of the real IDs and the settings' state, then the chosen
+/// tab's content.
+/// </summary>
 public sealed record BatteryIdsPage(
+    string Tab,
+    IReadOnlyDictionary<string, int> Counts,
+    IReadOnlyList<string> MissingSettings,
+    IReadOnlyList<ReleaseSummary> Releases,
+    IReadOnlyDictionary<string, string> Models,
     ReleaseForm Form,
     ReleaseResult? Refusal,
-    IReadOnlyList<ReleaseSummary> Releases,
     IReadOnlyList<ReleasedBatteryId> Items,
-    ReleasedIdFilter Filter,
-    IReadOnlyDictionary<string, string> Models,
-    IReadOnlyDictionary<string, string> Batteries,
-    int Total)
+    int Total,
+    ReleasedIdFilter Filter)
 {
-    /// <summary>The most rows the page lists; the export has them all.</summary>
+    /// <summary>The most rows a list shows; the export has them all.</summary>
     public const int MaxRows = 200;
 
     public string ModelName(string? modelId) => modelId is null ? "Any model" : Models.GetValueOrDefault(modelId, modelId);
 }
 
+/// <summary>One release's page (6d-2b): what it is, its export, and its IDs.</summary>
+public sealed record ReleasePage(ReleaseSummary Release, IReadOnlyList<ReleasedBatteryId> Items, IReadOnlyDictionary<string, string> Models, bool JustReleased)
+{
+    public string ModelName(string? modelId) => modelId is null ? "Any model" : Models.GetValueOrDefault(modelId, modelId);
+}
+
 /// <summary>
-/// The team's "Battery IDs" page (step 6d, the owner, 6 Nov 2026): serial numbers released in advance, each with its
-/// battery ID, so labels can be printed before the batteries are made. Team only.
+/// The team's "Battery IDs" page (step 6d; reorganised in 6d-2b after the owner's trial): serial numbers released in
+/// advance, each with its battery ID, so labels can be printed before the batteries are made. Team only.
 /// </summary>
 [Authorize(Policy = "AdminOnly")]
 [Route("admin/battery-ids")]
@@ -40,12 +61,31 @@ public sealed class BatteryIdsController(BatteryIdPool pool, DppStore store) : C
     public const string ReleaseDialog = "void-unused-dialog";
 
     [HttpGet("")]
-    public async Task<IActionResult> Index([FromQuery] string? status, [FromQuery] string? release, [FromQuery] string? model, [FromQuery] string? q, CancellationToken cancellationToken) =>
-        View(await PageAsync(ReleaseForm.Empty, null, new ReleasedIdFilter(status, release, model, q), cancellationToken));
+    public async Task<IActionResult> Index(
+        [FromQuery] string? tab,
+        [FromQuery] string? status,
+        [FromQuery] string? release,
+        [FromQuery] string? model,
+        [FromQuery] string? q,
+        [FromQuery] bool demo,
+        CancellationToken cancellationToken) =>
+        View(await PageAsync(BatteryIdsTabs.Of(tab), ReleaseForm.Empty, null, new ReleasedIdFilter(status, release, model, q, demo), cancellationToken));
+
+    [HttpGet("releases/{releaseId}")]
+    public async Task<IActionResult> Release(string releaseId, [FromQuery] bool released, CancellationToken cancellationToken)
+    {
+        if (await pool.ReleaseAsync(releaseId, cancellationToken) is not { } summary)
+        {
+            return NotFound();
+        }
+
+        var items = await pool.ListAsync(new ReleasedIdFilter(Reference: releaseId), cancellationToken);
+        return View(new ReleasePage(summary, items, await ModelsAsync(cancellationToken), released));
+    }
 
     [HttpPost("")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Release(
+    public async Task<IActionResult> ReleaseIds(
         [FromForm] string? reference,
         [FromForm] string? modelId,
         [FromForm] string[]? start,
@@ -61,18 +101,19 @@ public sealed class BatteryIdsController(BatteryIdPool pool, DppStore store) : C
         var result = await pool.ReleaseAsync(Who, new ReleaseRequest(reference, modelId, ranges, list), cancellationToken);
         if (result.Done)
         {
-            TempData[ProductDataController.StatusKey] = $"Released {result.Released.ToString(CultureInfo.InvariantCulture)} battery {(result.Released == 1 ? "ID" : "IDs")} ({reference?.Trim()}). They are listed below; export them for the labels.";
-            return Redirect($"/admin/battery-ids?release={Uri.EscapeDataString(result.ReleaseId!)}");
+            // Straight to the new release, its export at the top, for the labels (the owner, 6d-2b).
+            TempData[ProductDataController.StatusKey] = $"Released {result.Released.ToString(CultureInfo.InvariantCulture)} battery {(result.Released == 1 ? "ID" : "IDs")}. Export them to Excel for the labels.";
+            return Redirect($"/admin/battery-ids/releases/{Uri.EscapeDataString(result.ReleaseId!)}?released=true");
         }
 
         if (result.Problems.Count == 0)
         {
             ViewData[ProductDataController.ErrorKey] = $"Nothing was released: {result.Problem}."; // a listed refusal says it in its own box
         }
+
         var form = new ReleaseForm(reference, modelId, ranges.Length == 0 ? ReleaseForm.Empty.Ranges : ranges, list);
-        var page = await PageAsync(form, result, new ReleasedIdFilter(), cancellationToken);
         Response.StatusCode = StatusCodes.Status422UnprocessableEntity;
-        return View(nameof(Index), page);
+        return View(nameof(Index), await PageAsync(BatteryIdsTabs.New, form, result, new ReleasedIdFilter(), cancellationToken));
     }
 
     [HttpPost("void")]
@@ -93,29 +134,43 @@ public sealed class BatteryIdsController(BatteryIdPool pool, DppStore store) : C
         return Redirect(Back(returnTo));
     }
 
+    /// <summary>The IDs as an Excel file: one release's (<paramref name="release"/>), or All IDs as filtered.</summary>
     [HttpGet("export")]
-    public async Task<IActionResult> Export([FromQuery] string? status, [FromQuery] string? release, [FromQuery] string? model, [FromQuery] string? q, CancellationToken cancellationToken)
+    public async Task<IActionResult> Export(
+        [FromQuery] string? status,
+        [FromQuery] string? release,
+        [FromQuery] string? model,
+        [FromQuery] string? q,
+        [FromQuery] bool demo,
+        CancellationToken cancellationToken)
     {
-        var items = await pool.ListAsync(new ReleasedIdFilter(status, release, model, q), cancellationToken);
-        var models = await ModelsAsync(cancellationToken);
-        return File(BatteryIdPool.Export(items, models), XlsxWriter.ContentType, $"battery-ids-{DateTime.UtcNow:yyyy-MM-dd}.xlsx");
+        var items = await pool.ListAsync(new ReleasedIdFilter(status, release, model, q, demo), cancellationToken);
+        var name = release is { Length: > 0 } && await pool.ReleaseAsync(release, cancellationToken) is { } summary ? FileWord(summary.Reference) : "all";
+        return File(BatteryIdPool.Export(items, await ModelsAsync(cancellationToken)), XlsxWriter.ContentType, $"battery-ids-{name}-{DateTime.UtcNow:yyyy-MM-dd}.xlsx");
     }
 
-    private async Task<BatteryIdsPage> PageAsync(ReleaseForm form, ReleaseResult? refusal, ReleasedIdFilter filter, CancellationToken cancellationToken)
+    private async Task<BatteryIdsPage> PageAsync(string tab, ReleaseForm form, ReleaseResult? refusal, ReleasedIdFilter filter, CancellationToken cancellationToken)
     {
-        var all = await pool.ListAsync(filter, cancellationToken);
-        var items = all.Take(BatteryIdsPage.MaxRows).ToArray();
-        var batteries = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var packId in items.Select(item => item.PackId).OfType<string>().Distinct())
-        {
-            batteries[packId] = Dpp.Pages.BatteryPages.BatteryHref(packId);
-        }
-
-        return new BatteryIdsPage(form, refusal, await pool.ReleasesAsync(cancellationToken), items, filter, await ModelsAsync(cancellationToken), batteries, all.Count);
+        var all = tab == BatteryIdsTabs.Ids ? await pool.ListAsync(filter, cancellationToken) : [];
+        return new BatteryIdsPage(
+            tab,
+            await pool.RealCountsAsync(cancellationToken),
+            pool.MissingSettings,
+            await pool.ReleasesAsync(cancellationToken),
+            await ModelsAsync(cancellationToken),
+            form,
+            refusal,
+            all.Take(BatteryIdsPage.MaxRows).ToArray(),
+            all.Count,
+            filter);
     }
 
     private async Task<IReadOnlyDictionary<string, string>> ModelsAsync(CancellationToken cancellationToken) =>
         (await store.ListAsync<BatteryModel>(cancellationToken)).OrderBy(model => model.Name, StringComparer.OrdinalIgnoreCase).ToDictionary(model => model.Id, model => model.Name, StringComparer.Ordinal);
+
+    /// <summary>A reference as part of a file name: letters, digits and dashes.</summary>
+    private static string FileWord(string reference) =>
+        new string(reference.Select(letter => char.IsAsciiLetterOrDigit(letter) ? letter : '-').ToArray()).Trim('-') is { Length: > 0 } word ? word : "release";
 
     private void Message(string? status, string? error)
     {

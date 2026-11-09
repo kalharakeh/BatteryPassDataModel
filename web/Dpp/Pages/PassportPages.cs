@@ -187,7 +187,8 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
     /// </summary>
     public async Task<PassportVersion?> FindAsync(string? id, CancellationToken cancellationToken = default)
     {
-        var text = id?.Trim() ?? string.Empty;
+        // A web-form ID in an address arrives with its slashes still encoded (%2F): decode it once (6d).
+        var text = Uri.UnescapeDataString(id?.Trim() ?? string.Empty);
         if (text.Length == 0)
         {
             return null;
