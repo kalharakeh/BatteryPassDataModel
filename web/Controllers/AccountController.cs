@@ -1,7 +1,9 @@
+using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Models.ViewModels;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MongoDB.Bson;
 using BCryptNet = BCrypt.Net.BCrypt;
 
@@ -38,6 +40,7 @@ public sealed class AccountController : Controller
     }
 
     [HttpPost("")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.Login)] // it checks the current password, as a sign-in does (finding S06)
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Save(CancellationToken cancellationToken)
     {
