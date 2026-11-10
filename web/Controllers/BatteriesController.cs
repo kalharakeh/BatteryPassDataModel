@@ -1,4 +1,6 @@
 using System.Globalization;
+using BatteryPassWeb.Configuration;
+using BatteryPassWeb.Dpp.Access;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Pages;
@@ -6,6 +8,7 @@ using BatteryPassWeb.Dpp.Uploads;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace BatteryPassWeb.Controllers;
 
@@ -96,6 +99,7 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     [HttpPost("{packId}/upload")]
     [ValidateAntiForgeryToken]
     [RequestSizeLimit(UploadService.MaxBytes + 65536)]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.FileUpload)]
     public async Task<IActionResult> CheckUpload(string packId, IFormFile? file, CancellationToken cancellationToken)
     {
         var (checkId, problem) = await uploads.CheckAsync(ChangeSender.Team(Who), packId, file?.FileName, file?.OpenReadStream(), file?.Length ?? 0, cancellationToken);
@@ -173,6 +177,7 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
 
     [HttpPost("{packId}/accidents")]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.FileUpload)]
     public async Task<IActionResult> AddAccidentReport(string packId, IFormFile? file, [FromForm] string? title, [FromForm] string? language, CancellationToken cancellationToken)
     {
         if (file is null || file.Length == 0)
@@ -185,6 +190,17 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
         await file.CopyToAsync(buffer, cancellationToken);
         var result = await documents.AddAccidentReportAsync(ChangeSender.Team(Who), packId, new DocumentUpload(file.FileName, buffer.ToArray(), title, language), cancellationToken);
         Card(packId, "accidents", result.Problem is null ? $"{result.Document!.FileName} added." : null, result.Problem is null ? null : $"The report wasn't added: {result.Problem}.");
+        return Redirect($"{BatteryPages.BatteryHref(packId)}#accidents");
+    }
+
+    /// <summary>The team withdraws an accident report (S07): with its reason, after the page's confirm question.</summary>
+    [HttpPost("{packId}/accidents/{documentId}/withdraw")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WithdrawAccidentReport(string packId, string documentId, [FromForm] string? reason, CancellationToken cancellationToken)
+    {
+        var fileName = (await documents.AccidentReportsAsync(Reader.With(Who, ReaderRole.Team), packId, cancellationToken))?.FirstOrDefault(report => report.Id == documentId)?.FileName;
+        var problem = await documents.WithdrawAccidentReportAsync(ChangeSender.Team(Who), packId, documentId, reason, cancellationToken);
+        Card(packId, "accidents", problem is null ? $"{fileName} withdrawn." : null, problem is null ? null : $"The report wasn't withdrawn: {problem}.");
         return Redirect($"{BatteryPages.BatteryHref(packId)}#accidents");
     }
 

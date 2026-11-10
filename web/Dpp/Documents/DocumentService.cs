@@ -34,6 +34,14 @@ public sealed class DocumentService(
 {
     public const string UploadedEvent = "dpp.document-uploaded";
     public const string DeniedEvent = "dpp.document-denied";
+    public const string WithdrawnEvent = "dpp.accident-report-withdrawn";
+
+    public const string OnlyTheTeamWithdraws = "only the team withdraws an accident report";
+    public const string WithdrawNeedsReason = "give the reason first";
+    public const string NoSuchReport = "there is no such accident report on this battery";
+
+    /// <summary>The longest withdrawal reason kept, in characters.</summary>
+    public const int MaxReason = 500;
 
     /// <summary>#92: a pack's accident reports.</summary>
     public const string Accidents = "informationOnAccidents";
@@ -73,6 +81,60 @@ public sealed class DocumentService(
         ArgumentNullException.ThrowIfNull(upload);
         var title = string.IsNullOrWhiteSpace(upload.Title) ? SafeFileName(upload.FileName) : upload.Title.Trim();
         return StoreAndLinkAsync(sender, TargetKind.Pack, packId, Accidents, $"doc-{Guid.NewGuid():N}", title, upload, _ => links.AccidentPageLink(packId), cancellationToken, byTheApp: true);
+    }
+
+    /// <summary>
+    /// The team withdraws an accident report (S07): the record and its stored file are deleted, so the accident page, the
+    /// passport's accident information and every address of the file lose it. The audit log keeps who, when, why and the
+    /// file's name. Null when done; otherwise why not.
+    /// </summary>
+    public async Task<string?> WithdrawAccidentReportAsync(ChangeSender sender, string packId, string documentId, string? reason, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sender);
+        if (sender.Kind != SenderKind.Team)
+        {
+            return OnlyTheTeamWithdraws;
+        }
+
+        var why = reason?.Trim() ?? string.Empty;
+        if (why.Length == 0)
+        {
+            return WithdrawNeedsReason;
+        }
+
+        if (why.Length > MaxReason)
+        {
+            why = why[..MaxReason];
+        }
+
+        if (await documents.GetAsync(documentId, cancellationToken) is not { } report
+            || report.OwnerKind != TargetKind.Pack || report.OwnerId != packId || report.Property != Accidents
+            || await store.GetAsync<BatteryPack>(packId, cancellationToken) is not { } pack)
+        {
+            return NoSuchReport;
+        }
+
+        await documents.DeleteAsync(report, cancellationToken);
+        var serial = pack.Values.GetValueOrDefault("batterySerialNumber")?.Value?.GetValue<string>() ?? packId;
+        await audit.AppendApplicationAuditEventAsync(
+            WithdrawnEvent,
+            sender.Who,
+            sender.Kind.ToString(),
+            "form",
+            $"Accident report {report.FileName} of battery {serial} withdrawn: {why}",
+            new BsonDocument
+            {
+                ["documentId"] = report.Id,
+                ["fileName"] = report.FileName,
+                ["title"] = report.Title,
+                ["sha256"] = report.Sha256,
+                ["uploadedBy"] = report.UploadedBy,
+                ["reason"] = why,
+            },
+            entityType: "dpp-pack",
+            entityId: packId,
+            cancellationToken: cancellationToken);
+        return null;
     }
 
     /// <summary>The file, when the reader may see its attribute; otherwise null, and the refusal is logged.</summary>

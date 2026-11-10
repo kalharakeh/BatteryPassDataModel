@@ -121,6 +121,19 @@ public sealed class DocumentStore
         }
     }
 
+    /// <summary>Deletes one document: its stored file first, then its record, so no address opens it any more.</summary>
+    public async Task DeleteAsync(DppDocument document, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        if (_database is null)
+        {
+            return;
+        }
+
+        await DeleteFileAsync(document.FileId, cancellationToken);
+        await Collection().DeleteOneAsync(d => d.Id == document.Id, cancellationToken);
+    }
+
     /// <summary>Deletes a stored file; a file that is already gone is fine.</summary>
     public async Task DeleteFileAsync(string fileId, CancellationToken cancellationToken = default)
     {

@@ -1,3 +1,4 @@
+@using BatteryPassWeb.Dpp.Documents
 @using BatteryPassWeb.Dpp.Pages
 @inject Microsoft.Extensions.Options.IOptions<BatteryPassWeb.Configuration.BatteryPassOptions> AppOptions
 @model BatteryCards
@@ -16,6 +17,18 @@
                 <li>
                     <span><a href="@ReaderPages.DocumentHref(report.Id)" target="_blank" rel="noreferrer"><strong>@report.Title</strong></a> · @report.FileName · @BatteryCards.Size(report.Length)</span>
                     <span class="bp-batteries-muted">@ValueWords.Time(report.UploadedAtUtc) by @report.UploadedBy</span>
+                    @if (Model.ForTeam)
+                    {
+                        @* The team withdraws a report added by mistake (S07): a reason, then the app's confirm question. *@
+                        <details class="bp-withdraw">
+                            <summary>Withdraw…</summary>
+                            <form method="post" action="@Model.Href/accidents/@Uri.EscapeDataString(report.Id)/withdraw" class="bp-withdraw-form">
+                                @Html.AntiForgeryToken()
+                                <label><span>Why is it withdrawn? (kept in the audit log)</span><input type="text" name="reason" maxlength="@DocumentService.MaxReason" placeholder="e.g. Added to the wrong battery" required /></label>
+                                <button type="submit" class="bp-danger-button bp-button-compact text-nowrap" data-confirm-action data-needs-reason data-confirm-title="Withdraw this report" data-confirm-message="Withdraw @(report.FileName)? Nobody can open it afterwards, its file is deleted and it no longer counts as an accident report of this battery. The audit log keeps who, when, why and the file's name." data-confirm-submit="Withdraw">Withdraw report</button>
+                            </form>
+                        </details>
+                    }
                 </li>
             }
         </ul>

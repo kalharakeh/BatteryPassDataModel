@@ -1,3 +1,4 @@
+using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Dpp.Access;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
@@ -6,6 +7,7 @@ using BatteryPassWeb.Dpp.Uploads;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace BatteryPassWeb.Controllers;
 
@@ -86,6 +88,7 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
 
     [HttpPost("{packId}/accidents")]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.FileUpload)]
     public async Task<IActionResult> AddAccidentReport(string packId, IFormFile? file, [FromForm] string? title, [FromForm] string? language, CancellationToken cancellationToken)
     {
         if (await ClusterAdminAsync(cancellationToken) is not { } sender)
@@ -215,6 +218,7 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
     [HttpPost("{packId}/upload")]
     [ValidateAntiForgeryToken]
     [RequestSizeLimit(UploadService.MaxBytes + 65536)]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.FileUpload)]
     public async Task<IActionResult> CheckUpload(string packId, IFormFile? file, CancellationToken cancellationToken)
     {
         if (await ClusterAdminAsync(cancellationToken) is not { } sender || await pages.BatteryAsync(sender, packId, cancellationToken: cancellationToken) is not { ReadOnly: false })
