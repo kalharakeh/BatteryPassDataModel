@@ -263,6 +263,14 @@ public sealed class DocumentService(
         var batchId = owner == TargetKind.Batch ? ownerId : null;
         var packId = owner == TargetKind.Pack ? ownerId : null;
 
+        // A demo reader reads a real record's documents as a visitor (finding R03).
+        reader = DemoScope.On(reader, owner switch
+        {
+            TargetKind.Model => (await store.GetAsync<BatteryModel>(ownerId, cancellationToken))?.IsDemo == true,
+            TargetKind.Batch => (await store.GetAsync<ProductionBatch>(ownerId, cancellationToken))?.IsDemo == true,
+            _ => (await store.GetAsync<BatteryPack>(ownerId, cancellationToken))?.IsDemo == true,
+        });
+
         // Nothing unpublished leaves the team (J-6): until a published passport uses the record, its documents are the team's.
         if (!reader.Roles.Contains(ReaderRole.Team)
             && !await store.HasPublishedPackUsingAsync(modelId, batchId, packId, cancellationToken))
