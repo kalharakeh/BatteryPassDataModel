@@ -220,7 +220,7 @@
                         <dt>Cluster: Change</dt>
                         <dd>Moves a battery to another cluster at once, logged; or cancel a waiting hand-over.</dd>
                         <dt><a href="/admin/clusters?tab=clusters">Demo data</a></dt>
-                        <dd>At the end of the Clusters tab: "Reset demo data" makes the demo clusters, accounts, tokens and batteries again; "Clear demo data" removes them and keeps real data. Demo accounts and demo tokens work only on demo batteries: on any other battery they see what a visitor sees, and the API refuses them. A site can switch the demo off; the card then says so, demo accounts and tokens stop working, and only "Clear demo data" is offered.</dd>
+                        <dd>At the end of the Clusters tab: "Reset demo data" makes the demo clusters, accounts, tokens and batteries again; "Clear demo data" removes them and keeps real data. A battery is inside the demo only when the battery, its batch, model and operator are demo and its cluster is a demo cluster or none. Demo accounts and demo tokens work only inside the demo. A demo-numbered battery made on real product data is allowed, so the team can try things out, but demo accounts then see it as a visitor does; and for anything outside the demo a demo token gets the same answer as for an ID that does not exist. "Reset demo data" stops and changes nothing when a real account, battery or API token uses one of the demo's clusters, and names that cluster; demo accounts a demo admin added or made never stop it. A site can switch the demo off; the card then says so, demo accounts and tokens stop working, and only "Clear demo data" is offered.</dd>
                     </dl>
                 </section>
 

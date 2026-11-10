@@ -33,7 +33,7 @@ What "Reset demo data" makes (decision 32). The team presses it at the end of th
 
 The team's account is not demo data: the project owner gives testers a team account if they test the team's pages.
 
-Demo accounts work only on demo batteries and demo clusters: on a battery that isn't demo (one made with a real battery ID and real product data), every demo account sees what a visitor sees, and no action is offered. They can sign in only while the site has the demo on (`ENABLE_DEMO_DATA`). The demo accounts that belong to a cluster are made as if that cluster's admin had made them, so the cluster admin may change their name and password; the accounts across the app are the team's.
+Demo accounts work only on demo batteries and demo clusters: on a battery that isn't demo (one made with a real battery ID or real product data, a demo-numbered battery on real product data included), every demo account sees what a visitor sees, and no action is offered. "Reset demo data" stops, and changes nothing, when a real account, battery or API token uses one of the demo's clusters, and names the cluster; demo accounts a demo admin added or made never stop it. They can sign in only while the site has the demo on (`ENABLE_DEMO_DATA`). The demo accounts that belong to a cluster are made as if that cluster's admin had made them, so the cluster admin may change their name and password; the accounts across the app are the team's.
 
 ## Tokens
 
