@@ -115,6 +115,12 @@ public sealed class AccessControlService
             return new AccountRights(true, CantChangeThisAccount, false);
         }
 
+        // A demo account changes only demo accounts: it doesn't pull real people into the demo (finding R03).
+        if (!ClusterRepository.IsDemo(account) && await IsDemoAccountAsync(actor, cancellationToken))
+        {
+            return new AccountRights(true, CantChangeThisAccount, false);
+        }
+
         return new AccountRights(true, null, ClusterAdminMayChangeNameAndPassword(
             roles, clusters, administered, BsonHelpers.GetString(account, ClusterRepository.CreatedInClusterField)));
     }
@@ -173,13 +179,26 @@ public sealed class AccessControlService
         }
 
         var memberships = await _clusterRepository.GetClusterMembershipsForUserAsync(email, cancellationToken);
-        return memberships
+        var administered = memberships
             .Where(membership => BsonHelpers.GetString(membership, "role").Equals(RoleClusterAdmin, StringComparison.OrdinalIgnoreCase))
             .Select(membership => BsonHelpers.GetString(membership, "clusterId"))
             .Where(clusterId => !string.IsNullOrWhiteSpace(clusterId))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+        if (administered.Count == 0 || !ClusterRepository.IsDemo(await _clusterRepository.GetUserByEmailAsync(CurrentEmail(user), cancellationToken)))
+        {
+            return administered;
+        }
+
+        // A demo account's forms reach only the demo clusters, whatever else it was made admin of (finding R03).
+        var demoClusters = await _clusterRepository.DemoClusterIdsAsync(cancellationToken);
+        return administered.Where(demoClusters.Contains).ToList();
     }
+
+    /// <summary>Whether the signed-in person's account is one the demo data made, or a demo cluster admin made (finding R03).</summary>
+    public async Task<bool> IsDemoAccountAsync(ClaimsPrincipal user, CancellationToken cancellationToken = default) =>
+        user.Identity?.IsAuthenticated == true
+        && ClusterRepository.IsDemo(await _clusterRepository.GetUserByEmailAsync(CurrentEmail(user), cancellationToken));
 
     public async Task<bool> CanAdministerClusterAsync(ClaimsPrincipal user, string clusterId, CancellationToken cancellationToken = default)
     {

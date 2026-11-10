@@ -383,7 +383,10 @@ public class ClusterAdminController : Controller
         }
 
         var displayName = Text(Request.Form, "name", email);
-        await _clusterRepository.CreateAccountInClusterAsync(email, displayName, BCryptNet.HashPassword(password), clusterId, cancellationToken);
+        // An account a demo cluster admin makes is a demo account, cleared with the demo data (finding R03).
+        await _clusterRepository.CreateAccountInClusterAsync(
+            email, displayName, BCryptNet.HashPassword(password), clusterId, cancellationToken,
+            isDemo: await _accessControlService.IsDemoAccountAsync(User, cancellationToken));
         await _clusterRepository.UpsertClusterMembershipAsync(email, clusterId, role, cancellationToken);
         await AuditUserSavedAsync("Cluster user created.", email, displayName, clusterId, role, true, cancellationToken);
         TempData["StatusMessage"] = "User added.";

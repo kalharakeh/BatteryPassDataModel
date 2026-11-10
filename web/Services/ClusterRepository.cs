@@ -14,6 +14,23 @@ public sealed class ClusterRepository
     /// <summary>The cluster a cluster admin made the account in (finding R19); the team's accounts have none.</summary>
     public const string CreatedInClusterField = "createdInCluster";
 
+    /// <summary>The demo data's mark on accounts, clusters, memberships and tokens (decision 32).</summary>
+    public const string DemoMark = "isDemo";
+
+    /// <summary>Whether a record carries the demo data's mark.</summary>
+    public static bool IsDemo(BsonDocument? record) =>
+        record?.GetValue(DemoMark, false) is { IsBoolean: true, AsBoolean: true };
+
+    /// <summary>The clusters the demo data made (finding R03).</summary>
+    public async Task<IReadOnlySet<string>> DemoClusterIdsAsync(CancellationToken cancellationToken = default) =>
+        _mongoContext.Database == null
+            ? new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            : (await _mongoContext.Database.GetCollection<BsonDocument>("clusters")
+                .Find(Builders<BsonDocument>.Filter.Eq(DemoMark, true))
+                .ToListAsync(cancellationToken))
+                .Select(cluster => NormalizeClusterId(BsonHelpers.GetString(cluster, "clusterId")))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
     public static readonly Collation IgnoreCase = new("en", strength: CollationStrength.Secondary);
 
     public ClusterRepository(MongoContext mongoContext)
@@ -210,7 +227,7 @@ public sealed class ClusterRepository
     /// admins may later change its name and password (finding R19). Only ever inserts: an account that exists meanwhile is
     /// left as it is.
     /// </summary>
-    public async Task CreateAccountInClusterAsync(string email, string name, string passwordHash, string clusterId, CancellationToken cancellationToken = default)
+    public async Task CreateAccountInClusterAsync(string email, string name, string passwordHash, string clusterId, CancellationToken cancellationToken = default, bool isDemo = false)
     {
         if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(clusterId))
         {
@@ -227,6 +244,7 @@ public sealed class ClusterRepository
                 .SetOnInsert("roles", new BsonArray { AccessControlService.RoleNormalUser })
                 .SetOnInsert("passwordHash", passwordHash)
                 .SetOnInsert(CreatedInClusterField, NormalizeClusterId(clusterId))
+                .SetOnInsert(DemoMark, isDemo)
                 .SetOnInsert("createdAt", now)
                 .SetOnInsert("updatedAt", now),
             new UpdateOptions { IsUpsert = true, Collation = IgnoreCase },
