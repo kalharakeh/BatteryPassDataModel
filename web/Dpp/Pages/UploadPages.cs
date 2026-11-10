@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using BatteryPassWeb.Dpp.Access;
 using BatteryPassWeb.Dpp.Catalog;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Forms;
@@ -76,7 +77,7 @@ public sealed class UploadPages(UploadService uploads, AttributeForms forms, Att
                 FormatWords(shown.Report.Format),
                 battery.Outcome == UploadService.Saved,
                 battery.Problem is null ? null : Capitalise(battery.Problem),
-                Rows(pack, battery.Values.Select(value => (value.Key, value.Outcome, value.Message, battery.Sent?.GetValueOrDefault(value.Key), battery.Kept?.Contains(value.Key) == true)), preview: true),
+                Rows(pack, battery.Values.Select(value => (value.Key, value.Outcome, value.Message, battery.Sent?.GetValueOrDefault(value.Key), battery.Kept?.Contains(value.Key) == true)), preview: true, forTeam),
                 battery.Modules is null ? null : Capitalise(battery.Modules),
                 (battery.Notes ?? []).Select(Capitalise).ToArray(),
                 battery.Status);
@@ -87,7 +88,7 @@ public sealed class UploadPages(UploadService uploads, AttributeForms forms, Att
             .Select(upload =>
             {
                 var battery = upload.Batteries[0];
-                var values = Rows(pack, battery.Values.Select(value => (value.Key, Enum.Parse<KeyOutcome>(value.Outcome), value.Message ?? string.Empty, value.Value, value.Kept)), preview: false);
+                var values = Rows(pack, battery.Values.Select(value => (value.Key, Enum.Parse<KeyOutcome>(value.Outcome), value.Message ?? string.Empty, value.Value, value.Kept)), preview: false, forTeam);
                 var saved = battery.Values.Count(value => value.Outcome == nameof(KeyOutcome.Saved));
                 var result = battery.Outcome == UploadService.Refused
                     ? "Refused"
@@ -168,7 +169,7 @@ public sealed class UploadPages(UploadService uploads, AttributeForms forms, Att
         return battery.Status is { } status ? $"Saved. {status}" : $"Saved: {Words.Count(saved, "value")}{modules}.";
     }
 
-    private UploadValueRow[] Rows(BatteryPack pack, IEnumerable<(string Key, KeyOutcome Outcome, string Message, string? Sent, bool Kept)> values, bool preview) =>
+    private UploadValueRow[] Rows(BatteryPack pack, IEnumerable<(string Key, KeyOutcome Outcome, string Message, string? Sent, bool Kept)> values, bool preview, bool forTeam) =>
         values.Select(value =>
         {
             var attribute = AttributeCatalog.FindByProperty(value.Key);
@@ -183,12 +184,23 @@ public sealed class UploadPages(UploadService uploads, AttributeForms forms, Att
             };
             return new UploadValueRow(
                 label,
-                attribute is null ? string.Empty : Text(attribute, pack.Values.GetValueOrDefault(value.Key)?.Value),
+                attribute is null || !MaySeeNow(attribute, pack, forTeam) ? string.Empty : Text(attribute, pack.Values.GetValueOrDefault(value.Key)?.Value),
                 attribute is null ? sent?.ToJsonString() ?? string.Empty : Text(attribute, sent is null ? null : normalizer.Normalize(attribute, sent)),
                 result,
                 value.Outcome == KeyOutcome.Rejected,
                 value.Outcome is KeyOutcome.Ignored or KeyOutcome.KeptEmpty || value.Kept);
         }).ToArray();
+
+    /// <summary>
+    /// The battery's current value ("Now") is shown only to someone who may read it: the team always, a cluster admin the
+    /// public, purchaser and shared values of their own battery, not the authorities' (#13 and the like) (S05).
+    /// </summary>
+    private static bool MaySeeNow(AttributeDefinition attribute, BatteryPack pack, bool forTeam) =>
+        forTeam
+        || AudienceRules.MaySee(
+            Reader.With("cluster-admin", ReaderRole.ClusterAdmin, pack.ClusterId is { } cluster ? [cluster] : []),
+            attribute,
+            pack.ClusterId is { } own ? [own] : []);
 
     private string Text(AttributeDefinition attribute, JsonNode? value)
     {
