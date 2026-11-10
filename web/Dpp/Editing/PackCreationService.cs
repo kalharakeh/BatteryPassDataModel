@@ -1,3 +1,4 @@
+using BatteryPassWeb.Dpp.Access;
 using System.Text.Json.Nodes;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Identifiers;
@@ -152,6 +153,18 @@ public sealed class PackCreationService(
             }
 
             pack.Values["uniqueProductIdentifier"] = Stored(JsonValue.Create(identifier), now, "system", sender.Who);
+        }
+
+        // A demo sender makes only demo batteries: a real ID is refused before the battery is stored, and a picked
+        // released ID is available again (finding R03).
+        if (!DemoScope.Reaches(sender, pack.IsDemo))
+        {
+            if (request.FromPool && request.PredecessorPackId is null && pool is not null)
+            {
+                await pool.GiveBackAsync(pack.Id, CancellationToken.None);
+            }
+
+            return Failed(DemoScope.RealBattery);
         }
 
         try
