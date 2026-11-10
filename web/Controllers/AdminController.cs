@@ -358,6 +358,13 @@ public class AdminController : Controller
             return Redirect($"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}");
         }
 
+        // A membership belongs to an account; one for an address without an account would wait for whoever makes it (finding R19).
+        if (await _clusterRepository.GetUserByEmailAsync(email, cancellationToken) is null)
+        {
+            TempData["ErrorMessage"] = NoSuchAccount;
+            return Redirect("/admin/clusters?tab=users");
+        }
+
         await _clusterRepository.UpsertClusterMembershipAsync(email, clusterId, role, cancellationToken);
         await AppendAdminAuditAsync(
             "cluster.user.assigned",
@@ -377,6 +384,7 @@ public class AdminController : Controller
     /// <summary>The team's "Add user" with an address that has an account (finding S04).</summary>
     public const string AlreadyHasAnAccount = "This address already has an account. Change it from its row in the list.";
     public const string NotYourOwnAccess = "You can't lower your own access. Ask a colleague in the team.";
+    public const string NoSuchAccount = "No account has this email.";
     public const string LastTeamAccount = "This is the last team account, so it keeps its access.";
 
     [HttpPost("clusters/save-user")]
@@ -417,7 +425,7 @@ public class AdminController : Controller
 
         if (existingUser == null && change is ("access" or "password"))
         {
-            TempData["ErrorMessage"] = "No account has this email.";
+            TempData["ErrorMessage"] = NoSuchAccount;
             return Redirect("/admin/clusters?tab=users");
         }
 

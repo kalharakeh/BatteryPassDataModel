@@ -23,6 +23,8 @@ public sealed class AccessControlService
     /// </summary>
     public static IReadOnlyList<string> LegitimateInterestRoles { get; } = [RoleLiRepair, RoleLiRecycling, RoleLiTreatment];
 
+    /// <summary>The one answer a cluster admin gets for any account they can't change (finding R19): it says nothing about the account.</summary>
+    public const string CantChangeThisAccount = "You can't change this person's account here. Ask the Scania team.";
     public const string KeptForTheTeam = "Only the team can add this address.";
     public const string AddressKeptForTheTeam = "Only the team can use this address.";
     public const string NewPasswordForAppWideRole = "Set a new password when you give this account access across the app: someone else may know its old one.";
@@ -98,9 +100,16 @@ public sealed class AccessControlService
             return new AccountRights(account is not null, NotYourOwnAccount, false);
         }
 
+        var administered = (await GetAdministeredClusterIdsForUserAsync(actor, cancellationToken)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var clusters = (await _clusterRepository.GetClusterMembershipsForUserAsync(email, cancellationToken))
+            .Select(membership => BsonHelpers.GetString(membership, "clusterId"))
+            .ToList();
         if (account is null)
         {
-            return new AccountRights(false, null, false);
+            // A new account would inherit memberships the address already has: only in the admin's own clusters.
+            return clusters.All(administered.Contains)
+                ? new AccountRights(false, null, false)
+                : new AccountRights(false, CantChangeThisAccount, false);
         }
 
         var roles = RolesOf(account);
@@ -109,10 +118,6 @@ public sealed class AccessControlService
             return new AccountRights(true, TeamAccountsAreTheTeams, false);
         }
 
-        var administered = (await GetAdministeredClusterIdsForUserAsync(actor, cancellationToken)).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var clusters = (await _clusterRepository.GetClusterMembershipsForUserAsync(email, cancellationToken))
-            .Select(membership => BsonHelpers.GetString(membership, "clusterId"))
-            .ToList();
         return new AccountRights(true, null, ClusterAdminMayChangeNameAndPassword(
             roles, clusters, administered, BsonHelpers.GetString(account, ClusterRepository.CreatedInClusterField)));
     }
