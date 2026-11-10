@@ -31,15 +31,11 @@
         [480] = "8 hours",
         [720] = "12 hours"
     };
+    // A cluster has two roles (finding S08): a stored odd value reads as a plain user.
     string MembershipRoleLabel(string role) => role switch
     {
-        "notifiedBody" => "Notified body",
-        "marketSurveillanceAuthority" => "Market surveillance authority",
-        "commission" => "Commission",
-        "liRepair" => "Legitimate interest: repair, repurposing, remanufacturing",
-        "liRecycling" => "Legitimate interest: recycling and battery treatment",
-        "liTreatment" => "Legitimate interest: authorised or WEEE treatment",
-        _ => clusterMembershipRoleOptions.TryGetValue(role, out var label) ? label : "User"
+        "clusterAdmin" => "Cluster admin",
+        _ => "User"
     };
     // The short access tag on a user's row.
     string AccessTag(string access) => access switch

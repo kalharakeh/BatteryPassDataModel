@@ -344,18 +344,17 @@ public sealed class ClusterRepository
     public static string NormalizeClusterId(string clusterId) =>
         clusterId.Trim().ToLowerInvariant();
 
+    public const string OnlyTwoClusterRoles = "A person is a user or a cluster admin in a cluster.";
+
+    /// <summary>Whether a form's membership role is one of the two a cluster has (finding S08).</summary>
+    public static bool IsClusterMembershipRole(string? role) =>
+        role?.Trim() is AccessControlService.RoleNormalUser or AccessControlService.RoleClusterAdmin;
+
     public static string NormalizeClusterMembershipRole(string role)
     {
-        return role.Trim() switch
-        {
-            AccessControlService.RoleClusterAdmin => AccessControlService.RoleClusterAdmin,
-            AccessControlService.RoleNotifiedBody => AccessControlService.RoleNotifiedBody,
-            AccessControlService.RoleMarketSurveillanceAuthority => AccessControlService.RoleMarketSurveillanceAuthority,
-            AccessControlService.RoleCommission => AccessControlService.RoleCommission,
-            AccessControlService.RoleLiRepair => AccessControlService.RoleLiRepair,
-            AccessControlService.RoleLiRecycling => AccessControlService.RoleLiRecycling,
-            AccessControlService.RoleLiTreatment => AccessControlService.RoleLiTreatment,
-            _ => AccessControlService.RoleNormalUser
-        };
+        // A cluster has two roles (finding S08); anything else is stored, and read, as a plain user.
+        return role.Trim() == AccessControlService.RoleClusterAdmin
+            ? AccessControlService.RoleClusterAdmin
+            : AccessControlService.RoleNormalUser;
     }
 }

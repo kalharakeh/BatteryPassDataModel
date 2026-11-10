@@ -352,6 +352,12 @@ public class AdminController : Controller
         var email = Text(Request.Form, "email");
         var clusterId = Text(Request.Form, "clusterId");
         var role = Text(Request.Form, "role", "member");
+        if (!ClusterRepository.IsClusterMembershipRole(role))
+        {
+            TempData["ErrorMessage"] = ClusterRepository.OnlyTwoClusterRoles;
+            return Redirect($"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}");
+        }
+
         await _clusterRepository.UpsertClusterMembershipAsync(email, clusterId, role, cancellationToken);
         await AppendAdminAuditAsync(
             "cluster.user.assigned",
@@ -394,6 +400,11 @@ public class AdminController : Controller
             NormalizeSystemRole(requestedSystemRole)
         };
         var back = $"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}";
+        if (!string.IsNullOrWhiteSpace(Text(Request.Form, "clusterId")) && !ClusterRepository.IsClusterMembershipRole(Text(Request.Form, "role", "member")))
+        {
+            TempData["ErrorMessage"] = ClusterRepository.OnlyTwoClusterRoles;
+            return Redirect(back);
+        }
 
         // "Add user" makes new accounts only; an existing one is changed from its own row: "access" (name and access) or
         // "password" (finding S04).

@@ -325,6 +325,12 @@ public class ClusterAdminController : Controller
             return Redirect(back);
         }
 
+        if (!ClusterRepository.IsClusterMembershipRole(role))
+        {
+            TempData["ErrorMessage"] = ClusterRepository.OnlyTwoClusterRoles;
+            return Redirect(back);
+        }
+
         if (!await _accessControlService.CanAdministerClusterAsync(User, clusterId, cancellationToken))
         {
             return NotFound();

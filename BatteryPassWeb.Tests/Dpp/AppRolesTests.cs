@@ -45,7 +45,7 @@ public sealed class AppRolesTests
             Assert.StartsWith("Legitimate interest: ", label, StringComparison.Ordinal);
             Assert.Contains($"[\"{role}\"] = \"{label}\"", users, StringComparison.Ordinal);
             Assert.Contains($"\"{label}\" => \"{role}\"", users, StringComparison.Ordinal);
-            Assert.Contains($"\"{role}\" => \"{label}\"", clusterUsers, StringComparison.Ordinal);
+            Assert.DoesNotContain($"\"{role}\" => \"{label}\"", clusterUsers, StringComparison.Ordinal); // not a cluster role (finding S08)
             Assert.Equal(label, AccessControlService.DisplayRoleLabel(User(role)));
         }
 
@@ -63,7 +63,7 @@ public sealed class AppRolesTests
         var normalizeSystemRole = typeof(AdminController).GetMethod("NormalizeSystemRole", BindingFlags.NonPublic | BindingFlags.Static)!;
 
         Assert.Equal(stored, normalizeSystemRole.Invoke(null, [given]));
-        Assert.Equal(stored, ClusterRepository.NormalizeClusterMembershipRole(given));
+        Assert.Equal(AccessControlService.RoleNormalUser, ClusterRepository.NormalizeClusterMembershipRole(given)); // a cluster has two roles (finding S08)
     }
 
     [Fact]
