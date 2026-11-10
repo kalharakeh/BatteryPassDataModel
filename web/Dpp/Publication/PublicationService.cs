@@ -49,8 +49,12 @@ public sealed class PublicationService(
 
         var number = await store.GetLatestVersionNumberAsync(packId, cancellationToken) + 1;
         var header = new PassportHeader(identifiers.NewPassportIdentifier(PackIdentifier(sources.Pack), number), DppStatuses.Active, clock.GetUtcNow().UtcDateTime);
-        return checks.Check(PassportAssembler.Assemble(sources, header));
+        return WithDemoRule(sources, checks.Check(PassportAssembler.Assemble(sources, header)));
     }
+
+    /// <summary>A real battery ID on demo product data blocks publishing (U16), also for a battery made before that rule.</summary>
+    private static PublicationReport WithDemoRule(PassportSources sources, PublicationReport report) =>
+        DemoDataRule.Conflicts(sources) ? report with { Blocking = [.. report.Blocking, DemoDataRule.Message] } : report;
 
     /// <summary>The battery ID (#6) a version's passport ID names (6d); the pack's own ID for a pack without one.</summary>
     private static string PackIdentifier(BatteryPack pack) =>
@@ -166,7 +170,7 @@ public sealed class PublicationService(
         var number = await store.GetLatestVersionNumberAsync(packId, cancellationToken) + 1;
         var passportId = identifiers.NewPassportIdentifier(PackIdentifier(sources.Pack), number);
         var passport = PassportAssembler.Assemble(sources, new PassportHeader(passportId, DppStatuses.Active, now));
-        var report = checks.Check(passport);
+        var report = WithDemoRule(sources, checks.Check(passport));
         if (!report.CanPublish)
         {
             return new PublicationResult(null, report, "the passport can't be published yet; see the blocking items");

@@ -56,7 +56,7 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
         var refused = result.Keys.Count(key => key.Outcome == KeyOutcome.Rejected);
         ViewData[ProductDataController.ErrorKey] = refused > 0
             ? $"The battery wasn't created: {Words.Count(refused, "value")} {(refused == 1 ? "was" : "were")} refused; {(refused == 1 ? "it's" : "they're")} marked below."
-            : $"The battery wasn't created: {result.Problem}.";
+            : $"The battery wasn't created: {result.Problem?.TrimEnd('.')}.";
         var state = new EditorState(post, new EditorSave(EditorOutcome.Refused, result.Keys, []));
         return View("NewBattery", await pages.NewAsync(batchId, operatorId, clusterId, state, cancellationToken));
     }

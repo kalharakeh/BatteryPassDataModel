@@ -91,6 +91,11 @@ public sealed class PackCreationService(
             return new PackCreationResult(null, keys, "some values were rejected; nothing was saved");
         }
 
+        var batch = (await store.GetAsync<ProductionBatch>(request.BatchId, cancellationToken))!;
+        var model = await store.GetAsync<BatteryModel>(batch.ModelId, cancellationToken);
+        var economicOperator = (await store.GetAsync<EconomicOperator>(request.OperatorId, cancellationToken))!;
+        var onDemoData = model is not null && DemoDataRule.UsesDemoData(batch, model, economicOperator);
+
         var now = clock.GetUtcNow().UtcDateTime;
         var pack = new BatteryPack
         {
@@ -118,8 +123,13 @@ public sealed class PackCreationService(
                 return Failed(IdentifierForms.SettingsMissing(missing));
             }
 
-            var model = (await store.GetAsync<ProductionBatch>(request.BatchId, cancellationToken))!.ModelId;
-            if (await pool.PickAsync(evaluation.Accepted["batterySerialNumber"].GetValue<string>(), pack.Id, model, cancellationToken) is not { } picked)
+            // A real released ID is refused on demo product data before it is picked, so it stays available (U16).
+            if (onDemoData && !pack.IsDemo && await pool.GetAsync(evaluation.Accepted["batterySerialNumber"].GetValue<string>(), cancellationToken) is { IsDemo: false })
+            {
+                return Failed(DemoDataRule.Message);
+            }
+
+            if (await pool.PickAsync(evaluation.Accepted["batterySerialNumber"].GetValue<string>(), pack.Id, batch.ModelId, cancellationToken) is not { } picked)
             {
                 return Failed(NotAvailable);
             }
@@ -134,6 +144,11 @@ public sealed class PackCreationService(
             if (made.Identifier is not { } identifier)
             {
                 return Failed($"{CantGetId}: {made.Problem}");
+            }
+
+            if (onDemoData && !pack.IsDemo && !IdentifierForms.IsTest(identifier))
+            {
+                return Failed(DemoDataRule.Message);
             }
 
             pack.Values["uniqueProductIdentifier"] = Stored(JsonValue.Create(identifier), now, "system", sender.Who);

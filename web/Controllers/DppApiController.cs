@@ -443,7 +443,7 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
         var result = await writing.CreateAsync(DppReaders.SenderFor(token), Text(body, "batchId"), Text(body, "operatorId"), Text(body, "clusterId"), values, cancellationToken);
         if (result.Pack is not { } pack)
         {
-            return Envelope(StatusCodes.Status400BadRequest, $"The battery was not created: {result.Problem}.", new { values = Keys(result.Keys) });
+            return Envelope(StatusCodes.Status400BadRequest, $"The battery was not created: {result.Problem?.TrimEnd('.')}.", new { values = Keys(result.Keys) });
         }
 
         var batteryId = pack.Values["uniqueProductIdentifier"].Value!.GetValue<string>();

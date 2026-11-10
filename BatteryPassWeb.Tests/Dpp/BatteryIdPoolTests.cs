@@ -43,7 +43,23 @@ public sealed class BatteryIdPoolTests(MongoFixture mongo)
         var rig = await DemoRig.StartAsync(mongo, dunsIds: true);
         await rig.Demo.SeedAsync(Who);
         var c7 = (await rig.Store.FindPacksBySerialNumberAsync("DEMO-C7M-0001")).Single();
+        await RealProductDataAsync(rig, c7);
         return (rig, rig.Services.GetRequiredService<BatteryIdPool>(), c7);
+    }
+
+    /// <summary>
+    /// These tests make batteries with real released IDs, which may not sit on demo product data (U16), so C7's batch,
+    /// model and operator are made real data here.
+    /// </summary>
+    private static async Task RealProductDataAsync(DemoRig rig, BatteryPack c7)
+    {
+        var batch = (await rig.Store.GetAsync<ProductionBatch>(c7.BatchId))!;
+        foreach (var (collection, id) in new[] { (DppStore.Batches, batch.Id), (DppStore.Models, batch.ModelId), (DppStore.Operators, c7.OperatorId) })
+        {
+            await rig.Database.GetCollection<MongoDB.Bson.BsonDocument>(collection).UpdateOneAsync(
+                Builders<MongoDB.Bson.BsonDocument>.Filter.Eq("_id", id),
+                Builders<MongoDB.Bson.BsonDocument>.Update.Set("IsDemo", false));
+        }
     }
 
     private static NewPack NewBattery(BatteryPack like, string serial) =>
