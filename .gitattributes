@@ -1,1 +1,2 @@
 web/Dpp/Schemas/**/*.json -text
+web/wwwroot/css/site.css text eol=lf
