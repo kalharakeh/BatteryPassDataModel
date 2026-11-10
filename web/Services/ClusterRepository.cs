@@ -11,6 +11,9 @@ public sealed class ClusterRepository
     /// Compares addresses without regard to capitals (finding U28): new writers store them in lower case, but an older
     /// one may not have, and no index forces it.
     /// </summary>
+    /// <summary>The cluster a cluster admin made the account in (finding R19); the team's accounts have none.</summary>
+    public const string CreatedInClusterField = "createdInCluster";
+
     public static readonly Collation IgnoreCase = new("en", strength: CollationStrength.Secondary);
 
     public ClusterRepository(MongoContext mongoContext)
@@ -199,6 +202,34 @@ public sealed class ClusterRepository
             await UserFilterAsync(normalizedEmail, cancellationToken),
             Builders<BsonDocument>.Update.Combine(updates),
             new UpdateOptions { IsUpsert = true },
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// A cluster admin's new account: a member with this password, marked with the cluster it was made in, so that cluster's
+    /// admins may later change its name and password (finding R19). Only ever inserts: an account that exists meanwhile is
+    /// left as it is.
+    /// </summary>
+    public async Task CreateAccountInClusterAsync(string email, string name, string passwordHash, string clusterId, CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(clusterId))
+        {
+            return;
+        }
+
+        var normalizedEmail = NormalizeEmail(email);
+        var now = DateTime.UtcNow.ToString("O");
+        await _mongoContext.Database.GetCollection<BsonDocument>("users").UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("email", normalizedEmail),
+            Builders<BsonDocument>.Update
+                .SetOnInsert("email", normalizedEmail)
+                .SetOnInsert("name", string.IsNullOrWhiteSpace(name) ? normalizedEmail : name.Trim())
+                .SetOnInsert("roles", new BsonArray { AccessControlService.RoleNormalUser })
+                .SetOnInsert("passwordHash", passwordHash)
+                .SetOnInsert(CreatedInClusterField, NormalizeClusterId(clusterId))
+                .SetOnInsert("createdAt", now)
+                .SetOnInsert("updatedAt", now),
+            new UpdateOptions { IsUpsert = true, Collation = IgnoreCase },
             cancellationToken);
     }
 

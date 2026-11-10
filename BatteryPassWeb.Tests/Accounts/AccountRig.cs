@@ -83,17 +83,25 @@ internal sealed class AccountRig(ServiceProvider services, IMongoDatabase databa
         await Clusters.UpsertClusterAsync("north", "Customer North");
         await Clusters.UpsertClusterAsync("south", "Customer South");
         await AccountAsync(NorthAdmin, "North Admin", AccessControlService.RoleNormalUser, "north", AccessControlService.RoleClusterAdmin);
-        await AccountAsync(NorthUser, "North User", AccessControlService.RoleNormalUser, "north", AccessControlService.RoleNormalUser);
+        await AccountAsync(NorthUser, "North User", AccessControlService.RoleNormalUser, "north", AccessControlService.RoleNormalUser, createdIn: "north");
         await AccountAsync(SouthAdmin, "South Admin", AccessControlService.RoleNormalUser, "south", AccessControlService.RoleClusterAdmin);
-        await AccountAsync(SouthUser, "South User", AccessControlService.RoleNormalUser, "south", AccessControlService.RoleNormalUser);
+        await AccountAsync(SouthUser, "South User", AccessControlService.RoleNormalUser, "south", AccessControlService.RoleNormalUser, createdIn: "south");
         await AccountAsync(Msa, "Market Surveillance", AccessControlService.RoleMarketSurveillanceAuthority);
         await AccountAsync(Team, "Team", AccessControlService.RoleAdmin);
         await AccountAsync(Team2, "Team Two", AccessControlService.RoleAdmin);
     }
 
-    public async Task AccountAsync(string email, string name, string role, string? cluster = null, string? clusterRole = null, string password = Password)
+    /// <summary>An account; <paramref name="createdIn"/> marks it as made by that cluster's admin (finding R19).</summary>
+    public async Task AccountAsync(string email, string name, string role, string? cluster = null, string? clusterRole = null, string password = Password, string? createdIn = null)
     {
         await Clusters.UpsertUserAsync(email, name, [role], BCrypt.Net.BCrypt.HashPassword(password, 4));
+        if (createdIn is not null)
+        {
+            await Database.GetCollection<BsonDocument>("users").UpdateOneAsync(
+                Builders<BsonDocument>.Filter.Eq("email", ClusterRepository.NormalizeEmail(email)),
+                Builders<BsonDocument>.Update.Set(ClusterRepository.CreatedInClusterField, createdIn));
+        }
+
         if (cluster is not null)
         {
             await Clusters.UpsertClusterMembershipAsync(email, cluster, clusterRole ?? AccessControlService.RoleNormalUser);

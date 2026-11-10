@@ -56,14 +56,18 @@ public sealed class AccessControlService
     public static bool HasAppWideRole(IEnumerable<string> roles) => roles.Any(IsAppWideRole);
 
     /// <summary>
-    /// Finding R19's rule: a cluster admin may change the name or set the password of an account only when it has no role
-    /// across the app and every cluster it belongs to (at least one) is one they administer.
+    /// Finding R19's rule: a cluster admin may change the name or set the password of an account only when a cluster admin
+    /// of one of their clusters made it (<paramref name="createdInCluster"/>, the account's mark; none for the team's
+    /// accounts and older ones), it has no role across the app, and every cluster it belongs to (at least one) is theirs.
     /// </summary>
     public static bool ClusterAdminMayChangeNameAndPassword(
         IEnumerable<string> accountRoles,
         IReadOnlyCollection<string> accountClusterIds,
-        IReadOnlySet<string> administeredClusterIds) =>
-        !HasAppWideRole(accountRoles)
+        IReadOnlySet<string> administeredClusterIds,
+        string? createdInCluster) =>
+        !string.IsNullOrWhiteSpace(createdInCluster)
+        && administeredClusterIds.Contains(createdInCluster)
+        && !HasAppWideRole(accountRoles)
         && accountClusterIds.Count > 0
         && accountClusterIds.All(administeredClusterIds.Contains);
 
@@ -109,7 +113,8 @@ public sealed class AccessControlService
         var clusters = (await _clusterRepository.GetClusterMembershipsForUserAsync(email, cancellationToken))
             .Select(membership => BsonHelpers.GetString(membership, "clusterId"))
             .ToList();
-        return new AccountRights(true, null, ClusterAdminMayChangeNameAndPassword(roles, clusters, administered));
+        return new AccountRights(true, null, ClusterAdminMayChangeNameAndPassword(
+            roles, clusters, administered, BsonHelpers.GetString(account, ClusterRepository.CreatedInClusterField)));
     }
 
     public static bool IsAdmin(ClaimsPrincipal user) => user.IsInRole(RoleAdmin);

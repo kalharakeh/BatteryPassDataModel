@@ -111,7 +111,8 @@ public class ClusterAdminController : Controller
                     && AccessControlService.ClusterAdminMayChangeNameAndPassword(
                         AccessControlService.RolesOf(user),
                         clusterIdsByEmail.GetValueOrDefault(BsonHelpers.GetString(user, "email")) ?? [],
-                        managedClusterIds)))
+                        managedClusterIds,
+                        BsonHelpers.GetString(user, ClusterRepository.CreatedInClusterField))))
             .Select(user => BsonHelpers.GetString(user, "email"))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         ViewData["StatusMessage"] = TempData["StatusMessage"]?.ToString() ?? string.Empty;
@@ -370,7 +371,7 @@ public class ClusterAdminController : Controller
         }
 
         var displayName = Text(Request.Form, "name", email);
-        await _clusterRepository.UpsertUserAsync(email, displayName, [AccessControlService.RoleNormalUser], BCryptNet.HashPassword(password), cancellationToken);
+        await _clusterRepository.CreateAccountInClusterAsync(email, displayName, BCryptNet.HashPassword(password), clusterId, cancellationToken);
         await _clusterRepository.UpsertClusterMembershipAsync(email, clusterId, role, cancellationToken);
         await AuditUserSavedAsync("Cluster user created.", email, displayName, clusterId, role, true, cancellationToken);
         TempData["StatusMessage"] = "User added.";
