@@ -41,6 +41,20 @@ public sealed class LoginAuthenticationResult
 
 public sealed class AuthService
 {
+    public const int MinimumPasswordLength = 12;
+    public const string PasswordRuleLine = "At least 12 characters.";
+    public const string PasswordTooShort = "Use at least 12 characters for the new password.";
+    public const string CurrentPasswordNeeded = "Type your current password to change your password or e-mail.";
+    public const string CurrentPasswordWrong = "That isn't your current password.";
+
+    /// <summary>Finding S06: why a typed new password can't be used, or null.</summary>
+    public static string? NewPasswordProblem(string? password) =>
+        string.IsNullOrEmpty(password) || password.Length < MinimumPasswordLength ? PasswordTooShort : null;
+
+    /// <summary>Whether <paramref name="password"/> is this account's current password (the fallback admin's included).</summary>
+    public async Task<bool> IsCurrentPasswordAsync(string email, string password, CancellationToken cancellationToken = default) =>
+        (await AuthenticateLoginAsync(email, password, cancellationToken)).Status == LoginAuthenticationStatus.Authenticated;
+
     private readonly MongoContext _mongoContext;
     private readonly BatteryPassOptions _options;
     private readonly IEmailSender _emailSender;
@@ -245,8 +259,7 @@ public sealed class AuthService
         if (_mongoContext.Database == null
             || string.IsNullOrWhiteSpace(email)
             || string.IsNullOrWhiteSpace(temporaryPassword)
-            || string.IsNullOrWhiteSpace(newPassword)
-            || newPassword.Length < 8)
+            || NewPasswordProblem(newPassword) is not null)
         {
             return false;
         }

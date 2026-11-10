@@ -266,9 +266,10 @@
                     <label>
                         Password
                         <span class="bp-password-field">
-                            <input type="password" name="password" placeholder="Password" autocomplete="new-password" />
+                            <input type="password" name="password" placeholder="Password" autocomplete="new-password" minlength="12" />
                             @await Html.PartialAsync("_PasswordReveal")
                         </span>
+                        <small class="text-secondary">At least 12 characters.</small>
                     </label>
                     <label>
                         Type it again
@@ -371,9 +372,10 @@
                                     <label>
                                         New password
                                         <span class="bp-password-field">
-                                            <input type="password" name="password" placeholder="New password" autocomplete="new-password" />
+                                            <input type="password" name="password" placeholder="New password" autocomplete="new-password" minlength="12" />
                                             @await Html.PartialAsync("_PasswordReveal")
                                         </span>
+                                        <small class="text-secondary">At least 12 characters.</small>
                                     </label>
                                     <label>
                                         Type it again
@@ -455,9 +457,10 @@
                                 <label>
                                     New password
                                     <span class="bp-password-field">
-                                        <input type="password" name="password" placeholder="New password" autocomplete="new-password" />
+                                        <input type="password" name="password" placeholder="New password" autocomplete="new-password" minlength="12" />
                                         @await Html.PartialAsync("_PasswordReveal")
                                     </span>
+                                    <small class="text-secondary">At least 12 characters.</small>
                                 </label>
                                 <label>
                                     Type it again

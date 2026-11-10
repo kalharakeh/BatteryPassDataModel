@@ -6,6 +6,7 @@ using BatteryPassWeb.Dpp.Demo;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Services;
 using BatteryPassWeb.Tests.Dpp;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -41,6 +42,7 @@ internal sealed class AccountRig(ServiceProvider services, IMongoDatabase databa
     public ClusterRepository Clusters => Services.GetRequiredService<ClusterRepository>();
     public AuthService Auth => Services.GetRequiredService<AuthService>();
     public AccessControlService Access => Services.GetRequiredService<AccessControlService>();
+    public CapturingEmailSender Mail => Services.GetRequiredService<CapturingEmailSender>();
 
     public static async Task<AccountRig> StartAsync(MongoFixture mongo, Action<BatteryPassOptions>? configure = null)
     {
@@ -59,7 +61,8 @@ internal sealed class AccountRig(ServiceProvider services, IMongoDatabase databa
             .AddSingleton<ApplicationSettingsService>()
             .AddSingleton<ClusterRepository>()
             .AddSingleton<AccessControlService>()
-            .AddSingleton<IEmailSender, NoEmailSender>()
+            .AddSingleton<CapturingEmailSender>()
+            .AddSingleton<IEmailSender>(provider => provider.GetRequiredService<CapturingEmailSender>())
             .AddSingleton<AuthService>()
             .AddSingleton<AuthenticationSessionService>()
             .AddSingleton(SigningTesting.Keys)
@@ -132,9 +135,27 @@ internal sealed class AccountRig(ServiceProvider services, IMongoDatabase databa
             Services.GetRequiredService<DemoDataService>()),
             Person(email, AccessControlService.RoleAdmin));
 
+    /// <summary>The account page, as <paramref name="email"/>.</summary>
+    public AccountController AccountPage(string email, params string[] roles) =>
+        With(new AccountController(
+            Clusters,
+            Auth,
+            Services.GetRequiredService<ApplicationAuditService>(),
+            Services.GetRequiredService<AuthenticationSessionService>()),
+            Person(email, roles.Length == 0 ? [AccessControlService.RoleNormalUser] : roles));
+
+    /// <summary>The login pages, signed out.</summary>
+    public LoginController LoginPage() =>
+        With(new LoginController(Auth, Services.GetRequiredService<ApplicationAuditService>(), Services.GetRequiredService<AuthenticationSessionService>()),
+            new ClaimsPrincipal(new ClaimsIdentity()));
+
     public static T With<T>(T controller, ClaimsPrincipal user) where T : Controller
     {
-        var http = new DefaultHttpContext { User = user, RequestServices = new ServiceCollection().BuildServiceProvider() };
+        var http = new DefaultHttpContext
+        {
+            User = user,
+            RequestServices = new ServiceCollection().AddSingleton<IAuthenticationService, RecordingAuthenticationService>().BuildServiceProvider(),
+        };
         http.Request.Form = new FormCollection(new Dictionary<string, StringValues>());
         controller.ControllerContext = new ControllerContext { HttpContext = http };
         controller.TempData = new TempDataDictionary(http, new NoTempDataStorage());
@@ -159,11 +180,39 @@ internal sealed class AccountRig(ServiceProvider services, IMongoDatabase databa
         }
     }
 
-    private sealed class NoEmailSender : IEmailSender
+    /// <summary>Keeps the last temporary password "sent", so a test can use it.</summary>
+    internal sealed class CapturingEmailSender : IEmailSender
     {
-        public bool IsConfigured => false;
+        public bool IsConfigured => true;
 
-        public Task SendTemporaryPasswordAsync(string recipientEmail, string temporaryPassword, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public string LastTemporaryPassword { get; private set; } = string.Empty;
+
+        public Task SendTemporaryPasswordAsync(string recipientEmail, string temporaryPassword, CancellationToken cancellationToken = default)
+        {
+            LastTemporaryPassword = temporaryPassword;
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>Signing in and out on a controller's own context: the principal it signs in becomes the context's user.</summary>
+    internal sealed class RecordingAuthenticationService : IAuthenticationService
+    {
+        public Task<AuthenticateResult> AuthenticateAsync(HttpContext context, string? scheme) => Task.FromResult(AuthenticateResult.NoResult());
+
+        public Task ChallengeAsync(HttpContext context, string? scheme, AuthenticationProperties? properties) => Task.CompletedTask;
+
+        public Task ForbidAsync(HttpContext context, string? scheme, AuthenticationProperties? properties) => Task.CompletedTask;
+
+        public Task SignInAsync(HttpContext context, string? scheme, ClaimsPrincipal principal, AuthenticationProperties? properties)
+        {
+            context.User = principal;
+            return Task.CompletedTask;
+        }
+
+        public Task SignOutAsync(HttpContext context, string? scheme, AuthenticationProperties? properties)
+        {
+            context.User = new ClaimsPrincipal(new ClaimsIdentity());
+            return Task.CompletedTask;
+        }
     }
 }

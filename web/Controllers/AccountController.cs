@@ -68,7 +68,30 @@ public sealed class AccountController : Controller
             });
         }
 
-        if (!newEmail.Equals(currentEmail, StringComparison.OrdinalIgnoreCase))
+        // A new password or e-mail needs the current password first, and a new password has 12 characters (finding S06).
+        var emailChanges = !newEmail.Equals(currentEmail, StringComparison.OrdinalIgnoreCase);
+        if (emailChanges || !string.IsNullOrWhiteSpace(password))
+        {
+            var currentPassword = Request.Form["currentPassword"].FirstOrDefault() ?? string.Empty;
+            var problem = string.IsNullOrEmpty(currentPassword)
+                ? AuthService.CurrentPasswordNeeded
+                : !await _authService.IsCurrentPasswordAsync(currentEmail, currentPassword, cancellationToken)
+                    ? AuthService.CurrentPasswordWrong
+                    : string.IsNullOrWhiteSpace(password) ? null : AuthService.NewPasswordProblem(password);
+            if (problem is not null)
+            {
+                var model = await BuildModelAsync(cancellationToken);
+                return View("Index", new AccountProfileViewModel
+                {
+                    Email = model.Email,
+                    Name = name,
+                    RoleLabel = model.RoleLabel,
+                    ErrorMessage = problem
+                });
+            }
+        }
+
+        if (emailChanges)
         {
             var existing = await _clusterRepository.GetUserByEmailAsync(newEmail, cancellationToken);
             if (existing != null)

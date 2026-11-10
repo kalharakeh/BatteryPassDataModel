@@ -125,6 +125,14 @@ public class LoginController : Controller
             return View(model);
         }
 
+        if (AuthService.NewPasswordProblem(model.Password) is { } problem)
+        {
+            model.ErrorMessage = problem;
+            model.Password = string.Empty;
+            model.PasswordConfirmation = string.Empty;
+            return View(model);
+        }
+
         var success = await _authService.ConsumeTemporaryPasswordAsync(
             model.Email,
             model.TemporaryPassword,

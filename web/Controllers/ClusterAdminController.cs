@@ -314,6 +314,12 @@ public class ClusterAdminController : Controller
                 return Redirect(back);
             }
 
+            if (AuthService.NewPasswordProblem(password) is { } shortPassword)
+            {
+                TempData["ErrorMessage"] = shortPassword;
+                return Redirect(back);
+            }
+
             await _clusterRepository.SetPasswordHashAsync(email, BCryptNet.HashPassword(password), cancellationToken);
             await AuditUserSavedAsync("Cluster user's password changed.", email, null, null, null, true, cancellationToken);
             TempData["StatusMessage"] = "Password saved.";
@@ -354,6 +360,12 @@ public class ClusterAdminController : Controller
         if (!password.Equals(passwordConfirmation, StringComparison.Ordinal))
         {
             TempData["ErrorMessage"] = "Passwords do not match.";
+            return Redirect(back);
+        }
+
+        if (AuthService.NewPasswordProblem(password) is { } problem)
+        {
+            TempData["ErrorMessage"] = problem;
             return Redirect(back);
         }
 

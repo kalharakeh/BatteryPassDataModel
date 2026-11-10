@@ -427,6 +427,13 @@ public class AdminController : Controller
             return Redirect(back);
         }
 
+        // A typed new password has at least 12 characters (finding S06); passwords that exist keep working.
+        if (!string.IsNullOrWhiteSpace(password) && AuthService.NewPasswordProblem(password) is { } shortPassword)
+        {
+            TempData["ErrorMessage"] = shortPassword;
+            return Redirect(back);
+        }
+
         if (change == "password")
         {
             if (string.IsNullOrWhiteSpace(password))
