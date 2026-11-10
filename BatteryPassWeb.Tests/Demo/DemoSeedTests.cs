@@ -153,7 +153,7 @@ public sealed class DemoSeedTests(MongoFixture mongo)
         var waiting = (await rig.All(DppStore.HandOvers)).Single();
         Assert.Equal(pack["_id"].AsString, waiting["PackId"].AsString);
         Assert.Equal(
-            ("demo-fleet", "demo-north", "waiting", "demo.fleet.admin@example.test"),
+            ("demo-fleet", "demo-north", "waiting", DemoDataService.SeedActor),
             (waiting["FromClusterId"].AsString, waiting["ToClusterId"].AsString, waiting["State"].AsString, waiting["AskedBy"].AsString));
         Assert.Equal("demo-fleet", pack["ClusterId"].AsString); // it stays with the sender until demo-north accepts
     }

@@ -59,6 +59,12 @@ public sealed class DemoDataService(
     /// <summary>The demo release's reference (6d): the demo batteries' IDs and a few spare ones to try the flow with.</summary>
     public const string DemoReference = "Demo";
 
+    /// <summary>
+    /// Who the seeded hand-over and readings file are from: a fixed name, never a catalogue address, which may belong to
+    /// a real account that seeding leaves as it is (finding R03, point 6b).
+    /// </summary>
+    public const string SeedActor = "demo-data";
+
     /// <summary>Spare demo IDs, released but unused, for trying the create picker and the swap.</summary>
     public static readonly string[] SpareSerials = ["DEMO-SPARE-0001", "DEMO-SPARE-0002", "DEMO-SPARE-0003", "DEMO-SPARE-0004"];
     public const string ClearedEvent = "demo.cleared";
@@ -513,7 +519,7 @@ public sealed class DemoDataService(
         string? handOverNote = null;
         if (demo.HandOverTo is { } receiver && demo.Publish)
         {
-            handOverNote = await HandOverAsync(packId, demo, receiver, catalogue, cancellationToken);
+            handOverNote = await HandOverAsync(packId, demo, receiver, cancellationToken);
         }
 
         return new PackOutcome(published, successors, handOverNote is null ? [] : [handOverNote]);
@@ -669,14 +675,12 @@ public sealed class DemoDataService(
     }
 
     /// <summary>
-    /// A demo battery handed over by its cluster's demo admin, as they would on its page, and left waiting for the
-    /// receiving cluster's answer (step 4d).
+    /// A demo battery handed over by its cluster's admin, as they would on its page, and left waiting for the receiving
+    /// cluster's answer (step 4d). Sent under <see cref="SeedActor"/>, not the catalogue admin's address.
     /// </summary>
-    private async Task<string?> HandOverAsync(string packId, DemoPack demo, string receiver, DemoCatalogue catalogue, CancellationToken cancellationToken)
+    private async Task<string?> HandOverAsync(string packId, DemoPack demo, string receiver, CancellationToken cancellationToken)
     {
-        var admin = catalogue.Accounts.FirstOrDefault(account => account.Cluster == demo.Cluster && account.ClusterRole == "clusterAdmin")?.Email
-            ?? throw new InvalidOperationException($"The demo cluster {demo.Cluster} has no admin to hand {demo.Serial} over.");
-        var asked = await handOvers.AskAsync(ChangeSender.ClusterAdmin(admin, demo.Cluster), packId, receiver, confirm: true, cancellationToken);
+        var asked = await handOvers.AskAsync(ChangeSender.ClusterAdmin(SeedActor, demo.Cluster), packId, receiver, confirm: true, cancellationToken);
         if (asked.Problem is { } problem)
         {
             throw new InvalidOperationException($"The demo battery {demo.Serial} couldn't be handed over: {problem}.");
@@ -715,7 +719,7 @@ public sealed class DemoDataService(
     /// <summary>
     /// The demo uploads (step 5d, Q25), after the tokens: for each battery the catalogue marks, an export from its
     /// cluster's battery system (its read-write token) two hours ago, and a file of live values from its cluster admin half
-    /// an hour ago, through the one upload engine. Both are marked as demo data. No status change: the battery's demo
+    /// an hour ago (under <see cref="SeedActor"/>), through the one upload engine. Both are marked as demo data. No status change: the battery's demo
     /// repair is 4b's.
     /// </summary>
     private async Task SeedUploadsAsync(DemoCatalogue catalogue, IReadOnlyDictionary<string, string> writeTokens, CancellationToken cancellationToken)
@@ -723,7 +727,7 @@ public sealed class DemoDataService(
         var now = clock.GetUtcNow().UtcDateTime;
         foreach (var demo in catalogue.Packs.Where(pack => pack.Uploads && pack.Publish))
         {
-            var admin = catalogue.Accounts.FirstOrDefault(account => account.Cluster == demo.Cluster && account.ClusterRole == "clusterAdmin");
+            var hasAdmin = catalogue.Accounts.Any(account => account.Cluster == demo.Cluster && account.ClusterRole == "clusterAdmin");
             var made = new List<string?>();
             if (writeTokens.TryGetValue(demo.Cluster, out var tokenId))
             {
@@ -731,10 +735,10 @@ public sealed class DemoDataService(
                 made.Add(export.UploadId);
             }
 
-            if (admin is not null)
+            if (hasAdmin)
             {
                 var file = JsonNode.Parse(UploadSamples.LiveValuesFile(demo.Serial, now.AddMinutes(-30), 71, 22));
-                var readings = await uploads.RunAsync(ChangeSender.ClusterAdmin(admin.Email, demo.Cluster), file, "page", "readings.json", preview: false, cancellationToken);
+                var readings = await uploads.RunAsync(ChangeSender.ClusterAdmin(SeedActor, demo.Cluster), file, "page", "readings.json", preview: false, cancellationToken);
                 made.Add(readings.UploadId);
             }
 

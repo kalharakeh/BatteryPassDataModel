@@ -1,3 +1,5 @@
+using BatteryPassWeb.Dpp.Demo;
+using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Services;
 using BatteryPassWeb.Tests.Dpp;
 using MongoDB.Bson;
@@ -38,6 +40,32 @@ public sealed class DemoAccountSeedingTests(MongoFixture mongo)
         Assert.Equal(new BsonArray { AccessControlService.RoleNormalUser }, account["roles"].AsBsonArray);
         Assert.False(account.GetValue("isDemo", false).ToBoolean());
         Assert.Contains(seeded.Notes, note => note.Contains("demo.msa@example.test", StringComparison.OrdinalIgnoreCase) && note.Contains("stays as it is", StringComparison.Ordinal));
+    }
+
+    /// <summary>Finding R03, point 6b: the seeded hand-over and readings file never act under a real account's address.</summary>
+    [Fact]
+    public async Task TheSeededHandOverAndReadings_ShouldActUnderTheFixedDemoName_NotARealAccountsAddress()
+    {
+        using var rig = await DemoRig.StartAsync(mongo);
+        string[] admins = ["demo.north.admin@example.test", "demo.south.admin@example.test", "demo.fleet.admin@example.test"];
+        foreach (var email in admins)
+        {
+            await rig.Database.GetCollection<BsonDocument>("users").InsertOneAsync(new BsonDocument
+            {
+                ["email"] = email,
+                ["name"] = "A real person",
+                ["roles"] = new BsonArray { AccessControlService.RoleNormalUser },
+                ["passwordHash"] = "hash",
+            });
+        }
+
+        await rig.Demo.SeedAsync(DemoRig.Who);
+
+        var askedBy = (await rig.All(DppStore.HandOvers)).Select(handOver => handOver["AskedBy"].AsString).ToList();
+        var fileFrom = (await rig.All(DppStore.Uploads)).Where(upload => upload["Channel"].AsString == "page").Select(upload => upload["Who"].AsString).ToList();
+        Assert.NotEmpty(askedBy);
+        Assert.NotEmpty(fileFrom);
+        Assert.All(askedBy.Concat(fileFrom), who => Assert.Equal(DemoDataService.SeedActor, who));
     }
 
     [Fact]
