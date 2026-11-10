@@ -58,10 +58,17 @@ public sealed class FallbackAdminTests(MongoFixture mongo)
     {
         var old = "Password" + "123!"; // written in two parts, so this file isn't a hit itself
         var root = Path.GetFullPath(Path.Combine(DppTestFiles.RepoFile("web", "Program.cs"), "..", ".."));
-        var skip = new[] { "bin", "obj", "node_modules", ".git" };
-        var hits = Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
-            .Where(path => !path[root.Length..].Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Any(skip.Contains))
-            .Where(path => Path.GetExtension(path) is ".cs" or ".json" or ".md" or ".cshtml" or ".js" or ".ps1" or ".sh" or ".example" or ".yml" or ".yaml" or ".txt" or ".config")
+        // The repository's own source folders only, and no dot-folders, build output or local launchers: a checkout's
+        // untracked and ignored files are not the repository's.
+        var skip = new[] { "bin", "obj", "node_modules" };
+        var hits = new[] { "web", "tools", "scripts", "docs", "BatteryPassWeb.Tests" }
+            .Select(folder => Path.Combine(root, folder))
+            .Where(Directory.Exists)
+            .SelectMany(folder => Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories))
+            .Where(path => !path[root.Length..].Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .Any(part => skip.Contains(part) || (part.StartsWith('.') && part != Path.GetFileName(path))))
+            .Where(path => Path.GetFileName(path) is not (".env.local" or ".env"))
+            .Where(path => Path.GetExtension(path) is ".cs" or ".json" or ".md" or ".cshtml" or ".js" or ".sh" or ".example" or ".yml" or ".yaml")
             .Where(path => File.ReadAllText(path).Contains(old, StringComparison.Ordinal))
             .Select(path => path[root.Length..])
             .ToList();
