@@ -35,6 +35,13 @@ public sealed class DppReaders(ClusterRepository clusters)
             return Reader.Anonymous;
         }
 
+        // No account record, no roles: only the fallback admin has none and keeps its role (finding R03, point 6a).
+        var account = await clusters.GetUserByEmailAsync(AccessControlService.CurrentEmail(user), cancellationToken);
+        if (account is null && !IsFallbackAdmin(user))
+        {
+            return Reader.Anonymous;
+        }
+
         var roles = user.FindAll(ClaimTypes.Role)
             .Select(claim => AppRoles.TryGetValue(claim.Value, out var role) ? role : (ReaderRole?)null)
             .OfType<ReaderRole>()
@@ -55,8 +62,7 @@ public sealed class DppReaders(ClusterRepository clusters)
         }
 
         // A demo account's roles and memberships count only on demo batteries (finding R03, DemoScope).
-        var demo = ClusterRepository.IsDemo(await clusters.GetUserByEmailAsync(AccessControlService.CurrentEmail(user), cancellationToken));
-        return new Reader(roles, clusterIds, email) { DemoOnly = demo };
+        return new Reader(roles, clusterIds, email) { DemoOnly = ClusterRepository.IsDemo(account) };
     }
 
     /// <summary>
@@ -74,8 +80,15 @@ public sealed class DppReaders(ClusterRepository clusters)
             return null;
         }
 
+        // No account record, no changes: only the fallback admin has none and keeps its role (finding R03, point 6a).
+        var account = await clusters.GetUserByEmailAsync(AccessControlService.CurrentEmail(user), cancellationToken);
+        if (account is null && !IsFallbackAdmin(user))
+        {
+            return null;
+        }
+
         // A demo account changes only demo batteries (finding R03, DemoScope).
-        var demo = ClusterRepository.IsDemo(await clusters.GetUserByEmailAsync(AccessControlService.CurrentEmail(user), cancellationToken));
+        var demo = ClusterRepository.IsDemo(account);
         if (user.FindAll(ClaimTypes.Role).Any(claim => claim.Value.Equals(AccessControlService.RoleAdmin, StringComparison.OrdinalIgnoreCase)))
         {
             return ChangeSender.Team(email) with { DemoOnly = demo };
@@ -89,6 +102,15 @@ public sealed class DppReaders(ClusterRepository clusters)
             .ToArray();
         return adminOf.Length == 0 ? null : ChangeSender.ClusterAdmin(email, adminOf) with { DemoOnly = demo };
     }
+
+    /// <summary>
+    /// A session of the fallback admin, which has no account in the database: marked with <see cref="AuthService.FallbackClaim"/>,
+    /// or an older one without a password stamp under the fallback's name. The session check ends any other session whose
+    /// account is gone, and this one too once an account with its address exists (finding R21).
+    /// </summary>
+    private static bool IsFallbackAdmin(ClaimsPrincipal user) =>
+        user.HasClaim(claim => claim.Type == AuthService.FallbackClaim)
+        || (user.FindFirst(AuthService.PasswordStampClaim) is null && user.Identity?.Name == "Demo Administrator");
 
     /// <summary>Market surveillance marking a passport (step 4c-2), as the reader it signed in as: demo stays demo (finding R03).</summary>
     public static ChangeSender SurveillanceSenderFor(Reader reader)

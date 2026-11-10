@@ -208,7 +208,7 @@ public sealed class StatusPagesTests(MongoFixture mongo)
     {
         var http = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Email, email), new Claim(ClaimTypes.Role, "clusterAdmin")], "test")),
+            User = TestAccounts.SignedIn(rig.Context, email, "clusterAdmin"),
         };
         http.Request.Form = new FormCollection(form.ToDictionary(entry => entry.Key, entry => new StringValues(entry.Value)));
         return new ClusterBatteriesController(ClusterBatteryPagesTests.Pages(rig), new DppReaders(new ClusterRepository(rig.Context)), UploadCheckTests.Pages(rig))

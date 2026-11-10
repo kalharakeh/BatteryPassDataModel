@@ -248,9 +248,7 @@ public sealed class DppApiControllerTests(MongoFixture mongo)
         {
             HttpContext = new DefaultHttpContext
             {
-                User = new ClaimsPrincipal(new ClaimsIdentity(
-                    [new Claim(ClaimTypes.Email, "team@example.com"), new Claim(ClaimTypes.Role, AccessControlService.RoleAdmin)],
-                    "test")),
+                User = TestAccounts.SignedIn(rig.Context, "team@example.com", AccessControlService.RoleAdmin),
             },
         },
     };

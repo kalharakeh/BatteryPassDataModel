@@ -177,7 +177,7 @@ public sealed class Step5OwnerTestFixesTests(MongoFixture mongo)
     {
         var http = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Email, NorthAdmin), new Claim(ClaimTypes.Role, "clusterAdmin")], "test")),
+            User = TestAccounts.SignedIn(rig.Context, NorthAdmin, "clusterAdmin"),
         };
         return new ClusterBatteriesController(ClusterBatteryPagesTests.Pages(rig), new DppReaders(new ClusterRepository(rig.Context)), UploadCheckTests.Pages(rig))
         {

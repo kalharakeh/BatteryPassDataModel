@@ -15,7 +15,9 @@ public sealed class ClusterAdminSenderTests(MongoFixture mongo)
     [Fact]
     public async Task TheTeam_ShouldEditAsTheTeam()
     {
-        var sender = await Readers().EditorForAsync(User("Admin@Example.com", "admin"));
+        var clusters = new ClusterRepository(mongo.NewContext());
+        await clusters.UpsertUserAsync("admin@example.com", "Admin", ["admin"]);
+        var sender = await new DppReaders(clusters).EditorForAsync(User("Admin@Example.com", "admin"));
 
         Assert.NotNull(sender);
         Assert.Equal(SenderKind.Team, sender.Kind);
@@ -26,6 +28,7 @@ public sealed class ClusterAdminSenderTests(MongoFixture mongo)
     public async Task AClusterAdmin_ShouldEditOnlyTheClustersTheyAreAdminOf()
     {
         var clusters = new ClusterRepository(mongo.NewContext());
+        await clusters.UpsertUserAsync("both@example.com", "Both", ["clusterAdmin"]);
         await clusters.UpsertClusterMembershipAsync("both@example.com", "Cluster-North", "clusterAdmin");
         await clusters.UpsertClusterMembershipAsync("both@example.com", "cluster-south", "member");
 
@@ -64,6 +67,7 @@ public sealed class ClusterAdminSenderTests(MongoFixture mongo)
     public async Task ARemovedAdminMembership_ShouldCountAtOnce()
     {
         var clusters = new ClusterRepository(mongo.NewContext());
+        await clusters.UpsertUserAsync("admin@example.com", "Admin", ["clusterAdmin"]);
         await clusters.UpsertClusterMembershipAsync("admin@example.com", "cluster-north", "clusterAdmin");
         var readers = new DppReaders(clusters);
         Assert.NotNull(await readers.EditorForAsync(User("admin@example.com", "clusterAdmin")));

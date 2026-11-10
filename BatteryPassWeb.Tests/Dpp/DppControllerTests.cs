@@ -187,7 +187,7 @@ public sealed class DppControllerTests(MongoFixture mongo)
         {
             User = email is null
                 ? new ClaimsPrincipal(new ClaimsIdentity())
-                : new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Email, email), new Claim(ClaimTypes.Role, role)], "test")),
+                : TestAccounts.SignedIn(rig.Context, email, role),
         };
         var documents = PageTesting.Documents(rig);
         return new DppController(new DppReaders(new ClusterRepository(rig.Context)), documents, new ReaderPages(rig.Store, documents))

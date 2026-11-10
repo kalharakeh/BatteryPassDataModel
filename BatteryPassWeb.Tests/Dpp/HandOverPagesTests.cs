@@ -173,17 +173,17 @@ public sealed class HandOverPagesTests(MongoFixture mongo)
     }
 
     private static ClusterBatteriesController ClusterController(PublicationRig rig, string email) =>
-        With(new ClusterBatteriesController(ClusterBatteryPagesTests.Pages(rig), new DppReaders(new ClusterRepository(rig.Context)), UploadCheckTests.Pages(rig)), email);
+        With(new ClusterBatteriesController(ClusterBatteryPagesTests.Pages(rig), new DppReaders(new ClusterRepository(rig.Context)), UploadCheckTests.Pages(rig)), rig, email);
 
     private static RegistryController RegistryController(PublicationRig rig, string email) =>
-        With(new RegistryController(new DppReaders(new ClusterRepository(rig.Context)), BatteryTesting.Pages(rig)), email);
+        With(new RegistryController(new DppReaders(new ClusterRepository(rig.Context)), BatteryTesting.Pages(rig)), rig, email);
 
-    private static T With<T>(T controller, string email)
+    private static T With<T>(T controller, PublicationRig rig, string email)
         where T : Controller
     {
         var http = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Email, email), new Claim(ClaimTypes.Role, "member")], "test")),
+            User = TestAccounts.SignedIn(rig.Context, email, "member"),
         };
         http.Request.Form = new FormCollection(new Dictionary<string, StringValues>());
         controller.ControllerContext = new ControllerContext { HttpContext = http };

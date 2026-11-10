@@ -69,9 +69,7 @@ internal static class PageTesting
     {
         var http = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity(
-                [new Claim(ClaimTypes.Email, "team@example.com"), new Claim(ClaimTypes.Role, AccessControlService.RoleAdmin)],
-                "test")),
+            User = TestAccounts.SignedIn(rig.Context, "team@example.com", AccessControlService.RoleAdmin),
         };
         http.Request.Form = new FormCollection((form ?? new Dictionary<string, string>()).ToDictionary(entry => entry.Key, entry => new StringValues(entry.Value)));
         return new ProductDataController(Pages(rig), Editor(rig), rig.Store, Documents(rig))

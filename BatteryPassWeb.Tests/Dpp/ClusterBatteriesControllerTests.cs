@@ -172,7 +172,7 @@ public sealed class ClusterBatteriesControllerTests(MongoFixture mongo)
             {
                 HttpContext = new DefaultHttpContext
                 {
-                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Email, email), new Claim(ClaimTypes.Role, role)], "test")),
+                    User = TestAccounts.SignedIn(rig.Context, email, role),
                 },
             },
         };
@@ -273,7 +273,7 @@ public sealed class ClusterBatteriesControllerTests(MongoFixture mongo)
     {
         var http = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Email, email), new Claim(ClaimTypes.Role, role)], "test")),
+            User = TestAccounts.SignedIn(rig.Context, email, role),
         };
         http.Request.Form = new FormCollection((form ?? new Dictionary<string, string>()).ToDictionary(entry => entry.Key, entry => new StringValues(entry.Value)));
         return new ClusterBatteriesController(ClusterBatteryPagesTests.Pages(rig), new DppReaders(new ClusterRepository(rig.Context)), UploadCheckTests.Pages(rig))

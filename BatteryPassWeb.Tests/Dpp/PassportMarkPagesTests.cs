@@ -155,7 +155,7 @@ public sealed class PassportMarkPagesTests(MongoFixture mongo)
     {
         var http = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Email, email), new Claim(ClaimTypes.Role, role)], "test")),
+            User = TestAccounts.SignedIn(rig.Context, email, role),
         };
         return new PassportController(new DppReaders(new ClusterRepository(rig.Context)), PassportPagesTests.Pages(rig))
         {

@@ -155,7 +155,7 @@ public sealed class SuccessionPagesTests(MongoFixture mongo)
     {
         var http = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Email, NorthAdmin), new Claim(ClaimTypes.Role, "clusterAdmin")], "test")),
+            User = TestAccounts.SignedIn(rig.Context, NorthAdmin, "clusterAdmin"),
         };
         http.Request.Form = new FormCollection(new Dictionary<string, StringValues>());
         return new ClusterBatteriesController(ClusterBatteryPagesTests.Pages(rig), new DppReaders(new ClusterRepository(rig.Context)), UploadCheckTests.Pages(rig))

@@ -244,28 +244,28 @@ public sealed class PassportControllerTests(MongoFixture mongo)
         Assert.Empty(Assert.IsAssignableFrom<IReadOnlyList<BatteryPassWeb.Dpp.Api.LiveHistoryEntry>>(outsider.ViewData["LiveHistory"])); // a signed-in stranger sees no live values
     }
 
-    private static HttpContext Http(string? email, string role) => new DefaultHttpContext
+    private static HttpContext Http(PublicationRig rig, string? email, string role) => new DefaultHttpContext
     {
         User = email is null
             ? new ClaimsPrincipal(new ClaimsIdentity())
-            : new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Email, email), new Claim(ClaimTypes.Role, role)], "test")),
+            : TestAccounts.SignedIn(rig.Context, email, role),
     };
 
     private static PassportController Pages(PublicationRig rig, string? email, string role = "member") =>
         new(new DppReaders(new ClusterRepository(rig.Context)), PassportPagesTests.Pages(rig))
         {
-            ControllerContext = new ControllerContext { HttpContext = Http(email, role) },
+            ControllerContext = new ControllerContext { HttpContext = Http(rig, email, role) },
         };
 
     private static QrController Qr(PublicationRig rig, BatteryPassWeb.Dpp.Documents.DppLinks? links = null, string? email = null, string role = "member") =>
         new(PassportPagesTests.Pages(rig), links ?? DocumentTesting.Links, new PassportQrCodeService(), rig.Store)
         {
-            ControllerContext = new ControllerContext { HttpContext = Http(email, role) },
+            ControllerContext = new ControllerContext { HttpContext = Http(rig, email, role) },
         };
 
     private static HomeController Home(PublicationRig rig, string? email) =>
         new(PassportPagesTests.Pages(rig))
         {
-            ControllerContext = new ControllerContext { HttpContext = Http(email, "member") },
+            ControllerContext = new ControllerContext { HttpContext = Http(rig, email, "member") },
         };
 }
