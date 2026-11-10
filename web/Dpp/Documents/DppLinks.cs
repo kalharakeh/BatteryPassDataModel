@@ -25,6 +25,24 @@ public sealed class DppLinks(IOptions<BatteryPassOptions> options)
 
     public bool IsConfigured => BaseOrNull is not null;
 
+    /// <summary>
+    /// Why the two site addresses don't fit together, or null (finding D18): a battery's QR code opens APP_BASE_URL, its
+    /// battery ID names DPP_ID_BASE_URL, so both must be on the same host (and port). Null when either is missing or
+    /// unreadable; other checks speak about those.
+    /// </summary>
+    public static string? HostMismatch(string? appBaseUrl, string? idBaseUrl)
+    {
+        if (!Uri.TryCreate(appBaseUrl?.Trim(), UriKind.Absolute, out var app) || !Uri.TryCreate(idBaseUrl?.Trim(), UriKind.Absolute, out var id)
+            || app.Scheme is not ("http" or "https") || id.Scheme is not ("http" or "https"))
+        {
+            return null;
+        }
+
+        return string.Equals(app.IdnHost, id.IdnHost, StringComparison.OrdinalIgnoreCase) && app.Port == id.Port
+            ? null
+            : $"APP_BASE_URL ({app.Authority}) and DPP_ID_BASE_URL ({id.Authority}) are on different hosts. A battery's QR code opens the first and its battery ID names the second, so both must be the same site. Set them to the same address.";
+    }
+
     public string DocumentUrl(string documentId) => $"{Base}/dpp/documents/{Uri.EscapeDataString(documentId)}";
 
     public string AccidentPageUrl(string packId) => $"{Base}/dpp/packs/{Uri.EscapeDataString(packId)}/accidents";

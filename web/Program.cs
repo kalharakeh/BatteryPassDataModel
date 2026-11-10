@@ -32,6 +32,17 @@ if (DemoAdminFallbackConfiguration.ProductionRefusal(
     throw new InvalidOperationException(fallbackInProduction);
 }
 
+// The QR code's address and the battery IDs' address must be one site (finding D18); outside Production a warning.
+var appBaseUrlSetting = Environment.GetEnvironmentVariable("APP_BASE_URL")
+    ?? Environment.GetEnvironmentVariable("APP_URL")
+    ?? builder.Configuration["BatteryPass:AppBaseUrl"]
+    ?? builder.Configuration["BatteryPass:AppUrl"];
+var idBaseUrlSetting = Environment.GetEnvironmentVariable("DPP_ID_BASE_URL") ?? builder.Configuration["BatteryPass:IdBaseUrl"];
+if (DppLinks.HostMismatch(appBaseUrlSetting, idBaseUrlSetting) is { } hostMismatch && builder.Environment.IsProduction())
+{
+    throw new InvalidOperationException(hostMismatch);
+}
+
 var enableRateLimiting = ParseFeatureFlag(
     EnvironmentOrConfig(builder.Configuration, "ENABLE_RATE_LIMITING", "EnableRateLimiting"),
     BatteryPassOptions.DefaultEnableRateLimiting);
@@ -371,6 +382,10 @@ using (var scope = app.Services.CreateScope())
     if (!scope.ServiceProvider.GetRequiredService<DppLinks>().IsConfigured)
     {
         app.Logger.LogWarning("APP_BASE_URL is not set: battery packs can't be created and documents can't be linked until it is.");
+    }
+    if (DppLinks.HostMismatch(fallbackOptions.AppBaseUrl, fallbackOptions.IdBaseUrl) is { } addressWarning)
+    {
+        app.Logger.LogWarning(addressWarning);
     }
     var initializer = scope.ServiceProvider.GetRequiredService<ExternalApiInitializer>();
     await initializer.InitializeAsync();
