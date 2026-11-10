@@ -359,8 +359,9 @@ public sealed class DemoDataService(
         var made = 0;
         foreach (var account in catalogue.Accounts)
         {
-            var byEmail = Builders<BsonDocument>.Filter.Eq("email", account.Email);
-            if (await Collection("users").Find(byEmail).AnyAsync(cancellationToken))
+            // A real account with this address, in any capitals, is never touched (finding R03): the seeding says so instead.
+            var byEmail = Builders<BsonDocument>.Filter.Eq("email", ClusterRepository.NormalizeEmail(account.Email));
+            if (await ClusterRepository.FindUserAsync(Database, account.Email, cancellationToken) is not null)
             {
                 notes.Add($"Account {account.Email} was already there as real data: it stays as it is.");
                 continue;
@@ -368,6 +369,14 @@ public sealed class DemoDataService(
 
             await clusters.UpsertUserAsync(account.Email, account.Name, [account.Role], hash, cancellationToken);
             await MarkAccountRecordAsync("users", byEmail, cancellationToken);
+            if (account.Cluster is not null)
+            {
+                // As if the demo cluster's admin had made it, so they can rename and re-password it (finding R19).
+                await Collection("users").UpdateOneAsync(
+                    byEmail,
+                    Builders<BsonDocument>.Update.Set(ClusterRepository.CreatedInClusterField, ClusterRepository.NormalizeClusterId(account.Cluster)),
+                    cancellationToken: cancellationToken);
+            }
             if (account.Cluster is not null)
             {
                 await clusters.UpsertClusterMembershipAsync(account.Email, account.Cluster, account.ClusterRole ?? "member", cancellationToken);
