@@ -78,6 +78,23 @@ public sealed class TeamAccountTests(MongoFixture mongo)
     }
 
     [Fact]
+    public async Task ADemoAccountWithTheTeamRole_ShouldNotCountAsATeamAccount()
+    {
+        // A demo account never acts as the team (finding R03), so it can't keep the team reachable either.
+        using var rig = await AccountRig.StartAsync(mongo);
+        await rig.Database.GetCollection<MongoDB.Bson.BsonDocument>("users").UpdateOneAsync(
+            MongoDB.Driver.Builders<MongoDB.Bson.BsonDocument>.Filter.Eq("email", AccountRig.Team2),
+            MongoDB.Driver.Builders<MongoDB.Bson.BsonDocument>.Update.Set(ClusterRepository.DemoMark, true));
+        var fallback = AccountRig.With(rig.TeamMember(), AccountRig.Person(AccountRig.FallbackEmail, AccessControlService.RoleAdmin));
+        AccountRig.Form(fallback, ("change", "access"), ("email", AccountRig.Team), ("name", "Team"), ("systemRole", "member"));
+
+        await fallback.SaveUser(CancellationToken.None);
+
+        Assert.Equal(AdminController.LastTeamAccount, fallback.TempData["ErrorMessage"]);
+        Assert.Equal([AccessControlService.RoleAdmin], await rig.RolesOfAsync(AccountRig.Team));
+    }
+
+    [Fact]
     public async Task TheLastTeamAccount_ShouldNotBeDeleted_EvenByTheFallbackAdmin()
     {
         using var rig = await AccountRig.StartAsync(mongo);

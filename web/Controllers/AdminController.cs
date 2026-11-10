@@ -527,10 +527,13 @@ public class AdminController : Controller
         return Redirect(back);
     }
 
-    /// <summary>The accounts with team access in the database; the fallback admin has none, so it never counts (finding S04).</summary>
+    /// <summary>
+    /// The accounts with team access in the database; the fallback admin has none, so it never counts (finding S04), and a
+    /// demo account never acts as the team, so it doesn't count either (finding R03).
+    /// </summary>
     private async Task<int> CountTeamAccountsAsync(CancellationToken cancellationToken) =>
         (await _clusterRepository.ListUsersAsync(cancellationToken))
-            .Count(user => AccessControlService.RolesOf(user).Contains(AccessControlService.RoleAdmin, StringComparer.Ordinal));
+            .Count(user => !ClusterRepository.IsDemo(user) && AccessControlService.RolesOf(user).Contains(AccessControlService.RoleAdmin, StringComparer.Ordinal));
 
     [HttpPost("clusters/session-timeout")]
     [ValidateAntiForgeryToken]
