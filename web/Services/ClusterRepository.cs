@@ -233,6 +233,47 @@ public sealed class ClusterRepository
             cancellationToken);
     }
 
+    /// <summary>
+    /// A cluster admin's name or password change, written only while the rule of finding R19 still holds for the stored
+    /// account: it carries the mark of one of <paramref name="administeredClusterIds"/> and has no role across the app.
+    /// The update's own filter says so, so a save in flight when the team gives the account a role changes nothing.
+    /// Returns whether it was written.
+    /// </summary>
+    public async Task<bool> ChangeIfAClusterAdminMayAsync(
+        string email,
+        IReadOnlySet<string> administeredClusterIds,
+        string? name,
+        string? passwordHash,
+        CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email) || administeredClusterIds.Count == 0
+            || (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(passwordHash)))
+        {
+            return false;
+        }
+
+        var notAppWide = new BsonArray { AccessControlService.RoleNormalUser, "viewer", AccessControlService.RoleClusterAdmin };
+        var filter = Builders<BsonDocument>.Filter.And(
+            await UserFilterAsync(email, cancellationToken),
+            Builders<BsonDocument>.Filter.In(CreatedInClusterField, administeredClusterIds.Select(NormalizeClusterId)),
+            new BsonDocumentFilterDefinition<BsonDocument>(new BsonDocument(
+                "roles", new BsonDocument("$not", new BsonDocument("$elemMatch", new BsonDocument("$nin", notAppWide))))));
+        var updates = new List<UpdateDefinition<BsonDocument>> { Builders<BsonDocument>.Update.Set("updatedAt", DateTime.UtcNow.ToString("O")) };
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            updates.Add(Builders<BsonDocument>.Update.Set("name", name.Trim()));
+        }
+
+        if (!string.IsNullOrWhiteSpace(passwordHash))
+        {
+            updates.Add(Builders<BsonDocument>.Update.Set("passwordHash", passwordHash));
+        }
+
+        var result = await _mongoContext.Database.GetCollection<BsonDocument>("users").UpdateOneAsync(
+            filter, Builders<BsonDocument>.Update.Combine(updates), cancellationToken: cancellationToken);
+        return result.MatchedCount > 0;
+    }
+
     public async Task UpdateUserProfileAsync(
         string email,
         string name,

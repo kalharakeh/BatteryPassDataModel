@@ -300,10 +300,17 @@ public class ClusterAdminController : Controller
                 return Redirect(back);
             }
 
+            // The write itself carries the rule's conditions, so it changes nothing if the team gave the account a role meanwhile.
+            var administered = await ManagedClusterIdsAsync(cancellationToken);
             if (change == "name")
             {
                 var name = Text(Request.Form, "name", email);
-                await _clusterRepository.UpdateUserProfileAsync(email, name, cancellationToken: cancellationToken);
+                if (!await _clusterRepository.ChangeIfAClusterAdminMayAsync(email, administered, name, null, cancellationToken))
+                {
+                    TempData["ErrorMessage"] = AccessControlService.CantChangeThisAccount;
+                    return Redirect(back);
+                }
+
                 await AuditUserSavedAsync("Cluster user's name changed.", email, name, null, null, false, cancellationToken);
                 TempData["StatusMessage"] = "Name saved.";
                 return Redirect(back);
@@ -321,7 +328,12 @@ public class ClusterAdminController : Controller
                 return Redirect(back);
             }
 
-            await _clusterRepository.SetPasswordHashAsync(email, BCryptNet.HashPassword(password), cancellationToken);
+            if (!await _clusterRepository.ChangeIfAClusterAdminMayAsync(email, administered, null, BCryptNet.HashPassword(password), cancellationToken))
+            {
+                TempData["ErrorMessage"] = AccessControlService.CantChangeThisAccount;
+                return Redirect(back);
+            }
+
             await AuditUserSavedAsync("Cluster user's password changed.", email, null, null, null, true, cancellationToken);
             TempData["StatusMessage"] = "Password saved.";
             return Redirect(back);
