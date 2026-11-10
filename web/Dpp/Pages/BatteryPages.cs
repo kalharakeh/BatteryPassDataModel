@@ -105,7 +105,9 @@ public sealed record PublicationView(
 
 /// <summary>The team's "Passport status" card (S5): the passport's DPP status, its mark, whether the battery is waste.</summary>
 /// <param name="Status">The DPP status (#2) of the passport's newest version; null for a draft.</param>
-public sealed record PassportMarkView(string? Status, PassportMark? Mark, bool Waste, string Action)
+/// <param name="BatteryName">The battery's serial number, which the confirm step names.</param>
+/// <param name="BySurveillance">The window as market surveillance has it on the detail page: "invalid" only.</param>
+public sealed record PassportMarkView(string? Status, PassportMark? Mark, bool Waste, string Action, string? BatteryName = null, bool BySurveillance = false)
 {
     public bool Active => Status == DppStatuses.Active;
 
@@ -153,7 +155,8 @@ public sealed record BatteryPage(
         Publication.Active is not null ? DppStatuses.Active : Publication.Latest?.DppStatus,
         Pack.Mark,
         StatusChangeService.CurrentStatus(Pack) == "waste",
-        $"{BatteryPages.BatteryHref(Pack.Id)}/mark");
+        $"{BatteryPages.BatteryHref(Pack.Id)}/mark",
+        SerialNumber);
 
     /// <summary>The cards this page shares with the cluster admin's battery page (step 4a).</summary>
     public BatteryCards Cards => new(

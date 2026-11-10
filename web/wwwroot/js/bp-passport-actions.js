@@ -1,5 +1,5 @@
-// What people can do to a passport (fix wave 1): the withdraw button's reason check, and the second questions inside the
-// windows. Each part is only an addition: without this script the forms still send, and the server asks for the rest.
+// What people can do to a passport (fix wave 1). Each part only adds to the page: without this script the forms still
+// send, and the server asks for what is missing.
 (() => {
     // A button that opens the shared "Please confirm" window (bp-confirm.js) must not do so while its reason is empty.
     document.addEventListener('click', (event) => {
@@ -10,4 +10,51 @@
             event.stopPropagation();
         }
     }, true);
+
+    // A button with data-passport-dialog opens that native <dialog> (the passport page has no other script for it).
+    document.querySelectorAll('[data-passport-dialog]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const dialog = document.getElementById(button.dataset.passportDialog);
+            if (dialog && typeof dialog.showModal === 'function' && !dialog.open) {
+                dialog.showModal();
+            }
+        });
+    });
+
+    // A window with a second question (data-two-step): the reason first, then a confirm step that says what the answer
+    // does. Without this script both parts show and the form sends as before.
+    document.querySelectorAll('dialog[data-two-step]').forEach((dialog) => {
+        const first = dialog.querySelector('[data-step="1"]');
+        const second = dialog.querySelector('[data-step="2"]');
+        const form = dialog.querySelector('form');
+        const next = dialog.querySelector('[data-step-next]');
+        const submit = dialog.querySelector('[data-step-submit]');
+        if (!first || !second || !form || !next || !submit) {
+            return;
+        }
+
+        next.hidden = false;
+        submit.hidden = true;
+        const show = (step) => {
+            first.hidden = step !== 1;
+            second.hidden = step !== 2;
+        };
+        next.addEventListener('click', () => {
+            if (!form.reportValidity()) {
+                return;
+            }
+
+            const choice = form.querySelector('input[name="what"]:checked')?.value ?? 'invalid';
+            second.querySelectorAll('[data-step-for]').forEach((text) => { text.hidden = text.dataset.stepFor !== choice; });
+            const reason = second.querySelector('[data-step-reason]');
+            if (reason) {
+                reason.textContent = form.querySelector('input[name="reason"]')?.value ?? '';
+            }
+
+            show(2);
+        });
+        dialog.querySelector('[data-step-back]')?.addEventListener('click', () => show(1));
+        dialog.addEventListener('close', () => show(1));
+        show(1);
+    });
 })();

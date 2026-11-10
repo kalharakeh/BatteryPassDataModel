@@ -95,6 +95,11 @@ public sealed record PassportPage(
     /// <summary>The reader may mark this passport invalid here: market surveillance on an active passport's detail page (S6).</summary>
     public bool MayMarkInvalid { get; init; }
 
+    /// <summary>The window "Mark as invalid…" opens for market surveillance (the team's own, U11); null for everyone else.</summary>
+    public PassportMarkView? Marking => MayMarkInvalid
+        ? new PassportMarkView(DppStatuses.Active, null, false, $"{PassportPages.DetailHref(Address)}/invalid", Text(11), BySurveillance: true)
+        : null;
+
     /// <summary>This version's DPP status (#2) in words, for the hero's pill.</summary>
     public string StatusWords => DppStatuses.Words(Version.DppStatus);
 }

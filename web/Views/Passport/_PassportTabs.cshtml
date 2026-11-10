@@ -81,8 +81,22 @@
         {
             var (tab, _) = tabs[index];
             <div class="tab-pane fade@(buttons[0].Key == tab.Key ? " show active" : string.Empty)" id="tab-@tab.Key" role="tabpanel">
-                <h2 class="h5 mb-2">@tab.Title</h2>
-                <p class="bp-help-text">@tab.Note</p>
+                @if (tab.Key == "purchaser" && Model.Marking is not null)
+                {
+                    @* Market surveillance has no admin pages, so its button sits in the card (mock-up S6, U11). *@
+                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3" data-mark-invalid>
+                        <div>
+                            <h2 class="h5 mb-2">@tab.Title</h2>
+                            <p class="bp-help-text">@tab.Note</p>
+                        </div>
+                        <button type="button" class="bp-secondary-button" data-passport-dialog="mark-dialog">Mark as invalid…</button>
+                    </div>
+                }
+                else
+                {
+                    <h2 class="h5 mb-2">@tab.Title</h2>
+                    <p class="bp-help-text">@tab.Note</p>
+                }
                 @if (tab.Key == "purchaser" && Model.Current is not null)
                 {
                     <p class="bp-warning">The live values (state of charge, cycles, temperature, accidents and the extreme-temperature times) are on the <a href="@PassportPages.DetailHref(Model.Identifier)">current version</a>.</p>

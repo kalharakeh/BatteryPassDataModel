@@ -146,7 +146,7 @@ public sealed class PassportMarkPagesTests(MongoFixture mongo)
         var registry = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Shared", "_BatteryList.cshtml")); // the Registry's list since R7
 
         Assert.Contains("~/Views/Batteries/_MarkDialog.cshtml\", markable", battery, StringComparison.Ordinal); // a window since R5
-        Assert.Contains("Model.MayMarkInvalid", hero, StringComparison.Ordinal);
+        Assert.Contains("Model.Marking is { } marking", hero, StringComparison.Ordinal); // U11: a button in the Purchaser card opens the window
         Assert.Contains("Model.MarkReason is { } reason", hero, StringComparison.Ordinal);
         Assert.Contains("StatusBadge.Passport(row.IsDraft ? null : (row.Active ?? row.Latest)!.DppStatus)", registry, StringComparison.Ordinal); // a badge since redesign R3
     }

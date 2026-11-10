@@ -11,18 +11,10 @@
     var detailHref = PassportPages.DetailHref(Model.Address);
     var signIn = $"/login?next={Uri.EscapeDataString(detailHref)}";
 }
-@if (Model.MayMarkInvalid)
+@if (Model.Marking is { } marking)
 {
-    <details class="bp-warning" data-mark-invalid>
-        <summary>Mark as invalid…</summary>
-        <form method="post" action="@PassportPages.DetailHref(Model.Address)/invalid" class="mt-2">
-            @Html.AntiForgeryToken()
-            <label class="d-block">Reason (seen only by the manufacturer's team and market surveillance)
-                <input type="text" name="reason" maxlength="500" class="form-control mt-1" required />
-            </label>
-            <button type="submit" class="btn btn-danger btn-sm mt-2">Mark this passport invalid</button>
-        </form>
-    </details>
+    @* The window market surveillance opens from the Purchaser card's button (S6, U11): the team's own, with a confirm step. *@
+    @await Html.PartialAsync("~/Views/Batteries/_MarkDialog.cshtml", marking)
 }
 @* The picture sits inside the card, top right, and the facts use the card's full width (owner's item 10, redesign R3).
    The facts leave out the passport status: the Passport badge shows #2 to everyone (owner, 2 Nov 2026). *@

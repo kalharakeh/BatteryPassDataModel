@@ -2,21 +2,40 @@
 @using BatteryPassWeb.Dpp.Pages
 @model PassportMarkView
 @* "Mark as invalid or for deletion…" from the header's "More" (redesign R5, owner's item 2): a window at page level, like
-   Change status. Choose, give the reason, confirm. Once marked, the header's red line carries the reason and the one Undo. *@
+   Change status. Choose, give the reason, confirm. Once marked, the header's red line carries the reason and the one Undo.
+   Market surveillance opens the same window from the Purchaser card of the detail page (U11), with "invalid" as the
+   only choice. The confirm step names the battery and says who can undo it. *@
 <div class="bp-console-form-card bp-dialog-host">
-    <dialog id="mark-dialog" class="bp-modal-panel bp-dialog" aria-labelledby="mark-dialog-title">
+    <dialog id="mark-dialog" class="bp-modal-panel bp-dialog" aria-labelledby="mark-dialog-title" data-two-step>
         <form method="post" action="@Model.Action" class="bp-dialog-form">
             @Html.AntiForgeryToken()
-            <h2 id="mark-dialog-title">Mark the passport</h2>
-            <p class="bp-help-text">Every page then says so, and nothing on the passport changes until the team undoes it.</p>
-            <div class="bp-choice-list">
-                <label class="bp-choice"><input type="radio" name="what" value="invalid" checked /><strong>Invalid</strong><small>For example after a market surveillance finding.</small></label>
-                <label class="bp-choice"><input type="radio" name="what" value="deletion" disabled="@(!Model.Waste)" /><strong>For deletion</strong><small>@(Model.Waste ? "After recycling or export. The passport stays readable until it is deleted." : "Only for a battery whose status is waste.")</small></label>
+            <div data-step="1">
+                <h2 id="mark-dialog-title">@(Model.BySurveillance ? "Mark the passport as invalid" : "Mark the passport")</h2>
+                <p class="bp-help-text">Every page then says so, and nothing on the passport changes until the team undoes it.</p>
+                @if (!Model.BySurveillance)
+                {
+                    <div class="bp-choice-list">
+                        <label class="bp-choice"><input type="radio" name="what" value="invalid" checked /><strong>Invalid</strong><small>For example after a market surveillance finding.</small></label>
+                        <label class="bp-choice"><input type="radio" name="what" value="deletion" disabled="@(!Model.Waste)" /><strong>For deletion</strong><small>@(Model.Waste ? "After recycling or export. The passport stays readable until it is deleted." : "Only for a battery whose status is waste.")</small></label>
+                    </div>
+                }
+                <label><span>Reason (seen only by @(Model.BySurveillance ? "the manufacturer's team" : "your team") and market surveillance)</span><input type="text" name="reason" maxlength="@PassportMarks.MaxReason" placeholder="e.g. Declared values don't match the test report" required /></label>
+                <div class="bp-dialog-actions">
+                    <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
+                    <button type="submit" class="bp-danger-button" data-step-submit>Mark the passport</button>
+                    <button type="button" class="bp-danger-button" data-step-next hidden>Continue</button>
+                </div>
             </div>
-            <label><span>Reason (seen only by your team and market surveillance)</span><input type="text" name="reason" maxlength="@PassportMarks.MaxReason" placeholder="e.g. Declared values don't match the test report" required /></label>
-            <div class="bp-dialog-actions">
-                <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
-                <button type="submit" class="bp-danger-button">Mark the passport</button>
+            @* The confirm step (U11): shown by bp-passport-actions.js after the reason. *@
+            <div data-step="2" hidden>
+                <h2>Are you sure?</h2>
+                <p data-step-for="invalid">Mark battery <strong>@(Model.BatteryName ?? "this battery")</strong> as invalid? Every page then says its data can't be relied on. Only the team can undo it.</p>
+                <p data-step-for="deletion" hidden>Mark battery <strong>@(Model.BatteryName ?? "this battery")</strong> for deletion? Every page then says it was recycled or exported. Only the team can undo it.</p>
+                <p class="bp-help-text mb-0">Reason: <span data-step-reason></span></p>
+                <div class="bp-dialog-actions">
+                    <button type="button" class="bp-secondary-button" data-step-back>Back</button>
+                    <button type="submit" class="bp-danger-button">Yes, mark it</button>
+                </div>
             </div>
         </form>
     </dialog>
