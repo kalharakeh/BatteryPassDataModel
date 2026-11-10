@@ -1,3 +1,4 @@
+using BatteryPassWeb.Dpp.Access;
 using System.Globalization;
 using System.Text.Json.Nodes;
 using BatteryPassWeb.Dpp.Catalog;
@@ -177,8 +178,8 @@ public sealed class StatusChangeService(
         }
 
         var pack = sources.Pack;
-        var mayChange = sender.Kind == SenderKind.Team
-            || (sender.Kind == SenderKind.ClusterAdmin && pack.ClusterId is { } cluster && sender.ClusterIds.Contains(cluster));
+        var mayChange = DemoScope.Reaches(sender, pack.IsDemo) && (sender.Kind == SenderKind.Team // finding R03
+            || (sender.Kind == SenderKind.ClusterAdmin && pack.ClusterId is { } cluster && sender.ClusterIds.Contains(cluster)));
         if (!mayChange)
         {
             return Refused(NotYours);
@@ -357,8 +358,8 @@ public sealed class StatusChangeService(
             return NoBattery;
         }
 
-        var mayAdd = sender.Kind == SenderKind.Team
-            || (sender.Kind == SenderKind.ClusterAdmin && pack.ClusterId is { } cluster && sender.ClusterIds.Contains(cluster));
+        var mayAdd = DemoScope.Reaches(sender, pack.IsDemo) && (sender.Kind == SenderKind.Team // finding R03
+            || (sender.Kind == SenderKind.ClusterAdmin && pack.ClusterId is { } cluster && sender.ClusterIds.Contains(cluster)));
         if (!mayAdd)
         {
             return NotYours;

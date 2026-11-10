@@ -512,12 +512,13 @@ public sealed class DemoDataService(
             await MarkAsync(team, packId, demo, mark, catalogue, cancellationToken);
         }
 
+        string? handOverNote = null;
         if (demo.HandOverTo is { } receiver && demo.Publish)
         {
-            await HandOverAsync(packId, demo, receiver, catalogue, cancellationToken);
+            handOverNote = await HandOverAsync(packId, demo, receiver, catalogue, cancellationToken);
         }
 
-        return new PackOutcome(published, successors, []);
+        return new PackOutcome(published, successors, handOverNote is null ? [] : [handOverNote]);
     }
 
     /// <summary>What seeding one battery made: published passports, new passports, and notes.</summary>
@@ -673,15 +674,23 @@ public sealed class DemoDataService(
     /// A demo battery handed over by its cluster's demo admin, as they would on its page, and left waiting for the
     /// receiving cluster's answer (step 4d).
     /// </summary>
-    private async Task HandOverAsync(string packId, DemoPack demo, string receiver, DemoCatalogue catalogue, CancellationToken cancellationToken)
+    private async Task<string?> HandOverAsync(string packId, DemoPack demo, string receiver, DemoCatalogue catalogue, CancellationToken cancellationToken)
     {
         var admin = catalogue.Accounts.FirstOrDefault(account => account.Cluster == demo.Cluster && account.ClusterRole == "clusterAdmin")?.Email
             ?? throw new InvalidOperationException($"The demo cluster {demo.Cluster} has no admin to hand {demo.Serial} over.");
         var asked = await handOvers.AskAsync(ChangeSender.ClusterAdmin(admin, demo.Cluster), packId, receiver, confirm: true, cancellationToken);
+        if (asked.Problem == BatteryPassWeb.Dpp.Access.DemoScope.OtherKindOfCluster)
+        {
+            // The receiving cluster is real data (a real cluster with the demo's ID): a demo battery isn't handed into it (finding R03).
+            return $"Battery {demo.Serial} wasn't handed over: cluster {receiver} is real data.";
+        }
+
         if (asked.Problem is { } problem)
         {
             throw new InvalidOperationException($"The demo battery {demo.Serial} couldn't be handed over: {problem}.");
         }
+
+        return null;
     }
 
     /// <summary>An export-shaped file (decision 31) with this many modules for the battery.</summary>

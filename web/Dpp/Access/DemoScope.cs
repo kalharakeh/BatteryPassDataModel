@@ -1,3 +1,4 @@
+using BatteryPassWeb.Dpp.Access;
 namespace BatteryPassWeb.Dpp.Access;
 
 /// <summary>
@@ -26,6 +27,11 @@ public static class DemoScope
         ArgumentNullException.ThrowIfNull(sender);
         return !sender.DemoOnly || batteryIsDemo;
     }
+
+    /// <summary>A battery moves only into a cluster of its own kind: demo with demo, real with real (finding R03).</summary>
+    public static bool MayMove(bool batteryIsDemo, bool clusterIsDemo) => batteryIsDemo == clusterIsDemo;
+
+    public const string OtherKindOfCluster = "a demo battery moves only to a demo cluster, and a real battery only to a real one";
 
     /// <summary>A list as the reader may meet it: a demo reader meets only demo rows.</summary>
     public static IEnumerable<T> Lists<T>(Reader reader, IEnumerable<T> rows, Func<T, bool> isDemo)

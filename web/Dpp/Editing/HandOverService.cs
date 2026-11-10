@@ -1,3 +1,4 @@
+using BatteryPassWeb.Dpp.Access;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Services;
 using MongoDB.Bson;
@@ -52,7 +53,8 @@ public sealed class HandOverService(DppStore store, ClusterRepository clusters, 
 
         // Cluster IDs are compared normalised, as ClusterBatteryPages does (the step 4 wrap-up's follow-up).
         if (sender.Kind != SenderKind.ClusterAdmin || pack.ClusterId is not { } stored || ClusterRepository.NormalizeClusterId(stored) is not { } from
-            || !sender.ClusterIds.Contains(from))
+            || !sender.ClusterIds.Contains(from)
+            || !DemoScope.Reaches(sender, pack.IsDemo)) // finding R03
         {
             return Refused(NotYours);
         }
@@ -71,6 +73,11 @@ public sealed class HandOverService(DppStore store, ClusterRepository clusters, 
         if (to.Length == 0 || await clusters.GetClusterByIdAsync(to, cancellationToken) is not { } cluster)
         {
             return Refused(NoSuchCluster);
+        }
+
+        if (!DemoScope.MayMove(pack.IsDemo, ClusterRepository.IsDemo(cluster))) // finding R03
+        {
+            return Refused(DemoScope.OtherKindOfCluster);
         }
 
         if (await store.FindWaitingHandOverAsync(packId, cancellationToken) is not null)
@@ -114,6 +121,11 @@ public sealed class HandOverService(DppStore store, ClusterRepository clusters, 
         }
 
         var pack = await store.GetAsync<BatteryPack>(handOver.PackId, cancellationToken);
+        if (pack is not null && !DemoScope.Reaches(sender, pack.IsDemo)) // a demo admin accepts no real battery (finding R03)
+        {
+            return NotTheReceiver;
+        }
+
         if (handOver.State != HandOverStates.Waiting || pack?.ClusterId is not { } now
             || ClusterRepository.NormalizeClusterId(now) != ClusterRepository.NormalizeClusterId(handOver.FromClusterId))
         {
@@ -149,8 +161,8 @@ public sealed class HandOverService(DppStore store, ClusterRepository clusters, 
             return NothingWaiting;
         }
 
-        var mayCancel = sender.Kind == SenderKind.Team
-            || (sender.Kind == SenderKind.ClusterAdmin && sender.ClusterIds.Contains(ClusterRepository.NormalizeClusterId(handOver.FromClusterId)));
+        var mayCancel = DemoScope.Reaches(sender, (await store.GetAsync<BatteryPack>(packId, cancellationToken))?.IsDemo == true) && (sender.Kind == SenderKind.Team // finding R03
+            || (sender.Kind == SenderKind.ClusterAdmin && sender.ClusterIds.Contains(ClusterRepository.NormalizeClusterId(handOver.FromClusterId))));
         if (!mayCancel)
         {
             return NotYours;

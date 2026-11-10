@@ -215,7 +215,7 @@ builder.Services.AddHttpsRedirection(options =>
 });
 // ENABLE_DEMO_DATA (finding R03): on outside Production unless false, off in Production unless true.
 builder.Services.AddSingleton(new BatteryPassWeb.Dpp.Demo.DemoDataSwitch(BatteryPassWeb.Dpp.Demo.DemoDataSwitch.Parse(
-    EnvironmentOrConfig(builder.Configuration, "ENABLE_DEMO_DATA", "EnableDemoData"),
+    EnvironmentOrConfig(builder.Configuration, "ENABLE_DEMO_DATA", "DemoDataEnabled"),
     builder.Environment.IsProduction())));
 builder.Services.AddSingleton<MongoContext>();
 builder.Services.AddSingleton<ClusterRepository>();

@@ -1,3 +1,4 @@
+using BatteryPassWeb.Dpp.Access;
 using BatteryPassWeb.Dpp.Assembly;
 using BatteryPassWeb.Dpp.Catalog;
 using BatteryPassWeb.Dpp.Editing;
@@ -73,6 +74,11 @@ public sealed class PublicationService(
         if (sender.Kind != SenderKind.Team)
         {
             return new PublicationResult(null, null, "only the team publishes passports");
+        }
+
+        if (!DemoScope.Reaches(sender, (await store.GetAsync<BatteryPack>(packId, cancellationToken))?.IsDemo == true)) // finding R03
+        {
+            return new PublicationResult(null, null, DemoScope.RealBattery);
         }
 
         // A passport with no active version is either a draft or no longer active (step 4c): only a draft is published.

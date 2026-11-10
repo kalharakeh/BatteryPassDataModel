@@ -1,3 +1,4 @@
+using BatteryPassWeb.Dpp.Access;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using BatteryPassWeb.Dpp.Catalog;
@@ -105,6 +106,13 @@ public sealed class SavePipeline(
         if (!target.Found)
         {
             return new SaveResult(false, false, []);
+        }
+
+        // A demo sender changes only demo batteries (finding R03).
+        if (changes.Target == TargetKind.Pack && !DemoScope.Reaches(sender, (await store.GetAsync<BatteryPack>(changes.TargetId, cancellationToken))?.IsDemo == true))
+        {
+            return new SaveResult(true, false, changes.Values.Keys.Concat(changes.Removals ?? []).Distinct(StringComparer.Ordinal)
+                .Select(key => new KeyResult(key, KeyOutcome.Rejected, DemoScope.RealBattery)).ToArray());
         }
 
         // An inactive, invalid or marked-for-deletion passport takes no more changes (step 4c, decision 34).

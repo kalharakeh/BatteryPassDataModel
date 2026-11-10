@@ -1,3 +1,4 @@
+using BatteryPassWeb.Dpp.Access;
 using System.Text.Json.Nodes;
 using BatteryPassWeb.Dpp.Catalog;
 using BatteryPassWeb.Dpp.Identifiers;
@@ -60,7 +61,7 @@ public sealed class SuccessionService(
         }
 
         var old = sources.Pack;
-        if (sender.Kind != SenderKind.Team)
+        if (sender.Kind != SenderKind.Team || !DemoScope.Reaches(sender, old.IsDemo)) // finding R03
         {
             return (null, TeamMakesIt);
         }
@@ -144,8 +145,8 @@ public sealed class SuccessionService(
             return NoBattery;
         }
 
-        var mayName = sender.Kind == SenderKind.Team
-            || (sender.Kind == SenderKind.ClusterAdmin && old.ClusterId is { } cluster && sender.ClusterIds.Contains(cluster));
+        var mayName = DemoScope.Reaches(sender, old.IsDemo) && (sender.Kind == SenderKind.Team // finding R03
+            || (sender.Kind == SenderKind.ClusterAdmin && old.ClusterId is { } cluster && sender.ClusterIds.Contains(cluster)));
         if (!mayName)
         {
             return NotYours;
@@ -223,7 +224,7 @@ public sealed class SuccessionService(
             return NoBattery;
         }
 
-        if (sender.Kind != SenderKind.Team)
+        if (sender.Kind != SenderKind.Team || !DemoScope.Reaches(sender, old.IsDemo)) // finding R03
         {
             return TeamCancels;
         }

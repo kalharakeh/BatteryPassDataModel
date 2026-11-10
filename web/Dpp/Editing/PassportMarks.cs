@@ -1,3 +1,4 @@
+using BatteryPassWeb.Dpp.Access;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Services;
 using MongoDB.Bson;
@@ -73,7 +74,7 @@ public sealed class PassportMarks(DppStore store, ApplicationAuditService audit,
             return NoBattery;
         }
 
-        if (sender.Kind != SenderKind.Team)
+        if (sender.Kind != SenderKind.Team || !DemoScope.Reaches(sender, pack.IsDemo)) // finding R03
         {
             return OnlyTheTeamUndoes;
         }
@@ -110,6 +111,11 @@ public sealed class PassportMarks(DppStore store, ApplicationAuditService audit,
         if (await store.GetAsync<BatteryPack>(packId, cancellationToken) is not { } pack)
         {
             return NoBattery;
+        }
+
+        if (!DemoScope.Reaches(sender, pack.IsDemo)) // a demo account marks only demo passports (finding R03)
+        {
+            return DemoScope.RealBattery;
         }
 
         if (await store.GetActiveVersionAsync(packId, cancellationToken) is not { } active)
