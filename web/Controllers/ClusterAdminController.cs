@@ -296,7 +296,7 @@ public class ClusterAdminController : Controller
         {
             if (!rights.Exists || !rights.MayChangeNameAndPassword)
             {
-                TempData["ErrorMessage"] = AccessControlService.OnlyTheTeamChangesThisAccount;
+                TempData["ErrorMessage"] = AccessControlService.CantChangeThisAccount;
                 return Redirect(back);
             }
 

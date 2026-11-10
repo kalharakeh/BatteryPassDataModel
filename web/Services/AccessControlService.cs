@@ -25,11 +25,8 @@ public sealed class AccessControlService
 
     /// <summary>The one answer a cluster admin gets for any account they can't change (finding R19): it says nothing about the account.</summary>
     public const string CantChangeThisAccount = "You can't change this person's account here. Ask the Scania team.";
-    public const string KeptForTheTeam = "Only the team can add this address.";
     public const string AddressKeptForTheTeam = "Only the team can use this address.";
     public const string NewPasswordForAppWideRole = "Set a new password when you give this account access across the app: someone else may know its old one.";
-    public const string OnlyTheTeamChangesThisAccount = "Only the team can change this person's name or password.";
-    public const string TeamAccountsAreTheTeams = "This is a team account: only the team changes it.";
     public const string NotYourOwnAccount = "You can't change your own account here. Use Account at the top of the page.";
 
     private readonly ClusterRepository _clusterRepository;
@@ -92,7 +89,7 @@ public sealed class AccessControlService
 
         if (IsFallbackAdminAddress(email))
         {
-            return new AccountRights(account is not null, KeptForTheTeam, false);
+            return new AccountRights(account is not null, CantChangeThisAccount, false);
         }
 
         if (string.Equals(email.Trim(), CurrentEmail(actor).Trim(), StringComparison.OrdinalIgnoreCase))
@@ -115,7 +112,7 @@ public sealed class AccessControlService
         var roles = RolesOf(account);
         if (roles.Contains(RoleAdmin, StringComparer.OrdinalIgnoreCase))
         {
-            return new AccountRights(true, TeamAccountsAreTheTeams, false);
+            return new AccountRights(true, CantChangeThisAccount, false);
         }
 
         return new AccountRights(true, null, ClusterAdminMayChangeNameAndPassword(

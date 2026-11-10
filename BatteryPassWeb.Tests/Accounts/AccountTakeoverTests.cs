@@ -13,7 +13,7 @@ namespace BatteryPassWeb.Tests.Accounts;
 public sealed class AccountTakeoverTests(MongoFixture mongo)
 {
     private const string AlreadyHasAnAccount = "This person already has an account. They were added to your cluster; their name and password stay as they are.";
-    private const string OnlyTheTeam = "Only the team can change this person's name or password.";
+    private const string OnlyTheTeam = AccessControlService.CantChangeThisAccount;
 
     // (a) "Add user" with an existing outside account and a typed password.
     [Theory]
@@ -147,7 +147,7 @@ public sealed class AccountTakeoverTests(MongoFixture mongo)
 
         Assert.Null(await rig.Clusters.GetUserByEmailAsync(AccountRig.FallbackEmail));
         Assert.Empty(await rig.ClustersOfAsync(AccountRig.FallbackEmail));
-        Assert.Equal(AccessControlService.KeptForTheTeam, northAdmin.TempData["ErrorMessage"]);
+        Assert.Equal(AccessControlService.CantChangeThisAccount, northAdmin.TempData["ErrorMessage"]);
         Assert.True(await rig.SignsInAsync(AccountRig.FallbackEmail, AccountRig.FallbackPassword));
     }
 
@@ -177,6 +177,25 @@ public sealed class AccountTakeoverTests(MongoFixture mongo)
         Assert.True(await rig.SignsInAsync(AccountRig.Team, AccountRig.Password));
         Assert.Equal([AccessControlService.RoleAdmin], await rig.RolesOfAsync(AccountRig.Team));
         Assert.Empty(await rig.ClustersOfAsync(AccountRig.Team));
+    }
+
+    // One answer for every account a cluster admin can't change, so it says nothing about the account (manager's point 3).
+    [Theory]
+    [InlineData(AccountRig.Team, "")]
+    [InlineData(AccountRig.Msa, "password")]
+    [InlineData(AccountRig.SouthAdmin, "password")]
+    [InlineData(AccountRig.FallbackEmail, "")]
+    [InlineData("waiting@example.test", "password")]
+    public async Task EveryRefusal_ShouldSayTheSame(string email, string change)
+    {
+        using var rig = await AccountRig.StartAsync(mongo);
+        await rig.AccountAsync("waiting@example.test", "Waiting", AccessControlService.RoleNormalUser, "north");
+        var northAdmin = AccountRig.Form(rig.ClusterAdmin(AccountRig.NorthAdmin),
+            ("change", change), ("email", email), ("password", AccountRig.Typed), ("passwordConfirmation", AccountRig.Typed), ("clusterId", "north"));
+
+        await northAdmin.SaveUser(CancellationToken.None);
+
+        Assert.Equal(AccessControlService.CantChangeThisAccount, northAdmin.TempData["ErrorMessage"]);
     }
 
     [Fact]
