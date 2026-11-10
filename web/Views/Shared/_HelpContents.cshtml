@@ -20,6 +20,7 @@
     @if (signedIn)
     {
         <a href="@Part("print")">Print a passport</a>
+        <a href="@Part("account")">Your account</a>
     }
     @if (inACluster || isMsa || addsAccess)
     {
@@ -53,6 +54,7 @@
         <p>For the team</p>
         <a href="@Part("workflow")">From product data to a published passport</a>
         <a href="@Part("battery-ids")">Battery IDs</a>
+        <a href="@Part("team-users")">Accounts</a>
         <a href="@Part("lifecycle")">After publishing</a>
         <a href="@Part("ready")">Before you call a battery ready</a>
     }
