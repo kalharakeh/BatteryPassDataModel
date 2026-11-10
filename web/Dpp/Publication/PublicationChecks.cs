@@ -24,19 +24,15 @@ public sealed class PublicationChecks(OfficialSchemas schemas)
 
         foreach (var attribute in AttributeCatalog.All.Where(a => Find(passport, a) is null))
         {
-            // Conditional attributes never block (J-9); attributes required only after Feb 2027 warn.
-            if (attribute.Requirement == Requirement.Conditional)
+            // The one rule (PassportNeeds): a value needed now blocks, one needed only after Feb 2027 warns.
+            switch (PassportNeeds.NeedOf(attribute))
             {
-                continue;
-            }
-
-            if (attribute.MandatoryFromFeb2027)
-            {
-                blocking.Add($"{attribute.Label} {attribute.Name} is missing");
-            }
-            else
-            {
-                warnings.Add($"{attribute.Label} {attribute.Name} is missing (required later, not by Feb 2027)");
+                case Need.Required:
+                    blocking.Add($"{attribute.Label} {attribute.Name} is missing");
+                    break;
+                case Need.Later:
+                    warnings.Add($"{attribute.Label} {attribute.Name} is missing (required later, not by Feb 2027)");
+                    break;
             }
         }
 

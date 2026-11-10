@@ -23,13 +23,13 @@ public sealed class RecordEditorTests(MongoFixture mongo)
     }
 
     [Theory]
-    [InlineData(TargetKind.Model, 28)]
+    [InlineData(TargetKind.Model, 29)]
     [InlineData(TargetKind.Batch, 4)]
     [InlineData(TargetKind.Site, 3)]
     [InlineData(TargetKind.Operator, 2)]
     public void AnEmptyRecord_ShouldMissOnlyItsValuesNeededByFeb2027(TargetKind kind, int count)
     {
-        // Values needed only later (8 of a batch's, 2 of a model's) and conditional ones aren't counted.
+        // Values needed only later (8 of a batch's, 1 of a model's) and conditional ones aren't counted. #57 counts (R22).
         Assert.Equal(count, RecordEditor.CountMissing(kind, new Dictionary<string, AttributeValue>()));
     }
 

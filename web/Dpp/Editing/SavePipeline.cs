@@ -209,7 +209,7 @@ public sealed class SavePipeline(
             {
                 results.Add(new KeyResult(key, KeyOutcome.Rejected, FixedOncePublished));
             }
-            else if (attribute.Requirement != Requirement.Conditional && attribute.MandatoryFromFeb2027
+            else if (PassportNeeds.NeedOf(attribute) == Need.Required
                 && (published ??= await UsedByPublishedPassportAsync(changes.Target, changes.TargetId, cancellationToken)))
             {
                 results.Add(new KeyResult(key, KeyOutcome.Rejected, "The published passports need this value, so it can't be removed. Change it instead."));

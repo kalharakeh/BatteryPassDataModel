@@ -93,10 +93,10 @@ public sealed record EditorField(
     public string? StoredLink { get; init; }
 
     /// <summary>
-    /// Empty although the passport needs it by February 2027 (the file's M or (M), with the Feb 2027 mark): what the team
-    /// still has to fill in. Conditional values and values needed only later are not counted.
+    /// Empty although the passport needs it before publishing (<see cref="PassportNeeds"/>): what the team still has to
+    /// fill in. Conditional values and values needed only later are not counted.
     /// </summary>
-    public bool IsMissing => !HasValue && Attribute.Requirement != Requirement.Conditional && Attribute.MandatoryFromFeb2027;
+    public bool IsMissing => !HasValue && PassportNeeds.NeedOf(Attribute) == Need.Required;
 
     /// <summary>True when this input of a grouped value should be marked as refused.</summary>
     public bool IsRefused(FormInput input) =>
@@ -138,9 +138,12 @@ public sealed record EditorField(
     public string Text(string fieldName) => Texts.GetValueOrDefault(fieldName, string.Empty);
 
     /// <summary>The requirement in the grey marker: the file's M, (M) or C, and whether it is needed by February 2027.</summary>
-    public string Marker => Attribute.Requirement == Requirement.Conditional
-        ? "Conditional"
-        : Attribute.MandatoryFromFeb2027 ? "Required by Feb 2027" : "Required later";
+    public string Marker => PassportNeeds.NeedOf(Attribute) switch
+    {
+        Need.Required => "Required by Feb 2027",
+        Need.Later => "Required later",
+        _ => "Conditional",
+    };
 
     /// <summary>Who may see the value, shown only when it isn't public.</summary>
     public string? AudienceLabel => Attribute.Audience switch
@@ -229,7 +232,7 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
     /// <summary>How many of the record's values the passport needs by February 2027 are still empty (see <see cref="EditorField.IsMissing"/>).</summary>
     public static int CountMissing(TargetKind kind, IReadOnlyDictionary<string, AttributeValue> stored) =>
         AttributesOf(kind).Count(attribute =>
-            !stored.ContainsKey(attribute.Property) && attribute.Requirement != Requirement.Conditional && attribute.MandatoryFromFeb2027);
+            !stored.ContainsKey(attribute.Property) && PassportNeeds.NeedOf(attribute) == Need.Required);
 
     /// <summary>
     /// The values the schema allows only one way, which have no input (#20 battery category). A new record starts with

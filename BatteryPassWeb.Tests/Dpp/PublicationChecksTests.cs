@@ -34,12 +34,12 @@ public sealed class PublicationChecksTests
     public void MissingAttributeRequiredOnlyLater_ShouldWarn()
     {
         var passport = SeedPassport();
-        Section(passport, "performanceAndDurability").Remove("ratedCapacity");
+        Section(passport, "symbolsLabelsAndDocumentationOfConformity").Remove("carbonFootprintLabel");
 
         var report = Checks.Check(passport);
 
         Assert.True(report.CanPublish);
-        Assert.Contains(report.Warnings, item => item.StartsWith("#57 ", StringComparison.Ordinal) && item.Contains("required later", StringComparison.Ordinal));
+        Assert.Contains(report.Warnings, item => item.StartsWith("#25 ", StringComparison.Ordinal) && item.Contains("required later", StringComparison.Ordinal));
     }
 
     [Fact]
