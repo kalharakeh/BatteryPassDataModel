@@ -179,6 +179,13 @@ public sealed class ClusterHistory(ApplicationAuditService audit, AuditLines lin
                 continue;
             }
 
+            if (type == DocumentService.WithdrawnEvent)
+            {
+                // The fact, the file's name and the day: not the team member's name, and not the reason, which is the team's.
+                yield return (original, Line(original, who, " withdrew an accident report") with { Change = metadata.TryGetValue("fileName", out var file) && file.IsString ? file.AsString : null });
+                continue;
+            }
+
             if (!Described.Contains(type))
             {
                 continue; // e.g. a refused publish or upload: the team's own working

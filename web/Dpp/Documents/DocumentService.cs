@@ -114,7 +114,7 @@ public sealed class DocumentService(
             return NoSuchReport;
         }
 
-        await documents.DeleteAsync(report, cancellationToken);
+        // The trace first: a failure while deleting never leaves a deleted file without an entry.
         var serial = pack.Values.GetValueOrDefault("batterySerialNumber")?.Value?.GetValue<string>() ?? packId;
         await audit.AppendApplicationAuditEventAsync(
             WithdrawnEvent,
@@ -134,6 +134,7 @@ public sealed class DocumentService(
             entityType: "dpp-pack",
             entityId: packId,
             cancellationToken: cancellationToken);
+        await documents.DeleteAsync(report, cancellationToken);
         return null;
     }
 
