@@ -26,7 +26,7 @@ public sealed class StatusWindowScrollTests
         }
 
         Assert.True(window.IndexOf("class=\"bp-choice-list\"", StringComparison.Ordinal) > window.IndexOf("<div class=\"bp-dialog-body\">", StringComparison.Ordinal));
-        Assert.True(window.IndexOf("class=\"bp-attr-list\"", StringComparison.Ordinal) > window.LastIndexOf("<div class=\"bp-dialog-body\">", StringComparison.Ordinal));
+        Assert.True(window.IndexOf("class=\"bp-attr-list\"", StringComparison.Ordinal) > window.IndexOf("<div class=\"bp-dialog-body\">", window.IndexOf("<div data-status-step=\"2\">", StringComparison.Ordinal), StringComparison.Ordinal)); // the second step's body (R10 adds a third part, the cluster admin's waste question, after it)
     }
 
     [Fact]
