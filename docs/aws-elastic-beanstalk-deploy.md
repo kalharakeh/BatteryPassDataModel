@@ -297,7 +297,15 @@ After `https://sib-dpd.eu` works:
    https://sib-dpd.eu
    ```
 
-## 13. What not to do
+## 13. Updating a site that already runs
+
+After an update to a newer version of the app:
+
+- **If the site keeps demo data** (`ENABLE_DEMO_DATA` on): sign in as the team and press "Reset demo data" once (Clusters tab, end), so the demo is rebuilt under the new rules. Until then an old demo keeps working. The reset stops and changes nothing if a real account, battery or API token uses one of the demo's clusters; the message names the cluster. Take the real use out of it, then reset again. Open demo sessions are signed out by the reset.
+- **Real accounts need no step.**
+- **Customer (cluster) admins** can set a new password or name only for people they added after the update. For people who existed before, the team sets the password.
+
+## 14. What not to do
 
 - Do not add MongoDB Atlas network access `0.0.0.0/0`.
 - Do not upload `.env.local`.
