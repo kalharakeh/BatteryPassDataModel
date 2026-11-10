@@ -99,7 +99,7 @@ public sealed class AuthService
         {
             if (_mongoContext.Database != null)
             {
-                var user = await ClusterRepository.FindUserAsync(_mongoContext.Database, normalizedEmail, cancellationToken);
+                var user = await ClusterRepository.FindUserAsync(_mongoContext.Database, email, cancellationToken);
 
                 if (user != null)
                 {
@@ -173,15 +173,19 @@ public sealed class AuthService
             return SessionCheck.Unchanged;
         }
 
-        BsonDocument? user;
         try
         {
-            user = await ClusterRepository.FindUserAsync(_mongoContext.Database, email, cancellationToken);
+            return await CheckSessionAgainstAsync(session, email, cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             return SessionCheck.Unchanged;
         }
+    }
+
+    private async Task<SessionCheck> CheckSessionAgainstAsync(ClaimsPrincipal session, string email, CancellationToken cancellationToken)
+    {
+        var user = await ClusterRepository.FindUserAsync(_mongoContext.Database!, email, cancellationToken);
 
         var isFallbackAddress = email.Trim().Equals(_options.DemoAdminEmail?.Trim(), StringComparison.OrdinalIgnoreCase);
         var fallbackSession = session.HasClaim(claim => claim.Type == FallbackClaim)

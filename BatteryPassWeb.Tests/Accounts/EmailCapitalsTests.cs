@@ -65,6 +65,23 @@ public sealed class EmailCapitalsTests(MongoFixture mongo)
     }
 
     [Fact]
+    public async Task TwinsThatDifferOnlyInCapitals_ShouldEachStillSignInAsTyped()
+    {
+        using var rig = await AccountRig.StartAsync(mongo);
+        await StoreWithCapitalsAsync(rig);
+        await rig.Database.GetCollection<BsonDocument>("users").InsertOneAsync(new BsonDocument
+        {
+            ["email"] = "mixed.case@example.test",
+            ["name"] = "Lower twin",
+            ["roles"] = new BsonArray { AccessControlService.RoleNormalUser },
+            ["passwordHash"] = BCrypt.Net.BCrypt.HashPassword(AccountRig.Typed, 4),
+        });
+
+        Assert.True(await rig.SignsInAsync(Stored, AccountRig.Password));
+        Assert.True(await rig.SignsInAsync("mixed.case@example.test", AccountRig.Typed));
+    }
+
+    [Fact]
     public async Task Writes_ShouldReachAnAccountStoredWithCapitals_AndMakeNoSecondOne()
     {
         using var rig = await AccountRig.StartAsync(mongo);

@@ -22,11 +22,13 @@ public sealed class ClusterRepository
     public static string NormalizeEmail(string? email) => (email ?? string.Empty).Trim().ToLowerInvariant();
 
     /// <summary>
-    /// The account with this address whatever its capitals and outer spaces (finding U28): the lower-case one first, as
-    /// the app stores it, then one stored with capitals. Every account look-up goes through here, sign-in included.
+    /// The account with this address whatever its capitals and outer spaces (finding U28): the address exactly as typed
+    /// first (so two old accounts that differ only in capitals each still sign in as before), then in lower case, as the
+    /// app stores it, then one stored with other capitals. Every account look-up goes through here, sign-in included.
     /// </summary>
     public static async Task<BsonDocument?> FindUserAsync(IMongoDatabase database, string? email, CancellationToken cancellationToken = default)
     {
+        var typed = (email ?? string.Empty).Trim();
         var normalizedEmail = NormalizeEmail(email);
         if (normalizedEmail.Length == 0)
         {
@@ -34,6 +36,12 @@ public sealed class ClusterRepository
         }
 
         var users = database.GetCollection<BsonDocument>("users");
+        if (typed != normalizedEmail
+            && await users.Find(Builders<BsonDocument>.Filter.Eq("email", typed)).FirstOrDefaultAsync(cancellationToken) is { } asTyped)
+        {
+            return asTyped;
+        }
+
         return await users.Find(Builders<BsonDocument>.Filter.Eq("email", normalizedEmail)).FirstOrDefaultAsync(cancellationToken)
             ?? await users.Find(Builders<BsonDocument>.Filter.Eq("email", normalizedEmail), new FindOptions { Collation = IgnoreCase })
                 .FirstOrDefaultAsync(cancellationToken);
