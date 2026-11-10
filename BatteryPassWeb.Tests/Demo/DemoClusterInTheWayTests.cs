@@ -17,13 +17,46 @@ public sealed class DemoClusterInTheWayTests(MongoFixture mongo)
 {
     private static FilterDefinition<BsonDocument> Eq(string field, BsonValue value) => Builders<BsonDocument>.Filter.Eq(field, value);
 
-    /// <summary>The manager's database: the demo is there, and a real test account was made a member of demo-north.</summary>
+    /// <summary>What the demo north admin's "Add user" does: another demo account added, and a new (demo) account made.</summary>
+    private static async Task DemoAdminAddsAndMakesAsync(ClusterRepository clusters)
+    {
+        await clusters.UpsertClusterMembershipAsync("demo.msa@example.test", "demo-north", AccessControlService.RoleNormalUser);
+        await clusters.UpsertClusterMembershipAsync("demo.south.admin@example.test", "demo-north", AccessControlService.RoleNormalUser);
+        await clusters.CreateAccountInClusterAsync("fresh.made@example.test", "Fresh", "hash", "demo-north", isDemo: true);
+        await clusters.UpsertClusterMembershipAsync("fresh.made@example.test", "demo-north", AccessControlService.RoleNormalUser);
+    }
+
+    private static async Task<List<string>> MembershipsAsync(DemoRig rig) =>
+        (await rig.All("clusterMemberships")).Select(membership => $"{membership["email"].AsString} {membership["clusterId"].AsString} {membership["role"].AsString}").Order().ToList();
+
+    /// <summary>The manager's running app: demo use of the user pages never stops the reset, which puts back the catalogue's state.</summary>
+    [Fact]
+    public async Task DemoAccountsADemoAdminAddedOrMade_ShouldNotStopTheReset_WhichLeavesTheCataloguesState()
+    {
+        using var rig = await DemoRig.StartAsync(mongo);
+        await rig.Demo.SeedAsync(DemoRig.Who);
+        var catalogueState = await MembershipsAsync(rig);
+        var clusters = rig.Services.GetRequiredService<ClusterRepository>();
+        await DemoAdminAddsAndMakesAsync(clusters);
+        await rig.Services.GetRequiredService<ExternalApiRepository>().CreateTokenAsync("North feed", ExternalTokenAccessMode.Read, ["demo-north"], false, false, "demo.north.admin@example.test", isDemo: true);
+
+        var result = await rig.Demo.ResetAsync(DemoRig.Who);
+
+        Assert.NotEmpty(result.Done);
+        Assert.DoesNotContain(result.Notes, note => note.StartsWith("Nothing was changed", StringComparison.Ordinal));
+        Assert.Equal(catalogueState, await MembershipsAsync(rig));
+        Assert.Null(await clusters.GetUserByEmailAsync("fresh.made@example.test"));
+        Assert.All(await rig.All("clusters"), cluster => Assert.True(cluster["isDemo"].AsBoolean));
+    }
+
+    /// <summary>The manager's database: a real test account was made a member of demo-north. Only the real ones are counted.</summary>
     [Fact]
     public async Task ARealMemberOfADemoCluster_ShouldStopTheReset_BeforeAnythingChanges()
     {
         using var rig = await DemoRig.StartAsync(mongo);
         await rig.Demo.SeedAsync(DemoRig.Who);
         var clusters = rig.Services.GetRequiredService<ClusterRepository>();
+        await DemoAdminAddsAndMakesAsync(clusters);
         await clusters.UpsertUserAsync("tester@example.test", "A real tester", [AccessControlService.RoleNormalUser], "hash");
         await clusters.UpsertClusterMembershipAsync("tester@example.test", "demo-north", "member");
         var before = (await rig.All(DppStore.Packs)).Select(pack => pack["_id"].AsString).Order().ToList();

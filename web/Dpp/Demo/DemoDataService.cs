@@ -355,14 +355,25 @@ public sealed class DemoDataService(
     }
 
     /// <summary>
-    /// What real data uses a cluster: batteries, memberships and API tokens that aren't demo data. The cluster's own tokens,
-    /// which the app's start makes for every cluster, go with it and aren't real use.
+    /// What real data uses a cluster: batteries and API tokens without the demo mark, and members whose account has no demo
+    /// mark (finding R03, point 7). A demo account a demo admin added or made is demo data however it got its membership,
+    /// and a membership without an account goes with the cluster. The cluster's own tokens, which the app's start makes
+    /// for every cluster, go with it and aren't real use.
     /// </summary>
     private async Task<List<string>> RealUsesAsync(string clusterId, CancellationToken cancellationToken)
     {
         var filter = Builders<BsonDocument>.Filter;
         var packs = await Collection(DppStore.Packs).CountDocumentsAsync(filter.And(filter.Eq("ClusterId", clusterId), filter.Ne(Mark, true)), cancellationToken: cancellationToken);
-        var members = await Collection("clusterMemberships").CountDocumentsAsync(filter.And(filter.Eq("clusterId", clusterId), filter.Ne(AccountMark, true)), cancellationToken: cancellationToken);
+        var members = 0;
+        foreach (var membership in await Collection("clusterMemberships").Find(filter.And(filter.Eq("clusterId", clusterId), filter.Ne(AccountMark, true))).ToListAsync(cancellationToken))
+        {
+            var account = await ClusterRepository.FindUserAsync(Database, BsonHelpers.GetString(membership, "email"), cancellationToken);
+            if (account is not null && !ClusterRepository.IsDemo(account))
+            {
+                members++;
+            }
+        }
+
         var realTokens = await Collection("apiTokens").CountDocumentsAsync(
             filter.And(filter.AnyEq("clusterIds", clusterId), filter.Ne("autoClusterId", clusterId), filter.Ne(AccountMark, true)),
             cancellationToken: cancellationToken);
