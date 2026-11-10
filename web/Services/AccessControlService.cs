@@ -125,7 +125,7 @@ public sealed class AccessControlService
         if (user.IsInRole(RoleLiRepair)) return "Legitimate interest: repair, repurposing, remanufacturing";
         if (user.IsInRole(RoleLiRecycling)) return "Legitimate interest: recycling and battery treatment";
         if (user.IsInRole(RoleLiTreatment)) return "Legitimate interest: authorised or WEEE treatment";
-        if (user.IsInRole(RoleNormalUser)) return "Normal User";
+        if (user.IsInRole(RoleNormalUser)) return "Cluster member"; // as the user lists say (finding W04)
         return "Cluster Member";
     }
 
@@ -141,7 +141,7 @@ public sealed class AccessControlService
             RoleLiRepair => "Legitimate interest: repair, repurposing, remanufacturing",
             RoleLiRecycling => "Legitimate interest: recycling and battery treatment",
             RoleLiTreatment => "Legitimate interest: authorised or WEEE treatment",
-            RoleNormalUser => "Normal User",
+            RoleNormalUser => "Cluster member",
             _ => "Cluster Member"
         };
     }

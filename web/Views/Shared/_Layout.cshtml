@@ -51,6 +51,14 @@
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
+
+    // The reader's clusters; "No cluster" only for a cluster member who has none yet, never for the team, the authorities
+    // and the legitimate-interest readers, who never have one (finding W04).
+    var neverHasCluster = BatteryPassWeb.Services.AccessControlService.HasAppWideRole(
+        User.Claims.Where(claim => claim.Type == System.Security.Claims.ClaimTypes.Role).Select(claim => claim.Value));
+    var clusterLine = clusterNames.Count > 0
+        ? string.Join(", ", clusterNames)
+        : !isAuthenticated || neverHasCluster ? string.Empty : "No cluster";
 }
 <!DOCTYPE html>
 <html lang="en" data-theme="@theme">
@@ -89,7 +97,10 @@
                                     <div class="bp-mobile-identity">
                                         <p>@identityLabel</p>
                                         <p>@customerName / @customerRole</p>
-                                        <p>@(clusterNames.Count > 0 ? string.Join(", ", clusterNames) : "No cluster")</p>
+                                        @if (!string.IsNullOrEmpty(clusterLine))
+                                        {
+                                            <p>@clusterLine</p>
+                                        }
                                     </div>
                                     <a href="/registry">Open Registry<partial name="_WaitingCount" /></a>
                                     @if (showAdminLink)
@@ -131,7 +142,10 @@
                             <div class="bp-identity">
                                 <p>@identityLabel</p>
                                 <p>@customerName / @customerRole</p>
-                                <p>@(clusterNames.Count > 0 ? string.Join(", ", clusterNames) : "No cluster")</p>
+                                @if (!string.IsNullOrEmpty(clusterLine))
+                                {
+                                    <p>@clusterLine</p>
+                                }
                             </div>
                         }
                         <div class="bp-header-account-links">

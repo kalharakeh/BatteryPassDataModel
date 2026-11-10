@@ -6,7 +6,7 @@
 <main class="bp-page bp-admin-page">
     <div>
         <h1 class="mb-1">Account</h1>
-        <p class="text-secondary mb-0">Update your customer profile, email, and password.</p>
+        <p class="text-secondary mb-0">Your name, e-mail and password.</p>
     </div>
 
     @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
@@ -21,17 +21,14 @@
     <section class="bp-card mt-4">
         <form method="post" action="/account" class="bp-stack-form">
             @Html.AntiForgeryToken()
+            <p class="mb-0">Your role: <strong>@Model.RoleLabel</strong></p>
             <label>
-                Customer name
+                Your name
                 <input type="text" name="name" value="@Model.Name" />
             </label>
             <label>
-                Customer email
+                Your e-mail
                 <input type="email" name="email" value="@Model.Email" required />
-            </label>
-            <label>
-                Role
-                <input type="text" value="@Model.RoleLabel" readonly />
             </label>
             <label>
                 Current password
