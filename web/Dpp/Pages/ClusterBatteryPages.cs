@@ -248,7 +248,8 @@ public sealed class ClusterBatteryPages(
         ArgumentNullException.ThrowIfNull(sender);
         if (sender.Kind != SenderKind.ClusterAdmin
             || await store.GetAsync<BatteryPack>(packId, cancellationToken) is not { ClusterId: { } clusterId } pack
-            || !sender.ClusterIds.Contains(ClusterRepository.NormalizeClusterId(clusterId)))
+            || !sender.ClusterIds.Contains(ClusterRepository.NormalizeClusterId(clusterId))
+            || !BatteryPassWeb.Dpp.Access.DemoScope.Reaches(sender, pack.IsDemo)) // a demo cluster admin manages only demo batteries (finding R03)
         {
             return null;
         }

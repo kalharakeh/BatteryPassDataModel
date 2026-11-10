@@ -266,6 +266,7 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
             return null;
         }
 
+        who = DemoScope.On(who, sources.Pack.IsDemo); // a demo reader is a visitor on a real battery (finding R03)
         var clusters = await store.FindPublishedClusterIdsUsingAsync(packId: version.PackId, cancellationToken: cancellationToken);
         var everyone = PassportFilter.Cut(published.Passport, Reader.Anonymous, clusters);
         var seen = detail ? PassportFilter.Cut(published.Passport, who, clusters) : everyone;
