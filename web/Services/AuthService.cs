@@ -65,41 +65,27 @@ public sealed class AuthService
             return LoginAuthenticationResult.Invalid();
         }
 
-        var normalizedEmail = email.Trim();
+        // The same address whatever its capitals and outer spaces (finding U28).
+        var normalizedEmail = ClusterRepository.NormalizeEmail(email);
 
         try
         {
             if (_mongoContext.Database != null)
             {
-                var users = _mongoContext.Database.GetCollection<BsonDocument>("users");
-                var user = await users.Find(Builders<BsonDocument>.Filter.Eq("email", normalizedEmail)).FirstOrDefaultAsync(cancellationToken);
+                var user = await ClusterRepository.FindUserAsync(_mongoContext.Database, normalizedEmail, cancellationToken);
 
                 if (user != null)
                 {
                     var passwordHash = BsonHelpers.GetString(user, "passwordHash");
                     if (!string.IsNullOrWhiteSpace(passwordHash) && BCrypt.Net.BCrypt.Verify(password, passwordHash))
                     {
-                        var roles = ExtractRoles(user).ToList();
-                        if (!roles.Contains(AccessControlService.RoleAdmin, StringComparer.OrdinalIgnoreCase))
-                        {
-                            var hasClusterAdminMembership = await _mongoContext.Database
-                                .GetCollection<BsonDocument>("clusterMemberships")
-                                .Find(Builders<BsonDocument>.Filter.And(
-                                    Builders<BsonDocument>.Filter.Eq("email", normalizedEmail.ToLowerInvariant()),
-                                    Builders<BsonDocument>.Filter.Eq("role", AccessControlService.RoleClusterAdmin)))
-                                .AnyAsync(cancellationToken);
-                            if (hasClusterAdminMembership)
-                            {
-                                roles.Add(AccessControlService.RoleClusterAdmin);
-                            }
-                        }
-
-                        return LoginAuthenticationResult.Authenticated(BuildPrincipal(normalizedEmail, BsonHelpers.GetString(user, "name"), roles));
+                        var roles = await RolesWithClusterAdminAsync(user, cancellationToken);
+                        return LoginAuthenticationResult.Authenticated(BuildPrincipal(BsonHelpers.GetString(user, "email"), BsonHelpers.GetString(user, "name"), roles));
                     }
 
                     if (await IsActiveTemporaryPasswordAsync(normalizedEmail, password, cancellationToken))
                     {
-                        return LoginAuthenticationResult.RequiresTemporaryPasswordChange(normalizedEmail.Trim().ToLowerInvariant());
+                        return LoginAuthenticationResult.RequiresTemporaryPasswordChange(normalizedEmail);
                     }
 
                     return LoginAuthenticationResult.Invalid();
@@ -128,30 +114,14 @@ public sealed class AuthService
             return null;
         }
 
-        var normalizedEmail = email.Trim().ToLowerInvariant();
+        var normalizedEmail = ClusterRepository.NormalizeEmail(email);
         if (_mongoContext.Database != null)
         {
-            var user = await _mongoContext.Database.GetCollection<BsonDocument>("users")
-                .Find(Builders<BsonDocument>.Filter.Eq("email", normalizedEmail))
-                .FirstOrDefaultAsync(cancellationToken);
+            var user = await ClusterRepository.FindUserAsync(_mongoContext.Database, normalizedEmail, cancellationToken);
             if (user != null)
             {
-                var roles = ExtractRoles(user).ToList();
-                if (!roles.Contains(AccessControlService.RoleAdmin, StringComparer.OrdinalIgnoreCase))
-                {
-                    var hasClusterAdminMembership = await _mongoContext.Database
-                        .GetCollection<BsonDocument>("clusterMemberships")
-                        .Find(Builders<BsonDocument>.Filter.And(
-                            Builders<BsonDocument>.Filter.Eq("email", normalizedEmail),
-                            Builders<BsonDocument>.Filter.Eq("role", AccessControlService.RoleClusterAdmin)))
-                        .AnyAsync(cancellationToken);
-                    if (hasClusterAdminMembership)
-                    {
-                        roles.Add(AccessControlService.RoleClusterAdmin);
-                    }
-                }
-
-                return BuildPrincipal(normalizedEmail, BsonHelpers.GetString(user, "name"), roles);
+                var roles = await RolesWithClusterAdminAsync(user, cancellationToken);
+                return BuildPrincipal(BsonHelpers.GetString(user, "email"), BsonHelpers.GetString(user, "name"), roles);
             }
         }
 
@@ -162,6 +132,29 @@ public sealed class AuthService
         }
 
         return null;
+    }
+
+    /// <summary>The account's roles, with "clusterAdmin" when it administers a cluster (its memberships, whatever their capitals).</summary>
+    private async Task<List<string>> RolesWithClusterAdminAsync(BsonDocument user, CancellationToken cancellationToken)
+    {
+        var roles = ExtractRoles(user).ToList();
+        if (_mongoContext.Database != null && !roles.Contains(AccessControlService.RoleAdmin, StringComparer.OrdinalIgnoreCase))
+        {
+            var hasClusterAdminMembership = await _mongoContext.Database
+                .GetCollection<BsonDocument>("clusterMemberships")
+                .Find(
+                    Builders<BsonDocument>.Filter.And(
+                        ClusterRepository.MembershipsOf(BsonHelpers.GetString(user, "email")),
+                        Builders<BsonDocument>.Filter.Eq("role", AccessControlService.RoleClusterAdmin)),
+                    new FindOptions { Collation = ClusterRepository.IgnoreCase })
+                .AnyAsync(cancellationToken);
+            if (hasClusterAdminMembership)
+            {
+                roles.Add(AccessControlService.RoleClusterAdmin);
+            }
+        }
+
+        return roles;
     }
 
     private bool CanUseDemoAdminFallback() =>
@@ -187,8 +180,7 @@ public sealed class AuthService
 
         var normalizedEmail = email.Trim().ToLowerInvariant();
         var now = DateTimeOffset.UtcNow;
-        var users = _mongoContext.Database.GetCollection<BsonDocument>("users");
-        var user = await users.Find(Builders<BsonDocument>.Filter.Eq("email", normalizedEmail)).FirstOrDefaultAsync(cancellationToken);
+        var user = await ClusterRepository.FindUserAsync(_mongoContext.Database, normalizedEmail, cancellationToken);
         var resetRequests = _mongoContext.Database.GetCollection<BsonDocument>("passwordResetRequests");
         var request = new BsonDocument
         {
@@ -270,8 +262,13 @@ public sealed class AuthService
 
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
         var users = _mongoContext.Database.GetCollection<BsonDocument>("users");
+        if (await ClusterRepository.FindUserAsync(_mongoContext.Database, normalizedEmail, cancellationToken) is not { } account)
+        {
+            return false;
+        }
+
         var userUpdate = await users.UpdateOneAsync(
-            Builders<BsonDocument>.Filter.Eq("email", normalizedEmail),
+            Builders<BsonDocument>.Filter.Eq("_id", account["_id"]),
             Builders<BsonDocument>.Update
                 .Set("passwordHash", passwordHash)
                 .Set("updatedAt", now),
