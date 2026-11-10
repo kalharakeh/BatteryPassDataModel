@@ -330,6 +330,9 @@ public sealed partial class BatteryIdPool(
     public Task<ReleasedBatteryId?> OfAsync(string packId, CancellationToken cancellationToken = default) =>
         store.ReleasedIds.Find(item => item.PackId == packId).FirstOrDefaultAsync(cancellationToken)!;
 
+    /// <summary>Why a swap to an ID of the other kind is refused.</summary>
+    public const string SwapNeedsSameKind = "a demo battery takes a demo ID and a real battery a real ID; pick one of the same kind";
+
     /// <summary>
     /// A draft takes another available ID (the owner's "swap while draft"): it gets that serial number and battery ID, and
     /// its old one is available again. Null when done, else why not. After publication the ID is fixed.
@@ -354,6 +357,12 @@ public sealed partial class BatteryIdPool(
         if (await OfAsync(packId, cancellationToken) is not { Status: ReleasedIdStatuses.Used } old)
         {
             return "its battery ID wasn't picked from the released IDs";
+        }
+
+        // A demo battery takes a demo ID and a real battery a real one: a swap can't put a real ID on demo product data (U16).
+        if (await GetAsync(serialNumber, cancellationToken) is { } wanted && wanted.IsDemo != old.IsDemo)
+        {
+            return SwapNeedsSameKind;
         }
 
         var model = (await store.GetAsync<ProductionBatch>(pack.BatchId, cancellationToken))?.ModelId;
