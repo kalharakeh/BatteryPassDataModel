@@ -64,7 +64,7 @@ public sealed class StatusPagesTests(MongoFixture mongo)
         Assert.False(draftCard.CanChange);
         Assert.Equal("The status changes once the passport is published.", draftCard.WhyNot);
         Assert.True(wasteCard.CanChange); // the team may still correct the values
-        Assert.Equal([StatusEvent.Corrected], wasteCard.Choices.Select(choice => choice.What));
+        Assert.Equal([StatusEvent.Corrected, StatusEvent.WasteUndone], wasteCard.Choices.Select(choice => choice.What)); // R10: the team may undo a waste
         Assert.Equal("Waste", wasteCard.StatusWords);
         Assert.False(draftCard.MayAddNote);
     }

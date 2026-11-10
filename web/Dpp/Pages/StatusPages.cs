@@ -63,7 +63,8 @@ public sealed record StatusCardView(
     bool MayAddNote = false,
     SuccessionView? Succession = null,
     PredecessorView? Predecessor = null,
-    RemainingCapacityReading? Remaining = null)
+    RemainingCapacityReading? Remaining = null,
+    string? BatteryName = null)
 {
     /// <summary>Where "Add a note to the history" posts (decision 34).</summary>
     public string NoteAction => $"{Restated.SaveAction}/note";
@@ -91,6 +92,10 @@ public sealed record StatusCardView(
             if (ForTeam)
             {
                 choices.Add((StatusEvent.Corrected, "Correct the values", "For a mistyped value: the status stays, nothing joins the history, and a new version is published."));
+                if (Status == "waste")
+                {
+                    choices.Add((StatusEvent.WasteUndone, "Undo the waste", "For a waste set by mistake: the battery goes back to the status it had before, with your reason, and a new version is published."));
+                }
             }
 
             return choices;
@@ -149,7 +154,8 @@ public sealed class StatusPages(DppStore store, RecordEditor editor, StatusChang
             MayAddNote: active,
             Succession: successionView,
             Predecessor: await PredecessorAsync(pack, forTeam, cancellationToken),
-            Remaining: pack.RemainingCapacity);
+            Remaining: pack.RemainingCapacity,
+            BatteryName: BatteryPages.Text(pack, "batterySerialNumber") ?? pack.Id);
     }
 
     private async Task<SuccessionView?> SuccessionAsync(BatteryPack pack, string href, bool forTeam, CancellationToken cancellationToken)
@@ -241,7 +247,7 @@ public sealed class StatusPages(DppStore store, RecordEditor editor, StatusChang
             attribute => FormValues.Read(editor.Forms.For(attribute), field),
             StringComparer.Ordinal);
         return Enum.TryParse<StatusEvent>(what, ignoreCase: false, out var happened) && Enum.IsDefined(happened)
-            ? await changes.ChangeAsync(sender, packId, new StatusChange(happened, restated, repairDate, repairDescription), cancellationToken)
+            ? await changes.ChangeAsync(sender, packId, new StatusChange(happened, restated, repairDate, repairDescription, field("undoReason")), cancellationToken)
             : new StatusChangeResult(true, null, [], "choose what happened");
     }
 

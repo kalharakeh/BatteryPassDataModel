@@ -344,6 +344,16 @@ public sealed class DppStore
         return result.MatchedCount == 1;
     }
 
+    /// <summary>Keeps the status a battery had before waste (R10), or clears it; false when no pack has that id.</summary>
+    public async Task<bool> SetStatusBeforeWasteAsync(string packId, string? status, CancellationToken cancellationToken = default)
+    {
+        var result = await Collection<BatteryPack>().UpdateOneAsync(
+            Builders<BatteryPack>.Filter.Eq("_id", packId),
+            Builders<BatteryPack>.Update.Set(pack => pack.StatusBeforeWaste, status),
+            cancellationToken: cancellationToken);
+        return result.MatchedCount == 1;
+    }
+
     /// <summary>
     /// Keeps a remaining capacity reading (step 5b) unless the pack already has a newer one. False when nothing changed.
     /// </summary>

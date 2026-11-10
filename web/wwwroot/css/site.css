@@ -9673,3 +9673,4 @@ a:hover {
 .bp-withdraw summary { cursor: pointer; color: var(--bp-danger, #b3261e); width: fit-content; }
 .bp-withdraw-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.75rem; margin-top: 0.5rem; }
 .bp-withdraw-form label { flex: 1 1 18rem; }
+.bp-waste-asking [data-status-step] { display: none !important; }

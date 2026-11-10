@@ -31,6 +31,12 @@ public enum StatusEvent
 
     /// <summary>Repurposed, for a new use (design 7.5): a new linked passport follows.</summary>
     Repurposed,
+
+    /// <summary>
+    /// The team undoes a "waste" that was set by mistake (R10): the battery goes back to the status it had before, with a
+    /// required reason, and a new version is published. Only the team; the history and the audit log keep both steps.
+    /// </summary>
+    WasteUndone,
 }
 
 /// <summary>One status change: what happened, the re-stated values, and for a repair its day (yyyy-MM-dd) and what was repaired.</summary>
@@ -38,7 +44,8 @@ public sealed record StatusChange(
     StatusEvent What,
     IReadOnlyDictionary<string, JsonNode?> Restated,
     string? RepairDate = null,
-    string? RepairDescription = null);
+    string? RepairDescription = null,
+    string? Reason = null);
 
 /// <summary>The new version, or why nothing changed; <see cref="Keys"/> says which value was refused.</summary>
 public sealed record StatusChangeResult(bool Found, PassportVersion? Version, IReadOnlyList<KeyResult> Keys, string? Problem, string? NewStatus = null);
@@ -67,6 +74,9 @@ public sealed class StatusChangeService(
     public const string RepairNotInTheFuture = "the day of the repair can't be in the future";
     public const string RepairNeedsDescription = "say what was repaired";
     public const string OnlyTheTeamCorrects = "only the team corrects the values; ask the team";
+    public const string OnlyTheTeamUndoesWaste = "only the team undoes waste; ask the team";
+    public const string UndoNeedsReason = "say why the waste is undone";
+    public const string NotWaste = "the battery isn't waste";
     public const string WaitingForSuccessor = "the battery is waiting for its new passport; the team can cancel it";
 
     /// <summary>Why a passport that is no longer active changes nothing (step 4c).</summary>
@@ -169,12 +179,37 @@ public sealed class StatusChangeService(
         }
 
         var from = CurrentStatus(pack) ?? "original";
-        if (from == "waste" && change.What != StatusEvent.Corrected)
+        var undoReason = change.Reason?.Trim() ?? string.Empty;
+        if (change.What == StatusEvent.WasteUndone)
+        {
+            if (sender.Kind != SenderKind.Team)
+            {
+                return Refused(OnlyTheTeamUndoesWaste);
+            }
+
+            if (from != "waste")
+            {
+                return Refused(NotWaste);
+            }
+
+            if (undoReason.Length == 0)
+            {
+                return Refused(UndoNeedsReason);
+            }
+
+            if (undoReason.Length > MaxDescription)
+            {
+                undoReason = undoReason[..MaxDescription];
+            }
+        }
+        else if (from == "waste" && change.What != StatusEvent.Corrected)
         {
             return Refused(WasteIsFinal);
         }
 
-        if (NewStatus(from, change.What) is not { } to)
+        // Back to the status the battery had before the waste; a waste set before that was kept says "original".
+        var before = change.What == StatusEvent.WasteUndone ? (pack.StatusBeforeWaste is { } kept && kept != "waste" ? kept : "original") : null;
+        if ((before ?? NewStatus(from, change.What)) is not { } to)
         {
             return Refused($"a battery that is {from} can't become {change.What.ToString().ToLowerInvariant()}");
         }
@@ -242,6 +277,15 @@ public sealed class StatusChangeService(
             await store.AddRepairAsync(packId, repair, cancellationToken);
         }
 
+        if (change.What == StatusEvent.Waste)
+        {
+            await store.SetStatusBeforeWasteAsync(packId, from, cancellationToken);
+        }
+        else if (change.What == StatusEvent.WasteUndone)
+        {
+            await store.SetStatusBeforeWasteAsync(packId, null, cancellationToken);
+        }
+
         if (LeadsToNewPassport(change.What))
         {
             await store.SetSuccessionAsync(packId, new Succession { StatusBefore = from, Status = to, StartedAtUtc = clock.GetUtcNow().UtcDateTime }, cancellationToken);
@@ -262,6 +306,11 @@ public sealed class StatusChangeService(
             metadata["repair"] = repair.Description;
         }
 
+        if (change.What == StatusEvent.WasteUndone)
+        {
+            metadata["reason"] = undoReason;
+        }
+
         await audit.AppendApplicationAuditEventAsync(
             ChangedEvent,
             sender.Who,
@@ -271,6 +320,7 @@ public sealed class StatusChangeService(
             {
                 StatusEvent.Repaired => $"Battery {serial} repaired: {repair!.Description} Status {to}.",
                 StatusEvent.Corrected => $"Battery {serial}: values corrected; status {to}.",
+                StatusEvent.WasteUndone => $"Battery {serial}: waste undone, back to {to}. {undoReason}",
                 _ => $"Battery {serial} is now {to}.",
             },
             metadata,

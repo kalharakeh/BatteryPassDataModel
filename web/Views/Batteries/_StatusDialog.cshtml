@@ -7,7 +7,7 @@
 <div class="bp-console-form-card bp-dialog-host">
 @if (Model.CanChange)
 {
-    <dialog id="status-dialog" class="bp-modal-panel bp-dialog bp-dialog-wide" aria-labelledby="status-dialog-title" data-status-dialog>
+    <dialog id="status-dialog" class="bp-modal-panel bp-dialog bp-dialog-wide" aria-labelledby="status-dialog-title" data-status-dialog data-waste-confirm="@(!Model.ForTeam ? Model.BatteryName : null)">
         <form method="post" action="@Model.Restated.SaveAction" class="bp-dialog-form">
             @Html.AntiForgeryToken()
             @* Each step: its head, a body that alone scrolls, and its buttons below the body (the owner's step-5 test). *@
@@ -39,6 +39,13 @@
                         <label><span>Day of the repair</span><input type="date" name="repairDate" value="@Model.Today" max="@Model.Today" /></label>
                         <label><span>What was repaired</span><input type="text" name="repairDescription" maxlength="@StatusChangeService.MaxDescription" placeholder="e.g. Module 4 replaced after a coolant leak" /></label>
                     </div>
+                    @if (Model.ForTeam && Model.Status == "waste")
+                    {
+                        @* The team undoes a waste set by mistake (R10): the reason is required, and both steps stay in the history. *@
+                        <div data-undo-reason hidden>
+                            <label><span>Why is the waste undone? (kept in the history and the audit log)</span><input type="text" name="undoReason" maxlength="@StatusChangeService.MaxDescription" placeholder="e.g. Set on the wrong battery" /></label>
+                        </div>
+                    }
                     <div class="bp-attr-list">
                         @foreach (var field in Model.Restated.Sections.SelectMany(section => section.Fields))
                         {
@@ -59,6 +66,22 @@
                     <button type="submit" class="bp-primary-button">Save and publish a new version</button>
                 </div>
             </div>
+            @if (!Model.ForTeam)
+            {
+                @* A second question before a cluster admin's "Waste" (R10): final for them, only the team can undo it. *@
+                <div data-waste-step hidden>
+                    <div class="bp-dialog-head">
+                        <h2>Is battery @(Model.BatteryName ?? "this battery") waste?</h2>
+                    </div>
+                    <div class="bp-dialog-body">
+                        <p>Waste ends the battery's life in the passport. Only the Scania team can undo it.</p>
+                    </div>
+                    <div class="bp-dialog-actions">
+                        <button type="button" class="bp-secondary-button" data-waste-back>No, go back</button>
+                        <button type="button" class="bp-danger-button" data-waste-yes>Yes, it is waste</button>
+                    </div>
+                </div>
+            }
         </form>
     </dialog>
 }
