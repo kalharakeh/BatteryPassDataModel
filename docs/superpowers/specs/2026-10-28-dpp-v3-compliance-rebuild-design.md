@@ -359,7 +359,7 @@ Each attribute holds one document per owner (model, batch or pack).
 
 - **On save, per value:** type, unit, range (for example 0–100 %), allowed values, web address and identifier form.
 - **At publication, completeness:** every attribute marked "Feb 27: yes" must be present, except conditional ones. The attributes required later (#25, #30–36, #38, #49–52, #57) give a warning while missing.
-- **Conditional attributes** (C in Appendix A: #19, #24, #49–52, #71, #72, #74, #82–85) never block publication. The editor shows the file's condition for each (J-9).
+- **Conditional attributes** (C in Appendix A: #19, #24, #49–52, #71, #72, #74, #82–85) never block publication. The editor shows the file's condition for each (J-9). **Reversed by decision 48 (10 Nov 2026):** three yes/no questions per model now make the matching values required.
 - **At publication, schema check:** the assembled passport is also checked against the schema's Feb-2027 variant (`Other_Industrial_Above_2kWh_Feb27_2.0.1.json`) and the full schema (`Other_Industrial_Above_2kWh_2.0.1.json`). The catalogue decides what must be present; today the Feb-2027 variant requires exactly the catalogue's Feb-2027 set (Appendix B.3). A shape error in either schema blocks publication, including a part missing inside a value. The schemas' own "attribute missing" errors are left to the catalogue, because `SchemaCoverageTests` keeps the schemas' required lists equal to the catalogue's. Copies of both schema files are added to the repository in step 1 (decision 21), with a note crediting the BatteryPass-Ready Consortium under CC BY 4.0, the source address and the date.
 
 **Tests** (xUnit, in the app's usual style of unit tests plus source-assertion tests):
@@ -469,7 +469,7 @@ Choices this design makes where the file and the 21 decisions don't decide. Plea
 | J-6 | Drafts are visible to the team only | A draft isn't on the market. Today market surveillance and the Commission also see drafts. |
 | J-7 | LI roles are app-wide; the team checks the legitimate interest when granting the role | The app has no way to check an interest per battery |
 | J-8 | Only the team can undo "invalid" | Keeps a market surveillance finding from being reversed by mistake |
-| J-9 | Conditional attributes never block publication; the editor shows their condition | Avoids extra yes/no switches that aren't in the file |
+| J-9 | Conditional attributes never block publication; the editor shows their condition | Avoids extra yes/no switches that aren't in the file**Reversed by decision 48 (10 Nov 2026).** |
 | J-10 | Cluster API tokens write only #63, #83, #87 and E1–E4 | Machines feed live data; status changes and accident reports need a person |
 | J-11 | Capacity fade can be suggested from a measured remaining capacity, which isn't stored | Helps the status change without adding an attribute |
 | J-12 | A change set is all-or-nothing per pack; keys rejected for type, rights or validity are reported but don't block the rest | One bad key in a feed shouldn't drop good live values |
