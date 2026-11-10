@@ -15,7 +15,7 @@ Keep these open while testing:
 2. **The known start:** a team member signs in, opens Clusters, and at the end of the Clusters tab presses **Reset demo data**.
    - This makes the demo clusters, accounts, batteries and API tokens again.
    - The tokens' values are shown once, in the window that follows. Copy them then: they are never shown again and never written here.
-3. **Passwords:** the demo accounts share one password, which the project owner gives you. It is set on the server (`DEMO_USERS_PASSWORD`) and never written in this pack or in the app.
+3. **Passwords:** the demo accounts share one password, which the project owner gives you. It is set on the server (`DEMO_USERS_PASSWORD`) and never written in this pack or in the app. The team's own account has its own password. A test site's fallback admin works only if the person who runs the site has set a password for it. Where the demo is switched off (`ENABLE_DEMO_DATA`), there is no Reset demo data and the demo accounts can't sign in: ask the project owner for a site where it is on.
 4. **One browser:** test in one browser window. Sign out and in as each account in turn: some faults only show when the same browser changes accounts.
 5. **Every element fully visible:** on every page and in every window, scroll each choice, field and button into view and check it is fully shown, not under a bar or cut. Reaching the last button isn't enough.
 
@@ -24,17 +24,19 @@ Keep these open while testing:
 | Who | Account | Cluster | What to check |
 |---|---|---|---|
 | Team | the team's own account (from the project owner) | all | Product data, releasing battery IDs, creating and publishing batteries, every battery page, marking passports, demo data, tokens |
-| Cluster admin | `demo.north.admin@example.test` | demo-north | Their batteries' pages: live values, accident reports, status changes and repairs, hand-overs, uploads; their users and tokens. Their Registry also shows DEMO-CORE-0001 waiting to be accepted. |
-| Cluster user | `demo.north.user@example.test` | demo-north | Their batteries in the Registry and on the detail page, read only |
+| Cluster admin | `demo.north.admin@example.test` | demo-north | Their batteries' pages: live values, accident reports, status changes and repairs, Waste (which asks a second question), hand-overs, uploads; their users and tokens (adding an address that already has an account only adds it to their cluster). Their Registry also shows DEMO-CORE-0001 waiting to be accepted. |
+| Cluster user | `demo.north.user@example.test` | demo-north | Their batteries in the Registry and on the detail page, read only. On the account page the role reads "Cluster member". |
 | Other cluster admin | `demo.south.admin@example.test`, `demo.fleet.admin@example.test` | demo-south, demo-fleet | They see demo-north's batteries as the public does; demo-north's admin's "Waiting for you" from demo-fleet |
 | Other cluster users | `demo.south.user@example.test`, `demo.fleet.user@example.test` | demo-south, demo-fleet | As above, read only |
-| Market surveillance | `demo.msa@example.test` | — | Every published passport, every section, "Mark as invalid…" |
+| Market surveillance | `demo.msa@example.test` | — | Every published passport, every section, "Mark as invalid…" (a button in the Purchaser card, then a confirm step) |
 | Notified body | `demo.notified-body@example.test` | — | Public and authorities' values |
 | Commission | `demo.commission@example.test` | — | Public, shared and authorities' values; no purchaser values |
 | Repair, repurposing, remanufacturing | `demo.repair@example.test` | — | Public and the shared values #43, #45–#48 |
 | Recycling, battery treatment | `demo.recycling@example.test` | — | Public and #43, #45, #48 |
 | Authorised treatment, WEEE | `demo.treatment@example.test` | — | Public and #48 |
-| Anyone | not signed in | — | The public page only |
+| Anyone | not signed in | — | The public page only; the login page says "No account yet? Ask your contact at Scania." |
+
+Every signed-in account has an Account page (top bar) with "Your name", "Your e-mail", "Your role" and, to change the password or the e-mail, "Current password". A new password has at least 12 characters.
 
 ## Demo batteries
 
@@ -76,13 +78,33 @@ Scanning a released ID whose passport isn't published yet shows "Not published y
 | Action | Team | Own cluster admin |
 |---|---|---|
 | Live values, Accident reports ("Add a report"), Upload a file | ✓ | ✓ |
-| Change status: Repaired, placed on the market again, Remanufactured, Repurposed, Waste | ✓ | ✓ |
+| Change status: Repaired, placed on the market again, Remanufactured, Repurposed | ✓ | ✓ |
+| Change status: Waste (a cluster admin is asked a second question, "Yes, it is waste") | ✓ | ✓ |
+| Change status: Undo the waste, with a reason (the battery goes back to the status of the version before) | ✓ | – |
 | Change status: Correct the values | ✓ | – |
 | Add a note | ✓ | ✓ |
+| Accident reports: Withdraw…, with a reason and a confirm step | ✓ | – |
 | Hand over… / Accept or Decline on "Waiting for you" | moves directly, or cancels a waiting one | ✓ |
-| Mark as invalid or for deletion…, and Undo | ✓ | – |
+| Mark as invalid or for deletion… (reason, then a confirm step), and Undo | ✓ | – |
 | Edit product data, create and publish batteries | ✓ | – |
 | Release, export and void battery IDs; Change its battery ID… on a draft | ✓ | – |
+
+**Demo accounts on a battery that isn't demo:** a battery is inside the demo only when it, its batch, model and operator are demo and its cluster is a demo cluster or none. On any other battery, every demo account (cluster admin, cluster user, market surveillance and the rest) gets the visitor's page and no actions.
+
+**Account actions** (Users pages; "Own cluster admin" is a cluster admin acting on people in their own clusters):
+
+| Action | Team | Own cluster admin |
+|---|---|---|
+| Add a new address | ✓ | ✓ (into their cluster) |
+| Add an address that already has an account | – (refused: "change it from its row") | adds the membership only; the name and password stay as they are |
+| Change a name or password | ✓ | only people who are in their clusters alone, have no role across the app and were made by a cluster admin of theirs; anyone else: "You can't change this person's account here. Ask the Scania team." |
+| Give an account access across the app | ✓, with a new password in the same step | – |
+| Lower or delete your own account, or the last team account | – | – |
+| Use the fallback admin's address | ✓ | – |
+| Remove from a cluster (the x, which asks first) | ✓ | their clusters |
+| A membership's role | cluster user or cluster admin, nothing else | the same |
+
+A new password has at least 12 characters. Deleting an account, lowering it, removing it from a cluster or changing its password ends its open sessions on their next page. E-mail addresses are the same whatever their capitals.
 
 **API** (`/api/external/v1`, a token in the `Authorization` header):
 
@@ -91,6 +113,7 @@ Scanning a released ID whose passport isn't published yet shows "Not published y
 | A cluster's "Read" token | that cluster's batteries, as its cluster user would | nothing |
 | A cluster's "Read and write live values" token | the same | the live values (#63, #83, #87, E1–E4) and uploads of live values, for that cluster's batteries |
 | The team's "Full access" token | every battery | creating batteries (from a released, available serial number), publishing, live values, uploads |
+| The demo data's "Demo team (full access)" token | every demo battery; a battery that isn't demo is answered as an unknown ID | creating demo batteries from the demo spares, publishing them; nothing on a battery that isn't demo |
 | Any token | — | never a status change or repair (made on the battery's page only), and never releasing battery IDs |
 
 `/api/passports` (the list of all passports) is for the team only.
@@ -110,7 +133,11 @@ Scanning a released ID whose passport isn't published yet shows "Not published y
 - [ ] DEMO-C7M-0002 lists what blocks publication; filling it in and pressing Publish gives a signed version 1 with a QR code, and its ID turns Published.
 - [ ] A repair on DEMO-C7M-0001 sets re-used, adds to the repair history and makes a new version.
 - [ ] Hand-over: demo-fleet's DEMO-CORE-0001 waits on demo-north's Registry; Accept moves it, and demo-fleet then sees it as the public does.
-- [ ] Market surveillance marks a passport invalid; the public page says so; only the team undoes it.
+- [ ] Market surveillance marks a passport invalid from the Purchaser card's button, after a confirm step; the public page says so; only the team undoes it.
+- [ ] A cluster admin's Waste asks a second question; only the team undoes it ("Undo the waste", with a reason), and the battery goes back to the status of the version before.
+- [ ] The team withdraws an accident report with a reason: its file is gone, the audit log has who, when, why and the file's name, and the cluster's history shows one line.
+- [ ] "Add user" with an address that already has an account adds the membership only, and its name and password stay as they were. The account page asks for the current password to change the password or the e-mail.
+- [ ] A real battery ID can't be created on demo product data; a demo account sees the visitor's page on a battery that isn't demo.
 - [ ] Uploading the help's sample files on DEMO-C7M-0001 shows the check before saving, then saves.
 - [ ] The API answers each token as in the API table, and refuses what it should with a plain message.
 - [ ] The public and detail pages print on A4 with every tab open (browser print).
@@ -118,6 +145,7 @@ Scanning a released ID whose passport isn't published yet shows "Not published y
 
 ## Known limitations
 
+- **Fallback admin:** it has no password in the app. Outside Production it works only when the person who runs the site has set `DEMO_ADMIN_PASSWORD`; in Production the app doesn't start with it switched on. Test with the team's own account.
 - **Real IDs need the settings:** without `DPP_ID_AGENCY`, `DPP_ID_COMPANY` and `DPP_ID_BASE_URL`, the Battery IDs page shows a red notice naming the missing ones, and nothing is released or created from a released ID. The demo data still works, with test IDs (`urn:x-battery-pass:TEST-…`), as on a developer's PC.
 - **Pack temperature:** the battery system's export has no pack temperature yet; each export's notes say so.
 - **Hand-overs:** no e-mail; the receiver sees them on their Registry. A waiting hand-over isn't cancelled by itself when the passport stops being active; accepting is then refused with a reason.

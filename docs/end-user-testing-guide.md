@@ -44,7 +44,14 @@ Each step says what to do, then **Expected:** what should happen.
 4. Open `/dpp/DEMO-C13M-0001/detail` (demo-south's).
    **Expected:** the public sections only.
 5. Open `/help`.
-   **Expected:** "Your cluster's batteries", "Statuses", "Print a passport" and "Need more access?". No cluster admin or team parts.
+   **Expected:** "Your cluster's batteries", "Statuses", "Print a passport", "Your account" and "Need more access?". No cluster admin or team parts.
+6. Open Account (top bar).
+   **Expected:**
+   - the fields "Your name" and "Your e-mail", and "Your role: Cluster member" as text;
+   - the top bar names the cluster;
+   - changing the name alone saves; changing the password or the e-mail asks for "Current password", and a new password of fewer than 12 characters is refused.
+7. Open a battery that isn't demo (the team makes one with a real released ID and real product data) at its public address, then its detail page.
+   **Expected:** the visitor's page only, with no extra sections.
 
 ## 3. Cluster admin: `demo.north.admin@example.test`
 
@@ -65,6 +72,8 @@ Each step says what to do, then **Expected:** what should happen.
    - the repair history gains the entry;
    - a new version is published;
    - every choice and button in the window is fully visible at every size.
+   Then choose "Waste" on a battery you can spare, such as one the team has made for the test.
+   **Expected:** a second question ("Yes, it is waste" or "No, go back"). After "Yes", the status is waste and only the team can undo it (section 4, step 8).
 6. Add a note.
    **Expected:** the history gains a "Correction" entry, with no new version.
 7. Upload a file: download "An upload file" from `/help`, choose it, then "Check the file".
@@ -78,7 +87,11 @@ Each step says what to do, then **Expected:** what should happen.
    **Expected:** it becomes demo-north's. `demo.fleet.user` then sees it as the public does.
 10. Cluster admin, Users and API tokens.
     **Expected:**
-    - adding a user to demo-north works;
+    - "Add user" with a new address makes an account in demo-north;
+    - "Add user" with `demo.msa@example.test` and a typed password gives "This person already has an account. They were added to your cluster; …", and the name and password stay as they were;
+    - a person from another cluster, a team account or your own account can't be changed: "You can't change this person's account here. Ask the Scania team.";
+    - the x beside a cluster asks first ("Remove from cluster"), then removes the person;
+    - a typed password of fewer than 12 characters is refused;
     - a new token's value is shown once;
     - "Deactivate token" switches a token off.
 11. Open a demo-south battery's page address, e.g. a manage link copied from `demo.south.admin`'s Registry.
@@ -100,7 +113,7 @@ Each step says what to do, then **Expected:** what should happen.
    - the detail page says "Signature: Verified".
 4. Change a model value used by published batteries.
    **Expected:** the editor lists the affected passports and asks before publishing new versions.
-5. DEMO-C7M-0001, More: Mark as invalid or for deletion…, Invalid, with a reason.
+5. DEMO-C7M-0001, More: Mark as invalid or for deletion…, Invalid, with a reason, then Continue and "Yes, mark it".
    **Expected:** the header's red line shows the reason and one Undo. The public page says invalid. Undo it.
 6. DEMO-C13M-0001.
    **Expected:**
@@ -111,28 +124,39 @@ Each step says what to do, then **Expected:** what should happen.
    - the battery page asks who places it on the market;
    - "Scania" makes a draft new passport from the old battery;
    - publishing it makes the old one inactive and links the two.
-8. Cluster: Change on a battery.
+8. The battery the cluster admin set to waste (section 3, step 5): open its battery page, Change status, "Undo the waste", with a reason.
+   **Expected:** the battery goes back to the status of the last version before the waste, a new version is published, and the history shows the undo.
+9. DEMO-C7M-0001, Accident reports: "Withdraw…" beside the report the cluster admin added, with a reason, then confirm.
+   **Expected:**
+   - the report disappears from the accident page and its file can no longer be opened;
+   - the audit log has who, when, why and the file's name;
+   - `demo.north.admin`'s History shows one line: "The manufacturer's team withdrew an accident report".
+10. Cluster: Change on a battery.
    **Expected:** it moves at once, and the move is in the audit log.
-9. Battery IDs tab: release VPC-12221 to VPC-12230 with "Release new IDs": quantity 10, reference "PO 4512, line 2", model Compact 7M.
+11. Battery IDs tab: release VPC-12221 to VPC-12230 with "Release new IDs": quantity 10, reference "PO 4512, line 2", model Compact 7M.
    **Expected:** the release's page opens with "Released 10 battery IDs. Export them to Excel for the labels.", and its ten IDs Available, each with its battery ID (`UN778474481-VPC-12221` …).
-10. The same, with VPC-12228 to VPC-12240 and quantity 12, and VPC-12401 twice and vpc-12402 in the list.
+12. The same, with VPC-12228 to VPC-12240 and quantity 12, and VPC-12401 twice and vpc-12402 in the list.
    **Expected:** nothing is released; the Release new IDs tab lists the reasons ("that is 13 IDs, not 12", "already released", "in this release twice", "only capital letters A–Z, digits 0–9 and single dashes") and keeps what you typed.
-11. The Releases tab, then Open on PO 4512, line 2, and Export to Excel.
+13. The Releases tab, then Open on PO 4512, line 2, and Export to Excel.
    **Expected:**
    - Releases lists PO 4512, line 2 and the demo data's release, tagged Demo; the counts at the top are the real IDs only;
    - an Excel file with that release's ten IDs, one row per ID: serial number, battery ID, QR code address, model, reference, released by and when, status.
-12. Create battery: a Compact 7M batch, pick VPC-12221.
+14. Create battery: a Compact 7M batch, pick VPC-12221.
    **Expected:** the picker offers Compact 7M's IDs first, then any model's, then the demo spares; the draft shows `UN778474481-VPC-12221` and its QR code; the ID is Used.
-13. On that draft, More: Change its battery ID…, VPC-12222.
+15. On that draft, More: Change its battery ID…, VPC-12222.
    **Expected:** the draft now has VPC-12222 and its ID; VPC-12221 is Available again.
-14. All IDs: search VPC-12230; in its row's ⋯ menu, Void…, with a reason. Then tick "Show voided", and then "Show demo IDs".
+16. All IDs: search VPC-12230; in its row's ⋯ menu, Void…, with a reason. Then tick "Show voided", and then "Show demo IDs".
    **Expected:** it leaves the list until "Show voided" is ticked, then shows as Voided with the reason; the create picker no longer offers it; the demo IDs show only once ticked.
-15. Signed out, open `/25S/UN778474481-VPC-12223`, then `/25S/UN778474481-VPC-12230`.
+17. Signed out, open `/25S/UN778474481-VPC-12223`, then `/25S/UN778474481-VPC-12230`.
    **Expected:** "Not published yet", then "Not available".
-16. Clusters tab: Demo data, Clear demo data.
+18. Clusters tab: Demo data, Clear demo data.
    **Expected:**
    - the demo records go, the "Demo" release with them, and real data stays (PO 4512's IDs included);
    - Reset demo data brings them back.
+19. Create battery with a real released serial number, on a demo batch, model or operator.
+   **Expected:** refused with a plain sentence: a real battery ID can't be used with demo product data. The same battery on real product data is made. "Change its battery ID…" on a demo draft offers demo IDs only.
+20. Users tab: "Add user" with an address that already has an account.
+   **Expected:** "This address already has an account. Change it from its row in the list." Giving an account that has no role across the app one, without a new password, is refused; with a new password it is saved. Your own account and the last team account can't be lowered.
 
 ## 5. Market surveillance: `demo.msa@example.test`
 
@@ -142,7 +166,7 @@ Each step says what to do, then **Expected:** what should happen.
    **Expected:** Purchaser, Shared, Authorities, Live values and Modules, then the public sections.
 3. DEMO-C7M-0003.
    **Expected:** invalid, with the reason "Demo: wrong carbon footprint figures".
-4. On an active passport, Mark as invalid… with a reason.
+4. On an active passport's detail page, in the Purchaser card, press Mark as invalid…, give a reason, then confirm ("Continue", then "Yes, mark it").
    **Expected:**
    - the public page says invalid;
    - no Undo for market surveillance (only the team undoes it);
@@ -182,8 +206,9 @@ Use the tokens copied after the reset, on `/help/api`'s workbench or with any HT
    **Expected:** saved. The live value history shows it.
 5. The same token, `POST /api/external/v1/uploads?preview=true` with the help's upload file.
    **Expected:** the battery is refused: "status changes are made on the battery's page" (the file carries a repair).
-6. The team's "Full access" token: `GET /api/external/v1/batches`, then `POST /api/external/v1/batteries` with `"batterySerialNumber": "DEMO-SPARE-0001"`.
-   **Expected:** a new draft battery with that released ID. The same with a serial number that isn't released is refused.
+6. The demo data's "Demo team (full access)" token: `GET /api/external/v1/batches`, then `POST /api/external/v1/batteries` with `"batterySerialNumber": "DEMO-SPARE-0001"`.
+   **Expected:** a new draft demo battery with that released ID. The same with a serial number that isn't released is refused.
+   A demo token on a battery that isn't demo is answered as an unknown ID, and no change is accepted.
 7. `GET /api/passports` with a cluster token.
    **Expected:** refused (team only).
 
