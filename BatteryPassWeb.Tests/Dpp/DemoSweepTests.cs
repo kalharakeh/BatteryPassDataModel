@@ -227,10 +227,7 @@ public sealed class DemoSweepTests(MongoFixture mongo, ITestOutputHelper output)
                         problems.Add($"{key}: a demo token was answered {(int)demo.Status} on the real battery");
                     }
 
-                    // Waiting for the manager's (a): BatteryRow doesn't carry the demo mark yet, so the Registry can't drop real rows
-                    // for a demo reader. Remove this line when it does; the sweep then checks the Registry too.
-                    var waitingForRowMark = pattern.RawText == "registry";
-                    if (idParameters.Count == 0 && method == "GET" && !waitingForRowMark && demo.Body.Contains(batteryId, StringComparison.Ordinal))
+                    if (idParameters.Count == 0 && method == "GET" && demo.Body.Contains(batteryId, StringComparison.Ordinal))
                     {
                         problems.Add($"{key}: a list showed the demo identity the real battery");
                     }

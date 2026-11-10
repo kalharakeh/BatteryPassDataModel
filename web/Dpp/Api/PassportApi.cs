@@ -61,7 +61,7 @@ public sealed class PassportApi(DppStore store, PassportReader reader, PassportP
     {
         ArgumentNullException.ThrowIfNull(who);
         var team = who.Roles.Contains(ReaderRole.Team);
-        return (await batteries.ListAsync(null, cancellationToken)).Rows
+        return DemoScope.Lists(who, (await batteries.ListAsync(null, cancellationToken)).Rows, row => row.IsDemo) // finding R03
             .Where(row => string.Equals(row.ClusterId, clusterId, StringComparison.OrdinalIgnoreCase) && (team || !row.IsDraft))
             .ToArray();
     }

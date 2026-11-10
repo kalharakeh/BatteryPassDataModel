@@ -404,7 +404,7 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
         var choices = await writing.ChoicesAsync(cancellationToken);
         return Envelope(StatusCodes.Status200OK, "Batches read successfully.", new
         {
-            batches = choices.Batches.Select(batch => new
+            batches = DemoScope.Lists(DppReaders.For(token), choices.Batches, batch => batch.IsDemo).Select(batch => new // finding R03
             {
                 batchId = batch.BatchId,
                 batteryFamily = batch.FamilyName,

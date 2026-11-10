@@ -1,3 +1,4 @@
+using BatteryPassWeb.Dpp.Access;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using BatteryPassWeb.Dpp.Assembly;
@@ -39,6 +40,9 @@ public sealed record BatteryRow(
 
     /// <summary>The pack whose passport this one replaces (design 7.5); null for a battery placed on the market new.</summary>
     public string? SuccessorOf { get; init; }
+
+    /// <summary>The stored pack's demo mark, so lists can keep demo readers to demo batteries (finding R03).</summary>
+    public bool IsDemo { get; init; }
 }
 
 public sealed record BatteriesPage(IReadOnlyList<BatteryRow> Rows, string Query, int Total);
@@ -50,6 +54,9 @@ public sealed record BatchChoice(string BatchId, string FamilyName, string Model
 
     /// <summary>The batch's model, so the create page offers that model's released IDs (6d).</summary>
     public string ModelId { get; init; } = string.Empty;
+
+    /// <summary>The stored batch's demo mark, so a demo token lists only demo batches (finding R03).</summary>
+    public bool IsDemo { get; init; }
 }
 
 /// <summary>The form for a new battery: where it comes from, and its own values as typed.</summary>
@@ -344,6 +351,7 @@ public sealed class BatteryPages(
                 Latest = versions[pack.Id].MaxBy(version => version.Number),
                 BatteryStatus = StatusChangeService.CurrentStatus(pack),
                 SuccessorOf = pack.SuccessorOf,
+                IsDemo = pack.IsDemo,
             });
         }
 
@@ -406,6 +414,7 @@ public sealed class BatteryPages(
                     sites.GetValueOrDefault(batch.SiteId)?.Name ?? batch.SiteId)
                 {
                     ModelId = batch.ModelId,
+                    IsDemo = batch.IsDemo,
                 };
             })
             .OrderBy(choice => choice.FamilyName, StringComparer.OrdinalIgnoreCase)

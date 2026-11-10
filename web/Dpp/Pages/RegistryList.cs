@@ -92,7 +92,7 @@ public static class RegistryList
     {
         ArgumentNullException.ThrowIfNull(batteries);
         return new RegistryPage(
-            batteries.Rows.Where(row => MayList(reader, row)).ToArray(),
+            DemoScope.Lists(reader, batteries.Rows, row => row.IsDemo).Where(row => MayList(reader, row)).ToArray(), // finding R03
             batteries.Query,
             ShowsClusters(reader),
             Scope(reader))
