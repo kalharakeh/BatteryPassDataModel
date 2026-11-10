@@ -186,7 +186,28 @@ public sealed class HandOverService(DppStore store, ClusterRepository clusters, 
         ArgumentNullException.ThrowIfNull(sender);
         return sender.Kind != SenderKind.ClusterAdmin || sender.ClusterIds.Count == 0
             ? 0
-            : (await store.ListWaitingHandOversToAsync(sender.ClusterIds, cancellationToken)).Count;
+            : (await WaitingHandOversAsync(sender, cancellationToken)).Count;
+    }
+
+    /// <summary>The hand-overs waiting for the sender; for a demo admin only those of batteries inside the demo (finding R03).</summary>
+    private async Task<IReadOnlyList<HandOver>> WaitingHandOversAsync(ChangeSender sender, CancellationToken cancellationToken)
+    {
+        var waiting = await store.ListWaitingHandOversToAsync(sender.ClusterIds, cancellationToken);
+        if (!sender.DemoOnly)
+        {
+            return waiting;
+        }
+
+        var inside = new List<HandOver>();
+        foreach (var handOver in waiting)
+        {
+            if (await demo.ReachesAsync(sender, handOver.PackId, cancellationToken))
+            {
+                inside.Add(handOver);
+            }
+        }
+
+        return inside;
     }
 
     /// <summary>The hand-overs waiting for the sender's answer: to a cluster they are admin of.</summary>
@@ -199,7 +220,7 @@ public sealed class HandOverService(DppStore store, ClusterRepository clusters, 
         }
 
         var waiting = new List<WaitingHandOver>();
-        foreach (var handOver in await store.ListWaitingHandOversToAsync(sender.ClusterIds, cancellationToken))
+        foreach (var handOver in await WaitingHandOversAsync(sender, cancellationToken))
         {
             var sources = await store.LoadSourcesAsync(handOver.PackId, cancellationToken);
             var from = await clusters.GetClusterByIdAsync(handOver.FromClusterId, cancellationToken);
