@@ -19,6 +19,9 @@ public enum SenderKind
 /// <param name="ClusterIds">The clusters a cluster admin or a feed token acts for; empty for the team.</param>
 public sealed record ChangeSender(SenderKind Kind, string Who, IReadOnlySet<string> ClusterIds)
 {
+    /// <summary>A demo account or demo token: it changes only demo batteries (finding R03, <c>DemoScope</c>).</summary>
+    public bool DemoOnly { get; init; }
+
     public static ChangeSender Team(string who) => new(SenderKind.Team, who, new HashSet<string>(StringComparer.Ordinal));
 
     public static ChangeSender ClusterAdmin(string who, params string[] clusterIds) =>

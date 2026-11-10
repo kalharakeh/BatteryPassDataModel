@@ -79,6 +79,56 @@ public sealed class DemoScopeTests(MongoFixture mongo)
     }
 
     [Fact]
+    public void ADemoSender_ShouldReachOnlyDemoBatteries()
+    {
+        var demo = BatteryPassWeb.Dpp.Editing.ChangeSender.ClusterAdmin("demo.north.admin@example.test", "demo-north") with { DemoOnly = true };
+        var real = BatteryPassWeb.Dpp.Editing.ChangeSender.ClusterAdmin("north.admin@example.test", "north");
+
+        Assert.False(DemoScope.Reaches(demo, batteryIsDemo: false));
+        Assert.True(DemoScope.Reaches(demo, batteryIsDemo: true));
+        Assert.True(DemoScope.Reaches(real, batteryIsDemo: false));
+    }
+
+    [Fact]
+    public void ADemoReadersList_ShouldHoldOnlyDemoRows()
+    {
+        var rows = new[] { ("real", false), ("demo", true) };
+
+        Assert.Equal(["demo"], DemoScope.Lists(Demo(ReaderRole.MarketSurveillance), rows, row => row.Item2).Select(row => row.Item1));
+        Assert.Equal(["real", "demo"], DemoScope.Lists(Reader.With("msa", ReaderRole.MarketSurveillance), rows, row => row.Item2).Select(row => row.Item1));
+    }
+
+    [Fact]
+    public async Task ADemoAccountsSenders_ShouldBeDemoOnly_AndItShouldNeverBeTheTeam()
+    {
+        var context = mongo.NewContext();
+        var clusters = new ClusterRepository(context);
+        await clusters.UpsertUserAsync("demo.admin@example.test", "Demo", [AccessControlService.RoleAdmin], BCrypt.Net.BCrypt.HashPassword("demo-password-123", 4));
+        await clusters.UpsertClusterMembershipAsync("demo.admin@example.test", "demo-north", AccessControlService.RoleClusterAdmin);
+        await context.Database!.GetCollection<BsonDocument>("users").UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("email", "demo.admin@example.test"), Builders<BsonDocument>.Update.Set(ClusterRepository.DemoMark, true));
+        var readers = new DppReaders(clusters);
+        var auth = new AuthService(context, Microsoft.Extensions.Options.Options.Create(new BatteryPassWeb.Configuration.BatteryPassOptions()), new NoMail());
+
+        var principal = (await auth.AuthenticateLoginAsync("demo.admin@example.test", "demo-password-123")).Principal!;
+        var editor = await readers.EditorForAsync(principal);
+        var surveillance = DppReaders.SurveillanceSenderFor(Demo(ReaderRole.MarketSurveillance));
+
+        Assert.False(principal.IsInRole(AccessControlService.RoleAdmin));
+        Assert.Equal(BatteryPassWeb.Dpp.Editing.SenderKind.ClusterAdmin, editor!.Kind);
+        Assert.True(editor.DemoOnly);
+        Assert.True(surveillance.DemoOnly);
+        Assert.True(DppReaders.SenderFor(new ExternalApiTokenContext { TokenId = "t1", GlobalAccess = true, IsDemo = true }).DemoOnly);
+    }
+
+    private sealed class NoMail : IEmailSender
+    {
+        public bool IsConfigured => false;
+
+        public Task SendTemporaryPasswordAsync(string recipientEmail, string temporaryPassword, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    [Fact]
     public void ADemoTokensReader_ShouldBeDemoOnly()
     {
         var demoTeam = DppReaders.For(new ExternalApiTokenContext { TokenId = "t1", GlobalAccess = true, IsDemo = true });

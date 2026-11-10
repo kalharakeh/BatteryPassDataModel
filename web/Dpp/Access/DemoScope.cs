@@ -19,4 +19,19 @@ public static class DemoScope
     /// <summary>The reader as it counts on this battery: itself, or a visitor (who keeps its name for the logs).</summary>
     public static Reader On(Reader reader, bool batteryIsDemo) =>
         Reaches(reader, batteryIsDemo) ? reader : Reader.Anonymous with { Who = reader.Who };
+
+    /// <summary>Whether the sender may change this battery at all: a demo sender changes only demo batteries.</summary>
+    public static bool Reaches(BatteryPassWeb.Dpp.Editing.ChangeSender sender, bool batteryIsDemo)
+    {
+        ArgumentNullException.ThrowIfNull(sender);
+        return !sender.DemoOnly || batteryIsDemo;
+    }
+
+    /// <summary>A list as the reader may meet it: a demo reader meets only demo rows.</summary>
+    public static IEnumerable<T> Lists<T>(Reader reader, IEnumerable<T> rows, Func<T, bool> isDemo)
+    {
+        ArgumentNullException.ThrowIfNull(reader);
+        ArgumentNullException.ThrowIfNull(rows);
+        return reader.DemoOnly ? rows.Where(isDemo) : rows;
+    }
 }

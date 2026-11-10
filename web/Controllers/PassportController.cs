@@ -36,7 +36,7 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
             return NotFound();
         }
 
-        var problem = await marks.MarkInvalidAsync(ChangeSender.MarketSurveillance(reader.Who), version.PackId, reason, cancellationToken);
+        var problem = await marks.MarkInvalidAsync(DppReaders.SurveillanceSenderFor(reader), version.PackId, reason, cancellationToken);
         TempData[MarkMessageKey] = problem is null ? "The passport is marked invalid. The team is the only one who can undo it." : $"The passport wasn't marked: {problem}.";
         return Redirect(PassportPages.DetailHref(Uri.UnescapeDataString(id)));
     }

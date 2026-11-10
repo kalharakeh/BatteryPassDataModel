@@ -263,6 +263,16 @@ public sealed class AuthService
     private async Task<List<string>> RolesWithClusterAdminAsync(BsonDocument user, CancellationToken cancellationToken)
     {
         var roles = ExtractRoles(user).ToList();
+        if (ClusterRepository.IsDemo(user))
+        {
+            // A demo account is never the team (finding R03): the team's pages act on every battery and every account.
+            roles.RemoveAll(role => role.Equals(AccessControlService.RoleAdmin, StringComparison.OrdinalIgnoreCase));
+            if (roles.Count == 0)
+            {
+                roles.Add(AccessControlService.RoleNormalUser);
+            }
+        }
+
         if (_mongoContext.Database != null && !roles.Contains(AccessControlService.RoleAdmin, StringComparer.OrdinalIgnoreCase))
         {
             var hasClusterAdminMembership = await _mongoContext.Database

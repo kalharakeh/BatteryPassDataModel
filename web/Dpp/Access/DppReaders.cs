@@ -74,9 +74,11 @@ public sealed class DppReaders(ClusterRepository clusters)
             return null;
         }
 
+        // A demo account changes only demo batteries (finding R03, DemoScope).
+        var demo = ClusterRepository.IsDemo(await clusters.GetUserByEmailAsync(AccessControlService.CurrentEmail(user), cancellationToken));
         if (user.FindAll(ClaimTypes.Role).Any(claim => claim.Value.Equals(AccessControlService.RoleAdmin, StringComparison.OrdinalIgnoreCase)))
         {
-            return ChangeSender.Team(email);
+            return ChangeSender.Team(email) with { DemoOnly = demo };
         }
 
         var adminOf = (await clusters.GetClusterMembershipsForUserAsync(email, cancellationToken))
@@ -85,7 +87,14 @@ public sealed class DppReaders(ClusterRepository clusters)
             .Where(clusterId => clusterId.Length > 0)
             .Select(ClusterRepository.NormalizeClusterId)
             .ToArray();
-        return adminOf.Length == 0 ? null : ChangeSender.ClusterAdmin(email, adminOf);
+        return adminOf.Length == 0 ? null : ChangeSender.ClusterAdmin(email, adminOf) with { DemoOnly = demo };
+    }
+
+    /// <summary>Market surveillance marking a passport (step 4c-2), as the reader it signed in as: demo stays demo (finding R03).</summary>
+    public static ChangeSender SurveillanceSenderFor(Reader reader)
+    {
+        ArgumentNullException.ThrowIfNull(reader);
+        return ChangeSender.MarketSurveillance(reader.Who) with { DemoOnly = reader.DemoOnly };
     }
 
     /// <summary>
@@ -114,11 +123,12 @@ public sealed class DppReaders(ClusterRepository clusters)
     {
         ArgumentNullException.ThrowIfNull(token);
         var who = For(token).Who;
-        return token.GlobalAccess
+        var sender = token.GlobalAccess
             ? ChangeSender.Team(who)
             : new ChangeSender(
                 SenderKind.BatterySystemFeed,
                 who,
                 token.ClusterIds.Where(id => !string.IsNullOrWhiteSpace(id)).Select(ClusterRepository.NormalizeClusterId).ToHashSet(StringComparer.OrdinalIgnoreCase));
+        return sender with { DemoOnly = token.IsDemo }; // a demo token changes only demo batteries (finding R03)
     }
 }
