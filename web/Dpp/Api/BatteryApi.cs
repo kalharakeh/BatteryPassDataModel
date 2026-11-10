@@ -276,7 +276,8 @@ public sealed class BatteryApi(
         }
 
         var cluster = string.IsNullOrWhiteSpace(clusterId) ? null : ClusterRepository.NormalizeClusterId(clusterId);
-        if (cluster is not null && await clusters.GetClusterByIdAsync(cluster, cancellationToken) is null)
+        if (cluster is not null && (await clusters.GetClusterByIdAsync(cluster, cancellationToken) is not { } found
+            || (sender.DemoOnly && !ClusterRepository.IsDemo(found)))) // to a demo token a real cluster is as unknown (finding R03)
         {
             return Problem($"cluster {cluster} doesn't exist; name a registered cluster or none");
         }

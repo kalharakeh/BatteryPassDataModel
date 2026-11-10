@@ -28,10 +28,16 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
     /// </summary>
     [HttpPost("{id}/detail/invalid")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> MarkInvalid(string id, [FromForm] string? reason, [FromServices] PassportMarks marks, CancellationToken cancellationToken)
+    public async Task<IActionResult> MarkInvalid(string id, [FromForm] string? reason, [FromServices] PassportMarks marks, CancellationToken cancellationToken, [FromServices] DemoBoundary? demo = null)
     {
         var reader = await readers.ForAsync(User, cancellationToken);
         if (!reader.Roles.Contains(ReaderRole.MarketSurveillance) || await pages.FindAsync(Uri.UnescapeDataString(id), cancellationToken) is not { } version)
+        {
+            return NotFound();
+        }
+
+        // Outside the demo a demo authority finds nothing here, as for an unknown passport (finding R03).
+        if (demo is not null && !(await demo.OnAsync(reader, version.PackId, cancellationToken)).Roles.Contains(ReaderRole.MarketSurveillance))
         {
             return NotFound();
         }

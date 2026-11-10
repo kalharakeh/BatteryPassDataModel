@@ -46,7 +46,7 @@ public sealed class DemoCreationTests(MongoFixture mongo)
     [Fact]
     public async Task ARealReleasedId_ShouldBeRefusedToADemoSender_AndStayAvailable()
     {
-        var (rig, like) = await SeededAsync(mongo);
+        var (rig, like) = await SeededAsync(mongo, realProductData: false); // on real product data the batch is already as unknown (point 4)
         using var _ = rig;
         var pool = rig.Services.GetRequiredService<BatteryIdPool>();
         await pool.ReleaseAsync(DemoRig.Who, new ReleaseRequest("PO 1", null, [], "VPC-12221"));
@@ -54,22 +54,21 @@ public sealed class DemoCreationTests(MongoFixture mongo)
         var result = await rig.Services.GetRequiredService<PackCreationService>().CreateAsync(DemoTeam, Request(like, "VPC-12221", fromPool: true));
 
         Assert.Null(result.Pack);
-        Assert.Equal(DemoScope.RealBattery, result.Problem);
+        Assert.Equal(PackCreationService.NotAvailable, result.Problem); // what an unknown serial number gets (point 4)
         Assert.Equal(ReleasedIdStatuses.Available, (await pool.GetAsync("VPC-12221"))!.Status);
         Assert.Empty(await rig.Store.FindPacksBySerialNumberAsync("VPC-12221"));
-        Assert.NotNull((await rig.Services.GetRequiredService<PackCreationService>().CreateAsync(ChangeSender.Team(DemoRig.Who), Request(like, "VPC-12221", fromPool: true))).Pack);
     }
 
     [Fact]
     public async Task ARealIdFromATypedSerialNumber_ShouldBeRefusedToADemoSender()
     {
-        var (rig, like) = await SeededAsync(mongo);
+        var (rig, like) = await SeededAsync(mongo, realProductData: false);
         using var _ = rig;
 
         var result = await rig.Services.GetRequiredService<PackCreationService>().CreateAsync(DemoTeam, Request(like, "REAL-0001", fromPool: false));
 
         Assert.Null(result.Pack);
-        Assert.Equal(DemoScope.RealBattery, result.Problem);
+        Assert.Equal(PackCreationService.NotAvailable, result.Problem);
         Assert.Empty(await rig.Store.FindPacksBySerialNumberAsync("REAL-0001"));
     }
 

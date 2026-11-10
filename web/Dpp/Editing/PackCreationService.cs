@@ -59,12 +59,15 @@ public sealed class PackCreationService(
             return Failed(DppLinks.NotConfigured);
         }
 
-        if (await store.GetAsync<ProductionBatch>(request.BatchId, cancellationToken) is null)
+        // To a demo sender, real product data is as unknown: the same answer, before anything else is looked at (finding R03).
+        if (await store.GetAsync<ProductionBatch>(request.BatchId, cancellationToken) is not { } requestedBatch
+            || (sender.DemoOnly && !(requestedBatch.IsDemo && (await store.GetAsync<BatteryModel>(requestedBatch.ModelId, cancellationToken))?.IsDemo == true)))
         {
             return Failed($"batch {request.BatchId} not found");
         }
 
-        if (await store.GetAsync<EconomicOperator>(request.OperatorId, cancellationToken) is null)
+        if (await store.GetAsync<EconomicOperator>(request.OperatorId, cancellationToken) is not { } requestedOperator
+            || (sender.DemoOnly && !requestedOperator.IsDemo))
         {
             return Failed($"economic operator {request.OperatorId} not found");
         }
@@ -78,6 +81,14 @@ public sealed class PackCreationService(
         if (!evaluation.Accepted.ContainsKey("batterySerialNumber"))
         {
             return new PackCreationResult(null, evaluation.Results, "the battery serial number (#11) is required");
+        }
+
+        // A demo sender takes only a demo ID: any other serial number gets the answer an unknown one gets, before the check
+        // below could say that a real battery has it (finding R03).
+        if (sender.DemoOnly && request.PredecessorPackId is null && !request.IsDemo
+            && !(request.FromPool && pool is not null && await pool.GetAsync(evaluation.Accepted["batterySerialNumber"].GetValue<string>(), cancellationToken) is { IsDemo: true }))
+        {
+            return Failed(NotAvailable);
         }
 
         // A battery's new linked passport keeps its serial number (design 7.5 and 8.2): its earlier passports may share it,
