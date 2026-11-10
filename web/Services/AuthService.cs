@@ -39,8 +39,21 @@ public sealed class LoginAuthenticationResult
     };
 }
 
+/// <summary>What the next request does with an open session (finding S02): goes on, goes on with fresh rights, or is signed out.</summary>
+public sealed record SessionCheck(bool SignOut, ClaimsPrincipal? Fresh)
+{
+    public static readonly SessionCheck Unchanged = new(false, null);
+    public static readonly SessionCheck Ended = new(true, null);
+}
+
 public sealed class AuthService
 {
+    /// <summary>A short mark of the password a session signed in with; another password ends the session (finding S02).</summary>
+    public const string PasswordStampClaim = "bp:password-stamp";
+
+    /// <summary>Marks a session of the fallback admin, which has no account in the database.</summary>
+    public const string FallbackClaim = "bp:fallback";
+
     public const int MinimumPasswordLength = 12;
     public const string PasswordRuleLine = "At least 12 characters.";
     public const string PasswordTooShort = "Use at least 12 characters for the new password.";
@@ -93,8 +106,7 @@ public sealed class AuthService
                     var passwordHash = BsonHelpers.GetString(user, "passwordHash");
                     if (!string.IsNullOrWhiteSpace(passwordHash) && BCrypt.Net.BCrypt.Verify(password, passwordHash))
                     {
-                        var roles = await RolesWithClusterAdminAsync(user, cancellationToken);
-                        return LoginAuthenticationResult.Authenticated(BuildPrincipal(BsonHelpers.GetString(user, "email"), BsonHelpers.GetString(user, "name"), roles));
+                        return LoginAuthenticationResult.Authenticated(await PrincipalForAsync(user, cancellationToken));
                     }
 
                     if (await IsActiveTemporaryPasswordAsync(normalizedEmail, password, cancellationToken))
@@ -115,7 +127,7 @@ public sealed class AuthService
             && normalizedEmail.Equals(_options.DemoAdminEmail, StringComparison.OrdinalIgnoreCase)
             && password == _options.DemoAdminPassword)
         {
-            return LoginAuthenticationResult.Authenticated(BuildPrincipal(_options.DemoAdminEmail, "Demo Administrator", [AccessControlService.RoleAdmin]));
+            return LoginAuthenticationResult.Authenticated(FallbackPrincipal());
         }
 
         return LoginAuthenticationResult.Invalid();
@@ -134,18 +146,96 @@ public sealed class AuthService
             var user = await ClusterRepository.FindUserAsync(_mongoContext.Database, normalizedEmail, cancellationToken);
             if (user != null)
             {
-                var roles = await RolesWithClusterAdminAsync(user, cancellationToken);
-                return BuildPrincipal(BsonHelpers.GetString(user, "email"), BsonHelpers.GetString(user, "name"), roles);
+                return await PrincipalForAsync(user, cancellationToken);
             }
         }
 
         if (CanUseDemoAdminFallback()
             && normalizedEmail.Equals(_options.DemoAdminEmail, StringComparison.OrdinalIgnoreCase))
         {
-            return BuildPrincipal(_options.DemoAdminEmail, "Demo Administrator", [AccessControlService.RoleAdmin]);
+            return FallbackPrincipal();
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Finding S02: the open session <paramref name="session"/> against its account, on each request. A deleted account, a
+    /// changed password or a fallback session whose address now has an account ends it; changed rights refresh it. A
+    /// session from before this check (no password mark) counts as unchanged and gets the mark. A database error changes
+    /// nothing.
+    /// </summary>
+    public async Task<SessionCheck> CheckSessionAsync(ClaimsPrincipal session, CancellationToken cancellationToken = default)
+    {
+        var email = AccessControlService.CurrentEmail(session);
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email))
+        {
+            return SessionCheck.Unchanged;
+        }
+
+        BsonDocument? user;
+        try
+        {
+            user = await ClusterRepository.FindUserAsync(_mongoContext.Database, email, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return SessionCheck.Unchanged;
+        }
+
+        var isFallbackAddress = email.Trim().Equals(_options.DemoAdminEmail?.Trim(), StringComparison.OrdinalIgnoreCase);
+        var fallbackSession = session.HasClaim(claim => claim.Type == FallbackClaim)
+            || (isFallbackAddress && session.FindFirst(PasswordStampClaim) is null && session.Identity?.Name == FallbackName);
+        if (user is null)
+        {
+            return fallbackSession && isFallbackAddress && CanUseDemoAdminFallback() ? SessionCheck.Unchanged : SessionCheck.Ended;
+        }
+
+        if (fallbackSession)
+        {
+            // An account in the database with the fallback's address always wins over the fallback (finding R21).
+            return SessionCheck.Ended;
+        }
+
+        var stamp = session.FindFirst(PasswordStampClaim)?.Value;
+        if (stamp is not null && stamp != PasswordStamp(user))
+        {
+            return SessionCheck.Ended;
+        }
+
+        var fresh = await PrincipalForAsync(user, cancellationToken);
+        return stamp is not null && SameRights(session, fresh) ? SessionCheck.Unchanged : new SessionCheck(false, fresh);
+    }
+
+    private static bool SameRights(ClaimsPrincipal session, ClaimsPrincipal fresh)
+    {
+        static string[] Roles(ClaimsPrincipal principal) =>
+            principal.FindAll(ClaimTypes.Role).Select(claim => claim.Value).Order(StringComparer.Ordinal).ToArray();
+
+        return Roles(session).SequenceEqual(Roles(fresh))
+            && session.Identity?.Name == fresh.Identity?.Name
+            && AccessControlService.CurrentEmail(session) == AccessControlService.CurrentEmail(fresh);
+    }
+
+    /// <summary>A short mark of the stored password hash, kept in the (encrypted) session cookie.</summary>
+    private static string PasswordStamp(BsonDocument user) =>
+        Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(BsonHelpers.GetString(user, "passwordHash"))))[..16];
+
+    private const string FallbackName = "Demo Administrator";
+
+    private ClaimsPrincipal FallbackPrincipal()
+    {
+        var principal = BuildPrincipal(_options.DemoAdminEmail, FallbackName, [AccessControlService.RoleAdmin]);
+        ((ClaimsIdentity)principal.Identity!).AddClaim(new Claim(FallbackClaim, "1"));
+        return principal;
+    }
+
+    private async Task<ClaimsPrincipal> PrincipalForAsync(BsonDocument user, CancellationToken cancellationToken)
+    {
+        var roles = await RolesWithClusterAdminAsync(user, cancellationToken);
+        var principal = BuildPrincipal(BsonHelpers.GetString(user, "email"), BsonHelpers.GetString(user, "name"), roles);
+        ((ClaimsIdentity)principal.Identity!).AddClaim(new Claim(PasswordStampClaim, PasswordStamp(user)));
+        return principal;
     }
 
     /// <summary>The account's roles, with "clusterAdmin" when it administers a cluster (its memberships, whatever their capitals).</summary>
