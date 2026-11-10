@@ -217,6 +217,7 @@ public class AdminController : Controller
             SessionTimeoutMinutes = await _applicationSettingsService.GetSessionTimeoutMinutesAsync(cancellationToken)
         };
 
+        ViewData[DemoDataSwitch.ViewDataKey] = _demoData.Enabled;
         return View(model);
     }
 

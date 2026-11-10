@@ -48,8 +48,12 @@ public sealed class DemoDataService(
     IOptions<BatteryPassOptions> options,
     TimeProvider clock,
     UploadService uploads,
-    Identifiers.BatteryIdPool? pool = null)
+    Identifiers.BatteryIdPool? pool = null,
+    DemoDataSwitch? demoSwitch = null)
 {
+    /// <summary>Whether this site has demo data (ENABLE_DEMO_DATA, finding R03).</summary>
+    public bool Enabled => (demoSwitch ?? DemoDataSwitch.On).Enabled;
+
     public const string SeededEvent = "demo.seeded";
 
     /// <summary>The demo release's reference (6d): the demo batteries' IDs and a few spare ones to try the flow with.</summary>
@@ -82,6 +86,11 @@ public sealed class DemoDataService(
     /// <summary>Clears the demo data, then seeds it again.</summary>
     public async Task<DemoResult> ResetAsync(string who, CancellationToken cancellationToken = default)
     {
+        if (!Enabled)
+        {
+            return new DemoResult([], [DemoDataSwitch.Off], []);
+        }
+
         if (!links.IsConfigured)
         {
             return new DemoResult([], [DppLinks.NotConfigured], []);
@@ -94,6 +103,11 @@ public sealed class DemoDataService(
 
     public async Task<DemoResult> SeedAsync(string who, CancellationToken cancellationToken = default)
     {
+        if (!Enabled)
+        {
+            return new DemoResult([], [DemoDataSwitch.Off], []);
+        }
+
         if (!links.IsConfigured)
         {
             return new DemoResult([], [DppLinks.NotConfigured], []);

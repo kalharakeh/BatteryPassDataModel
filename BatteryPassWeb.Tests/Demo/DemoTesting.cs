@@ -32,12 +32,25 @@ internal sealed class DemoRig(ServiceProvider services, IMongoDatabase database)
         return options;
     }
 
-    public static async Task<DemoRig> StartAsync(MongoFixture mongo, string? password = Password, string? appBaseUrl = DocumentTesting.BaseUrl, bool dunsIds = false)
+    public static async Task<DemoRig> StartAsync(MongoFixture mongo, string? password = Password, string? appBaseUrl = DocumentTesting.BaseUrl, bool dunsIds = false, bool demoData = true)
     {
         var context = mongo.NewContext();
-        var services = new ServiceCollection()
-            .AddSingleton(Options.Create(dunsIds ? WithDunsIds(new BatteryPassOptions { AppBaseUrl = appBaseUrl ?? string.Empty, DemoUsersPassword = password }) : new BatteryPassOptions { AppBaseUrl = appBaseUrl ?? string.Empty, DemoUsersPassword = password }))
+        var options = new BatteryPassOptions { AppBaseUrl = appBaseUrl ?? string.Empty, DemoUsersPassword = password };
+        var services = Build(context, dunsIds ? WithDunsIds(options) : options, demoData);
+        await services.GetRequiredService<DppStore>().EnsureIndexesAsync();
+        await services.GetRequiredService<DocumentStore>().EnsureIndexesAsync();
+        return new DemoRig(services, context.Database!);
+    }
+
+    /// <summary>The same database and settings as <paramref name="rig"/>, with ENABLE_DEMO_DATA as given (finding R03).</summary>
+    public static DemoRig Over(DemoRig rig, bool demoData) =>
+        new(Build(rig.Services.GetRequiredService<MongoContext>(), rig.Services.GetRequiredService<IOptions<BatteryPassOptions>>().Value, demoData), rig.Database);
+
+    private static ServiceProvider Build(MongoContext context, BatteryPassOptions options, bool demoData) =>
+        new ServiceCollection()
+            .AddSingleton(Options.Create(options))
             .AddSingleton(context)
+            .AddSingleton(new DemoDataSwitch(demoData))
             .AddSingleton<ApplicationAuditService>()
             .AddSingleton<ClusterRepository>()
             .AddSingleton(SigningTesting.Keys)
@@ -46,10 +59,6 @@ internal sealed class DemoRig(ServiceProvider services, IMongoDatabase database)
             .AddDpp()
             .AddSingleton<DemoDataService>()
             .BuildServiceProvider();
-        await services.GetRequiredService<DppStore>().EnsureIndexesAsync();
-        await services.GetRequiredService<DocumentStore>().EnsureIndexesAsync();
-        return new DemoRig(services, context.Database!);
-    }
 
     public Task<long> Count(string collection, FilterDefinition<BsonDocument>? filter = null) =>
         Database.GetCollection<BsonDocument>(collection).CountDocumentsAsync(filter ?? FilterDefinition<BsonDocument>.Empty);

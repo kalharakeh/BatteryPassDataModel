@@ -37,6 +37,9 @@ public sealed class ExternalApiTokenContext
     public bool IsActive { get; init; }
     public IReadOnlyList<string> ClusterIds { get; init; } = [];
     public bool IsSample { get; init; }
+
+    /// <summary>A token the demo data made: it reaches only demo batteries (finding R03).</summary>
+    public bool IsDemo { get; init; }
 }
 
 public sealed class ExternalApiRepository
@@ -44,10 +47,13 @@ public sealed class ExternalApiRepository
     private readonly MongoContext _mongoContext;
     private readonly ExternalApiSecurityService _securityService;
 
-    public ExternalApiRepository(MongoContext mongoContext, ExternalApiSecurityService securityService)
+    private readonly BatteryPassWeb.Dpp.Demo.DemoDataSwitch _demoData;
+
+    public ExternalApiRepository(MongoContext mongoContext, ExternalApiSecurityService securityService, BatteryPassWeb.Dpp.Demo.DemoDataSwitch? demoData = null)
     {
         _mongoContext = mongoContext;
         _securityService = securityService;
+        _demoData = demoData ?? BatteryPassWeb.Dpp.Demo.DemoDataSwitch.On;
     }
 
     public bool IsAvailable => _mongoContext.Database != null;
@@ -329,6 +335,16 @@ public sealed class ExternalApiRepository
             }
 
             var context = ToTokenContext(document);
+            if (context.IsDemo && !_demoData.Enabled)
+            {
+                return new ExternalApiTokenValidationResult
+                {
+                    Success = false,
+                    StatusCode = StatusCodes.Status401Unauthorized,
+                    Message = BatteryPassWeb.Dpp.Demo.DemoDataSwitch.TokenOff
+                };
+            }
+
             if (!HasRequiredAccess(context.AccessMode, requirement))
             {
                 return new ExternalApiTokenValidationResult
@@ -392,7 +408,8 @@ public sealed class ExternalApiRepository
             AllowUnassigned = tokenDocument.GetValue("allowUnassigned", false).ToBoolean(),
             IsActive = tokenDocument.GetValue("isActive", false).ToBoolean(),
             ClusterIds = clusters,
-            IsSample = tokenDocument.GetValue("isSample", false).ToBoolean()
+            IsSample = tokenDocument.GetValue("isSample", false).ToBoolean(),
+            IsDemo = tokenDocument.GetValue(BatteryPassWeb.Dpp.Demo.DemoDataService.AccountMark, false).ToBoolean()
         };
     }
 

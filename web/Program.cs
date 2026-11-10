@@ -213,6 +213,10 @@ builder.Services.AddHttpsRedirection(options =>
     // had already visited. 307 keeps the setting a genuine off switch.
     options.RedirectStatusCode = StatusCodes.Status307TemporaryRedirect;
 });
+// ENABLE_DEMO_DATA (finding R03): on outside Production unless false, off in Production unless true.
+builder.Services.AddSingleton(new BatteryPassWeb.Dpp.Demo.DemoDataSwitch(BatteryPassWeb.Dpp.Demo.DemoDataSwitch.Parse(
+    EnvironmentOrConfig(builder.Configuration, "ENABLE_DEMO_DATA", "EnableDemoData"),
+    builder.Environment.IsProduction())));
 builder.Services.AddSingleton<MongoContext>();
 builder.Services.AddSingleton<ClusterRepository>();
 builder.Services.AddSingleton<DemoSigningKeyService>();

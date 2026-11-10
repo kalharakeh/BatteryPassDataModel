@@ -72,12 +72,19 @@ public sealed class AuthService
     private readonly BatteryPassOptions _options;
     private readonly IEmailSender _emailSender;
 
-    public AuthService(MongoContext mongoContext, IOptions<BatteryPassOptions> options, IEmailSender emailSender)
+    private readonly BatteryPassWeb.Dpp.Demo.DemoDataSwitch _demoData;
+
+    public AuthService(MongoContext mongoContext, IOptions<BatteryPassOptions> options, IEmailSender emailSender, BatteryPassWeb.Dpp.Demo.DemoDataSwitch? demoData = null)
     {
         _mongoContext = mongoContext;
         _options = options.Value;
         _emailSender = emailSender;
+        _demoData = demoData ?? BatteryPassWeb.Dpp.Demo.DemoDataSwitch.On;
     }
+
+    /// <summary>A demo account (marked by the demo data) when this site's demo data is switched off: it can't sign in (finding R03).</summary>
+    private bool IsSwitchedOffDemoAccount(BsonDocument user) =>
+        !_demoData.Enabled && user.GetValue(BatteryPassWeb.Dpp.Demo.DemoDataService.AccountMark, false) is { IsBoolean: true, AsBoolean: true };
 
     public async Task<ClaimsPrincipal?> AuthenticateAsync(string email, string password, CancellationToken cancellationToken = default)
     {
@@ -103,6 +110,11 @@ public sealed class AuthService
 
                 if (user != null)
                 {
+                    if (IsSwitchedOffDemoAccount(user))
+                    {
+                        return LoginAuthenticationResult.Invalid();
+                    }
+
                     var passwordHash = BsonHelpers.GetString(user, "passwordHash");
                     if (!string.IsNullOrWhiteSpace(passwordHash) && BCrypt.Net.BCrypt.Verify(password, passwordHash))
                     {
@@ -193,6 +205,11 @@ public sealed class AuthService
         if (user is null)
         {
             return fallbackSession && isFallbackAddress && CanUseDemoAdminFallback() ? SessionCheck.Unchanged : SessionCheck.Ended;
+        }
+
+        if (IsSwitchedOffDemoAccount(user))
+        {
+            return SessionCheck.Ended;
         }
 
         if (fallbackSession)

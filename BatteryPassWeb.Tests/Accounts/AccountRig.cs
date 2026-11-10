@@ -57,6 +57,7 @@ internal sealed class AccountRig(ServiceProvider services, IMongoDatabase databa
         var services = new ServiceCollection()
             .AddSingleton(Options.Create(options))
             .AddSingleton(context)
+            .AddSingleton(DemoDataSwitch.On)
             .AddSingleton<ApplicationAuditService>()
             .AddSingleton<ApplicationSettingsService>()
             .AddSingleton<ClusterRepository>()

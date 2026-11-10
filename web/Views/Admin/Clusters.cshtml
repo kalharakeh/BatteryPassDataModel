@@ -1,4 +1,5 @@
 @model BatteryPassWeb.Models.ViewModels.AdminClusterViewModel
+@using BatteryPassWeb.Dpp.Demo
 @{
     ViewData["Title"] = "Administration";
     var selectedTab = Model.SelectedTab;
@@ -212,20 +213,29 @@
             }
         </section>
 
+        // ENABLE_DEMO_DATA (finding R03): off, the reset isn't offered; clearing stays.
+        var demoDataEnabled = ViewData[DemoDataSwitch.ViewDataKey] as bool? ?? true;
         <section class="bp-card bp-console-form-card bp-setting-card mt-4" data-demo-data-card>
             <div>
                 <h2>Demo data <span class="bp-soft-tag ms-1" data-demo-data-state>@(Model.HasDemoData ? "Loaded" : "Not loaded")</span></h2>
                 <p>The Compact and Core families with @Model.DemoBatteryCount batteries in several states, three demo clusters, an account for every role but the team admin, and API tokens. Real data is never changed. Sign in with your own team account; the demo accounts cover the other roles.</p>
-                @if (!Model.DemoAccountsPossible)
+                @if (!demoDataEnabled)
+                {
+                    <p class="mt-1" data-demo-data-off>@DemoDataSwitch.Off</p>
+                }
+                else if (!Model.DemoAccountsPossible)
                 {
                     <p class="mt-1" data-demo-data-no-accounts>@BatteryPassWeb.Dpp.Demo.DemoDataService.NoPassword</p>
                 }
             </div>
             <div class="d-flex flex-wrap gap-2">
+                @if (demoDataEnabled)
+                {
                 <form method="post" action="/admin/demo-data/reset">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="bp-secondary-button" data-confirm-action data-confirm-title="Reset demo data" data-confirm-message="Remove the demo data and make it again? Real data stays as it is. The new API tokens are shown once." data-confirm-submit="Reset demo data" data-confirm-busy="Resetting the demo data… This takes a little over a minute. Keep this page open; it reloads when done.">Reset demo data</button>
                 </form>
+                }
                 <form method="post" action="/admin/demo-data/clear">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="bp-danger-button" data-confirm-action data-confirm-title="Clear demo data" data-confirm-message="Remove the demo data? Real data stays as it is, and a demo record that real data uses is kept." data-confirm-submit="Clear demo data" data-confirm-busy="Clearing the demo data… This takes about 20 seconds. Keep this page open; it reloads when done.">Clear demo data</button>
