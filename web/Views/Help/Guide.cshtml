@@ -30,7 +30,7 @@
         <div class="bp-help-parts">
             <section class="bp-card bp-help-part" id="find">
                 <h2>Find a passport</h2>
-                <p class="mb-0">On the <a href="/">home page</a>, type the battery's serial number, battery ID or passport ID, or scan the QR code on the battery. A label scanned before its battery's passport is published says "Not published yet". @(signedIn ? "The Registry lists the batteries you may open." : "Signed in, the Registry also lists the batteries you may open.")</p>
+                <p class="mb-0">On the <a href="/">home page</a>, type the battery's serial number, battery ID or passport ID, or scan the QR code on the battery. A label scanned before its battery's passport is published says "Not published yet". @(signedIn ? "The Registry lists the batteries you may open." : "Signed in, the Registry also lists the batteries you may open. No account yet? Ask your contact at Scania.")</p>
             </section>
 
             <section class="bp-card bp-help-part" id="see">
@@ -63,6 +63,15 @@
                 </section>
             }
 
+            @if (signedIn)
+            {
+                <section class="bp-card bp-help-part" id="account">
+                    <h2>Your account</h2>
+                    <p>Under Account at the top, you can change your name, your e-mail and your password. To change your password or your e-mail, type your current password too. A new password has at least 12 characters.</p>
+                    <p class="mb-0">When the team changes your access, it applies on your next page. When someone else sets your password, or your account is deleted, you are signed out.</p>
+                </section>
+            }
+
             @if (inACluster)
             {
                 <section class="bp-card bp-help-part" id="your-batteries">
@@ -81,7 +90,7 @@
                     <h2>Market surveillance <span class="bp-soft-tag">Market surveillance</span></h2>
                     <ol class="bp-steps">
                         <li><strong><a href="/registry">Every published passport</a></strong><p>The Registry lists them all, invalid and marked ones included. The detail page shows every section: purchaser, shared and authorities' values, the live values and the modules.</p></li>
-                        <li><strong>Mark as invalid…</strong><p>On an active passport's detail page: give the reason, then confirm. The public page then says the passport is invalid, with the date. The reason is seen only by you and the manufacturer's team, and only the team can undo it. An invalid passport takes no new versions, status changes or live values.</p></li>
+                        <li><strong>Mark as invalid…</strong><p>On an active passport's detail page, press "Mark as invalid…" in the Purchaser card: give the reason, then confirm. The public page then says the passport is invalid, with the date. The reason is seen only by you and the manufacturer's team, and only the team can undo it. An invalid passport takes no new versions, status changes or live values.</p></li>
                     </ol>
                 </section>
             }
@@ -114,7 +123,7 @@
                 <section class="bp-card bp-help-part" id="cluster">
                     <h2>Your cluster <span class="bp-soft-tag">Cluster admins</span></h2>
                     <ol class="bp-steps">
-                        <li><strong><a href="/cluster-admin/users">Add your people</a></strong><p>Under Cluster admin, Users: add someone as a user (sees your cluster's batteries) or as a cluster admin (also looks after its users and tokens).</p></li>
+                        <li><strong><a href="/cluster-admin/users">Add your people</a></strong><p>Under Cluster admin, Users: "Add user" makes an account for a new address, as a user (sees your cluster's batteries) or as a cluster admin (also looks after its users and tokens). If the person already has an account, they are only added to your cluster: their name and password stay as they are. You can change the name and password only of people who are in your clusters alone and have no role across the app; for anyone else, ask the team. The x beside a cluster asks first, then removes the person from that cluster.</p></li>
                         <li><strong><a href="/cluster-admin/api-tokens">Give your systems a token</a></strong><p>Under Cluster admin, API tokens: "Read" reads your batteries' passports; "Read + write" also sends their live values. Copy the value when it is shown: it is shown once.</p></li>
                         <li><strong><a href="/registry">Check what they see</a></strong><p>Your users find your cluster's batteries in the Registry, with the purchaser values on the detail page.</p></li>
                     </ol>
@@ -127,9 +136,9 @@
                         <dt>Live values</dt>
                         <dd>Correct the state of charge, cycles, temperature and the extreme-temperature times. The battery system usually sends them.</dd>
                         <dt>Accident reports</dt>
-                        <dd>"Add a report" uploads one; the passport's accident page lists them for its readers.</dd>
+                        <dd>"Add a report" uploads one; the passport's accident page lists them for its readers. A report added by mistake is withdrawn by the team.</dd>
                         <dt>Change status</dt>
-                        <dd>"What happened?": Repaired, Prepared for re-use and placed on the market again, Remanufactured, Repurposed or Waste. The window asks for the re-stated fades and lifetime, filled in with the current ones. A repair keeps the passport and adds to its repair history. The three that place the battery on the market again lead to a new linked passport, from Scania or another operator. Waste is final.</dd>
+                        <dd>"What happened?": Repaired, Prepared for re-use and placed on the market again, Remanufactured, Repurposed or Waste. The window asks for the re-stated fades and lifetime, filled in with the current ones. A repair keeps the passport and adds to its repair history. The three that place the battery on the market again lead to a new linked passport, from Scania or another operator. Waste asks a second question ("Is it waste?" with "Yes, it is waste" or "No, go back") before it is saved, and it is final for you: only the team can undo it.</dd>
                         <dt>Add a note</dt>
                         <dd>A correction to the repair history; nothing in the history is changed or removed.</dd>
                         <dt>Hand over…</dt>
@@ -147,18 +156,25 @@
                         <li><a href="/help/samples/@BatteryPassWeb.Dpp.Uploads.UploadSamples.UploadFileName" download>An upload file</a>: live values and a repair, with one re-stated value, for the demo battery @BatteryPassWeb.Dpp.Uploads.UploadSamples.Serial. A status change goes in the same way: <code>"batteryStatus": "waste"</code> (or re-used, remanufactured, repurposed) among the values.</li>
                         <li><a href="/help/samples/@BatteryPassWeb.Dpp.Uploads.UploadSamples.ExportFileName" download>A battery system export</a> (mapping BMS2_ACO) of the same demo battery, with made-up values.</li>
                     </ul>
+                    <p>A value the app keeps itself, such as the accident link (#92), is never changed by a file: it shows "Not saved". "Check the file" shows a battery's current value only for values you may see.</p>
                     <p class="bp-help-text mb-0">Status changes and repairs are made on the battery's page only; the API refuses them. Many batteries in one file go through the API's upload.</p>
                 </section>
             }
 
             @if (isTeam)
             {
+                <section class="bp-card bp-help-part" id="team-users">
+                    <h2>Accounts <span class="bp-soft-tag">Team</span></h2>
+                    <p>"Add user" is for new addresses; change an existing account from its row. Giving an account access across the app needs a new password in the same step. A new password has at least 12 characters. Your own access, and the last team account's access, can't be lowered. The x beside a cluster asks first, then removes the person from it.</p>
+                    <p class="mb-0">Deleting an account, lowering its access, removing it from a cluster or changing its password ends its open sessions on their next page.</p>
+                </section>
+
                 <section class="bp-card bp-help-part" id="workflow">
                     <h2>From product data to a published passport <span class="bp-soft-tag">Team</span></h2>
                     <ol class="bp-steps">
                         <li><strong><a href="/admin/families">Set up product data</a></strong><p>Families, models and batches, and <a href="/admin/sites-and-operators">sites and operators</a>. Most values are entered once and shared by every battery made from them; the V3 attribute list decides which are required, and by when.</p></li>
                         <li><strong><a href="/admin/battery-ids">Release battery IDs</a></strong><p>Reserve the serial numbers before the batteries are made, so their labels can be printed. Each gets its battery ID at once, fixed for life.</p></li>
-                        <li><strong><a href="/admin/batteries/new">Create the battery</a></strong><p>Choose its batch, economic operator and cluster, and pick its serial number from the released IDs; then its manufacturing date and warranty. It starts as a draft only the team sees, with its battery ID and QR code.</p></li>
+                        <li><strong><a href="/admin/batteries/new">Create the battery</a></strong><p>Choose its batch, economic operator and cluster, and pick its serial number from the released IDs; then its manufacturing date and warranty. A real battery ID can't be used with demo product data (batch, model or operator): use a demo ID, or choose real product data. It starts as a draft only the team sees, with its battery ID and QR code.</p></li>
                         <li><strong><a href="/admin/batteries">Fill in what is missing</a></strong><p>Every field says whether it is required by Feb 2027, required later or conditional. Only "required by Feb 2027" blocks publishing, the first state of charge and temperature included.</p></li>
                         <li><strong>Publish</strong><p>On the battery page, one step checks the passport against the official schema, signs it and publishes it. Later changes ask first, then publish a new version; live values and accident reports change it in place.</p></li>
                     </ol>
@@ -194,7 +210,9 @@
                     <h2>After publishing <span class="bp-soft-tag">Team</span></h2>
                     <dl class="bp-word-list">
                         <dt>Everything a cluster admin does</dt>
-                        <dd>Live values, accident reports, status changes, notes and uploads, on any battery. Only the team gets "Correct the values" in the status window: the status stays, and a new version is published.</dd>
+                        <dd>Live values, accident reports, status changes, notes and uploads, on any battery. Only the team gets "Correct the values" in the status window: the status stays, and a new version is published. Only the team gets "Undo the waste" there: give a reason, and the battery goes back to the status it had before.</dd>
+                        <dt>Withdraw…</dt>
+                        <dd>On the Accident reports section, beside a report added by mistake (team only): give a reason and confirm. The report disappears from the accident page and its file is deleted. The audit log keeps who, when, why and the file's name; the cluster's history shows one line.</dd>
                         <dt>A new passport</dt>
                         <dd>After "placed on the market again", "Remanufactured" or "Repurposed", the battery page asks who places it on the market. Scania's new passport starts from the old battery as a draft; publishing it makes the old one inactive. Another operator's passport is linked by its ID or web address. Until then, the team can cancel the new passport.</dd>
                         <dt>More: Mark as invalid or for deletion…</dt>
@@ -202,7 +220,7 @@
                         <dt>Cluster: Change</dt>
                         <dd>Moves a battery to another cluster at once, logged; or cancel a waiting hand-over.</dd>
                         <dt><a href="/admin/clusters?tab=clusters">Demo data</a></dt>
-                        <dd>At the end of the Clusters tab: "Reset demo data" makes the demo clusters, accounts, tokens and batteries again; "Clear demo data" removes them and keeps real data.</dd>
+                        <dd>At the end of the Clusters tab: "Reset demo data" makes the demo clusters, accounts, tokens and batteries again; "Clear demo data" removes them and keeps real data. Demo accounts and demo tokens work only on demo batteries: on any other battery they see what a visitor sees, and the API refuses them. A site can switch the demo off; the card then says so, demo accounts and tokens stop working, and only "Clear demo data" is offered.</dd>
                     </dl>
                 </section>
 
