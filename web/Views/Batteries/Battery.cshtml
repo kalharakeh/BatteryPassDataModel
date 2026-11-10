@@ -272,6 +272,11 @@
                             }
                         </ul>
                     }
+                    @foreach (var note in publication.Notes ?? [])
+                    {
+                        @* A battery published before a rule keeps working; the rule's sentence is only a warning for it (U16). *@
+                        <p class="bp-warning mt-2 mb-0" role="status">@note</p>
+                    }
                     @if (publication.Problems.Count > 0)
                     {
                         <ul class="bp-missing-groups">

@@ -88,7 +88,8 @@ public sealed record PublicationView(
     IReadOnlyList<MissingGroup> Missing,
     IReadOnlyList<string> Problems,
     IReadOnlyList<AttributeDefinition> NeededLater,
-    IReadOnlyList<FileCheck> Files)
+    IReadOnlyList<FileCheck> Files,
+    IReadOnlyList<string>? Notes = null)
 {
     public bool IsPublished => Latest is not null;
 
@@ -741,7 +742,8 @@ public sealed class BatteryPages(
             .Select(group => Group(group.Key, sources, group.OrderBy(attribute => attribute.Number).ToArray()))
             .ToArray();
         var later = report.Warnings.Select(Numbered).OfType<AttributeDefinition>().OrderBy(attribute => attribute.Number).ToArray();
-        return new PublicationView(active, await store.GetLatestVersionAsync(sources.Pack.Id, cancellationToken), groups, problems, later, await FilesAsync(sources, cancellationToken));
+        return new PublicationView(active, await store.GetLatestVersionAsync(sources.Pack.Id, cancellationToken), groups, problems, later, await FilesAsync(sources, cancellationToken),
+            report.Warnings.Where(warning => Numbered(warning) is null).ToArray());
     }
 
     /// <summary>The attribute a report line such as "#21 Battery mass is missing" is about.</summary>

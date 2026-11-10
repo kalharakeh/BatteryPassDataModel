@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 using BatteryPassWeb.Dpp.Assembly;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Identifiers;
+using BatteryPassWeb.Dpp.Pages;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Dpp.Values;
 using BatteryPassWeb.Tests.Demo;
@@ -120,5 +121,23 @@ public sealed class RealIdOnDemoDataTests(MongoFixture mongo)
 
         await batches.UpdateOneAsync(Builders<BsonDocument>.Filter.Eq("_id", rig.Seed.Sources.Batch.Id), Builders<BsonDocument>.Update.Set("IsDemo", false));
         Assert.Null((await rig.Publication.PublishAsync(PublicationTesting.Team, rig.PackId)).Problem); // real data takes a real ID
+    }
+
+    [Fact]
+    public async Task ABatteryAlreadyPublished_ShouldKeepItsStatusChanges_AndShowTheSentenceAsAWarning()
+    {
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync(); // published before the rule, with a real ID
+        var batches = rig.Context.Database!.GetCollection<BsonDocument>(DppStore.Batches);
+        await batches.UpdateOneAsync(Builders<BsonDocument>.Filter.Eq("_id", rig.Seed.Sources.Batch.Id), Builders<BsonDocument>.Update.Set("IsDemo", true));
+
+        var check = await rig.Publication.CheckAsync(rig.PackId);
+        var waste = await StatusChangeTests.Service(rig).ChangeAsync(PublicationTesting.Team, rig.PackId, new StatusChange(StatusEvent.Waste, await StatusChangeTests.CurrentAsync(rig)));
+        var card = (await BatteryTesting.Pages(rig).BatteryAsync(rig.PackId))!.Publication;
+
+        Assert.DoesNotContain(DemoDataRule.Message, check!.Blocking);
+        Assert.Contains(DemoDataRule.Message, check.Warnings);
+        Assert.Null(waste.Problem); // its status changes go on
+        Assert.Contains(DemoDataRule.Message, card.Notes!);
+        Assert.DoesNotContain(DemoDataRule.Message, card.Problems);
     }
 }
