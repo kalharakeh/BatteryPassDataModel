@@ -54,8 +54,7 @@ public sealed class DemoListsTests(MongoFixture mongo)
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         var repository = DppApiControllerTests.Repository(rig);
-        var (document, demoToken) = await repository.CreateTokenAsync("Demo team", ExternalTokenAccessMode.Lifecycle, [], false, true, "test");
-        await repository.MarkDemoAsync(document["_id"]);
+        var (_, demoToken) = await repository.CreateTokenAsync("Demo team", ExternalTokenAccessMode.Lifecycle, [], false, true, "test", isDemo: true);
         var (_, realToken) = await repository.CreateTokenAsync("Team", ExternalTokenAccessMode.Lifecycle, [], false, true, "test");
 
         int Count(IActionResult result) => DppApiControllerTests.Json(Assert.IsAssignableFrom<ObjectResult>(result)).GetProperty("data").GetProperty("batches").GetArrayLength();

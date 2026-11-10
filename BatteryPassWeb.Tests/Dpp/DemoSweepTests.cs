@@ -139,11 +139,7 @@ public sealed class DemoSweepTests(MongoFixture mongo, ITestOutputHelper output)
                     return;
                 }
 
-                var (made, fresh) = await repository.CreateTokenAsync(name, mode, clusterIds, false, global, "sweep");
-                if (demo)
-                {
-                    await repository.MarkDemoAsync(made["_id"]);
-                }
+                var (_, fresh) = await repository.CreateTokenAsync(name, mode, clusterIds, false, global, "sweep", isDemo: demo);
 
                 tokens[name] = fresh;
             });

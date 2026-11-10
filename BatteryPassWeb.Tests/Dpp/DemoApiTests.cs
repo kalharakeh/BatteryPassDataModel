@@ -41,8 +41,7 @@ public sealed class DemoApiTests(MongoFixture mongo)
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         var repository = DppApiControllerTests.Repository(rig);
-        var (document, token) = await repository.CreateTokenAsync("Demo team (full access)", BatteryPassWeb.Services.ExternalTokenAccessMode.Lifecycle, [], false, true, "test");
-        await repository.MarkDemoAsync(document["_id"]);
+        var (document, token) = await repository.CreateTokenAsync("Demo team (full access)", BatteryPassWeb.Services.ExternalTokenAccessMode.Lifecycle, [], false, true, "test", isDemo: true);
         var id = PassportPagesTests.Identifier(rig);
 
         var read = Assert.IsAssignableFrom<Microsoft.AspNetCore.Mvc.ObjectResult>(await DppApiControllerTests.Controller(rig, token).Battery(id, CancellationToken.None));

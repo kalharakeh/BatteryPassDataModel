@@ -398,8 +398,7 @@ public sealed class DemoDataService(
         {
             foreach (var (mode, access) in new[] { (ExternalTokenAccessMode.Read, "Read"), (ExternalTokenAccessMode.ReadWrite, "Read and write live values") })
             {
-                var (document, value) = await tokens.CreateTokenAsync($"{cluster.Name} ({access.ToLowerInvariant()})", mode, [cluster.Id], false, false, who, autoClusterId: cluster.Id, cancellationToken: cancellationToken);
-                await MarkAccountRecordAsync("apiTokens", Builders<BsonDocument>.Filter.Eq("_id", document["_id"]), cancellationToken);
+                var (document, value) = await tokens.CreateTokenAsync($"{cluster.Name} ({access.ToLowerInvariant()})", mode, [cluster.Id], false, false, who, autoClusterId: cluster.Id, isDemo: true, cancellationToken: cancellationToken);
                 made.Add(new DemoToken($"{cluster.Name}", access, value));
                 if (mode == ExternalTokenAccessMode.ReadWrite && writeTokens is not null)
                 {
@@ -408,8 +407,7 @@ public sealed class DemoDataService(
             }
         }
 
-        var (team, teamValue) = await tokens.CreateTokenAsync("Demo team (full access)", ExternalTokenAccessMode.Lifecycle, [], false, true, who, cancellationToken: cancellationToken);
-        await MarkAccountRecordAsync("apiTokens", Builders<BsonDocument>.Filter.Eq("_id", team["_id"]), cancellationToken);
+        var (team, teamValue) = await tokens.CreateTokenAsync("Demo team (full access)", ExternalTokenAccessMode.Lifecycle, [], false, true, who, isDemo: true, cancellationToken: cancellationToken);
         made.Add(new DemoToken("Team, all clusters", "Full access", teamValue));
         return made;
     }
