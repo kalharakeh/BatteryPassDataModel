@@ -249,8 +249,9 @@ public sealed class DemoSeedTests(MongoFixture mongo)
 
         var result = await rig.Demo.SeedAsync(DemoRig.Who);
 
-        Assert.Contains("Cluster demo-north was already there as real data: the demo batteries use it, and it stays real.", result.Notes);
-        Assert.Contains("Account demo.msa@example.test was already there as real data: it stays as it is.", result.Notes);
+        // A real cluster with the demo's ID stops the seeding before anything changes (finding R03, point 7).
+        Assert.Equal(["Nothing was changed: the demo's cluster demo-north is there as a real cluster, so the demo can't use it. Remove that cluster, then reset the demo data again."], result.Notes);
+        Assert.Equal(0, await rig.Count(DppStore.Packs));
         var north = (await rig.All("clusters", Eq("clusterId", "demo-north"))).Single();
         Assert.Equal(("Real North", false), (north["name"].AsString, north.GetValue("isDemo", false).AsBoolean));
         Assert.Equal("real-hash", (await rig.All("users", Eq("email", "demo.msa@example.test"))).Single()["passwordHash"].AsString);

@@ -102,6 +102,13 @@ public sealed class DemoDataService(
             return new DemoResult([], [DppLinks.NotConfigured], []);
         }
 
+        // The reset never leaves the demo half-made (finding R03, point 7): a catalogue cluster that is real, or that
+        // real data uses so clearing would keep it, stops it before anything changes.
+        if (await ClustersInTheWayAsync(DemoCatalogue.Load(), realUseToo: true, cancellationToken) is { Count: > 0 } inTheWay)
+        {
+            return new DemoResult([], inTheWay, []);
+        }
+
         var cleared = await ClearAsync(who, cancellationToken);
         var seeded = await SeedAsync(who, cancellationToken);
         return new DemoResult([.. cleared.Done, .. seeded.Done], [.. cleared.Notes, .. seeded.Notes], seeded.Tokens);
@@ -125,6 +132,11 @@ public sealed class DemoDataService(
         }
 
         var catalogue = DemoCatalogue.Load();
+        if (await ClustersInTheWayAsync(catalogue, realUseToo: false, cancellationToken) is { Count: > 0 } inTheWay)
+        {
+            return new DemoResult([], inTheWay, []); // nothing seeded into a real cluster (finding R03, point 7)
+        }
+
         var team = ChangeSender.Team(who);
         var notes = new List<string>();
         var demoTokens = new List<DemoToken>();
@@ -133,8 +145,7 @@ public sealed class DemoDataService(
         {
             if (await Collection("clusters").Find(Builders<BsonDocument>.Filter.Eq("clusterId", cluster.Id)).AnyAsync(cancellationToken))
             {
-                notes.Add($"Cluster {cluster.Id} was already there as real data: the demo batteries use it, and it stays real.");
-                continue;
+                continue; // a demo cluster left from before: the demo's own
             }
 
             await clusters.UpsertClusterAsync(cluster.Id, cluster.Name, cancellationToken);
@@ -315,17 +326,8 @@ public sealed class DemoDataService(
         foreach (var cluster in await Collection("clusters").Find(Builders<BsonDocument>.Filter.Eq(AccountMark, true)).ToListAsync(cancellationToken))
         {
             var clusterId = BsonHelpers.GetString(cluster, "clusterId");
-            var uses = new List<string>();
-            var packs = await Collection(DppStore.Packs).CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq("ClusterId", clusterId), cancellationToken: cancellationToken);
-            var members = await Collection("clusterMemberships").CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq("clusterId", clusterId), cancellationToken: cancellationToken);
-            // The cluster's own tokens, which the app's start makes for every cluster, go with it and aren't real use.
             var ownTokens = Builders<BsonDocument>.Filter.Eq("autoClusterId", clusterId);
-            var realTokens = await Collection("apiTokens").CountDocumentsAsync(
-                Builders<BsonDocument>.Filter.And(Builders<BsonDocument>.Filter.AnyEq("clusterIds", clusterId), Builders<BsonDocument>.Filter.Not(ownTokens)),
-                cancellationToken: cancellationToken);
-            if (packs > 0) uses.Add($"{packs} real batteries");
-            if (members > 0) uses.Add($"{members} real accounts");
-            if (realTokens > 0) uses.Add($"{realTokens} real API tokens");
+            var uses = await RealUsesAsync(clusterId, cancellationToken);
             if (uses.Count > 0)
             {
                 await MarkAccountRecordAsync("clusters", Builders<BsonDocument>.Filter.Eq("clusterId", clusterId), cancellationToken, false);
@@ -352,6 +354,61 @@ public sealed class DemoDataService(
         return new DemoResult(done, notes, []);
     }
 
+    /// <summary>
+    /// What real data uses a cluster: batteries, memberships and API tokens that aren't demo data. The cluster's own tokens,
+    /// which the app's start makes for every cluster, go with it and aren't real use.
+    /// </summary>
+    private async Task<List<string>> RealUsesAsync(string clusterId, CancellationToken cancellationToken)
+    {
+        var filter = Builders<BsonDocument>.Filter;
+        var packs = await Collection(DppStore.Packs).CountDocumentsAsync(filter.And(filter.Eq("ClusterId", clusterId), filter.Ne(Mark, true)), cancellationToken: cancellationToken);
+        var members = await Collection("clusterMemberships").CountDocumentsAsync(filter.And(filter.Eq("clusterId", clusterId), filter.Ne(AccountMark, true)), cancellationToken: cancellationToken);
+        var realTokens = await Collection("apiTokens").CountDocumentsAsync(
+            filter.And(filter.AnyEq("clusterIds", clusterId), filter.Ne("autoClusterId", clusterId), filter.Ne(AccountMark, true)),
+            cancellationToken: cancellationToken);
+        var uses = new List<string>();
+        if (packs > 0) uses.Add($"{packs} real batteries");
+        if (members > 0) uses.Add($"{members} real accounts");
+        if (realTokens > 0) uses.Add($"{realTokens} real API tokens");
+        return uses;
+    }
+
+    /// <summary>
+    /// The demo catalogue's clusters that would leave the demo half-made (finding R03, point 7): one that is there as real
+    /// data, and with <paramref name="realUseToo"/> (before a reset's clearing) a demo one that real data uses, which
+    /// clearing would keep as real. Each is said in plain words with what to do; empty when the demo can be made whole.
+    /// </summary>
+    private async Task<List<string>> ClustersInTheWayAsync(DemoCatalogue catalogue, bool realUseToo, CancellationToken cancellationToken)
+    {
+        var inTheWay = new List<string>();
+        foreach (var cluster in catalogue.Clusters)
+        {
+            var record = await Collection("clusters").Find(Builders<BsonDocument>.Filter.Eq("clusterId", cluster.Id)).FirstOrDefaultAsync(cancellationToken);
+            if (record is null)
+            {
+                continue;
+            }
+
+            var isDemo = ClusterRepository.IsDemo(record);
+            if (isDemo && !realUseToo)
+            {
+                continue;
+            }
+
+            var uses = await RealUsesAsync(cluster.Id, cancellationToken);
+            if (isDemo && uses.Count == 0)
+            {
+                continue;
+            }
+
+            var why = uses.Count == 0 ? "is there as a real cluster" : $"is used by real data ({string.Join(", ", uses)})";
+            var todo = uses.Count == 0 ? "Remove that cluster" : "Take the real accounts, batteries and API tokens out of it, or remove the cluster";
+            inTheWay.Add($"Nothing was changed: the demo's cluster {cluster.Id} {why}, so the demo can't use it. {todo}, then reset the demo data again.");
+        }
+
+        return inTheWay;
+    }
+
     private async Task<int> SeedAccountsAsync(DemoCatalogue catalogue, List<string> notes, CancellationToken cancellationToken)
     {
         var password = options.Value.DemoUsersPassword;
@@ -362,6 +419,7 @@ public sealed class DemoDataService(
         }
 
         var hash = BCrypt.Net.BCrypt.HashPassword(password);
+        var demoClusters = await clusters.DemoClusterIdsAsync(cancellationToken);
         var made = 0;
         foreach (var account in catalogue.Accounts)
         {
@@ -383,7 +441,12 @@ public sealed class DemoDataService(
                     Builders<BsonDocument>.Update.Set(ClusterRepository.CreatedInClusterField, ClusterRepository.NormalizeClusterId(account.Cluster)),
                     cancellationToken: cancellationToken);
             }
-            if (account.Cluster is not null)
+            if (account.Cluster is not null && !demoClusters.Contains(ClusterRepository.NormalizeClusterId(account.Cluster)))
+            {
+                // Never a demo membership in a cluster that isn't demo (finding R03, point 7).
+                notes.Add($"Account {account.Email} wasn't made a member of {account.Cluster}: that cluster isn't demo data.");
+            }
+            else if (account.Cluster is not null)
             {
                 await clusters.UpsertClusterMembershipAsync(account.Email, account.Cluster, account.ClusterRole ?? "member", cancellationToken);
                 await MarkAccountRecordAsync("clusterMemberships", Builders<BsonDocument>.Filter.And(byEmail, Builders<BsonDocument>.Filter.Eq("clusterId", account.Cluster)), cancellationToken);
