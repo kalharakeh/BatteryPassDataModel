@@ -31,7 +31,7 @@ public sealed class DemoListsTests(MongoFixture mongo)
         Assert.Empty(RegistryList.Build(DemoMsa, before).Rows);
         Assert.Single(RegistryList.Build(Reader.With("msa@example.test", ReaderRole.MarketSurveillance), before).Rows);
 
-        await MarkAsync(rig, DppStore.Packs, rig.PackId);
+        await TestDemo.MakeInsideAsync(rig);
         var after = await pages.ListAsync(null);
         Assert.True(Assert.Single(after.Rows).IsDemo);
         Assert.Single(RegistryList.Build(DemoMsa, after).Rows);
@@ -65,6 +65,8 @@ public sealed class DemoListsTests(MongoFixture mongo)
         Assert.True(real > 0);
 
         await MarkAsync(rig, DppStore.Batches, rig.Seed.Sources.Batch.Id);
+        Assert.Equal(0, Count(await DppApiControllerTests.Controller(rig, demoToken).Batches(CancellationToken.None))); // a demo batch of a real model isn't inside the demo
+        await MarkAsync(rig, DppStore.Models, rig.Seed.Sources.Model.Id);
         Assert.Equal(1, Count(await DppApiControllerTests.Controller(rig, demoToken).Batches(CancellationToken.None)));
     }
 }

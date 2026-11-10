@@ -26,7 +26,7 @@ internal static class BatteryTesting
     }
 
     public static PackCreationService Creation(PublicationRig rig) =>
-        new(rig.Store, rig.Pipeline, new TestIdentifierScheme(), DocumentTesting.Links, new ApplicationAuditService(rig.Context), rig.Clock);
+        new(rig.Store, TestDemo.For(rig), rig.Pipeline, new TestIdentifierScheme(), DocumentTesting.Links, new ApplicationAuditService(rig.Context), rig.Clock);
 
     public static BatteryPages Pages(PublicationRig rig) => new(
         rig.Store,

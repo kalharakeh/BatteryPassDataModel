@@ -19,6 +19,8 @@ public sealed record WaitingHandOver(HandOver HandOver, string SerialNumber, str
 /// </summary>
 public sealed class HandOverService(DppStore store, ClusterRepository clusters, ApplicationAuditService audit, TimeProvider clock)
 {
+    private readonly DemoBoundary demo = new(store, clusters);
+
     public const string AskedEvent = "dpp.handover-asked";
     public const string AnsweredEvent = "dpp.handover-answered";
     public const string CancelledEvent = "dpp.handover-cancelled";
@@ -54,7 +56,7 @@ public sealed class HandOverService(DppStore store, ClusterRepository clusters, 
         // Cluster IDs are compared normalised, as ClusterBatteryPages does (the step 4 wrap-up's follow-up).
         if (sender.Kind != SenderKind.ClusterAdmin || pack.ClusterId is not { } stored || ClusterRepository.NormalizeClusterId(stored) is not { } from
             || !sender.ClusterIds.Contains(from)
-            || !DemoScope.Reaches(sender, pack.IsDemo)) // finding R03
+            || !await demo.ReachesAsync(sender, pack, cancellationToken)) // finding R03
         {
             return Refused(NotYours);
         }
@@ -75,9 +77,9 @@ public sealed class HandOverService(DppStore store, ClusterRepository clusters, 
             return Refused(NoSuchCluster);
         }
 
-        if (!DemoScope.MayMove(pack.IsDemo, ClusterRepository.IsDemo(cluster))) // finding R03
+        if (!DemoScope.MayMove(sender, ClusterRepository.IsDemo(cluster))) // a demo admin hands over only into a demo cluster (finding R03)
         {
-            return Refused(DemoScope.OtherKindOfCluster);
+            return Refused(NoSuchCluster);
         }
 
         if (await store.FindWaitingHandOverAsync(packId, cancellationToken) is not null)
@@ -121,7 +123,7 @@ public sealed class HandOverService(DppStore store, ClusterRepository clusters, 
         }
 
         var pack = await store.GetAsync<BatteryPack>(handOver.PackId, cancellationToken);
-        if (pack is not null && !DemoScope.Reaches(sender, pack.IsDemo)) // a demo admin accepts no real battery (finding R03)
+        if (pack is not null && !await demo.ReachesAsync(sender, pack, cancellationToken)) // a demo admin accepts only batteries inside the demo (finding R03)
         {
             return NotTheReceiver;
         }
@@ -161,7 +163,7 @@ public sealed class HandOverService(DppStore store, ClusterRepository clusters, 
             return NothingWaiting;
         }
 
-        var mayCancel = DemoScope.Reaches(sender, (await store.GetAsync<BatteryPack>(packId, cancellationToken))?.IsDemo == true) && (sender.Kind == SenderKind.Team // finding R03
+        var mayCancel = await demo.ReachesAsync(sender, packId, cancellationToken) && (sender.Kind == SenderKind.Team // finding R03
             || (sender.Kind == SenderKind.ClusterAdmin && sender.ClusterIds.Contains(ClusterRepository.NormalizeClusterId(handOver.FromClusterId))));
         if (!mayCancel)
         {

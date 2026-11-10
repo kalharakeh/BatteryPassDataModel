@@ -55,6 +55,8 @@ public sealed class BatteryApi(
     TimeProvider clock,
     Identifiers.BatteryIdPool? pool = null)
 {
+    private readonly DemoBoundary demo = new(store, clusters);
+
     /// <summary>The source stored with values a battery system sends through the API ("battery system" on the pages).</summary>
     public const string FeedSource = "feed";
 
@@ -111,7 +113,9 @@ public sealed class BatteryApi(
         var known = new List<BatteryPack>();
         foreach (var pack in candidates)
         {
-            if (sender.Kind == SenderKind.Team || await store.GetActiveVersionAsync(pack.Id, cancellationToken) is not null)
+            // A demo token knows only batteries inside the demo; any other is as unknown to it (finding R03).
+            if (await demo.ReachesAsync(sender, pack, cancellationToken)
+                && (sender.Kind == SenderKind.Team || await store.GetActiveVersionAsync(pack.Id, cancellationToken) is not null))
             {
                 known.Add(pack);
             }
@@ -202,7 +206,7 @@ public sealed class BatteryApi(
 
     private async Task<IReadOnlyList<LiveHistoryEntry>> ReadAsync(Reader reader, string packId, DateTime sinceUtc, DateTime? untilUtc, CancellationToken cancellationToken)
     {
-        reader = DemoScope.On(reader, (await store.GetAsync<BatteryPack>(packId, cancellationToken))?.IsDemo ?? false); // finding R03
+        reader = await demo.OnAsync(reader, packId, cancellationToken); // finding R03
         var batteryClusters = await store.FindPublishedClusterIdsUsingAsync(packId: packId, cancellationToken: cancellationToken);
         var visible = LiveSet.Where(attribute => AudienceRules.MaySee(reader, attribute, batteryClusters)).ToDictionary(attribute => attribute.Property, StringComparer.Ordinal);
         if (visible.Count == 0)
@@ -291,8 +295,7 @@ public sealed class BatteryApi(
 
     /// <summary>The team changes every battery; a cluster admin or feed only those of its clusters, as the save pipeline checks again.</summary>
     private static bool MayChange(ChangeSender sender, BatteryPack pack) =>
-        DemoScope.Reaches(sender, pack.IsDemo) // a demo token changes only demo batteries (finding R03)
-        && (sender.Kind == SenderKind.Team || (pack.ClusterId is not null && sender.ClusterIds.Contains(pack.ClusterId)));
+        sender.Kind == SenderKind.Team || (pack.ClusterId is not null && sender.ClusterIds.Contains(pack.ClusterId));
 
     private static DateTime? Moment(string? text) =>
         DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var moment) ? moment.UtcDateTime : null;

@@ -18,6 +18,22 @@ public sealed class DemoScopeTests(MongoFixture mongo)
 
     private static Reader Demo(ReaderRole role) => Reader.With("demo.someone@example.test", role, "demo-north") with { DemoOnly = true };
 
+    // Inside the demo: the pack, its batch, model and operator demo, and its cluster demo or none (the manager's decision).
+    [Theory]
+    [InlineData(true, true, true, true, true, true)]
+    [InlineData(true, true, true, true, false, false)] // a demo battery in a real cluster
+    [InlineData(true, false, true, true, true, false)] // a demo-ID battery on a real batch
+    [InlineData(true, true, false, true, true, false)] // on a real model
+    [InlineData(true, true, true, false, true, false)] // with a real operator
+    [InlineData(false, true, true, true, true, false)] // a real battery on demo product data
+    public void InsideTheDemo_ShouldNeedEveryPartDemo(bool pack, bool batch, bool model, bool economicOperator, bool cluster, bool inside) =>
+        Assert.Equal(inside, DemoScope.Inside(
+            new BatteryPassWeb.Dpp.Store.BatteryPack { Id = "p", BatchId = "b", OperatorId = "o", IsDemo = pack },
+            new BatteryPassWeb.Dpp.Store.ProductionBatch { Id = "b", ModelId = "m", SiteId = "s", Year = 2026, IsDemo = batch },
+            new BatteryPassWeb.Dpp.Store.BatteryModel { Id = "m", FamilyId = "f", Name = "M", IsDemo = model },
+            new BatteryPassWeb.Dpp.Store.EconomicOperator { Id = "o", Name = "O", IsDemo = economicOperator },
+            cluster));
+
     [Theory]
     [MemberData(nameof(EveryRole))]
     public void OnARealBattery_ADemoReaderShouldSeeWhatAVisitorSees(ReaderRole role)

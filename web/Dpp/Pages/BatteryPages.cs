@@ -41,7 +41,7 @@ public sealed record BatteryRow(
     /// <summary>The pack whose passport this one replaces (design 7.5); null for a battery placed on the market new.</summary>
     public string? SuccessorOf { get; init; }
 
-    /// <summary>The stored pack's demo mark, so lists can keep demo readers to demo batteries (finding R03).</summary>
+    /// <summary>Whether the battery is inside the demo (<see cref="DemoScope.Inside"/>), from the stored records, so lists keep demo readers inside it (finding R03).</summary>
     public bool IsDemo { get; init; }
 }
 
@@ -55,7 +55,7 @@ public sealed record BatchChoice(string BatchId, string FamilyName, string Model
     /// <summary>The batch's model, so the create page offers that model's released IDs (6d).</summary>
     public string ModelId { get; init; } = string.Empty;
 
-    /// <summary>The stored batch's demo mark, so a demo token lists only demo batches (finding R03).</summary>
+    /// <summary>Whether the stored batch and its model are demo data, so a demo token lists only those batches (finding R03).</summary>
     public bool IsDemo { get; init; }
 }
 
@@ -328,6 +328,8 @@ public sealed class BatteryPages(
         var sites = (await store.ListAsync<ManufacturingSite>(cancellationToken)).ToDictionary(site => site.Id, StringComparer.Ordinal);
         var clusterNames = (await ClustersAsync(cancellationToken)).ToDictionary(cluster => cluster.Id, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
         var versions = (await store.ListAsync<PassportVersion>(cancellationToken)).ToLookup(version => version.PackId, StringComparer.Ordinal);
+        var operators = (await store.ListAsync<EconomicOperator>(cancellationToken)).ToDictionary(item => item.Id, StringComparer.Ordinal);
+        var demoClusters = await clusters.DemoClusterIdsAsync(cancellationToken);
 
         var rows = new List<BatteryRow>();
         foreach (var pack in packs)
@@ -351,7 +353,7 @@ public sealed class BatteryPages(
                 Latest = versions[pack.Id].MaxBy(version => version.Number),
                 BatteryStatus = StatusChangeService.CurrentStatus(pack),
                 SuccessorOf = pack.SuccessorOf,
-                IsDemo = pack.IsDemo,
+                IsDemo = DemoScope.Inside(pack, batch, model, operators.GetValueOrDefault(pack.OperatorId), pack.ClusterId is null || demoClusters.Contains(pack.ClusterId)),
             });
         }
 
@@ -362,13 +364,10 @@ public sealed class BatteryPages(
     /// never shows a real battery's ID (product owner, 30 Oct 2026).</summary>
     public async Task<string> ExampleBatteryIdAsync(CancellationToken cancellationToken = default)
     {
-        var published = (await store.ListAsync<PassportVersion>(cancellationToken))
-            .Where(version => version.DppStatus == DppStatuses.Active)
-            .Select(version => version.PackId)
-            .ToHashSet(StringComparer.Ordinal);
-        return (await store.ListAsync<BatteryPack>(cancellationToken))
-            .Where(pack => pack.IsDemo && published.Contains(pack.Id))
-            .Select(pack => Text(pack, "uniqueProductIdentifier") ?? string.Empty)
+        // Only a battery inside the demo (finding R03): a demo-ID battery on real product data or in a real cluster is real.
+        return (await ListAsync(null, cancellationToken)).Rows
+            .Where(row => row.IsDemo && row.Active is not null)
+            .Select(row => row.Identifier)
             .Where(identifier => identifier.Length > 0)
             .Order(StringComparer.Ordinal)
             .FirstOrDefault() ?? string.Empty;
@@ -414,7 +413,7 @@ public sealed class BatteryPages(
                     sites.GetValueOrDefault(batch.SiteId)?.Name ?? batch.SiteId)
                 {
                     ModelId = batch.ModelId,
-                    IsDemo = batch.IsDemo,
+                    IsDemo = batch.IsDemo && model.IsDemo,
                 };
             })
             .OrderBy(choice => choice.FamilyName, StringComparer.OrdinalIgnoreCase)

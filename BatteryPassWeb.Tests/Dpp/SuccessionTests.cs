@@ -219,7 +219,7 @@ public sealed class SuccessionTests(MongoFixture mongo)
         var serial = Text(await PackAsync(rig), "batterySerialNumber")!;
 
         var same = await rig.Pipeline.SaveAsync(Team, new ChangeSet(TargetKind.Pack, successorId!, new Dictionary<string, JsonNode?> { ["batterySerialNumber"] = $" {serial.ToLowerInvariant()} " }, "form"));
-        var another = await new PackCreationService(rig.Store, rig.Pipeline, new BatteryPassWeb.Dpp.Identifiers.TestIdentifierScheme(), DocumentTesting.Links, new ApplicationAuditService(rig.Context), rig.Clock)
+        var another = await new PackCreationService(rig.Store, TestDemo.For(rig), rig.Pipeline, new BatteryPassWeb.Dpp.Identifiers.TestIdentifierScheme(), DocumentTesting.Links, new ApplicationAuditService(rig.Context), rig.Clock)
             .CreateAsync(Team, new NewPack(rig.Seed.Sources.Batch.Id, rig.Seed.Sources.Operator.Id, BatteryTesting.North, new Dictionary<string, JsonNode?> { ["batterySerialNumber"] = serial }, "form"));
 
         Assert.DoesNotContain(same.Keys, key => key.Message == SavePipeline.SerialNumberTaken);
@@ -227,7 +227,7 @@ public sealed class SuccessionTests(MongoFixture mongo)
     }
 
     internal static SuccessionService Service(PublicationRig rig) =>
-        new(rig.Store, BatteryTesting.Creation(rig), rig.Pipeline, rig.Publication, new ApplicationAuditService(rig.Context), rig.Clock);
+        new(rig.Store, TestDemo.For(rig), BatteryTesting.Creation(rig), rig.Pipeline, rig.Publication, new ApplicationAuditService(rig.Context), rig.Clock);
 
     /// <summary>The seed pack, published and then repurposed by the team: waiting for its new passport.</summary>
     internal async Task<PublicationRig> RepurposedAsync()

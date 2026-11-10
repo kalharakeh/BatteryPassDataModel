@@ -110,7 +110,7 @@ public sealed class PackRulesTests(MongoFixture mongo)
     public async Task Creation_ShouldRefuseASerialNumberAnotherBatteryHas(string typed)
     {
         var rig = await PublicationTesting.RigAsync(mongo);
-        var service = new PackCreationService(rig.Store, rig.Pipeline, new TestIdentifierScheme(), DocumentTesting.Links, new ApplicationAuditService(rig.Context), rig.Clock);
+        var service = new PackCreationService(rig.Store, TestDemo.For(rig), rig.Pipeline, new TestIdentifierScheme(), DocumentTesting.Links, new ApplicationAuditService(rig.Context), rig.Clock);
 
         var result = await service.CreateAsync(Team, new NewPack(
             rig.Seed.Sources.Batch.Id,

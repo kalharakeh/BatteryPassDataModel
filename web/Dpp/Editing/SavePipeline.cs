@@ -69,6 +69,7 @@ public sealed record Evaluation(IReadOnlyList<KeyResult> Results, IReadOnlyDicti
 /// </summary>
 public sealed class SavePipeline(
     DppStore store,
+    DemoBoundary demo,
     AttributeValueNormalizer normalizer,
     AttributeValueValidator validator,
     ApplicationAuditService audit,
@@ -109,7 +110,7 @@ public sealed class SavePipeline(
         }
 
         // A demo sender changes only demo batteries (finding R03).
-        if (changes.Target == TargetKind.Pack && !DemoScope.Reaches(sender, (await store.GetAsync<BatteryPack>(changes.TargetId, cancellationToken))?.IsDemo == true))
+        if (changes.Target == TargetKind.Pack && !await demo.ReachesAsync(sender, changes.TargetId, cancellationToken))
         {
             return new SaveResult(true, false, changes.Values.Keys.Concat(changes.Removals ?? []).Distinct(StringComparer.Ordinal)
                 .Select(key => new KeyResult(key, KeyOutcome.Rejected, DemoScope.RealBattery)).ToArray());

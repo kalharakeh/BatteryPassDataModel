@@ -1,4 +1,6 @@
-using BatteryPassWeb.Dpp.Access;
+using BatteryPassWeb.Dpp.Editing;
+using BatteryPassWeb.Dpp.Store;
+
 namespace BatteryPassWeb.Dpp.Access;
 
 /// <summary>
@@ -9,6 +11,17 @@ namespace BatteryPassWeb.Dpp.Access;
 public static class DemoScope
 {
     public const string RealBattery = "Demo accounts and demo tokens work only on demo batteries.";
+
+    /// <summary>
+    /// The one definition of a battery inside the demo (the manager's decision): the pack is demo, its batch, model and
+    /// operator are demo, and its cluster is a demo cluster or none. Any other battery is real to a demo identity, a
+    /// demo-ID battery the team made on real product data included. <see cref="DemoBoundary"/> reads these from the store.
+    /// </summary>
+    public static bool Inside(BatteryPack pack, ProductionBatch? batch, BatteryModel? model, EconomicOperator? economicOperator, bool clusterIsDemoOrNone)
+    {
+        ArgumentNullException.ThrowIfNull(pack);
+        return pack.IsDemo && batch?.IsDemo == true && model?.IsDemo == true && economicOperator?.IsDemo == true && clusterIsDemoOrNone;
+    }
 
     /// <summary>Whether the reader's roles and memberships count on this battery.</summary>
     public static bool Reaches(Reader reader, bool batteryIsDemo)
@@ -22,16 +35,19 @@ public static class DemoScope
         Reaches(reader, batteryIsDemo) ? reader : Reader.Anonymous with { Who = reader.Who };
 
     /// <summary>Whether the sender may change this battery at all: a demo sender changes only demo batteries.</summary>
-    public static bool Reaches(BatteryPassWeb.Dpp.Editing.ChangeSender sender, bool batteryIsDemo)
+    public static bool Reaches(ChangeSender sender, bool batteryIsDemo)
     {
         ArgumentNullException.ThrowIfNull(sender);
         return !sender.DemoOnly || batteryIsDemo;
     }
 
     /// <summary>A battery moves only into a cluster of its own kind: demo with demo, real with real (finding R03).</summary>
-    public static bool MayMove(bool batteryIsDemo, bool clusterIsDemo) => batteryIsDemo == clusterIsDemo;
-
-    public const string OtherKindOfCluster = "a demo battery moves only to a demo cluster, and a real battery only to a real one";
+    /// <summary>A demo sender hands a battery over only into a demo cluster; anyone else as before (finding R03).</summary>
+    public static bool MayMove(ChangeSender sender, bool clusterIsDemo)
+    {
+        ArgumentNullException.ThrowIfNull(sender);
+        return !sender.DemoOnly || clusterIsDemo;
+    }
 
     /// <summary>A list as the reader may meet it: a demo reader meets only demo rows.</summary>
     public static IEnumerable<T> Lists<T>(Reader reader, IEnumerable<T> rows, Func<T, bool> isDemo)

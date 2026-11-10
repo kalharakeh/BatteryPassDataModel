@@ -198,6 +198,7 @@ public sealed class DocumentServiceTests(MongoFixture mongo)
     internal static DocumentService Service(PublicationRig rig, DppLinks? links = null, long maxUploadBytes = BatteryPassOptions.DefaultMaxUploadBytes) => new(
         new DocumentStore(rig.Context),
         rig.Store,
+        TestDemo.For(rig),
         rig.Pipeline,
         links ?? DocumentTesting.Links,
         Options.Create(new BatteryPassOptions { AppBaseUrl = DocumentTesting.BaseUrl, MaxUploadBytes = maxUploadBytes }),

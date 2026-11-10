@@ -39,6 +39,7 @@ public sealed class PackCreationServiceTests(MongoFixture mongo)
         var (store, context, seed) = await DppStoreTesting.SeededStoreAsync(mongo);
         var service = new PackCreationService(
             store,
+            TestDemo.For(store, context),
             SavePipelineTesting.Pipeline(store, context),
             new TestIdentifierScheme(),
             DocumentTesting.NoLinks,
@@ -119,6 +120,7 @@ public sealed class PackCreationServiceTests(MongoFixture mongo)
         var (store, context, seed) = await DppStoreTesting.SeededStoreAsync(mongo);
         var service = new PackCreationService(
             store,
+            TestDemo.For(store, context),
             SavePipelineTesting.Pipeline(store, context),
             new TestIdentifierScheme(),
             DocumentTesting.Links,

@@ -181,7 +181,7 @@ public sealed class PassportApiTests(MongoFixture mongo)
     public async Task AClustersBatteries_ShouldListDraftsForTheTeamOnly()
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
-        var creation = new PackCreationService(rig.Store, rig.Pipeline, new TestIdentifierScheme(), DocumentTesting.Links, new ApplicationAuditService(rig.Context), rig.Clock);
+        var creation = new PackCreationService(rig.Store, TestDemo.For(rig), rig.Pipeline, new TestIdentifierScheme(), DocumentTesting.Links, new ApplicationAuditService(rig.Context), rig.Clock);
         var created = await creation.CreateAsync(PublicationTesting.Team, new NewPack(
             rig.Seed.Sources.Batch.Id,
             rig.Seed.Sources.Operator.Id,
@@ -200,7 +200,7 @@ public sealed class PassportApiTests(MongoFixture mongo)
     }
 
     internal static PassportApi Api(PublicationRig rig) =>
-        new(rig.Store, new PassportReader(rig.Store), PassportPagesTests.Pages(rig), BatteryTesting.Pages(rig));
+        new(rig.Store, TestDemo.For(rig), new PassportReader(rig.Store), PassportPagesTests.Pages(rig), BatteryTesting.Pages(rig));
 
     private static string Serial(PublicationRig rig) => rig.Seed.Sources.Pack.Values["batterySerialNumber"].Value.GetValue<string>();
 

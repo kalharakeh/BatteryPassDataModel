@@ -60,6 +60,7 @@ public static class DppServiceCollectionExtensions
         services.AddSingleton<BatteryPages>();
         services.AddSingleton<ClusterBatteryPages>();
         services.AddSingleton<DppReaders>();
+        services.AddSingleton<DemoBoundary>(); // what is inside the demo (finding R03)
         services.AddSingleton<ReaderPages>();
         services.AddSingleton<PassportApi>();
         services.AddSingleton<BatteryApi>();

@@ -129,7 +129,7 @@ public sealed record PassportLocation(PassportVersion Version, string Identifier
 /// current version), its passport ID (#5, that version) or the battery's serial number (#11). Only published
 /// versions are shown: drafts stay with the team (J-6).
 /// </summary>
-public sealed class PassportPages(DppStore store, PassportReader reader, AttributeForms forms, IIdentifierScheme identifiers)
+public sealed class PassportPages(DppStore store, DemoBoundary demo, PassportReader reader, AttributeForms forms, IIdentifierScheme identifiers)
 {
     /// <summary>The reader-facing title and line of each schema section, in the schema's order.</summary>
     private static readonly (string Key, string Title, string Tab, string Note)[] SectionTexts =
@@ -266,7 +266,7 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
             return null;
         }
 
-        who = DemoScope.On(who, sources.Pack.IsDemo); // a demo reader is a visitor on a real battery (finding R03)
+        who = await demo.OnAsync(who, sources.Pack, cancellationToken); // a demo reader is a visitor outside the demo (finding R03)
         var clusters = await store.FindPublishedClusterIdsUsingAsync(packId: version.PackId, cancellationToken: cancellationToken);
         var everyone = PassportFilter.Cut(published.Passport, Reader.Anonymous, clusters);
         var seen = detail ? PassportFilter.Cut(published.Passport, who, clusters) : everyone;

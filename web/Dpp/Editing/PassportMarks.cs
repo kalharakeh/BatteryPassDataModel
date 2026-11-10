@@ -11,7 +11,7 @@ namespace BatteryPassWeb.Dpp.Editing;
 /// after recycling or export. Either sets the active version's DPP status (#2) in place, with no new version, and the
 /// passport then takes no more changes. Only the team undoes either; the reason stays in the audit log. Null when done.
 /// </summary>
-public sealed class PassportMarks(DppStore store, ApplicationAuditService audit, TimeProvider clock)
+public sealed class PassportMarks(DppStore store, DemoBoundary demo, ApplicationAuditService audit, TimeProvider clock)
 {
     public const string InvalidEvent = "dpp.passport-invalid";
     public const string DeletionEvent = "dpp.passport-marked-for-deletion";
@@ -74,7 +74,7 @@ public sealed class PassportMarks(DppStore store, ApplicationAuditService audit,
             return NoBattery;
         }
 
-        if (sender.Kind != SenderKind.Team || !DemoScope.Reaches(sender, pack.IsDemo)) // finding R03
+        if (sender.Kind != SenderKind.Team || !await demo.ReachesAsync(sender, pack, cancellationToken)) // finding R03
         {
             return OnlyTheTeamUndoes;
         }
@@ -113,7 +113,7 @@ public sealed class PassportMarks(DppStore store, ApplicationAuditService audit,
             return NoBattery;
         }
 
-        if (!DemoScope.Reaches(sender, pack.IsDemo)) // a demo account marks only demo passports (finding R03)
+        if (!await demo.ReachesAsync(sender, pack, cancellationToken)) // a demo account marks only passports inside the demo (finding R03)
         {
             return DemoScope.RealBattery;
         }

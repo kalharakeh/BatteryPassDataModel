@@ -41,16 +41,18 @@ public sealed class DemoEditingTests(MongoFixture mongo)
         Assert.Equal(before, await rig.Store.GetLatestVersionNumberAsync(rig.PackId));
     }
 
+    // The manager's point 2: MayMove binds demo senders only.
     [Fact]
-    public async Task ARealBattery_ShouldNotBeHandedIntoADemoCluster()
+    public async Task ADemoAdmin_ShouldHandOverOnlyIntoADemoCluster_AndARealAdminAsBefore()
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
-        await new ClusterRepository(rig.Context).UpsertClusterAsync("demo-x", "Demo X");
-        await rig.Context.Database!.GetCollection<BsonDocument>("clusters").UpdateOneAsync(
-            Builders<BsonDocument>.Filter.Eq("clusterId", "demo-x"), Builders<BsonDocument>.Update.Set(ClusterRepository.DemoMark, true));
+        await TestDemo.MakeInsideAsync(rig);
+        var demoAdmin = ChangeSender.ClusterAdmin("demo.admin@example.test", BatteryTesting.North) with { DemoOnly = true };
 
-        var asked = await HandOverTests.Service(rig).AskAsync(ChangeSender.ClusterAdmin("north.admin@example.test", BatteryTesting.North), rig.PackId, "demo-x", confirm: true);
+        var intoReal = await HandOverTests.Service(rig).AskAsync(demoAdmin, rig.PackId, BatteryTesting.South, confirm: true);
+        var byReal = await HandOverTests.Service(rig).AskAsync(ChangeSender.ClusterAdmin("north.admin@example.test", BatteryTesting.North), rig.PackId, BatteryTesting.South, confirm: true);
 
-        Assert.Equal(DemoScope.OtherKindOfCluster, asked.Problem);
+        Assert.Equal(HandOverService.NoSuchCluster, intoReal.Problem); // as if the cluster didn't exist (point 4)
+        Assert.Null(byReal.Problem);
     }
 }

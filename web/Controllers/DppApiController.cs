@@ -24,7 +24,7 @@ namespace BatteryPassWeb.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/external/v1")]
-public sealed class DppApiController(ExternalApiRepository tokens, ClusterRepository clusters, PassportApi api, BatteryApi writing, UploadService uploads) : ControllerBase
+public sealed class DppApiController(ExternalApiRepository tokens, ClusterRepository clusters, PassportApi api, BatteryApi writing, UploadService uploads, DemoBoundary demo) : ControllerBase
 {
     public const string NoPassport = "No published battery passport has this ID.";
     public const string NoBattery = "No battery this token may change has this ID.";
@@ -78,9 +78,9 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
             return Envelope(StatusCodes.Status404NotFound, "Cluster was not found.");
         }
 
-        if (!DemoScope.Reaches(reader, ClusterRepository.IsDemo(cluster))) // a demo token reads only demo clusters (finding R03)
+        if (!DemoScope.Reaches(reader, ClusterRepository.IsDemo(cluster))) // to a demo token a real cluster is as unknown (finding R03)
         {
-            return Envelope(StatusCodes.Status403Forbidden, "Token cannot access this cluster.");
+            return Envelope(StatusCodes.Status404NotFound, "Cluster was not found.");
         }
 
         var rows = await api.BatteriesAsync(reader, id, cancellationToken);
@@ -266,9 +266,9 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
             return Envelope(StatusCodes.Status404NotFound, NoPassport);
         }
 
-        if (!DemoScope.Reaches(reader, passport.Sources.Pack.IsDemo)) // a demo token: refused (finding R03)
+        if (!await demo.ReachesAsync(reader, passport.Sources.Pack, cancellationToken)) // to a demo token, as unknown (finding R03)
         {
-            return Envelope(StatusCodes.Status403Forbidden, DemoScope.RealBattery);
+            return Envelope(StatusCodes.Status404NotFound, NoPassport);
         }
 
         var history = await writing.HistoryAsync(reader, passport.Version.PackId, span, cancellationToken);
@@ -538,7 +538,8 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
         return target.Refusal switch
         {
             WriteRefusal.None => (target, null),
-            WriteRefusal.NotYours => (null, Envelope(StatusCodes.Status403Forbidden, sender.DemoOnly ? DemoScope.RealBattery : NotYours)), // finding R03
+            WriteRefusal.NotYours when sender.DemoOnly => (null, Envelope(StatusCodes.Status404NotFound, NoBattery)), // to a demo token, as unknown (finding R03)
+            WriteRefusal.NotYours => (null, Envelope(StatusCodes.Status403Forbidden, NotYours)),
             WriteRefusal.Ambiguous => (null, Envelope(StatusCodes.Status409Conflict, Ambiguous)),
             _ => (null, Envelope(StatusCodes.Status404NotFound, NoBattery)),
         };
@@ -582,8 +583,9 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
         }
 
         var passport = await api.ReadAsync(reader, id, cancellationToken);
-        return passport is null ? (null, Envelope(StatusCodes.Status404NotFound, NoPassport))
-            : !DemoScope.Reaches(reader, passport.Sources.Pack.IsDemo) ? (null, Envelope(StatusCodes.Status403Forbidden, DemoScope.RealBattery)) // a demo token: refused (finding R03)
+        // Outside the demo, a demo token gets exactly what an unknown ID gets (finding R03).
+        return passport is null || !await demo.ReachesAsync(reader, passport.Sources.Pack, cancellationToken)
+            ? (null, Envelope(StatusCodes.Status404NotFound, NoPassport))
             : (passport, null);
     }
 

@@ -272,7 +272,7 @@ public sealed class StatusChangeTests(MongoFixture mongo)
     }
 
     internal static StatusChangeService Service(PublicationRig rig) =>
-        new(rig.Store, rig.Pipeline, rig.Publication, new ApplicationAuditService(rig.Context), rig.Clock);
+        new(rig.Store, TestDemo.For(rig), rig.Pipeline, rig.Publication, new ApplicationAuditService(rig.Context), rig.Clock);
 
     internal static BatteryPassWeb.Dpp.Pages.StatusPages Pages(PublicationRig rig) =>
         new(rig.Store, PageTesting.Editor(rig), Service(rig), SuccessionTests.Service(rig), rig.Clock);

@@ -24,7 +24,7 @@ public sealed record ApiValue(string Request, AttributeDefinition? Attribute, Js
 /// The external API's reading side (decision 29, step 3c-1): the same passports, finding rules and visibility filter as
 /// the pages. Every answer is cut by <see cref="PassportFilter"/>, so a change to who sees what changes the API too.
 /// </summary>
-public sealed class PassportApi(DppStore store, PassportReader reader, PassportPages pages, BatteryPages batteries)
+public sealed class PassportApi(DppStore store, DemoBoundary demo, PassportReader reader, PassportPages pages, BatteryPages batteries)
 {
     /// <summary>The passport's sections in the schema's order: the header, then the data sections.</summary>
     public static IReadOnlyList<string> Sections { get; } = AttributeCatalog.All.Select(attribute => attribute.Section).Distinct().ToArray();
@@ -44,7 +44,7 @@ public sealed class PassportApi(DppStore store, PassportReader reader, PassportP
             return null;
         }
 
-        who = DemoScope.On(who, sources.Pack.IsDemo); // a demo token reads a real battery as a visitor (finding R03)
+        who = await demo.OnAsync(who, sources.Pack, cancellationToken); // a demo reader is a visitor outside the demo (finding R03)
         var clusters = await store.FindPublishedClusterIdsUsingAsync(packId: location.Version.PackId, cancellationToken: cancellationToken);
         return new ApiPassport(location, PassportFilter.Cut(published.Passport, who, clusters), PassportReader.Verify(location.Version), sources);
     }

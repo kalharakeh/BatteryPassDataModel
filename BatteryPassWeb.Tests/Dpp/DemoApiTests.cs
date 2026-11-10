@@ -18,9 +18,7 @@ public sealed class DemoApiTests(MongoFixture mongo)
 
     private static ChangeSender DemoTeamSender => ChangeSender.Team("api-token:demo") with { DemoOnly = true };
 
-    private static Task MakeDemoAsync(PublicationRig rig) =>
-        rig.Context.Database!.GetCollection<BsonDocument>(DppStore.Packs).UpdateOneAsync(
-            Builders<BsonDocument>.Filter.Eq("_id", rig.PackId), Builders<BsonDocument>.Update.Set("IsDemo", true));
+    private static Task MakeDemoAsync(PublicationRig rig) => TestDemo.MakeInsideAsync(rig);
 
     /// <summary>The passport reader on its own gives a demo reader the visitor's passport (the account path uses it).</summary>
     [Fact]
@@ -39,7 +37,7 @@ public sealed class DemoApiTests(MongoFixture mongo)
     }
 
     [Fact]
-    public async Task TheDemoTeamToken_ShouldBeRefusedOnARealBattery_InPlainWords_AndServedOnADemoOne()
+    public async Task TheDemoTeamToken_ShouldGetWhatAnUnknownIdGets_OnARealBattery_AndBeServedOnADemoOne()
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         var repository = DppApiControllerTests.Repository(rig);
@@ -50,10 +48,11 @@ public sealed class DemoApiTests(MongoFixture mongo)
         var read = Assert.IsAssignableFrom<Microsoft.AspNetCore.Mvc.ObjectResult>(await DppApiControllerTests.Controller(rig, token).Battery(id, CancellationToken.None));
         var publish = Assert.IsAssignableFrom<Microsoft.AspNetCore.Mvc.ObjectResult>(await DppApiControllerTests.Controller(rig, token).Publish(id, CancellationToken.None));
 
-        Assert.Equal(403, read.StatusCode);
-        Assert.Equal(DemoScope.RealBattery, DppApiControllerTests.Json(read).GetProperty("message").GetString());
-        Assert.Equal(403, publish.StatusCode);
-        Assert.Equal(DemoScope.RealBattery, DppApiControllerTests.Json(publish).GetProperty("message").GetString());
+        var unknown = Assert.IsAssignableFrom<Microsoft.AspNetCore.Mvc.ObjectResult>(await DppApiControllerTests.Controller(rig, token).Battery("no-such-battery", CancellationToken.None));
+        var unknownPublish = Assert.IsAssignableFrom<Microsoft.AspNetCore.Mvc.ObjectResult>(await DppApiControllerTests.Controller(rig, token).Publish("no-such-battery", CancellationToken.None));
+        Assert.Equal((unknown.StatusCode, DppApiControllerTests.Json(unknown).GetProperty("message").GetString()), (read.StatusCode, DppApiControllerTests.Json(read).GetProperty("message").GetString()));
+        Assert.Equal((unknownPublish.StatusCode, DppApiControllerTests.Json(unknownPublish).GetProperty("message").GetString()), (publish.StatusCode, DppApiControllerTests.Json(publish).GetProperty("message").GetString()));
+        Assert.Equal(404, read.StatusCode);
 
         await MakeDemoAsync(rig);
         Assert.Equal(200, Assert.IsAssignableFrom<Microsoft.AspNetCore.Mvc.ObjectResult>(await DppApiControllerTests.Controller(rig, token).Battery(id, CancellationToken.None)).StatusCode);

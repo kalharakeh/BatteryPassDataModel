@@ -679,12 +679,6 @@ public sealed class DemoDataService(
         var admin = catalogue.Accounts.FirstOrDefault(account => account.Cluster == demo.Cluster && account.ClusterRole == "clusterAdmin")?.Email
             ?? throw new InvalidOperationException($"The demo cluster {demo.Cluster} has no admin to hand {demo.Serial} over.");
         var asked = await handOvers.AskAsync(ChangeSender.ClusterAdmin(admin, demo.Cluster), packId, receiver, confirm: true, cancellationToken);
-        if (asked.Problem == BatteryPassWeb.Dpp.Access.DemoScope.OtherKindOfCluster)
-        {
-            // The receiving cluster is real data (a real cluster with the demo's ID): a demo battery isn't handed into it (finding R03).
-            return $"Battery {demo.Serial} wasn't handed over: cluster {receiver} is real data.";
-        }
-
         if (asked.Problem is { } problem)
         {
             throw new InvalidOperationException($"The demo battery {demo.Serial} couldn't be handed over: {problem}.");

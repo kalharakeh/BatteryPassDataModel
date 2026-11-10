@@ -26,6 +26,7 @@ public sealed record DocumentFile(DppDocument Document, byte[] Content);
 public sealed class DocumentService(
     DocumentStore documents,
     DppStore store,
+    DemoBoundary demo,
     SavePipeline pipeline,
     DppLinks links,
     IOptions<BatteryPassOptions> options,
@@ -264,12 +265,12 @@ public sealed class DocumentService(
         var packId = owner == TargetKind.Pack ? ownerId : null;
 
         // A demo reader reads a real record's documents as a visitor (finding R03).
-        reader = DemoScope.On(reader, owner switch
-        {
-            TargetKind.Model => (await store.GetAsync<BatteryModel>(ownerId, cancellationToken))?.IsDemo == true,
-            TargetKind.Batch => (await store.GetAsync<ProductionBatch>(ownerId, cancellationToken))?.IsDemo == true,
-            _ => (await store.GetAsync<BatteryPack>(ownerId, cancellationToken))?.IsDemo == true,
-        });
+        reader = owner == TargetKind.Pack
+            ? await demo.OnAsync(reader, ownerId, cancellationToken)
+            : DemoScope.On(reader, owner == TargetKind.Model
+                ? (await store.GetAsync<BatteryModel>(ownerId, cancellationToken))?.IsDemo == true
+                : await store.GetAsync<ProductionBatch>(ownerId, cancellationToken) is { IsDemo: true } batch
+                    && (await store.GetAsync<BatteryModel>(batch.ModelId, cancellationToken))?.IsDemo == true);
 
         // Nothing unpublished leaves the team (J-6): until a published passport uses the record, its documents are the team's.
         if (!reader.Roles.Contains(ReaderRole.Team)

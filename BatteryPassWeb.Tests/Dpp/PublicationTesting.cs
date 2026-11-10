@@ -37,6 +37,7 @@ internal static class PublicationTesting
         var clock = new MutableTimeProvider(DppStoreTesting.Now);
         var publication = new PublicationService(
             store,
+            TestDemo.For(store, context),
             new PublicationChecks(DppStoreTesting.Schemas),
             new PassportSigner(SigningTesting.Keys),
             new TestIdentifierScheme(),

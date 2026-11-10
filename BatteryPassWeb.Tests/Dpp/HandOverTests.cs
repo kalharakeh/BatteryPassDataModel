@@ -102,7 +102,7 @@ public sealed class HandOverTests(MongoFixture mongo)
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         var service = Service(rig);
         var asked = await service.AskAsync(NorthAdmin, rig.PackId, BatteryTesting.South, confirm: true);
-        await new PassportMarks(rig.Store, new ApplicationAuditService(rig.Context), rig.Clock).MarkInvalidAsync(PublicationTesting.Team, rig.PackId, "Wrong figures");
+        await new PassportMarks(rig.Store, TestDemo.For(rig), new ApplicationAuditService(rig.Context), rig.Clock).MarkInvalidAsync(PublicationTesting.Team, rig.PackId, "Wrong figures");
 
         Assert.Equal(HandOverService.NoLongerActive, await service.AnswerAsync(SouthAdmin, asked.HandOver!.Id, accept: true));
 

@@ -16,9 +16,25 @@ public sealed class DemoPagesTests(MongoFixture mongo)
 {
     private static Reader DemoMsa => Reader.With("demo.msa@example.test", ReaderRole.MarketSurveillance) with { DemoOnly = true };
 
-    private static Task MakeDemoAsync(PublicationRig rig) =>
-        rig.Context.Database!.GetCollection<BsonDocument>(DppStore.Packs).UpdateOneAsync(
-            Builders<BsonDocument>.Filter.Eq("_id", rig.PackId), Builders<BsonDocument>.Update.Set("IsDemo", true));
+    private static Task MakeDemoAsync(PublicationRig rig) => TestDemo.MakeInsideAsync(rig);
+
+    // The manager's two mixed cases: a demo-ID battery on real product data, and a demo battery in a real cluster.
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task OnAMixedBattery_ADemoAuthorityShouldGetTheVisitorsPage(bool demoCluster, bool demoProductData)
+    {
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
+        await TestDemo.MakeInsideAsync(rig, cluster: demoCluster, productData: demoProductData);
+        var pages = PassportPagesTests.Pages(rig);
+
+        var demo = (await pages.DetailAsync(DemoMsa, PassportPagesTests.Identifier(rig)))!;
+
+        Assert.False(demo.MayMarkInvalid);
+        Assert.False(demo.ReaderSeesMore);
+        Assert.Null(await ClusterBatteryPagesTests.Pages(rig).BatteryAsync(
+            ChangeSender.ClusterAdmin("demo.admin@example.test", (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!.ClusterId!) with { DemoOnly = true }, rig.PackId));
+    }
 
     [Fact]
     public async Task OnARealBattery_ADemoAuthorityShouldGetTheVisitorsPage()

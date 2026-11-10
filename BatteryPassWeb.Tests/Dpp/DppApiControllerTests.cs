@@ -232,7 +232,7 @@ public sealed class DppApiControllerTests(MongoFixture mongo)
             http.Request.Headers.Authorization = "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes(token + ":"));
         }
 
-        return new DppApiController(Repository(rig), new ClusterRepository(rig.Context), PassportApiTests.Api(rig), BatteryApiTests.Api(rig), UploadServiceTests.Service(rig))
+        return new DppApiController(Repository(rig), new ClusterRepository(rig.Context), PassportApiTests.Api(rig), BatteryApiTests.Api(rig), UploadServiceTests.Service(rig), TestDemo.For(rig))
         {
             ControllerContext = new ControllerContext { HttpContext = http },
         };

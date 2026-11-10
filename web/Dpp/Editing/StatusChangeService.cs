@@ -60,6 +60,7 @@ public sealed record StatusChangeResult(bool Found, PassportVersion? Version, IR
 /// </summary>
 public sealed class StatusChangeService(
     DppStore store,
+    DemoBoundary demo,
     SavePipeline pipeline,
     PublicationService publication,
     ApplicationAuditService audit,
@@ -178,7 +179,7 @@ public sealed class StatusChangeService(
         }
 
         var pack = sources.Pack;
-        var mayChange = DemoScope.Reaches(sender, pack.IsDemo) && (sender.Kind == SenderKind.Team // finding R03
+        var mayChange = await demo.ReachesAsync(sender, pack, cancellationToken) && (sender.Kind == SenderKind.Team // finding R03
             || (sender.Kind == SenderKind.ClusterAdmin && pack.ClusterId is { } cluster && sender.ClusterIds.Contains(cluster)));
         if (!mayChange)
         {
@@ -358,7 +359,7 @@ public sealed class StatusChangeService(
             return NoBattery;
         }
 
-        var mayAdd = DemoScope.Reaches(sender, pack.IsDemo) && (sender.Kind == SenderKind.Team // finding R03
+        var mayAdd = await demo.ReachesAsync(sender, pack, cancellationToken) && (sender.Kind == SenderKind.Team // finding R03
             || (sender.Kind == SenderKind.ClusterAdmin && pack.ClusterId is { } cluster && sender.ClusterIds.Contains(cluster)));
         if (!mayAdd)
         {

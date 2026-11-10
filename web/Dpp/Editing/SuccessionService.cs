@@ -21,6 +21,7 @@ public sealed record OtherOperator(string? OperatorId, string? OperatorInfo, str
 /// </summary>
 public sealed class SuccessionService(
     DppStore store,
+    DemoBoundary demo,
     PackCreationService creation,
     SavePipeline pipeline,
     PublicationService publication,
@@ -61,7 +62,7 @@ public sealed class SuccessionService(
         }
 
         var old = sources.Pack;
-        if (sender.Kind != SenderKind.Team || !DemoScope.Reaches(sender, old.IsDemo)) // finding R03
+        if (sender.Kind != SenderKind.Team || !await demo.ReachesAsync(sender, old, cancellationToken)) // finding R03
         {
             return (null, TeamMakesIt);
         }
@@ -145,7 +146,7 @@ public sealed class SuccessionService(
             return NoBattery;
         }
 
-        var mayName = DemoScope.Reaches(sender, old.IsDemo) && (sender.Kind == SenderKind.Team // finding R03
+        var mayName = await demo.ReachesAsync(sender, old, cancellationToken) && (sender.Kind == SenderKind.Team // finding R03
             || (sender.Kind == SenderKind.ClusterAdmin && old.ClusterId is { } cluster && sender.ClusterIds.Contains(cluster)));
         if (!mayName)
         {
@@ -224,7 +225,7 @@ public sealed class SuccessionService(
             return NoBattery;
         }
 
-        if (sender.Kind != SenderKind.Team || !DemoScope.Reaches(sender, old.IsDemo)) // finding R03
+        if (sender.Kind != SenderKind.Team || !await demo.ReachesAsync(sender, old, cancellationToken)) // finding R03
         {
             return TeamCancels;
         }

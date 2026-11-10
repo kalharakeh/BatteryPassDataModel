@@ -203,7 +203,7 @@ public sealed class PassportPagesTests(MongoFixture mongo)
     }
 
     internal static PassportPages Pages(PublicationRig rig) =>
-        new(rig.Store, new PassportReader(rig.Store), AttributeFormsTests.Forms, new TestIdentifierScheme());
+        new(rig.Store, TestDemo.For(rig), new PassportReader(rig.Store), AttributeFormsTests.Forms, new TestIdentifierScheme());
 
     internal static string Identifier(PublicationRig rig) => rig.Seed.Sources.Pack.Values["uniqueProductIdentifier"].Value.GetValue<string>();
 }

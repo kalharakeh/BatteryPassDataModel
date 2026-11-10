@@ -13,6 +13,7 @@ internal static class SavePipelineTesting
 
     public static SavePipeline Pipeline(DppStore store, MongoContext context, TimeProvider clock, params IPackChangeListener[] listeners) => new(
         store,
+        TestDemo.For(store, context),
         new AttributeValueNormalizer(DppStoreTesting.Schemas),
         new AttributeValueValidator(DppStoreTesting.Schemas),
         new ApplicationAuditService(context),

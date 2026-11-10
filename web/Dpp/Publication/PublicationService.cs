@@ -22,6 +22,7 @@ public sealed record PublicationResult(PassportVersion? Version, PublicationRepo
 /// </summary>
 public sealed class PublicationService(
     DppStore store,
+    DemoBoundary demo,
     PublicationChecks checks,
     PassportSigner signer,
     IIdentifierScheme identifiers,
@@ -76,7 +77,7 @@ public sealed class PublicationService(
             return new PublicationResult(null, null, "only the team publishes passports");
         }
 
-        if (!DemoScope.Reaches(sender, (await store.GetAsync<BatteryPack>(packId, cancellationToken))?.IsDemo == true)) // finding R03
+        if (!await demo.ReachesAsync(sender, packId, cancellationToken)) // finding R03
         {
             return new PublicationResult(null, null, DemoScope.RealBattery);
         }

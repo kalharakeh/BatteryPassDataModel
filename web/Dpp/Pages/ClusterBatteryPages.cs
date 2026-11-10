@@ -1,3 +1,4 @@
+using BatteryPassWeb.Dpp.Access;
 using BatteryPassWeb.Dpp.Assembly;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
@@ -106,6 +107,8 @@ public sealed class ClusterBatteryPages(
     LiveTrends? trends = null,
     BatteryPassWeb.Dpp.Audit.ClusterHistory? history = null)
 {
+    private readonly DemoBoundary demo = new(store, clusters);
+
     public static string BatteryHref(string packId) => $"/cluster-admin/batteries/{Uri.EscapeDataString(packId)}";
 
     /// <summary>Where the detail page finds its "Open the battery page" link, for those who may change the battery.</summary>
@@ -249,7 +252,7 @@ public sealed class ClusterBatteryPages(
         if (sender.Kind != SenderKind.ClusterAdmin
             || await store.GetAsync<BatteryPack>(packId, cancellationToken) is not { ClusterId: { } clusterId } pack
             || !sender.ClusterIds.Contains(ClusterRepository.NormalizeClusterId(clusterId))
-            || !BatteryPassWeb.Dpp.Access.DemoScope.Reaches(sender, pack.IsDemo)) // a demo cluster admin manages only demo batteries (finding R03)
+            || !await demo.ReachesAsync(sender, pack, cancellationToken)) // a demo cluster admin manages only batteries inside the demo (finding R03)
         {
             return null;
         }

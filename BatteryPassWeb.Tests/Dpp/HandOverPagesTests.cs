@@ -112,7 +112,7 @@ public sealed class HandOverPagesTests(MongoFixture mongo)
     {
         var rig = await RigAsync();
         var asked = await HandOverTests.Service(rig).AskAsync(ChangeSender.ClusterAdmin(NorthAdmin, BatteryTesting.North), rig.PackId, BatteryTesting.South, confirm: true);
-        await new PassportMarks(rig.Store, new ApplicationAuditService(rig.Context), rig.Clock).MarkInvalidAsync(PublicationTesting.Team, rig.PackId, "Wrong figures");
+        await new PassportMarks(rig.Store, TestDemo.For(rig), new ApplicationAuditService(rig.Context), rig.Clock).MarkInvalidAsync(PublicationTesting.Team, rig.PackId, "Wrong figures");
         var receiver = RegistryController(rig, SouthAdmin);
 
         await receiver.Answer(asked.HandOver!.Id, accept: true, HandOverTests.Service(rig), CancellationToken.None);

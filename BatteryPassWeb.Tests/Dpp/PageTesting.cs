@@ -25,6 +25,7 @@ internal static class PageTesting
     public static DocumentService Documents(PublicationRig rig) => new(
         new DocumentStore(rig.Context),
         rig.Store,
+        TestDemo.For(rig),
         rig.Pipeline,
         DocumentTesting.Links,
         Options.Create(new BatteryPassOptions { AppBaseUrl = DocumentTesting.BaseUrl }),

@@ -28,6 +28,7 @@ public sealed record PackCreationResult(BatteryPack? Pack, IReadOnlyList<KeyResu
 /// </summary>
 public sealed class PackCreationService(
     DppStore store,
+    DemoBoundary demo,
     SavePipeline pipeline,
     IIdentifierScheme identifiers,
     DppLinks links,
@@ -157,7 +158,7 @@ public sealed class PackCreationService(
 
         // A demo sender makes only demo batteries: a real ID is refused before the battery is stored, and a picked
         // released ID is available again (finding R03).
-        if (!DemoScope.Reaches(sender, pack.IsDemo))
+        if (!DemoScope.Reaches(sender, DemoScope.Inside(pack, batch, model, economicOperator, await demo.ClusterIsDemoOrNoneAsync(pack.ClusterId, cancellationToken))))
         {
             if (request.FromPool && request.PredecessorPackId is null && pool is not null)
             {

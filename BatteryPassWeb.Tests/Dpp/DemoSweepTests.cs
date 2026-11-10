@@ -54,8 +54,16 @@ public sealed class DemoSweepTests(MongoFixture mongo, ITestOutputHelper output)
 
     private sealed record Pair(Identity Demo, Identity Twin, bool Api);
 
-    [Fact]
-    public async Task EveryRoute_ShouldKeepDemoIdentitiesOutOfTheRealBattery()
+    /// <param name="battery">
+    /// "real"; "demo-id-on-real-product-data" (a demo pack on real batch, model and operator); "demo-in-real-cluster" (a
+    /// demo pack on demo product data, in a real cluster). The two mixed ones are outside the demo too (the manager's
+    /// decision), so the same must hold for them.
+    /// </param>
+    [Theory]
+    [InlineData("real")]
+    [InlineData("demo-id-on-real-product-data")]
+    [InlineData("demo-in-real-cluster")]
+    public async Task EveryRoute_ShouldKeepDemoIdentitiesOutOfTheRealBattery(string battery)
     {
         var (store, context, seed, planted) = await SeededWithMarkersAsync(mongo);
         await using var app = Build(context);
@@ -73,6 +81,19 @@ public sealed class DemoSweepTests(MongoFixture mongo, ITestOutputHelper output)
         var pack = seed.Sources.Pack;
         await store.SetPackClusterAsync(pack.Id, RealCluster);
         Assert.Null((await services.GetRequiredService<PublicationService>().PublishAsync(team, pack.Id)).Problem);
+        async Task MarkAsync(string collection, string id) =>
+            await database.GetCollection<BsonDocument>(collection).UpdateOneAsync(Builders<BsonDocument>.Filter.Eq("_id", id), Builders<BsonDocument>.Update.Set("IsDemo", true));
+        if (battery != "real")
+        {
+            await MarkAsync(DppStore.Packs, pack.Id);
+        }
+
+        if (battery == "demo-in-real-cluster")
+        {
+            await MarkAsync(DppStore.Batches, seed.Sources.Batch.Id);
+            await MarkAsync(DppStore.Models, seed.Sources.Model.Id);
+            await MarkAsync(DppStore.Operators, seed.Sources.Operator.Id);
+        }
         var document = (await services.GetRequiredService<DocumentService>().UploadAsync(team, TargetKind.Model, seed.Sources.Model.Id, "dismantlingInformation",
             new DocumentUpload("sweep.pdf", DocumentTesting.Pdf("sweep"), "SWEEPSECRETDOCUMENT"))).Document!;
         var handOver = await services.GetRequiredService<HandOverService>().AskAsync(ChangeSender.ClusterAdmin("real.admin@example.test", RealCluster), pack.Id, OtherRealCluster, confirm: true);

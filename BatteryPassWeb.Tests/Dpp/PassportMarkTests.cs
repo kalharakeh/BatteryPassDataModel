@@ -127,7 +127,7 @@ public sealed class PassportMarkTests(MongoFixture mongo)
     }
 
     internal static PassportMarks Service(PublicationRig rig) =>
-        new(rig.Store, new ApplicationAuditService(rig.Context), rig.Clock);
+        new(rig.Store, TestDemo.For(rig), new ApplicationAuditService(rig.Context), rig.Clock);
 
     private static async Task<BsonDocument> LastAsync(PublicationRig rig, string eventType) =>
         await rig.Context.Database!.GetCollection<BsonDocument>("applicationAuditEvents")

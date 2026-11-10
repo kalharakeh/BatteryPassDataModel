@@ -58,6 +58,7 @@ public sealed class RestrictedDocumentLinkTests(MongoFixture mongo)
         var (store, context, seed) = await DppStoreTesting.SeededStoreAsync(mongo);
         var pipeline = new SavePipeline(
             store,
+            TestDemo.For(store, context),
             new AttributeValueNormalizer(DppStoreTesting.Schemas),
             new AttributeValueValidator(DppStoreTesting.Schemas),
             new ApplicationAuditService(context),
