@@ -167,7 +167,7 @@ public sealed record BatteryPage(
         $"{ProductDataPages.FamilyHref(Sources.Model.FamilyId, Sources.Model.Id)}#modules",
         !string.IsNullOrWhiteSpace(Sources.Model.ModuleDescription),
         FrozenAs: Publication.NoLongerActive ? Publication.Latest!.DppStatus : null,
-        NewPassportHref: Status?.Succession is { Linked: true } next ? next.SuccessorHref ?? next.OtherPassport : null);
+        NewPassportHref: Status?.Succession is { Linked: true } next ? next.NewPassportLink : null);
 
     /// <summary>The passport values editor as the page shows it: read-only, with the reason, once nothing changes (redesign R1).</summary>
     public RecordEditorView Editor => Cards.FrozenNote is { } note ? Values with { FrozenNote = note } : Values;

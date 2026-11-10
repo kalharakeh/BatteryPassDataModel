@@ -28,6 +28,15 @@ public sealed record SuccessionView(
 {
     /// <summary>Scania's new pack has been made (a draft until the team publishes it).</summary>
     public bool SuccessorMade => SuccessorHref is not null;
+
+    /// <summary>
+    /// Where "New passport" leads: Scania's new battery page, or the other operator's address when it is an http or https
+    /// address (S01). Null for anything else, even a value stored before the check existed.
+    /// </summary>
+    public string? NewPassportLink => SuccessorHref ?? WebAddress.Safe(OtherPassport);
+
+    /// <summary>The other operator's new passport as plain text when it can't be a link (an ID, or a value that isn't a web address); else null.</summary>
+    public string? NewPassportText => SuccessorHref is null && OtherPassport is { } other && WebAddress.Safe(other) is null ? other : null;
 }
 
 /// <summary>The S5 line on a new passport's battery pages: the battery it replaces, and whether that one is inactive yet.</summary>

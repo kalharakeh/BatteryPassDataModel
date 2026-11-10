@@ -358,7 +358,7 @@ public sealed class PassportPages(DppStore store, PassportReader reader, Attribu
 
             if (succession.OtherPassport is { } other)
             {
-                var link = Uri.TryCreate(other, UriKind.Absolute, out var address) && address.Scheme is "https" or "http" ? other : null;
+                var link = BatteryPassWeb.Dpp.Values.WebAddress.Safe(other);
                 var issuer = succession.OtherOperatorInfo ?? succession.OtherOperatorId;
                 var tail = link is null ? $": {other}" : string.Empty;
                 var text = showsStatus

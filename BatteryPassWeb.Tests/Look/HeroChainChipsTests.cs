@@ -16,7 +16,7 @@ public sealed class HeroChainChipsTests
         var pages = File.ReadAllText(DppTestFiles.RepoFile("web", "Dpp", "Pages", "PassportPages.cs"));
 
         Assert.Contains("@if (Model.Chain.Count == 0 && Model.Status?.Predecessor is { } earlier)", page, StringComparison.Ordinal);
-        Assert.Contains("@if (Model.Chain.Count == 0 && Model.Status?.Succession is { Linked: true } next && (next.SuccessorHref ?? next.OtherPassport) is { } newPassport)", page, StringComparison.Ordinal);
+        Assert.Contains("@if (Model.Chain.Count == 0 && Model.Status?.Succession is { Linked: true } next && next.NewPassportLink is { } newPassport)", page, StringComparison.Ordinal);
         Assert.Contains("\"Earlier passport\") { Calm = true }", pages, StringComparison.Ordinal); // the public page keeps it
     }
 }

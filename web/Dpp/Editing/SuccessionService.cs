@@ -1,7 +1,9 @@
 using System.Text.Json.Nodes;
 using BatteryPassWeb.Dpp.Catalog;
+using BatteryPassWeb.Dpp.Identifiers;
 using BatteryPassWeb.Dpp.Publication;
 using BatteryPassWeb.Dpp.Store;
+using BatteryPassWeb.Dpp.Values;
 using BatteryPassWeb.Services;
 using MongoDB.Bson;
 
@@ -35,6 +37,8 @@ public sealed class SuccessionService(
     public const string NotYours = "only the team and the battery's cluster admins name the operator";
     public const string NoOperator = "choose an economic operator";
     public const string AlreadyMade = "the new passport is already made";
+    public const string PassportNotAnAddress = "the new passport's ID must be a battery or passport ID, or a web address that starts with http:// or https://";
+
     public const string LinkNeedsPassport = "give the new passport's ID or web address to link it";
     public const string NeedsOperator = "give the operator's identifier or name";
 
@@ -163,6 +167,12 @@ public sealed class SuccessionService(
         if (operatorId is null && operatorInfo is null)
         {
             return NeedsOperator;
+        }
+
+        // The new passport's address ends up as a link on the team's page: an ID of this app or an http(s) address only (S01).
+        if (passport is not null && !WebAddress.IsWebAddress(passport) && !IdentifierForms.IsItem(passport) && !IdentifierForms.IsTest(passport))
+        {
+            return PassportNotAnAddress;
         }
 
         // The details are kept even when the link must wait for the new passport's ID, so nothing typed is lost.

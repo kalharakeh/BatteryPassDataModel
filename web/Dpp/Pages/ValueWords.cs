@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using BatteryPassWeb.Dpp.Forms;
+using BatteryPassWeb.Dpp.Values;
 
 namespace BatteryPassWeb.Dpp.Pages;
 
@@ -97,7 +98,7 @@ public static class ValueWords
                 var only = form.Inputs[0];
                 var single = Part(only, only.Path.Length == 0 ? value : value[only.Path]);
                 // A web link reads as what it is when the passport has words for it (#36, redesign R6); its address shows on hover.
-                return single is null ? [] : [new ValueLine(null, only.Kind == InputKind.Url && LinkWords.GetValueOrDefault(form.Attribute.Number) is { } words ? words : single, only.Kind == InputKind.Url ? single : null)];
+                return single is null ? [] : [new ValueLine(null, only.Kind == InputKind.Url && LinkWords.GetValueOrDefault(form.Attribute.Number) is { } words ? words : single, only.Kind == InputKind.Url ? WebAddress.Safe(single) : null)];
             default:
                 return form.Inputs
                     .Select(input => (input.Label, Text: Part(input, value[input.Path])))
@@ -175,7 +176,8 @@ public static class ValueWords
             return null;
         }
 
-        return new ValueLine(null, Scalar(value["resourceTitle"]) ?? url, url);
+        // Only an http or https address becomes a link (S01); a value stored before that rule shows as text.
+        return new ValueLine(null, Scalar(value["resourceTitle"]) ?? url, WebAddress.Safe(url));
     }
 
     /// <summary>"P8Y" as "8 years", "P1Y6M" as "1 year 6 months"; anything else as written.</summary>
