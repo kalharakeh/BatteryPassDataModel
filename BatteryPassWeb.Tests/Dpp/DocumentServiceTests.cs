@@ -195,7 +195,7 @@ public sealed class DocumentServiceTests(MongoFixture mongo)
         Assert.Null(await service.AccidentReportsAsync(ReaderFor("team"), "no-such-pack"));
     }
 
-    private static DocumentService Service(PublicationRig rig, DppLinks? links = null, long maxUploadBytes = BatteryPassOptions.DefaultMaxUploadBytes) => new(
+    internal static DocumentService Service(PublicationRig rig, DppLinks? links = null, long maxUploadBytes = BatteryPassOptions.DefaultMaxUploadBytes) => new(
         new DocumentStore(rig.Context),
         rig.Store,
         rig.Pipeline,

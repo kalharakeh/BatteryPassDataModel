@@ -47,7 +47,14 @@ public sealed record ChangeSet(
     IReadOnlyDictionary<string, JsonNode?> Values,
     string Source,
     DateTime? MeasuredAtUtc = null,
-    IReadOnlyCollection<string>? Removals = null);
+    IReadOnlyCollection<string>? Removals = null)
+{
+    /// <summary>
+    /// True only for the app's own write of a value it keeps itself (#92, when an accident report is added). Never set from
+    /// anything a sender sent; every other change set naming such a value is refused for every sender (S03).
+    /// </summary>
+    public bool ByTheApp { get; init; }
+}
 
 public sealed record SaveResult(bool Found, bool Saved, IReadOnlyList<KeyResult> Keys);
 
@@ -69,6 +76,9 @@ public sealed class SavePipeline(
     IEnumerable<IPackChangeListener> listeners)
 {
     public const string AuditEventType = "dpp.change";
+
+    /// <summary>#92: the passport's accident link, which the app keeps itself.</summary>
+    private const string AppOwnedAccidentLink = "informationOnAccidents";
 
     private readonly IPackChangeListener[] _listeners = listeners.ToArray();
 
@@ -106,7 +116,7 @@ public sealed class SavePipeline(
             return new SaveResult(true, false, frozen);
         }
 
-        var evaluation = EvaluateCore(sender, changes.Target, target.ClusterId, changes.Values, statusChange);
+        var evaluation = EvaluateCore(sender, changes.Target, target.ClusterId, changes.Values, statusChange, changes.ByTheApp);
         if (changes.Target == TargetKind.Pack)
         {
             evaluation = await CheckPackRulesAsync(changes.TargetId, evaluation, cancellationToken);
@@ -166,7 +176,7 @@ public sealed class SavePipeline(
         var results = new List<KeyResult>();
         foreach (var key in removals.Distinct(StringComparer.Ordinal))
         {
-            var (outcome, message, _) = EvaluateKey(sender, changes.Target, target.ClusterId, key, JsonValue.Create("remove"), statusChange: false, checkValue: false);
+            var (outcome, message, _) = EvaluateKey(sender, changes.Target, target.ClusterId, key, JsonValue.Create("remove"), statusChange: false, byTheApp: false, checkValue: false);
             if (outcome != KeyOutcome.Saved)
             {
                 results.Add(new KeyResult(key, outcome, message));
@@ -284,9 +294,9 @@ public sealed class SavePipeline(
     /// <summary>Judges every key without saving anything; also used when a pack is created.</summary>
     /// <param name="packClusterId">The pack's cluster; null for other record kinds.</param>
     public Evaluation Evaluate(ChangeSender sender, TargetKind target, string? packClusterId, IReadOnlyDictionary<string, JsonNode?> values) =>
-        EvaluateCore(sender, target, packClusterId, values, statusChange: false);
+        EvaluateCore(sender, target, packClusterId, values, statusChange: false, byTheApp: false);
 
-    private Evaluation EvaluateCore(ChangeSender sender, TargetKind target, string? packClusterId, IReadOnlyDictionary<string, JsonNode?> values, bool statusChange)
+    private Evaluation EvaluateCore(ChangeSender sender, TargetKind target, string? packClusterId, IReadOnlyDictionary<string, JsonNode?> values, bool statusChange, bool byTheApp)
     {
         ArgumentNullException.ThrowIfNull(sender);
         ArgumentNullException.ThrowIfNull(values);
@@ -294,7 +304,7 @@ public sealed class SavePipeline(
         var accepted = new Dictionary<string, JsonNode>(StringComparer.Ordinal);
         foreach (var (key, raw) in values)
         {
-            var (outcome, message, value) = EvaluateKey(sender, target, packClusterId, key, raw, statusChange);
+            var (outcome, message, value) = EvaluateKey(sender, target, packClusterId, key, raw, statusChange, byTheApp);
             results.Add(new KeyResult(key, outcome, message));
             if (outcome == KeyOutcome.Saved)
             {
@@ -308,7 +318,7 @@ public sealed class SavePipeline(
     /// <param name="statusChange">True for the status change's own keys (#22 and the re-stated values), which only it may send.</param>
     /// <param name="checkValue">False when only the attribute and the sender's rights are judged (a removal).</param>
     private (KeyOutcome Outcome, string Message, JsonNode? Value) EvaluateKey(
-        ChangeSender sender, TargetKind target, string? packClusterId, string key, JsonNode? raw, bool statusChange, bool checkValue = true)
+        ChangeSender sender, TargetKind target, string? packClusterId, string key, JsonNode? raw, bool statusChange, bool byTheApp, bool checkValue = true)
     {
         if (AttributeCatalog.FindByProperty(key) is not { } attribute)
         {
@@ -318,6 +328,12 @@ public sealed class SavePipeline(
         if (attribute.Storage == StorageLocation.System || attribute.Editors == AttributeEditors.System)
         {
             return (KeyOutcome.Rejected, $"{attribute.Label} is set by the app", null);
+        }
+
+        // #92 is the app's own value (S03): it points at the battery's accident page and only the app moves it, when a report is added.
+        if (!byTheApp && attribute.Property == AppOwnedAccidentLink)
+        {
+            return (KeyOutcome.Rejected, $"{attribute.Label} can't be changed by this sender", null);
         }
 
         if (!BelongsTo(attribute.Storage, target))

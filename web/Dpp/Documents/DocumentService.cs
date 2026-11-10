@@ -72,7 +72,7 @@ public sealed class DocumentService(
         ArgumentNullException.ThrowIfNull(sender);
         ArgumentNullException.ThrowIfNull(upload);
         var title = string.IsNullOrWhiteSpace(upload.Title) ? SafeFileName(upload.FileName) : upload.Title.Trim();
-        return StoreAndLinkAsync(sender, TargetKind.Pack, packId, Accidents, $"doc-{Guid.NewGuid():N}", title, upload, _ => links.AccidentPageLink(packId), cancellationToken);
+        return StoreAndLinkAsync(sender, TargetKind.Pack, packId, Accidents, $"doc-{Guid.NewGuid():N}", title, upload, _ => links.AccidentPageLink(packId), cancellationToken, byTheApp: true);
     }
 
     /// <summary>The file, when the reader may see its attribute; otherwise null, and the refusal is logged.</summary>
@@ -124,7 +124,8 @@ public sealed class DocumentService(
         string title,
         DocumentUpload upload,
         Func<string, JsonObject> linkFor,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool byTheApp = false)
     {
         if (!links.IsConfigured)
         {
@@ -138,7 +139,7 @@ public sealed class DocumentService(
         }
 
         // Check the link first (record exists, sender may change it, value valid), so nothing is stored for a refusal.
-        var change = new ChangeSet(owner, ownerId, new Dictionary<string, JsonNode?> { [property] = linkFor(contentType!) }, "form");
+        var change = new ChangeSet(owner, ownerId, new Dictionary<string, JsonNode?> { [property] = linkFor(contentType!) }, "form") { ByTheApp = byTheApp };
         var preview = await pipeline.SaveAsync(sender, change, preview: true, cancellationToken);
         if (!preview.Found)
         {

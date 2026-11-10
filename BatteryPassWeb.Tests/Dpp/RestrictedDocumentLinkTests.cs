@@ -30,7 +30,7 @@ public sealed class RestrictedDocumentLinkTests(MongoFixture mongo)
 
     [Theory]
     [InlineData("https://www.example.com/accidents", KeyOutcome.Rejected)]
-    [InlineData("https://passport.example.com/dpp/packs/pack-VPC8C05-6788/accidents", KeyOutcome.Saved)]
+    [InlineData("https://passport.example.com/dpp/packs/pack-VPC8C05-6788/accidents", KeyOutcome.Rejected)] // #92 is the app's own value (S03), even with the app's own address
     public async Task ClusterAdmin_ShouldNotPointAccidentsElsewhere(string url, KeyOutcome expected)
     {
         var (store, context, _) = await DppStoreTesting.SeededStoreAsync(mongo);
