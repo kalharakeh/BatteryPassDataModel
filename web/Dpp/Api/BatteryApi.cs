@@ -202,6 +202,7 @@ public sealed class BatteryApi(
 
     private async Task<IReadOnlyList<LiveHistoryEntry>> ReadAsync(Reader reader, string packId, DateTime sinceUtc, DateTime? untilUtc, CancellationToken cancellationToken)
     {
+        reader = DemoScope.On(reader, (await store.GetAsync<BatteryPack>(packId, cancellationToken))?.IsDemo ?? false); // finding R03
         var batteryClusters = await store.FindPublishedClusterIdsUsingAsync(packId: packId, cancellationToken: cancellationToken);
         var visible = LiveSet.Where(attribute => AudienceRules.MaySee(reader, attribute, batteryClusters)).ToDictionary(attribute => attribute.Property, StringComparer.Ordinal);
         if (visible.Count == 0)
@@ -290,7 +291,8 @@ public sealed class BatteryApi(
 
     /// <summary>The team changes every battery; a cluster admin or feed only those of its clusters, as the save pipeline checks again.</summary>
     private static bool MayChange(ChangeSender sender, BatteryPack pack) =>
-        sender.Kind == SenderKind.Team || (pack.ClusterId is not null && sender.ClusterIds.Contains(pack.ClusterId));
+        DemoScope.Reaches(sender, pack.IsDemo) // a demo token changes only demo batteries (finding R03)
+        && (sender.Kind == SenderKind.Team || (pack.ClusterId is not null && sender.ClusterIds.Contains(pack.ClusterId)));
 
     private static DateTime? Moment(string? text) =>
         DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var moment) ? moment.UtcDateTime : null;

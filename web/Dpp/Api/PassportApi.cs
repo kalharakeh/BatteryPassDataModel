@@ -44,6 +44,7 @@ public sealed class PassportApi(DppStore store, PassportReader reader, PassportP
             return null;
         }
 
+        who = DemoScope.On(who, sources.Pack.IsDemo); // a demo token reads a real battery as a visitor (finding R03)
         var clusters = await store.FindPublishedClusterIdsUsingAsync(packId: location.Version.PackId, cancellationToken: cancellationToken);
         return new ApiPassport(location, PassportFilter.Cut(published.Passport, who, clusters), PassportReader.Verify(location.Version), sources);
     }

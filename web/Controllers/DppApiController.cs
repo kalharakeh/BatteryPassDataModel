@@ -45,7 +45,7 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
             return error!;
         }
 
-        var listed = (await clusters.ListClustersAsync(cancellationToken))
+        var listed = DemoScope.Lists(reader, await clusters.ListClustersAsync(cancellationToken), ClusterRepository.IsDemo) // finding R03
             .Select(cluster => (Id: BsonHelpers.GetString(cluster, "clusterId"), Name: BsonHelpers.GetString(cluster, "name")))
             .Where(cluster => MayList(reader, cluster.Id))
             .Select(cluster => new { clusterId = cluster.Id, name = cluster.Name })
@@ -76,6 +76,11 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
         if (await clusters.GetClusterByIdAsync(id, cancellationToken) is not { } cluster)
         {
             return Envelope(StatusCodes.Status404NotFound, "Cluster was not found.");
+        }
+
+        if (!DemoScope.Reaches(reader, ClusterRepository.IsDemo(cluster))) // a demo token reads only demo clusters (finding R03)
+        {
+            return Envelope(StatusCodes.Status403Forbidden, "Token cannot access this cluster.");
         }
 
         var rows = await api.BatteriesAsync(reader, id, cancellationToken);
@@ -418,7 +423,8 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
         var choices = await writing.ChoicesAsync(cancellationToken);
         return Envelope(StatusCodes.Status200OK, "Economic operators read successfully.", new
         {
-            operators = choices.Operators.Select(item => new { operatorId = item.Id, name = item.Name }).ToArray(),
+            operators = DemoScope.Lists(DppReaders.For(token), choices.Operators, item => item.IsDemo) // finding R03
+                .Select(item => new { operatorId = item.Id, name = item.Name }).ToArray(),
         });
     }
 
