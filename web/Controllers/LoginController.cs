@@ -33,7 +33,7 @@ public class LoginController : Controller
         var safeReturnUrl = SafeInteractiveReturnUrl(next) ?? SafeInteractiveReturnUrl(returnUrl);
         if (User.Identity?.IsAuthenticated == true && !switchAccount)
         {
-            return Redirect(safeReturnUrl ?? "/admin");
+            return Redirect(safeReturnUrl ?? StartPage(User));
         }
 
         return View(new LoginViewModel { ReturnUrl = safeReturnUrl ?? string.Empty });
@@ -69,12 +69,7 @@ public class LoginController : Controller
             return Redirect(safeReturnUrl);
         }
 
-        if (principal.IsInRole("admin"))
-        {
-            return Redirect("/admin");
-        }
-
-        return Redirect("/");
+        return Redirect(StartPage(principal));
     }
 
     [HttpPost("forgot-password")]
@@ -168,6 +163,9 @@ public class LoginController : Controller
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return Redirect("/");
     }
+
+    /// <summary>Where signing in leads when no page was asked for (finding U31): the team's area for the team, else the start page.</summary>
+    public static string StartPage(ClaimsPrincipal user) => AccessControlService.IsAdmin(user) ? "/admin" : "/";
 
     private string RequestBaseUrl() => $"{Request.Scheme}://{Request.Host}";
 
