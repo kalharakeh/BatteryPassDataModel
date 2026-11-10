@@ -294,6 +294,18 @@ public sealed class ExternalApiRepository
         return result.MatchedCount > 0 ? newToken : null;
     }
 
+    /// <summary>Marks a token as demo data: it reaches only demo batteries and goes with the demo data (finding R03).</summary>
+    public async Task MarkDemoAsync(BsonValue id, CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database != null)
+        {
+            await _mongoContext.Database.GetCollection<BsonDocument>("apiTokens").UpdateOneAsync(
+                Builders<BsonDocument>.Filter.Eq("_id", id),
+                Builders<BsonDocument>.Update.Set(ClusterRepository.DemoMark, true),
+                cancellationToken: cancellationToken);
+        }
+    }
+
     public Task<ExternalApiTokenValidationResult> ValidateTokenAsync(string rawToken, bool requireWrite, CancellationToken cancellationToken = default)
     {
         return ValidateTokenAsync(

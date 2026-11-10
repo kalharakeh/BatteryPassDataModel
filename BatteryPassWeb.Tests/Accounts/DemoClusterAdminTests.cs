@@ -58,6 +58,24 @@ public sealed class DemoClusterAdminTests(MongoFixture mongo)
     }
 
     [Fact]
+    public async Task ATokenADemoClusterAdminMakes_ShouldBeADemoToken()
+    {
+        using var rig = await RigAsync(mongo);
+        var controller = rig.ClusterAdmin(DemoAdmin);
+        controller.HttpContext.Request.Form = new Microsoft.AspNetCore.Http.FormCollection(new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
+        {
+            ["clusterIds"] = "demo-x",
+            ["name"] = "Demo X feed",
+            ["accessMode"] = "read",
+        });
+
+        await controller.CreateClusterApiToken(CancellationToken.None);
+
+        var token = Assert.Single(await rig.Database.GetCollection<BsonDocument>("apiTokens").Find(Builders<BsonDocument>.Filter.Eq("name", "Demo X feed")).ToListAsync());
+        Assert.True(token.GetValue(DemoDataService.AccountMark, false).ToBoolean());
+    }
+
+    [Fact]
     public async Task ADemoClusterAdmin_ShouldNotPullARealAccountIntoTheDemo()
     {
         using var rig = await RigAsync(mongo);

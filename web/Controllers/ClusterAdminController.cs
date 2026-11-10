@@ -190,6 +190,11 @@ public class ClusterAdminController : Controller
             globalAccess: false,
             actor: string.IsNullOrWhiteSpace(actor) ? "cluster-admin" : actor,
             cancellationToken: cancellationToken);
+        if (await _accessControlService.IsDemoAccountAsync(User, cancellationToken))
+        {
+            await _externalApiRepository.MarkDemoAsync(tokenDocument["_id"], cancellationToken); // a demo admin's token is demo (finding R03)
+        }
+
         await AppendClusterAdminAuditAsync(
             "apiToken.created",
             "Cluster API token created.",
