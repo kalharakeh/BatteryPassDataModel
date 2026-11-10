@@ -141,7 +141,8 @@ internal sealed class AccountRig(ServiceProvider services, IMongoDatabase databa
             Clusters,
             Auth,
             Services.GetRequiredService<ApplicationAuditService>(),
-            Services.GetRequiredService<AuthenticationSessionService>()),
+            Services.GetRequiredService<AuthenticationSessionService>(),
+            Access),
             Person(email, roles.Length == 0 ? [AccessControlService.RoleNormalUser] : roles));
 
     /// <summary>The login pages, signed out.</summary>

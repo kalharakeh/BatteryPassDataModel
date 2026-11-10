@@ -15,17 +15,20 @@ public sealed class AccountController : Controller
     private readonly AuthService _authService;
     private readonly ApplicationAuditService _applicationAuditService;
     private readonly AuthenticationSessionService _authenticationSessionService;
+    private readonly AccessControlService _accessControlService;
 
     public AccountController(
         ClusterRepository clusterRepository,
         AuthService authService,
         ApplicationAuditService applicationAuditService,
-        AuthenticationSessionService authenticationSessionService)
+        AuthenticationSessionService authenticationSessionService,
+        AccessControlService accessControlService)
     {
         _clusterRepository = clusterRepository;
         _authService = authService;
         _applicationAuditService = applicationAuditService;
         _authenticationSessionService = authenticationSessionService;
+        _accessControlService = accessControlService;
     }
 
     [HttpGet("")]
@@ -70,6 +73,19 @@ public sealed class AccountController : Controller
 
         // A new password or e-mail needs the current password first, and a new password has 12 characters (finding S06).
         var emailChanges = !newEmail.Equals(currentEmail, StringComparison.OrdinalIgnoreCase);
+
+        // Nobody but the team takes the fallback admin's address (finding R19, decision 4).
+        if (emailChanges && !AccessControlService.IsAdmin(User) && _accessControlService.IsFallbackAdminAddress(newEmail))
+        {
+            var model = await BuildModelAsync(cancellationToken);
+            return View("Index", new AccountProfileViewModel
+            {
+                Email = model.Email,
+                Name = name,
+                RoleLabel = model.RoleLabel,
+                ErrorMessage = AccessControlService.AddressKeptForTheTeam
+            });
+        }
         if (emailChanges || !string.IsNullOrWhiteSpace(password))
         {
             var currentPassword = Request.Form["currentPassword"].FirstOrDefault() ?? string.Empty;

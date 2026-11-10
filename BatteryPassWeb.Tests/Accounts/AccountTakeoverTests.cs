@@ -152,6 +152,20 @@ public sealed class AccountTakeoverTests(MongoFixture mongo)
     }
 
     [Fact]
+    public async Task TheAccountPage_ShouldNotTakeTheFallbackAdminsAddress()
+    {
+        using var rig = await AccountRig.StartAsync(mongo);
+        var page = AccountRig.Form(rig.AccountPage(AccountRig.NorthUser),
+            ("email", "Fallback.Admin@Example.test"), ("name", "North User"), ("currentPassword", AccountRig.Password));
+
+        var result = Assert.IsType<Microsoft.AspNetCore.Mvc.ViewResult>(await page.Save(CancellationToken.None));
+
+        Assert.Equal(AccessControlService.AddressKeptForTheTeam, Assert.IsType<BatteryPassWeb.Models.ViewModels.AccountProfileViewModel>(result.Model).ErrorMessage);
+        Assert.Null(await rig.Clusters.GetUserByEmailAsync(AccountRig.FallbackEmail));
+        Assert.True(await rig.SignsInAsync(AccountRig.FallbackEmail, AccountRig.FallbackPassword));
+    }
+
+    [Fact]
     public async Task ATeamAccount_ShouldStayOutOfAClusterAdminsReach()
     {
         using var rig = await AccountRig.StartAsync(mongo);

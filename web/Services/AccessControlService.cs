@@ -24,6 +24,7 @@ public sealed class AccessControlService
     public static IReadOnlyList<string> LegitimateInterestRoles { get; } = [RoleLiRepair, RoleLiRecycling, RoleLiTreatment];
 
     public const string KeptForTheTeam = "Only the team can add this address.";
+    public const string AddressKeptForTheTeam = "Only the team can use this address.";
     public const string NewPasswordForAppWideRole = "Set a new password when you give this account access across the app: someone else may know its old one.";
     public const string OnlyTheTeamChangesThisAccount = "Only the team can change this person's name or password.";
     public const string TeamAccountsAreTheTeams = "This is a team account: only the team changes it.";
