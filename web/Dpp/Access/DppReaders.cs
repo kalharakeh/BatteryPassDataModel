@@ -54,7 +54,9 @@ public sealed class DppReaders(ClusterRepository clusters)
                 : ReaderRole.ClusterUser);
         }
 
-        return new Reader(roles, clusterIds, email);
+        // A demo account's roles and memberships count only on demo batteries (finding R03, DemoScope).
+        var demo = ClusterRepository.IsDemo(await clusters.GetUserByEmailAsync(AccessControlService.CurrentEmail(user), cancellationToken));
+        return new Reader(roles, clusterIds, email) { DemoOnly = demo };
     }
 
     /// <summary>
@@ -94,12 +96,13 @@ public sealed class DppReaders(ClusterRepository clusters)
     {
         ArgumentNullException.ThrowIfNull(token);
         var who = $"api-token:{token.TokenId}";
-        return token.GlobalAccess
+        var reader = token.GlobalAccess
             ? Reader.With(who, ReaderRole.Team)
             : new Reader(
                 new HashSet<ReaderRole> { ReaderRole.ClusterUser },
                 token.ClusterIds.Where(id => !string.IsNullOrWhiteSpace(id)).Select(ClusterRepository.NormalizeClusterId).ToHashSet(StringComparer.Ordinal),
                 who);
+        return reader with { DemoOnly = token.IsDemo }; // a demo token reaches only demo batteries (finding R03)
     }
 
     /// <summary>

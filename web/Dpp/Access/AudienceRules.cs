@@ -19,6 +19,9 @@ public enum ReaderRole
 /// <summary>Someone reading passport data: their roles and the clusters they belong to. Step 3 maps sign-ins and tokens to readers.</summary>
 public sealed record Reader(IReadOnlySet<ReaderRole> Roles, IReadOnlySet<string> ClusterIds, string Who)
 {
+    /// <summary>A demo account or demo token: its roles count only on demo batteries (finding R03, <see cref="DemoScope"/>).</summary>
+    public bool DemoOnly { get; init; }
+
     public static Reader Anonymous { get; } = new(new HashSet<ReaderRole>(), new HashSet<string>(StringComparer.Ordinal), "anonymous");
 
     public static Reader With(string who, ReaderRole role, params string[] clusterIds) =>
