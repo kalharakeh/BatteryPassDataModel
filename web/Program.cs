@@ -25,6 +25,13 @@ if (DeploymentSecurityConfiguration.MissingDatabaseName(builder.Environment.IsPr
     throw new InvalidOperationException(missingDatabase);
 }
 
+if (DemoAdminFallbackConfiguration.ProductionRefusal(
+        builder.Environment.IsProduction(),
+        ParseFeatureFlag(EnvironmentOrConfig(builder.Configuration, "ENABLE_DEMO_ADMIN_FALLBACK", "EnableDemoAdminFallback"))) is { } fallbackInProduction)
+{
+    throw new InvalidOperationException(fallbackInProduction);
+}
+
 var enableRateLimiting = ParseFeatureFlag(
     EnvironmentOrConfig(builder.Configuration, "ENABLE_RATE_LIMITING", "EnableRateLimiting"),
     BatteryPassOptions.DefaultEnableRateLimiting);
@@ -75,9 +82,10 @@ builder.Services.Configure<BatteryPassOptions>(options =>
     options.DemoAdminEmail = Environment.GetEnvironmentVariable("DEMO_ADMIN_EMAIL")
         ?? builder.Configuration["BatteryPass:DemoAdminEmail"]
         ?? "admin@example.test";
+    // No default: the fallback admin works only with a password the environment gives (finding R21).
     options.DemoAdminPassword = Environment.GetEnvironmentVariable("DEMO_ADMIN_PASSWORD")
         ?? builder.Configuration["BatteryPass:DemoAdminPassword"]
-        ?? "Password123!";
+        ?? string.Empty;
     options.DemoUsersPassword = Environment.GetEnvironmentVariable("DEMO_USERS_PASSWORD")
         ?? builder.Configuration["BatteryPass:DemoUsersPassword"];
     options.ExternalApiEncryptionKey = Environment.GetEnvironmentVariable("EXTERNAL_API_ENCRYPTION_KEY")
@@ -351,6 +359,11 @@ using (var scope = app.Services.CreateScope())
 {
     await scope.ServiceProvider.GetRequiredService<DppStore>().EnsureIndexesAsync();
     await scope.ServiceProvider.GetRequiredService<DocumentStore>().EnsureIndexesAsync();
+    var fallbackOptions = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<BatteryPassOptions>>().Value;
+    if (fallbackOptions.EnableDemoAdminFallback && string.IsNullOrWhiteSpace(fallbackOptions.DemoAdminPassword))
+    {
+        app.Logger.LogWarning(DemoAdminFallbackConfiguration.NoPasswordWarning);
+    }
     if (!scope.ServiceProvider.GetRequiredService<DppLinks>().IsConfigured)
     {
         app.Logger.LogWarning("APP_BASE_URL is not set: battery packs can't be created and documents can't be linked until it is.");
