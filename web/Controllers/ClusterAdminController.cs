@@ -16,6 +16,9 @@ namespace BatteryPassWeb.Controllers;
 [Route("cluster-admin")]
 public class ClusterAdminController : Controller
 {
+    /// <summary>The users whose name and password this cluster admin may change (finding R19).</summary>
+    public const string MayChangeAccountKey = "MayChangeAccount";
+
     private readonly AccessControlService _accessControlService;
     private readonly ApplicationAuditService _applicationAuditService;
     private readonly ClusterRepository _clusterRepository;
@@ -96,7 +99,24 @@ public class ClusterAdminController : Controller
             }).ToList()
         };
 
-        ViewData["ErrorMessage"] = string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error);
+        // The users whose name and password this cluster admin may change: the rule of finding R19, on what is already read.
+        var clusterIdsByEmail = memberships
+            .GroupBy(membership => BsonHelpers.GetString(membership, "email"), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => (IReadOnlyCollection<string>)group.Select(membership => BsonHelpers.GetString(membership, "clusterId")).ToList(), StringComparer.OrdinalIgnoreCase);
+        var currentEmail = AccessControlService.CurrentEmail(User);
+        ViewData[MayChangeAccountKey] = visibleUsers
+            .Where(user => AccessControlService.IsAdmin(User)
+                || (!BsonHelpers.GetString(user, "email").Equals(currentEmail, StringComparison.OrdinalIgnoreCase)
+                    && !_accessControlService.IsFallbackAdminAddress(BsonHelpers.GetString(user, "email"))
+                    && AccessControlService.ClusterAdminMayChangeNameAndPassword(
+                        AccessControlService.RolesOf(user),
+                        clusterIdsByEmail.GetValueOrDefault(BsonHelpers.GetString(user, "email")) ?? [],
+                        managedClusterIds)))
+            .Select(user => BsonHelpers.GetString(user, "email"))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        ViewData["StatusMessage"] = TempData["StatusMessage"]?.ToString() ?? string.Empty;
+        ViewData["ErrorMessage"] = TempData["ErrorMessage"]?.ToString()
+            ?? (string.IsNullOrWhiteSpace(error) ? string.Empty : Uri.UnescapeDataString(error));
         return View(model);
     }
 
@@ -240,6 +260,14 @@ public class ClusterAdminController : Controller
         return Redirect("/cluster-admin/api-tokens");
     }
 
+    /// <summary>What "Add user" says when the address already has an account (finding R19).</summary>
+    public const string AlreadyHasAnAccount = "This person already has an account. They were added to your cluster; their name and password stay as they are.";
+
+    /// <summary>
+    /// "Add user" (no <c>change</c>), and a row's "Name", "New password" and "Clusters" (<c>change</c> = name, password,
+    /// cluster). Every one asks <see cref="AccessControlService.RightsOverAccountAsync"/> first (finding R19): an existing
+    /// account only joins the cluster, and its name and password change only where the rule allows.
+    /// </summary>
     [HttpPost("users/save")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveUser(CancellationToken cancellationToken)
@@ -247,10 +275,54 @@ public class ClusterAdminController : Controller
         var email = Text(Request.Form, "email").Trim().ToLowerInvariant();
         var clusterId = Text(Request.Form, "clusterId");
         var role = Text(Request.Form, "role", "member");
-
-        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(clusterId))
+        var change = Text(Request.Form, "change").ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(email))
         {
-            return Redirect($"/cluster-admin/users{(string.IsNullOrWhiteSpace(email) ? string.Empty : $"?openUser={Uri.EscapeDataString(email)}")}");
+            return Redirect("/cluster-admin/users");
+        }
+
+        var back = $"/cluster-admin/users?openUser={Uri.EscapeDataString(email)}";
+        var rights = await _accessControlService.RightsOverAccountAsync(User, email, cancellationToken);
+        if (rights.Refusal is { } refusal)
+        {
+            TempData["ErrorMessage"] = refusal;
+            return Redirect(back);
+        }
+
+        var password = Text(Request.Form, "password");
+        var passwordConfirmation = Text(Request.Form, "passwordConfirmation");
+        if (change is "name" or "password")
+        {
+            if (!rights.Exists || !rights.MayChangeNameAndPassword)
+            {
+                TempData["ErrorMessage"] = AccessControlService.OnlyTheTeamChangesThisAccount;
+                return Redirect(back);
+            }
+
+            if (change == "name")
+            {
+                var name = Text(Request.Form, "name", email);
+                await _clusterRepository.UpdateUserProfileAsync(email, name, cancellationToken: cancellationToken);
+                await AuditUserSavedAsync("Cluster user's name changed.", email, name, null, null, false, cancellationToken);
+                TempData["StatusMessage"] = "Name saved.";
+                return Redirect(back);
+            }
+
+            if (string.IsNullOrWhiteSpace(password) || !password.Equals(passwordConfirmation, StringComparison.Ordinal))
+            {
+                TempData["ErrorMessage"] = string.IsNullOrWhiteSpace(password) ? "Type the new password." : "Passwords do not match.";
+                return Redirect(back);
+            }
+
+            await _clusterRepository.SetPasswordHashAsync(email, BCryptNet.HashPassword(password), cancellationToken);
+            await AuditUserSavedAsync("Cluster user's password changed.", email, null, null, null, true, cancellationToken);
+            TempData["StatusMessage"] = "Password saved.";
+            return Redirect(back);
+        }
+
+        if (string.IsNullOrWhiteSpace(clusterId))
+        {
+            return Redirect(back);
         }
 
         if (!await _accessControlService.CanAdministerClusterAsync(User, clusterId, cancellationToken))
@@ -258,62 +330,42 @@ public class ClusterAdminController : Controller
             return NotFound();
         }
 
-        var currentEmail = AccessControlService.CurrentEmail(User).Trim().ToLowerInvariant();
-        if (!AccessControlService.IsAdmin(User) && email.Equals(currentEmail, StringComparison.OrdinalIgnoreCase))
+        if (rights.Exists)
         {
-            return Redirect($"/cluster-admin/users?error={Uri.EscapeDataString("Cannot change your own local admin role.")}&openUser={Uri.EscapeDataString(email)}");
+            // An existing account only joins the cluster: whatever was typed, its name and password stay (finding R19).
+            await _clusterRepository.UpsertClusterMembershipAsync(email, clusterId, role, cancellationToken);
+            await AuditUserSavedAsync("Cluster user's membership saved.", email, null, clusterId, role, false, cancellationToken);
+            TempData["StatusMessage"] = change == "cluster" ? "Clusters saved." : AlreadyHasAnAccount;
+            return Redirect(back);
         }
 
-        var existingUser = await _clusterRepository.GetUserByEmailAsync(email, cancellationToken);
-        var existingRoles = existingUser?.GetValue("roles", new BsonArray()) is BsonArray roleArray
-            ? roleArray
-                .Select(entry => entry.ToString())
-                .Where(entry => !string.IsNullOrWhiteSpace(entry))
-                .Select(entry => entry!)
-                .ToList()
-            : [];
-        if (!AccessControlService.IsAdmin(User) && existingRoles.Contains(AccessControlService.RoleAdmin, StringComparer.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(password))
         {
-            return Redirect($"/cluster-admin/users?error={Uri.EscapeDataString("Local admins cannot modify global admin users.")}&openUser={Uri.EscapeDataString(email)}");
+            TempData["ErrorMessage"] = "Password is required for new users.";
+            return Redirect(back);
         }
 
-        var password = Text(Request.Form, "password");
-        var passwordConfirmation = Text(Request.Form, "passwordConfirmation");
-        if (!string.IsNullOrWhiteSpace(password) && !password.Equals(passwordConfirmation, StringComparison.Ordinal))
+        if (!password.Equals(passwordConfirmation, StringComparison.Ordinal))
         {
-            return Redirect($"/cluster-admin/users?error={Uri.EscapeDataString("Passwords do not match.")}&openUser={Uri.EscapeDataString(email)}");
-        }
-
-        if (existingUser == null && string.IsNullOrWhiteSpace(password))
-        {
-            return Redirect($"/cluster-admin/users?error={Uri.EscapeDataString("Password is required for new users.")}&openUser={Uri.EscapeDataString(email)}");
-        }
-
-        var roles = existingRoles.Where(existingRole => !existingRole.Equals(AccessControlService.RoleAdmin, StringComparison.OrdinalIgnoreCase)).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (roles.Count == 0)
-        {
-            roles.Add(AccessControlService.RoleNormalUser);
+            TempData["ErrorMessage"] = "Passwords do not match.";
+            return Redirect(back);
         }
 
         var displayName = Text(Request.Form, "name", email);
-        var passwordHash = string.IsNullOrWhiteSpace(password) ? string.Empty : BCryptNet.HashPassword(password);
-        await _clusterRepository.UpsertUserAsync(email, displayName, roles.ToList(), passwordHash, cancellationToken);
+        await _clusterRepository.UpsertUserAsync(email, displayName, [AccessControlService.RoleNormalUser], BCryptNet.HashPassword(password), cancellationToken);
         await _clusterRepository.UpsertClusterMembershipAsync(email, clusterId, role, cancellationToken);
-        await AppendClusterAdminAuditAsync(
-            "cluster.user.saved",
-            existingUser == null ? "Cluster user created." : "Cluster user updated.",
-            new BsonDocument
-            {
-                ["email"] = email,
-                ["name"] = displayName,
-                ["clusterId"] = clusterId,
-                ["role"] = role,
-                ["passwordChanged"] = !string.IsNullOrWhiteSpace(passwordHash)
-            },
-            "user",
-            email,
-            cancellationToken);
-        return Redirect($"/cluster-admin/users?openUser={Uri.EscapeDataString(email)}");
+        await AuditUserSavedAsync("Cluster user created.", email, displayName, clusterId, role, true, cancellationToken);
+        TempData["StatusMessage"] = "User added.";
+        return Redirect(back);
+    }
+
+    private Task AuditUserSavedAsync(string message, string email, string? name, string? clusterId, string? role, bool passwordChanged, CancellationToken cancellationToken)
+    {
+        var metadata = new BsonDocument { ["email"] = email, ["passwordChanged"] = passwordChanged };
+        if (name is not null) metadata["name"] = name;
+        if (clusterId is not null) metadata["clusterId"] = clusterId;
+        if (role is not null) metadata["role"] = role;
+        return AppendClusterAdminAuditAsync("cluster.user.saved", message, metadata, "user", email, cancellationToken);
     }
 
     [HttpPost("users/delete-membership")]
@@ -332,10 +384,11 @@ public class ClusterAdminController : Controller
             return NotFound();
         }
 
-        var currentEmail = AccessControlService.CurrentEmail(User).Trim().ToLowerInvariant();
-        if (!AccessControlService.IsAdmin(User) && email.Trim().ToLowerInvariant().Equals(currentEmail, StringComparison.OrdinalIgnoreCase))
+        var rights = await _accessControlService.RightsOverAccountAsync(User, email, cancellationToken);
+        if (rights.Refusal is { } refusal)
         {
-            return Redirect($"/cluster-admin/users?error={Uri.EscapeDataString("Cannot change your own local admin role.")}&openUser={Uri.EscapeDataString(email)}");
+            TempData["ErrorMessage"] = refusal;
+            return Redirect($"/cluster-admin/users?openUser={Uri.EscapeDataString(email)}");
         }
 
         await _clusterRepository.DeleteClusterMembershipAsync(email, clusterId, cancellationToken);

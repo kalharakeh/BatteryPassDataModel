@@ -43,14 +43,14 @@ public sealed class ClusterAdminPagesTests
     }
 
     [Fact]
-    public void SavingANameOrAPassword_ShouldKeepTheirClusterAndRole()
+    public void SavingANameOrAPassword_ShouldLeaveTheirClustersAlone()
     {
         var row = Users[Users.IndexOf("<details class=\"bp-row\" data-open-user=\"@user.Email\"", StringComparison.Ordinal)..Users.IndexOf("</details>", StringComparison.Ordinal)];
-        var keepFields = "<input type=\"hidden\" name=\"clusterId\" value=\"@keep?.ClusterId\" />";
 
-        Assert.Contains("var keep = memberships.FirstOrDefault();", Users, StringComparison.Ordinal);
-        Assert.Equal(2, row.Split(keepFields).Length - 1);
-        Assert.Equal(2, row.Split("<input type=\"hidden\" name=\"role\" value=\"@keep?.Role\" />").Length - 1);
+        // Finding R19: the name and password forms say what they change and name no cluster.
+        Assert.Contains("<input type=\"hidden\" name=\"change\" value=\"name\" />", row, StringComparison.Ordinal);
+        Assert.Contains("<input type=\"hidden\" name=\"change\" value=\"password\" />", row, StringComparison.Ordinal);
+        Assert.DoesNotContain("@keep", row, StringComparison.Ordinal);
         Assert.Contains("action=\"/cluster-admin/users/delete-membership\"", row, StringComparison.Ordinal);
         Assert.DoesNotContain("delete-account", Users, StringComparison.Ordinal);
         Assert.Contains("only the team changes their account", row, StringComparison.Ordinal);

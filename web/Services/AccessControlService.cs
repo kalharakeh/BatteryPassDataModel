@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using BatteryPassWeb.Configuration;
+using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 
 namespace BatteryPassWeb.Services;
@@ -21,11 +23,92 @@ public sealed class AccessControlService
     /// </summary>
     public static IReadOnlyList<string> LegitimateInterestRoles { get; } = [RoleLiRepair, RoleLiRecycling, RoleLiTreatment];
 
-    private readonly ClusterRepository _clusterRepository;
+    public const string KeptForTheTeam = "Only the team can add this address.";
+    public const string NewPasswordForAppWideRole = "Set a new password when you give this account access across the app: someone else may know its old one.";
+    public const string OnlyTheTeamChangesThisAccount = "Only the team can change this person's name or password.";
+    public const string TeamAccountsAreTheTeams = "This is a team account: only the team changes it.";
+    public const string NotYourOwnAccount = "You can't change your own account here. Use Account at the top of the page.";
 
-    public AccessControlService(ClusterRepository clusterRepository)
+    private readonly ClusterRepository _clusterRepository;
+    private readonly string _fallbackAdminEmail;
+
+    public AccessControlService(ClusterRepository clusterRepository, IOptions<BatteryPassOptions>? options = null)
     {
         _clusterRepository = clusterRepository;
+        _fallbackAdminEmail = options?.Value.DemoAdminEmail?.Trim() ?? string.Empty;
+    }
+
+    /// <summary>Whether the address is the fallback admin's (DemoAdminEmail), whatever its capitals and outer spaces.</summary>
+    public bool IsFallbackAdminAddress(string? email) =>
+        _fallbackAdminEmail.Length > 0 && string.Equals(email?.Trim(), _fallbackAdminEmail, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// A role that gives something across the app: the team, the authorities and the legitimate-interest roles. A plain
+    /// member (and the old "viewer") has none; "clusterAdmin" is a cluster's role, not one across the app.
+    /// </summary>
+    public static bool IsAppWideRole(string? role) =>
+        !string.IsNullOrWhiteSpace(role)
+        && !role.Trim().Equals(RoleNormalUser, StringComparison.OrdinalIgnoreCase)
+        && !role.Trim().Equals("viewer", StringComparison.OrdinalIgnoreCase)
+        && !role.Trim().Equals(RoleClusterAdmin, StringComparison.OrdinalIgnoreCase);
+
+    public static bool HasAppWideRole(IEnumerable<string> roles) => roles.Any(IsAppWideRole);
+
+    /// <summary>
+    /// Finding R19's rule: a cluster admin may change the name or set the password of an account only when it has no role
+    /// across the app and every cluster it belongs to (at least one) is one they administer.
+    /// </summary>
+    public static bool ClusterAdminMayChangeNameAndPassword(
+        IEnumerable<string> accountRoles,
+        IReadOnlyCollection<string> accountClusterIds,
+        IReadOnlySet<string> administeredClusterIds) =>
+        !HasAppWideRole(accountRoles)
+        && accountClusterIds.Count > 0
+        && accountClusterIds.All(administeredClusterIds.Contains);
+
+    public static IReadOnlyList<string> RolesOf(BsonDocument? user) =>
+        user?.GetValue("roles", new BsonArray()) is BsonArray roles
+            ? roles.Where(role => role.IsString).Select(role => role.AsString).ToList()
+            : [];
+
+    /// <summary>
+    /// What <paramref name="actor"/> may do to the account with this address (finding R19). Every path that changes an
+    /// account from the cluster admins' pages asks this first: "Add user", the row's name, password and clusters, removing.
+    /// </summary>
+    public async Task<AccountRights> RightsOverAccountAsync(ClaimsPrincipal actor, string email, CancellationToken cancellationToken = default)
+    {
+        var account = await _clusterRepository.GetUserByEmailAsync(email, cancellationToken);
+        if (IsAdmin(actor))
+        {
+            return new AccountRights(account is not null, null, true);
+        }
+
+        if (IsFallbackAdminAddress(email))
+        {
+            return new AccountRights(account is not null, KeptForTheTeam, false);
+        }
+
+        if (string.Equals(email.Trim(), CurrentEmail(actor).Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            return new AccountRights(account is not null, NotYourOwnAccount, false);
+        }
+
+        if (account is null)
+        {
+            return new AccountRights(false, null, false);
+        }
+
+        var roles = RolesOf(account);
+        if (roles.Contains(RoleAdmin, StringComparer.OrdinalIgnoreCase))
+        {
+            return new AccountRights(true, TeamAccountsAreTheTeams, false);
+        }
+
+        var administered = (await GetAdministeredClusterIdsForUserAsync(actor, cancellationToken)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var clusters = (await _clusterRepository.GetClusterMembershipsForUserAsync(email, cancellationToken))
+            .Select(membership => BsonHelpers.GetString(membership, "clusterId"))
+            .ToList();
+        return new AccountRights(true, null, ClusterAdminMayChangeNameAndPassword(roles, clusters, administered));
     }
 
     public static bool IsAdmin(ClaimsPrincipal user) => user.IsInRole(RoleAdmin);
@@ -106,3 +189,10 @@ public sealed class AccessControlService
         return managedClusterIds.Contains(clusterId, StringComparer.OrdinalIgnoreCase);
     }
 }
+
+/// <summary>
+/// What someone may do to one account: <see cref="Refusal"/> says why they may change nothing; otherwise they may create it
+/// (when it doesn't exist) or add and remove their own clusters' memberships, and change its name and password only when
+/// <see cref="MayChangeNameAndPassword"/>.
+/// </summary>
+public sealed record AccountRights(bool Exists, string? Refusal, bool MayChangeNameAndPassword);

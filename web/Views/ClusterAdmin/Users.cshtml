@@ -3,6 +3,9 @@
     ViewData["Title"] = "Cluster users";
     ViewData["ClusterAdminScope"] = Model.Clusters.Count == 1 ? Model.Clusters[0].Name : null;
     var errorMessage = ViewData["ErrorMessage"] as string ?? string.Empty;
+    var statusMessage = ViewData["StatusMessage"] as string ?? string.Empty;
+    // Whose name and password this cluster admin may change (finding R19); the action applies the same rule.
+    var mayChangeAccount = ViewData[BatteryPassWeb.Controllers.ClusterAdminController.MayChangeAccountKey] as IReadOnlySet<string> ?? new HashSet<string>();
     var clustersById = Model.Clusters.ToDictionary(cluster => cluster.ClusterId, cluster => cluster, StringComparer.OrdinalIgnoreCase);
     var clusterMembershipRoleOptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
@@ -27,6 +30,10 @@
     <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
     @await Html.PartialAsync("_ClusterAdminTabs", "users")
 
+    @if (!string.IsNullOrWhiteSpace(statusMessage))
+    {
+        <div class="alert alert-success mt-3 mb-0">@statusMessage</div>
+    }
     @if (!string.IsNullOrWhiteSpace(errorMessage))
     {
         <div class="alert alert-danger mt-3 mb-0">@errorMessage</div>
@@ -48,7 +55,7 @@
             @Html.AntiForgeryToken()
             <div>
                 <h2 id="add-user-title">Add a user</h2>
-                <p class="bp-help-text mb-0">They join one of your clusters straight away. Typing the email of an existing user adds them to it.</p>
+                <p class="bp-help-text mb-0">They join one of your clusters straight away. If the person already has an account, they are only added to your cluster: their name and password stay as they are.</p>
             </div>
             <div class="bp-field-pairs">
                 <label>
@@ -128,8 +135,6 @@
                 .ToList();
             var displayName = string.IsNullOrWhiteSpace(user.Name) ? user.Email : user.Name;
             var isGlobalAdmin = user.Roles.Contains("Global Admin", StringComparer.OrdinalIgnoreCase);
-            // A save here always names one of the user's memberships in your clusters, and keeps its role.
-            var keep = memberships.FirstOrDefault();
             var searchText = $"{displayName} {user.Email} {string.Join(" ", memberships.Select(membership => ClusterName(membership.ClusterId)))}";
             <details class="bp-row" data-open-user="@user.Email" data-search-text="@searchText">
                 <summary>
@@ -155,13 +160,14 @@
                     }
                     else
                     {
+                        if (mayChangeAccount.Contains(user.Email))
+                        {
                         <section class="bp-subcard">
                             <h3>Name</h3>
                             <form method="post" action="/cluster-admin/users/save">
                                 @Html.AntiForgeryToken()
+                                <input type="hidden" name="change" value="name" />
                                 <input type="hidden" name="email" value="@user.Email" />
-                                <input type="hidden" name="clusterId" value="@keep?.ClusterId" />
-                                <input type="hidden" name="role" value="@keep?.Role" />
                                 <label>
                                     Name
                                     <input type="text" name="name" value="@displayName" />
@@ -169,6 +175,11 @@
                                 <div><button type="submit" class="bp-primary-button bp-button-compact">Save</button></div>
                             </form>
                         </section>
+                        }
+                        else
+                        {
+                        <p class="text-secondary mb-0">Only the team can change this person's name or password.</p>
+                        }
                         <section class="bp-subcard">
                             <h3>Clusters</h3>
                             <ul class="bp-member-list">
@@ -193,8 +204,8 @@
                             </ul>
                             <form method="post" action="/cluster-admin/users/save" class="bp-add-membership">
                                 @Html.AntiForgeryToken()
+                                <input type="hidden" name="change" value="cluster" />
                                 <input type="hidden" name="email" value="@user.Email" />
-                                <input type="hidden" name="name" value="@displayName" />
                                 <label>
                                     Add to or change
                                     <span class="bp-select-shell">
@@ -220,14 +231,14 @@
                                 <button type="submit" class="bp-secondary-button">Save</button>
                             </form>
                         </section>
+                        if (mayChangeAccount.Contains(user.Email))
+                        {
                         <section class="bp-subcard">
                             <h3>New password</h3>
                             <form method="post" action="/cluster-admin/users/save">
                                 @Html.AntiForgeryToken()
+                                <input type="hidden" name="change" value="password" />
                                 <input type="hidden" name="email" value="@user.Email" />
-                                <input type="hidden" name="name" value="@displayName" />
-                                <input type="hidden" name="clusterId" value="@keep?.ClusterId" />
-                                <input type="hidden" name="role" value="@keep?.Role" />
                                 <label>
                                     New password
                                     <span class="bp-password-field">
@@ -245,6 +256,7 @@
                                 <div><button type="submit" class="bp-secondary-button bp-button-compact">Save password</button></div>
                             </form>
                         </section>
+                        }
                     }
                 </div>
             </details>

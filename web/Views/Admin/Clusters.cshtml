@@ -368,6 +368,24 @@
                                     </span>
                                 </label>
                                 <p class="text-secondary small mb-0">What they see in a cluster depends on their role there.</p>
+                                @if (selectedGlobalAccess == "member")
+                                {
+                                    <p class="text-secondary small mb-0">Giving access across the app? Set a new password with it: someone else may know the old one.</p>
+                                    <label>
+                                        New password
+                                        <span class="bp-password-field">
+                                            <input type="password" name="password" placeholder="New password" autocomplete="new-password" />
+                                            @await Html.PartialAsync("_PasswordReveal")
+                                        </span>
+                                    </label>
+                                    <label>
+                                        Type it again
+                                        <span class="bp-password-field">
+                                            <input type="password" name="passwordConfirmation" placeholder="Type it again" autocomplete="new-password" />
+                                            @await Html.PartialAsync("_PasswordReveal")
+                                        </span>
+                                    </label>
+                                }
                                 <div><button type="submit" class="bp-primary-button bp-button-compact">Save</button></div>
                             </form>
                         </section>

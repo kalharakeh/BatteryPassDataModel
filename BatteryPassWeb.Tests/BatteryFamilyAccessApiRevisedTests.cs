@@ -64,7 +64,8 @@ public sealed class BatteryFamilyAccessApiRevisedTests
         Assert.Contains("CreatePrincipalForUserAsync", authService);
         Assert.Contains("UpdateUserEmailAsync", clusterRepository);
         Assert.Contains("UpdateUserProfileAsync", clusterRepository);
-        Assert.Contains("Cannot change your own local admin role", clusterAdminController);
+        Assert.Contains("RightsOverAccountAsync", clusterAdminController); // refuses your own account, among others (finding R19)
+        Assert.Contains("You can't change your own account here.", File.ReadAllText(RepoFile("web", "Services", "AccessControlService.cs")));
         Assert.Contains("href=\"/account\"", layout);
         Assert.Contains("@customerName / @customerRole", layout);
     }

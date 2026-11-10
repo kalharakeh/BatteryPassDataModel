@@ -401,6 +401,17 @@ public class AdminController : Controller
             return Redirect($"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}");
         }
 
+        // An account that gets access across the app for the first time gets a new password in the same step: someone
+        // else (the cluster admin who made it) may know the old one (finding R19).
+        if (existingUser != null
+            && string.IsNullOrWhiteSpace(password)
+            && !AccessControlService.HasAppWideRole(AccessControlService.RolesOf(existingUser))
+            && AccessControlService.HasAppWideRole(roles))
+        {
+            TempData["ErrorMessage"] = AccessControlService.NewPasswordForAppWideRole;
+            return Redirect($"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}");
+        }
+
         var passwordHash = string.IsNullOrWhiteSpace(password) ? string.Empty : BCryptNet.HashPassword(password);
         await _clusterRepository.UpsertUserAsync(email, displayName, roles.ToList(), passwordHash, cancellationToken);
 

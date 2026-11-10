@@ -193,6 +193,21 @@ public sealed class ClusterRepository
             cancellationToken: cancellationToken);
     }
 
+    public async Task SetPasswordHashAsync(string email, string passwordHash, CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(passwordHash))
+        {
+            return;
+        }
+
+        await _mongoContext.Database.GetCollection<BsonDocument>("users").UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("email", email.Trim().ToLowerInvariant()),
+            Builders<BsonDocument>.Update
+                .Set("passwordHash", passwordHash)
+                .Set("updatedAt", DateTime.UtcNow.ToString("O")),
+            cancellationToken: cancellationToken);
+    }
+
     public async Task UpdateUserEmailAsync(string currentEmail, string newEmail, CancellationToken cancellationToken = default)
     {
         if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(currentEmail) || string.IsNullOrWhiteSpace(newEmail))
