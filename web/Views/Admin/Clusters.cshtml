@@ -256,7 +256,7 @@
                 @Html.AntiForgeryToken()
                 <div>
                     <h2 id="add-user-title">Add a user</h2>
-                    <p class="bp-help-text mb-0">Their clusters are added afterwards, from their row. Typing the email of an existing user updates that user.</p>
+                    <p class="bp-help-text mb-0">Their clusters are added afterwards, from their row. To change someone who already has an account, open their row in the list.</p>
                 </div>
                 <div class="bp-field-pairs">
                     <label>
@@ -351,6 +351,7 @@
                             <h3>Name and access</h3>
                             <form method="post" action="/admin/clusters/save-user">
                                 @Html.AntiForgeryToken()
+                                <input type="hidden" name="change" value="access" />
                                 <input type="hidden" name="email" value="@user.Email" />
                                 <label>
                                     Name
@@ -453,9 +454,8 @@
                             <h3>New password</h3>
                             <form method="post" action="/admin/clusters/save-user">
                                 @Html.AntiForgeryToken()
+                                <input type="hidden" name="change" value="password" />
                                 <input type="hidden" name="email" value="@user.Email" />
-                                <input type="hidden" name="name" value="@displayName" />
-                                <input type="hidden" name="systemRole" value="@selectedGlobalAccess" />
                                 <label>
                                     New password
                                     <span class="bp-password-field">

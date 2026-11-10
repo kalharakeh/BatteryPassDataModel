@@ -109,13 +109,13 @@ public sealed class AccountTakeoverTests(MongoFixture mongo)
         await AccountRig.Form(rig.ClusterAdmin(AccountRig.NorthAdmin),
             ("email", email), ("password", AccountRig.Typed), ("passwordConfirmation", AccountRig.Typed), ("clusterId", "north")).SaveUser(CancellationToken.None);
 
-        var withoutPassword = AccountRig.Form(rig.TeamMember(), ("email", email), ("name", "Authority"), ("systemRole", AccessControlService.RoleMarketSurveillanceAuthority));
+        var withoutPassword = AccountRig.Form(rig.TeamMember(), ("change", "access"), ("email", email), ("name", "Authority"), ("systemRole", AccessControlService.RoleMarketSurveillanceAuthority));
         await withoutPassword.SaveUser(CancellationToken.None);
 
         Assert.Equal([AccessControlService.RoleNormalUser], await rig.RolesOfAsync(email));
         Assert.Equal(AccessControlService.NewPasswordForAppWideRole, withoutPassword.TempData["ErrorMessage"]);
 
-        await AccountRig.Form(rig.TeamMember(), ("email", email), ("name", "Authority"), ("systemRole", AccessControlService.RoleMarketSurveillanceAuthority),
+        await AccountRig.Form(rig.TeamMember(), ("change", "access"), ("email", email), ("name", "Authority"), ("systemRole", AccessControlService.RoleMarketSurveillanceAuthority),
             ("password", "the-teams-new-password-1"), ("passwordConfirmation", "the-teams-new-password-1")).SaveUser(CancellationToken.None);
 
         Assert.Equal([AccessControlService.RoleMarketSurveillanceAuthority], await rig.RolesOfAsync(email));
@@ -127,7 +127,7 @@ public sealed class AccountTakeoverTests(MongoFixture mongo)
     public async Task TheTeamRenamingAnAuthority_ShouldNotNeedANewPassword()
     {
         using var rig = await AccountRig.StartAsync(mongo);
-        await AccountRig.Form(rig.TeamMember(), ("email", AccountRig.Msa), ("name", "Renamed"), ("systemRole", AccessControlService.RoleMarketSurveillanceAuthority)).SaveUser(CancellationToken.None);
+        await AccountRig.Form(rig.TeamMember(), ("change", "access"), ("email", AccountRig.Msa), ("name", "Renamed"), ("systemRole", AccessControlService.RoleMarketSurveillanceAuthority)).SaveUser(CancellationToken.None);
 
         Assert.Equal("Renamed", await rig.NameOfAsync(AccountRig.Msa));
         Assert.True(await rig.SignsInAsync(AccountRig.Msa, AccountRig.Password));

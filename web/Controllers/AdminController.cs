@@ -368,6 +368,11 @@ public class AdminController : Controller
         return Redirect($"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}");
     }
 
+    /// <summary>The team's "Add user" with an address that has an account (finding S04).</summary>
+    public const string AlreadyHasAnAccount = "This address already has an account. Change it from its row in the list.";
+    public const string NotYourOwnAccess = "You can't lower your own access. Ask a colleague in the team.";
+    public const string LastTeamAccount = "This is the last team account, so it keeps its access.";
+
     [HttpPost("clusters/save-user")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveUser(CancellationToken cancellationToken)
@@ -388,11 +393,65 @@ public class AdminController : Controller
         {
             NormalizeSystemRole(requestedSystemRole)
         };
+        var back = $"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}";
+
+        // "Add user" makes new accounts only; an existing one is changed from its own row: "access" (name and access) or
+        // "password" (finding S04).
+        var change = Text(Request.Form, "change").ToLowerInvariant();
+        if (existingUser != null && change is not ("access" or "password"))
+        {
+            TempData["ErrorMessage"] = AlreadyHasAnAccount;
+            return Redirect(back);
+        }
+
+        if (existingUser == null && change is ("access" or "password"))
+        {
+            TempData["ErrorMessage"] = "No account has this email.";
+            return Redirect("/admin/clusters?tab=users");
+        }
 
         if (!string.IsNullOrWhiteSpace(password) && !password.Equals(passwordConfirmation, StringComparison.Ordinal))
         {
             TempData["ErrorMessage"] = "Passwords do not match.";
-            return Redirect($"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}");
+            return Redirect(back);
+        }
+
+        if (change == "password")
+        {
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                TempData["ErrorMessage"] = "Type the new password.";
+                return Redirect(back);
+            }
+
+            await _clusterRepository.SetPasswordHashAsync(email, BCryptNet.HashPassword(password), cancellationToken);
+            await AppendAdminAuditAsync(
+                "cluster.user.saved",
+                "User's password changed.",
+                new BsonDocument { ["email"] = email, ["passwordChanged"] = true },
+                "user",
+                email,
+                cancellationToken);
+            TempData["StatusMessage"] = "Password saved.";
+            return Redirect(back);
+        }
+
+        // A team account keeps its access when it is your own (a colleague lowers it) or the last one (finding S04).
+        if (existingUser != null
+            && AccessControlService.RolesOf(existingUser).Contains(AccessControlService.RoleAdmin, StringComparer.Ordinal)
+            && !roles.Contains(AccessControlService.RoleAdmin))
+        {
+            if (string.Equals(email, AccessControlService.CurrentEmail(User).Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["ErrorMessage"] = NotYourOwnAccess;
+                return Redirect(back);
+            }
+
+            if (await CountTeamAccountsAsync(cancellationToken) <= 1)
+            {
+                TempData["ErrorMessage"] = LastTeamAccount;
+                return Redirect(back);
+            }
         }
 
         if (existingUser == null && string.IsNullOrWhiteSpace(password))
@@ -437,8 +496,14 @@ public class AdminController : Controller
             email,
             cancellationToken);
 
-        return Redirect($"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}");
+        TempData["StatusMessage"] = existingUser == null ? "User added." : "Saved.";
+        return Redirect(back);
     }
+
+    /// <summary>The accounts with team access in the database; the fallback admin has none, so it never counts (finding S04).</summary>
+    private async Task<int> CountTeamAccountsAsync(CancellationToken cancellationToken) =>
+        (await _clusterRepository.ListUsersAsync(cancellationToken))
+            .Count(user => AccessControlService.RolesOf(user).Contains(AccessControlService.RoleAdmin, StringComparer.Ordinal));
 
     [HttpPost("clusters/session-timeout")]
     [ValidateAntiForgeryToken]
@@ -518,9 +583,8 @@ public class AdminController : Controller
             return Redirect("/admin/clusters?tab=users");
         }
 
-        static bool IsTeam(BsonDocument user) =>
-            user.GetValue("roles", new BsonArray()) is BsonArray roles && roles.Any(role => role.IsString && role.AsString == AccessControlService.RoleAdmin);
-        if (IsTeam(account) && (await _clusterRepository.ListUsersAsync(cancellationToken)).Count(IsTeam) <= 1)
+        if (AccessControlService.RolesOf(account).Contains(AccessControlService.RoleAdmin, StringComparer.Ordinal)
+            && await CountTeamAccountsAsync(cancellationToken) <= 1)
         {
             TempData["ErrorMessage"] = "This is the last team account, so it stays.";
             return Redirect(back);
