@@ -170,7 +170,7 @@ public sealed class SuccessionService(
         }
 
         // The new passport's address ends up as a link on the team's page: an ID of this app or an http(s) address only (S01).
-        if (passport is not null && !WebAddress.IsWebAddress(passport) && !IdentifierForms.IsItem(passport) && !IdentifierForms.IsTest(passport))
+        if (passport is not null && !WebAddress.IsWebAddress(passport) && !IdentifierForms.IsAppId(passport))
         {
             return PassportNotAnAddress;
         }

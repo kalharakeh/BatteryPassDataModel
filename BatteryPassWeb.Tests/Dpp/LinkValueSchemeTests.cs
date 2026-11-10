@@ -49,6 +49,32 @@ public sealed class LinkValueSchemeTests
         }
     }
 
+    [Theory]
+    [InlineData("https://[bad")] // passes the schema's pattern, but isn't an address: the validator itself checks it
+    public void EveryLinkValue_ShouldBeCheckedByTheValidatorToo_NotOnlyBytheSchemasPattern(string address)
+    {
+        foreach (var attribute in LinkAttributes())
+        {
+            JsonNode value = Forms.For(attribute).Kind == FormKind.Link
+                ? new JsonObject { ["contentType"] = "application/pdf", ["url"] = address, ["resourceTitle"] = "Document", ["language"] = "en-GB" }
+                : JsonValue.Create(address)!;
+
+            Assert.Contains(Validator.Validate(attribute, value), issue => issue.Message.Contains("web address", StringComparison.Ordinal));
+        }
+    }
+
+    [Fact]
+    public void TheExtensionAttributes_ShouldHoldNoLink()
+    {
+        Assert.NotEmpty(AttributeCatalog.Extensions);
+        foreach (var attribute in AttributeCatalog.Extensions)
+        {
+            var form = Forms.For(attribute);
+            Assert.NotEqual(FormKind.Link, form.Kind);
+            Assert.DoesNotContain(form.Inputs, input => input.Kind == InputKind.Url);
+        }
+    }
+
     [Fact]
     public void EveryLinkValue_ShouldAcceptAnHttpsAddress()
     {

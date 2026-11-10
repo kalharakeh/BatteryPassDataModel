@@ -232,6 +232,14 @@ public static partial class IdentifierForms
     /// </summary>
     public static bool IsItem(string text) => text is { Length: <= DunsIdentifierScheme.MaxItemLength } && ItemId().IsMatch(text);
 
+    /// <summary>
+    /// True when the whole text is an ID of this app: a short item ID ("UN778474481-VPC-0001"), a battery or passport ID in
+    /// the web form, or an old test URN. Unlike <see cref="IsTest"/>, which also matches the end of an address, nothing
+    /// else may come before or after it (S01).
+    /// </summary>
+    public static bool IsAppId(string? text) =>
+        text is not null && (IsItem(text) || IsWebAddress(text) || OldTestUrn().IsMatch(text));
+
     /// <summary>True for a serial number that may make a battery ID: capital letters, digits and single dashes (<see cref="SerialRule"/>).</summary>
     public static bool IsSerial(string? serialNumber) => serialNumber is not null && Serial().IsMatch(serialNumber);
 
@@ -286,6 +294,9 @@ public static partial class IdentifierForms
 
     [GeneratedRegex("^https://[^/]+/dpp/(?<item>(?=[A-Z0-9-]{1,50}/)" + Item + ")/v(?<version>[0-9]+)$")]
     private static partial Regex VersionInAddress();
+
+    [GeneratedRegex("^urn:x-battery-pass:TEST-[A-Za-z0-9-]+$")]
+    private static partial Regex OldTestUrn();
 
     // A demo ID's mark, right after the company: -TEST- (6d-5) or TEST (before).
     [GeneratedRegex("(?:^|/)[A-Z]{2,3}[0-9]{9}-?TEST[A-Z0-9-]*(?:/v[0-9]+)?$")]

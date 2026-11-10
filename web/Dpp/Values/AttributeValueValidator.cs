@@ -39,8 +39,22 @@ public sealed partial class AttributeValueValidator(OfficialSchemas schemas)
         }
     }
 
+    /// <summary>The address of a link value: a document link's <c>url</c>, or the text of a web link (<c>webLink…</c>); null for other values.</summary>
+    private static string? LinkAddress(AttributeDefinition attribute, JsonNode? value) =>
+        value is JsonObject link && link["url"] is JsonValue url && link["contentType"] is not null && url.TryGetValue<string>(out var text)
+            ? text
+            : attribute.Property.StartsWith("webLink", StringComparison.Ordinal) && value is JsonValue web && web.TryGetValue<string>(out var address)
+                ? address
+                : null;
+
     private IEnumerable<SchemaIssue> AppRuleIssues(AttributeDefinition attribute, JsonNode? value)
     {
+        // A link is an http or https address (S01, W21), checked here and not only by the schema's pattern.
+        if (LinkAddress(attribute, value) is { } address && !WebAddress.IsWebAddress(address))
+        {
+            yield return new SchemaIssue(value is JsonObject ? "/url" : string.Empty, "format: must be a web address starting with http:// or https://");
+        }
+
         var format = schemas.FindProperty(attribute.Section, attribute.Property)?["format"]?.GetValue<string>();
         if (format is not null && value?.GetValueKind() == JsonValueKind.String)
         {

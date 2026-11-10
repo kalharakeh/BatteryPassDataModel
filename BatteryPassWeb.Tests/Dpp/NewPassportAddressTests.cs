@@ -23,6 +23,10 @@ public sealed class NewPassportAddressTests(MongoFixture mongo)
     [InlineData("ftp://example.com/p/1")]
     [InlineData("//example.com/p/1")]
     [InlineData("not an address")]
+    [InlineData("javascript:alert(1)//UN778474481TEST")] // looks like a demo ID at its end, but the whole value must be an ID
+    [InlineData("javascript:alert(1)//UN778474481-TEST-DEMO-0001/v1")]
+    [InlineData("urn:x-battery-pass:TEST-x'><script>alert(1)</script>")]
+    [InlineData("urn:x-battery-pass:TEST-")]
     public async Task AnotherOperatorsPassport_ShouldBeRefused_WhenItIsNotAnIdOrAWebAddress(string typed)
     {
         var rig = await new SuccessionTests(mongo).RepurposedAsync();
@@ -43,6 +47,9 @@ public sealed class NewPassportAddressTests(MongoFixture mongo)
     [InlineData("https://example.com/passports/reman-1")]
     [InlineData("http://example.com/passports/reman-1")]
     [InlineData("UN778474481-RV32-0001")]
+    [InlineData("UN778474481-TEST-DEMO-0001")]
+    [InlineData("https://www.sib-scania-eubp.eu/dpp/UN778474481-VPC-0001/v2")]
+    [InlineData("urn:x-battery-pass:TEST-0a1b2c3d")]
     public async Task AnotherOperatorsPassport_ShouldBeLinked_WhenItIsAnIdOrAWebAddress(string typed)
     {
         var rig = await new SuccessionTests(mongo).RepurposedAsync();
