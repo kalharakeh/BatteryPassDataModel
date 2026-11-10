@@ -1681,7 +1681,7 @@ Expected: **508 passed, 0 failed** (464 baseline + 10 in `BatteryStatusComplianc
 
 - [ ] **Step 2: Manual check in the running app**
 
-Start the app against a test MongoDB: `dotnet run --project web` → `http://localhost:5186`. Accounts are in `docs/sample-cluster-test-accounts.md` (password `Password123!`). No authority or legitimate-interest accounts are seeded: as `admin@example.test`, open `/admin/clusters?tab=users` and create one user each with the roles **Person with Legitimate Interest**, **Notified Body** and **Market Surveillance Authorities** (no cluster membership).
+Start the app against a test MongoDB: `dotnet run --project web` → `http://localhost:5186`. Accounts are in `docs/sample-cluster-test-accounts.md` (password `<the fallback password>`). No authority or legitimate-interest accounts are seeded: as `admin@example.test`, open `/admin/clusters?tab=users` and create one user each with the roles **Person with Legitimate Interest**, **Notified Body** and **Market Surveillance Authorities** (no cluster membership).
 
 1. Signed out, open the summary of a published passport of battery `CP7M-NORTH-001`: no "Battery status" row.
 2. As `north.user@example.test` (North cluster user), open its detail page: battery status, state of charge, full cycles, the operational block and the Material composition tab are shown; the Compliance tab shows the EU declaration of conformity but **not** the conformity assessment report.

@@ -3125,7 +3125,7 @@ diff --git a/web/Configuration/BatteryPassOptions.cs b/web/Configuration/Battery
 +++ b/web/Configuration/BatteryPassOptions.cs
 @@ -23,15 +23,11 @@ public sealed class BatteryPassOptions
      public string DemoAdminEmail { get; set; } = "admin@example.test";
-     public string DemoAdminPassword { get; set; } = "Password123!";
+     public string DemoAdminPassword { get; set; } = "<the fallback password>";
      public string ExternalApiEncryptionKey { get; set; } = string.Empty;
 -    public string IdGenerationSecret { get; set; } = string.Empty;
      public string PowerAutomateResetWebhookUrl { get; set; } = string.Empty;
@@ -3842,7 +3842,7 @@ diff --git a/web/appsettings.Development.json b/web/appsettings.Development.json
 +++ b/web/appsettings.Development.json
 @@ -14,10 +14,6 @@
      "DemoAdminEmail": "admin@example.test",
-     "DemoAdminPassword": "Password123!",
+     "DemoAdminPassword": "<the fallback password>",
      "ExternalApiEncryptionKey": "local-development-encryption-key",
 -    "IdGenerationSecret": "battery-pass-local-development-id-secret",
 -    "EnableDemoData": true,
@@ -3856,7 +3856,7 @@ diff --git a/web/appsettings.json b/web/appsettings.json
 +++ b/web/appsettings.json
 @@ -14,10 +14,6 @@
      "DemoAdminEmail": "admin@example.test",
-     "DemoAdminPassword": "Password123!",
+     "DemoAdminPassword": "<the fallback password>",
      "ExternalApiEncryptionKey": "replace-with-32-random-characters",
 -    "IdGenerationSecret": "",
 -    "EnableDemoData": false,

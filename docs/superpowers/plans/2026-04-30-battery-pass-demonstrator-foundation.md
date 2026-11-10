@@ -132,7 +132,7 @@ MONGODB_DB=battery_pass_demo
 APP_URL=http://localhost:3000
 SESSION_SECRET=replace-with-at-least-32-random-characters
 DEMO_ADMIN_EMAIL=admin@example.test
-DEMO_ADMIN_PASSWORD=Password123!
+DEMO_ADMIN_PASSWORD=<the fallback password>
 DID_ISSUER_DID=did:web:local.battery.pass:issuer
 DID_ISSUER_PRIVATE_KEY=
 ```
@@ -998,7 +998,7 @@ async function seed() {
 
   await passports.updateOne({ passportId: samplePassport.passportId }, { $set: samplePassport }, { upsert: true });
 
-  const password = process.env.DEMO_ADMIN_PASSWORD ?? "Password123!";
+  const password = process.env.DEMO_ADMIN_PASSWORD ?? "<the fallback password>";
   const passwordHash = await bcrypt.hash(password, 10);
 
   await users.updateOne(
@@ -1181,7 +1181,7 @@ export function LoginForm({ error }: { error?: string }) {
       </label>
       <label className="block text-sm">
         <span className="mb-1 block font-medium">Password</span>
-        <Input name="password" type="password" required placeholder="Password123!" className="w-full" />
+        <Input name="password" type="password" required placeholder="<the fallback password>" className="w-full" />
       </label>
       <Button type="submit" className="w-full">Verify</Button>
     </form>

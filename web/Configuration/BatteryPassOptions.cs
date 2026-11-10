@@ -21,7 +21,8 @@ public sealed class BatteryPassOptions
     public string SessionSecret { get; set; } = string.Empty;
     public int SessionTimeoutMinutes { get; set; } = DefaultSessionTimeoutMinutes;
     public string DemoAdminEmail { get; set; } = "admin@example.test";
-    public string DemoAdminPassword { get; set; } = "Password123!";
+    /// <summary>The fallback admin's password: no default, it comes from the environment (finding R21).</summary>
+    public string DemoAdminPassword { get; set; } = string.Empty;
 
     /// <summary>The demo accounts' password (decision 32, DEMO_USERS_PASSWORD); without it the demo data has no accounts.</summary>
     public string? DemoUsersPassword { get; set; }

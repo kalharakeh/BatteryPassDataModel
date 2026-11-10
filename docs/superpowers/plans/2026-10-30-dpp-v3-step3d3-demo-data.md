@@ -1426,7 +1426,7 @@ diff --git a/web/Configuration/BatteryPassOptions.cs b/web/Configuration/Battery
 @@ -22,6 +22,9 @@ public sealed class BatteryPassOptions
      public int SessionTimeoutMinutes { get; set; } = DefaultSessionTimeoutMinutes;
      public string DemoAdminEmail { get; set; } = "admin@example.test";
-     public string DemoAdminPassword { get; set; } = "Password123!";
+     public string DemoAdminPassword { get; set; } = "<the fallback password>";
 +
 +    /// <summary>The demo accounts' password (decision 32, DEMO_USERS_PASSWORD); without it the demo data has no accounts.</summary>
 +    public string? DemoUsersPassword { get; set; }
@@ -1502,7 +1502,7 @@ diff --git a/web/Program.cs b/web/Program.cs
 @@ -72,6 +72,8 @@ builder.Services.Configure<BatteryPassOptions>(options =>
      options.DemoAdminPassword = Environment.GetEnvironmentVariable("DEMO_ADMIN_PASSWORD")
          ?? builder.Configuration["BatteryPass:DemoAdminPassword"]
-         ?? "Password123!";
+         ?? "<the fallback password>";
 +    options.DemoUsersPassword = Environment.GetEnvironmentVariable("DEMO_USERS_PASSWORD")
 +        ?? builder.Configuration["BatteryPass:DemoUsersPassword"];
      options.ExternalApiEncryptionKey = Environment.GetEnvironmentVariable("EXTERNAL_API_ENCRYPTION_KEY")

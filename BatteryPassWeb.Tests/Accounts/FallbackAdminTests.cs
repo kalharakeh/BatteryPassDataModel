@@ -43,12 +43,30 @@ public sealed class FallbackAdminTests(MongoFixture mongo)
     [InlineData("web", "Program.cs")]
     [InlineData("web", "appsettings.json")]
     [InlineData("web", "appsettings.Development.json")]
+    [InlineData("web", "Configuration", "BatteryPassOptions.cs")]
+    [InlineData("web", ".env.example")]
     public void NoDefaultPassword_ShouldBeWritten(params string[] file)
     {
         var text = Read(file);
 
         Assert.DoesNotContain("Password123", text, StringComparison.Ordinal);
         Assert.DoesNotContain("\"DemoAdminPassword\"", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheOldDefault_ShouldBeNowhereInTheRepository()
+    {
+        var old = "Password" + "123!"; // written in two parts, so this file isn't a hit itself
+        var root = Path.GetFullPath(Path.Combine(DppTestFiles.RepoFile("web", "Program.cs"), "..", ".."));
+        var skip = new[] { "bin", "obj", "node_modules", ".git" };
+        var hits = Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
+            .Where(path => !path[root.Length..].Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Any(skip.Contains))
+            .Where(path => Path.GetExtension(path) is ".cs" or ".json" or ".md" or ".cshtml" or ".js" or ".ps1" or ".sh" or ".example" or ".yml" or ".yaml" or ".txt" or ".config")
+            .Where(path => File.ReadAllText(path).Contains(old, StringComparison.Ordinal))
+            .Select(path => path[root.Length..])
+            .ToList();
+
+        Assert.Empty(hits);
     }
 
     [Fact]
