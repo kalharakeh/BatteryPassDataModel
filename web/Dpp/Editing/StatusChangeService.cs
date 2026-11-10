@@ -135,6 +135,27 @@ public sealed class StatusChangeService(
         };
     }
 
+    /// <summary>
+    /// The status a waste battery had before the waste: that of its newest published version that isn't waste, read from
+    /// the passport's own versions (so also for a waste set long ago). "original" when no version says anything else.
+    /// </summary>
+    private async Task<string> StatusBeforeWasteAsync(string packId, CancellationToken cancellationToken)
+    {
+        var attribute = AttributeCatalog.FindByProperty(StatusProperty)!;
+        foreach (var version in (await store.ListVersionsAsync(packId, cancellationToken)).OrderByDescending(version => version.Number))
+        {
+            var parent = attribute.Section == AttributeDefinition.HeaderSection
+                ? version.StaticCore[AttributeDefinition.HeaderSection]
+                : version.StaticCore[AttributeDefinition.DataRoot]?[attribute.Section];
+            if (parent?[attribute.Property]?["batteryStatusValues"]?.GetValue<string>() is { } status && status != "waste")
+            {
+                return status;
+            }
+        }
+
+        return "original";
+    }
+
     /// <summary>The battery status stored on a pack, e.g. "original"; null when it has none.</summary>
     public static string? CurrentStatus(BatteryPack pack)
     {
@@ -207,8 +228,8 @@ public sealed class StatusChangeService(
             return Refused(WasteIsFinal);
         }
 
-        // Back to the status the battery had before the waste; a waste set before that was kept says "original".
-        var before = change.What == StatusEvent.WasteUndone ? (pack.StatusBeforeWaste is { } kept && kept != "waste" ? kept : "original") : null;
+        // Back to the status of the last published version before the waste (R10); "original" when there is none.
+        var before = change.What == StatusEvent.WasteUndone ? await StatusBeforeWasteAsync(packId, cancellationToken) : null;
         if ((before ?? NewStatus(from, change.What)) is not { } to)
         {
             return Refused($"a battery that is {from} can't become {change.What.ToString().ToLowerInvariant()}");
@@ -275,15 +296,6 @@ public sealed class StatusChangeService(
         if (repair is not null)
         {
             await store.AddRepairAsync(packId, repair, cancellationToken);
-        }
-
-        if (change.What == StatusEvent.Waste)
-        {
-            await store.SetStatusBeforeWasteAsync(packId, from, cancellationToken);
-        }
-        else if (change.What == StatusEvent.WasteUndone)
-        {
-            await store.SetStatusBeforeWasteAsync(packId, null, cancellationToken);
         }
 
         if (LeadsToNewPassport(change.What))

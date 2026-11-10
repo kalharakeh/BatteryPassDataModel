@@ -16,7 +16,7 @@
                     <span class="text-secondary">since @ValueWords.Time(since)@(Model.AfterRepair ? ", after a repair" : string.Empty)</span>
                 }
             </div>
-            <p class="mb-0">@(Model.WhyNot ?? (Model.Status == "waste" ? "The battery is waste, which is final. Mistyped values can still be corrected." : "A status change also re-states the fades and the expected lifetime, and publishes a new version of this passport."))</p>
+            <p class="mb-0">@(Model.WhyNot ?? (Model.Status == "waste" ? "The battery is waste. Mistyped values can still be corrected, and the team can undo the waste if it was set by mistake." : "A status change also re-states the fades and the expected lifetime, and publishes a new version of this passport."))</p>
         </div>
         @* Change status and Add a note are the header's actions only (redesign R5's page review: one place per action). *@
         @if (Model.CanChange || Model.MayAddNote)

@@ -128,9 +128,6 @@ public sealed class BatteryPack : IDppRecord
     /// </summary>
     public List<RepairEntry> Repairs { get; set; } = [];
 
-    /// <summary>The status the battery had before it was set to waste, so the team can undo a waste set by mistake (R10); null otherwise. App data.</summary>
-    public string? StatusBeforeWaste { get; set; }
-
     /// <summary>The latest remaining capacity its battery system exported (step 5b); null when none was.</summary>
     public RemainingCapacityReading? RemainingCapacity { get; set; }
 

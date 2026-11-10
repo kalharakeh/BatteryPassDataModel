@@ -40,7 +40,6 @@ public sealed class WasteUndoTests(MongoFixture mongo)
         Assert.Equal(versionsBefore + 1, result.Version!.Number); // a new version; the one with waste stays in the passport's history
         var pack = (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!;
         Assert.Equal("re-used", StatusChangeService.CurrentStatus(pack));
-        Assert.Null(pack.StatusBeforeWaste);
         var events = (await new ApplicationAuditService(rig.Context).ListApplicationAuditEventsAsync(new ApplicationAuditFilter()))
             .Where(entry => entry["eventType"].AsString == StatusChangeService.ChangedEvent)
             .ToArray();
@@ -52,16 +51,17 @@ public sealed class WasteUndoTests(MongoFixture mongo)
     }
 
     [Fact]
-    public async Task TheUndoneBattery_ShouldAcceptANewWaste()
+    public async Task TheUndoneBattery_ShouldAcceptANewWaste_AndGoBackToTheSameStatusAgain()
     {
         var rig = await WasteAfterARepairAsync();
         var service = StatusChangeTests.Service(rig);
         await service.ChangeAsync(PublicationTesting.Team, rig.PackId, new StatusChange(StatusEvent.WasteUndone, await StatusChangeTests.CurrentAsync(rig), Reason: "Set by mistake"));
 
         var again = await service.ChangeAsync(PublicationTesting.Team, rig.PackId, new StatusChange(StatusEvent.Waste, await StatusChangeTests.CurrentAsync(rig)));
+        var undoneAgain = await service.ChangeAsync(PublicationTesting.Team, rig.PackId, new StatusChange(StatusEvent.WasteUndone, await StatusChangeTests.CurrentAsync(rig), Reason: "Still not waste"));
 
         Assert.Null(again.Problem);
-        Assert.Equal("re-used", (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!.StatusBeforeWaste);
+        Assert.Equal("re-used", undoneAgain.NewStatus);
     }
 
     [Theory]
@@ -89,13 +89,30 @@ public sealed class WasteUndoTests(MongoFixture mongo)
         Assert.Equal(StatusChangeService.NotWaste, result.Problem);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TheStatusBeforeTheWaste_ShouldCometFromTheLastPublishedVersionBeforeIt(bool correctedWhileWaste)
+    {
+        // Any waste, also one set before this fix or corrected since: nothing but the passport's own versions is read.
+        var rig = await WasteAfterARepairAsync();
+        var service = StatusChangeTests.Service(rig);
+        if (correctedWhileWaste)
+        {
+            Assert.Null((await service.ChangeAsync(PublicationTesting.Team, rig.PackId, new StatusChange(StatusEvent.Corrected, await StatusChangeTests.CurrentAsync(rig)))).Problem);
+        }
+
+        var result = await service.ChangeAsync(PublicationTesting.Team, rig.PackId, new StatusChange(StatusEvent.WasteUndone, await StatusChangeTests.CurrentAsync(rig), Reason: "Set by mistake"));
+
+        Assert.Equal("re-used", result.NewStatus); // not "original"
+    }
+
     [Fact]
-    public async Task AWasteSetBeforeTheStatusWasKept_ShouldGoBackToOriginal()
+    public async Task AWasteWithNoEarlierVersion_ShouldGoBackToOriginal()
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         var service = StatusChangeTests.Service(rig);
-        await service.ChangeAsync(PublicationTesting.Team, rig.PackId, new StatusChange(StatusEvent.Waste, await StatusChangeTests.CurrentAsync(rig)));
-        await rig.Store.SetStatusBeforeWasteAsync(rig.PackId, null); // as a waste made before this fix
+        Assert.Null((await service.ChangeAsync(PublicationTesting.Team, rig.PackId, new StatusChange(StatusEvent.Waste, await StatusChangeTests.CurrentAsync(rig)))).Problem);
 
         var result = await service.ChangeAsync(PublicationTesting.Team, rig.PackId, new StatusChange(StatusEvent.WasteUndone, await StatusChangeTests.CurrentAsync(rig), Reason: "Set by mistake"));
 
@@ -140,5 +157,24 @@ public sealed class WasteUndoTests(MongoFixture mongo)
         Assert.Contains("ends the battery's life in the passport", window, StringComparison.Ordinal);
         Assert.Contains("Only the Scania team can undo it.", window, StringComparison.Ordinal);
         Assert.Contains("name=\"undoReason\"", window, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheStatusCards_ShouldNotCallAWasteFinalForTheTeam()
+    {
+        var card = Read("Views", "Batteries", "_StatusCard.cshtml");
+
+        Assert.DoesNotContain("which is final", card, StringComparison.Ordinal);
+        Assert.Contains("the team can undo the waste if it was set by mistake", card, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TheClusterAdminsCard_ShouldSayOnlyTheTeamUndoesAWaste()
+    {
+        var rig = await WasteAfterARepairAsync();
+
+        var card = (await ClusterBatteryPagesTests.Pages(rig).BatteryAsync(NorthAdmin, rig.PackId))!.Status!;
+
+        Assert.Equal("The battery is waste, which is final for you: only the team can undo it.", card.WhyNot);
     }
 }
