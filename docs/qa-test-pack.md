@@ -91,7 +91,7 @@ Scanning a released ID whose passport isn't published yet shows "Not published y
 
 **Demo accounts on a battery that isn't demo:** a battery is inside the demo only when it, its batch, model and operator are demo and its cluster is a demo cluster or none. On any other battery, every demo account (cluster admin, cluster user, market surveillance and the rest) gets the visitor's page and no actions. This includes a demo-numbered battery the team made on real product data (allowed, to try things out). A demo token gets, for anything outside the demo, the same answer as for an ID that doesn't exist.
 
-**Reset demo data** stops and changes nothing when a real account, battery or API token uses one of the demo's clusters; the red message names the cluster. Demo accounts that a demo admin added or made never stop it.
+**Reset demo data** stops and changes nothing when a real account, battery or API token uses one of the demo's clusters; the red message names the cluster. Demo accounts that a demo admin added or made never stop it. The reset signs out every open demo session: sign in again afterwards.
 
 **Account actions** (Users pages; "Own cluster admin" is a cluster admin acting on people in their own clusters):
 
@@ -102,7 +102,7 @@ Scanning a released ID whose passport isn't published yet shows "Not published y
 | Change a name or password | ✓ | only people who are in their clusters alone, have no role across the app and were made by a cluster admin of theirs; anyone else: "You can't change this person's account here. Ask the Scania team." |
 | Give an account access across the app | ✓, with a new password in the same step | – |
 | Lower or delete your own account, or the last team account | – | – |
-| Use the fallback admin's address | ✓ | – |
+| Use the fallback admin's address (outside Production only; in Production there is no fallback admin) | ✓ | – |
 | Remove from a cluster (the x, which asks first) | ✓ | their clusters |
 | A membership's role | cluster user or cluster admin, nothing else | the same |
 
