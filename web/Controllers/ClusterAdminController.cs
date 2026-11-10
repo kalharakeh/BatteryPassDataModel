@@ -410,6 +410,7 @@ public class ClusterAdminController : Controller
         }
 
         await _clusterRepository.DeleteClusterMembershipAsync(email, clusterId, cancellationToken);
+        TempData["StatusMessage"] = await _clusterRepository.MembershipRemovedMessageAsync(email, clusterId, cancellationToken);
         await AppendClusterAdminAuditAsync(
             "cluster.user.membership.deleted",
             "Cluster user membership deleted.",

@@ -189,7 +189,7 @@
                                             <input type="hidden" name="email" value="@membership.Email" />
                                             <input type="hidden" name="clusterId" value="@membership.ClusterId" />
                                             <span class="bp-soft-tag">@MembershipRoleLabel(membership.Role)</span>
-                                            <button type="submit" class="bp-icon-button is-danger" aria-label="Remove from @ClusterName(membership.ClusterId)" title="Remove from this cluster">
+                                            <button type="submit" class="bp-icon-button is-danger" aria-label="Remove from @ClusterName(membership.ClusterId)" title="Remove from this cluster" data-confirm-action data-confirm-title="Remove from cluster" data-confirm-message="Remove @displayName from @ClusterName(membership.ClusterId)? They no longer see its batteries." data-confirm-submit="Remove">
                                                 <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
                                                     <path d="M18 6 6 18" />
                                                     <path d="m6 6 12 12" />

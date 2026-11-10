@@ -362,6 +362,16 @@ public sealed class ClusterRepository
             .DeleteOneAsync(await UserFilterAsync(email, cancellationToken), cancellationToken);
     }
 
+    /// <summary>"North User is no longer in Customer North.": what removing a membership did, by name (finding U29).</summary>
+    public async Task<string> MembershipRemovedMessageAsync(string email, string clusterId, CancellationToken cancellationToken = default)
+    {
+        var user = await GetUserByEmailAsync(email, cancellationToken);
+        var cluster = await GetClusterByIdAsync(clusterId, cancellationToken);
+        var person = user is null ? string.Empty : BsonHelpers.GetString(user, "name");
+        var clusterName = cluster is null ? string.Empty : BsonHelpers.GetString(cluster, "name");
+        return $"{(string.IsNullOrWhiteSpace(person) ? NormalizeEmail(email) : person)} is no longer in {(string.IsNullOrWhiteSpace(clusterName) ? clusterId : clusterName)}.";
+    }
+
     public async Task DeleteClusterMembershipAsync(string email, string clusterId, CancellationToken cancellationToken = default)
     {
         if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(clusterId))

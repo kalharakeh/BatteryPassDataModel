@@ -559,6 +559,7 @@ public class AdminController : Controller
         var email = Text(Request.Form, "email");
         var clusterId = Text(Request.Form, "clusterId");
         await _clusterRepository.DeleteClusterMembershipAsync(email, clusterId, cancellationToken);
+        TempData["StatusMessage"] = await _clusterRepository.MembershipRemovedMessageAsync(email, clusterId, cancellationToken);
         await AppendAdminAuditAsync(
             "cluster.user.membership.deleted",
             "User cluster membership deleted.",
