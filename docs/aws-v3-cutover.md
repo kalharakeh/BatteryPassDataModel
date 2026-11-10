@@ -60,7 +60,7 @@ The new app reads these. "Same" means the live environment's current value stays
 | Setting | Value on the live site | Why |
 |---|---|---|
 | `ASPNETCORE_ENVIRONMENT` | `Production` (same) | |
-| `MONGODB_URI` | the `beanstalk-v3` user's connection string (new) | access to `battery_pass_v3` only |
+| `MONGODB_URI` | the `beanstalk-v3` user's connection string (new) | access to `battery_pass_v3` only. The database must be MongoDB with collation support (the app finds an e-mail address whatever its capitals): Atlas has it; **Amazon DocumentDB does not**, so it can't be used. |
 | `MONGODB_DB` | `battery_pass_v3` (new) | Since plan 6a-1 the app refuses to start in Production without it. |
 | `APP_BASE_URL` | `https://www.sib-scania-eubp.eu/` (new) | QR codes, document links and the accident page are built from it. A trailing `/` is fine. |
 | `APP_URL` | remove, or the same as `APP_BASE_URL` | the old name; `APP_BASE_URL` wins |
@@ -69,10 +69,12 @@ The new app reads these. "Same" means the live environment's current value stays
 | `EXTERNAL_API_ENCRYPTION_KEY` | same | Must be set, or the API tokens stop working. They are stored as salted hashes that don't use it, so existing tokens keep working whatever its value. |
 | `BATTERY_PASS_SIGNING_PRIVATE_KEY_BASE64` | the PC's key (section 2.3; new) | passports keep their signatures |
 | `BATTERY_PASS_SIGNING_ISSUER`, `BATTERY_PASS_SIGNING_VERIFICATION_METHOD` | as on the PC: not set | Each signature records them, so all passports name the same issuer. |
-| `DEMO_USERS_PASSWORD` | the owner's choice (section 2.8) | |
-| `ENABLE_DEMO_ADMIN_FALLBACK` | `false` or not set | never a fallback admin on a public site |
-| `DEMO_ADMIN_EMAIL`, `DEMO_ADMIN_PASSWORD` | not needed with the fallback off | |
+| `DEMO_USERS_PASSWORD` | the owner's choice (section 2.8) | Demo accounts sign in only while `ENABLE_DEMO_DATA` is on (see below). |
+| `ENABLE_DEMO_DATA` | not set (off in Production) | Switches the demo data, demo accounts and demo tokens on. Off: there is no "Reset demo data", demo accounts can't sign in and demo tokens are refused; "Clear demo data" stays. Set it to `true` only on a test site, or for the days the demo is wanted. |
+| `ENABLE_DEMO_ADMIN_FALLBACK` | `false` or not set | never a fallback admin on a public site. **In Production the app refuses to start if it is on.** |
+| `DEMO_ADMIN_EMAIL`, `DEMO_ADMIN_PASSWORD` | not set | There is no default password. The fallback admin works only outside Production, and only when a password is set here. Don't set them on the live site. |
 | `ENABLE_RATE_LIMITING` | not set (on) | |
+| `FILE_UPLOAD_RATE_LIMIT_PER_WINDOW` | not set (10 per rate-limit window) | Limits file uploads. It now also limits the team's and cluster admins' file actions (accident reports, "Check the file"). With `ENABLE_RATE_LIMITING=false` nothing is limited. |
 | `TRUSTED_PROXY_NETWORKS`, `TRUSTED_PROXY_HOP_LIMIT` | not set | The defaults trust the load balancer's private ranges. |
 | `POWER_AUTOMATE_RESET_WEBHOOK_URL`, `…_SECRET`, `PASSWORD_RESET_APP_NAME` | same, if password reset e-mails are used | |
 | `ID_GENERATION_SECRET` | same | Only the old app reads it. Keeping it makes a roll-back simpler. |
@@ -136,12 +138,12 @@ Leave out the `DEMO_USERS_PASSWORD` line if no demo accounts are wanted.
 5. **QR code:** scanning a passport's QR code opens `https://www.sib-scania-eubp.eu/dpp/…`.
 6. **Links made on the PC:**
    - A battery's accident page link (#92) and its restricted documents' links were saved with the PC's address (`http://localhost:5186/…`) when they were made. Batteries made on the live site get the live address.
-   - `battery_pass_v3` holds demo data only (the owner, 4 Nov 2026). So press "Reset demo data" (Clusters tab, end) once, after the switch: every demo battery is made again with the live address. The demo tokens are new, and shown once.
+   - `battery_pass_v3` holds demo data only (the owner, 4 Nov 2026). "Reset demo data" is offered only while `ENABLE_DEMO_DATA` is `true`: if the owner wants the demo on the live site, add that setting first. Then press "Reset demo data" (Clusters tab, end) once, after the switch: every demo battery is made again with the live address. The demo tokens are new, and shown once.
    - Before that, a battery's signature check (check 4) can still use a version published on the PC. After it, every demo version is published on the live site.
 7. **API:** a cluster token reads its batteries at `https://www.sib-scania-eubp.eu/api/external/v1/…` (the API help page's examples).
 8. **Load:** after a day, check the instance's CPU and memory in Beanstalk's Monitoring. If the instance is short of memory, a larger instance type is a cost question for the owner.
 9. **The ID settings** (on the day): signed in as the team, open the Battery IDs tab (`/admin/battery-ids`). The page shows **no red notice**. A red notice names the missing `DPP_ID_*` settings: add them in Beanstalk (Configuration, Environment properties) and check again.
-10. **A demo battery's ID** (after check 6's "Reset demo data"): on Battery IDs, All IDs, tick "Show demo IDs". A demo ID reads `UN778474481-TEST-…`, and `https://www.sib-scania-eubp.eu/25S/<that ID>` opens its battery's public summary once it is published, or "Not published yet" while it isn't.
+10. **A demo battery's ID** (after check 6's "Reset demo data", if the demo is on): on Battery IDs, All IDs, tick "Show demo IDs". A demo ID reads `UN778474481-TEST-…`, and `https://www.sib-scania-eubp.eu/25S/<that ID>` opens its battery's public summary once it is published, or "Not published yet" while it isn't.
 
 ## 7. Restore points, and rolling back to the old app
 

@@ -127,9 +127,11 @@ MONGODB_DB=<your existing database name>
 SESSION_SECRET=<long random value>
 EXTERNAL_API_ENCRYPTION_KEY=<32 character random value>
 ID_GENERATION_SECRET=<long random value>
-DEMO_ADMIN_EMAIL=<your real admin email>
-DEMO_ADMIN_PASSWORD=<strong password>
 ```
+
+There is no fallback admin in Production: the app doesn't start if `ENABLE_DEMO_ADMIN_FALLBACK` is on, and `DEMO_ADMIN_PASSWORD` has no default. Sign in with a team account stored in the database. The database must be MongoDB with collation support (Atlas has it; Amazon DocumentDB does not).
+
+Demo data, demo accounts and demo tokens are off in Production unless `ENABLE_DEMO_DATA=true` is set. File uploads (including the team's and cluster admins' file actions) are limited by `FILE_UPLOAD_RATE_LIMIT_PER_WINDOW` (10 per window by default) while rate limiting is on.
 
 Optional if you use password reset emails:
 

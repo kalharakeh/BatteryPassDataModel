@@ -49,12 +49,14 @@ Also in `artifacts/releases`:
    - `SESSION_SECRET`
    - `EXTERNAL_API_ENCRYPTION_KEY`
    - `ID_GENERATION_SECRET`
+
+   Optional: `ENABLE_DEMO_DATA` (on outside Production unless `false`) switches the demo data, demo accounts and demo tokens. The fallback admin (`ENABLE_DEMO_ADMIN_FALLBACK`) works only with a password you set in `DEMO_ADMIN_PASSWORD`; it has no default and never works in Production.
 5. Run `run-batterypass.cmd`.
 6. Open `http://localhost:5186`.
 
 ## Notes
 
 - No .NET runtime installation is required on the target PC.
-- MongoDB must still be reachable by the app (local or remote URI).
+- MongoDB must still be reachable by the app (local or remote URI). It must support collation (MongoDB and Atlas do; Amazon DocumentDB does not).
 - Copy or extract the whole package. Do not copy only `BatteryPassWeb.exe`; reset requires the `BatteryPass` folder next to the executable.
 - For the current QA/demo data to generate the same IDs as development, use `ID_GENERATION_SECRET=battery-pass-local-development-id-secret`.
