@@ -297,7 +297,7 @@ public sealed class ClusterRepository
         }
 
         await _mongoContext.Database.GetCollection<BsonDocument>("users").UpdateOneAsync(
-            await UserFilterAsync(normalizedEmail, cancellationToken),
+            await UserFilterAsync(email, cancellationToken),
             Builders<BsonDocument>.Update.Combine(updates),
             cancellationToken: cancellationToken);
     }
@@ -339,7 +339,7 @@ public sealed class ClusterRepository
 
         var now = DateTime.UtcNow.ToString("O");
         await _mongoContext.Database.GetCollection<BsonDocument>("users").UpdateOneAsync(
-            await UserFilterAsync(current, cancellationToken),
+            await UserFilterAsync(currentEmail, cancellationToken),
             Builders<BsonDocument>.Update
                 .Set("email", next)
                 .Set("updatedAt", now),

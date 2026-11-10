@@ -82,6 +82,31 @@ public sealed class EmailCapitalsTests(MongoFixture mongo)
     }
 
     [Fact]
+    public async Task TheAccountPage_ShouldLoadAndChangeTheSignedInTwin_NotItsLowerCaseCopy()
+    {
+        using var rig = await AccountRig.StartAsync(mongo);
+        await StoreWithCapitalsAsync(rig);
+        await rig.Database.GetCollection<BsonDocument>("users").InsertOneAsync(new BsonDocument
+        {
+            ["email"] = "mixed.case@example.test",
+            ["name"] = "Lower twin",
+            ["roles"] = new BsonArray { AccessControlService.RoleNormalUser },
+            ["passwordHash"] = BCrypt.Net.BCrypt.HashPassword(AccountRig.Typed, 4),
+        });
+        var signedIn = (await rig.Auth.AuthenticateLoginAsync(Stored, AccountRig.Password)).Principal!;
+
+        var shown = Assert.IsType<BatteryPassWeb.Models.ViewModels.AccountProfileViewModel>(
+            Assert.IsType<Microsoft.AspNetCore.Mvc.ViewResult>(await AccountRig.With(rig.AccountPage(Stored), signedIn).Index(CancellationToken.None)).Model);
+        var page = AccountRig.Form(AccountRig.With(rig.AccountPage(Stored), signedIn), ("email", Stored), ("name", "Renamed"));
+        await page.Save(CancellationToken.None);
+
+        Assert.Equal("Mixed Case", shown.Name);
+        Assert.Equal("Renamed", BsonHelpers.GetString((await rig.Database.GetCollection<BsonDocument>("users").Find(Builders<BsonDocument>.Filter.Eq("email", Stored)).SingleAsync()), "name"));
+        Assert.Equal("Lower twin", BsonHelpers.GetString((await rig.Database.GetCollection<BsonDocument>("users").Find(Builders<BsonDocument>.Filter.Eq("email", "mixed.case@example.test")).SingleAsync()), "name"));
+        Assert.Equal(Stored, AccessControlService.CurrentEmail(page.HttpContext.User));
+    }
+
+    [Fact]
     public async Task Writes_ShouldReachAnAccountStoredWithCapitals_AndMakeNoSecondOne()
     {
         using var rig = await AccountRig.StartAsync(mongo);

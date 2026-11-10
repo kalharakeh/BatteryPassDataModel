@@ -41,7 +41,8 @@ public sealed class AccountController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Save(CancellationToken cancellationToken)
     {
-        var currentEmail = AccessControlService.CurrentEmail(User).Trim().ToLowerInvariant();
+        // The signed-in account by its own identity, as stored, never a lower-cased copy (finding U28).
+        var currentEmail = AccessControlService.CurrentEmail(User).Trim();
         var newEmail = Text(Request.Form, "email").Trim().ToLowerInvariant();
         var name = Text(Request.Form, "name", currentEmail);
         var password = Text(Request.Form, "password");
@@ -144,7 +145,7 @@ public sealed class AccountController : Controller
             newEmail,
             cancellationToken: cancellationToken);
 
-        var principal = await _authService.CreatePrincipalForUserAsync(newEmail, cancellationToken);
+        var principal = await _authService.CreatePrincipalForUserAsync(emailChanges ? newEmail : currentEmail, cancellationToken);
         if (principal != null)
         {
             await _authenticationSessionService.SignInAsync(HttpContext, principal, cancellationToken);
@@ -152,7 +153,7 @@ public sealed class AccountController : Controller
 
         return View("Index", new AccountProfileViewModel
         {
-            Email = newEmail,
+            Email = emailChanges ? newEmail : currentEmail,
             Name = name,
             RoleLabel = principal == null ? AccessControlService.DisplayRoleLabel(User) : AccessControlService.DisplayRoleLabel(principal),
             StatusMessage = "Account updated."
@@ -161,7 +162,7 @@ public sealed class AccountController : Controller
 
     private async Task<AccountProfileViewModel> BuildModelAsync(CancellationToken cancellationToken)
     {
-        var email = AccessControlService.CurrentEmail(User).Trim().ToLowerInvariant();
+        var email = AccessControlService.CurrentEmail(User).Trim();
         var user = await _clusterRepository.GetUserByEmailAsync(email, cancellationToken);
         var name = user == null ? User.Identity?.Name ?? email : BsonHelpers.GetString(user, "name");
         return new AccountProfileViewModel

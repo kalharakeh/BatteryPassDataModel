@@ -143,7 +143,7 @@ public sealed class AuthService
         var normalizedEmail = ClusterRepository.NormalizeEmail(email);
         if (_mongoContext.Database != null)
         {
-            var user = await ClusterRepository.FindUserAsync(_mongoContext.Database, normalizedEmail, cancellationToken);
+            var user = await ClusterRepository.FindUserAsync(_mongoContext.Database, email, cancellationToken);
             if (user != null)
             {
                 return await PrincipalForAsync(user, cancellationToken);
