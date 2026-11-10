@@ -46,12 +46,12 @@ The team's account is not demo data: the project owner gives testers a team acco
 | Battery | Family and model | Cluster | State | Shows |
 |---|---|---|---|---|
 | DEMO-C7M-0001 | Compact, Compact 7M | demo-north | Published, several versions; battery re-used (repaired) | The repair history, an accident report, a week of live values, 7 modules, an export from the battery system and a file from its cluster admin under "Upload a file" |
-| DEMO-C7M-0002 | Compact, Compact 7M | demo-north | Draft | Missing values and what blocks publication |
+| DEMO-C7M-0002 | Compact, Compact 7M | demo-north | Draft, ready to publish | "Ready to publish" and the "Publish passport" action |
 | DEMO-C7M-0003 | Compact, Compact 7M | demo-north | Published, then marked invalid by `demo.msa` | The invalid notice; the reason "Demo: wrong carbon footprint figures", seen only by the team and market surveillance |
 | DEMO-C13M-0001 | Compact, Compact 13M | demo-south | Repurposed, then remanufactured: three linked passports, the two older inactive, the newest active | The passports' chain and their notices |
-| DEMO-C13M-0002 | Compact, Compact 13M | demo-south | Draft | |
+| DEMO-C13M-0002 | Compact, Compact 13M | demo-south | Draft, 1 value missing | "Not ready to publish yet" and what the passport still needs |
 | DEMO-CORE-0001 | Core, Core | demo-fleet | Published; an accident report; handed over to demo-north, waiting | "Waiting for you" on demo-north's Registry; Accept or Decline |
-| DEMO-CORE-0002 | Core, Core | demo-fleet | Draft | |
+| DEMO-CORE-0002 | Core, Core | demo-fleet | Draft, 1 value missing | "Not ready to publish yet" and what the passport still needs |
 | DEMO-CORE-0003 | Core, Core | demo-fleet | Waste, marked for deletion | The marked-for-deletion notice |
 
 Drafts are seen by the team only. The batteries come from the "Demo" release on the Battery IDs tab, which also holds four spare IDs, DEMO-SPARE-0001 to DEMO-SPARE-0004. With the three ID settings their IDs are marked TEST after the DUNS (`UN778474481-TEST-DEMO-C7M-0001`); without them they start with `urn:x-battery-pass:TEST-`. The pages show a "Test passport" tag either way.

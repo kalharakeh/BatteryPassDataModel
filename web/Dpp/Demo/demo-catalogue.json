@@ -726,10 +726,6 @@
           "percentUnit": "%",
           "percentageValue": 23
         },
-        "leadRecycledContentShare": {
-          "percentUnit": "%",
-          "percentageValue": 35
-        },
         "renewableContentShare": {
           "percentUnit": "%",
           "percentageValue": 38
@@ -790,10 +786,6 @@
           "percentUnit": "%",
           "percentageValue": 25
         },
-        "leadRecycledContentShare": {
-          "percentUnit": "%",
-          "percentageValue": 37
-        },
         "renewableContentShare": {
           "percentUnit": "%",
           "percentageValue": 38
@@ -853,10 +845,6 @@
         "lithiumRecycledContentShare": {
           "percentUnit": "%",
           "percentageValue": 30
-        },
-        "leadRecycledContentShare": {
-          "percentUnit": "%",
-          "percentageValue": 44
         },
         "renewableContentShare": {
           "percentUnit": "%",
