@@ -125,7 +125,8 @@ public sealed class ProductDataPages(
     DocumentStore documents,
     ApplicationAuditService audit,
     IOptions<BatteryPassOptions> options,
-    TimeProvider clock)
+    TimeProvider clock,
+    Publication.PublicationService? publication = null)
 {
     public const string CreatedEvent = "dpp.record-created";
     public const string RenamedEvent = "dpp.record-renamed";
@@ -555,6 +556,13 @@ public sealed class ProductDataPages(
         await store.SetModelAnswersAsync(model.Id, after.CommercialWarranty, after.CyclingUse, after.CadmiumOrLeadAboveLimit, cancellationToken);
         var words = string.Join("; ", ModelQuestions.All.Select(question => $"{ModelQuestions.Text(question)} {Answer(after.Of(question))}"));
         await AuditAsync(AnswersEvent, who, $"Answers of battery model {model.Name} saved: {words}", "dpp-model", model.Id, cancellationToken);
+
+        // A change saved while the model couldn't publish is in its published passports once they can (decision 9).
+        if (publication is not null && after.AllAnswered)
+        {
+            await publication.RepublishAsync(ChangeSender.Team(who), await store.FindPackIdsUsingAsync(modelId: model.Id, cancellationToken: cancellationToken), cancellationToken);
+        }
+
         return new AnswersSave(true, affected);
     }
 

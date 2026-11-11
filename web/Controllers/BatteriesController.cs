@@ -391,7 +391,9 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
             (_, > 0) => $"{Words.Count(save.RemovedCount, "value")} removed.",
             _ => string.Empty,
         };
-        var version = !liveValues && save.Affected.Count > 0 && save.Outcome is EditorOutcome.Saved or EditorOutcome.Refused ? " The passport got a new version." : string.Empty;
+        var version = !liveValues && save.Affected.Count > 0 && save.Outcome is EditorOutcome.Saved or EditorOutcome.Refused ? " The passport got a new version."
+            : save.KeptTheirVersion.Count > 0 ? " The passport kept its version: it needs other values first; the overview says which." // R01, decision 9
+            : string.Empty;
         EditorState state = new(post, save);
         switch (save.Outcome)
         {

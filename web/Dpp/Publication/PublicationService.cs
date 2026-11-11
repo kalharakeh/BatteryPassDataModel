@@ -162,20 +162,43 @@ public sealed class PublicationService(
                 continue;
             }
 
-            var result = await PublishCoreAsync(packId, sender, retryOnConflict: true, cancellationToken);
-            if (result.Problem is not null)
+            await RepublishOneAsync(sender, packId, active, cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Brings published passports up to date after something that isn't a value changed what they may publish: a model's
+    /// answers to its three questions (R01). A passport whose content is unchanged keeps its version; one that still
+    /// can't publish keeps it too, and the block is logged.
+    /// </summary>
+    public async Task RepublishAsync(ChangeSender sender, IEnumerable<string> packIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sender);
+        ArgumentNullException.ThrowIfNull(packIds);
+        foreach (var packId in packIds)
+        {
+            if (await store.GetActiveVersionAsync(packId, cancellationToken) is { } active)
             {
-                await audit.AppendApplicationAuditEventAsync(
-                    BlockedEvent,
-                    sender.Who,
-                    "system",
-                    "publication",
-                    $"A new version of pack {packId} was blocked; version {active.Number} stays active",
-                    new BsonDocument { ["blocking"] = new BsonArray(result.Report?.Blocking ?? [result.Problem]) },
-                    entityType: "dpp-pack",
-                    entityId: packId,
-                    cancellationToken: cancellationToken);
+                await RepublishOneAsync(sender, packId, active, cancellationToken);
             }
+        }
+    }
+
+    private async Task RepublishOneAsync(ChangeSender sender, string packId, PassportVersion active, CancellationToken cancellationToken)
+    {
+        var result = await PublishCoreAsync(packId, sender, retryOnConflict: true, cancellationToken);
+        if (result.Problem is not null)
+        {
+            await audit.AppendApplicationAuditEventAsync(
+                BlockedEvent,
+                sender.Who,
+                "system",
+                "publication",
+                $"A new version of pack {packId} was blocked; version {active.Number} stays active",
+                new BsonDocument { ["blocking"] = new BsonArray(result.Report?.Blocking ?? [result.Problem]) },
+                entityType: "dpp-pack",
+                entityId: packId,
+                cancellationToken: cancellationToken);
         }
     }
 

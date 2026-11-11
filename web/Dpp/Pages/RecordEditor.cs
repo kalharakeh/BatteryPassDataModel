@@ -53,6 +53,12 @@ public enum EditorOutcome
 /// </summary>
 public sealed record EditorSave(EditorOutcome Outcome, IReadOnlyList<KeyResult> Keys, IReadOnlyList<AffectedPassport> Affected)
 {
+    /// <summary>
+    /// After a save: the published passports the change reached that couldn't get their new version (decision 9, R01):
+    /// their published version stays until what they need is filled in. Their battery pages say what.
+    /// </summary>
+    public IReadOnlyList<AffectedPassport> KeptTheirVersion { get; init; } = [];
+
     public int SavedCount => Keys.Count(key => key.Outcome == KeyOutcome.Saved);
 
     public int RemovedCount => Keys.Count(key => key.Outcome == KeyOutcome.Removed);
@@ -501,10 +507,17 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
             return new EditorSave(EditorOutcome.NeedsConfirmation, [.. preview.Keys, .. conflicts], affected);
         }
 
-        // Saved or refused: Affected now lists the passports that got a new version.
+        // Saved or refused: Affected now lists the passports that got a new version, KeptTheirVersion those that couldn't.
         var result = await pipeline.SaveAsync(sender, changes, preview: false, cancellationToken);
         IReadOnlyList<KeyResult> keys = [.. result.Keys, .. conflicts];
-        return new EditorSave(keys.Any(key => key.Outcome == KeyOutcome.Rejected) ? EditorOutcome.Refused : EditorOutcome.Saved, keys, affected);
+        var now = affected.Count == 0
+            ? new Dictionary<string, int>(StringComparer.Ordinal)
+            : (await store.ListActiveVersionsAsync(affected.Select(passport => passport.PackId), cancellationToken)).ToDictionary(version => version.PackId, version => version.Number, StringComparer.Ordinal);
+        var outcome = keys.Any(key => key.Outcome == KeyOutcome.Rejected) ? EditorOutcome.Refused : EditorOutcome.Saved;
+        return new EditorSave(outcome, keys, affected.Where(passport => now.GetValueOrDefault(passport.PackId) > passport.CurrentVersion).ToArray())
+        {
+            KeptTheirVersion = result.Saved ? affected.Where(passport => now.GetValueOrDefault(passport.PackId) <= passport.CurrentVersion).ToArray() : [],
+        };
     }
 
     /// <summary>Why an edit made on a page that was open while someone else saved the same value is refused.</summary>

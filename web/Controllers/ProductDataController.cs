@@ -562,6 +562,9 @@ public sealed class ProductDataController(ProductDataPages pages, RecordEditor e
         var notes = (renamed ? " Name saved." : string.Empty)
             + (save.Affected.Count > 0 && save.Outcome is EditorOutcome.Saved or EditorOutcome.Refused
                 ? $" {Words.Count(save.Affected.Count, "passport")} got a new version."
+                : string.Empty)
+            + (save.KeptTheirVersion.Count > 0
+                ? $" {Words.Count(save.KeptTheirVersion.Count, "published passport")} kept {(save.KeptTheirVersion.Count == 1 ? "its" : "their")} version: {(save.KeptTheirVersion.Count == 1 ? "it needs" : "they need")} other values first ({string.Join(", ", save.KeptTheirVersion.Select(passport => passport.SerialNumber))}); the battery's page says which."
                 : string.Empty);
         var done = (save.SavedCount, save.RemovedCount) switch
         {
