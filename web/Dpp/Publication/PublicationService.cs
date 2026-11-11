@@ -160,13 +160,14 @@ public sealed class PublicationService(
     /// <param name="tokenSeen">The marker's token as the page read it with the pack, before the data (round four, 2).</param>
     public async Task MarkWaitingAsync(string packId, bool waiting, string? tokenSeen, CancellationToken cancellationToken = default)
     {
+        // A write that puts the marker right isn't stopped by the request's token either (round five).
         if (waiting)
         {
-            await store.MarkChangesWaitingAsync([packId], clock.GetUtcNow().UtcDateTime, cancellationToken);
+            await store.MarkChangesWaitingAsync([packId], clock.GetUtcNow().UtcDateTime, CancellationToken.None);
         }
         else
         {
-            await store.ClearChangesWaitingAsync(packId, tokenSeen, cancellationToken);
+            await store.ClearChangesWaitingAsync(packId, tokenSeen, CancellationToken.None);
         }
     }
 
