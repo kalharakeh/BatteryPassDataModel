@@ -79,7 +79,7 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
                 CardMessages.Put(TempData, packId, BatteriesController.CardInfoKey, "Nothing changed.");
                 break;
             default:
-                Card(packId, "live", $"{done} Live values change the passport in place, without a new version.", null);
+                Card(packId, "live", $"{done} {Dpp.Publication.PublishWords.AfterLiveValues(save.Outcomes)}", null); // round two, A3
                 break;
         }
 

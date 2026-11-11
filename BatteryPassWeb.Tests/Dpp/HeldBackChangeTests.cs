@@ -46,6 +46,19 @@ public sealed class HeldBackChangeTests(MongoFixture mongo)
     }
 
     [Fact]
+    public async Task ALiveValueTypedOnThePage_ShouldSayTheWaitingChangeWasPublished()
+    {
+        var rig = await HeldBackAsync();
+        var post = new BatteryPassWeb.Dpp.Pages.EditorPost(new Dictionary<string, JsonNode>(StringComparer.Ordinal) { [Cycles] = 14 }, new Dictionary<string, string>(), new Dictionary<string, int>());
+
+        var save = await PageTesting.Editor(rig).SaveAsync(ChangeSender.ClusterAdmin("south-admin@example.com", "cluster-test"), TargetKind.Pack, rig.PackId, post, confirmed: false);
+
+        Assert.Equal("Version 2 of the passport is published, with the saved changes that were waiting.", PublishWords.AfterLiveValues(save.Outcomes));
+        var plain = await PageTesting.Editor(rig).SaveAsync(ChangeSender.ClusterAdmin("south-admin@example.com", "cluster-test"), TargetKind.Pack, rig.PackId, post with { Changed = new Dictionary<string, JsonNode>(StringComparer.Ordinal) { [Cycles] = 15 } }, confirmed: false);
+        Assert.Equal("Live values change the passport in place, without a new version.", PublishWords.AfterLiveValues(plain.Outcomes));
+    }
+
+    [Fact]
     public async Task ALiveValueWithNothingWaiting_ShouldPublishNoNewVersion()
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();

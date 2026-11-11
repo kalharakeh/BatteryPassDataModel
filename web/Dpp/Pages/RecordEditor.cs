@@ -524,9 +524,11 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
         }
 
         // Saved or refused: Affected now lists the passports that got a new version, KeptTheirVersion those that couldn't.
+        // A battery's live values reach its own passport too: a change waiting there may follow them (round two, A1).
+        var reached = kind == TargetKind.Pack && affected.Count == 0 ? await AffectedAsync(kind, id, cancellationToken) : affected;
         var result = await pipeline.SaveAsync(sender, changes, preview: false, cancellationToken);
         IReadOnlyList<KeyResult> keys = [.. result.Keys, .. conflicts];
-        var outcomes = result.Saved ? await OutcomesAsync(affected, cancellationToken) : [];
+        var outcomes = result.Saved ? await OutcomesAsync(reached, cancellationToken) : [];
         var outcome = keys.Any(key => key.Outcome == KeyOutcome.Rejected) ? EditorOutcome.Refused : EditorOutcome.Saved;
         return new EditorSave(outcome, keys, Having(PublishOutcome.NewVersion))
         {
@@ -535,7 +537,7 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
         };
 
         AffectedPassport[] Having(PublishOutcome kind) =>
-            affected.Where(passport => outcomes.Any(item => item.Outcome.PackId == passport.PackId && item.Outcome.Outcome == kind)).ToArray();
+            reached.Where(passport => outcomes.Any(item => item.Outcome.PackId == passport.PackId && item.Outcome.Outcome == kind)).ToArray();
     }
 
     /// <summary>

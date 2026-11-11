@@ -73,6 +73,15 @@ public static partial class PublishWords
     }
 
     /// <summary>
+    /// After a battery's live values are saved (round two, A3): they change the passport in place, unless a change that
+    /// was waiting could now follow them, which publishes a new version.
+    /// </summary>
+    public static string AfterLiveValues(IReadOnlyList<(PassportOutcome Outcome, string SerialNumber)> outcomes) =>
+        outcomes is [{ Outcome: { Outcome: PublishOutcome.NewVersion } published }]
+            ? $"Version {published.Version} of the passport is published, with the saved changes that were waiting."
+            : "Live values change the passport in place, without a new version.";
+
+    /// <summary>
     /// The outcomes of a change that reached several published passports, named by serial number: how many got a new
     /// version, for which nothing changed, and which keep their version until what is listed is filled in.
     /// </summary>

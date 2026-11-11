@@ -433,7 +433,7 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
             default:
                 if (liveValues)
                 {
-                    Card(packId, "live", $"{done} Live values change the passport in place, without a new version.", null);
+                    Card(packId, "live", $"{done} {PublishWords.AfterLiveValues(save.Outcomes)}", null); // round two, A3
                 }
                 else
                 {
