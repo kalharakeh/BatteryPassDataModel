@@ -68,6 +68,7 @@ public static partial class PublishWords
         {
             PublishOutcome.NewVersion => $"Version {outcome.Version} of the passport is published.",
             PublishOutcome.NothingChanged => $"The passport's published values didn't change, so it keeps version {outcome.Version}.",
+            PublishOutcome.NotPublished => $"The passport couldn't be published now, so it keeps version {outcome.Version}; it stays marked as waiting and is tried again.",
             _ => $"The passport keeps version {outcome.Version} until this is filled in: {string.Join("; ", outcome.Blocking.Select(Item))}.",
         };
     }
@@ -99,6 +100,12 @@ public static partial class PublishWords
         if (unchanged.Length > 0)
         {
             parts.Add($"Nothing changed for {string.Join(", ", unchanged)}: {(unchanged.Length == 1 ? "it keeps its" : "they keep their")} version.");
+        }
+
+        var failed = outcomes.Where(item => item.Outcome.Outcome == PublishOutcome.NotPublished).Select(item => item.SerialNumber).ToArray();
+        if (failed.Length > 0)
+        {
+            parts.Add($"{failed.Length} {(failed.Length == 1 ? "passport" : "passports")} couldn't be published ({string.Join(", ", failed)}): {(failed.Length == 1 ? "it stays" : "they stay")} marked as waiting and {(failed.Length == 1 ? "is" : "are")} tried again.");
         }
 
         foreach (var (outcome, serial) in outcomes.Where(item => item.Outcome.Outcome == PublishOutcome.HeldBack))

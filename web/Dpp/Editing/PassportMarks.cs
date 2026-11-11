@@ -82,7 +82,7 @@ public sealed class PassportMarks(DppStore store, DemoBoundary demo, Application
             return (problem, null);
         }
 
-        return (null, publication is null ? null : await publication.PublishWaitingAsync(sender, packId, cancellationToken));
+        return (null, publication is null ? null : await publication.PublishWaitingAsync(sender, packId, CancellationToken.None));
     }
 
     private async Task<string?> UndoCoreAsync(ChangeSender sender, string packId, CancellationToken cancellationToken)
@@ -104,7 +104,12 @@ public sealed class PassportMarks(DppStore store, DemoBoundary demo, Application
             return NothingToUndo;
         }
 
+        // Round five, the rule: changes saved while the passport was marked may be missing from it, so the battery is
+        // marked FIRST, before its version becomes active again; from here nothing runs on the request's token. The
+        // publish that follows clears the marker only if nothing differs.
         var now = clock.GetUtcNow().UtcDateTime;
+        cancellationToken = CancellationToken.None;
+        await store.MarkChangesWaitingAsync([packId], now, cancellationToken);
         await store.SetVersionStatusAsync(latest.Id, DppStatuses.Active, now, cancellationToken);
         await store.SetMarkAsync(packId, null, cancellationToken);
         await audit.AppendApplicationAuditEventAsync(

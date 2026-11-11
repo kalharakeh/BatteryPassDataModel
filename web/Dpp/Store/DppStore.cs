@@ -597,6 +597,19 @@ public sealed class DppStore
             cancellationToken: cancellationToken);
     }
 
+    /// <summary>The packs among these that have at least one passport version (active, marked or inactive).</summary>
+    public async Task<IReadOnlyList<string>> PublishedPackIdsAsync(IReadOnlyCollection<string> packIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(packIds);
+        if (packIds.Count == 0)
+        {
+            return [];
+        }
+
+        var found = await Collection<PassportVersion>().DistinctAsync(version => version.PackId, Builders<PassportVersion>.Filter.In(version => version.PackId, packIds), cancellationToken: cancellationToken);
+        return await found.ToListAsync(cancellationToken);
+    }
+
     /// <summary>
     /// Clears a pack's marker of a waiting change, only while it still holds <paramref name="tokenSeen"/>: the token the
     /// clearing attempt read before the data it published (round four, 2). A change marked meanwhile stays marked. False

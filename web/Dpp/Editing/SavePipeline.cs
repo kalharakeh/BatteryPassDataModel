@@ -151,11 +151,20 @@ public sealed class SavePipeline(
             entry => entry.Key,
             entry => new AttributeValue { Value = entry.Value, GeneratedAtUtc = generatedAt, Source = changes.Source, Who = sender.Who },
             StringComparer.Ordinal);
+        // Round five, the rule: a static value about to be written can make published passports differ from their saved
+        // data, so every published battery it reaches is marked FIRST, before the write. From that write onward nothing
+        // runs on the request's cancellation token: the write, the re-mark, the audit entry and the publishing.
+        var reached = stored.Keys.Concat(removed).Any(key => AttributeCatalog.FindByProperty(key)?.Change != ChangeRule.Live)
+            ? await PublishedPacksReachedAsync(changes.Target, changes.TargetId, cancellationToken)
+            : [];
+        var none = CancellationToken.None;
+        await store.MarkChangesWaitingAsync(reached, clock.GetUtcNow().UtcDateTime, none);
+
         // A correction that adds the warranty writes only while the battery still has none (round two, F).
         var addsWarranty = statusChange && changes.Target == TargetKind.Pack && stored.ContainsKey(AddedByCorrection);
         var saved = addsWarranty
-            ? await store.SetValuesIfMissingAsync<BatteryPack>(changes.TargetId, stored, AddedByCorrection, cancellationToken)
-            : await ApplyAsync(changes.Target, changes.TargetId, stored, removed, cancellationToken);
+            ? await store.SetValuesIfMissingAsync<BatteryPack>(changes.TargetId, stored, AddedByCorrection, none)
+            : await ApplyAsync(changes.Target, changes.TargetId, stored, removed, none);
         if (!saved && addsWarranty)
         {
             return new SaveResult(true, false, results
@@ -165,6 +174,9 @@ public sealed class SavePipeline(
 
         if (saved)
         {
+            // Marked again after the write, with a new token: a publish attempt that read the first token together with
+            // the old data can't clear it (round five).
+            await store.MarkChangesWaitingAsync(reached, clock.GetUtcNow().UtcDateTime, none);
             await audit.AppendApplicationAuditEventAsync(
                 AuditEventType,
                 sender.Who,
@@ -176,12 +188,12 @@ public sealed class SavePipeline(
                 AuditMetadata(results, target.Values, stored),
                 entityType: $"dpp-{changes.Target.ToString().ToLowerInvariant()}",
                 entityId: changes.TargetId,
-                cancellationToken: cancellationToken);
+                cancellationToken: none);
             // The values are saved: what follows (new versions) isn't stopped by a cancelled request, a closed browser or
             // a proxy's time-out (round four, 1).
             foreach (var listener in _listeners)
             {
-                await listener.ValuesSavedAsync(changes.Target, changes.TargetId, stored.Keys.Concat(removed).ToArray(), sender, CancellationToken.None);
+                await listener.ValuesSavedAsync(changes.Target, changes.TargetId, stored.Keys.Concat(removed).ToArray(), sender, none);
             }
         }
 
@@ -316,6 +328,24 @@ public sealed class SavePipeline(
         TargetKind.Pack => (await store.LoadSourcesAsync(id, cancellationToken))?.Model.Answers() ?? ModelAnswers.NotAnswered,
         _ => ModelAnswers.NotAnswered,
     };
+
+    /// <summary>
+    /// The published batteries (any version: active, marked or inactive) built from this record, which a static change to it
+    /// can make differ from their passports (round five).
+    /// </summary>
+    private async Task<IReadOnlyList<string>> PublishedPacksReachedAsync(TargetKind target, string id, CancellationToken cancellationToken)
+    {
+        var packIds = target switch
+        {
+            TargetKind.Pack => [id],
+            TargetKind.Model => await store.FindPackIdsUsingAsync(modelId: id, cancellationToken: cancellationToken),
+            TargetKind.Site => await store.FindPackIdsUsingAsync(siteId: id, cancellationToken: cancellationToken),
+            TargetKind.Batch => await store.FindPackIdsUsingAsync(batchId: id, cancellationToken: cancellationToken),
+            TargetKind.Operator => await store.FindPackIdsUsingAsync(operatorId: id, cancellationToken: cancellationToken),
+            _ => [],
+        };
+        return await store.PublishedPackIdsAsync(packIds.ToArray(), cancellationToken);
+    }
 
     private async Task<bool> UsedByPublishedPassportAsync(TargetKind target, string id, CancellationToken cancellationToken)
     {

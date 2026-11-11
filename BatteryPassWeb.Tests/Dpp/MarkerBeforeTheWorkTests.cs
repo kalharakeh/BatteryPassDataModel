@@ -16,7 +16,7 @@ public sealed class MarkerBeforeTheWorkTests(MongoFixture mongo)
     private const string ModelId = "model-test";
 
     [Fact]
-    public async Task ARunBrokenHalfWay_ShouldLeaveEveryPassportWithoutItsNewVersionMarked()
+    public async Task ARunBrokenHalfWay_ShouldLeaveEveryPassportWithoutItsNewVersionMarked_AndGoOnWithTheOthers()
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         var packs = rig.Context.Database!.GetCollection<BsonDocument>(DppStore.Packs);
@@ -42,7 +42,12 @@ public sealed class MarkerBeforeTheWorkTests(MongoFixture mongo)
         await packs.UpdateOneAsync(Builders<BsonDocument>.Filter.Eq("_id", "pack-break-2"), Builders<BsonDocument>.Update.Set("Values.uniqueProductIdentifier.Value", new BsonDocument("broken", true)));
         var mass = new JsonObject { ["gramKilogramUnit"] = "kg", ["gramKilogramValue"] = 513 };
 
-        await Assert.ThrowsAnyAsync<Exception>(() => rig.Pipeline.SaveAsync(PublicationTesting.Team, new ChangeSet(TargetKind.Model, ModelId, new Dictionary<string, JsonNode?> { ["batteryMass"] = mass }, "form")));
+        // Round five: one battery's failure never stops the others; it stays marked and is logged.
+        var saved = await rig.Pipeline.SaveAsync(PublicationTesting.Team, new ChangeSet(TargetKind.Model, ModelId, new Dictionary<string, JsonNode?> { ["batteryMass"] = mass }, "form"));
+        Assert.True(saved.Saved);
+        var failed = await rig.Context.Database!.GetCollection<BsonDocument>("applicationAuditEvents")
+            .Find(Builders<BsonDocument>.Filter.Eq("eventType", BatteryPassWeb.Dpp.Publication.PublicationService.FailedEvent)).ToListAsync();
+        Assert.Equal("pack-break-2", Assert.Single(failed)["entityId"].AsString);
 
         Assert.Equal("513", (await rig.Store.GetAsync<BatteryModel>(ModelId))!.Values["batteryMass"].Value!["gramKilogramValue"]!.ToJsonString()); // saved
         var left = 0;
@@ -60,7 +65,7 @@ public sealed class MarkerBeforeTheWorkTests(MongoFixture mongo)
             }
         }
 
-        Assert.True(left >= 1);
+        Assert.Equal(1, left); // only the broken one: the others were published after it
         var page = await BatteryTesting.Pages(rig).TeamListAsync(null);
         Assert.Equal(left, page.Waiting.Count);
     }

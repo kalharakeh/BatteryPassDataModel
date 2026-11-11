@@ -22,6 +22,9 @@ public enum PublishOutcome
 
     /// <summary>Its saved data differs from its active version, which stays until what blocks it is filled in.</summary>
     HeldBack,
+
+    /// <summary>Nothing blocks it, but its publication failed (an error): it stays marked and is tried again (round five).</summary>
+    NotPublished,
 }
 
 /// <summary>One published passport after an action that can publish: what happened, its active version, and what holds it back.</summary>
@@ -52,6 +55,7 @@ public sealed class PublicationService(
     public const string PublishedEvent = "dpp.published";
     public const string BlockedEvent = "dpp.publish-blocked";
     public const string InactiveEvent = "dpp.passport-inactive";
+    public const string FailedEvent = "dpp.publish-failed";
 
     /// <summary>Why a passport that is no longer active gets no new version.</summary>
     public static string NoNewVersion(string status) => $"the passport is {DppStatuses.Words(status).ToLowerInvariant()}, so it gets no new version";
@@ -123,18 +127,18 @@ public sealed class PublicationService(
         {
             if (waiting.Blocking.Count > 0)
             {
-                await store.MarkChangesWaitingAsync([packId], clock.GetUtcNow().UtcDateTime, cancellationToken);
+                await store.MarkChangesWaitingAsync([packId], clock.GetUtcNow().UtcDateTime, CancellationToken.None);
                 return new PassportOutcome(packId, PublishOutcome.HeldBack, active.Number, waiting.Blocking);
             }
 
-            await RepublishOneAsync(sender, packId, active, cancellationToken, withWaiting: true);
+            await RepublishOneAsync(sender, packId, active, CancellationToken.None, withWaiting: true);
         }
         else
         {
-            await store.ClearChangesWaitingAsync(packId, seen.ChangesWaitingToken, cancellationToken);
+            await store.ClearChangesWaitingAsync(packId, seen.ChangesWaitingToken, CancellationToken.None);
         }
 
-        return (await OutcomesAsync([(packId, active.Number)], cancellationToken)).Single();
+        return (await OutcomesAsync([(packId, active.Number)], CancellationToken.None)).Single();
     }
 
     /// <summary>
@@ -181,9 +185,11 @@ public sealed class PublicationService(
             {
                 outcomes.Add(new PassportOutcome(packId, PublishOutcome.NewVersion, now, []));
             }
-            else if (await WaitingAsync(packId, cancellationToken) is { } waiting)
+            else if (await WaitingOrFailedAsync(packId, cancellationToken) is { } waiting)
             {
-                outcomes.Add(new PassportOutcome(packId, PublishOutcome.HeldBack, now, waiting.Blocking));
+                outcomes.Add(waiting.Blocking.Count == 0
+                    ? new PassportOutcome(packId, PublishOutcome.NotPublished, now, [])
+                    : new PassportOutcome(packId, PublishOutcome.HeldBack, now, waiting.Blocking));
             }
             else
             {
@@ -192,6 +198,19 @@ public sealed class PublicationService(
         }
 
         return outcomes;
+    }
+
+    /// <summary>A passport's waiting change, or an empty one when even working that out fails (its record is broken).</summary>
+    private async Task<WaitingChange?> WaitingOrFailedAsync(string packId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await WaitingAsync(packId, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return new WaitingChange(0, []);
+        }
     }
 
     /// <summary>
@@ -278,50 +297,69 @@ public sealed class PublicationService(
         };
         var staticChange = keys.Any(key => AttributeCatalog.FindByProperty(key)?.Change != ChangeRule.Live);
 
-        // A static change is saved: every published passport it reaches is marked first, in one write, and each one's
-        // marker goes when its new version (or "nothing changed") is done. A run cut off half way leaves the rest marked,
-        // the safe side (round four, 1).
-        if (staticChange)
-        {
-            var published = (await store.ListActiveVersionsAsync(packIds, cancellationToken)).Select(version => version.PackId).Distinct(StringComparer.Ordinal).ToArray();
-            await store.MarkChangesWaitingAsync(published, clock.GetUtcNow().UtcDateTime, cancellationToken);
-        }
-
+        // A static change: the save pipeline marked every published passport it reaches before writing and again after
+        // (round five), and each one's marker goes when its new version (or "nothing changed") is done. One battery's
+        // failure never stops the others: it stays marked, and the error is logged with it.
         foreach (var packId in packIds)
         {
-            var active = await store.GetActiveVersionAsync(packId, cancellationToken);
-            if (active is null)
+            try
             {
-                continue; // a draft: publication is the team's step
+                await ValuesSavedOneAsync(packId, staticChange, sender, cancellationToken);
             }
-
-            if (!staticChange)
+            catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                // #4 is when the update was made available, not when it was measured (file, #4).
-                await store.SetVersionLastUpdatedAsync(active.Id, clock.GetUtcNow().UtcDateTime, cancellationToken);
-
-                // A change held back because the passport couldn't publish follows once this live value clears the block
-                // (round two, A1): from the feed, an upload, the API or a cluster admin alike. Only a battery marked as
-                // having a change waiting is looked at further: one read for the others (round three, 1).
-                if (await store.GetAsync<BatteryPack>(packId, cancellationToken) is { ChangesWaitingSinceUtc: not null } marked)
-                {
-                    var waiting = await WaitingAsync(packId, cancellationToken);
-                    if (waiting is null)
-                    {
-                        // Nothing differs after all: the marker was wrong, and goes (round four, 4).
-                        await store.ClearChangesWaitingAsync(packId, marked.ChangesWaitingToken, cancellationToken);
-                    }
-                    else if (waiting.Blocking.Count == 0)
-                    {
-                        await RepublishOneAsync(sender, packId, active, cancellationToken, withWaiting: true);
-                    }
-                }
-
-                continue;
+                await FailedAsync(sender, packId, exception);
             }
-
-            await RepublishOneAsync(sender, packId, active, cancellationToken);
         }
+    }
+
+    /// <summary>Logs a battery whose publication failed; it stays marked as waiting and is tried again (round five).</summary>
+    private Task FailedAsync(ChangeSender sender, string packId, Exception exception) =>
+        audit.AppendApplicationAuditEventAsync(
+            FailedEvent,
+            sender.Who,
+            "system",
+            "publication",
+            $"A new version of pack {packId} couldn't be published: {exception.GetType().Name}; it stays marked as waiting",
+            new BsonDocument { ["error"] = exception.Message },
+            entityType: "dpp-pack",
+            entityId: packId,
+            cancellationToken: CancellationToken.None);
+
+    private async Task ValuesSavedOneAsync(string packId, bool staticChange, ChangeSender sender, CancellationToken cancellationToken)
+    {
+        var active = await store.GetActiveVersionAsync(packId, cancellationToken);
+        if (active is null)
+        {
+            return; // a draft, or a passport no longer active: publication is the team's step
+        }
+
+        if (!staticChange)
+        {
+            // #4 is when the update was made available, not when it was measured (file, #4).
+            await store.SetVersionLastUpdatedAsync(active.Id, clock.GetUtcNow().UtcDateTime, cancellationToken);
+
+            // A change held back because the passport couldn't publish follows once this live value clears the block
+            // (round two, A1): from the feed, an upload, the API or a cluster admin alike. Only a battery marked as
+            // having a change waiting is looked at further: one read for the others (round three, 1).
+            if (await store.GetAsync<BatteryPack>(packId, cancellationToken) is { ChangesWaitingSinceUtc: not null } marked)
+            {
+                var waiting = await WaitingAsync(packId, cancellationToken);
+                if (waiting is null)
+                {
+                    // Nothing differs after all: the marker was wrong, and goes (round four, 4).
+                    await store.ClearChangesWaitingAsync(packId, marked.ChangesWaitingToken, cancellationToken);
+                }
+                else if (waiting.Blocking.Count == 0)
+                {
+                    await RepublishOneAsync(sender, packId, active, cancellationToken, withWaiting: true);
+                }
+            }
+
+            return;
+        }
+
+        await RepublishOneAsync(sender, packId, active, cancellationToken);
     }
 
     /// <summary>
@@ -335,9 +373,16 @@ public sealed class PublicationService(
         ArgumentNullException.ThrowIfNull(packIds);
         foreach (var packId in packIds)
         {
-            if (await store.GetActiveVersionAsync(packId, cancellationToken) is { } active)
+            try
             {
-                await RepublishOneAsync(sender, packId, active, cancellationToken);
+                if (await store.GetActiveVersionAsync(packId, CancellationToken.None) is { } active)
+                {
+                    await RepublishOneAsync(sender, packId, active, CancellationToken.None);
+                }
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                await FailedAsync(sender, packId, exception); // the others go on (round five)
             }
         }
     }
@@ -353,7 +398,9 @@ public sealed class PublicationService(
                 sender.Who,
                 "system",
                 "publication",
-                $"A new version of pack {packId} was blocked; version {active.Number} stays active",
+                result.Report is null
+                    ? $"No new version of pack {packId}: {result.Problem}" // e.g. marked or inactive meanwhile (round five)
+                    : $"A new version of pack {packId} was blocked; version {active.Number} stays active",
                 new BsonDocument { ["blocking"] = new BsonArray(result.Report?.Blocking ?? [result.Problem]) },
                 entityType: "dpp-pack",
                 entityId: packId,
@@ -401,7 +448,7 @@ public sealed class PublicationService(
             // list and the next live save. Every caller (a save, the team's or the API's publish) goes through here.
             if (active is not null)
             {
-                await store.MarkChangesWaitingAsync([packId], now, cancellationToken);
+                await store.MarkChangesWaitingAsync([packId], now, CancellationToken.None);
             }
 
             return new PublicationResult(null, report, "the passport can't be published yet; see the blocking items");
@@ -427,9 +474,18 @@ public sealed class PublicationService(
             return new PublicationResult(null, null, NoNewVersion(status));
         }
 
+        // From the first write onward nothing runs on the request's token (round five). A FIRST publication is marked
+        // before its version becomes active: its data was loaded before a model save that its new version may lack, and
+        // that save's own marks couldn't reach a battery that had no version yet.
+        var none = CancellationToken.None;
+        if (active is null)
+        {
+            await store.MarkChangesWaitingAsync([packId], now, none);
+        }
+
         try
         {
-            await store.InsertAsync(version, cancellationToken);
+            await store.InsertAsync(version, none);
         }
         catch (MongoWriteException exception) when (retryOnConflict && exception.WriteError.Category == ServerErrorCategory.DuplicateKey)
         {
@@ -437,16 +493,26 @@ public sealed class PublicationService(
             return await PublishCoreAsync(packId, sender, retryOnConflict: false, cancellationToken, withWaiting);
         }
 
-        await store.ArchiveOtherVersionsAsync(packId, version.Id, version.Number, cancellationToken);
-        await ClearWaitingAsync(sources.Pack, cancellationToken);
+        await store.ArchiveOtherVersionsAsync(packId, version.Id, version.Number, none);
+        if (active is null)
+        {
+            // The first version is active: its marker goes only when the data read now (after the marker) shows nothing
+            // differs, and only while it is still the marker read (round five).
+            await SettleFirstVersionAsync(packId);
+        }
+        else
+        {
+            await ClearWaitingAsync(sources.Pack, none);
+        }
+
         if (version.Number == 1 && pool is not null)
         {
-            await pool.MarkPublishedAsync(packId, cancellationToken); // its released ID is fixed for life (6d)
+            await pool.MarkPublishedAsync(packId, none); // its released ID is fixed for life (6d)
         }
 
         if (version.Number == 1 && sources.Pack.SuccessorOf is { } predecessor)
         {
-            await InactivateAsync(sender, predecessor, $"its new passport {passportId} is published", cancellationToken);
+            await InactivateAsync(sender, predecessor, $"its new passport {passportId} is published", none);
         }
 
         await audit.AppendApplicationAuditEventAsync(
@@ -464,7 +530,20 @@ public sealed class PublicationService(
             },
             entityType: "dpp-pack",
             entityId: packId,
-            cancellationToken: cancellationToken);
+            cancellationToken: none);
         return new PublicationResult(version, report, null);
+    }
+
+    /// <summary>
+    /// After a first version is made active: the marker set before it is cleared only if the saved data, read after the
+    /// marker, equals the new version; otherwise it stays (a model save crossed the publication). Round five.
+    /// </summary>
+    private async Task SettleFirstVersionAsync(string packId)
+    {
+        var none = CancellationToken.None;
+        if (await store.GetAsync<BatteryPack>(packId, none) is { } pack && await WaitingAsync(packId, none) is null)
+        {
+            await store.ClearChangesWaitingAsync(packId, pack.ChangesWaitingToken, none);
+        }
     }
 }

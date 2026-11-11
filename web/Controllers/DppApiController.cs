@@ -397,6 +397,7 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
                             {
                                 PublishOutcome.NewVersion => "new version",
                                 PublishOutcome.NothingChanged => "nothing changed",
+                                PublishOutcome.NotPublished => "not published",
                                 _ => "held back",
                             },
                             version = passport.Version,
