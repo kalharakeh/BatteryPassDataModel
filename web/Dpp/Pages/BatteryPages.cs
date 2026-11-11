@@ -337,7 +337,9 @@ public sealed class BatteryPages(
     {
         var (rows, versions) = await RowsAsync(cancellationToken);
         var page = OnePerBatteryPage(rows, versions, query, _ => true, matchClusters: true);
-        return page with { Waiting = Sorted(OnePerBattery(rows).Where(row => row.ChangesWaiting)) };
+        // Every marked battery, not one row per battery: a predecessor still active while its successor is a draft is
+        // named too (round four, 5).
+        return page with { Waiting = Sorted(rows.Where(row => row.ChangesWaiting)) };
     }
 
     /// <summary>
