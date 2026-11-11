@@ -125,7 +125,7 @@ public sealed class PublicationService(
                 return new PassportOutcome(packId, PublishOutcome.HeldBack, active.Number, waiting.Blocking);
             }
 
-            await RepublishOneAsync(sender, packId, active, cancellationToken, afterLiveValue: true);
+            await RepublishOneAsync(sender, packId, active, cancellationToken, withWaiting: true);
         }
         else
         {
@@ -282,7 +282,7 @@ public sealed class PublicationService(
                 if (await store.GetAsync<BatteryPack>(packId, cancellationToken) is { ChangesWaitingSinceUtc: not null }
                     && await WaitingAsync(packId, cancellationToken) is { Blocking.Count: 0 })
                 {
-                    await RepublishOneAsync(sender, packId, active, cancellationToken, afterLiveValue: true);
+                    await RepublishOneAsync(sender, packId, active, cancellationToken, withWaiting: true);
                 }
 
                 continue;
@@ -310,9 +310,9 @@ public sealed class PublicationService(
         }
     }
 
-    private async Task RepublishOneAsync(ChangeSender sender, string packId, PassportVersion active, CancellationToken cancellationToken, bool afterLiveValue = false)
+    private async Task RepublishOneAsync(ChangeSender sender, string packId, PassportVersion active, CancellationToken cancellationToken, bool withWaiting = false)
     {
-        var result = await PublishCoreAsync(packId, sender, retryOnConflict: true, cancellationToken, afterLiveValue);
+        var result = await PublishCoreAsync(packId, sender, retryOnConflict: true, cancellationToken, withWaiting);
         if (result.Problem is not null)
         {
             // The saved change waits: the marker tells the team's list and the next live save (round three, 1).
@@ -331,8 +331,11 @@ public sealed class PublicationService(
     }
 
     /// <param name="sender">Who the new version is published for; the log names them (a cluster admin's status change, step 4b).</param>
-    /// <param name="afterLiveValue">True when a live value cleared the way for a change that was waiting: the log says so (round three, 5).</param>
-    private async Task<PublicationResult> PublishCoreAsync(string packId, ChangeSender sender, bool retryOnConflict, CancellationToken cancellationToken, bool afterLiveValue = false)
+    /// <param name="withWaiting">
+    /// True when the version carries a change that was waiting (a live value cleared the way, a mark was undone, or the
+    /// team pressed "Publish the waiting changes"): the log names who set it off and says so (round three, 5).
+    /// </param>
+    private async Task<PublicationResult> PublishCoreAsync(string packId, ChangeSender sender, bool retryOnConflict, CancellationToken cancellationToken, bool withWaiting = false)
     {
         var who = sender.Who;
         var sources = await store.LoadSourcesAsync(packId, cancellationToken);
@@ -379,7 +382,7 @@ public sealed class PublicationService(
         catch (MongoWriteException exception) when (retryOnConflict && exception.WriteError.Category == ServerErrorCategory.DuplicateKey)
         {
             // Another save published this pack at the same moment: start again from the new state, once.
-            return await PublishCoreAsync(packId, sender, retryOnConflict: false, cancellationToken);
+            return await PublishCoreAsync(packId, sender, retryOnConflict: false, cancellationToken, withWaiting);
         }
 
         await store.ArchiveOtherVersionsAsync(packId, version.Id, cancellationToken);
@@ -399,12 +402,13 @@ public sealed class PublicationService(
             who,
             sender.Kind.ToString(),
             "publication",
-            $"Version {version.Number} of pack {packId} published",
+            withWaiting ? $"Version {version.Number} of pack {packId} published with the changes that were waiting" : $"Version {version.Number} of pack {packId} published",
             new BsonDocument
             {
                 ["passportId"] = passportId,
                 ["number"] = version.Number,
                 ["warnings"] = new BsonArray(report.Warnings),
+                ["withWaitingChanges"] = withWaiting,
             },
             entityType: "dpp-pack",
             entityId: packId,
