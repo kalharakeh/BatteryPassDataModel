@@ -1,10 +1,11 @@
+@using BatteryPassWeb.Dpp.Catalog
 @using BatteryPassWeb.Dpp.Editing
 @using BatteryPassWeb.Dpp.Pages
 @model BatchPage
 @{
     ViewData["Title"] = $"Batch {Model.Batch.Year} · {Model.Site.Name} · {Model.Model.Name}";
-    var modelMissing = RecordEditor.CountMissing(TargetKind.Model, Model.Model.Values);
-    var siteMissing = RecordEditor.CountMissing(TargetKind.Site, Model.Site.Values);
+    var modelMissing = RecordEditor.CountMissing(TargetKind.Model, Model.Model.Values, Model.Model.Answers());
+    var siteMissing = RecordEditor.CountMissing(TargetKind.Site, Model.Site.Values, ModelAnswers.NotAnswered);
 }
 
 <main class="bp-page bp-admin-page">

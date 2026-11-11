@@ -37,7 +37,7 @@ public sealed class RatedCapacityRequiredTests(MongoFixture mongo)
         var passport = PassportAssembler.Assemble(seed.Sources, seed.Header);
         passport["batteryPassportData"]!["performanceAndDurability"]!.AsObject().Remove("ratedCapacity");
 
-        var report = new PublicationChecks(DppStoreTesting.Schemas).Check(passport);
+        var report = new PublicationChecks(DppStoreTesting.Schemas).Check(passport, DppTestSeed.Answers);
 
         Assert.False(report.CanPublish);
         Assert.Contains(report.Blocking, item => item.StartsWith("#57 Rated capacity is missing", StringComparison.Ordinal));
@@ -51,12 +51,12 @@ public sealed class RatedCapacityRequiredTests(MongoFixture mongo)
         var stored = new Dictionary<string, AttributeValue>((await rig.Store.GetAsync<BatteryModel>(ModelId))!.Values, StringComparer.Ordinal);
         stored.Remove("ratedCapacity");
 
-        var sections = await PageTesting.Editor(rig).SectionsAsync(TargetKind.Model, ModelId, stored);
+        var sections = await PageTesting.Editor(rig).SectionsAsync(TargetKind.Model, ModelId, stored, DppTestSeed.Answers);
         var field = sections.SelectMany(section => section.Fields).Single(field => field.Attribute.Number == 57);
 
         Assert.True(field.IsMissing);
         Assert.Equal("Required by Feb 2027", field.Marker);
-        Assert.Equal(1, RecordEditor.CountMissing(TargetKind.Model, stored));
+        Assert.Equal(1, RecordEditor.CountMissing(TargetKind.Model, stored, DppTestSeed.Answers));
     }
 
     [Fact]

@@ -379,6 +379,19 @@ public sealed class DppStore
         return result.MatchedCount == 1;
     }
 
+    /// <summary>Sets a model's answers to its three questions (R01); null clears one. False when the model doesn't exist.</summary>
+    public async Task<bool> SetModelAnswersAsync(string modelId, bool? commercialWarranty, bool? cyclingUse, bool? cadmiumOrLeadAboveLimit, CancellationToken cancellationToken = default)
+    {
+        var result = await Collection<BatteryModel>().UpdateOneAsync(
+            model => model.Id == modelId,
+            Builders<BatteryModel>.Update
+                .Set(model => model.HasCommercialWarranty, commercialWarranty)
+                .Set(model => model.MadeForCyclingUse, cyclingUse)
+                .Set(model => model.CadmiumOrLeadAboveLimit, cadmiumOrLeadAboveLimit),
+            cancellationToken: cancellationToken);
+        return result.MatchedCount == 1;
+    }
+
     /// <summary>How many packs belong to this cluster.</summary>
     public async Task<long> CountPacksInClusterAsync(string clusterId, CancellationToken cancellationToken = default)
     {

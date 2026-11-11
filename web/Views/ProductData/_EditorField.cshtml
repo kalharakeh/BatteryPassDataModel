@@ -126,8 +126,9 @@
                 <span>@(form.Kind == FormKind.Upload ? "Downloaded" : "Seen") only by @(Model.Editor.ForTeam ? field.SeenBy : field.SeenByOutsideTheTeam).</span>
             </details>
         }
-        @if (AttributeCatalog.ConditionOf(definition) is { } condition)
+        @if (field.NeedLine is { } condition)
         {
+            @* Whether this model needs the value, from its three questions (R01); the file's condition for the others. *@
             <small class="bp-field-help bp-attr-condition">@condition</small>
         }
         @if (hint is not null)

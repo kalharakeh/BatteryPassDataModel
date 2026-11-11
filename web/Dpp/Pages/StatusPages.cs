@@ -115,7 +115,7 @@ public sealed class StatusPages(DppStore store, RecordEditor editor, StatusChang
     {
         ArgumentNullException.ThrowIfNull(sources);
         var pack = sources.Pack;
-        var attributes = StatusChangeService.RestatedAttributes(sources.Model);
+        var attributes = WindowAttributes(sources, forTeam);
         var current = CurrentValues(sources, attributes);
         var view = new RecordEditorView(
             TargetKind.Pack,
@@ -123,7 +123,7 @@ public sealed class StatusPages(DppStore store, RecordEditor editor, StatusChang
             string.Empty,
             $"{href}/status",
             $"{href}#status",
-            await editor.SectionsAsync(TargetKind.Pack, pack.Id, attributes, current, typed?.Post, typed?.Save.Refusals(editor.Forms), cancellationToken),
+            await editor.SectionsAsync(TargetKind.Pack, pack.Id, attributes, current, sources.Model.Answers(), typed?.Post, typed?.Save.Refusals(editor.Forms), cancellationToken),
             [],
             0,
             editor.Forms.Languages,
@@ -242,10 +242,14 @@ public sealed class StatusPages(DppStore store, RecordEditor editor, StatusChang
             return null;
         }
 
-        var restated = StatusChangeService.RestatedAttributes(sources.Model).ToDictionary(
+        var restated = WindowAttributes(sources, sender.Kind == SenderKind.Team).ToDictionary(
             attribute => attribute.Property,
             attribute => FormValues.Read(editor.Forms.For(attribute), field),
             StringComparer.Ordinal);
+        if (restated.GetValueOrDefault(SavePipeline.AddedByCorrection) is null)
+        {
+            restated.Remove(SavePipeline.AddedByCorrection); // left empty: nothing to add
+        }
         return Enum.TryParse<StatusEvent>(what, ignoreCase: false, out var happened) && Enum.IsDefined(happened)
             ? await changes.ChangeAsync(sender, packId, new StatusChange(happened, restated, repairDate, repairDescription, field("undoReason")), cancellationToken)
             : new StatusChangeResult(true, null, [], "choose what happened");
@@ -275,6 +279,15 @@ public sealed class StatusPages(DppStore store, RecordEditor editor, StatusChang
             ? ($"Saved: the battery is {result.NewStatus}. Version {version.Number} of the passport is published.", null)
             : ($"Saved: the battery is {result.NewStatus}. The passport's values didn't change, so it keeps version {versionBefore}.", null);
     }
+
+    /// <summary>
+    /// The window's fields: the re-stated values, and for the team the warranty (#19) while the battery has none, which
+    /// "Correct the values" may add once (R01).
+    /// </summary>
+    private static IReadOnlyList<AttributeDefinition> WindowAttributes(PassportSources sources, bool forTeam) =>
+        forTeam && !sources.Pack.Values.ContainsKey(SavePipeline.AddedByCorrection)
+            ? [AttributeCatalog.FindByProperty(SavePipeline.AddedByCorrection)!, .. StatusChangeService.RestatedAttributes(sources.Model)]
+            : StatusChangeService.RestatedAttributes(sources.Model);
 
     /// <summary>The re-stated values as the battery shows them now: its own once re-stated, else its model's (design 4.1).</summary>
     private static Dictionary<string, AttributeValue> CurrentValues(PassportSources sources, IReadOnlyList<AttributeDefinition> attributes)

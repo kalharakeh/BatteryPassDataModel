@@ -41,7 +41,11 @@ public sealed class PublicationService(
     /// The checks the pack's passport would meet if it were published now, without publishing anything (the battery
     /// page shows them); null when the pack, or a record it links to, is missing.
     /// </summary>
-    public async Task<PublicationReport?> CheckAsync(string packId, CancellationToken cancellationToken = default)
+    public Task<PublicationReport?> CheckAsync(string packId, CancellationToken cancellationToken = default) =>
+        CheckAsync(packId, null, cancellationToken);
+
+    /// <summary>The checks as above, as if the pack also had <paramref name="added"/> (a correction that adds #19, R01).</summary>
+    public async Task<PublicationReport?> CheckAsync(string packId, IReadOnlyDictionary<string, System.Text.Json.Nodes.JsonNode>? added, CancellationToken cancellationToken = default)
     {
         var sources = await store.LoadSourcesAsync(packId, cancellationToken);
         if (sources is null)
@@ -49,9 +53,14 @@ public sealed class PublicationService(
             return null;
         }
 
+        foreach (var (key, value) in added ?? new Dictionary<string, System.Text.Json.Nodes.JsonNode>())
+        {
+            sources.Pack.Values[key] = new Values.AttributeValue { Value = value.DeepClone(), GeneratedAtUtc = clock.GetUtcNow().UtcDateTime, Source = "form" };
+        }
+
         var number = await store.GetLatestVersionNumberAsync(packId, cancellationToken) + 1;
         var header = new PassportHeader(identifiers.NewPassportIdentifier(PackIdentifier(sources.Pack), number), DppStatuses.Active, clock.GetUtcNow().UtcDateTime);
-        return WithDemoRule(sources, checks.Check(PassportAssembler.Assemble(sources, header)), number);
+        return WithDemoRule(sources, checks.Check(PassportAssembler.Assemble(sources, header), sources.Model.Answers()), number);
     }
 
     /// <summary>
@@ -184,7 +193,7 @@ public sealed class PublicationService(
         var number = await store.GetLatestVersionNumberAsync(packId, cancellationToken) + 1;
         var passportId = identifiers.NewPassportIdentifier(PackIdentifier(sources.Pack), number);
         var passport = PassportAssembler.Assemble(sources, new PassportHeader(passportId, DppStatuses.Active, now));
-        var report = WithDemoRule(sources, checks.Check(passport), number);
+        var report = WithDemoRule(sources, checks.Check(passport, sources.Model.Answers()), number);
         if (!report.CanPublish)
         {
             return new PublicationResult(null, report, "the passport can't be published yet; see the blocking items");

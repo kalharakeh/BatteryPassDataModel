@@ -16,19 +16,27 @@ public sealed record PublicationReport(IReadOnlyList<string> Blocking, IReadOnly
 /// </summary>
 public sealed class PublicationChecks(OfficialSchemas schemas)
 {
-    public PublicationReport Check(JsonObject passport)
+    /// <param name="answers">The model's answers to its three questions (R01); they are not part of the passport.</param>
+    public PublicationReport Check(JsonObject passport, ModelAnswers answers)
     {
         ArgumentNullException.ThrowIfNull(passport);
+        ArgumentNullException.ThrowIfNull(answers);
         var blocking = new List<string>();
         var warnings = new List<string>();
+        if (!answers.AllAnswered)
+        {
+            blocking.Add(PassportNeeds.QuestionsNotAnswered);
+        }
 
         foreach (var attribute in AttributeCatalog.All.Where(a => Find(passport, a) is null))
         {
             // The one rule (PassportNeeds): a value needed now blocks, one needed only after Feb 2027 warns.
-            switch (PassportNeeds.NeedOf(attribute))
+            switch (PassportNeeds.NeedOf(attribute, answers))
             {
                 case Need.Required:
-                    blocking.Add($"{attribute.Label} {attribute.Name} is missing");
+                    blocking.Add(PassportNeeds.Reason(attribute, answers) is { } reason
+                        ? $"{attribute.Label} {attribute.Name} is missing ({reason})"
+                        : $"{attribute.Label} {attribute.Name} is missing");
                     break;
                 case Need.Later:
                     warnings.Add($"{attribute.Label} {attribute.Name} is missing (required later, not by Feb 2027)");

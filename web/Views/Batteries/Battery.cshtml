@@ -236,6 +236,11 @@
                                 <h2>Ready to publish</h2>
                                 <p class="mb-0">Every value the passport needs by February 2027 is there. Publishing makes version 1, signs it and shows it to its readers.</p>
                             }
+                            else if (publication.MissingCount == 0)
+                            {
+                                <h2>Not ready to publish yet</h2>
+                                <p class="mb-0">@(publication.QuestionsHref is not null ? "Its model's three questions aren't answered yet." : "The checks below must pass first.")</p>
+                            }
                             else
                             {
                                 <h2>Not ready to publish yet</h2>
@@ -256,10 +261,21 @@
                     {
                         <ul class="bp-todo"><li class="is-none">Nothing needs you.</li></ul>
                     }
-                    @if (publication.Missing.Count > 0)
+                    @if (publication.Missing.Count > 0 || publication.QuestionsHref is not null)
                     {
                         <h3 class="h6 mt-3 mb-0">What the passport still needs</h3>
                         <ul class="bp-missing-groups">
+                            @if (publication.QuestionsHref is { } questionsHref)
+                            {
+                                @* R01: an unanswered model blocks publishing, and new versions too. *@
+                                <li>
+                                    <div class="bp-missing-group-head">
+                                        <strong>Model @publication.ModelName</strong>
+                                        <a href="@questionsHref">Answer</a>
+                                    </div>
+                                    <span>Answer the model's three questions: they decide which values the passport needs.</span>
+                                </li>
+                            }
                             @foreach (var group in publication.Missing)
                             {
                                 <li>
@@ -267,7 +283,7 @@
                                         <strong>@group.Record</strong>
                                         <a href="@group.Href">Fill in</a>
                                     </div>
-                                    <span>@string.Join(", ", group.Attributes.Select(attribute => $"{attribute.Label} {attribute.Name}"))</span>
+                                    <span>@string.Join(", ", group.Attributes.Select(group.Line))</span>
                                 </li>
                             }
                         </ul>

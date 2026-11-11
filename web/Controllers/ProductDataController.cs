@@ -1,3 +1,4 @@
+using BatteryPassWeb.Dpp.Catalog;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Pages;
@@ -269,6 +270,49 @@ public sealed class ProductDataController(ProductDataPages pages, RecordEditor e
         }
 
         return Redirect($"{ProductDataPages.FamilyHref(model.FamilyId, modelId)}#modules");
+    }
+
+    /// <summary>A save of a model's answers that waits for the team's yes: "modelId|warranty=yes|cycling=no|…" and the count.</summary>
+    public const string PendingAnswersKey = "PendingAnswers";
+    public const string PendingAffectedKey = "PendingAnswersAffected";
+
+    [HttpPost("models/{modelId}/questions")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetAnswers(string modelId, [FromForm] string? warranty, [FromForm] string? cycling, [FromForm] string? cadmiumOrLead, [FromForm] bool confirmed, CancellationToken cancellationToken)
+    {
+        var model = await store.GetAsync<BatteryModel>(modelId, cancellationToken);
+        if (model is null)
+        {
+            return NotFound();
+        }
+
+        static bool? Read(string? posted) => posted switch
+        {
+            "yes" => true,
+            "no" => false,
+            _ => null,
+        };
+
+        var posted = new ModelAnswers(Read(warranty), Read(cycling), Read(cadmiumOrLead));
+        var save = await pages.SetModelAnswersAsync(Who, model, posted, confirmed, cancellationToken);
+        if (save.NeedsConfirmation)
+        {
+            TempData[PendingAnswersKey] = $"{modelId}|warranty={warranty}|cycling={cycling}|cadmiumOrLead={cadmiumOrLead}";
+            TempData[PendingAffectedKey] = save.Affected;
+        }
+        else if (!save.Saved)
+        {
+            TempData[InfoKey] = "Nothing changed.";
+        }
+        else
+        {
+            var answers = (await store.GetAsync<BatteryModel>(modelId, cancellationToken))!.Answers();
+            TempData[StatusKey] = answers.AllAnswered
+                ? "Answers saved. The passport doesn't show them; they decide which values it needs."
+                : "Answers saved. Answer all three before this model's batteries can be published.";
+        }
+
+        return Redirect($"{ProductDataPages.FamilyHref(model.FamilyId, modelId)}#questions");
     }
 
     [HttpPost("models/{modelId}/batches")]

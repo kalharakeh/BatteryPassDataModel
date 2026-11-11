@@ -48,12 +48,27 @@ public sealed class ValueRemovalTests(MongoFixture mongo)
     public async Task AConditionalValueOfAPublishedPassport_ShouldBeRemovedAndPublishANewVersion()
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo);
+        await rig.Store.SetModelAnswersAsync(ModelId, true, true, false); // R01: the model says #24 isn't needed
 
         var result = await rig.Pipeline.SaveAsync(PublicationTesting.Team, Remove("symbolsForCadmiumAndLead"));
 
         Assert.Equal(KeyOutcome.Removed, Assert.Single(result.Keys).Outcome);
         Assert.False((await rig.Store.GetAsync<BatteryModel>(ModelId))!.Values.ContainsKey("symbolsForCadmiumAndLead"));
         Assert.Equal(2, (await rig.Store.GetActiveVersionAsync(rig.PackId))?.Number);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(null)]
+    public async Task AConditionalValueTheModelMayNeed_ShouldNotBeRemovedFromAPublishedPassport(bool? cadmiumOrLead)
+    {
+        var rig = await PublicationTesting.PublishedRigAsync(mongo);
+        await rig.Store.SetModelAnswersAsync(ModelId, true, true, cadmiumOrLead); // R01: yes, or not answered yet
+
+        var result = await rig.Pipeline.SaveAsync(PublicationTesting.Team, Remove("symbolsForCadmiumAndLead"));
+
+        Assert.Equal(KeyOutcome.Rejected, Assert.Single(result.Keys).Outcome);
+        Assert.True((await rig.Store.GetAsync<BatteryModel>(ModelId))!.Values.ContainsKey("symbolsForCadmiumAndLead"));
     }
 
     [Fact]

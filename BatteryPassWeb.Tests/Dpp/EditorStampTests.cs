@@ -80,7 +80,7 @@ public sealed class EditorStampTests(MongoFixture mongo)
 
         // Shown again: the typed 700 stays in its field, the other fields show the stored values, and the new stamp lets
         // the next save go through.
-        var sections = await editor.SectionsAsync(TargetKind.Model, ModelId, now, post, save.Refusals(AttributeFormsTests.Forms));
+        var sections = await editor.SectionsAsync(TargetKind.Model, ModelId, now, DppTestSeed.Answers, post, save.Refusals(AttributeFormsTests.Forms));
         var mass = sections.SelectMany(section => section.Fields).Single(field => field.Attribute.Property == "batteryMass");
         Assert.Equal("700", mass.Text("v.batteryMass"));
         var again = editor.Read(TargetKind.Model, now, PageTesting.Field(form), editor.Stamp(TargetKind.Model, now, "Model test"));

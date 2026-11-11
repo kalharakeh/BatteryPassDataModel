@@ -51,6 +51,15 @@ public sealed class BatteryModel : IDppRecord
     public string? PictureFileId { get; set; }
 
     public string? PictureContentType { get; set; }
+
+    /// <summary>Does this battery come with a commercial warranty? (R01, decides #19.) Null: not answered yet. App data, not passport data.</summary>
+    public bool? HasCommercialWarranty { get; set; }
+
+    /// <summary>Is this battery made for cycling use? (R01, decides #71, #72, #74, #82 to #85.) Null: not answered yet. App data.</summary>
+    public bool? MadeForCyclingUse { get; set; }
+
+    /// <summary>Is its cadmium or lead above the limit for the symbols? (R01, decides #24.) Null: not answered yet. App data.</summary>
+    public bool? CadmiumOrLeadAboveLimit { get; set; }
 }
 
 /// <summary>Manufacturer identifier and information, and the manufacturing place (#12, #15, #16).</summary>

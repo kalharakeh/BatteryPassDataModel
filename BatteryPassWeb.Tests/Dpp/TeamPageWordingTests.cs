@@ -53,6 +53,6 @@ public sealed class TeamPageWordingTests
     [Fact]
     public void ChoosingASiteForABatch_ShouldShowWhatTheSiteMisses()
     {
-        Assert.Contains("RecordEditor.CountMissing(TargetKind.Site, site.Values)", View("Family.cshtml"), StringComparison.Ordinal);
+        Assert.Contains("RecordEditor.CountMissing(TargetKind.Site, site.Values, ModelAnswers.NotAnswered)", View("Family.cshtml"), StringComparison.Ordinal);
     }
 }

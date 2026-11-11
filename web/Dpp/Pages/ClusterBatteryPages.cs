@@ -146,7 +146,7 @@ public sealed class ClusterBatteryPages(
             serial,
             $"{href}/live",
             $"{href}#live",
-            await editor.SectionsAsync(TargetKind.Pack, pack.Id, RecordEditor.LiveAttributes, pack.Values, live?.Post, live?.Save.Refusals(editor.Forms), cancellationToken),
+            await editor.SectionsAsync(TargetKind.Pack, pack.Id, RecordEditor.LiveAttributes, pack.Values, sources.Model.Answers(), live?.Post, live?.Save.Refusals(editor.Forms), cancellationToken),
             [],
             0,
             editor.Forms.Languages,

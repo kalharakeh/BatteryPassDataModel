@@ -92,11 +92,20 @@ public sealed record EditorField(
     /// <summary>For a document field without an uploaded file in the app: the link its stored value points to.</summary>
     public string? StoredLink { get; init; }
 
+    /// <summary>The model's answers to its three questions (R01), which decide whether a conditional value is needed.</summary>
+    public ModelAnswers Answers { get; init; } = ModelAnswers.NotAnswered;
+
+    /// <summary>Whether the passport needs this value before it is published (<see cref="PassportNeeds"/>).</summary>
+    public Need Need => PassportNeeds.NeedOf(Attribute, Answers);
+
     /// <summary>
     /// Empty although the passport needs it before publishing (<see cref="PassportNeeds"/>): what the team still has to
-    /// fill in. Conditional values and values needed only later are not counted.
+    /// fill in. Values needed only later, and conditional values the model's answers don't ask for, are not counted.
     /// </summary>
-    public bool IsMissing => !HasValue && PassportNeeds.NeedOf(Attribute) == Need.Required;
+    public bool IsMissing => !HasValue && Need == Need.Required;
+
+    /// <summary>For a conditional value, the short line that says whether this model needs it; null for the others.</summary>
+    public string? NeedLine => PassportNeeds.EditorLine(Attribute, Answers);
 
     /// <summary>True when this input of a grouped value should be marked as refused.</summary>
     public bool IsRefused(FormInput input) =>
@@ -138,12 +147,9 @@ public sealed record EditorField(
     public string Text(string fieldName) => Texts.GetValueOrDefault(fieldName, string.Empty);
 
     /// <summary>The requirement in the grey marker: the file's M, (M) or C, and whether it is needed by February 2027.</summary>
-    public string Marker => PassportNeeds.NeedOf(Attribute) switch
-    {
-        Need.Required => "Required by Feb 2027",
-        Need.Later => "Required later",
-        _ => "Conditional",
-    };
+    public string Marker => Attribute.Requirement == Requirement.Conditional
+        ? "Conditional"
+        : Need == Need.Required ? "Required by Feb 2027" : "Required later";
 
     /// <summary>Who may see the value, shown only when it isn't public.</summary>
     public string? AudienceLabel => Attribute.Audience switch
@@ -229,10 +235,13 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
     public static int CountFilled(TargetKind kind, IReadOnlyDictionary<string, AttributeValue> stored) =>
         AttributesOf(kind).Count(attribute => stored.ContainsKey(attribute.Property));
 
-    /// <summary>How many of the record's values the passport needs by February 2027 are still empty (see <see cref="EditorField.IsMissing"/>).</summary>
-    public static int CountMissing(TargetKind kind, IReadOnlyDictionary<string, AttributeValue> stored) =>
+    /// <summary>
+    /// How many of the record's values the passport needs before publishing are still empty (see <see cref="EditorField.IsMissing"/>).
+    /// <paramref name="answers"/> are the model's (for a model, or a battery of it); a batch, site or operator has no value they decide.
+    /// </summary>
+    public static int CountMissing(TargetKind kind, IReadOnlyDictionary<string, AttributeValue> stored, ModelAnswers answers) =>
         AttributesOf(kind).Count(attribute =>
-            !stored.ContainsKey(attribute.Property) && PassportNeeds.NeedOf(attribute) == Need.Required);
+            !stored.ContainsKey(attribute.Property) && PassportNeeds.NeedOf(attribute, answers) == Need.Required);
 
     /// <summary>
     /// The values the schema allows only one way, which have no input (#20 battery category). A new record starts with
@@ -393,14 +402,16 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
     /// The editor's sections. Without <paramref name="post"/> the fields show the stored values; with it, what was typed,
     /// so a refused value can be corrected in place.
     /// </summary>
+    /// <param name="answers">The model's answers (for a model, or a battery of it); a batch, site or operator has no value they decide.</param>
     public Task<IReadOnlyList<EditorSection>> SectionsAsync(
         TargetKind kind,
         string id,
         IReadOnlyDictionary<string, AttributeValue> stored,
+        ModelAnswers answers,
         EditorPost? post = null,
         IReadOnlyDictionary<string, Refusal>? refusals = null,
         CancellationToken cancellationToken = default) =>
-        SectionsAsync(kind, id, AttributesOf(kind), stored, post, refusals, cancellationToken);
+        SectionsAsync(kind, id, AttributesOf(kind), stored, answers, post, refusals, cancellationToken);
 
     /// <summary>The sections of a form that shows only these <paramref name="attributes"/> of the record.</summary>
     public async Task<IReadOnlyList<EditorSection>> SectionsAsync(
@@ -408,12 +419,14 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
         string id,
         IReadOnlyList<AttributeDefinition> attributes,
         IReadOnlyDictionary<string, AttributeValue> stored,
+        ModelAnswers answers,
         EditorPost? post = null,
         IReadOnlyDictionary<string, Refusal>? refusals = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(attributes);
         ArgumentNullException.ThrowIfNull(stored);
+        ArgumentNullException.ThrowIfNull(answers);
         var fields = new List<EditorField>();
         foreach (var attribute in attributes)
         {
@@ -433,6 +446,7 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
             fields.Add(new EditorField(form, texts, rows, refusal?.Text, document, value is not null)
             {
                 RefusedParts = refusal?.Parts ?? new HashSet<string>(StringComparer.Ordinal),
+                Answers = answers,
                 StoredLink = form.Kind == FormKind.Upload && value?["url"] is JsonValue url && url.TryGetValue<string>(out var link) ? link : null,
             });
         }

@@ -49,6 +49,10 @@
                     <div class="bp-attr-list">
                         @foreach (var field in Model.Restated.Sections.SelectMany(section => section.Fields))
                         {
+                            @if (field.Attribute.Property == SavePipeline.AddedByCorrection)
+                            {
+                                <p class="bp-field-help mb-0">The battery has no warranty yet. Only <strong>Correct the values</strong> adds it, once; after that it is fixed.</p>
+                            }
                             @await Html.PartialAsync("~/Views/ProductData/_EditorField.cshtml", new EditorFieldView(Model.Restated, field))
                             @if (field.Attribute.Number == 59 && Model.RatedCapacityAh is { } rated)
                             {
