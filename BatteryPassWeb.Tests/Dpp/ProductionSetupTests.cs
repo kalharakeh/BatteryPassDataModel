@@ -34,6 +34,7 @@ public sealed class ProductionSetupTests
         {
             Assert.Contains(DemoSigningKeyService.PrivateKeySetting, text, StringComparison.Ordinal);
             Assert.Contains("DPP_ID_BASE_URL", text, StringComparison.Ordinal);
+            Assert.Contains("ENABLE_DEMO_ADMIN_FALLBACK=false", text, StringComparison.Ordinal); // the example's true stops Production
         }
     }
 
