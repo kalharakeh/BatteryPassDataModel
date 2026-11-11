@@ -21,6 +21,12 @@ public sealed partial class BmsExportFormat : IUploadAdapter
     public const string CheckedVersion = "01.32.07";
 
     public const string NoTemperature = "the export has no pack temperature yet, so #87 is left as it is";
+    /// <summary>The earliest production month the export's date is taken for (decision 63).</summary>
+    public const string EarliestProductionMonth = "2015-01";
+
+    /// <summary>Why the export's production date isn't taken as #17 (decision 63).</summary>
+    public static string ProductionDateCantBeRight(string produced) => $"the export's production date {produced} can't be right, so #17 is left as it is; type it";
+
     public const string ChargingAboveZero = "the export's time spent charging in extreme temperatures is above zero and can't be split into above and below the boundary, so E3 and E4 are left as they are";
 
     public bool Reads(JsonObject file) => file["metadata"] is JsonObject metadata && metadata["mappingName"] is JsonValue;
@@ -110,10 +116,20 @@ public sealed partial class BmsExportFormat : IUploadAdapter
         }
 
         // #17: year and month (decision 18), readable only when the export has it. It only fills a battery that has none
-        // (a new draft): once set, the team corrects it on the battery's page (decision 35, Q15).
+        // (a new draft): once set, the team corrects it on the battery's page (decision 35, Q15). Taken only when it can
+        // be true: not before 2015-01 and not after the export's own month; a real core's export carried the placeholder
+        // 2000-01 (decision 63, round three 6).
         if (Formatted(exportValues, "productionDate") is { } produced && YearMonth().IsMatch(produced))
         {
-            values["manufacturingDate"] = produced;
+            var latest = (measuredAt ?? DateTime.UtcNow).ToString("yyyy-MM", CultureInfo.InvariantCulture);
+            if (string.CompareOrdinal(produced, EarliestProductionMonth) >= 0 && string.CompareOrdinal(produced, latest) <= 0)
+            {
+                values["manufacturingDate"] = produced;
+            }
+            else
+            {
+                notes.Add(ProductionDateCantBeRight(produced));
+            }
         }
 
         // The remaining capacity isn't passport data; it is kept to suggest the capacity fade (J-11, Q16).
