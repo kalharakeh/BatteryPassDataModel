@@ -53,13 +53,13 @@ public sealed class PassportApi(DppStore store, DemoBoundary demo, PassportReade
         return new ApiPassport(location, PassportFilter.Cut(published.Passport, who, clusters), reader.Check(location.Version), sources);
     }
 
-    /// <summary>The battery's published versions, newest first.</summary>
     /// <summary>Whether a version's signature holds: the data matches and the key is one the app trusts (finding R23).</summary>
     public bool Verified(PassportVersion version) => reader.Check(version).Holds;
 
     /// <summary>The full check of a version's signature, with the plain reason when it doesn't hold.</summary>
     public SignatureCheck Signature(PassportVersion version) => reader.Check(version);
 
+    /// <summary>The battery's published versions, newest first.</summary>
     public async Task<IReadOnlyList<PassportVersion>> VersionsAsync(ApiPassport passport, CancellationToken cancellationToken = default) =>
         (await store.ListVersionsAsync(passport.Version.PackId, cancellationToken)).OrderByDescending(version => version.Number).ToArray();
 
