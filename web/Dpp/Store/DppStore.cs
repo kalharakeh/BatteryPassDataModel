@@ -578,12 +578,13 @@ public sealed class DppStore
     /// Marks these packs as having a saved change waiting for their published passports, in one write (round four, 1):
     /// a new token each time, and the first time kept. Done before any publishing, so an interrupted run leaves them marked.
     /// </summary>
-    public async Task MarkChangesWaitingAsync(IReadOnlyCollection<string> packIds, DateTime nowUtc, CancellationToken cancellationToken = default)
+    /// <returns>How many packs it marked.</returns>
+    public async Task<long> MarkChangesWaitingAsync(IReadOnlyCollection<string> packIds, DateTime nowUtc, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(packIds);
         if (packIds.Count == 0)
         {
-            return;
+            return 0;
         }
 
         var set = new BsonDocument("$set", new BsonDocument
@@ -591,10 +592,10 @@ public sealed class DppStore
             [nameof(BatteryPack.ChangesWaitingToken)] = Guid.NewGuid().ToString("N"),
             [nameof(BatteryPack.ChangesWaitingSinceUtc)] = new BsonDocument("$ifNull", new BsonArray { "$" + nameof(BatteryPack.ChangesWaitingSinceUtc), new BsonDateTime(nowUtc) }),
         });
-        await Collection<BatteryPack>().UpdateManyAsync(
+        return (await Collection<BatteryPack>().UpdateManyAsync(
             Builders<BatteryPack>.Filter.In(pack => pack.Id, packIds),
             Builders<BatteryPack>.Update.Pipeline(new BsonDocument[] { set }),
-            cancellationToken: cancellationToken);
+            cancellationToken: cancellationToken)).ModifiedCount;
     }
 
     /// <summary>The packs among these that have at least one passport version (active, marked or inactive).</summary>
@@ -687,11 +688,12 @@ public sealed class DppStore
     /// Only versions with a lower number than the one just made active are archived (round five): a slower publisher's
     /// archive step then can't archive a faster publisher's newer version and leave the battery with no active version.
     /// </remarks>
-    public Task ArchiveOtherVersionsAsync(string packId, string activeVersionId, int activeNumber, CancellationToken cancellationToken = default) =>
-        Collection<PassportVersion>().UpdateManyAsync(
+    /// <returns>How many versions it archived.</returns>
+    public async Task<long> ArchiveOtherVersionsAsync(string packId, string activeVersionId, int activeNumber, CancellationToken cancellationToken = default) =>
+        (await Collection<PassportVersion>().UpdateManyAsync(
             version => version.PackId == packId && version.DppStatus == DppStatuses.Active && version.Id != activeVersionId && version.Number < activeNumber,
             Builders<PassportVersion>.Update.Set(version => version.DppStatus, DppStatuses.Archived),
-            cancellationToken: cancellationToken);
+            cancellationToken: cancellationToken)).ModifiedCount;
 
     /// <summary>Sets #4 of a version (a live update made available now).</summary>
     public Task SetVersionLastUpdatedAsync(string versionId, DateTime lastUpdatedUtc, CancellationToken cancellationToken = default) =>

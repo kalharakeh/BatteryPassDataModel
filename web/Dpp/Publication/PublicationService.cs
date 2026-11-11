@@ -33,12 +33,36 @@ public enum PublishOutcome
 /// </summary>
 public sealed record PassportCheckResult(int Checked, int Marked, int Cleared, int Archived, IReadOnlyList<string> Serials)
 {
+    /// <summary>Batteries whose check or write failed; they are left as they were, and logged (round seven, 3).</summary>
+    public int Failed { get; init; }
+
+    /// <summary>The run left early because the app is stopping (round seven, 3).</summary>
+    public bool StoppedEarly { get; init; }
+
+    /// <summary>A check was already running in this app; this one did nothing (round seven, 6).</summary>
+    public bool AlreadyRunning { get; init; }
+
     public bool ChangedAnything => Marked + Cleared + Archived > 0;
 
     /// <summary>The plain result line the battery list shows.</summary>
-    public string Words => ChangedAnything
-        ? $"Checked {Checked} published {(Checked == 1 ? "battery" : "batteries")}: {Marked} now marked as waiting, {Cleared} no longer, {Archived} old {(Archived == 1 ? "version" : "versions")} archived."
-        : $"Checked {Checked} published {(Checked == 1 ? "battery" : "batteries")}: nothing to put right.";
+    public string Words
+    {
+        get
+        {
+            if (AlreadyRunning)
+            {
+                return "A check is already running; its result will be in the audit log.";
+            }
+
+            var batteries = $"{Checked} published {(Checked == 1 ? "battery" : "batteries")}";
+            var what = ChangedAnything
+                ? $"Checked {batteries}: {Marked} now marked as waiting, {Cleared} no longer, {Archived} old {(Archived == 1 ? "version" : "versions")} archived."
+                : $"Checked {batteries}: nothing to put right.";
+            var failed = Failed == 0 ? string.Empty : $" {Failed} couldn't be checked; the next check tries again.";
+            var stopped = StoppedEarly ? " The app was stopping, so the check stopped early." : string.Empty;
+            return what + failed + stopped;
+        }
+    }
 }
 
 /// <summary>One published passport after an action that can publish: what happened, its active version, and what holds it back.</summary>
@@ -64,7 +88,8 @@ public sealed class PublicationService(
     IIdentifierScheme identifiers,
     ApplicationAuditService audit,
     TimeProvider clock,
-    BatteryIdPool? pool = null) : IPackChangeListener
+    BatteryIdPool? pool = null,
+    ILogger<PublicationService>? logger = null) : IPackChangeListener
 {
     public const string PublishedEvent = "dpp.published";
     public const string BlockedEvent = "dpp.publish-blocked";
@@ -149,99 +174,130 @@ public sealed class PublicationService(
 
         var none = CancellationToken.None; // what it writes isn't stopped half way
         var now = clock.GetUtcNow().UtcDateTime;
-        int checkedCount = 0, marked = 0, cleared = 0, archived = 0;
+        int checkedCount = 0, marked = 0, cleared = 0, archived = 0, failed = 0;
+        var stoppedEarly = false;
         var serials = new List<string>();
-        foreach (var pack in packs)
+        try
         {
-            if (!actives.TryGetValue(pack.Id, out var versions))
+            foreach (var pack in packs)
             {
-                continue; // a draft, or no longer active
-            }
-
-            checkedCount++;
-            var changed = false;
-
-            // The newest version is no longer active (invalid, marked for deletion, inactive) with a lower one still active,
-            // as a mark or a hand-over left it before round six: the lower ones are archived, so readers serve the newest
-            // version's state, and no marker is set: a passport no longer active takes no new version (round seven, 1).
-            if (newest[pack.Id].DppStatus != DppStatuses.Active)
-            {
-                await store.ArchiveOtherVersionsAsync(pack.Id, newest[pack.Id].Id, newest[pack.Id].Number, none);
-                archived += versions.Length;
-                if (serials.Count < CheckSerialsShown)
+                // The app is stopping: leave the loop; what was done is still written to the log below (round seven, 3).
+                if (cancellationToken.IsCancellationRequested)
                 {
-                    serials.Add(pack.Values.GetValueOrDefault("batterySerialNumber")?.Value?.ToString() ?? pack.Id);
+                    stoppedEarly = true;
+                    break;
                 }
 
-                continue;
-            }
+                if (!actives.TryGetValue(pack.Id, out var versions))
+                {
+                    continue; // a draft, or no longer active
+                }
 
-            var active = versions[0];
-            if (versions.Length > 1)
-            {
-                await store.ArchiveOtherVersionsAsync(pack.Id, active.Id, active.Number, none);
-                archived += versions.Length - 1;
-                changed = true;
-            }
-
-            var differs = true; // a battery whose records can't be put together is marked: the safe side
-            if (batches.GetValueOrDefault(pack.BatchId) is { } batch
-                && models.GetValueOrDefault(batch.ModelId) is { } model
-                && sites.GetValueOrDefault(batch.SiteId) is { } site
-                && operators.GetValueOrDefault(pack.OperatorId) is { } economicOperator)
-            {
+                checkedCount++;
                 try
                 {
-                    var passport = PassportAssembler.Assemble(new PassportSources(pack, batch, model, site, economicOperator), new PassportHeader(active.DigitalProductPassportId, DppStatuses.Active, now));
-                    differs = PassportStaticCore.ContentHash(PassportStaticCore.Extract(passport)) != PassportStaticCore.ContentHash(active.StaticCore);
+                    var (packMarked, packCleared, packArchived) = await CheckOneAsync(pack, versions, newest[pack.Id], batches, models, sites, operators, now);
+                    marked += packMarked;
+                    cleared += packCleared;
+                    archived += packArchived;
+                    if (packMarked + packCleared + packArchived > 0 && serials.Count < CheckSerialsShown)
+                    {
+                        serials.Add(pack.Values.GetValueOrDefault("batterySerialNumber")?.Value?.ToString() ?? pack.Id);
+                    }
                 }
-                catch (Exception exception) when (exception is not OperationCanceledException)
+                catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
                 {
-                    differs = true;
+                    // One battery's failed write doesn't end the run: it is logged, and the next check tries again (round seven, 3).
+                    failed++;
+                    logger?.LogError(exception, "The passport check couldn't put battery {PackId} right.", pack.Id);
                 }
-            }
-
-            if (differs && pack.ChangesWaitingSinceUtc is null)
-            {
-                await store.MarkChangesWaitingAsync([pack.Id], now, none);
-                marked++;
-                changed = true;
-            }
-            else if (!differs && pack.ChangesWaitingSinceUtc is not null && await store.ClearChangesWaitingAsync(pack.Id, pack.ChangesWaitingToken, none))
-            {
-                cleared++;
-                changed = true;
-            }
-
-            if (changed && serials.Count < CheckSerialsShown)
-            {
-                serials.Add(pack.Values.GetValueOrDefault("batterySerialNumber")?.Value?.ToString() ?? pack.Id);
             }
         }
-
-        var result = new PassportCheckResult(checkedCount, marked, cleared, archived, serials);
-        if (result.ChangedAnything)
+        finally
         {
-            await audit.AppendApplicationAuditEventAsync(
-                CheckedEvent,
-                who,
-                "system",
-                "check",
-                result.Words,
-                new BsonDocument
-                {
-                    ["checked"] = checkedCount,
-                    ["marked"] = marked,
-                    ["cleared"] = cleared,
-                    ["archived"] = archived,
-                    ["batteries"] = new BsonArray(serials),
-                },
-                entityType: "dpp-passports",
-                entityId: "all",
-                cancellationToken: none);
+            // Written for what was done, also when the run ended early; the counts are what changed (round seven, 3).
+            if (marked + cleared + archived + failed > 0)
+            {
+                var done = new PassportCheckResult(checkedCount, marked, cleared, archived, serials) { Failed = failed, StoppedEarly = stoppedEarly };
+                await audit.AppendApplicationAuditEventAsync(
+                    CheckedEvent,
+                    who,
+                    "system",
+                    "check",
+                    done.Words,
+                    new BsonDocument
+                    {
+                        ["checked"] = checkedCount,
+                        ["marked"] = marked,
+                        ["cleared"] = cleared,
+                        ["archived"] = archived,
+                        ["failed"] = failed,
+                        ["stoppedEarly"] = stoppedEarly,
+                        ["batteries"] = new BsonArray(serials),
+                    },
+                    entityType: "dpp-passports",
+                    entityId: "all",
+                    cancellationToken: none);
+            }
         }
 
-        return result;
+        return new PassportCheckResult(checkedCount, marked, cleared, archived, serials) { Failed = failed, StoppedEarly = stoppedEarly };
+    }
+
+    /// <summary>
+    /// The check of one published battery: what it marked, cleared and archived, as the writes report it (round seven, 3).
+    /// </summary>
+    private async Task<(int Marked, int Cleared, int Archived)> CheckOneAsync(
+        BatteryPack pack,
+        PassportVersion[] versions,
+        VersionSummary newest,
+        IReadOnlyDictionary<string, ProductionBatch> batches,
+        IReadOnlyDictionary<string, BatteryModel> models,
+        IReadOnlyDictionary<string, ManufacturingSite> sites,
+        IReadOnlyDictionary<string, EconomicOperator> operators,
+        DateTime now)
+    {
+        var none = CancellationToken.None;
+
+        // The newest version is no longer active (invalid, marked for deletion, inactive) with a lower one still active,
+        // as a mark or a hand-over left it before round six: the lower ones are archived, so readers serve the newest
+        // version's state, and no marker is set: a passport no longer active takes no new version (round seven, 1).
+        if (newest.DppStatus != DppStatuses.Active)
+        {
+            return (0, 0, (int)await store.ArchiveOtherVersionsAsync(pack.Id, newest.Id, newest.Number, none));
+        }
+
+        var active = versions[0];
+        var archived = versions.Length > 1 ? (int)await store.ArchiveOtherVersionsAsync(pack.Id, active.Id, active.Number, none) : 0;
+
+        var differs = true; // a battery whose records can't be put together is marked: the safe side
+        if (batches.GetValueOrDefault(pack.BatchId) is { } batch
+            && models.GetValueOrDefault(batch.ModelId) is { } model
+            && sites.GetValueOrDefault(batch.SiteId) is { } site
+            && operators.GetValueOrDefault(pack.OperatorId) is { } economicOperator)
+        {
+            try
+            {
+                var passport = PassportAssembler.Assemble(new PassportSources(pack, batch, model, site, economicOperator), new PassportHeader(active.DigitalProductPassportId, DppStatuses.Active, now));
+                differs = PassportStaticCore.ContentHash(PassportStaticCore.Extract(passport)) != PassportStaticCore.ContentHash(active.StaticCore);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                differs = true;
+            }
+        }
+
+        if (differs && pack.ChangesWaitingSinceUtc is null)
+        {
+            return ((int)await store.MarkChangesWaitingAsync([pack.Id], now, none), 0, archived);
+        }
+
+        if (!differs && pack.ChangesWaitingSinceUtc is not null)
+        {
+            return (0, await store.ClearChangesWaitingAsync(pack.Id, pack.ChangesWaitingToken, none) ? 1 : 0, archived);
+        }
+
+        return (0, 0, archived);
     }
 
     /// <summary>
