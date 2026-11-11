@@ -70,6 +70,13 @@ public sealed class DemoSigningKeyService : IDisposable
         TrustedKeys.Any(key => key.X is not null && key.Y is not null && key.X.AsSpan().SequenceEqual(x) && key.Y.AsSpan().SequenceEqual(y));
 
     /// <summary>
+    /// True when <paramref name="verificationMethod"/> is the key ID that <see cref="DidDocument"/> lists for this public
+    /// point: the site's issuer, "#", the point's thumbprint, and the point one the app trusts (C3 round three, point 2).
+    /// </summary>
+    public bool Lists(string? verificationMethod, byte[] x, byte[] y) =>
+        Trusts(x, y) && string.Equals(verificationMethod, $"{Issuer}#{Thumbprint(new ECPoint { X = x, Y = y })}", StringComparison.Ordinal);
+
+    /// <summary>
     /// The issuer's DID document, served at <see cref="DidDocumentPath"/>: each trusted key as a JSON Web Key under the
     /// issuer's name, its ID made from the key. Public keys only.
     /// </summary>

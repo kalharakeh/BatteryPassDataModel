@@ -45,13 +45,18 @@ public sealed class PassportReader(DppStore store, PassportSigner signer)
     /// The version's public proof when it holds for the public data being served, else null (C3 round two, point 1). It is
     /// checked on every answer, against the data as it is cut now: when the who-sees-what list has changed since
     /// publication, the proof no longer matches and isn't served. A proof is served only when anyone can check it with the
-    /// key from did.json, so the key must also be one the app trusts.
+    /// key from did.json: the key must be one the app trusts, and the proof must name the site's issuer and the key ID
+    /// did.json lists for that key (C3 round three, point 2).
     /// </summary>
     public SignatureProof? PublicProof(PassportVersion version, JsonObject publicData)
     {
         ArgumentNullException.ThrowIfNull(version);
         ArgumentNullException.ThrowIfNull(publicData);
-        return version.Proof?.PublicView is { } proof && signer.Check(PublicPassport.SignedPart(publicData), proof).Holds ? proof : null;
+        return version.Proof?.PublicView is { } proof
+            && signer.Check(PublicPassport.SignedPart(publicData), proof).Holds
+            && signer.Listed(proof)
+            ? proof
+            : null;
     }
 
     private async Task<PublishedPassport> ComposeAsync(PassportVersion version, CancellationToken cancellationToken)

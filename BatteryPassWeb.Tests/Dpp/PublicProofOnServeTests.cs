@@ -68,6 +68,46 @@ public sealed class PublicProofOnServeTests(MongoFixture mongo)
         Assert.Null(data[PublicPassport.ProofProperty]);
     }
 
+    /// <summary>
+    /// C3 round three, point 2: a served proof names the site's issuer and a key ID that did.json lists, so an outsider
+    /// can find its key. Issuer and key ID aren't part of the signed text, so the signature itself still holds here.
+    /// </summary>
+    [Theory]
+    [InlineData("Issuer", "did:web:passport.example.test")]
+    [InlineData("VerificationMethod", "did:web:www.example.test#another-key")]
+    [InlineData("VerificationMethod", "")]
+    public async Task AProofThatNamesAnotherIssuerOrAnUnlistedKey_ShouldNotBeServed(string part, string value)
+    {
+        var rig = await PublicationTesting.PublishedRigAsync(mongo);
+        var version = (await rig.Store.GetActiveVersionAsync(rig.PackId))!;
+        await rig.Context.Database!.GetCollection<BsonDocument>(DppStore.Versions).UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("_id", version.Id),
+            Builders<BsonDocument>.Update.Set($"Proof.PublicView.{part}", value));
+
+        var data = await PublicPassportDataTests.DataAsync(PublicPassportDataTests.Controller(rig).SummaryJson(PassportPagesTests.Identifier(rig), CancellationToken.None));
+
+        Assert.Null(data[PublicPassport.ProofProperty]);
+    }
+
+    [Fact]
+    public void AKeyId_ShouldBeListed_OnlyForItsOwnTrustedKey()
+    {
+        using var current = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        using var earlier = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        using var stranger = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        using var keys = new DemoSigningKeyService(current, "https://www.example.test", Convert.ToBase64String(earlier.ExportSubjectPublicKeyInfo()));
+        using var earlierKeys = new DemoSigningKeyService(earlier, "https://www.example.test");
+        using var strangerKeys = new DemoSigningKeyService(stranger, "https://www.example.test");
+        static (byte[] X, byte[] Y) Point(ECDsa key) => (key.ExportParameters(false).Q.X!, key.ExportParameters(false).Q.Y!);
+
+        Assert.True(keys.Lists(keys.VerificationMethod, Point(current).X, Point(current).Y));
+        Assert.True(keys.Lists(earlierKeys.VerificationMethod, Point(earlier).X, Point(earlier).Y));
+        Assert.False(keys.Lists(earlierKeys.VerificationMethod, Point(current).X, Point(current).Y)); // a listed ID, another key
+        Assert.False(keys.Lists(strangerKeys.VerificationMethod, Point(stranger).X, Point(stranger).Y)); // not trusted
+        Assert.False(keys.Lists(null, Point(current).X, Point(current).Y));
+        Assert.Contains(keys.DidDocument()["verificationMethod"]!.AsArray(), method => (string?)method!["id"] == earlierKeys.VerificationMethod);
+    }
+
     [Fact]
     public async Task AProofThatHolds_ShouldBeServedAsStored()
     {

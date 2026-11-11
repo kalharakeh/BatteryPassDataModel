@@ -98,6 +98,18 @@ public sealed class PassportSigner(DemoSigningKeyService keys)
             : new SignatureCheck(false, SignatureCheck.KeyNotTrusted);
     }
 
+    /// <summary>
+    /// True when a readable proof names the site's issuer and the key ID did.json lists for its key, so an outsider who
+    /// looks the key up by that ID finds it (C3 round three, point 2). Issuer and key ID aren't in the signed text.
+    /// </summary>
+    public bool Listed(SignatureProof proof)
+    {
+        ArgumentNullException.ThrowIfNull(proof);
+        return Readable(proof)
+            && string.Equals(proof.Issuer, keys.Issuer, StringComparison.Ordinal)
+            && keys.Lists(proof.VerificationMethod, Base64Url.Decode(proof.PublicKeyX), Base64Url.Decode(proof.PublicKeyY));
+    }
+
     public const string ProofType = "DataIntegrityProof";
     public const string Cryptosuite = "ecdsa-p256-sha256-dpp-canonical-2026";
 
