@@ -222,7 +222,7 @@ public sealed record BatteryPage(
             var sections = new List<BatterySection>
             {
                 new(BatterySections.Overview, "Overview", "overview", NeedsYou == 0 ? "Nothing needs you" : $"{Words.Count(NeedsYou, "thing")} to do"),
-                new("values", "Passport values", "values", Editor.Missing > 0 ? $"{Editor.Missing} missing" : "All filled in"),
+                new("values", "Passport values", "values", Editor.Missing > 0 ? $"{Editor.Missing} missing" : Editor.QuestionsUnanswered ? "Model questions to answer" : "All filled in"),
             };
             if (Status is { } status)
             {
@@ -545,7 +545,10 @@ public sealed class BatteryPages(
             active is null ? 0 : 1,
             editor.Forms.Languages,
             editor.Stamp(valueAttributes, pack.Values, null),
-            new RemovalView(string.Empty, null));
+            new RemovalView(string.Empty, null))
+        {
+            QuestionsUnanswered = !sources.Model.Answers().AllAnswered, // round two, B: never "all filled in" then
+        };
         var liveSections = await editor.SectionsAsync(TargetKind.Pack, packId, RecordEditor.LiveAttributes, pack.Values, sources.Model.Answers(), live?.Post, live?.Save.Refusals(editor.Forms), cancellationToken);
         var liveView = new RecordEditorView(
             TargetKind.Pack,

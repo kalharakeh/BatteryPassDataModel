@@ -65,6 +65,12 @@ public sealed record RecordEditorView(
 
     /// <summary>Values the passport needs by February 2027 that are still empty.</summary>
     public int Missing => Sections.Sum(section => section.Missing);
+
+    /// <summary>For a model's or a battery's editor: the model's three questions aren't all answered (R01), so it isn't complete.</summary>
+    public bool QuestionsUnanswered { get; init; }
+
+    /// <summary>Nothing the passport needs is missing and the model's questions are answered (round two, B): the one "complete".</summary>
+    public bool IsComplete => Missing == 0 && !QuestionsUnanswered;
 }
 
 /// <summary>One field as its editor shows it.</summary>
@@ -84,7 +90,21 @@ public sealed record AnswersSave(bool Saved, int Affected, bool NeedsConfirmatio
 public sealed record FamilyRow(BatteryFamily Family, int Models, int Batches, int Packs, int Published, int Missing, int Unanswered = 0);
 
 /// <summary>How complete a record is: values filled in, of how many, and how many the passport needs by Feb 2027 that are still empty.</summary>
-public sealed record Completeness(int Filled, int Total, int Missing);
+public sealed record Completeness(int Filled, int Total, int Missing)
+{
+    /// <summary>
+    /// A model's state in a line (round two, B): its missing count, else "questions to answer" while its three questions
+    /// aren't answered, else complete. The family chip, the batch page and the editors say the same.
+    /// </summary>
+    public static (bool Done, string Words) OfModel(BatteryModel model)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        var missing = RecordEditor.CountMissing(TargetKind.Model, model.Values, model.Answers());
+        return missing > 0 ? (false, $"{missing} missing")
+            : !model.Answers().AllAnswered ? (false, "Questions to answer")
+            : (true, "Complete");
+    }
+}
 
 public sealed record ModelChip(BatteryModel Model, int Filled, int Total, int Missing)
 {
@@ -730,7 +750,10 @@ public sealed class ProductDataPages(
             published.Count,
             editor.Forms.Languages,
             editor.Stamp(kind, stored, kind == TargetKind.Batch ? null : name),
-            new RemovalView($"{saveAction}/remove", await WhyNotRemovableAsync(recordKind, id, cancellationToken)));
+            new RemovalView($"{saveAction}/remove", await WhyNotRemovableAsync(recordKind, id, cancellationToken)))
+        {
+            QuestionsUnanswered = kind == TargetKind.Model && answers is { AllAnswered: false },
+        };
     }
 
     private Task AuditAsync(string eventType, string who, string summary, string entityType, string entityId, CancellationToken cancellationToken) =>
