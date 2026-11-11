@@ -139,7 +139,7 @@ public sealed class StatusPages(DppStore store, RecordEditor editor, StatusChang
             : !active ? "The status changes once the passport is published."
             : status == "waste" && !forTeam ? "The battery is waste, which is final for you: only the team can undo it."
             : successionView is not null && !forTeam ? "The battery is waiting for its new passport."
-            : null;
+            : await changes.BlockedAsync(pack, forTeam, cancellationToken); // decision 60: said before anything is typed
         return new StatusCardView(
             status,
             pack.Values.GetValueOrDefault("batteryStatus")?.GeneratedAtUtc,

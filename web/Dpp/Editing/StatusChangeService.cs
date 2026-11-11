@@ -90,6 +90,29 @@ public sealed class StatusChangeService(
     /// </summary>
     public static string NoNewVersion(PublicationReport? report, bool forTeam) => PublishWords.WhyNoNewVersion(report?.Blocking, forTeam);
 
+    /// <summary>
+    /// Why no status change can be made now, before anything is typed (decision 60): a status change publishes a new
+    /// version, so a passport that can't get one changes no status, Waste included. The same sentence as the refusal.
+    /// Null when it can. For the team, a missing warranty alone isn't a reason: "Correct the values" adds it.
+    /// </summary>
+    public async Task<string?> BlockedAsync(BatteryPack pack, bool forTeam, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(pack);
+        if (await publication.CheckAsync(pack.Id, cancellationToken) is not { CanPublish: false } report)
+        {
+            return null;
+        }
+
+        var onlyWarranty = report.Blocking.All(line => PublishWords.Attribute(line)?.Property == SavePipeline.AddedByCorrection);
+        if (forTeam && onlyWarranty && !pack.Values.ContainsKey(SavePipeline.AddedByCorrection))
+        {
+            return null;
+        }
+
+        var words = NoNewVersion(report, forTeam);
+        return $"No status change can be made now: {words}.";
+    }
+
     /// <summary>Why a passport that is no longer active changes nothing (step 4c).</summary>
     public static string NoLongerActive(string status) => SavePipeline.NoLongerChanges(status);
 
