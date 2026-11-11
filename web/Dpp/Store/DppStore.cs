@@ -574,6 +574,20 @@ public sealed class DppStore
     }
 
     /// <summary>Sets or clears a pack's invalid or deletion mark (step 4c-2). False when the pack doesn't exist.</summary>
+    /// <summary>
+    /// Sets the marker that a saved change waits for this pack's published passport (round three, 1), keeping the first
+    /// time; null clears it. Writes only when it changes; false when nothing was written.
+    /// </summary>
+    public async Task<bool> SetChangesWaitingAsync(string packId, DateTime? sinceUtc, CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<BatteryPack>.Filter.Eq(pack => pack.Id, packId)
+            & (sinceUtc is null
+                ? Builders<BatteryPack>.Filter.Ne(pack => pack.ChangesWaitingSinceUtc, null)
+                : Builders<BatteryPack>.Filter.Eq(pack => pack.ChangesWaitingSinceUtc, null));
+        var result = await Collection<BatteryPack>().UpdateOneAsync(filter, Builders<BatteryPack>.Update.Set(pack => pack.ChangesWaitingSinceUtc, sinceUtc), cancellationToken: cancellationToken);
+        return result.ModifiedCount == 1;
+    }
+
     public async Task<bool> SetMarkAsync(string packId, PassportMark? mark, CancellationToken cancellationToken = default)
     {
         var result = await Collection<BatteryPack>().UpdateOneAsync(

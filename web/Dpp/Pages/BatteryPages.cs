@@ -43,6 +43,9 @@ public sealed record BatteryRow(
 
     /// <summary>Whether the battery is inside the demo (<see cref="DemoScope.Inside"/>), from the stored records, so lists keep demo readers inside it (finding R03).</summary>
     public bool IsDemo { get; init; }
+
+    /// <summary>A saved change waits for its published passport: the battery's stored marker (round three, 1).</summary>
+    public bool ChangesWaiting { get; init; }
 }
 
 public sealed record BatteriesPage(IReadOnlyList<BatteryRow> Rows, string Query, int Total)
@@ -310,6 +313,11 @@ public sealed class BatteryPages(
     {
         ArgumentNullException.ThrowIfNull(mayList);
         var (rows, versions) = await RowsAsync(cancellationToken);
+        return OnePerBatteryPage(rows, versions, query, mayList, matchClusters);
+    }
+
+    private static BatteriesPage OnePerBatteryPage(List<BatteryRow> rows, ILookup<string, PassportVersion> versions, string? query, Func<BatteryRow, bool> mayList, bool matchClusters)
+    {
         var batteries = OnePerBattery(rows.Where(mayList).ToArray());
         var byPack = rows.ToDictionary(row => row.PackId, StringComparer.Ordinal);
         var wanted = query?.Trim() ?? string.Empty;
@@ -321,20 +329,15 @@ public sealed class BatteryPages(
     /// The team's list (round two, A2): one row per battery, and the published ones whose saved changes wait for what
     /// holds them back, so the team sees them without opening each battery.
     /// </summary>
+    /// <remarks>
+    /// The waiting line reads each battery's stored marker from the rows the list loads anyway: no call and no passport
+    /// per battery (round three, 1). It sits outside the search, so a search never hides a waiting change.
+    /// </remarks>
     public async Task<BatteriesPage> TeamListAsync(string? query, CancellationToken cancellationToken = default)
     {
-        var page = await ListOnePerBatteryAsync(query, _ => true, matchClusters: true, cancellationToken);
-        var (rows, _) = await RowsAsync(cancellationToken);
-        var waiting = new List<BatteryRow>();
-        foreach (var row in Sorted(rows.Where(row => row.Active is not null)))
-        {
-            if (await publication.WaitingAsync(row.PackId, cancellationToken) is not null)
-            {
-                waiting.Add(row);
-            }
-        }
-
-        return page with { Waiting = waiting };
+        var (rows, versions) = await RowsAsync(cancellationToken);
+        var page = OnePerBatteryPage(rows, versions, query, _ => true, matchClusters: true);
+        return page with { Waiting = Sorted(OnePerBattery(rows).Where(row => row.ChangesWaiting)) };
     }
 
     /// <summary>
@@ -399,6 +402,7 @@ public sealed class BatteryPages(
                 BatteryStatus = StatusChangeService.CurrentStatus(pack),
                 SuccessorOf = pack.SuccessorOf,
                 IsDemo = DemoScope.Inside(pack, batch, model, operators.GetValueOrDefault(pack.OperatorId), pack.ClusterId is null || demoClusters.Contains(pack.ClusterId)),
+                ChangesWaiting = active is not null && pack.ChangesWaitingSinceUtc is not null,
             });
         }
 
@@ -782,6 +786,14 @@ public sealed class BatteryPages(
     private async Task<PublicationView> PublicationAsync(PassportSources sources, PassportVersion? active, CancellationToken cancellationToken)
     {
         var report = await publication.CheckAsync(sources.Pack.Id, cancellationToken) ?? new PublicationReport([], []);
+
+        // The truth for this one battery; the stored marker the list reads is put right if it differs (round three, 1).
+        var waiting = active is null ? null : await publication.WaitingAsync(sources.Pack.Id, cancellationToken);
+        if (active is not null && (waiting is not null) != (sources.Pack.ChangesWaitingSinceUtc is not null))
+        {
+            await publication.MarkWaitingAsync(sources.Pack.Id, waiting is not null, cancellationToken);
+        }
+
         var missing = new List<AttributeDefinition>();
         var problems = new List<string>();
         var answers = sources.Model.Answers();
@@ -819,7 +831,7 @@ public sealed class BatteryPages(
         {
             QuestionsHref = report.Blocking.Contains(PassportNeeds.QuestionsNotAnswered) ? $"{ProductDataPages.FamilyHref(sources.Model.FamilyId, sources.Model.Id)}#questions" : null,
             ModelName = sources.Model.Name,
-            Waiting = active is null ? null : await publication.WaitingAsync(sources.Pack.Id, cancellationToken),
+            Waiting = waiting,
         };
     }
 

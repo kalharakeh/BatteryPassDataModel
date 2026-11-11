@@ -85,7 +85,7 @@ public sealed class OneRowPerBatteryTests(MongoFixture mongo)
     public void TheTeamsListAndTheRegistry_ShouldListOneRowPerBattery_AndTheApiEveryPack()
     {
         Assert.Contains("pages.TeamListAsync(q, cancellationToken)", View("Controllers", "BatteriesController.cs"), StringComparison.Ordinal);
-        Assert.Contains("ListOnePerBatteryAsync(query, _ => true, matchClusters: true, cancellationToken)", View("Dpp", "Pages", "BatteryPages.cs"), StringComparison.Ordinal); // the team's list (round two, A2)
+        Assert.Contains("OnePerBatteryPage(rows, versions, query, _ => true, matchClusters: true)", View("Dpp", "Pages", "BatteryPages.cs"), StringComparison.Ordinal); // the team's list (round three, 1)
         Assert.Contains("batteries.ListOnePerBatteryAsync(q, row => RegistryList.MayList(reader, row), RegistryList.ShowsClusters(reader), cancellationToken)", View("Controllers", "RegistryController.cs"), StringComparison.Ordinal);
         Assert.Contains("await batteries.ListAsync(q, cancellationToken)", View("Controllers", "PassportsApiController.cs"), StringComparison.Ordinal);
         Assert.Contains("await batteries.ListAsync(null, cancellationToken)", View("Dpp", "Api", "PassportApi.cs"), StringComparison.Ordinal);

@@ -104,6 +104,22 @@ public sealed class PublicationService(
         return new WaitingChange(active.Number, report.Blocking);
     }
 
+    /// <summary>The marker of a waiting change goes once the passport shows its saved data (round three, 1).</summary>
+    private async Task ClearWaitingAsync(BatteryPack pack, CancellationToken cancellationToken)
+    {
+        if (pack.ChangesWaitingSinceUtc is not null)
+        {
+            await store.SetChangesWaitingAsync(pack.Id, null, cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Puts a battery's marker right after its page worked out the truth (round three, 1): set while a change waits,
+    /// cleared when none does.
+    /// </summary>
+    public Task<bool> MarkWaitingAsync(string packId, bool waiting, CancellationToken cancellationToken = default) =>
+        store.SetChangesWaitingAsync(packId, waiting ? clock.GetUtcNow().UtcDateTime : null, cancellationToken);
+
     /// <summary>
     /// What an action did for each published passport it reached, from the version each had before (round two, A3): a
     /// new version, nothing to publish, or held back with what blocks it.
@@ -230,10 +246,12 @@ public sealed class PublicationService(
                 await store.SetVersionLastUpdatedAsync(active.Id, clock.GetUtcNow().UtcDateTime, cancellationToken);
 
                 // A change held back because the passport couldn't publish follows once this live value clears the block
-                // (round two, A1): from the feed, an upload, the API or a cluster admin alike.
-                if (await WaitingAsync(packId, cancellationToken) is { Blocking.Count: 0 })
+                // (round two, A1): from the feed, an upload, the API or a cluster admin alike. Only a battery marked as
+                // having a change waiting is looked at further: one read for the others (round three, 1).
+                if (await store.GetAsync<BatteryPack>(packId, cancellationToken) is { ChangesWaitingSinceUtc: not null }
+                    && await WaitingAsync(packId, cancellationToken) is { Blocking.Count: 0 })
                 {
-                    await RepublishOneAsync(sender, packId, active, cancellationToken);
+                    await RepublishOneAsync(sender, packId, active, cancellationToken, afterLiveValue: true);
                 }
 
                 continue;
@@ -261,11 +279,13 @@ public sealed class PublicationService(
         }
     }
 
-    private async Task RepublishOneAsync(ChangeSender sender, string packId, PassportVersion active, CancellationToken cancellationToken)
+    private async Task RepublishOneAsync(ChangeSender sender, string packId, PassportVersion active, CancellationToken cancellationToken, bool afterLiveValue = false)
     {
-        var result = await PublishCoreAsync(packId, sender, retryOnConflict: true, cancellationToken);
+        var result = await PublishCoreAsync(packId, sender, retryOnConflict: true, cancellationToken, afterLiveValue);
         if (result.Problem is not null)
         {
+            // The saved change waits: the marker tells the team's list and the next live save (round three, 1).
+            await store.SetChangesWaitingAsync(packId, clock.GetUtcNow().UtcDateTime, cancellationToken);
             await audit.AppendApplicationAuditEventAsync(
                 BlockedEvent,
                 sender.Who,
@@ -280,7 +300,8 @@ public sealed class PublicationService(
     }
 
     /// <param name="sender">Who the new version is published for; the log names them (a cluster admin's status change, step 4b).</param>
-    private async Task<PublicationResult> PublishCoreAsync(string packId, ChangeSender sender, bool retryOnConflict, CancellationToken cancellationToken)
+    /// <param name="afterLiveValue">True when a live value cleared the way for a change that was waiting: the log says so (round three, 5).</param>
+    private async Task<PublicationResult> PublishCoreAsync(string packId, ChangeSender sender, bool retryOnConflict, CancellationToken cancellationToken, bool afterLiveValue = false)
     {
         var who = sender.Who;
         var sources = await store.LoadSourcesAsync(packId, cancellationToken);
@@ -303,6 +324,7 @@ public sealed class PublicationService(
         var active = await store.GetActiveVersionAsync(packId, cancellationToken);
         if (active is not null && PassportStaticCore.ContentHash(active.StaticCore) == PassportStaticCore.ContentHash(core))
         {
+            await ClearWaitingAsync(sources.Pack, cancellationToken); // the passport shows its saved data
             return new PublicationResult(active, report, null, Unchanged: true);
         }
 
@@ -330,6 +352,7 @@ public sealed class PublicationService(
         }
 
         await store.ArchiveOtherVersionsAsync(packId, version.Id, cancellationToken);
+        await ClearWaitingAsync(sources.Pack, cancellationToken);
         if (version.Number == 1 && pool is not null)
         {
             await pool.MarkPublishedAsync(packId, cancellationToken); // its released ID is fixed for life (6d)

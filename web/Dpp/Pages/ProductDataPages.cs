@@ -587,14 +587,12 @@ public sealed class ProductDataPages(
         IReadOnlyList<(PassportOutcome, string)> outcomes = [];
         if (publication is not null && after.AllAnswered)
         {
-            var waiting = new List<AffectedPassport>();
-            foreach (var passport in await editor.AffectedAsync(TargetKind.Model, model.Id, cancellationToken))
-            {
-                if (await publication.WaitingAsync(passport.PackId, cancellationToken) is not null)
-                {
-                    waiting.Add(passport);
-                }
-            }
+            var reached = await editor.AffectedAsync(TargetKind.Model, model.Id, cancellationToken);
+            var marked = (await store.GetManyAsync<BatteryPack>(reached.Select(passport => passport.PackId), cancellationToken))
+                .Where(pack => pack.ChangesWaitingSinceUtc is not null)
+                .Select(pack => pack.Id)
+                .ToHashSet(StringComparer.Ordinal);
+            var waiting = reached.Where(passport => marked.Contains(passport.PackId)).ToList(); // the stored markers (round three, 1)
 
             await publication.RepublishAsync(ChangeSender.Team(who), waiting.Select(passport => passport.PackId), cancellationToken);
             outcomes = await editor.OutcomesAsync(waiting, cancellationToken);

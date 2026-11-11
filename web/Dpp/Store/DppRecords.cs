@@ -151,6 +151,13 @@ public sealed class BatteryPack : IDppRecord
 
     /// <summary>Why the passport is invalid or marked for deletion, by whom and when (step 4c-2); null otherwise.</summary>
     public PassportMark? Mark { get; set; }
+
+    /// <summary>
+    /// When a saved change was first held back from this battery's published passport (round three, 1); null when its
+    /// passport shows its saved data. A marker for the team's list and for live saves; the battery's page checks the
+    /// truth and puts it right. Old records have none.
+    /// </summary>
+    public DateTime? ChangesWaitingSinceUtc { get; set; }
 }
 
 /// <summary>An invalid or marked-for-deletion passport's mark (design 7.6 and 7.7): its reason is seen by the team and market surveillance only.</summary>
