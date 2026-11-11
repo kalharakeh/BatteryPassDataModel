@@ -142,9 +142,19 @@ public sealed class PublicDataHttpTests(MongoFixture mongo)
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo);
         var app = Build(rig, readLimit);
-        await app.StartAsync();
-        var address = app.Services.GetRequiredService<Microsoft.AspNetCore.Hosting.Server.IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.First();
-        return new Site(app, rig, new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }) { BaseAddress = new Uri(address), Timeout = TimeSpan.FromSeconds(60) });
+        try
+        {
+            using var starting = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            await app.StartAsync(starting.Token);
+            var address = app.Services.GetRequiredService<Microsoft.AspNetCore.Hosting.Server.IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.First();
+            return new Site(app, rig, new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }) { BaseAddress = new Uri(address), Timeout = TimeSpan.FromSeconds(60) });
+        }
+        catch
+        {
+            // A host that didn't start, or whose address can't be read, is stopped here rather than left listening.
+            await Site.StopAsync(app);
+            throw;
+        }
     }
 
     /// <summary>The app's controllers and views on the test database, with the public data's read limit, anonymous.</summary>
@@ -224,8 +234,21 @@ public sealed class PublicDataHttpTests(MongoFixture mongo)
         public async ValueTask DisposeAsync()
         {
             http.Dispose();
-            await app.StopAsync();
-            await app.DisposeAsync();
+            await StopAsync(app);
+        }
+
+        /// <summary>Stops and disposes the host, waiting at most 10 seconds for open requests (C3 round three, point 5).</summary>
+        public static async Task StopAsync(WebApplication app)
+        {
+            using var stopping = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            try
+            {
+                await app.StopAsync(stopping.Token);
+            }
+            finally
+            {
+                await app.DisposeAsync();
+            }
         }
     }
 
