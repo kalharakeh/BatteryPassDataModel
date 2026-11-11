@@ -597,11 +597,17 @@ public sealed class DppStore
             cancellationToken: cancellationToken);
     }
 
-    /// <summary>Clears a pack's marker of a waiting change; false when it had none.</summary>
-    public async Task<bool> ClearChangesWaitingAsync(string packId, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Clears a pack's marker of a waiting change, only while it still holds <paramref name="tokenSeen"/>: the token the
+    /// clearing attempt read before the data it published (round four, 2). A change marked meanwhile stays marked. False
+    /// when nothing was cleared.
+    /// </summary>
+    public async Task<bool> ClearChangesWaitingAsync(string packId, string? tokenSeen, CancellationToken cancellationToken = default)
     {
         var result = await Collection<BatteryPack>().UpdateOneAsync(
-            Builders<BatteryPack>.Filter.Eq(pack => pack.Id, packId) & Builders<BatteryPack>.Filter.Ne(pack => pack.ChangesWaitingSinceUtc, null),
+            Builders<BatteryPack>.Filter.Eq(pack => pack.Id, packId)
+            & Builders<BatteryPack>.Filter.Ne(pack => pack.ChangesWaitingSinceUtc, null)
+            & Builders<BatteryPack>.Filter.Eq(pack => pack.ChangesWaitingToken, tokenSeen),
             Builders<BatteryPack>.Update.Unset(pack => pack.ChangesWaitingSinceUtc).Unset(pack => pack.ChangesWaitingToken),
             cancellationToken: cancellationToken);
         return result.ModifiedCount == 1;

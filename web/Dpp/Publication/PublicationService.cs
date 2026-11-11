@@ -112,11 +112,13 @@ public sealed class PublicationService(
     public async Task<PassportOutcome?> PublishWaitingAsync(ChangeSender sender, string packId, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(sender);
-        if (await store.GetActiveVersionAsync(packId, cancellationToken) is not { } active)
+        if (await store.GetActiveVersionAsync(packId, cancellationToken) is not { } active
+            || await store.GetAsync<BatteryPack>(packId, cancellationToken) is not { } seen)
         {
             return null;
         }
 
+        // The marker's token is read before the data, so a clear never removes a change marked meanwhile (round four, 2).
         if (await WaitingAsync(packId, cancellationToken) is { } waiting)
         {
             if (waiting.Blocking.Count > 0)
@@ -129,18 +131,21 @@ public sealed class PublicationService(
         }
         else
         {
-            await store.ClearChangesWaitingAsync(packId, cancellationToken);
+            await store.ClearChangesWaitingAsync(packId, seen.ChangesWaitingToken, cancellationToken);
         }
 
         return (await OutcomesAsync([(packId, active.Number)], cancellationToken)).Single();
     }
 
-    /// <summary>The marker of a waiting change goes once the passport shows its saved data (round three, 1).</summary>
+    /// <summary>
+    /// The marker of a waiting change goes once the passport shows its saved data (round three, 1), only while it holds
+    /// the token read with the pack, before the rest of the data (round four, 2).
+    /// </summary>
     private async Task ClearWaitingAsync(BatteryPack pack, CancellationToken cancellationToken)
     {
         if (pack.ChangesWaitingSinceUtc is not null)
         {
-            await store.ClearChangesWaitingAsync(pack.Id, cancellationToken);
+            await store.ClearChangesWaitingAsync(pack.Id, pack.ChangesWaitingToken, cancellationToken);
         }
     }
 
@@ -148,7 +153,8 @@ public sealed class PublicationService(
     /// Puts a battery's marker right after its page worked out the truth (round three, 1): set while a change waits,
     /// cleared when none does.
     /// </summary>
-    public async Task MarkWaitingAsync(string packId, bool waiting, CancellationToken cancellationToken = default)
+    /// <param name="tokenSeen">The marker's token as the page read it with the pack, before the data (round four, 2).</param>
+    public async Task MarkWaitingAsync(string packId, bool waiting, string? tokenSeen, CancellationToken cancellationToken = default)
     {
         if (waiting)
         {
@@ -156,7 +162,7 @@ public sealed class PublicationService(
         }
         else
         {
-            await store.ClearChangesWaitingAsync(packId, cancellationToken);
+            await store.ClearChangesWaitingAsync(packId, tokenSeen, cancellationToken);
         }
     }
 

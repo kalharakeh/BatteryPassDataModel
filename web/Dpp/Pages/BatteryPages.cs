@@ -791,7 +791,7 @@ public sealed class BatteryPages(
         var waiting = active is null ? null : await publication.WaitingAsync(sources.Pack.Id, cancellationToken);
         if (active is not null && (waiting is not null) != (sources.Pack.ChangesWaitingSinceUtc is not null))
         {
-            await publication.MarkWaitingAsync(sources.Pack.Id, waiting is not null, cancellationToken);
+            await publication.MarkWaitingAsync(sources.Pack.Id, waiting is not null, sources.Pack.ChangesWaitingToken, cancellationToken);
         }
 
         var missing = new List<AttributeDefinition>();
