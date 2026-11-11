@@ -48,6 +48,7 @@ public static class DppServiceCollectionExtensions
         services.AddSingleton<PublicationChecks>();
         services.AddSingleton<PublicationService>();
         services.AddSingleton<IPackChangeListener>(provider => provider.GetRequiredService<PublicationService>());
+        services.AddHostedService<PassportCheckService>(); // decision 65: the hourly check of all published passports
         services.AddSingleton<PassportReader>();
         services.AddSingleton<DppLinks>();
         services.AddSingleton<DocumentStore>();

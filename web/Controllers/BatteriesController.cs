@@ -38,6 +38,16 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     public async Task<IActionResult> Batteries([FromQuery] string? q, CancellationToken cancellationToken) =>
         View(await pages.TeamListAsync(q, cancellationToken)); // one row per battery (redesign R5), and the waiting changes (round two, A2)
 
+    /// <summary>"Check all passports now" (decision 65): the check of every published battery, with a plain result line.</summary>
+    [HttpPost("check")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CheckAll([FromServices] PublicationService publication, CancellationToken cancellationToken)
+    {
+        var result = await publication.ReconcileAsync(Who, cancellationToken);
+        TempData[ProductDataController.StatusKey] = result.Words;
+        return Redirect("/admin/batteries");
+    }
+
     [HttpGet("new")]
     public async Task<IActionResult> NewBattery([FromQuery] string? batch, CancellationToken cancellationToken) =>
         View(await pages.NewAsync(batchId: batch, cancellationToken: cancellationToken));
