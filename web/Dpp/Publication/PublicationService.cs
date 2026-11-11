@@ -362,6 +362,12 @@ public sealed class PublicationService(
     private async Task<PublicationResult> PublishCoreAsync(string packId, ChangeSender sender, bool retryOnConflict, CancellationToken cancellationToken, bool withWaiting = false)
     {
         var who = sender.Who;
+
+        // The version number and the active version are read before the data (round four, 3): a slower publisher with
+        // older data then collides on the number (unique per pack) with a faster one, and starts again from the new state,
+        // instead of publishing its older data as a later version.
+        var active = await store.GetActiveVersionAsync(packId, cancellationToken);
+        var number = await store.GetLatestVersionNumberAsync(packId, cancellationToken) + 1;
         var sources = await store.LoadSourcesAsync(packId, cancellationToken);
         if (sources is null)
         {
@@ -369,7 +375,6 @@ public sealed class PublicationService(
         }
 
         var now = clock.GetUtcNow().UtcDateTime;
-        var number = await store.GetLatestVersionNumberAsync(packId, cancellationToken) + 1;
         var passportId = identifiers.NewPassportIdentifier(PackIdentifier(sources.Pack), number);
         var passport = PassportAssembler.Assemble(sources, new PassportHeader(passportId, DppStatuses.Active, now));
         var report = WithDemoRule(sources, checks.Check(passport, sources.Model.Answers()), number);
@@ -379,7 +384,6 @@ public sealed class PublicationService(
         }
 
         var core = PassportStaticCore.Extract(passport);
-        var active = await store.GetActiveVersionAsync(packId, cancellationToken);
         if (active is not null && PassportStaticCore.ContentHash(active.StaticCore) == PassportStaticCore.ContentHash(core))
         {
             await ClearWaitingAsync(sources.Pack, cancellationToken); // the passport shows its saved data
@@ -399,6 +403,13 @@ public sealed class PublicationService(
             StaticCore = core,
             Proof = signer.Sign(core, now),
         };
+        // A mark (invalid, for deletion) or an inactive state can land while the version is being made: checked again
+        // just before inserting (round four, 3).
+        if (await store.PassportStatusAsync(packId, cancellationToken) is { } status && DppStatuses.IsNoLongerActive(status))
+        {
+            return new PublicationResult(null, null, NoNewVersion(status));
+        }
+
         try
         {
             await store.InsertAsync(version, cancellationToken);
