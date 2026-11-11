@@ -67,6 +67,32 @@ public sealed class PassportCheckFailuresTests(MongoFixture mongo)
         Assert.Contains("stopped early", entry["message"].AsString, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task ACheckDuringARun_ShouldSayOneIsAlreadyRunning()
+    {
+        var (rig, _) = await TwoDifferingAsync();
+        PublicationService? service = null;
+        PassportCheckResult? second = null;
+        var logger = new ListLogger(onError: () => second = service!.ReconcileAsync("check-test-2").GetAwaiter().GetResult()); // pressed during the run
+        service = Service(rig, logger);
+        await RefuseMarkingAsync(rig, rig.PackId);
+        PassportCheckResult first;
+        try
+        {
+            first = await service.ReconcileAsync("check-test");
+        }
+        finally
+        {
+            await AllowAllAsync(rig);
+        }
+
+        Assert.True(second!.AlreadyRunning);
+        Assert.Equal("A check is already running; its result will be in the audit log.", second.Words);
+        Assert.False(first.AlreadyRunning);
+        Assert.Equal(1, first.Marked);
+        Assert.False((await service.ReconcileAsync("check-test-3")).AlreadyRunning); // free again afterwards
+    }
+
     /// <summary>The seed battery published, a second published copy, and a model value written straight into the store.</summary>
     private async Task<(PublicationRig Rig, string CopyId)> TwoDifferingAsync()
     {

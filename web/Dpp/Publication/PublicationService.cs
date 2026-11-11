@@ -160,6 +160,28 @@ public sealed class PublicationService(
     /// </summary>
     public async Task<PassportCheckResult> ReconcileAsync(string who, CancellationToken cancellationToken = default)
     {
+        // One check at a time in this app: a press during a run, or the hourly run during a press, does nothing and says
+        // so (round seven, 6). Another app instance may run its own: that is harmless.
+        if (!await checkGate.WaitAsync(0, CancellationToken.None))
+        {
+            return new PassportCheckResult(0, 0, 0, 0, []) { AlreadyRunning = true };
+        }
+
+        try
+        {
+            return await ReconcileCoreAsync(who, cancellationToken);
+        }
+        finally
+        {
+            checkGate.Release();
+        }
+    }
+
+    /// <summary>The single check in this app at a time (round seven, 6).</summary>
+    private readonly SemaphoreSlim checkGate = new(1, 1);
+
+    private async Task<PassportCheckResult> ReconcileCoreAsync(string who, CancellationToken cancellationToken)
+    {
         var packs = await store.ListAsync<BatteryPack>(cancellationToken);
         // Only the active versions in full, the content compared; the battery, number and status of all (round seven, 2).
         var newest = (await store.ListVersionSummariesAsync(cancellationToken)).GroupBy(version => version.PackId, StringComparer.Ordinal)
