@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc.ActionConstraints;
+using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
 
 namespace BatteryPassWeb.Dpp.Api;
@@ -16,7 +17,12 @@ public sealed class PrefersJsonAttribute : Attribute, IActionConstraint
     public bool Accept(ActionConstraintContext context) =>
         PrefersJson(context.RouteContext.HttpContext.Request.Headers.Accept.ToString());
 
-    /// <summary>True when the Accept header rates application/json above zero and above text/html (a tie goes to the page).</summary>
+    /// <summary>
+    /// True when the Accept header rates application/json above zero and above text/html, a tie going to the page. Each
+    /// type is rated by the most specific range that covers it (C3 round two, point 7): application/json by itself, else
+    /// application/*, else */*; the page by text/html, else text/*, else */*. So "application/json;q=0.5, text/*" and
+    /// "application/json, */*" get the page, and application/ld+json, which isn't application/json, gets the page too.
+    /// </summary>
     public static bool PrefersJson(string? accept)
     {
         if (string.IsNullOrWhiteSpace(accept) || !MediaTypeHeaderValue.TryParseList(accept.Split(','), out var types))
@@ -24,13 +30,21 @@ public sealed class PrefersJsonAttribute : Attribute, IActionConstraint
             return false;
         }
 
-        double Quality(string mediaType) => types
-            .Where(type => type.MediaType.Equals(mediaType, StringComparison.OrdinalIgnoreCase))
-            .Select(type => type.Quality ?? 1.0)
-            .DefaultIfEmpty(0.0)
-            .Max();
+        double Quality(string type, string subtype)
+        {
+            foreach (var range in new[] { $"{type}/{subtype}", $"{type}/*", "*/*" })
+            {
+                var matches = types.Where(media => StringSegment.Equals(media.MediaType, range, StringComparison.OrdinalIgnoreCase)).ToArray();
+                if (matches.Length > 0)
+                {
+                    return matches.Max(media => media.Quality ?? 1.0);
+                }
+            }
 
-        var json = Quality("application/json");
-        return json > 0 && json > Quality("text/html");
+            return 0.0;
+        }
+
+        var json = Quality("application", "json");
+        return json > 0 && json > Quality("text", "html");
     }
 }

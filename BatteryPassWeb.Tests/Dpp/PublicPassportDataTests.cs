@@ -38,6 +38,16 @@ public sealed class PublicPassportDataTests(MongoFixture mongo)
     [InlineData("", false)]
     [InlineData(null, false)]
     [InlineData("application/json;q=0", false)]
+    [InlineData("application/json;q=0.5, text/*", false)] // text/* covers the page (C3 round two, point 7)
+    [InlineData("application/json;q=0.5, */*", false)]
+    [InlineData("application/json, */*", false)] // a tie goes to the page
+    [InlineData("application/json, text/*", false)]
+    [InlineData("application/ld+json", false)]
+    [InlineData("application/json, */*;q=0.1", true)]
+    [InlineData("application/json, text/*;q=0.5", true)]
+    [InlineData("application/json, text/html;q=0.1, */*", true)] // text/html itself says how much the page is wanted
+    [InlineData("*/*;q=0.8, application/json;q=0", false)]
+    [InlineData("application/*", true)]
     public void TheAddress_ShouldAnswerData_OnlyWhenAskedForJson(string? accept, bool data) =>
         Assert.Equal(data, PrefersJsonAttribute.PrefersJson(accept));
 
