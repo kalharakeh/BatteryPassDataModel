@@ -104,6 +104,37 @@ public sealed class PublicationService(
         return new WaitingChange(active.Number, report.Blocking);
     }
 
+    /// <summary>
+    /// Publishes a published passport's waiting change when nothing blocks it (round three, 4): after a mark is undone, or
+    /// when the team presses "Publish the waiting changes". Null for a passport with no active version. A blocked one
+    /// keeps its version (and its marker); one with nothing waiting reports nothing changed.
+    /// </summary>
+    public async Task<PassportOutcome?> PublishWaitingAsync(ChangeSender sender, string packId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sender);
+        if (await store.GetActiveVersionAsync(packId, cancellationToken) is not { } active)
+        {
+            return null;
+        }
+
+        if (await WaitingAsync(packId, cancellationToken) is { } waiting)
+        {
+            if (waiting.Blocking.Count > 0)
+            {
+                await store.SetChangesWaitingAsync(packId, clock.GetUtcNow().UtcDateTime, cancellationToken);
+                return new PassportOutcome(packId, PublishOutcome.HeldBack, active.Number, waiting.Blocking);
+            }
+
+            await RepublishOneAsync(sender, packId, active, cancellationToken, afterLiveValue: true);
+        }
+        else
+        {
+            await store.SetChangesWaitingAsync(packId, null, cancellationToken);
+        }
+
+        return (await OutcomesAsync([(packId, active.Number)], cancellationToken)).Single();
+    }
+
     /// <summary>The marker of a waiting change goes once the passport shows its saved data (round three, 1).</summary>
     private async Task ClearWaitingAsync(BatteryPack pack, CancellationToken cancellationToken)
     {

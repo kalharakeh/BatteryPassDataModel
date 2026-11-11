@@ -196,6 +196,21 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
         return Redirect($"{BatteryPages.BatteryHref(packId)}#modules");
     }
 
+    /// <summary>"Publish the waiting changes" (round three, 4): a change saved while the passport couldn't publish, now that nothing blocks it.</summary>
+    [HttpPost("{packId}/publish-waiting")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PublishWaiting(string packId, [FromServices] PublicationService publication, CancellationToken cancellationToken)
+    {
+        var outcome = await publication.PublishWaitingAsync(ChangeSender.Team(Who), packId, cancellationToken);
+        if (outcome is null)
+        {
+            return NotFound();
+        }
+
+        Card(packId, "publication", outcome.Outcome == PublishOutcome.HeldBack ? null : PublishWords.For(outcome), outcome.Outcome == PublishOutcome.HeldBack ? PublishWords.For(outcome) : null);
+        return Redirect(BatteryPages.BatteryHref(packId));
+    }
+
     [HttpPost("{packId}/publish")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Publish(string packId, CancellationToken cancellationToken)
@@ -313,8 +328,13 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     /// <summary>The team undoes "invalid" or "marked for deletion" (J-8).</summary>
     [HttpPost("{packId}/mark/undo")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UndoMark(string packId, CancellationToken cancellationToken) =>
-        MarkResult(packId, await marks.UndoAsync(ChangeSender.Team(Who), packId, cancellationToken), "Undone: the passport is active again.");
+    public async Task<IActionResult> UndoMark(string packId, CancellationToken cancellationToken)
+    {
+        var (problem, published) = await marks.UndoWithOutcomeAsync(ChangeSender.Team(Who), packId, cancellationToken);
+        return MarkResult(packId, problem, published is { Outcome: PublishOutcome.NewVersion or PublishOutcome.HeldBack }
+            ? $"Undone: the passport is active again. {PublishWords.For(published)}" // round three, 4
+            : "Undone: the passport is active again.");
+    }
 
     private RedirectResult MarkResult(string packId, string? problem, string done)
     {

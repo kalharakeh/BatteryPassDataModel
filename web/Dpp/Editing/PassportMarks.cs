@@ -3,6 +3,8 @@ using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Services;
 using MongoDB.Bson;
 
+using BatteryPassWeb.Dpp.Publication;
+
 namespace BatteryPassWeb.Dpp.Editing;
 
 /// <summary>
@@ -11,7 +13,7 @@ namespace BatteryPassWeb.Dpp.Editing;
 /// after recycling or export. Either sets the active version's DPP status (#2) in place, with no new version, and the
 /// passport then takes no more changes. Only the team undoes either; the reason stays in the audit log. Null when done.
 /// </summary>
-public sealed class PassportMarks(DppStore store, DemoBoundary demo, ApplicationAuditService audit, TimeProvider clock)
+public sealed class PassportMarks(DppStore store, DemoBoundary demo, ApplicationAuditService audit, TimeProvider clock, PublicationService? publication = null)
 {
     public const string InvalidEvent = "dpp.passport-invalid";
     public const string DeletionEvent = "dpp.passport-marked-for-deletion";
@@ -66,7 +68,24 @@ public sealed class PassportMarks(DppStore store, DemoBoundary demo, Application
     }
 
     /// <summary>The team puts an invalid or marked-for-deletion passport back to active (J-8).</summary>
-    public async Task<string?> UndoAsync(ChangeSender sender, string packId, CancellationToken cancellationToken = default)
+    public async Task<string?> UndoAsync(ChangeSender sender, string packId, CancellationToken cancellationToken = default) =>
+        (await UndoWithOutcomeAsync(sender, packId, cancellationToken)).Problem;
+
+    /// <summary>
+    /// As <see cref="UndoAsync"/>, and a change saved while the passport was marked is published once it is active again,
+    /// when nothing blocks it (round three, 4); <c>Published</c> says what the passport got.
+    /// </summary>
+    public async Task<(string? Problem, PassportOutcome? Published)> UndoWithOutcomeAsync(ChangeSender sender, string packId, CancellationToken cancellationToken = default)
+    {
+        if (await UndoCoreAsync(sender, packId, cancellationToken) is { } problem)
+        {
+            return (problem, null);
+        }
+
+        return (null, publication is null ? null : await publication.PublishWaitingAsync(sender, packId, cancellationToken));
+    }
+
+    private async Task<string?> UndoCoreAsync(ChangeSender sender, string packId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(sender);
         if (await store.GetAsync<BatteryPack>(packId, cancellationToken) is not { } pack)

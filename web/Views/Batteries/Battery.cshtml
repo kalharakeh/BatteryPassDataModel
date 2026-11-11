@@ -217,7 +217,15 @@
                                 @if (publication.Waiting is { } waiting)
                                 {
                                     @* Round two, A2: the saved data is ahead of the public passport. What holds it back is listed below. *@
-                                    <p class="bp-warning mt-2 mb-0" role="status">Saved changes are waiting: the public passport still shows version @waiting.Version. @(publication.Missing.Count > 0 || publication.QuestionsHref is not null ? "It gets the new version once what is listed below is filled in." : "It gets the new version with the next change.")</p>
+                                    <p class="bp-warning mt-2 mb-0" role="status">Saved changes are waiting: the public passport still shows version @waiting.Version. @(waiting.Blocking.Count > 0 ? "It gets the new version once what is listed below is filled in." : "Nothing is in their way now.")</p>
+                                    @if (waiting.Blocking.Count == 0 && Model.Editor.FrozenNote is null)
+                                    {
+                                        @* Round three, 4: nothing blocks the waiting change, so the team publishes it here. *@
+                                        <form method="post" action="@href/publish-waiting" class="mt-2">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="bp-secondary-button bp-button-compact">Publish the waiting changes</button>
+                                        </form>
+                                    }
                                 }
                             }
                             else if (publication.Latest is { } last)
