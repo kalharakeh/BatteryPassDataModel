@@ -88,7 +88,7 @@ public sealed class SignatureTrustTests
         var check = signer.Check(core, proof);
 
         Assert.False(check.Holds);
-        Assert.Equal(SignatureCheck.DataChanged, check.Problem);
+        Assert.Equal(SignatureCheck.NoMatch, check.Problem);
     }
 
     [Fact]

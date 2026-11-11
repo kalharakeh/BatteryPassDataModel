@@ -48,7 +48,7 @@ public sealed class SignatureProof
 /// </summary>
 public sealed record SignatureCheck(bool Holds, string? Problem)
 {
-    public const string DataChanged = "the data was changed after signing";
+    public const string NoMatch = "the data doesn't match its signature";
     public const string KeyNotTrusted = "signed with a key this site doesn't know";
 
     public const string NotChecked = "the signature couldn't be checked";
@@ -64,8 +64,13 @@ public sealed record SignatureCheck(bool Holds, string? Problem)
     /// <summary>The signature line in words: "Verified", or "Not verified: " and the reason.</summary>
     public string Words => Holds ? "Verified" : $"Not verified: {Problem}";
 
-    /// <summary>The reason as a sentence of its own ("The data was changed after signing."); null when it holds.</summary>
+    /// <summary>The reason as a sentence of its own ("The data doesn't match its signature."); null when it holds.</summary>
     public string? Reason => Problem is null ? null : $"{char.ToUpperInvariant(Problem[0])}{Problem[1..]}.";
+
+    /// <summary>For the team only: what to do when the key is one the site doesn't know; null otherwise.</summary>
+    public string? TeamAdvice => Problem == KeyNotTrusted
+        ? $"If it was signed with this site's earlier key, list that public key in {DemoSigningKeyService.TrustedKeysSetting}; the runbook says how."
+        : null;
 }
 
 /// <summary>Signs and verifies a version's static core (design 4.3) with the app's existing ECDSA key.</summary>
@@ -84,7 +89,7 @@ public sealed class PassportSigner(DemoSigningKeyService keys)
 
         if (!Verify(staticCore, proof))
         {
-            return new SignatureCheck(false, SignatureCheck.DataChanged);
+            return new SignatureCheck(false, SignatureCheck.NoMatch);
         }
 
         return keys.Trusts(Base64Url.Decode(proof.PublicKeyX), Base64Url.Decode(proof.PublicKeyY))

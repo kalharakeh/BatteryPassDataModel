@@ -58,11 +58,15 @@ public sealed class PassportsApiController(DppReaders readers, BatteryPages batt
             version = passport.Version.Number,
             dppStatus = passport.Version.DppStatus,
             signatureVerified = passport.SignatureVerified,
+            signatureReason = passport.Signature.Reason,
             passport = passport.Passport,
         });
     }
 
-    /// <summary>Whether a published version's stored core is still the one signed. Its IDs and status are public data.</summary>
+    /// <summary>
+    /// Whether a published version's stored core is still the one signed, with a key the site trusts, and the plain reason
+    /// when it isn't. Its IDs and status are public data.
+    /// </summary>
     [AllowAnonymous]
     [HttpGet("{id}/verify")]
     public async Task<IActionResult> Verify(string id, CancellationToken cancellationToken)
@@ -73,12 +77,14 @@ public sealed class PassportsApiController(DppReaders readers, BatteryPages batt
             return NotFound(new { error = DppApiController.NoPassport, id });
         }
 
+        var signature = api.Signature(version);
         return Ok(new
         {
             passportId = version.DigitalProductPassportId,
             version = version.Number,
             dppStatus = version.DppStatus,
-            signatureVerified = api.Verified(version),
+            signatureVerified = signature.Holds,
+            signatureReason = signature.Reason,
         });
     }
 }

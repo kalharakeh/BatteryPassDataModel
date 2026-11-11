@@ -11,7 +11,7 @@ public sealed class SigningWorkflowLayoutTests
         Assert.DoesNotContain("HttpPost", source);
         Assert.Contains("[AllowAnonymous]", source);
         Assert.Contains("[HttpGet(\"{id}/verify\")]", source);
-        Assert.Contains("api.Verified(version)", source); // the data matches and the key is trusted (R23)
+        Assert.Contains("api.Signature(version)", source); // the data matches and the key is trusted (R23), with the reason
     }
 
     private static string RepoFile(params string[] parts)

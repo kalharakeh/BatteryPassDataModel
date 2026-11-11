@@ -118,6 +118,7 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
             version = passport.Version.Number,
             dppStatus = passport.Version.DppStatus,
             signatureVerified = passport.SignatureVerified,
+            signatureReason = passport.Signature.Reason,
             passport = passport.Passport,
         });
     }
@@ -136,14 +137,15 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
         return Envelope(StatusCodes.Status200OK, "Battery passport versions read successfully.", new
         {
             batteryId = passport.Location.Identifier,
-            passports = versions.Select(version => new
+            passports = versions.Select(version => (Version: version, Signature: api.Signature(version))).Select(row => new
             {
-                passportId = version.DigitalProductPassportId,
-                version = version.Number,
-                dppStatus = version.DppStatus,
-                publishedAt = PassportApi.Timestamp(version.PublishedAtUtc),
-                lastUpdated = PassportApi.Timestamp(version.LastUpdatedUtc),
-                signatureVerified = api.Verified(version),
+                passportId = row.Version.DigitalProductPassportId,
+                version = row.Version.Number,
+                dppStatus = row.Version.DppStatus,
+                publishedAt = PassportApi.Timestamp(row.Version.PublishedAtUtc),
+                lastUpdated = PassportApi.Timestamp(row.Version.LastUpdatedUtc),
+                signatureVerified = row.Signature.Holds,
+                signatureReason = row.Signature.Reason,
             }).ToArray(),
         });
     }

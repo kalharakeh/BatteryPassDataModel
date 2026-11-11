@@ -40,6 +40,10 @@
                                 {
                                     <span class="bp-missing-note">Not verified</span>
                                     <small class="bp-batteries-muted d-block">@row.Signature.Reason</small>
+                                    @if (Model.ForTeam && row.Signature.TeamAdvice is { } advice)
+                                    {
+                                        <small class="bp-batteries-muted d-block">@advice</small>
+                                    }
                                 }
                                 <details class="bp-signature-details">
                                     <summary>Details</summary>

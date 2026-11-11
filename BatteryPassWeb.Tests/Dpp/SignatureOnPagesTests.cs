@@ -83,7 +83,7 @@ public sealed class SignatureOnPagesTests(MongoFixture mongo)
     [Fact]
     public void TheWordsForAReader_ShouldBePlain()
     {
-        Assert.Equal("Not verified: the data was changed after signing", new SignatureCheck(false, SignatureCheck.DataChanged).Words);
+        Assert.Equal("Not verified: the data doesn't match its signature", new SignatureCheck(false, SignatureCheck.NoMatch).Words);
         Assert.Equal("Signed with a key this site doesn't know.", new SignatureCheck(false, SignatureCheck.KeyNotTrusted).Reason);
         Assert.Equal("Verified", SignatureCheck.Verified.Words);
     }
@@ -100,7 +100,7 @@ public sealed class SignatureOnPagesTests(MongoFixture mongo)
     }
 
     /// <summary>Re-signs the stored core with another key: a sound signature, but not the app's.</summary>
-    private static async Task GiveTheProofAnotherKeyAsync(PublicationRig rig, PassportVersion version, ECDsa key)
+    internal static async Task GiveTheProofAnotherKeyAsync(PublicationRig rig, PassportVersion version, ECDsa key)
     {
         var point = key.ExportParameters(includePrivateParameters: false).Q;
         var signature = key.SignData(Encoding.UTF8.GetBytes(CanonicalJson.Serialize(version.StaticCore)), HashAlgorithmName.SHA256, DSASignatureFormat.IeeeP1363FixedFieldConcatenation);

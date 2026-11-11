@@ -1141,7 +1141,7 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
             const code = (text) => text ? `<code>${escapeHtml(text)}</code>` : '-';
             const factWords = {
                 batteryId: 'Battery ID', passportId: 'Passport ID', serialNumber: 'Serial number', clusterId: 'Cluster', clusterName: 'Cluster name',
-                version: 'Version', dppStatus: 'Status', signatureVerified: 'Signature verified', unchanged: 'Unchanged', preview: 'Preview only',
+                version: 'Version', dppStatus: 'Status', signatureVerified: 'Signature verified', signatureReason: 'Why not verified', unchanged: 'Unchanged', preview: 'Preview only',
                 saved: 'Saved', measuredAt: 'Measured at', hours: 'Hours', section: 'Section', globalAccess: 'Team token', publishPath: 'Publish with'
             };
             const outcomeWords = { saved: ['Saved', 'done'], kept: ['Kept (empty)', ''], ignored: ['Ignored', ''], removed: ['Removed', ''], rejected: ['Refused', 'refused'] };
@@ -1187,7 +1187,7 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                     parts.push(answerTable(['Cluster ID', 'Name'], data.clusters.map(cluster => [code(cluster.clusterId), escapeHtml(cluster.name)])));
                 } else if (Array.isArray(data.passports)) {
                     parts.push(answerTable(['Version', 'Passport ID', 'Status', 'Published', 'Signature'], data.passports.map(version =>
-                        [escapeHtml(version.version), code(version.passportId), answerTag(version.dppStatus, version.dppStatus === 'active' ? 'done' : ''), escapeHtml(version.publishedAt), version.signatureVerified ? answerTag('Verified', 'done') : answerTag('Not verified', 'refused')])));
+                        [escapeHtml(version.version), code(version.passportId), answerTag(version.dppStatus, version.dppStatus === 'active' ? 'done' : ''), escapeHtml(version.publishedAt), version.signatureVerified ? answerTag('Verified', 'done') : `${answerTag('Not verified', 'refused')}${version.signatureReason ? ` <small>${escapeHtml(version.signatureReason)}</small>` : ''}`])));
                 } else if (Array.isArray(data.attributes)) {
                     parts.push(answerTable(['Value', 'Key', 'Name', 'Unit'], data.attributes.map(attribute =>
                         [escapeHtml(attribute.attribute), code(attribute.key), escapeHtml(attribute.name), escapeHtml(attribute.unit || '-')])));
