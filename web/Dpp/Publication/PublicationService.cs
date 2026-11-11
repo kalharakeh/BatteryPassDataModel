@@ -303,10 +303,18 @@ public sealed class PublicationService(
                 // A change held back because the passport couldn't publish follows once this live value clears the block
                 // (round two, A1): from the feed, an upload, the API or a cluster admin alike. Only a battery marked as
                 // having a change waiting is looked at further: one read for the others (round three, 1).
-                if (await store.GetAsync<BatteryPack>(packId, cancellationToken) is { ChangesWaitingSinceUtc: not null }
-                    && await WaitingAsync(packId, cancellationToken) is { Blocking.Count: 0 })
+                if (await store.GetAsync<BatteryPack>(packId, cancellationToken) is { ChangesWaitingSinceUtc: not null } marked)
                 {
-                    await RepublishOneAsync(sender, packId, active, cancellationToken, withWaiting: true);
+                    var waiting = await WaitingAsync(packId, cancellationToken);
+                    if (waiting is null)
+                    {
+                        // Nothing differs after all: the marker was wrong, and goes (round four, 4).
+                        await store.ClearChangesWaitingAsync(packId, marked.ChangesWaitingToken, cancellationToken);
+                    }
+                    else if (waiting.Blocking.Count == 0)
+                    {
+                        await RepublishOneAsync(sender, packId, active, cancellationToken, withWaiting: true);
+                    }
                 }
 
                 continue;
@@ -339,8 +347,7 @@ public sealed class PublicationService(
         var result = await PublishCoreAsync(packId, sender, retryOnConflict: true, cancellationToken, withWaiting);
         if (result.Problem is not null)
         {
-            // The saved change waits: the marker tells the team's list and the next live save (round three, 1).
-            await store.MarkChangesWaitingAsync([packId], clock.GetUtcNow().UtcDateTime, cancellationToken);
+            // The marker is the publish attempt's own: set only when something differs (round four, 4).
             await audit.AppendApplicationAuditEventAsync(
                 BlockedEvent,
                 sender.Who,
@@ -378,16 +385,26 @@ public sealed class PublicationService(
         var passportId = identifiers.NewPassportIdentifier(PackIdentifier(sources.Pack), number);
         var passport = PassportAssembler.Assemble(sources, new PassportHeader(passportId, DppStatuses.Active, now));
         var report = WithDemoRule(sources, checks.Check(passport, sources.Model.Answers()), number);
-        if (!report.CanPublish)
-        {
-            return new PublicationResult(null, report, "the passport can't be published yet; see the blocking items");
-        }
 
+        // Nothing differs from the active version: nothing to publish and nothing waiting, whatever the checks say. The
+        // content is compared before the answer "can't be published", so no false marker is set (round four, 4).
         var core = PassportStaticCore.Extract(passport);
         if (active is not null && PassportStaticCore.ContentHash(active.StaticCore) == PassportStaticCore.ContentHash(core))
         {
             await ClearWaitingAsync(sources.Pack, cancellationToken); // the passport shows its saved data
             return new PublicationResult(active, report, null, Unchanged: true);
+        }
+
+        if (!report.CanPublish)
+        {
+            // A published passport whose saved data differs and can't publish: its change waits, marked for the team's
+            // list and the next live save. Every caller (a save, the team's or the API's publish) goes through here.
+            if (active is not null)
+            {
+                await store.MarkChangesWaitingAsync([packId], now, cancellationToken);
+            }
+
+            return new PublicationResult(null, report, "the passport can't be published yet; see the blocking items");
         }
 
         var version = new PassportVersion
