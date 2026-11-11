@@ -14,23 +14,12 @@
     string When(DateTime utc) => TimeZoneInfo.ConvertTimeFromUtc(utc, TimeZoneInfo.Local).ToString("d MMM yyyy, HH:mm", english);
     string Value(string property) => Model.Pack.Values.GetValueOrDefault(property)?.Value?.ToString() ?? "—";
 
-    // "2026-09" as "September 2026", and an ISO 8601 period such as "P3Y6M" as "3 years 6 months".
+    // "2026-09" as "September 2026", and an ISO 8601 period such as "P3Y6M" as "3 years 6 months" (ValueWords.Period:
+    // the one safe reading, which shows a value too large to read as written; round three, 2).
     string Month(string text) => DateTime.TryParseExact(text, "yyyy-MM", CultureInfo.InvariantCulture, DateTimeStyles.None, out var month)
         ? month.ToString("MMMM yyyy", english)
         : text;
-    string Period(string text)
-    {
-        var match = System.Text.RegularExpressions.Regex.Match(text, @"^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?$");
-        if (!match.Success || text == "P")
-        {
-            return text;
-        }
-
-        var parts = new[] { (match.Groups[1].Value, "year"), (match.Groups[2].Value, "month"), (match.Groups[3].Value, "day") }
-            .Where(part => part.Item1.Length > 0)
-            .Select(part => Words.Count(int.Parse(part.Item1, CultureInfo.InvariantCulture), part.Item2));
-        return string.Join(" ", parts);
-    }
+    string Period(string text) => ValueWords.Period(text);
     var card = ViewData[BatteriesController.CardKey] as string;
     var testIds = Identifiers.IsTestIdentifier(Model.Identifier) || Model.Versions.Any(row => Identifiers.IsTestIdentifier(row.Version.DigitalProductPassportId));
     var filesChanged = publication.Files.Count(file => !file.Unchanged);

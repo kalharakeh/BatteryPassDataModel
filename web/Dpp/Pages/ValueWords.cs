@@ -164,7 +164,7 @@ public static class ValueWords
             return month.ToString("MMMM yyyy", English);
         }
 
-        return input.Kind == InputKind.Duration ? Duration(text) : text;
+        return input.Kind == InputKind.Duration ? Period(text) : text;
     }
 
     /// <summary>A public link or an uploaded file: its title, opening its address.</summary>
@@ -180,8 +180,11 @@ public static class ValueWords
         return new ValueLine(null, Scalar(value["resourceTitle"]) ?? url, WebAddress.Safe(url));
     }
 
-    /// <summary>"P8Y" as "8 years", "P1Y6M" as "1 year 6 months"; anything else as written.</summary>
-    private static string Duration(string text)
+    /// <summary>
+    /// "P8Y" as "8 years", "P1Y6M" as "1 year 6 months"; anything else, and a number too large to read, as written. The
+    /// one place that turns a period into words (round three, 2).
+    /// </summary>
+    public static string Period(string text)
     {
         var match = System.Text.RegularExpressions.Regex.Match(text, @"^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?$");
         if (!match.Success || text == "P")
