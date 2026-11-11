@@ -33,11 +33,9 @@ if (DemoAdminFallbackConfiguration.ProductionRefusal(
 }
 
 // The QR code's address and the battery IDs' address must be one site (finding D18); outside Production a warning.
-var appBaseUrlSetting = Environment.GetEnvironmentVariable("APP_BASE_URL")
-    ?? Environment.GetEnvironmentVariable("APP_URL")
-    ?? builder.Configuration["BatteryPass:AppBaseUrl"]
-    ?? builder.Configuration["BatteryPass:AppUrl"];
-var idBaseUrlSetting = Environment.GetEnvironmentVariable("DPP_ID_BASE_URL") ?? builder.Configuration["BatteryPass:IdBaseUrl"];
+// A setting that is there but empty counts as not set (C3 round three, point 1).
+var appBaseUrlSetting = SiteAddressSettings.AppBaseUrl(Environment.GetEnvironmentVariable, builder.Configuration);
+var idBaseUrlSetting = SiteAddressSettings.IdBaseUrl(Environment.GetEnvironmentVariable, builder.Configuration);
 
 // Production needs the site's own signing key and two whole http(s) addresses (the manager's decision 61).
 if (DemoSigningKeyService.ProductionKeyProblem(builder.Environment.IsProduction(), Environment.GetEnvironmentVariable(DemoSigningKeyService.PrivateKeySetting)) is { } missingSigningKey)
@@ -132,12 +130,8 @@ builder.Services.Configure<BatteryPassOptions>(options =>
         ?? "Battery Pass";
     options.IdAgency = (Environment.GetEnvironmentVariable("DPP_ID_AGENCY") ?? builder.Configuration["BatteryPass:IdAgency"] ?? string.Empty).Trim();
     options.IdCompany = (Environment.GetEnvironmentVariable("DPP_ID_COMPANY") ?? builder.Configuration["BatteryPass:IdCompany"] ?? string.Empty).Trim();
-    options.IdBaseUrl = (Environment.GetEnvironmentVariable("DPP_ID_BASE_URL") ?? builder.Configuration["BatteryPass:IdBaseUrl"] ?? string.Empty).Trim().TrimEnd('/');
-    options.AppBaseUrl = Environment.GetEnvironmentVariable("APP_BASE_URL")
-        ?? Environment.GetEnvironmentVariable("APP_URL")
-        ?? builder.Configuration["BatteryPass:AppBaseUrl"]
-        ?? builder.Configuration["BatteryPass:AppUrl"]
-        ?? string.Empty;
+    options.IdBaseUrl = (idBaseUrlSetting ?? string.Empty).Trim().TrimEnd('/');
+    options.AppBaseUrl = appBaseUrlSetting ?? string.Empty;
     options.RequireHttpsRedirection = DeploymentSecurityConfiguration.ParseRequireHttpsRedirection(
         Environment.GetEnvironmentVariable("REQUIRE_HTTPS_REDIRECTION")
             ?? builder.Configuration["BatteryPass:RequireHttpsRedirection"]);

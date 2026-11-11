@@ -60,7 +60,11 @@ BatteryPass portable package (Windows x64)
    - SESSION_SECRET
    - EXTERNAL_API_ENCRYPTION_KEY
    - ID_GENERATION_SECRET
+   - APP_BASE_URL and DPP_ID_BASE_URL: the site's address, both the same site (scheme, host and port)
+   - BATTERY_PASS_SIGNING_PRIVATE_KEY_BASE64: the site's signing key; .env.local.example says how to make one. Keep it.
    - (optional) DEMO_ADMIN_EMAIL, DEMO_ADMIN_PASSWORD
+   - Note: run-batterypass.cmd starts the app in Production, which doesn't start without the signing key
+     or with an address that isn't a whole http(s) address
    - Note: app startup requires a reachable MongoDB database
 3. Keep the BatteryPass folder next to BatteryPassWeb.exe; reset uses those schema/demo payload files.
 4. Run: run-batterypass.cmd
