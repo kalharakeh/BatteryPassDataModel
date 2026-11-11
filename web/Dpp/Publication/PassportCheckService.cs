@@ -23,6 +23,31 @@ public sealed class PassportCheckService(PublicationService publication, IConfig
         return value?.Trim().ToLowerInvariant() is not ("off" or "false" or "0" or "no");
     }
 
+    /// <summary>
+    /// One run of the check. Everything it throws is logged, so the next hour tries again, except the stopping token's
+    /// own cancellation: then it answers false and the service ends. A stray cancellation (a driver's time-out, a token
+    /// that isn't the app's) never stops the host (round seven, 4).
+    /// </summary>
+    public static async Task<bool> RunOnceAsync(Func<CancellationToken, Task<PassportCheckResult>> check, ILogger? logger, CancellationToken stoppingToken)
+    {
+        ArgumentNullException.ThrowIfNull(check);
+        try
+        {
+            var result = await check(stoppingToken);
+            logger?.LogInformation("Passport check: {Words}", result.Words);
+            return !stoppingToken.IsCancellationRequested;
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            return false; // the app is stopping
+        }
+        catch (Exception exception)
+        {
+            logger?.LogError(exception, "The passport check failed; it runs again in an hour.");
+            return true;
+        }
+    }
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         if (!IsOn(configuration))
@@ -37,14 +62,9 @@ public sealed class PassportCheckService(PublicationService publication, IConfig
             using var timer = new PeriodicTimer(Every);
             do
             {
-                try
+                if (!await RunOnceAsync(token => publication.ReconcileAsync(Actor, token), logger, stoppingToken))
                 {
-                    var result = await publication.ReconcileAsync(Actor, stoppingToken);
-                    logger?.LogInformation("Passport check: {Words}", result.Words);
-                }
-                catch (Exception exception) when (exception is not OperationCanceledException)
-                {
-                    logger?.LogError(exception, "The passport check failed; it runs again in an hour.");
+                    return;
                 }
             }
             while (await timer.WaitForNextTickAsync(stoppingToken));
