@@ -665,9 +665,13 @@ public sealed class DppStore
     }
 
     /// <summary>Marks every other active version of the pack as archived.</summary>
-    public Task ArchiveOtherVersionsAsync(string packId, string activeVersionId, CancellationToken cancellationToken = default) =>
+    /// <remarks>
+    /// Only versions with a lower number than the one just made active are archived (round five): a slower publisher's
+    /// archive step then can't archive a faster publisher's newer version and leave the battery with no active version.
+    /// </remarks>
+    public Task ArchiveOtherVersionsAsync(string packId, string activeVersionId, int activeNumber, CancellationToken cancellationToken = default) =>
         Collection<PassportVersion>().UpdateManyAsync(
-            version => version.PackId == packId && version.DppStatus == DppStatuses.Active && version.Id != activeVersionId,
+            version => version.PackId == packId && version.DppStatus == DppStatuses.Active && version.Id != activeVersionId && version.Number < activeNumber,
             Builders<PassportVersion>.Update.Set(version => version.DppStatus, DppStatuses.Archived),
             cancellationToken: cancellationToken);
 

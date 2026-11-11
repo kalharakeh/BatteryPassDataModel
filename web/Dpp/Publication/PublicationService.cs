@@ -437,7 +437,7 @@ public sealed class PublicationService(
             return await PublishCoreAsync(packId, sender, retryOnConflict: false, cancellationToken, withWaiting);
         }
 
-        await store.ArchiveOtherVersionsAsync(packId, version.Id, cancellationToken);
+        await store.ArchiveOtherVersionsAsync(packId, version.Id, version.Number, cancellationToken);
         await ClearWaitingAsync(sources.Pack, cancellationToken);
         if (version.Number == 1 && pool is not null)
         {

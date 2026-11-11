@@ -62,7 +62,7 @@ public sealed class PassportVersionStoreTests(MongoFixture mongo)
         await store.InsertAsync(older);
         await store.InsertAsync(newer);
 
-        await store.ArchiveOtherVersionsAsync(seed.Sources.Pack.Id, newer.Id);
+        await store.ArchiveOtherVersionsAsync(seed.Sources.Pack.Id, newer.Id, newer.Number);
 
         var versions = await store.ListVersionsAsync(seed.Sources.Pack.Id);
         Assert.Equal([DppStatuses.Archived, DppStatuses.Active], versions.Select(v => v.DppStatus));
