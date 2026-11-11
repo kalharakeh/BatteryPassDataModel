@@ -35,9 +35,48 @@ public sealed class SignatureProof
     public required string PublicKeyY { get; init; }
 }
 
+/// <summary>
+/// What a signature check found (finding R23): "Verified" only when the data matches the signature and the key that made
+/// it is one the app trusts; otherwise a plain reason.
+/// </summary>
+public sealed record SignatureCheck(bool Holds, string? Problem)
+{
+    public const string DataChanged = "the data was changed after signing";
+    public const string KeyNotTrusted = "signed with a key this site doesn't know";
+
+    public const string NotChecked = "the signature couldn't be checked";
+
+    public static SignatureCheck Verified { get; } = new(true, null);
+
+    /// <summary>For a page built without the check: never "Verified" by default.</summary>
+    public static SignatureCheck Unchecked { get; } = new(false, NotChecked);
+
+    /// <summary>The signature line in words: "Verified", or "Not verified: " and the reason.</summary>
+    public string Words => Holds ? "Verified" : $"Not verified: {Problem}";
+
+    /// <summary>The reason as a sentence of its own ("The data was changed after signing."); null when it holds.</summary>
+    public string? Reason => Problem is null ? null : $"{char.ToUpperInvariant(Problem[0])}{Problem[1..]}.";
+}
+
 /// <summary>Signs and verifies a version's static core (design 4.3) with the app's existing ECDSA key.</summary>
 public sealed class PassportSigner(DemoSigningKeyService keys)
 {
+    /// <summary>
+    /// The full check behind "Verified": the core is exactly what was signed, and the proof's key is one the app trusts
+    /// (its current key or an older one listed as trusted). Uses only what the app holds; it never calls out.
+    /// </summary>
+    public SignatureCheck Check(JsonNode staticCore, SignatureProof proof)
+    {
+        if (!Verify(staticCore, proof))
+        {
+            return new SignatureCheck(false, SignatureCheck.DataChanged);
+        }
+
+        return keys.Trusts(Base64Url.Decode(proof.PublicKeyX), Base64Url.Decode(proof.PublicKeyY))
+            ? SignatureCheck.Verified
+            : new SignatureCheck(false, SignatureCheck.KeyNotTrusted);
+    }
+
     public const string ProofType = "DataIntegrityProof";
     public const string Cryptosuite = "ecdsa-p256-sha256-dpp-canonical-2026";
 
@@ -62,8 +101,8 @@ public sealed class PassportSigner(DemoSigningKeyService keys)
     }
 
     /// <summary>
-    /// True when the core is exactly what was signed. Uses the public key stored in the proof, not today's key.
-    /// Whether that key belongs to the issuer is the trust pages' question, not this check's.
+    /// True when the core is exactly what was signed, with the public key stored in the proof. This alone is not
+    /// "Verified": <see cref="Check"/> also asks whether the app trusts that key.
     /// </summary>
     public static bool Verify(JsonNode staticCore, SignatureProof proof)
     {

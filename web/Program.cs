@@ -43,6 +43,13 @@ if (DppLinks.HostMismatch(appBaseUrlSetting, idBaseUrlSetting) is { } hostMismat
     throw new InvalidOperationException(hostMismatch);
 }
 
+// Older public keys the app still trusts after a key change (finding R23): an unreadable entry stops Production.
+var trustedSigningKeysSetting = EnvironmentOrConfig(builder.Configuration, DemoSigningKeyService.TrustedKeysSetting, "SigningTrustedPublicKeys");
+if (DemoSigningKeyService.UnreadableTrustedKeys(trustedSigningKeysSetting) is { } unreadableTrustedKeys && builder.Environment.IsProduction())
+{
+    throw new InvalidOperationException(unreadableTrustedKeys);
+}
+
 var enableRateLimiting = ParseFeatureFlag(
     EnvironmentOrConfig(builder.Configuration, "ENABLE_RATE_LIMITING", "EnableRateLimiting"),
     BatteryPassOptions.DefaultEnableRateLimiting);
@@ -230,7 +237,8 @@ builder.Services.AddSingleton(new BatteryPassWeb.Dpp.Demo.DemoDataSwitch(Battery
     builder.Environment.IsProduction())));
 builder.Services.AddSingleton<MongoContext>();
 builder.Services.AddSingleton<ClusterRepository>();
-builder.Services.AddSingleton<DemoSigningKeyService>();
+// The issuer is the battery IDs' site (finding R23); without DPP_ID_BASE_URL, the app's own address.
+builder.Services.AddSingleton(_ => new DemoSigningKeyService(idBaseUrlSetting, appBaseUrlSetting, trustedSigningKeysSetting));
 builder.Services.AddSingleton<ApplicationAuditService>();
 builder.Services.AddSingleton<ApplicationSettingsService>();
 builder.Services.AddSingleton<AuthenticationSessionService>();
@@ -383,6 +391,18 @@ using (var scope = app.Services.CreateScope())
     {
         app.Logger.LogWarning("APP_BASE_URL is not set: battery packs can't be created and documents can't be linked until it is.");
     }
+    if (DemoSigningKeyService.UnreadableTrustedKeys(trustedSigningKeysSetting) is { } trustedKeysWarning)
+    {
+        app.Logger.LogWarning(trustedKeysWarning);
+    }
+    var signingKeys = scope.ServiceProvider.GetRequiredService<DemoSigningKeyService>();
+    app.Logger.LogInformation(
+        "Passports are signed as {Issuer}, key {KeyId}. The key is published at {DidDocumentPath}. After a key change, add this public key to {TrustedKeysSetting}: {PublicKey}",
+        signingKeys.Issuer,
+        signingKeys.KeyId,
+        DemoSigningKeyService.DidDocumentPath,
+        DemoSigningKeyService.TrustedKeysSetting,
+        signingKeys.PublicKeyText());
     if (DppLinks.HostMismatch(fallbackOptions.AppBaseUrl, fallbackOptions.IdBaseUrl) is { } addressWarning)
     {
         app.Logger.LogWarning(addressWarning);
