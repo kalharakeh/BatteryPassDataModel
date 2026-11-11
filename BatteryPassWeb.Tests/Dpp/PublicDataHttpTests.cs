@@ -138,6 +138,26 @@ public sealed class PublicDataHttpTests(MongoFixture mongo)
         Assert.Equal("The signature can't be read.", answer["signatureReason"]!.GetValue<string>());
     }
 
+    [Fact]
+    public async Task AHostThatFailsToStop_ShouldNotFailTheTest()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development });
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
+        builder.Logging.ClearProviders();
+        builder.Services.AddHostedService<FailsToStop>();
+        var app = builder.Build();
+        await app.StartAsync();
+        var raw = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development });
+        raw.WebHost.UseUrls("http://127.0.0.1:0");
+        raw.Logging.ClearProviders();
+        raw.Services.AddHostedService<FailsToStop>();
+        await using var plain = raw.Build();
+        await plain.StartAsync();
+
+        await Assert.ThrowsAnyAsync<Exception>(() => plain.StopAsync()); // the host's own stop does throw...
+        await Site.StopAsync(app); // ...and this throws nothing
+    }
+
     private async Task<Site> SiteAsync(int readLimit = 1000)
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo);
@@ -237,7 +257,11 @@ public sealed class PublicDataHttpTests(MongoFixture mongo)
             await StopAsync(app);
         }
 
-        /// <summary>Stops and disposes the host, waiting at most 10 seconds for open requests (C3 round three, point 5).</summary>
+        /// <summary>
+        /// Stops and disposes the host, waiting at most 10 seconds for open requests (C3 round three, point 5). Stopping late
+        /// or with an error is logged, never a test failure: the test has already passed or failed on its own (round four,
+        /// point 2).
+        /// </summary>
         public static async Task StopAsync(WebApplication app)
         {
             using var stopping = new CancellationTokenSource(TimeSpan.FromSeconds(10));
@@ -245,11 +269,28 @@ public sealed class PublicDataHttpTests(MongoFixture mongo)
             {
                 await app.StopAsync(stopping.Token);
             }
-            finally
+            catch (Exception exception)
+            {
+                System.Diagnostics.Trace.WriteLine($"The HTTP test host didn't stop cleanly: {exception.GetType().Name}: {exception.Message}");
+            }
+
+            try
             {
                 await app.DisposeAsync();
             }
+            catch (Exception exception)
+            {
+                System.Diagnostics.Trace.WriteLine($"The HTTP test host didn't dispose cleanly: {exception.GetType().Name}: {exception.Message}");
+            }
         }
+    }
+
+    /// <summary>A service whose stop fails, as a host stopping late on a slow machine does.</summary>
+    private sealed class FailsToStop : IHostedService
+    {
+        public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task StopAsync(CancellationToken cancellationToken) => throw new OperationCanceledException("stopping took too long");
     }
 
     private sealed class NoMail : IEmailSender
