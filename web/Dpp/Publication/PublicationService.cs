@@ -136,7 +136,10 @@ public sealed class PublicationService(
     public async Task<PassportCheckResult> ReconcileAsync(string who, CancellationToken cancellationToken = default)
     {
         var packs = await store.ListAsync<BatteryPack>(cancellationToken);
-        var actives = (await store.ListAsync<PassportVersion>(cancellationToken))
+        var allVersions = await store.ListAsync<PassportVersion>(cancellationToken);
+        var newest = allVersions.GroupBy(version => version.PackId, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.MaxBy(version => version.Number)!, StringComparer.Ordinal);
+        var actives = allVersions
             .Where(version => version.DppStatus == DppStatuses.Active)
             .GroupBy(version => version.PackId, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.OrderByDescending(version => version.Number).ToArray(), StringComparer.Ordinal);
@@ -158,6 +161,22 @@ public sealed class PublicationService(
 
             checkedCount++;
             var changed = false;
+
+            // The newest version is no longer active (invalid, marked for deletion, inactive) with a lower one still active,
+            // as a mark or a hand-over left it before round six: the lower ones are archived, so readers serve the newest
+            // version's state, and no marker is set: a passport no longer active takes no new version (round seven, 1).
+            if (newest[pack.Id].DppStatus != DppStatuses.Active)
+            {
+                await store.ArchiveOtherVersionsAsync(pack.Id, newest[pack.Id].Id, newest[pack.Id].Number, none);
+                archived += versions.Length;
+                if (serials.Count < CheckSerialsShown)
+                {
+                    serials.Add(pack.Values.GetValueOrDefault("batterySerialNumber")?.Value?.ToString() ?? pack.Id);
+                }
+
+                continue;
+            }
+
             var active = versions[0];
             if (versions.Length > 1)
             {
