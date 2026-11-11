@@ -130,6 +130,42 @@ public sealed class UploadPages(UploadService uploads, AttributeForms forms, Att
         return report.Problem is { } problem ? (null, problem) : (report.CheckId, null);
     }
 
+    /// <summary>
+    /// R09: why a battery system's export chosen on the "new battery" page can't be used for the battery with this serial
+    /// number; null when it can. It must be readable and name that battery.
+    /// </summary>
+    public string? NewBatteryFileProblem(byte[] content, string? serialNumber)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        var (namedAs, problem) = uploads.NamedBattery(content);
+        if (problem is not null)
+        {
+            return problem;
+        }
+
+        return string.Equals(namedAs, serialNumber?.Trim(), StringComparison.OrdinalIgnoreCase)
+            ? null
+            : $"the file is for battery {namedAs}; choose that serial number, or create the battery without the file";
+    }
+
+    /// <summary>
+    /// R09: a new battery takes the readings of its battery system's export as its first values (state of charge, cycles,
+    /// the times in extreme temperatures, its manufacturing month and modules), checked and saved as on its page.
+    /// </summary>
+    public async Task<(string? Done, string? Problem)> FillNewBatteryAsync(ChangeSender sender, string packId, string fileName, byte[] content, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        using var stream = new MemoryStream(content);
+        var (checkId, problem) = await CheckAsync(sender, packId, fileName, stream, content.Length, cancellationToken);
+        if (problem is not null)
+        {
+            return (null, problem);
+        }
+
+        var (done, _, saveProblem) = await SaveAsync(sender, packId, checkId, cancellationToken);
+        return (done, saveProblem);
+    }
+
     /// <summary>"Save" (mock-up B3): what was saved and the upload's ID, or why nothing was.</summary>
     public async Task<(string? Done, string? UploadId, string? Problem)> SaveAsync(ChangeSender sender, string packId, string? checkId, CancellationToken cancellationToken = default)
     {

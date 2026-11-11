@@ -43,13 +43,45 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
 
     [HttpPost("")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateBattery([FromForm] string? batchId, [FromForm] string? operatorId, [FromForm] string? clusterId, CancellationToken cancellationToken)
+    [RequestSizeLimit(UploadService.MaxBytes + 65536)]
+    public async Task<IActionResult> CreateBattery([FromForm] string? batchId, [FromForm] string? operatorId, [FromForm] string? clusterId, CancellationToken cancellationToken, IFormFile? export = null)
     {
         var form = Request.Form;
-        var (result, post) = await pages.CreateAsync(Who, batchId, operatorId, clusterId, name => form.TryGetValue(name, out var value) ? value.ToString() : null, cancellationToken);
+        string? Field(string name) => form.TryGetValue(name, out var value) ? value.ToString() : null;
+
+        // R09: the battery system's export, when chosen, gives the battery its first readings; it must name this battery.
+        byte[]? exportBytes = null;
+        if (export is { Length: > 0 })
+        {
+            using var buffer = new MemoryStream();
+            await export.CopyToAsync(buffer, cancellationToken);
+            exportBytes = buffer.ToArray();
+            if (uploads.NewBatteryFileProblem(exportBytes, Field("v.batterySerialNumber")) is { } fileProblem)
+            {
+                ViewData[ProductDataController.ErrorKey] = $"The battery wasn't created: {fileProblem}.";
+                var typed = new EditorState(pages.ReadNew(Field), new EditorSave(EditorOutcome.Refused, [], []));
+                return View("NewBattery", await pages.NewAsync(batchId, operatorId, clusterId, typed, cancellationToken));
+            }
+        }
+
+        var (result, post) = await pages.CreateAsync(Who, batchId, operatorId, clusterId, Field, cancellationToken);
         if (result.Pack is { } pack)
         {
             TempData[ProductDataController.StatusKey] = "Draft battery created. Fill in what its passport still needs, then publish it.";
+            if (exportBytes is not null)
+            {
+                var (done, problem) = await uploads.FillNewBatteryAsync(ChangeSender.Team(Who), pack.Id, Path.GetFileName(export!.FileName), exportBytes, cancellationToken);
+                if (problem is null)
+                {
+                    TempData[ProductDataController.StatusKey] = $"Draft battery created with its export's readings. {done} Type its temperature: the export has none yet.";
+                }
+                else
+                {
+                    TempData[ProductDataController.StatusKey] = null;
+                    TempData[ProductDataController.ErrorKey] = $"Draft battery created, but its export's readings weren't saved: {problem}.";
+                }
+            }
+
             return Redirect(BatteryPages.BatteryHref(pack.Id));
         }
 

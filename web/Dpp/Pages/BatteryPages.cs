@@ -456,6 +456,10 @@ public sealed class BatteryPages(
     /// Creates a draft battery (design 7.1). The cluster is optional (decision of 29 Oct 2026) but must exist; the
     /// values go through the same checks as any save, and a serial number another battery has is refused.
     /// </summary>
+    /// <summary>What was typed on the "new battery" page, read as <see cref="CreateAsync"/> reads it.</summary>
+    public EditorPost ReadNew(Func<string, string?> field) =>
+        editor.Read(TargetKind.Pack, new Dictionary<string, AttributeValue>(StringComparer.Ordinal), field);
+
     public async Task<(PackCreationResult Result, EditorPost Post)> CreateAsync(
         string who,
         string? batchId,

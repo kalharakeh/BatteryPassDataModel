@@ -37,7 +37,7 @@
         </p>
     }
 
-    <form method="post" action="/admin/batteries" class="bp-card bp-console-form-card bp-new-battery mt-4" id="record-editor" data-record-editor data-cancel-href="/admin/batteries">
+    <form method="post" action="/admin/batteries" enctype="multipart/form-data" class="bp-card bp-console-form-card bp-new-battery mt-4" id="record-editor" data-record-editor data-cancel-href="/admin/batteries">
         @Html.AntiForgeryToken()
         <section class="bp-new-battery-part">
             <h2>Where it comes from</h2>
@@ -148,6 +148,16 @@
                     @await Html.PartialAsync("~/Views/ProductData/_EditorField.cshtml", new EditorFieldView(Model.Values, field))
                 }
             </div>
+        </section>
+
+        @* R09: the battery system's export gives the new battery its first readings, as its page's upload does. *@
+        <section class="bp-new-battery-part">
+            <h2>Its battery system's export <em class="bp-field-marker">Optional</em></h2>
+            <p class="bp-template-sync-note">The export's state of charge, cycles and times in extreme temperatures become the battery's first values. It has no temperature yet: type it on the battery's page.</p>
+            <label>
+                <span>Export file (JSON)</span>
+                <input type="file" name="export" accept=".json,application/json" />
+            </label>
         </section>
 
         <div class="bp-product-editor-savebar">

@@ -260,12 +260,7 @@ public sealed class UploadService(
             return new UploadReport(null, true, [], NotJson, null);
         }
 
-        var document = json is JsonObject root
-            ? _adapters.FirstOrDefault(adapter => adapter.Reads(root))?.Read(root) ?? UploadDocument.Unreadable(NotAnUpload)
-            : UploadDocument.Unreadable(NotAnUpload);
-        var problem = document.Problem
-            ?? (document.Entries.Count != 1 ? OneBatteryOnly(document.Entries.Count) : null)
-            ?? document.Entries[0].Problem;
+        var (document, problem) = ReadOne(json);
         if (problem is null)
         {
             var named = await batteries.FindAsync(sender, document.Entries[0].NamedAs, cancellationToken);
@@ -297,6 +292,39 @@ public sealed class UploadService(
         };
         await store.InsertAsync(check, cancellationToken);
         return report with { CheckId = check.Id };
+    }
+
+    /// <summary>
+    /// The battery a file chosen for a new battery names (R09: a battery created from its battery system's export), read as
+    /// a battery's page reads it; or why the file can't be used.
+    /// </summary>
+    public (string? NamedAs, string? Problem) NamedBattery(byte[] content)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        if (content.Length > MaxBytes)
+        {
+            return (null, TooLarge);
+        }
+
+        if (Parse(content) is not { } json)
+        {
+            return (null, NotJson);
+        }
+
+        var (document, problem) = ReadOne(json);
+        return problem is null ? (document.Entries[0].NamedAs, null) : (null, problem);
+    }
+
+    /// <summary>A file read for one battery: what it says, or why it isn't one battery's file.</summary>
+    private (UploadDocument Document, string? Problem) ReadOne(JsonNode json)
+    {
+        var document = json is JsonObject root
+            ? _adapters.FirstOrDefault(adapter => adapter.Reads(root))?.Read(root) ?? UploadDocument.Unreadable(NotAnUpload)
+            : UploadDocument.Unreadable(NotAnUpload);
+        var problem = document.Problem
+            ?? (document.Entries.Count != 1 ? OneBatteryOnly(document.Entries.Count) : null)
+            ?? document.Entries[0].Problem;
+        return (document, problem);
     }
 
     /// <summary>
