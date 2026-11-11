@@ -60,7 +60,17 @@ public sealed class CanonicalFormTests
     [InlineData("""{"n":0.1}""", """{"n":0.1}""")]
     [InlineData("""{"n":1e-7}""", """{"n":1E-07}""")]
     [InlineData("""{"n":123456789012345.0}""", """{"n":123456789012345}""")]
-    [InlineData("""{"n":1e15}""", """{"n":1000000000000000}""")] // a whole number that fits a 64-bit integer
+    [InlineData("""{"n":1e15}""", """{"n":1000000000000000}""")] // read as a double: from 1e15 its shortest form, plain below 1e17
+    [InlineData("""{"n":1e16}""", """{"n":10000000000000000}""")]
+    [InlineData("""{"n":99000000000000000.0}""", """{"n":99000000000000000}""")]
+    [InlineData("""{"n":12345678901234567.0}""", """{"n":12345678901234568}""")] // the nearest double
+    [InlineData("""{"n":1e17}""", """{"n":1E+17}""")] // C3 round three, point 3: from 1e17 with an E
+    [InlineData("""{"n":1.0e17}""", """{"n":1E+17}""")]
+    [InlineData("""{"n":100000000000000000.0}""", """{"n":1E+17}""")]
+    [InlineData("""{"n":9.3e18}""", """{"n":9.3E+18}""")]
+    [InlineData("""{"n":100000000000000000}""", """{"n":100000000000000000}""")] // digits only, fits 64 bits: as written
+    [InlineData("""{"n":-9223372036854775808}""", """{"n":-9223372036854775808}""")]
+    [InlineData("""{"n":0.00009}""", """{"n":9E-05}""")]
     [InlineData("""{"n":1.5e15}""", """{"n":1500000000000000}""")]
     [InlineData("""{"n":1e19}""", """{"n":1E+19}""")]
     [InlineData("""{"n":1500000000000000.0}""", """{"n":1500000000000000}""")]
@@ -110,9 +120,14 @@ public sealed class CanonicalFormTests
 
         Assert.Equal(4, PassportStaticCore.NotSigned.Count(attribute => attribute.Property.StartsWith("timeSpent", StringComparison.Ordinal)));
         Assert.Contains("the four <code>timeSpent…</code> values", help, StringComparison.Ordinal);
-        Assert.Contains("an empty object inside an array stays", help, StringComparison.Ordinal);
-        Assert.Contains("whole number below 2<sup>63</sup> is written as an integer", help, StringComparison.Ordinal);
-        Assert.Contains("<code>1E-05</code>, <code>1E+19</code>", help, StringComparison.Ordinal);
+        // C3 round three, point 3: the three lines the second review compared with the code.
+        Assert.Contains("going through objects only: nothing inside an array is touched, at any depth, so an empty object stays when it is in an array or anywhere below one", help, StringComparison.Ordinal);
+        Assert.Contains("digits only (an optional minus, no point, no exponent) that fits a signed 64-bit integer stays as written", help, StringComparison.Ordinal);
+        Assert.Contains("If that is a whole number below 10<sup>15</sup>, it is written as an integer", help, StringComparison.Ordinal);
+        Assert.Contains("in plain digits from 0.0001 up to below 10<sup>17</sup>", help, StringComparison.Ordinal);
+        Assert.Contains("<code>1.0e17</code> → <code>1E+17</code>", help, StringComparison.Ordinal);
+        Assert.Contains("After the site changes its signing key, an earlier passport's <code>proof</code> is <code>null</code> until the earlier public key is listed as trusted again", help, StringComparison.Ordinal);
+        Assert.DoesNotContain("2<sup>63</sup>", help, StringComparison.Ordinal);
         Assert.Contains("<code>&#92;uD83D&#92;uDE00</code>", help, StringComparison.Ordinal);
         Assert.Contains("U+2028, U+2029, U+FEFF", help, StringComparison.Ordinal);
         Assert.Contains("every space other than the ordinary space (the no-break space U+00A0, U+1680, U+2000–U+200A, U+202F, U+205F, U+3000)", help, StringComparison.Ordinal);
@@ -147,14 +162,15 @@ public sealed class CanonicalFormTests
               "dppHeader": { "dppStatus": { "dppStatusValue": "active" }, "lastUpdated": "2026-11-11T10:00:00Z", "dppSchemaVersion": "1.0" },
               "batteryPassportData": {
                 "performanceAndDurability": { "stateOfChargeSoC": { "stateOfChargeValue": 80 } },
-                "circularity": { "a": { "b": {} }, "list": [ {} ] }
+                "circularity": { "a": { "b": {} }, "list": [ {}, { "c": {}, "d": [ { "e": {} } ] } ] }
               },
               "proof": { "type": "DataIntegrityProof" }
             }
             """)!.AsObject();
 
+        // Empty objects go through objects only; inside an array nothing is touched, at any depth.
         Assert.Equal(
-            """{"batteryPassportData":{"circularity":{"list":[{}]}},"dppHeader":{"dppSchemaVersion":"1.0"}}""",
+            """{"batteryPassportData":{"circularity":{"list":[{},{"c":{},"d":[{"e":{}}]}]}},"dppHeader":{"dppSchemaVersion":"1.0"}}""",
             CanonicalJson.Serialize(PublicPassport.SignedPart(data)));
     }
 }
