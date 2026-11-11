@@ -555,11 +555,13 @@ public sealed class PublicationService(
 
         // Nothing differs from the active version: nothing to publish and nothing waiting, whatever the checks say. The
         // content is compared before the answer "can't be published", so no false marker is set (round four, 4).
+        // The comparison is with the active version read after the pack and its token (round six, 3).
         var core = PassportStaticCore.Extract(passport);
-        if (active is not null && PassportStaticCore.ContentHash(active.StaticCore) == PassportStaticCore.ContentHash(core))
+        if (await store.GetActiveVersionAsync(packId, cancellationToken) is { } activeNow
+            && PassportStaticCore.ContentHash(activeNow.StaticCore) == PassportStaticCore.ContentHash(core))
         {
             await ClearWaitingAsync(sources.Pack, cancellationToken); // the passport shows its saved data
-            return new PublicationResult(active, report, null, Unchanged: true);
+            return new PublicationResult(activeNow, report, null, Unchanged: true);
         }
 
         if (!report.CanPublish)

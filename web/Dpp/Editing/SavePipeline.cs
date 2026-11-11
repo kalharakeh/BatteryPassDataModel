@@ -154,9 +154,8 @@ public sealed class SavePipeline(
         // Round five, the rule: a static value about to be written can make published passports differ from their saved
         // data, so every published battery it reaches is marked FIRST, before the write. From that write onward nothing
         // runs on the request's cancellation token: the write, the re-mark, the audit entry and the publishing.
-        var reached = stored.Keys.Concat(removed).Any(key => AttributeCatalog.FindByProperty(key)?.Change != ChangeRule.Live)
-            ? await PublishedPacksReachedAsync(changes.Target, changes.TargetId, cancellationToken)
-            : [];
+        var staticWrite = stored.Keys.Concat(removed).Any(key => AttributeCatalog.FindByProperty(key)?.Change != ChangeRule.Live);
+        var reached = staticWrite ? await PublishedPacksReachedAsync(changes.Target, changes.TargetId, cancellationToken) : [];
         var none = CancellationToken.None;
         await store.MarkChangesWaitingAsync(reached, clock.GetUtcNow().UtcDateTime, none);
 
@@ -176,7 +175,8 @@ public sealed class SavePipeline(
         {
             // Marked again after the write, with a new token: a publish attempt that read the first token together with
             // the old data can't clear it (round five).
-            await store.MarkChangesWaitingAsync(reached, clock.GetUtcNow().UtcDateTime, none);
+            // The list is read again: a battery first published in between is marked too (round six, 3).
+            await store.MarkChangesWaitingAsync(staticWrite ? await PublishedPacksReachedAsync(changes.Target, changes.TargetId, none) : [], clock.GetUtcNow().UtcDateTime, none);
             await audit.AppendApplicationAuditEventAsync(
                 AuditEventType,
                 sender.Who,

@@ -377,6 +377,12 @@ public sealed partial class BatteryIdPool(
             ["batterySerialNumber"] = new() { Value = System.Text.Json.Nodes.JsonValue.Create(picked.SerialNumber), GeneratedAtUtc = now, Source = "form", Who = who },
             ["uniqueProductIdentifier"] = new() { Value = System.Text.Json.Nodes.JsonValue.Create(picked.Identifier), GeneratedAtUtc = now, Source = "system", Who = who },
         }, cancellationToken);
+
+        // A draft can be published while it swaps: if it has a version by now, its new IDs wait (round six, 3).
+        if (await store.GetLatestVersionNumberAsync(packId, CancellationToken.None) > 0)
+        {
+            await store.MarkChangesWaitingAsync([packId], now, CancellationToken.None);
+        }
         await store.ReleasedIds.UpdateOneAsync(
             item => item.Id == old.Id && item.PackId == packId,
             Builders<ReleasedBatteryId>.Update.Set(item => item.Status, ReleasedIdStatuses.Available).Set(item => item.PackId, null),
