@@ -50,10 +50,10 @@ public sealed class WaitingMarkerCostTests(MongoFixture mongo)
         await versions.InsertManyAsync(newVersions);
         var pages = BatteryTesting.Pages(rig);
 
-        var before = await OperationsAsync(rig);
+        var before = await StartCountingAsync(rig);
         var page = await pages.TeamListAsync(null);
         var searched = await pages.TeamListAsync("LOAD-00001");
-        var used = await OperationsAsync(rig) - before;
+        var used = await StopCountingAsync(rig, before);
 
         Assert.Equal(Batteries + 1, page.Rows.Count);
         Assert.Equal("LOAD-00042", Assert.Single(page.Waiting).SerialNumber);
@@ -67,13 +67,14 @@ public sealed class WaitingMarkerCostTests(MongoFixture mongo)
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         var sender = ChangeSender.Feed("bms-feed", "cluster-test");
 
-        var before = await OperationsAsync(rig);
+        var before = await StartCountingAsync(rig);
         await rig.Publication.ValuesSavedAsync(TargetKind.Pack, rig.PackId, ["stateOfChargeSoC"], sender, CancellationToken.None);
-        var used = await OperationsAsync(rig) - before;
+        var used = await StopCountingAsync(rig, before);
 
-        // The active version, #4's new time, and the battery's marker: one more than before the waiting changes (2). The
-        // count includes commands, and the one serverStatus call between the readings (round four, 7).
+        // The active version, #4's new time, and the battery's marker (3): one more than before the waiting changes (2).
+        // Only this test's database is counted, commands included, so no heartbeat can break it; one of slack (round five).
         Assert.True(used <= 4, $"a live save with nothing waiting used {used} database operations");
+        Assert.True(used >= 2, $"the profiler saw only {used} operations: it isn't counting"); // the active version and #4 at least
     }
 
     [Fact]
@@ -105,13 +106,27 @@ public sealed class WaitingMarkerCostTests(MongoFixture mongo)
     }
 
     /// <summary>
-    /// The database's count of operations so far: finds, more results, inserts, updates, deletes and commands (a count or
-    /// an aggregate per battery would show there; round four, 7).
+    /// Starts MongoDB's profiler on this test's database: every operation on it, commands included (a count or an
+    /// aggregate per battery would show), and nothing from other databases or the driver's heartbeats (round five).
     /// </summary>
-    private static async Task<long> OperationsAsync(PublicationRig rig)
+    private static async Task<long> StartCountingAsync(PublicationRig rig)
     {
-        var status = await rig.Context.Database!.Client.GetDatabase("admin").RunCommandAsync<BsonDocument>(new BsonDocument("serverStatus", 1));
-        var counters = status["opcounters"].AsBsonDocument;
-        return new[] { "query", "getmore", "insert", "update", "delete", "command" }.Sum(name => counters[name].ToInt64());
+        var database = rig.Context.Database!;
+        await database.RunCommandAsync<BsonDocument>(new BsonDocument("profile", 2));
+        return await ProfiledAsync(database);
     }
+
+    /// <summary>The operations profiled since <paramref name="before"/>; the profiler is switched off again.</summary>
+    private static async Task<long> StopCountingAsync(PublicationRig rig, long before)
+    {
+        var database = rig.Context.Database!;
+        var after = await ProfiledAsync(database);
+        await database.RunCommandAsync<BsonDocument>(new BsonDocument("profile", 0));
+        return after - before;
+    }
+
+    private static Task<long> ProfiledAsync(IMongoDatabase database) =>
+        database.GetCollection<BsonDocument>("system.profile").CountDocumentsAsync(
+            Builders<BsonDocument>.Filter.Not(Builders<BsonDocument>.Filter.Regex("ns", new BsonRegularExpression(@"\.system\.profile$")))
+            & Builders<BsonDocument>.Filter.Ne("command.profile", 2) & Builders<BsonDocument>.Filter.Ne("command.profile", 0));
 }
