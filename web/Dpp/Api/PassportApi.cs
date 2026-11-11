@@ -46,10 +46,13 @@ public sealed class PassportApi(DppStore store, DemoBoundary demo, PassportReade
 
         who = await demo.OnAsync(who, sources.Pack, cancellationToken); // a demo reader is a visitor outside the demo (finding R03)
         var clusters = await store.FindPublishedClusterIdsUsingAsync(packId: location.Version.PackId, cancellationToken: cancellationToken);
-        return new ApiPassport(location, PassportFilter.Cut(published.Passport, who, clusters), PassportReader.Verify(location.Version), sources);
+        return new ApiPassport(location, PassportFilter.Cut(published.Passport, who, clusters), reader.Check(location.Version).Holds, sources);
     }
 
     /// <summary>The battery's published versions, newest first.</summary>
+    /// <summary>Whether a version's signature holds: the data matches and the key is one the app trusts (finding R23).</summary>
+    public bool Verified(PassportVersion version) => reader.Check(version).Holds;
+
     public async Task<IReadOnlyList<PassportVersion>> VersionsAsync(ApiPassport passport, CancellationToken cancellationToken = default) =>
         (await store.ListVersionsAsync(passport.Version.PackId, cancellationToken)).OrderByDescending(version => version.Number).ToArray();
 

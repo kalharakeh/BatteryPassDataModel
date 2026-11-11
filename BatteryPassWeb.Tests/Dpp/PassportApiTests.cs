@@ -174,7 +174,7 @@ public sealed class PassportApiTests(MongoFixture mongo)
 
         Assert.Equal([2, 1], versions.Select(version => version.Number));
         Assert.Equal([DppStatuses.Active, DppStatuses.Archived], versions.Select(version => version.DppStatus));
-        Assert.All(versions, version => Assert.True(PassportReader.Verify(version)));
+        Assert.All(versions, version => Assert.True(SigningTesting.Passports(rig.Store).Check(version).Holds));
     }
 
     [Fact]
@@ -200,7 +200,7 @@ public sealed class PassportApiTests(MongoFixture mongo)
     }
 
     internal static PassportApi Api(PublicationRig rig) =>
-        new(rig.Store, TestDemo.For(rig), new PassportReader(rig.Store), PassportPagesTests.Pages(rig), BatteryTesting.Pages(rig));
+        new(rig.Store, TestDemo.For(rig), SigningTesting.Passports(rig.Store), PassportPagesTests.Pages(rig), BatteryTesting.Pages(rig));
 
     private static string Serial(PublicationRig rig) => rig.Seed.Sources.Pack.Values["batterySerialNumber"].Value.GetValue<string>();
 

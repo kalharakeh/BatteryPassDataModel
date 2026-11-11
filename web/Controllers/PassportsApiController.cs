@@ -78,7 +78,7 @@ public sealed class PassportsApiController(DppReaders readers, BatteryPages batt
             passportId = version.DigitalProductPassportId,
             version = version.Number,
             dppStatus = version.DppStatus,
-            signatureVerified = PassportReader.Verify(version),
+            signatureVerified = api.Verified(version),
         });
     }
 }

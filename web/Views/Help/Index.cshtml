@@ -394,7 +394,7 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                 </article>
 
                 <article id="api-detail-passport-list" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Passport versions</span><h3>List the battery's published versions.</h3><p>Newest first, each with its passport ID, version number, status (active or archived), when it was published and last updated, and whether its signature still holds.</p></div>
+                    <div><span class="bp-summary-title">Passport versions</span><h3>List the battery's published versions.</h3><p>Newest first, each with its passport ID, version number, status (active or archived), when it was published and last updated, and whether its signature is verified: the data matches what was signed, with a key this site knows.</p></div>
                     <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/{id}/passports</code></pre>
                 </article>
 
@@ -1119,7 +1119,7 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
             const code = (text) => text ? `<code>${escapeHtml(text)}</code>` : '-';
             const factWords = {
                 batteryId: 'Battery ID', passportId: 'Passport ID', serialNumber: 'Serial number', clusterId: 'Cluster', clusterName: 'Cluster name',
-                version: 'Version', dppStatus: 'Status', signatureVerified: 'Signature holds', unchanged: 'Unchanged', preview: 'Preview only',
+                version: 'Version', dppStatus: 'Status', signatureVerified: 'Signature verified', unchanged: 'Unchanged', preview: 'Preview only',
                 saved: 'Saved', measuredAt: 'Measured at', hours: 'Hours', section: 'Section', globalAccess: 'Team token', publishPath: 'Publish with'
             };
             const outcomeWords = { saved: ['Saved', 'done'], kept: ['Kept (empty)', ''], ignored: ['Ignored', ''], removed: ['Removed', ''], rejected: ['Refused', 'refused'] };
@@ -1165,7 +1165,7 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                     parts.push(answerTable(['Cluster ID', 'Name'], data.clusters.map(cluster => [code(cluster.clusterId), escapeHtml(cluster.name)])));
                 } else if (Array.isArray(data.passports)) {
                     parts.push(answerTable(['Version', 'Passport ID', 'Status', 'Published', 'Signature'], data.passports.map(version =>
-                        [escapeHtml(version.version), code(version.passportId), answerTag(version.dppStatus, version.dppStatus === 'active' ? 'done' : ''), escapeHtml(version.publishedAt), version.signatureVerified ? answerTag('Holds', 'done') : answerTag('Broken', 'refused')])));
+                        [escapeHtml(version.version), code(version.passportId), answerTag(version.dppStatus, version.dppStatus === 'active' ? 'done' : ''), escapeHtml(version.publishedAt), version.signatureVerified ? answerTag('Verified', 'done') : answerTag('Not verified', 'refused')])));
                 } else if (Array.isArray(data.attributes)) {
                     parts.push(answerTable(['Value', 'Key', 'Name', 'Unit'], data.attributes.map(attribute =>
                         [escapeHtml(attribute.attribute), code(attribute.key), escapeHtml(attribute.name), escapeHtml(attribute.unit || '-')])));

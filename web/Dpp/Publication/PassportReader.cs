@@ -12,7 +12,7 @@ public sealed record PublishedPassport(PassportVersion Version, JsonObject Passp
 /// Reads published passports (design 4.2): the active one per pack, or any version by its #5. Visibility filtering is
 /// step 3's job; this returns the whole passport.
 /// </summary>
-public sealed class PassportReader(DppStore store)
+public sealed class PassportReader(DppStore store, PassportSigner signer)
 {
     /// <summary>The pack's current passport: the active version's signed core, its #2 and #4, and the live values.</summary>
     public async Task<PublishedPassport?> CurrentAsync(string packId, CancellationToken cancellationToken = default)
@@ -31,11 +31,14 @@ public sealed class PassportReader(DppStore store)
         return version is null ? null : await ComposeAsync(version, cancellationToken);
     }
 
-    /// <summary>True when the stored core is exactly what was signed at publication.</summary>
-    public static bool Verify(PassportVersion version)
+    /// <summary>
+    /// Whether the version's signature holds (finding R23): the stored core is exactly what was signed at publication, and
+    /// the key that signed it is one the app trusts. Otherwise the reason, in plain words.
+    /// </summary>
+    public SignatureCheck Check(PassportVersion version)
     {
         ArgumentNullException.ThrowIfNull(version);
-        return PassportSigner.Verify(version.StaticCore, version.Proof);
+        return signer.Check(version.StaticCore, version.Proof);
     }
 
     private async Task<PublishedPassport> ComposeAsync(PassportVersion version, CancellationToken cancellationToken)

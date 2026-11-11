@@ -150,7 +150,11 @@ public sealed record PassportMarkView(string? Status, PassportMark? Mark, bool W
 }
 
 /// <summary>One published version of the passport and whether its signature still holds.</summary>
-public sealed record VersionRow(PassportVersion Version, bool SignatureHolds);
+public sealed record VersionRow(PassportVersion Version, BatteryPassWeb.Dpp.Signing.SignatureCheck Signature)
+{
+    /// <summary>The data matches the signature and the key is one the app trusts (finding R23).</summary>
+    public bool SignatureHolds => Signature.Holds;
+}
 
 /// <summary>Everything the battery page shows.</summary>
 public sealed record BatteryPage(
@@ -266,7 +270,8 @@ public sealed class BatteryPages(
     ApplicationAuditService audit,
     StatusPages status,
     LiveTrends? trends = null,
-    Identifiers.BatteryIdPool? pool = null)
+    Identifiers.BatteryIdPool? pool = null,
+    PassportReader? passports = null)
 {
     public const string ClusterChangedEvent = "dpp.pack-cluster-changed";
     public const string ModulesSetEvent = "dpp.pack-modules-set";
@@ -580,7 +585,7 @@ public sealed class BatteryPages(
             valuesView,
             liveView,
             await PublicationAsync(sources, active, cancellationToken),
-            versions.OrderByDescending(version => version.Number).Select(version => new VersionRow(version, PassportReader.Verify(version))).ToArray(),
+            versions.OrderByDescending(version => version.Number).Select(version => new VersionRow(version, passports?.Check(version) ?? BatteryPassWeb.Dpp.Signing.SignatureCheck.Unchecked)).ToArray(),
             await documents.ListAsync(TargetKind.Pack, packId, DocumentService.Accidents, cancellationToken),
             new RemovalView($"{href}/remove", versions.Count > 0 ? "its passport is published, so it stays with its versions." : null))
         {

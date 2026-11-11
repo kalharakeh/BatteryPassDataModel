@@ -36,13 +36,16 @@ public sealed record PassportPage(
     string? FamilyName,
     string? PictureHref,
     bool IsTest,
-    bool SignatureHolds,
+    BatteryPassWeb.Dpp.Signing.SignatureCheck Signature,
     bool ReaderSeesMore,
     IReadOnlyList<PassportSection> Sections,
     IReadOnlyList<PassportSection> Audiences,
     IReadOnlyList<ChartPart> Carbon,
     IReadOnlyList<ChartPart> Recycled)
 {
+    /// <summary>The data matches the signature and the key is one the app trusts (finding R23).</summary>
+    public bool SignatureHolds => Signature.Holds;
+
     /// <summary>True for the active version; an archived one links to <see cref="Current"/>.</summary>
     public bool IsCurrent => Version.DppStatus == DppStatuses.Active;
 
@@ -308,7 +311,7 @@ public sealed class PassportPages(DppStore store, DemoBoundary demo, PassportRea
                 ? $"/dpp/models/{Uri.EscapeDataString(sources.Model.Id)}/picture"
                 : family?.PictureFileId is null ? null : $"/dpp/families/{Uri.EscapeDataString(family.Id)}/picture",
             identifiers.IsTestIdentifier(identifier) || identifiers.IsTestIdentifier(version.DigitalProductPassportId),
-            PassportReader.Verify(version),
+            reader.Check(version),
             AttributeCatalog.All.Any(a => a.Audience != Audience.Public && AudienceRules.MaySee(who, a, clusters)),
             sections,
             audiences,

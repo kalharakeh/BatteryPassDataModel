@@ -143,7 +143,7 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
                 dppStatus = version.DppStatus,
                 publishedAt = PassportApi.Timestamp(version.PublishedAtUtc),
                 lastUpdated = PassportApi.Timestamp(version.LastUpdatedUtc),
-                signatureVerified = PassportReader.Verify(version),
+                signatureVerified = api.Verified(version),
             }).ToArray(),
         });
     }

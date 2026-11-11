@@ -105,7 +105,8 @@ public sealed class ClusterBatteryPages(
     ClusterRepository clusters,
     StatusPages status,
     LiveTrends? trends = null,
-    BatteryPassWeb.Dpp.Audit.ClusterHistory? history = null)
+    BatteryPassWeb.Dpp.Audit.ClusterHistory? history = null,
+    PassportReader? passports = null)
 {
     private readonly DemoBoundary demo = new(store, clusters);
 
@@ -169,7 +170,7 @@ public sealed class ClusterBatteryPages(
             BatteryPages.Text(pack, "uniqueProductIdentifier") ?? string.Empty,
             BatteryPages.ClusterLabel(pack.ClusterId, names),
             liveView,
-            versions.OrderByDescending(version => version.Number).Select(version => new VersionRow(version, PassportReader.Verify(version))).ToArray(),
+            versions.OrderByDescending(version => version.Number).Select(version => new VersionRow(version, passports?.Check(version) ?? BatteryPassWeb.Dpp.Signing.SignatureCheck.Unchecked)).ToArray(),
             await documentStore.ListAsync(TargetKind.Pack, pack.Id, DocumentService.Accidents, cancellationToken))
         {
             Status = await status.CardAsync(sources, active: frozenAs is null, href, forTeam: false, cancellationToken: cancellationToken),
