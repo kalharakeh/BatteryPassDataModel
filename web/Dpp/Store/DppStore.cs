@@ -653,7 +653,12 @@ public sealed class DppStore
             return null;
         }
 
-        return await Collection<PassportVersion>().Find(version => version.DigitalProductPassportId == passportId).FirstOrDefaultAsync(cancellationToken);
+        var version = await Collection<PassportVersion>().Find(version => version.DigitalProductPassportId == passportId).FirstOrDefaultAsync(cancellationToken);
+
+        // Only the battery's highest active version is served as active (round six, 2).
+        return version is { DppStatus: DppStatuses.Active } && (await GetActiveVersionAsync(version.PackId, cancellationToken))?.Number > version.Number
+            ? version.ServedAs(DppStatuses.Archived)
+            : version;
     }
 
     public async Task<IReadOnlyList<PassportVersion>> ListVersionsAsync(string packId, CancellationToken cancellationToken = default)
@@ -663,7 +668,7 @@ public sealed class DppStore
             return [];
         }
 
-        return await Collection<PassportVersion>().Find(version => version.PackId == packId).SortBy(version => version.Number).ToListAsync(cancellationToken);
+        return PassportVersion.AsServed(await Collection<PassportVersion>().Find(version => version.PackId == packId).SortBy(version => version.Number).ToListAsync(cancellationToken));
     }
 
     /// <summary>The highest version number of the pack; 0 before its first publication.</summary>

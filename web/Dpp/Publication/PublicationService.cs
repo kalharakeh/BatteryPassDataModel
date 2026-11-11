@@ -382,6 +382,7 @@ public sealed class PublicationService(
         }
 
         var now = clock.GetUtcNow().UtcDateTime;
+        await store.ArchiveOtherVersionsAsync(packId, active.Id, active.Number, CancellationToken.None); // only one active version first (round six, 2)
         await store.SetVersionStatusAsync(active.Id, DppStatuses.Inactive, now, cancellationToken);
         if (await store.GetAsync<BatteryPack>(packId, cancellationToken) is { Succession: { } succession })
         {

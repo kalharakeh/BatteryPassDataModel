@@ -148,6 +148,7 @@ public sealed class PassportMarks(DppStore store, DemoBoundary demo, Application
         }
 
         var now = clock.GetUtcNow().UtcDateTime;
+        await store.ArchiveOtherVersionsAsync(packId, active.Id, active.Number, CancellationToken.None); // only one active version first (round six, 2)
         await store.SetVersionStatusAsync(active.Id, status, now, cancellationToken);
         await store.SetMarkAsync(packId, new PassportMark { Status = status, Reason = reason, By = sender.Who, ByRole = sender.Kind.ToString(), AtUtc = now }, cancellationToken);
         await audit.AppendApplicationAuditEventAsync(
