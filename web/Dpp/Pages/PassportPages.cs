@@ -328,7 +328,7 @@ public sealed class PassportPages(DppStore store, DemoBoundary demo, PassportRea
             recycled)
         {
             KeyFigures = KeyFigures.From(number => Find(everyone, AttributeCatalog.ByNumber(number)), Words, carbon, recycled),
-            PublicData = PublicPassport.Data(everyone, version.Proof.PublicView),
+            PublicData = PublicPassport.Data(everyone, version.Proof?.PublicView),
             Chain = detail && (who.Roles.Contains(ReaderRole.Team) || who.Roles.Contains(ReaderRole.MarketSurveillance))
                 ? await PassportChains.ForAsync(store, sources.Pack, cancellationToken)
                 : [],

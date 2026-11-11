@@ -44,11 +44,11 @@
                                 <details class="bp-signature-details">
                                     <summary>Details</summary>
                                     <dl>
-                                        <div><dt>Signed</dt><dd>@ValueWords.Time(row.Version.Proof.CreatedUtc)</dd></div>
-                                        <div><dt>Issuer</dt><dd>@row.Version.Proof.Issuer</dd></div>
-                                        <div><dt>Key</dt><dd>@row.Version.Proof.VerificationMethod</dd></div>
-                                        <div><dt>Method</dt><dd>@row.Version.Proof.Cryptosuite</dd></div>
-                                        <div><dt>Hash</dt><dd><code>@row.Version.Proof.Hash</code></dd></div>
+                                        <div><dt>Signed</dt><dd>@(row.Version.Proof is { } proof ? ValueWords.Time(proof.CreatedUtc) : "")</dd></div>
+                                        <div><dt>Issuer</dt><dd>@row.Version.Proof?.Issuer</dd></div>
+                                        <div><dt>Key</dt><dd>@row.Version.Proof?.VerificationMethod</dd></div>
+                                        <div><dt>Method</dt><dd>@row.Version.Proof?.Cryptosuite</dd></div>
+                                        <div><dt>Hash</dt><dd><code>@row.Version.Proof?.Hash</code></dd></div>
                                     </dl>
                                 </details>
                             </td>

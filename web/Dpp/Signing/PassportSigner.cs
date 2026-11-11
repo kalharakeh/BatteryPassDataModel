@@ -53,6 +53,9 @@ public sealed record SignatureCheck(bool Holds, string? Problem)
 
     public const string NotChecked = "the signature couldn't be checked";
 
+    /// <summary>A stored proof with a missing or unreadable part.</summary>
+    public const string Unreadable = "the signature can't be read";
+
     public static SignatureCheck Verified { get; } = new(true, null);
 
     /// <summary>For a page built without the check: never "Verified" by default.</summary>
@@ -72,8 +75,13 @@ public sealed class PassportSigner(DemoSigningKeyService keys)
     /// The full check behind "Verified": the core is exactly what was signed, and the proof's key is one the app trusts
     /// (its current key or an older one listed as trusted). Uses only what the app holds; it never calls out.
     /// </summary>
-    public SignatureCheck Check(JsonNode staticCore, SignatureProof proof)
+    public SignatureCheck Check(JsonNode staticCore, SignatureProof? proof)
     {
+        if (proof is null || !Readable(proof))
+        {
+            return new SignatureCheck(false, SignatureCheck.Unreadable);
+        }
+
         if (!Verify(staticCore, proof))
         {
             return new SignatureCheck(false, SignatureCheck.DataChanged);
@@ -123,6 +131,11 @@ public sealed class PassportSigner(DemoSigningKeyService keys)
     {
         ArgumentNullException.ThrowIfNull(staticCore);
         ArgumentNullException.ThrowIfNull(proof);
+        if (!Readable(proof))
+        {
+            return false;
+        }
+
         try
         {
             if (!string.Equals(proof.Hash, CanonicalJson.Hash(staticCore), StringComparison.Ordinal))
@@ -144,6 +157,36 @@ public sealed class PassportSigner(DemoSigningKeyService keys)
         catch (Exception exception) when (exception is FormatException or CryptographicException or ArgumentException)
         {
             return false;
+        }
+    }
+
+    /// <summary>
+    /// True when every part of a stored proof is there and has the right form: a "sha256:" hash, a 64-byte signature and
+    /// a P-256 point of two 32-byte coordinates, all base64url. A proof read from the database may lack any of them.
+    /// </summary>
+    public static bool Readable(SignatureProof proof)
+    {
+        ArgumentNullException.ThrowIfNull(proof);
+        return proof.Hash is { } hash && hash.StartsWith("sha256:", StringComparison.Ordinal)
+            && Length(proof.ProofValue) == 64
+            && Length(proof.PublicKeyX) == 32
+            && Length(proof.PublicKeyY) == 32;
+
+        static int Length(string? text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return -1;
+            }
+
+            try
+            {
+                return Base64Url.Decode(text).Length;
+            }
+            catch (FormatException)
+            {
+                return -1;
+            }
         }
     }
 }
