@@ -10,6 +10,47 @@ namespace BatteryPassWeb.Tests.Dpp;
 /// </summary>
 public sealed class CanonicalFormTests
 {
+    /// <summary>
+    /// Every character of the Basic Multilingual Plane (BMP) is checked: the writer escapes it exactly when it is a
+    /// control character, a space other than U+0020, a line or paragraph separator, private use, U+FEFF or unassigned in
+    /// .NET's Unicode tables, as the Help says.
+    /// </summary>
+    [Fact]
+    public void EveryEscapedCharacter_ShouldBeListed()
+    {
+        var escaped = new List<(int From, int To)>();
+        for (var unit = 0x20; unit <= 0xFFFF; unit++)
+        {
+            if (unit is >= 0xD800 and <= 0xDFFF || unit == '"' || unit == '\\')
+            {
+                continue;
+            }
+
+            var text = ((char)unit).ToString();
+            if (CanonicalJson.Serialize(JsonValue.Create(text)) != "\"" + text + "\"")
+            {
+                if (escaped.Count > 0 && escaped[^1].To == unit - 1)
+                {
+                    escaped[^1] = (escaped[^1].From, unit);
+                }
+                else
+                {
+                    escaped.Add((unit, unit));
+                }
+            }
+        }
+
+        bool ByCategory(int unit) => unit == 0xFEFF || System.Globalization.CharUnicodeInfo.GetUnicodeCategory((char)unit) is System.Globalization.UnicodeCategory.Control or System.Globalization.UnicodeCategory.SpaceSeparator or System.Globalization.UnicodeCategory.LineSeparator or System.Globalization.UnicodeCategory.ParagraphSeparator or System.Globalization.UnicodeCategory.PrivateUse or System.Globalization.UnicodeCategory.OtherNotAssigned;
+        var actual = escaped.SelectMany(range => Enumerable.Range(range.From, range.To - range.From + 1)).ToHashSet();
+        var differ = Enumerable.Range(0x21, 0xFFFF - 0x20).Where(unit => unit is < 0xD800 or > 0xDFFF && unit != 0x22 && unit != 0x5C && actual.Contains(unit) != ByCategory(unit)).ToArray();
+        // The whole BMP: escaped exactly when the Help says so, by .NET's own Unicode tables. A .NET update that changes
+        // these tables changes the hashed text of such characters, and this test says so.
+        Assert.Empty(differ.Select(unit => $"{unit:X4}:{(actual.Contains(unit) ? "escaped" : "kept")}:{System.Globalization.CharUnicodeInfo.GetUnicodeCategory((char)unit)}"));
+        Assert.Contains((0x7F, 0xA0), escaped); // the C1 controls and the no-break space
+        Assert.Contains(escaped, range => range.From <= 0x2000 && range.To >= 0x200A); // the other spaces
+        Assert.Contains((0x3000, 0x3000), escaped);
+    }
+
     [Theory]
     [InlineData("""{"b":1,"a":2,"B":3,"é":4,"_":5}""", """{"B":3,"_":5,"a":2,"b":1,"é":4}""")]
     [InlineData("""{ "a" : [ 1 , { "y" : true , "x" : null } ] }""", """{"a":[1,{"x":null,"y":true}]}""")]
@@ -74,6 +115,8 @@ public sealed class CanonicalFormTests
         Assert.Contains("<code>1E-05</code>, <code>1E+19</code>", help, StringComparison.Ordinal);
         Assert.Contains("<code>&#92;uD83D&#92;uDE00</code>", help, StringComparison.Ordinal);
         Assert.Contains("U+2028, U+2029, U+FEFF", help, StringComparison.Ordinal);
+        Assert.Contains("every space other than the ordinary space (the no-break space U+00A0, U+1680, U+2000–U+200A, U+202F, U+205F, U+3000)", help, StringComparison.Ordinal);
+        Assert.Contains("characters that .NET 10's Unicode tables count as unassigned", help, StringComparison.Ordinal);
         Assert.Contains("r and s as 32 bytes each (64 bytes), base64url without padding", help, StringComparison.Ordinal);
     }
 
