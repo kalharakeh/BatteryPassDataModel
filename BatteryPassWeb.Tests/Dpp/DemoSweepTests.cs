@@ -447,6 +447,7 @@ public sealed class DemoSweepTests(MongoFixture mongo, ITestOutputHelper output)
             EnvironmentName = Environments.Development,
         });
         builder.WebHost.UseUrls("http://127.0.0.1:0");
+        builder.Configuration["DPP_PASSPORT_CHECK"] = "off"; // the hourly check's writes must not land between a call's snapshots (round seven, 5)
         builder.Logging.ClearProviders();
         var options = new BatteryPassOptions { AppBaseUrl = DocumentTesting.BaseUrl, DemoAdminEmail = string.Empty, ExternalApiEncryptionKey = "sweep-test-key-for-the-token-hashes-0000" };
         var services = builder.Services;
