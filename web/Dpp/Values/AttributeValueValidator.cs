@@ -162,13 +162,23 @@ public sealed partial class AttributeValueValidator(OfficialSchemas schemas)
     /// <summary>Why a warranty (#19) is refused, in the page's words.</summary>
     public const string WarrantyRule = "the warranty must be a whole number of years (1 to 100) or months (1 to 1200)";
 
-    /// <summary>P1Y to P100Y, or P1M to P1200M.</summary>
-    public static bool IsWarranty(string text) =>
-        Warranty().Match(text ?? string.Empty) is { Success: true } match
-        && int.TryParse(match.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var number)
-        && number >= 1
-        && number <= (match.Groups[2].Value == "Y" ? 100 : 1200);
+    /// <summary>
+    /// PnY, PnM or the official combined PnYnM (round three, 3): years at most 100, months at most 1200, and in all at
+    /// least 1 month and at most 1200 (100 years). Days aren't a warranty here.
+    /// </summary>
+    public static bool IsWarranty(string text)
+    {
+        if (Warranty().Match(text ?? string.Empty) is not { Success: true } match || text == "P")
+        {
+            return false;
+        }
 
-    [GeneratedRegex(@"^P(\d{1,4})(Y|M)$")]
+        var years = match.Groups[1].Success ? int.Parse(match.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture) : 0;
+        var months = match.Groups[2].Success ? int.Parse(match.Groups[2].Value, NumberStyles.None, CultureInfo.InvariantCulture) : 0;
+        var total = (years * 12) + months;
+        return years <= 100 && months <= 1200 && total is >= 1 and <= 1200;
+    }
+
+    [GeneratedRegex(@"^P(?:(\d{1,4})Y)?(?:(\d{1,4})M)?$")]
     private static partial Regex Warranty();
 }

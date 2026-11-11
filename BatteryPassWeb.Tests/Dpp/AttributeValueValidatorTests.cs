@@ -16,6 +16,8 @@ public sealed class AttributeValueValidatorTests
     [InlineData(19, "\"P100Y\"")] // round two, D: 1 to 100 years
     [InlineData(19, "\"P6M\"")]
     [InlineData(19, "\"P1200M\"")] // or 1 to 1200 months
+    [InlineData(19, "\"P3Y6M\"")] // round three, 3: the official combined form
+    [InlineData(19, "\"P99Y12M\"")] // 1200 months in all
     [InlineData(6, "\"urn:test:battery:VPC8C05-6788\"")]
     [InlineData(4, "\"2026-10-28T09:30:00Z\"")]
     [InlineData(36, "\"https://www.example.com/carbon-footprint-study\"")]
@@ -40,7 +42,10 @@ public sealed class AttributeValueValidatorTests
     [InlineData(19, "\"P1201M\"", "1 to 1200")]
     [InlineData(19, "\"P99999999999Y\"", "whole number of years")]
     [InlineData(19, "\"P8X\"", "whole number of years")] // a unit other than years or months
-    [InlineData(19, "\"P3Y6M\"", "whole number of years")] // years or months, not both
+    [InlineData(19, "\"P100Y1M\"", "whole number of years")] // round three, 3: more than 1200 months in all
+    [InlineData(19, "\"P0Y0M\"", "whole number of years")]
+    [InlineData(19, "\"P30D\"", "whole number of years")] // days aren't a warranty
+    [InlineData(19, "\"P1Y6M10D\"", "whole number of years")]
     [InlineData(6, "\"not an identifier\"", "absolute URI")]
     [InlineData(4, "\"2026-10-28 09:30\"", "UTC timestamp")]
     [InlineData(57, """{"amperehourMiliamperehourValue":200000,"ampereHourMiliamperehourUnit":"mAh"}""", "\"Ah\"")]

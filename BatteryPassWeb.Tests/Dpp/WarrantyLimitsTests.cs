@@ -46,6 +46,17 @@ public sealed class WarrantyLimitsTests(MongoFixture mongo)
     }
 
     [Fact]
+    public async Task TheOfficialCombinedForm_ShouldBeAcceptedFromAFile_AndShowAsMonths()
+    {
+        var rig = await PublicationTesting.RigAsync(mongo).WithClustersAsync();
+
+        var report = await UploadServiceTests.Run(rig, PublicationTesting.Team, UploadServiceTests.File(UploadServiceTests.Entry(UploadServiceTests.Serial(rig), """{ "warrantyPeriod": "P3Y6M" }""")));
+
+        Assert.Equal(KeyOutcome.Saved, Assert.Single(Assert.Single(report.Batteries).Values).Outcome); // round three, 3
+        Assert.Equal(("42", "M"), FormValues.DurationParts("P3Y6M"));
+    }
+
+    [Fact]
     public async Task AStoredValueTooLargeToRead_ShouldShowAsWrittenAndNotBreakThePage()
     {
         var rig = await PublicationTesting.RigAsync(mongo).WithClustersAsync();
