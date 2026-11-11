@@ -57,6 +57,9 @@ public sealed record SignatureCheck(bool Holds, string? Problem)
     /// <summary>A stored proof with a missing or unreadable part.</summary>
     public const string Unreadable = "the signature can't be read";
 
+    /// <summary>A version stored with no proof at all (C3 round three, point 4).</summary>
+    public const string NotSigned = "not signed";
+
     public static SignatureCheck Verified { get; } = new(true, null);
 
     /// <summary>For a page built without the check: never "Verified" by default.</summary>
@@ -83,7 +86,12 @@ public sealed class PassportSigner(DemoSigningKeyService keys)
     /// </summary>
     public SignatureCheck Check(JsonNode staticCore, SignatureProof? proof)
     {
-        if (proof is null || !Readable(proof))
+        if (proof is null)
+        {
+            return new SignatureCheck(false, SignatureCheck.NotSigned);
+        }
+
+        if (!Readable(proof))
         {
             return new SignatureCheck(false, SignatureCheck.Unreadable);
         }

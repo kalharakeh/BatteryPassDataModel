@@ -14,13 +14,13 @@ namespace BatteryPassWeb.Tests.Dpp;
 public sealed class DamagedProofTests(MongoFixture mongo)
 {
     [Theory]
-    [InlineData("PublicKeyX", null)]
-    [InlineData("PublicKeyY", "AAAA")]
-    [InlineData("ProofValue", "not base64 at all!")]
-    [InlineData("ProofValue", null)]
-    [InlineData("Hash", null)]
-    [InlineData("Proof", null)]
-    public async Task AProofThatCantBeRead_ShouldBeNotVerified_Everywhere(string part, string? value)
+    [InlineData("PublicKeyX", null, SignatureCheck.Unreadable)]
+    [InlineData("PublicKeyY", "AAAA", SignatureCheck.Unreadable)]
+    [InlineData("ProofValue", "not base64 at all!", SignatureCheck.Unreadable)]
+    [InlineData("ProofValue", null, SignatureCheck.Unreadable)]
+    [InlineData("Hash", null, SignatureCheck.Unreadable)]
+    [InlineData("Proof", null, SignatureCheck.NotSigned)] // no proof at all: "Not signed." (C3 round three, point 4)
+    public async Task AProofThatCantBeRead_ShouldBeNotVerified_Everywhere(string part, string? value, string problem)
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         var version = (await rig.Store.GetActiveVersionAsync(rig.PackId))!;
@@ -38,10 +38,10 @@ public sealed class DamagedProofTests(MongoFixture mongo)
         var api = new BatteryPassWeb.Dpp.Api.PassportApi(rig.Store, TestDemo.For(rig), SigningTesting.Passports(rig.Store), PassportPagesTests.Pages(rig), BatteryTesting.Pages(rig));
         var read = (await api.ReadAsync(team, id))!;
 
-        Assert.Equal($"Not verified: {SignatureCheck.Unreadable}", detail.Signature.Words);
+        Assert.Equal($"Not verified: {problem}", detail.Signature.Words);
         Assert.False(summary.SignatureHolds);
-        Assert.Equal("The signature can't be read.", batteryRow.Signature.Reason);
-        Assert.Equal("The signature can't be read.", clusterRow.Signature.Reason);
+        Assert.Equal(new SignatureCheck(false, problem).Reason, batteryRow.Signature.Reason);
+        Assert.Equal(new SignatureCheck(false, problem).Reason, clusterRow.Signature.Reason);
         Assert.False(read.SignatureVerified);
         Assert.False(api.Verified(read.Version));
     }
@@ -65,6 +65,7 @@ public sealed class DamagedProofTests(MongoFixture mongo)
 
         Assert.False(PassportSigner.Verify(core, proof));
         Assert.Equal(SignatureCheck.Unreadable, new PassportSigner(SigningTesting.Keys).Check(core, proof).Problem);
-        Assert.Equal(SignatureCheck.Unreadable, new PassportSigner(SigningTesting.Keys).Check(core, null).Problem);
+        Assert.Equal(SignatureCheck.NotSigned, new PassportSigner(SigningTesting.Keys).Check(core, null).Problem);
+        Assert.Equal("Not signed.", new SignatureCheck(false, SignatureCheck.NotSigned).Reason);
     }
 }

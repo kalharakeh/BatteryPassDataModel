@@ -48,6 +48,11 @@ public sealed class PublicPassportDataTests(MongoFixture mongo)
     [InlineData("application/json, text/html;q=0.1, */*", true)] // text/html itself says how much the page is wanted
     [InlineData("*/*;q=0.8, application/json;q=0", false)]
     [InlineData("application/*", true)]
+    [InlineData("application/json;q=abc, text/html;q=0.9", false)] // an unreadable q: the range is ignored (C3 round three, point 4)
+    [InlineData("application/json;q=2, text/html;q=0.9", false)] // a q above 1 is unreadable too
+    [InlineData("application/json;q=, text/html;q=0.9", false)]
+    [InlineData("application/json, text/html;q=abc", true)]
+    [InlineData("application/json;q=0.95, text/html;q=0.9", true)]
     public void TheAddress_ShouldAnswerData_OnlyWhenAskedForJson(string? accept, bool data) =>
         Assert.Equal(data, PrefersJsonAttribute.PrefersJson(accept));
 

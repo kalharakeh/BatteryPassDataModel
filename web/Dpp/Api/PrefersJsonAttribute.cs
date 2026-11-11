@@ -25,10 +25,13 @@ public sealed class PrefersJsonAttribute : Attribute, IActionConstraint
     /// </summary>
     public static bool PrefersJson(string? accept)
     {
-        if (string.IsNullOrWhiteSpace(accept) || !MediaTypeHeaderValue.TryParseList(accept.Split(','), out var types))
+        if (string.IsNullOrWhiteSpace(accept) || !MediaTypeHeaderValue.TryParseList(accept.Split(','), out var parsed))
         {
             return false;
         }
+
+        // A range whose q can't be read (not a number from 0 to 1) is ignored, not taken at full weight (C3 round three, point 4).
+        var types = parsed.Where(Readable).ToArray();
 
         double Quality(string type, string subtype)
         {
@@ -46,5 +49,12 @@ public sealed class PrefersJsonAttribute : Attribute, IActionConstraint
 
         var json = Quality("application", "json");
         return json > 0 && json > Quality("text", "html");
+    }
+
+    /// <summary>A range without q, or with a q that reads as a number from 0 to 1.</summary>
+    private static bool Readable(MediaTypeHeaderValue range)
+    {
+        var q = range.Parameters.FirstOrDefault(parameter => StringSegment.Equals(parameter.Name, "q", StringComparison.OrdinalIgnoreCase));
+        return q is null || range.Quality is >= 0 and <= 1;
     }
 }
