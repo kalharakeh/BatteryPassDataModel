@@ -99,7 +99,9 @@ public static class FormValues
             return JsonValue.Create(text);
         }
 
-        return JsonValue.Create($"P{number.ToString(CultureInfo.InvariantCulture)}{(unit?.Trim() == "M" ? "M" : "Y")}");
+        // Only years or months; any other unit is passed on as it is, so the save pipeline refuses it (round two, D).
+        var chosen = string.IsNullOrWhiteSpace(unit) ? "Y" : unit.Trim();
+        return JsonValue.Create($"P{number.ToString(CultureInfo.InvariantCulture)}{chosen}");
     }
 
     /// <summary>
@@ -114,8 +116,16 @@ public static class FormValues
             return (text, "Y");
         }
 
-        var years = match.Groups[1].Success ? int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture) : 0;
-        var months = match.Groups[2].Success ? int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture) : 0;
+        // A stored value too large to read as a number shows as written (round two, D): the page never breaks on it.
+        var years = 0L;
+        var months = 0L;
+        if ((match.Groups[1].Success && !long.TryParse(match.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out years))
+            || (match.Groups[2].Success && !long.TryParse(match.Groups[2].Value, NumberStyles.None, CultureInfo.InvariantCulture, out months))
+            || years > 100_000 || months > 1_200_000)
+        {
+            return (text, "Y");
+        }
+
         return match.Groups[2].Success
             ? ((years * 12 + months).ToString(CultureInfo.InvariantCulture), "M")
             : (years.ToString(CultureInfo.InvariantCulture), "Y");

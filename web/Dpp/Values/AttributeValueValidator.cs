@@ -55,7 +55,15 @@ public sealed partial class AttributeValueValidator(OfficialSchemas schemas)
             yield return new SchemaIssue(value is JsonObject ? "/url" : string.Empty, "format: must be a web address starting with http:// or https://");
         }
 
-        var format = schemas.FindProperty(attribute.Section, attribute.Property)?["format"]?.GetValue<string>();
+        // The warranty (#19): a whole number of years (1 to 100) or months (1 to 1200), the same for the page, uploads and
+        // the API (round two, D). It replaces the general period check below.
+        if (attribute.Number == 19 && value?.GetValueKind() == JsonValueKind.String && !IsWarranty(value.GetValue<string>()))
+        {
+            yield return new SchemaIssue(string.Empty, WarrantyRule);
+            yield break;
+        }
+
+        var format = attribute.Number == 19 ? null : schemas.FindProperty(attribute.Section, attribute.Property)?["format"]?.GetValue<string>();
         if (format is not null && value?.GetValueKind() == JsonValueKind.String)
         {
             var text = value.GetValue<string>();
@@ -150,4 +158,17 @@ public sealed partial class AttributeValueValidator(OfficialSchemas schemas)
 
     [GeneratedRegex(@"^P(?!$)(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+S)?)?$")]
     private static partial Regex IsoPeriod();
+
+    /// <summary>Why a warranty (#19) is refused, in the page's words.</summary>
+    public const string WarrantyRule = "the warranty must be a whole number of years (1 to 100) or months (1 to 1200)";
+
+    /// <summary>P1Y to P100Y, or P1M to P1200M.</summary>
+    public static bool IsWarranty(string text) =>
+        Warranty().Match(text ?? string.Empty) is { Success: true } match
+        && int.TryParse(match.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var number)
+        && number >= 1
+        && number <= (match.Groups[2].Value == "Y" ? 100 : 1200);
+
+    [GeneratedRegex(@"^P(\d{1,4})(Y|M)$")]
+    private static partial Regex Warranty();
 }

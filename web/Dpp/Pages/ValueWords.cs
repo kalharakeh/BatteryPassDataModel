@@ -194,7 +194,13 @@ public static class ValueWords
         {
             if (match.Groups[group].Success)
             {
-                parts.Add(Words.Count(int.Parse(match.Groups[group].Value, CultureInfo.InvariantCulture), word));
+                // A number too large to read shows the value as written (round two, D).
+                if (!int.TryParse(match.Groups[group].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var number))
+                {
+                    return text;
+                }
+
+                parts.Add(Words.Count(number, word));
             }
         }
 
