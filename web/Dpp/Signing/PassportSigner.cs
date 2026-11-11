@@ -37,7 +37,8 @@ public sealed class SignatureProof
 
     /// <summary>
     /// The proof over the version's public part (finding R07), made at publication with the same key, which the public
-    /// data carries so anyone can check it. Null for a version published before this existed.
+    /// data carries so anyone can check it, but only while it still holds for the data being served (checked on every
+    /// answer). Null for a version published before this existed.
     /// </summary>
     public SignatureProof? PublicView { get; init; }
 }

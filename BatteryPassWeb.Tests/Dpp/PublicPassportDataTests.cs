@@ -228,22 +228,22 @@ public sealed class PublicPassportDataTests(MongoFixture mongo)
         Assert.Contains("/.well-known/did.json", help, StringComparison.Ordinal);
     }
 
-    private static PassportController Controller(PublicationRig rig) =>
+    internal static PassportController Controller(PublicationRig rig) =>
         new(new DppReaders(new ClusterRepository(rig.Context)), PassportPagesTests.Pages(rig))
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity()) } },
         };
 
-    private static async Task<string> TextAsync(Task<IActionResult> action)
+    internal static async Task<string> TextAsync(Task<IActionResult> action)
     {
         var content = Assert.IsType<ContentResult>(await action);
         Assert.Equal("application/json", content.ContentType);
         return content.Content!;
     }
 
-    private static async Task<JsonObject> DataAsync(Task<IActionResult> action) => JsonNode.Parse(await TextAsync(action))!.AsObject();
+    internal static async Task<JsonObject> DataAsync(Task<IActionResult> action) => JsonNode.Parse(await TextAsync(action))!.AsObject();
 
-    private static JsonNode? Find(JsonObject passport, AttributeDefinition attribute)
+    internal static JsonNode? Find(JsonObject passport, AttributeDefinition attribute)
     {
         JsonNode? node = passport;
         foreach (var name in attribute.Path.Split('.'))

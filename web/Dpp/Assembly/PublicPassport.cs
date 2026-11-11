@@ -32,7 +32,10 @@ public static class PublicPassport
         return part;
     }
 
-    /// <summary>The public data as served: the public values and the public proof, or <c>"proof": null</c> when there is none.</summary>
+    /// <summary>
+    /// The public data as served: the public values as cut now, and the public proof, or <c>"proof": null</c> when there is
+    /// none or it doesn't hold for these values (the caller checks it).
+    /// </summary>
     public static JsonObject Data(JsonObject publicValues, SignatureProof? publicProof)
     {
         ArgumentNullException.ThrowIfNull(publicValues);
