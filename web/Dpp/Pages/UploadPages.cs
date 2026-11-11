@@ -191,6 +191,9 @@ public sealed class UploadPages(UploadService uploads, AttributeForms forms, Att
         _ => format,
     };
 
+    /// <summary>How the line after "Save" starts when nothing was saved.</summary>
+    public const string NothingSaved = "Nothing was saved";
+
     /// <summary>The line after "Save": what was saved, in words.</summary>
     public static string SavedWords(UploadReport report)
     {
@@ -198,7 +201,7 @@ public sealed class UploadPages(UploadService uploads, AttributeForms forms, Att
         var battery = report.Batteries.FirstOrDefault();
         if (battery is null || battery.Outcome != UploadService.Saved)
         {
-            return $"Nothing was saved{(battery?.Problem is { } problem ? $": {problem}" : string.Empty)}.";
+            return $"{NothingSaved}{(battery?.Problem is { } problem ? $": {problem}" : string.Empty)}.";
         }
 
         var saved = battery.Values.Count(value => value.Outcome == KeyOutcome.Saved);

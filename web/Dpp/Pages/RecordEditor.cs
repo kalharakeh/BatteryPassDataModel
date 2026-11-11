@@ -117,6 +117,17 @@ public sealed record EditorField(
     /// <summary>For a conditional value, the short line that says whether this model needs it; null for the others.</summary>
     public string? NeedLine => PassportNeeds.EditorLine(Attribute, Answers);
 
+    /// <summary>True on a battery's own editors (its values and live values, and the status window).</summary>
+    public bool OnABattery { get; init; }
+
+    /// <summary>
+    /// R09, round two E: on a battery whose temperature (#87) is still empty, the line that says the battery system's
+    /// export has none yet, so it is typed. Null once a temperature is there, and for every other field.
+    /// </summary>
+    public string? ExportNote => OnABattery && Attribute.Number == 87 && !HasValue
+        ? "The battery system's export has no temperature yet: type it here."
+        : null;
+
     /// <summary>True when this input of a grouped value should be marked as refused.</summary>
     public bool IsRefused(FormInput input) =>
         Refusal is not null && (RefusedParts.Count == 0 || RefusedParts.Contains(input.Path));
@@ -466,6 +477,7 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
             {
                 RefusedParts = refusal?.Parts ?? new HashSet<string>(StringComparer.Ordinal),
                 Answers = answers,
+                OnABattery = kind == TargetKind.Pack,
                 StoredLink = form.Kind == FormKind.Upload && value?["url"] is JsonValue url && url.TryGetValue<string>(out var link) ? link : null,
             });
         }

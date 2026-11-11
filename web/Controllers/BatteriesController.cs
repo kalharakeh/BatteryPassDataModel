@@ -72,7 +72,12 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
             if (exportBytes is not null)
             {
                 var (done, problem) = await uploads.FillNewBatteryAsync(ChangeSender.Team(Who), pack.Id, Path.GetFileName(export!.FileName), exportBytes, cancellationToken);
-                if (problem is null)
+                if (problem is null && done?.StartsWith(UploadPages.NothingSaved, StringComparison.Ordinal) == true)
+                {
+                    // Round two, E: every reading was refused, so the battery has none of them.
+                    TempData[ProductDataController.StatusKey] = $"Draft battery created, but none of its export's readings were saved{done[UploadPages.NothingSaved.Length..]} Type its readings on its page.";
+                }
+                else if (problem is null)
                 {
                     TempData[ProductDataController.StatusKey] = $"Draft battery created with its export's readings. {done} Type its temperature: the export has none yet.";
                 }

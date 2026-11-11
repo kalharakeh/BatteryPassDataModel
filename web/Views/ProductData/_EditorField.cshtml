@@ -146,10 +146,10 @@
         {
             <small class="bp-field-help">@hint</small>
         }
-        @if (definition.Number == 87 && Model.Editor.Kind == BatteryPassWeb.Dpp.Editing.TargetKind.Pack)
+        @if (field.ExportNote is { } exportNote)
         {
-            @* R09: the battery system's export has no pack temperature yet, so the team types it. *@
-            <small class="bp-field-help" data-no-export-temperature>The battery system's export has no temperature yet: type it here.</small>
+            @* R09: the battery system's export has no pack temperature yet; said only while #87 is empty (round two, E). *@
+            <small class="bp-field-help" data-no-export-temperature>@exportNote</small>
         }
         @if (IdentifierForms.ActorIdNote(definition.Number, field.Texts.Values.FirstOrDefault()) is { } note)
         {

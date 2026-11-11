@@ -88,12 +88,33 @@ public sealed class NewBatteryFromExportTests(MongoFixture mongo)
     }
 
     [Fact]
-    public void TheTemperatureField_ShouldSayThatTheExportHasNone()
+    public async Task TheTemperatureField_ShouldSayThatTheExportHasNone_OnlyWhileItIsEmpty()
     {
-        var view = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "ProductData", "_EditorField.cshtml"));
+        var rig = await PublicationTesting.RigAsync(mongo).WithClustersAsync();
+        string? Note(BatteryPassWeb.Dpp.Pages.BatteryPage page) => page.Live.Sections.SelectMany(section => section.Fields).Single(field => field.Attribute.Number == 87).ExportNote;
 
-        Assert.Contains("definition.Number == 87 && Model.Editor.Kind == BatteryPassWeb.Dpp.Editing.TargetKind.Pack", view, StringComparison.Ordinal);
-        Assert.Contains("The battery system's export has no temperature yet: type it here.", view, StringComparison.Ordinal);
+        Assert.Null(Note((await BatteryTesting.Pages(rig).BatteryAsync(rig.PackId))!)); // the seed battery has a temperature
+        await rig.Store.SetValuesAsync<BatteryPack>(rig.PackId, new Dictionary<string, BatteryPassWeb.Dpp.Values.AttributeValue>(), ["temperatureInformation"]);
+        Assert.Equal("The battery system's export has no temperature yet: type it here.", Note((await BatteryTesting.Pages(rig).BatteryAsync(rig.PackId))!));
+        Assert.Contains("field.ExportNote", File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "ProductData", "_EditorField.cshtml")), StringComparison.Ordinal); // the page shows it
+    }
+
+    [Fact]
+    public async Task AnExportWhoseReadingsAreAllRefused_ShouldSaySo()
+    {
+        var rig = await PublicationTesting.RigAsync(mongo).WithClustersAsync();
+        var export = BmsExportUploadTests.Export(Serial);
+        export["values"] = new JsonObject { ["stateOfCharge"] = new JsonObject { ["raw"] = 1, ["formatted"] = "999 %" } };
+        export["metadata"]!["identifiers"]!["deviceIdentifiers"]!.AsObject().Remove("childrenIdentifiers");
+        var bytes = Bytes(export);
+        var form = new Dictionary<string, string> { [BatteryTesting.Field("batterySerialNumber")] = Serial };
+        var controller = BatteriesControllerTests.Controller(rig, form);
+
+        await controller.CreateBattery(rig.Seed.Sources.Batch.Id, rig.Seed.Sources.Operator.Id, null, CancellationToken.None, new FormFile(new MemoryStream(bytes), 0, bytes.Length, "export", "export.json"));
+
+        var status = Assert.IsType<string>(controller.TempData[BatteryPassWeb.Controllers.ProductDataController.StatusKey]);
+        Assert.StartsWith("Draft battery created, but none of its export's readings were saved", status, StringComparison.Ordinal);
+        Assert.DoesNotContain("with its export's readings", status, StringComparison.Ordinal);
     }
 
     private static byte[] Bytes(JsonObject export) => Encoding.UTF8.GetBytes(export.ToJsonString());
