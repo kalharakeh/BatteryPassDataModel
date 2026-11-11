@@ -575,16 +575,35 @@ public sealed class DppStore
 
     /// <summary>Sets or clears a pack's invalid or deletion mark (step 4c-2). False when the pack doesn't exist.</summary>
     /// <summary>
-    /// Sets the marker that a saved change waits for this pack's published passport (round three, 1), keeping the first
-    /// time; null clears it. Writes only when it changes; false when nothing was written.
+    /// Marks these packs as having a saved change waiting for their published passports, in one write (round four, 1):
+    /// a new token each time, and the first time kept. Done before any publishing, so an interrupted run leaves them marked.
     /// </summary>
-    public async Task<bool> SetChangesWaitingAsync(string packId, DateTime? sinceUtc, CancellationToken cancellationToken = default)
+    public async Task MarkChangesWaitingAsync(IReadOnlyCollection<string> packIds, DateTime nowUtc, CancellationToken cancellationToken = default)
     {
-        var filter = Builders<BatteryPack>.Filter.Eq(pack => pack.Id, packId)
-            & (sinceUtc is null
-                ? Builders<BatteryPack>.Filter.Ne(pack => pack.ChangesWaitingSinceUtc, null)
-                : Builders<BatteryPack>.Filter.Eq(pack => pack.ChangesWaitingSinceUtc, null));
-        var result = await Collection<BatteryPack>().UpdateOneAsync(filter, Builders<BatteryPack>.Update.Set(pack => pack.ChangesWaitingSinceUtc, sinceUtc), cancellationToken: cancellationToken);
+        ArgumentNullException.ThrowIfNull(packIds);
+        if (packIds.Count == 0)
+        {
+            return;
+        }
+
+        var set = new BsonDocument("$set", new BsonDocument
+        {
+            [nameof(BatteryPack.ChangesWaitingToken)] = Guid.NewGuid().ToString("N"),
+            [nameof(BatteryPack.ChangesWaitingSinceUtc)] = new BsonDocument("$ifNull", new BsonArray { "$" + nameof(BatteryPack.ChangesWaitingSinceUtc), new BsonDateTime(nowUtc) }),
+        });
+        await Collection<BatteryPack>().UpdateManyAsync(
+            Builders<BatteryPack>.Filter.In(pack => pack.Id, packIds),
+            Builders<BatteryPack>.Update.Pipeline(new BsonDocument[] { set }),
+            cancellationToken: cancellationToken);
+    }
+
+    /// <summary>Clears a pack's marker of a waiting change; false when it had none.</summary>
+    public async Task<bool> ClearChangesWaitingAsync(string packId, CancellationToken cancellationToken = default)
+    {
+        var result = await Collection<BatteryPack>().UpdateOneAsync(
+            Builders<BatteryPack>.Filter.Eq(pack => pack.Id, packId) & Builders<BatteryPack>.Filter.Ne(pack => pack.ChangesWaitingSinceUtc, null),
+            Builders<BatteryPack>.Update.Unset(pack => pack.ChangesWaitingSinceUtc).Unset(pack => pack.ChangesWaitingToken),
+            cancellationToken: cancellationToken);
         return result.ModifiedCount == 1;
     }
 

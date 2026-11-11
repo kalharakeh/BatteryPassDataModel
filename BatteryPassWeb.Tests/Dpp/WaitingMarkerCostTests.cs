@@ -95,7 +95,7 @@ public sealed class WaitingMarkerCostTests(MongoFixture mongo)
     public async Task TheBatterysPage_ShouldPutAWrongMarkerRight()
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
-        await rig.Store.SetChangesWaitingAsync(rig.PackId, DateTime.UtcNow); // wrong: nothing waits
+        await rig.Store.MarkChangesWaitingAsync([rig.PackId], DateTime.UtcNow); // wrong: nothing waits
 
         var page = (await BatteryTesting.Pages(rig).BatteryAsync(rig.PackId))!;
 

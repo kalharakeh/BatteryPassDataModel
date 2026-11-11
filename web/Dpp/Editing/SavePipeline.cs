@@ -177,9 +177,11 @@ public sealed class SavePipeline(
                 entityType: $"dpp-{changes.Target.ToString().ToLowerInvariant()}",
                 entityId: changes.TargetId,
                 cancellationToken: cancellationToken);
+            // The values are saved: what follows (new versions) isn't stopped by a cancelled request, a closed browser or
+            // a proxy's time-out (round four, 1).
             foreach (var listener in _listeners)
             {
-                await listener.ValuesSavedAsync(changes.Target, changes.TargetId, stored.Keys.Concat(removed).ToArray(), sender, cancellationToken);
+                await listener.ValuesSavedAsync(changes.Target, changes.TargetId, stored.Keys.Concat(removed).ToArray(), sender, CancellationToken.None);
             }
         }
 

@@ -121,7 +121,7 @@ public sealed class PublicationService(
         {
             if (waiting.Blocking.Count > 0)
             {
-                await store.SetChangesWaitingAsync(packId, clock.GetUtcNow().UtcDateTime, cancellationToken);
+                await store.MarkChangesWaitingAsync([packId], clock.GetUtcNow().UtcDateTime, cancellationToken);
                 return new PassportOutcome(packId, PublishOutcome.HeldBack, active.Number, waiting.Blocking);
             }
 
@@ -129,7 +129,7 @@ public sealed class PublicationService(
         }
         else
         {
-            await store.SetChangesWaitingAsync(packId, null, cancellationToken);
+            await store.ClearChangesWaitingAsync(packId, cancellationToken);
         }
 
         return (await OutcomesAsync([(packId, active.Number)], cancellationToken)).Single();
@@ -140,7 +140,7 @@ public sealed class PublicationService(
     {
         if (pack.ChangesWaitingSinceUtc is not null)
         {
-            await store.SetChangesWaitingAsync(pack.Id, null, cancellationToken);
+            await store.ClearChangesWaitingAsync(pack.Id, cancellationToken);
         }
     }
 
@@ -148,8 +148,17 @@ public sealed class PublicationService(
     /// Puts a battery's marker right after its page worked out the truth (round three, 1): set while a change waits,
     /// cleared when none does.
     /// </summary>
-    public Task<bool> MarkWaitingAsync(string packId, bool waiting, CancellationToken cancellationToken = default) =>
-        store.SetChangesWaitingAsync(packId, waiting ? clock.GetUtcNow().UtcDateTime : null, cancellationToken);
+    public async Task MarkWaitingAsync(string packId, bool waiting, CancellationToken cancellationToken = default)
+    {
+        if (waiting)
+        {
+            await store.MarkChangesWaitingAsync([packId], clock.GetUtcNow().UtcDateTime, cancellationToken);
+        }
+        else
+        {
+            await store.ClearChangesWaitingAsync(packId, cancellationToken);
+        }
+    }
 
     /// <summary>
     /// What an action did for each published passport it reached, from the version each had before (round two, A3): a
@@ -263,6 +272,15 @@ public sealed class PublicationService(
         };
         var staticChange = keys.Any(key => AttributeCatalog.FindByProperty(key)?.Change != ChangeRule.Live);
 
+        // A static change is saved: every published passport it reaches is marked first, in one write, and each one's
+        // marker goes when its new version (or "nothing changed") is done. A run cut off half way leaves the rest marked,
+        // the safe side (round four, 1).
+        if (staticChange)
+        {
+            var published = (await store.ListActiveVersionsAsync(packIds, cancellationToken)).Select(version => version.PackId).Distinct(StringComparer.Ordinal).ToArray();
+            await store.MarkChangesWaitingAsync(published, clock.GetUtcNow().UtcDateTime, cancellationToken);
+        }
+
         foreach (var packId in packIds)
         {
             var active = await store.GetActiveVersionAsync(packId, cancellationToken);
@@ -316,7 +334,7 @@ public sealed class PublicationService(
         if (result.Problem is not null)
         {
             // The saved change waits: the marker tells the team's list and the next live save (round three, 1).
-            await store.SetChangesWaitingAsync(packId, clock.GetUtcNow().UtcDateTime, cancellationToken);
+            await store.MarkChangesWaitingAsync([packId], clock.GetUtcNow().UtcDateTime, cancellationToken);
             await audit.AppendApplicationAuditEventAsync(
                 BlockedEvent,
                 sender.Who,

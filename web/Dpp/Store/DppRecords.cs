@@ -158,6 +158,12 @@ public sealed class BatteryPack : IDppRecord
     /// truth and puts it right. Old records have none.
     /// </summary>
     public DateTime? ChangesWaitingSinceUtc { get; set; }
+
+    /// <summary>
+    /// A new value at every set of the marker (round four, 1 and 2): a publish attempt clears the marker only while it
+    /// still holds the token the attempt saw when it started, so a change marked meanwhile stays marked.
+    /// </summary>
+    public string? ChangesWaitingToken { get; set; }
 }
 
 /// <summary>An invalid or marked-for-deletion passport's mark (design 7.6 and 7.7): its reason is seen by the team and market surveillance only.</summary>
