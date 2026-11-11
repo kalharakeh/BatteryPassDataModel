@@ -46,6 +46,9 @@ public sealed class AttributeValueValidatorTests
     [InlineData(19, "\"P0Y0M\"", "whole number of years")]
     [InlineData(19, "\"P30D\"", "whole number of years")] // days aren't a warranty
     [InlineData(19, "\"P1Y6M10D\"", "whole number of years")]
+    [InlineData(19, "\"P\u0663Y\"", "whole number of years")] // round four, 6: an Arabic-Indic digit 3
+    [InlineData(19, "\"P\uFF11\uFF12M\"", "whole number of years")] // full-width 12
+    [InlineData(17, "\"\u0662\u0660\u0662\u0666-10\"", "decision 18")] // other digits in a year
     [InlineData(6, "\"not an identifier\"", "absolute URI")]
     [InlineData(4, "\"2026-10-28 09:30\"", "UTC timestamp")]
     [InlineData(57, """{"amperehourMiliamperehourValue":200000,"ampereHourMiliamperehourUnit":"mAh"}""", "\"Ah\"")]

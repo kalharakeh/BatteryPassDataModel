@@ -153,10 +153,10 @@ public sealed partial class AttributeValueValidator(OfficialSchemas schemas)
         DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
         out _);
 
-    [GeneratedRegex(@"^\d{4}-(0[1-9]|1[0-2])$")]
+    [GeneratedRegex(@"^[0-9]{4}-(0[1-9]|1[0-2])$")]
     private static partial Regex YearMonth();
 
-    [GeneratedRegex(@"^P(?!$)(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+S)?)?$")]
+    [GeneratedRegex(@"^P(?!$)([0-9]+Y)?([0-9]+M)?([0-9]+W)?([0-9]+D)?(T(?=[0-9])([0-9]+H)?([0-9]+M)?([0-9]+S)?)?$")]
     private static partial Regex IsoPeriod();
 
     /// <summary>Why a warranty (#19) is refused, in the page's words.</summary>
@@ -173,12 +173,19 @@ public sealed partial class AttributeValueValidator(OfficialSchemas schemas)
             return false;
         }
 
-        var years = match.Groups[1].Success ? int.Parse(match.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture) : 0;
-        var months = match.Groups[2].Success ? int.Parse(match.Groups[2].Value, NumberStyles.None, CultureInfo.InvariantCulture) : 0;
+        // Digits 0 to 9 only, read safely: another alphabet's digits are refused, never a failure (round four, 6).
+        var years = 0;
+        var months = 0;
+        if ((match.Groups[1].Success && !int.TryParse(match.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out years))
+            || (match.Groups[2].Success && !int.TryParse(match.Groups[2].Value, NumberStyles.None, CultureInfo.InvariantCulture, out months)))
+        {
+            return false;
+        }
+
         var total = (years * 12) + months;
         return years <= 100 && months <= 1200 && total is >= 1 and <= 1200;
     }
 
-    [GeneratedRegex(@"^P(?:(\d{1,4})Y)?(?:(\d{1,4})M)?$")]
+    [GeneratedRegex(@"^P(?:([0-9]{1,4})Y)?(?:([0-9]{1,4})M)?$")]
     private static partial Regex Warranty();
 }

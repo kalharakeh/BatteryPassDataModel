@@ -167,12 +167,12 @@ public sealed partial class BmsExportFormat : IUploadAdapter
     private static string? Text(JsonNode? node) =>
         node is JsonValue value && value.GetValueKind() == JsonValueKind.String && value.GetValue<string>().Trim() is { Length: > 0 } text ? text : null;
 
-    [GeneratedRegex(@"^(\d{1,3}(?:\.\d+)?)\s*%$")]
+    [GeneratedRegex(@"^([0-9]{1,3}(?:\.[0-9]+)?)\s*%$")] // 0 to 9 only: double.Parse reads no other digits (round four, 6)
     private static partial Regex PercentText();
 
-    [GeneratedRegex(@"^\d{4}-(0[1-9]|1[0-2])$")]
+    [GeneratedRegex(@"^[0-9]{4}-(0[1-9]|1[0-2])$")]
     private static partial Regex YearMonth();
 
-    [GeneratedRegex(@"^(\d{1,6}(?:\.\d+)?)\s*Ah$")]
+    [GeneratedRegex(@"^([0-9]{1,6}(?:\.[0-9]+)?)\s*Ah$")]
     private static partial Regex AmpereHours();
 }
