@@ -98,6 +98,10 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
     private async Task<IActionResult> DataAsync(string id, CancellationToken cancellationToken)
     {
         Response.Headers[HeaderNames.Vary] = HeaderNames.Accept;
+
+        // The same as the page, which gets it from its form protection (C3 round two, point 6), the 404 included.
+        Response.Headers[HeaderNames.CacheControl] = "no-cache, no-store";
+        Response.Headers[HeaderNames.Pragma] = "no-cache";
         var reader = await readers.ForAsync(User, cancellationToken);
         var page = await pages.SummaryAsync(reader, id, cancellationToken);
         if (page?.PublicData is not { } data)
