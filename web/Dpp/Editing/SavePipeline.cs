@@ -151,7 +151,18 @@ public sealed class SavePipeline(
             entry => entry.Key,
             entry => new AttributeValue { Value = entry.Value, GeneratedAtUtc = generatedAt, Source = changes.Source, Who = sender.Who },
             StringComparer.Ordinal);
-        var saved = await ApplyAsync(changes.Target, changes.TargetId, stored, removed, cancellationToken);
+        // A correction that adds the warranty writes only while the battery still has none (round two, F).
+        var addsWarranty = statusChange && changes.Target == TargetKind.Pack && stored.ContainsKey(AddedByCorrection);
+        var saved = addsWarranty
+            ? await store.SetValuesIfMissingAsync<BatteryPack>(changes.TargetId, stored, AddedByCorrection, cancellationToken)
+            : await ApplyAsync(changes.Target, changes.TargetId, stored, removed, cancellationToken);
+        if (!saved && addsWarranty)
+        {
+            return new SaveResult(true, false, results
+                .Select(result => result.Key == AddedByCorrection ? result with { Outcome = KeyOutcome.Rejected, Message = FixedOncePublished } : result)
+                .ToArray());
+        }
+
         if (saved)
         {
             await audit.AppendApplicationAuditEventAsync(

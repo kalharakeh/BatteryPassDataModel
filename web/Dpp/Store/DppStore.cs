@@ -269,6 +269,21 @@ public sealed class DppStore
         return result.MatchedCount == 1;
     }
 
+    /// <summary>
+    /// As <see cref="SetValuesAsync{T}(string, IReadOnlyDictionary{string, AttributeValue}, IReadOnlyCollection{string}, CancellationToken)"/>,
+    /// only while the record still has no value for <paramref name="mustBeMissing"/>; false when it has one by now
+    /// (round two, F: two corrections adding the warranty at the same moment, only one is saved).
+    /// </summary>
+    public async Task<bool> SetValuesIfMissingAsync<T>(string id, IReadOnlyDictionary<string, AttributeValue> values, string mustBeMissing, CancellationToken cancellationToken = default)
+        where T : class, IDppRecord
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        RequireDatabase();
+        var update = Builders<T>.Update.Combine(values.Select(entry => Builders<T>.Update.Set($"Values.{entry.Key}", entry.Value)));
+        var filter = Builders<T>.Filter.Eq("_id", id) & Builders<T>.Filter.Exists($"Values.{mustBeMissing}", false);
+        return (await Collection<T>().UpdateOneAsync(filter, update, cancellationToken: cancellationToken)).MatchedCount == 1;
+    }
+
     /// <summary>All packs with this serial number (#11). Serial numbers are not unique.</summary>
     /// <summary>
     /// The pack and every earlier and later passport of the same battery (design 7.5): they share its serial number. A
