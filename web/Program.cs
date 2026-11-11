@@ -38,6 +38,18 @@ var appBaseUrlSetting = Environment.GetEnvironmentVariable("APP_BASE_URL")
     ?? builder.Configuration["BatteryPass:AppBaseUrl"]
     ?? builder.Configuration["BatteryPass:AppUrl"];
 var idBaseUrlSetting = Environment.GetEnvironmentVariable("DPP_ID_BASE_URL") ?? builder.Configuration["BatteryPass:IdBaseUrl"];
+
+// Production needs the site's own signing key and two whole http(s) addresses (the manager's decision 61).
+if (DemoSigningKeyService.ProductionKeyProblem(builder.Environment.IsProduction(), Environment.GetEnvironmentVariable(DemoSigningKeyService.PrivateKeySetting)) is { } missingSigningKey)
+{
+    throw new InvalidOperationException(missingSigningKey);
+}
+
+if (DppLinks.ProductionAddressProblem(builder.Environment.IsProduction(), appBaseUrlSetting, idBaseUrlSetting) is { } addressProblem)
+{
+    throw new InvalidOperationException(addressProblem);
+}
+
 if (DppLinks.HostMismatch(appBaseUrlSetting, idBaseUrlSetting) is { } hostMismatch && builder.Environment.IsProduction())
 {
     throw new InvalidOperationException(hostMismatch);

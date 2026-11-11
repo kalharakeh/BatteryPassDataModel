@@ -1,6 +1,8 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
+using BatteryPassWeb.Dpp.Documents;
 
 namespace BatteryPassWeb.Services;
 
@@ -12,6 +14,9 @@ namespace BatteryPassWeb.Services;
 /// </summary>
 public sealed class DemoSigningKeyService : IDisposable
 {
+    /// <summary>The site's private signing key: base64 PKCS#8, P-256. Production doesn't start without it.</summary>
+    public const string PrivateKeySetting = "BATTERY_PASS_SIGNING_PRIVATE_KEY_BASE64";
+
     /// <summary>Older public keys the app still trusts: base64 SubjectPublicKeyInfo (DER), separated by commas.</summary>
     public const string TrustedKeysSetting = "BATTERY_PASS_SIGNING_TRUSTED_PUBLIC_KEYS";
 
@@ -113,6 +118,39 @@ public sealed class DemoSigningKeyService : IDisposable
             : $"{TrustedKeysSetting} has an entry that isn't a P-256 public key (entry {string.Join(", ", bad)}). List each older public key as base64 SubjectPublicKeyInfo, separated by commas.";
     }
 
+    /// <summary>
+    /// Why Production can't start with this signing key setting, or null (the manager's decision 61). Without the setting
+    /// the app would make a key on this machine and publish it as the site's key, so on a replaced server every earlier
+    /// passport would show as not verified. Elsewhere always null: a developer's PC makes its own test key. The message
+    /// never contains the setting's value.
+    /// </summary>
+    public static string? ProductionKeyProblem(bool production, string? setting)
+    {
+        if (!production)
+        {
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(setting))
+        {
+            return $"{PrivateKeySetting} isn't set. In Production the site signs with its own key from this setting; without it the app would make a new key on this server, and passports signed before would show as not verified. Set it to the site's private key (base64 PKCS#8, P-256).";
+        }
+
+        try
+        {
+            using var key = ImportPrivateKey(Convert.FromBase64String(setting.Trim()));
+            if (key.ExportParameters(includePrivateParameters: false).Curve.Oid.Value == ECCurve.NamedCurves.nistP256.Oid.Value)
+            {
+                return null;
+            }
+        }
+        catch (Exception exception) when (exception is FormatException or CryptographicException)
+        {
+        }
+
+        return $"{PrivateKeySetting} can't be read as a P-256 private key. Set it to the site's private key as base64 PKCS#8.";
+    }
+
     public byte[] SignData(byte[] data)
     {
         return _key.SignData(data, HashAlgorithmName.SHA256, DSASignatureFormat.IeeeP1363FixedFieldConcatenation);
@@ -136,10 +174,13 @@ public sealed class DemoSigningKeyService : IDisposable
         Base64Url.Encode(SHA256.HashData(Encoding.UTF8.GetBytes(
             $"{{\"crv\":\"P-256\",\"kty\":\"EC\",\"x\":\"{Base64Url.Encode(point.X!)}\",\"y\":\"{Base64Url.Encode(point.Y!)}\"}}")));
 
-    /// <summary>The host (and a port other than the scheme's) of an address, lowercase; null when there is none.</summary>
+    /// <summary>
+    /// The host (and a port other than the scheme's) of an address, lowercase and without a trailing dot, the same way the
+    /// address check reads it; null when there is none.
+    /// </summary>
     private static string? Host(string? address) =>
-        Uri.TryCreate(address?.Trim(), UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https" && uri.IdnHost.Length > 0
-            ? (uri.IsDefaultPort ? uri.IdnHost : $"{uri.IdnHost}:{uri.Port}").ToLowerInvariant()
+        DppLinks.WholeAddress(address) is { } uri
+            ? uri.IsDefaultPort ? DppLinks.SiteHost(uri) : $"{DppLinks.SiteHost(uri)}:{uri.Port.ToString(CultureInfo.InvariantCulture)}"
             : null;
 
     /// <summary>Each entry of the setting as a P-256 public point, or null where an entry can't be read as one.</summary>
@@ -169,7 +210,7 @@ public sealed class DemoSigningKeyService : IDisposable
 
     private static ECDsa LoadOrCreateKey()
     {
-        var configuredKey = Environment.GetEnvironmentVariable("BATTERY_PASS_SIGNING_PRIVATE_KEY_BASE64");
+        var configuredKey = Environment.GetEnvironmentVariable(PrivateKeySetting);
         if (!string.IsNullOrWhiteSpace(configuredKey))
         {
             return ImportPrivateKey(Convert.FromBase64String(configuredKey));
