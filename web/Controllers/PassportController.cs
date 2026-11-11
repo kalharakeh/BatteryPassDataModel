@@ -74,24 +74,24 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
     /// </summary>
     [HttpGet("{id}")]
     [PrefersJson]
-    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiRead)]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.PublicDataRead)]
     public Task<IActionResult> SummaryData(string id, CancellationToken cancellationToken) => DataAsync(Uri.UnescapeDataString(id), cancellationToken);
 
     /// <summary>The same data at the page's address with ".json": <c>/dpp/UN778474481-VBC-92921.json</c>.</summary>
     [HttpGet("{id}.json")]
-    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiRead)]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.PublicDataRead)]
     public Task<IActionResult> SummaryJson(string id, CancellationToken cancellationToken) => DataAsync(Uri.UnescapeDataString(id), cancellationToken);
 
     /// <summary>A version's public part as data, at its own address when the request asks for JSON.</summary>
     [HttpGet("{id}/v{version:int}")]
     [PrefersJson]
-    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiRead)]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.PublicDataRead)]
     public Task<IActionResult> VersionData(string id, int version, [FromServices] Microsoft.Extensions.Options.IOptions<BatteryPassWeb.Configuration.BatteryPassOptions> options, CancellationToken cancellationToken) =>
         DataAsync(BatteryPassWeb.Dpp.Identifiers.IdentifierForms.PassportAddress(options.Value.IdBaseUrl, Uri.UnescapeDataString(id), version), cancellationToken);
 
     /// <summary>A version's public part as data at its address with ".json": <c>/dpp/UN778474481-VBC-92921/v2.json</c>.</summary>
     [HttpGet("{id}/v{version:int}.json")]
-    [EnableRateLimiting(SecurityRateLimitPolicyNames.ExternalApiRead)]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.PublicDataRead)]
     public Task<IActionResult> VersionJson(string id, int version, [FromServices] Microsoft.Extensions.Options.IOptions<BatteryPassWeb.Configuration.BatteryPassOptions> options, CancellationToken cancellationToken) =>
         VersionData(id, version, options, cancellationToken);
 

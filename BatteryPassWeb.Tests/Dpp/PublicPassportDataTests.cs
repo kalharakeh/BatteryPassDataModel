@@ -197,7 +197,7 @@ public sealed class PublicPassportDataTests(MongoFixture mongo)
         foreach (var name in new[] { nameof(PassportController.SummaryData), nameof(PassportController.SummaryJson), nameof(PassportController.VersionData), nameof(PassportController.VersionJson) })
         {
             var method = type.GetMethod(name)!;
-            Assert.Equal(SecurityRateLimitPolicyNames.ExternalApiRead, method.GetCustomAttribute<EnableRateLimitingAttribute>()?.PolicyName);
+            Assert.Equal(SecurityRateLimitPolicyNames.PublicDataRead, method.GetCustomAttribute<EnableRateLimitingAttribute>()?.PolicyName);
         }
 
         Assert.Equal("{id}", type.GetMethod(nameof(PassportController.SummaryData))!.GetCustomAttribute<HttpGetAttribute>()?.Template);

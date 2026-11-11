@@ -220,6 +220,9 @@ builder.Services.AddRateLimiter(options =>
         RateLimitPartition.GetFixedWindowLimiter(
             FileUploadRateLimitPartitionKey(context),
             _ => FixedWindowOptions(fileUploadRateLimitPerWindow, rateLimitWindowSeconds)));
+
+    // A passport's public data takes no token: counted by the caller's address only (C3 round two, point 5).
+    PublicDataRateLimit.Add(options, externalApiReadRateLimitPerWindow, rateLimitWindowSeconds);
 });
 
 builder.Services.AddControllersWithViews();
