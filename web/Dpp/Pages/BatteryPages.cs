@@ -45,7 +45,11 @@ public sealed record BatteryRow(
     public bool IsDemo { get; init; }
 }
 
-public sealed record BatteriesPage(IReadOnlyList<BatteryRow> Rows, string Query, int Total);
+public sealed record BatteriesPage(IReadOnlyList<BatteryRow> Rows, string Query, int Total)
+{
+    /// <summary>The team's list only: published batteries whose saved changes their public passport doesn't show yet (round two, A2).</summary>
+    public IReadOnlyList<BatteryRow> Waiting { get; init; } = [];
+}
 
 /// <summary>A batch a new battery can be made in, named by its family, model, year and site.</summary>
 public sealed record BatchChoice(string BatchId, string FamilyName, string ModelName, int Year, string SiteName)
@@ -114,6 +118,9 @@ public sealed record PublicationView(
 
     /// <summary>The model's name, for the line that asks for its answers.</summary>
     public string? ModelName { get; init; }
+
+    /// <summary>Saved changes the public passport doesn't show yet, and what holds them back (round two, A2); null when none.</summary>
+    public WaitingChange? Waiting { get; init; }
 
     public bool IsPublished => Latest is not null;
 
@@ -308,6 +315,26 @@ public sealed class BatteryPages(
         var wanted = query?.Trim() ?? string.Empty;
         var shown = Sorted(batteries.Where(row => wanted.Length == 0 || Earlier(row, byPack).Prepend(row).Any(each => Matches(each, wanted, versions[each.PackId], matchClusters))));
         return new BatteriesPage(shown, wanted, batteries.Count);
+    }
+
+    /// <summary>
+    /// The team's list (round two, A2): one row per battery, and the published ones whose saved changes wait for what
+    /// holds them back, so the team sees them without opening each battery.
+    /// </summary>
+    public async Task<BatteriesPage> TeamListAsync(string? query, CancellationToken cancellationToken = default)
+    {
+        var page = await ListOnePerBatteryAsync(query, _ => true, matchClusters: true, cancellationToken);
+        var (rows, _) = await RowsAsync(cancellationToken);
+        var waiting = new List<BatteryRow>();
+        foreach (var row in Sorted(rows.Where(row => row.Active is not null)))
+        {
+            if (await publication.WaitingAsync(row.PackId, cancellationToken) is not null)
+            {
+                waiting.Add(row);
+            }
+        }
+
+        return page with { Waiting = waiting };
     }
 
     /// <summary>
@@ -789,6 +816,7 @@ public sealed class BatteryPages(
         {
             QuestionsHref = report.Blocking.Contains(PassportNeeds.QuestionsNotAnswered) ? $"{ProductDataPages.FamilyHref(sources.Model.FamilyId, sources.Model.Id)}#questions" : null,
             ModelName = sources.Model.Name,
+            Waiting = active is null ? null : await publication.WaitingAsync(sources.Pack.Id, cancellationToken),
         };
     }
 

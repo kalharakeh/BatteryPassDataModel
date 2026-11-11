@@ -2,6 +2,7 @@ using BatteryPassWeb.Dpp.Catalog;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Pages;
+using BatteryPassWeb.Dpp.Publication;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Dpp.Values;
 using BatteryPassWeb.Services;
@@ -307,9 +308,10 @@ public sealed class ProductDataController(ProductDataPages pages, RecordEditor e
         else
         {
             var answers = (await store.GetAsync<BatteryModel>(modelId, cancellationToken))!.Answers();
-            TempData[StatusKey] = answers.AllAnswered
+            TempData[StatusKey] = (answers.AllAnswered
                 ? "Answers saved. The passport doesn't show them; they decide which values it needs."
-                : "Answers saved. Answer all three before this model's batteries can be published.";
+                : "Answers saved. Answer all three before this model's batteries can be published.")
+                + (save.Outcomes.Count > 0 ? " Changes that were waiting: " + PublishWords.ForMany(save.Outcomes) : string.Empty);
         }
 
         return Redirect($"{ProductDataPages.FamilyHref(model.FamilyId, modelId)}#questions");
@@ -560,11 +562,8 @@ public sealed class ProductDataController(ProductDataPages pages, RecordEditor e
         var save = await editor.SaveAsync(ChangeSender.Team(Who), kind, id, post, confirmed, cancellationToken);
         var nameNote = nameTaken is null ? string.Empty : $" The name wasn't changed: {nameTaken}.";
         var notes = (renamed ? " Name saved." : string.Empty)
-            + (save.Affected.Count > 0 && save.Outcome is EditorOutcome.Saved or EditorOutcome.Refused
-                ? $" {Words.Count(save.Affected.Count, "passport")} got a new version."
-                : string.Empty)
-            + (save.KeptTheirVersion.Count > 0
-                ? $" {Words.Count(save.KeptTheirVersion.Count, "published passport")} kept {(save.KeptTheirVersion.Count == 1 ? "its" : "their")} version: {(save.KeptTheirVersion.Count == 1 ? "it needs" : "they need")} other values first ({string.Join(", ", save.KeptTheirVersion.Select(passport => passport.SerialNumber))}); the battery's page says which."
+            + (save.Outcomes.Count > 0 && save.Outcome is EditorOutcome.Saved or EditorOutcome.Refused
+                ? " " + PublishWords.ForMany(save.Outcomes) // round two, A3: per passport
                 : string.Empty);
         var done = (save.SavedCount, save.RemovedCount) switch
         {
@@ -621,8 +620,9 @@ public sealed class ProductDataController(ProductDataPages pages, RecordEditor e
         }
 
         var result = await documents.UploadAsync(ChangeSender.Team(Who), kind, id, property, new DocumentUpload(file.FileName, await ReadAsync(file, cancellationToken), title, language), cancellationToken);
+        var outcomes = result.Problem is null ? await editor.OutcomesAsync(published, cancellationToken) : [];
         TempData[result.Problem is null ? EditorStatusKey : EditorErrorKey] = result.Problem is null
-            ? $"{result.Document!.FileName} uploaded."
+            ? $"{result.Document!.FileName} uploaded.{(outcomes.Count > 0 ? " " + PublishWords.ForMany(outcomes) : string.Empty)}"
             : $"The file was not uploaded: {result.Problem}.";
         return Redirect(pageHref + EditorAnchor);
     }

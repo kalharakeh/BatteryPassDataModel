@@ -20,6 +20,19 @@
         </div>
     </section>
 
+    @if (Model.Waiting.Count > 0)
+    {
+        @* Round two, A2: saved changes that the public passports don't show yet. *@
+        <p class="bp-warning mt-3 mb-0" role="status">
+            Saved changes are waiting on @Words.Count(Model.Waiting.Count, "published battery", "published batteries"):
+            @for (var i = 0; i < Model.Waiting.Count; i++)
+            {
+                <a href="@BatteryPages.BatteryHref(Model.Waiting[i].PackId)">@Model.Waiting[i].SerialNumber</a>@(i < Model.Waiting.Count - 1 ? ", " : ".")
+            }
+            Each battery's page says what holds them back.
+        </p>
+    }
+
     @* The shared list (redesign R7, the owner's choice "One shared list"): every battery, drafts too, and Create. *@
     @await Html.PartialAsync("_BatteryList", new BatteryListView("/admin/batteries", Model.Query, Model.Rows, ShowClusters: true,
         row => BatteryPages.BatteryHref(row.PackId), row => RowActions.For(row, BatteryPages.BatteryHref(row.PackId), team: true), _ => true)

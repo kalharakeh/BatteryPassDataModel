@@ -5,6 +5,7 @@ using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Forms;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Dpp.Uploads;
+using BatteryPassWeb.Dpp.Publication;
 using BatteryPassWeb.Dpp.Values;
 
 namespace BatteryPassWeb.Dpp.Pages;
@@ -202,7 +203,16 @@ public sealed class UploadPages(UploadService uploads, AttributeForms forms, Att
 
         var saved = battery.Values.Count(value => value.Outcome == KeyOutcome.Saved);
         var modules = battery.Modules?.Contains("was set", StringComparison.Ordinal) == true ? $", and {battery.Modules}" : string.Empty;
-        return battery.Status is { } status ? $"Saved. {status}" : $"Saved: {Words.Count(saved, "value")}{modules}.";
+        // Round two, A3: what the published passport got. Live values show at once and need no new version.
+        var onlyLive = battery.Values.Where(value => value.Outcome == KeyOutcome.Saved)
+            .All(value => AttributeCatalog.FindByProperty(value.Key)?.Change == ChangeRule.Live);
+        var passport = battery.Passport switch
+        {
+            null => string.Empty,
+            { Outcome: PublishOutcome.NothingChanged } outcome when onlyLive => $" The passport shows them now and keeps version {outcome.Version}.",
+            { } outcome => " " + PublishWords.For(outcome),
+        };
+        return battery.Status is { } status ? $"Saved. {status}{passport}" : $"Saved: {Words.Count(saved, "value")}{modules}.{passport}";
     }
 
     private UploadValueRow[] Rows(BatteryPack pack, IEnumerable<(string Key, KeyOutcome Outcome, string Message, string? Sent, bool Kept)> values, bool preview, bool forTeam) =>

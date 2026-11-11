@@ -4,6 +4,7 @@ using BatteryPassWeb.Dpp.Api;
 using BatteryPassWeb.Dpp.Catalog;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Pages;
+using BatteryPassWeb.Dpp.Publication;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Services;
 using MongoDB.Bson;
@@ -18,6 +19,7 @@ namespace BatteryPassWeb.Dpp.Uploads;
 /// <param name="Sent">The values the battery's entry sent, as JSON text, by key (step 5c).</param>
 /// <param name="Status">The status change or repair in words (step 5d); null when the entry asked for none.</param>
 /// <param name="Kept">Re-stated values the file left out, taken from the battery's current ones (Q8).</param>
+/// <param name="Passport">For a published battery after a save: what its passport got (round two, A3); null otherwise.</param>
 public sealed record UploadedBatteryReport(
     int Entry,
     string NamedAs,
@@ -31,7 +33,8 @@ public sealed record UploadedBatteryReport(
     string? ClusterId = null,
     IReadOnlyDictionary<string, string?>? Sent = null,
     string? Status = null,
-    IReadOnlyCollection<string>? Kept = null);
+    IReadOnlyCollection<string>? Kept = null,
+    PassportOutcome? Passport = null);
 
 /// <summary>An upload's result: per battery what happened, or why the file couldn't be read at all.</summary>
 /// <param name="UploadId">The log entry; null for a preview or an unreadable file, which aren't logged.</param>
@@ -55,7 +58,8 @@ public sealed class UploadService(
     ApplicationAuditService audit,
     TimeProvider clock,
     StatusChangeService statusChanges,
-    IEnumerable<IUploadAdapter> adapters)
+    IEnumerable<IUploadAdapter> adapters,
+    PublicationService? publication = null)
 {
     /// <summary>Why an API upload's battery with a status change is refused (decision 35, Q7 and Q23).</summary>
     public const string StatusOnThePage = "status changes are made on the battery's page";
@@ -183,6 +187,7 @@ public sealed class UploadService(
             }
 
             var source = Source(sender);
+            var versionBefore = preview ? 0 : (await store.GetActiveVersionAsync(pack.Id, cancellationToken))?.Number ?? 0;
             var (values, unused) = await FillOnlyAsync(sender, pack, current, cancellationToken);
             notes = [.. notes, .. unused];
             var result = values.Count == 0
@@ -201,7 +206,11 @@ public sealed class UploadService(
                 sent[key] = value;
             }
 
-            reports.Add(new UploadedBatteryReport(entry.Number, entry.NamedAs, target!.Identifier, pack.Id, outcome, null, [.. statusKeys, .. result.Keys], modules?.Words, notes, Cluster(pack), sent, statusWords, kept));
+            // Round two, A3: what the battery's published passport got from the save.
+            var passport = versionBefore > 0 && publication is not null && outcome == Saved
+                ? (await publication.OutcomesAsync([(pack.Id, versionBefore)], cancellationToken)).Single()
+                : null;
+            reports.Add(new UploadedBatteryReport(entry.Number, entry.NamedAs, target!.Identifier, pack.Id, outcome, null, [.. statusKeys, .. result.Keys], modules?.Words, notes, Cluster(pack), sent, statusWords, kept, passport));
         }
 
         string? uploadId = null;

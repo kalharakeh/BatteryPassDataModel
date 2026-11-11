@@ -211,7 +211,7 @@ public sealed class BatteriesControllerTests(MongoFixture mongo)
 
         var saving = Controller(rig, ("checkId", checkId));
         Assert.IsType<RedirectResult>(await saving.SaveUpload(rig.PackId, checkId, CancellationToken.None));
-        Assert.Equal("Saved: 1 value.", saving.TempData[BatteriesController.CardStatusKey]);
+        Assert.Equal("Saved: 1 value. The passport shows them now and keeps version 1.", saving.TempData[BatteriesController.CardStatusKey]); // round two, A3
         var after = Controller(rig);
         CardMessages.Put(after.TempData, rig.PackId, UploadPages.OpenKey, saving.TempData[UploadPages.OpenKey]);
         var card = Assert.IsType<BatteryPage>(Assert.IsType<ViewResult>(await after.Battery(rig.PackId, CancellationToken.None)).Model).Upload!;

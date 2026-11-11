@@ -387,6 +387,22 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
                     values = Keys(battery.Values),
                     modules = battery.Modules,
                     notes = battery.Notes ?? [],
+
+                    // Round two, A3: for a published battery, what its passport got: "new version", "nothing changed" or
+                    // "held back" with what blocks it; null for a draft or a preview.
+                    passport = battery.Passport is { } passport
+                        ? new
+                        {
+                            outcome = passport.Outcome switch
+                            {
+                                PublishOutcome.NewVersion => "new version",
+                                PublishOutcome.NothingChanged => "nothing changed",
+                                _ => "held back",
+                            },
+                            version = passport.Version,
+                            blocking = passport.Blocking,
+                        }
+                        : null,
                 }).ToArray(),
             });
     }

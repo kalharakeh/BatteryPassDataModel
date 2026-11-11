@@ -6,6 +6,7 @@ using BatteryPassWeb.Dpp.Catalog;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Forms;
+using BatteryPassWeb.Dpp.Publication;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Dpp.Values;
 
@@ -58,6 +59,9 @@ public sealed record EditorSave(EditorOutcome Outcome, IReadOnlyList<KeyResult> 
     /// their published version stays until what they need is filled in. Their battery pages say what.
     /// </summary>
     public IReadOnlyList<AffectedPassport> KeptTheirVersion { get; init; } = [];
+
+    /// <summary>After a save: what each published passport the change reached got (round two, A3), with its serial number.</summary>
+    public IReadOnlyList<(PassportOutcome Outcome, string SerialNumber)> Outcomes { get; init; } = [];
 
     public int SavedCount => Keys.Count(key => key.Outcome == KeyOutcome.Saved);
 
@@ -180,7 +184,7 @@ public sealed record EditorSection(string Id, string Title, string Note, IReadOn
 /// grouped by schema section, reads what was typed, keeps only the values that changed, asks before a change publishes
 /// new versions, and saves through the save pipeline.
 /// </summary>
-public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, DppStore store, DocumentStore documents)
+public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, DppStore store, DocumentStore documents, PublicationService? publication = null)
 {
     /// <summary>The title and intro line of each schema section.</summary>
     private static readonly Dictionary<string, (string Title, string Note)> SectionTexts = new(StringComparer.Ordinal)
@@ -510,14 +514,32 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
         // Saved or refused: Affected now lists the passports that got a new version, KeptTheirVersion those that couldn't.
         var result = await pipeline.SaveAsync(sender, changes, preview: false, cancellationToken);
         IReadOnlyList<KeyResult> keys = [.. result.Keys, .. conflicts];
-        var now = affected.Count == 0
-            ? new Dictionary<string, int>(StringComparer.Ordinal)
-            : (await store.ListActiveVersionsAsync(affected.Select(passport => passport.PackId), cancellationToken)).ToDictionary(version => version.PackId, version => version.Number, StringComparer.Ordinal);
+        var outcomes = result.Saved ? await OutcomesAsync(affected, cancellationToken) : [];
         var outcome = keys.Any(key => key.Outcome == KeyOutcome.Rejected) ? EditorOutcome.Refused : EditorOutcome.Saved;
-        return new EditorSave(outcome, keys, affected.Where(passport => now.GetValueOrDefault(passport.PackId) > passport.CurrentVersion).ToArray())
+        return new EditorSave(outcome, keys, Having(PublishOutcome.NewVersion))
         {
-            KeptTheirVersion = result.Saved ? affected.Where(passport => now.GetValueOrDefault(passport.PackId) <= passport.CurrentVersion).ToArray() : [],
+            KeptTheirVersion = Having(PublishOutcome.HeldBack),
+            Outcomes = outcomes,
         };
+
+        AffectedPassport[] Having(PublishOutcome kind) =>
+            affected.Where(passport => outcomes.Any(item => item.Outcome.PackId == passport.PackId && item.Outcome.Outcome == kind)).ToArray();
+    }
+
+    /// <summary>
+    /// What each of these published passports got from a change just made (round two, A3): a new version, nothing to
+    /// publish, or held back with what blocks it. Empty without the publication service (some tests).
+    /// </summary>
+    public async Task<IReadOnlyList<(PassportOutcome Outcome, string SerialNumber)>> OutcomesAsync(IReadOnlyList<AffectedPassport> passports, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(passports);
+        if (publication is null || passports.Count == 0)
+        {
+            return [];
+        }
+
+        var outcomes = await publication.OutcomesAsync(passports.Select(passport => (passport.PackId, passport.CurrentVersion)), cancellationToken);
+        return outcomes.Select(outcome => (outcome, passports.First(passport => passport.PackId == outcome.PackId).SerialNumber)).ToArray();
     }
 
     /// <summary>Why an edit made on a page that was open while someone else saved the same value is refused.</summary>

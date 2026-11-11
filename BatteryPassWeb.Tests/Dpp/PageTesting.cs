@@ -20,7 +20,7 @@ namespace BatteryPassWeb.Tests.Dpp;
 internal static class PageTesting
 {
     public static RecordEditor Editor(PublicationRig rig) =>
-        new(AttributeFormsTests.Forms, rig.Pipeline, rig.Store, new DocumentStore(rig.Context));
+        new(AttributeFormsTests.Forms, rig.Pipeline, rig.Store, new DocumentStore(rig.Context), rig.Publication);
 
     public static DocumentService Documents(PublicationRig rig) => new(
         new DocumentStore(rig.Context),

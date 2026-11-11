@@ -11,6 +11,25 @@ using MongoDB.Driver;
 
 namespace BatteryPassWeb.Dpp.Publication;
 
+/// <summary>What a publish attempt did for one published passport (round two, A3).</summary>
+public enum PublishOutcome
+{
+    /// <summary>A new version is published.</summary>
+    NewVersion,
+
+    /// <summary>Its saved data equals its active version: nothing to publish.</summary>
+    NothingChanged,
+
+    /// <summary>Its saved data differs from its active version, which stays until what blocks it is filled in.</summary>
+    HeldBack,
+}
+
+/// <summary>One published passport after an action that can publish: what happened, its active version, and what holds it back.</summary>
+public sealed record PassportOutcome(string PackId, PublishOutcome Outcome, int Version, IReadOnlyList<string> Blocking);
+
+/// <summary>A published passport whose saved data differs from its active <see cref="Version"/>, and what blocks the new one.</summary>
+public sealed record WaitingChange(int Version, IReadOnlyList<string> Blocking);
+
 /// <summary>The new version, or why there is none; <see cref="Unchanged"/> when the content equals the active version's.</summary>
 public sealed record PublicationResult(PassportVersion? Version, PublicationReport? Report, string? Problem, bool Unchanged = false);
 
@@ -61,6 +80,56 @@ public sealed class PublicationService(
         var number = await store.GetLatestVersionNumberAsync(packId, cancellationToken) + 1;
         var header = new PassportHeader(identifiers.NewPassportIdentifier(PackIdentifier(sources.Pack), number), DppStatuses.Active, clock.GetUtcNow().UtcDateTime);
         return WithDemoRule(sources, checks.Check(PassportAssembler.Assemble(sources, header), sources.Model.Answers()), number);
+    }
+
+    /// <summary>
+    /// Whether a published passport's saved data differs from its active version: a change that was saved but held back
+    /// because the passport couldn't publish (round two, A). Null when it has no active version or nothing differs.
+    /// </summary>
+    public async Task<WaitingChange?> WaitingAsync(string packId, CancellationToken cancellationToken = default)
+    {
+        if (await store.GetActiveVersionAsync(packId, cancellationToken) is not { } active
+            || await store.LoadSourcesAsync(packId, cancellationToken) is not { } sources)
+        {
+            return null;
+        }
+
+        var passport = PassportAssembler.Assemble(sources, new PassportHeader(active.DigitalProductPassportId, DppStatuses.Active, clock.GetUtcNow().UtcDateTime));
+        if (PassportStaticCore.ContentHash(PassportStaticCore.Extract(passport)) == PassportStaticCore.ContentHash(active.StaticCore))
+        {
+            return null;
+        }
+
+        var report = WithDemoRule(sources, checks.Check(passport, sources.Model.Answers()), active.Number + 1);
+        return new WaitingChange(active.Number, report.Blocking);
+    }
+
+    /// <summary>
+    /// What an action did for each published passport it reached, from the version each had before (round two, A3): a
+    /// new version, nothing to publish, or held back with what blocks it.
+    /// </summary>
+    public async Task<IReadOnlyList<PassportOutcome>> OutcomesAsync(IEnumerable<(string PackId, int VersionBefore)> passports, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(passports);
+        var outcomes = new List<PassportOutcome>();
+        foreach (var (packId, before) in passports)
+        {
+            var now = (await store.GetActiveVersionAsync(packId, cancellationToken))?.Number ?? before;
+            if (now > before)
+            {
+                outcomes.Add(new PassportOutcome(packId, PublishOutcome.NewVersion, now, []));
+            }
+            else if (await WaitingAsync(packId, cancellationToken) is { } waiting)
+            {
+                outcomes.Add(new PassportOutcome(packId, PublishOutcome.HeldBack, now, waiting.Blocking));
+            }
+            else
+            {
+                outcomes.Add(new PassportOutcome(packId, PublishOutcome.NothingChanged, now, []));
+            }
+        }
+
+        return outcomes;
     }
 
     /// <summary>
@@ -159,6 +228,14 @@ public sealed class PublicationService(
             {
                 // #4 is when the update was made available, not when it was measured (file, #4).
                 await store.SetVersionLastUpdatedAsync(active.Id, clock.GetUtcNow().UtcDateTime, cancellationToken);
+
+                // A change held back because the passport couldn't publish follows once this live value clears the block
+                // (round two, A1): from the feed, an upload, the API or a cluster admin alike.
+                if (await WaitingAsync(packId, cancellationToken) is { Blocking.Count: 0 })
+                {
+                    await RepublishOneAsync(sender, packId, active, cancellationToken);
+                }
+
                 continue;
             }
 

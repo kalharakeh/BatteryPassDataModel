@@ -88,23 +88,7 @@ public sealed class StatusChangeService(
     /// Why a status change can't publish its new version, in plain words (R01, decision 9): what is missing, and for a
     /// cluster admin that the Scania team has to add it.
     /// </summary>
-    public static string NoNewVersion(PublicationReport? report, bool forTeam)
-    {
-        var items = (report?.Blocking ?? []).Select(item =>
-            item == PassportNeeds.QuestionsNotAnswered
-                ? "the answers to its model's three questions"
-                : Regex.Match(item, @"^(.+) is missing( \((.+)\))?$") is { Success: true } missing
-                    ? missing.Groups[3].Success ? $"{missing.Groups[1].Value} ({missing.Groups[3].Value})" : missing.Groups[1].Value
-                    : item).ToArray();
-        if (items.Length == 0)
-        {
-            return "the passport can't get a new version now; the team sees why on its battery page";
-        }
-
-        return forTeam
-            ? $"the passport can't get a new version until this is filled in: {string.Join("; ", items)}"
-            : $"the passport can't get a new version until the Scania team adds {string.Join("; ", items)}. Ask the Scania team";
-    }
+    public static string NoNewVersion(PublicationReport? report, bool forTeam) => PublishWords.WhyNoNewVersion(report?.Blocking, forTeam);
 
     /// <summary>Why a passport that is no longer active changes nothing (step 4c).</summary>
     public static string NoLongerActive(string status) => SavePipeline.NoLongerChanges(status);

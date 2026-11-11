@@ -2,6 +2,7 @@ using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Dpp.Catalog;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
+using BatteryPassWeb.Dpp.Publication;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Dpp.Values;
 using BatteryPassWeb.Services;
@@ -73,7 +74,11 @@ public sealed record EditorFieldView(RecordEditorView Editor, EditorField Field)
 public sealed record EditorState(EditorPost Post, EditorSave Save);
 
 /// <summary>What saving a model's answers did: <see cref="Saved"/>, or nothing yet because <see cref="Affected"/> published batteries would lack a value.</summary>
-public sealed record AnswersSave(bool Saved, int Affected, bool NeedsConfirmation = false);
+public sealed record AnswersSave(bool Saved, int Affected, bool NeedsConfirmation = false)
+{
+    /// <summary>What the published passports with waiting changes got once the answers were saved (round two, A3).</summary>
+    public IReadOnlyList<(PassportOutcome Outcome, string SerialNumber)> Outcomes { get; init; } = [];
+}
 
 /// <param name="Unanswered">How many of its models haven't answered their three questions yet (R01).</param>
 public sealed record FamilyRow(BatteryFamily Family, int Models, int Batches, int Packs, int Published, int Missing, int Unanswered = 0);
@@ -126,7 +131,7 @@ public sealed class ProductDataPages(
     ApplicationAuditService audit,
     IOptions<BatteryPassOptions> options,
     TimeProvider clock,
-    Publication.PublicationService? publication = null)
+    PublicationService? publication = null)
 {
     public const string CreatedEvent = "dpp.record-created";
     public const string RenamedEvent = "dpp.record-renamed";
@@ -557,13 +562,25 @@ public sealed class ProductDataPages(
         var words = string.Join("; ", ModelQuestions.All.Select(question => $"{ModelQuestions.Text(question)} {Answer(after.Of(question))}"));
         await AuditAsync(AnswersEvent, who, $"Answers of battery model {model.Name} saved: {words}", "dpp-model", model.Id, cancellationToken);
 
-        // A change saved while the model couldn't publish is in its published passports once they can (decision 9).
+        // A change saved while the model couldn't publish is in its published passports once they can (decision 9). The
+        // answers say, per passport that had a change waiting, what it got (round two, A3).
+        IReadOnlyList<(PassportOutcome, string)> outcomes = [];
         if (publication is not null && after.AllAnswered)
         {
-            await publication.RepublishAsync(ChangeSender.Team(who), await store.FindPackIdsUsingAsync(modelId: model.Id, cancellationToken: cancellationToken), cancellationToken);
+            var waiting = new List<AffectedPassport>();
+            foreach (var passport in await editor.AffectedAsync(TargetKind.Model, model.Id, cancellationToken))
+            {
+                if (await publication.WaitingAsync(passport.PackId, cancellationToken) is not null)
+                {
+                    waiting.Add(passport);
+                }
+            }
+
+            await publication.RepublishAsync(ChangeSender.Team(who), waiting.Select(passport => passport.PackId), cancellationToken);
+            outcomes = await editor.OutcomesAsync(waiting, cancellationToken);
         }
 
-        return new AnswersSave(true, affected);
+        return new AnswersSave(true, affected) { Outcomes = outcomes };
     }
 
     /// <summary>An answer in words, as the audit log and the page say it.</summary>
