@@ -25,6 +25,8 @@ public static class FormValues
                 return null;
             case FormKind.Fixed:
                 return WithConstants(new JsonObject(), form.Constants);
+            case FormKind.Single when form.Inputs[0].Kind == InputKind.Duration:
+                return Duration(field(form.FieldName(form.Inputs[0])), field(AttributeForm.UnitField(form.FieldName(form.Inputs[0]))));
             case FormKind.Single when form.Inputs[0].Path.Length == 0:
             case FormKind.Lines:
                 return Parse(form.Inputs[0], field(form.FieldName(form.Inputs[0])));
@@ -65,10 +67,58 @@ public static class FormValues
 
         foreach (var input in form.Inputs)
         {
-            texts[form.FieldName(input)] = Text(input.Path.Length == 0 ? value : value[input.Path]);
+            var text = Text(input.Path.Length == 0 ? value : value[input.Path]);
+            if (input.Kind == InputKind.Duration)
+            {
+                var (amount, unit) = DurationParts(text);
+                texts[form.FieldName(input)] = amount;
+                texts[AttributeForm.UnitField(form.FieldName(input))] = unit;
+                continue;
+            }
+
+            texts[form.FieldName(input)] = text;
         }
 
         return texts;
+    }
+
+    /// <summary>
+    /// A period typed as a whole number and "Y" (years, the default) or "M" (months), in the official form: "8" years is
+    /// P8Y (W05). Anything else typed, e.g. an ISO period such as P3Y6M, is kept as written for the save pipeline to judge.
+    /// </summary>
+    public static JsonNode? Duration(string? amount, string? unit)
+    {
+        var text = amount?.Trim();
+        if (string.IsNullOrEmpty(text))
+        {
+            return null;
+        }
+
+        if (!int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var number))
+        {
+            return JsonValue.Create(text);
+        }
+
+        return JsonValue.Create($"P{number.ToString(CultureInfo.InvariantCulture)}{(unit?.Trim() == "M" ? "M" : "Y")}");
+    }
+
+    /// <summary>
+    /// A stored period as the field shows it: P8Y as 8 and years, P6M as 6 and months, P1Y6M as 18 months. Anything else
+    /// (days, or not a period) shows as written, with years, so saving it unchanged keeps it.
+    /// </summary>
+    public static (string Amount, string Unit) DurationParts(string text)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(text, @"^P(?:(\d+)Y)?(?:(\d+)M)?$");
+        if (!match.Success || text == "P")
+        {
+            return (text, "Y");
+        }
+
+        var years = match.Groups[1].Success ? int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture) : 0;
+        var months = match.Groups[2].Success ? int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture) : 0;
+        return match.Groups[2].Success
+            ? ((years * 12 + months).ToString(CultureInfo.InvariantCulture), "M")
+            : (years.ToString(CultureInfo.InvariantCulture), "Y");
     }
 
     /// <summary>How many rows a stored list has; 0 for anything else.</summary>

@@ -45,12 +45,23 @@
         var describedBy = invalid ? refusalId : null;
         switch (input.Kind)
         {
+            case InputKind.Duration:
+                @* W05: a number and years or months; the app stores the official form (P8Y). *@
+                var unit = field.Text(AttributeForm.UnitField(name));
+                <span class="bp-duration">
+                    <input type="text" inputmode="numeric" name="@name" value="@text" form="@formId" aria-label="@input.Label" aria-invalid="@ariaInvalid" aria-describedby="@describedBy" />
+                    <select name="@AttributeForm.UnitField(name)" form="@formId" aria-label="Years or months">
+                        <option value="Y" selected="@(unit != "M")">years</option>
+                        <option value="M" selected="@(unit == "M")">months</option>
+                    </select>
+                </span>
+                break;
             case InputKind.Select:
                 <select name="@name" form="@formId" aria-label="@input.Label" aria-invalid="@ariaInvalid" aria-describedby="@describedBy">
                     <option value=""></option>
-                    @foreach (var option in input.Options)
+                    @foreach (var option in input.Path == "language" || name == "language" ? LanguageNames.ByName(input.Options) : input.Options)
                     {
-                        <option value="@option" selected="@(option == text)">@(optionNames.GetValueOrDefault(option, option))</option>
+                        <option value="@option" selected="@(option == text)">@(optionNames.GetValueOrDefault(option, LanguageNames.Of(option)))</option>
                     }
                     @if (text.Length > 0 && !input.Options.Contains(text))
                     {

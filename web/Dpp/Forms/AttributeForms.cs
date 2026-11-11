@@ -187,7 +187,7 @@ public sealed class AttributeForms
             {
                 // The file and the regulation give the manufacturing date as year and month (decision 18).
                 "date" => new FormInput(path, label, InputKind.Month, required, [], Hint: "Year and month."),
-                "duration" => new FormInput(path, label, InputKind.Text, required, [], Hint: "A duration such as P8Y (8 years) or P6M (6 months)."),
+                "duration" => new FormInput(path, label, InputKind.Duration, required, [], Hint: "A whole number of years or months."),
                 "uri" when path == "url" || attribute.Property.StartsWith("webLink", StringComparison.Ordinal) => new FormInput(path, label, InputKind.Url, required, [], Hint: "A link to your website, starting with https://."),
                 "uri" => new FormInput(path, label, InputKind.Text, required, [], Hint: "A URI, for example urn:… or https://…."),
                 _ when path == "url" => new FormInput(path, label, InputKind.Url, required, [], Hint: "A link to your website, starting with https://."),

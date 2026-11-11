@@ -16,7 +16,7 @@ public sealed class AttributeFormsTests
     [Theory]
     [InlineData(11, FormKind.Single, InputKind.Text, null)]
     [InlineData(17, FormKind.Single, InputKind.Month, null)]
-    [InlineData(19, FormKind.Single, InputKind.Text, null)]
+    [InlineData(19, FormKind.Single, InputKind.Duration, null)] // W05: years or months
     [InlineData(21, FormKind.Single, InputKind.Number, "kg")]
     [InlineData(57, FormKind.Single, InputKind.Integer, "Ah")]
     [InlineData(59, FormKind.Single, InputKind.Integer, "%")]

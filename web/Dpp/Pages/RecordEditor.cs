@@ -311,6 +311,15 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
                 texts[name] = field(name) ?? string.Empty;
             }
 
+            // A period's unit without a number is no value (W05): the page always posts a unit.
+            foreach (var input in form.Inputs.Where(input => input.Kind == InputKind.Duration && form.Kind == FormKind.Single))
+            {
+                if (string.IsNullOrWhiteSpace(texts[form.FieldName(input)]))
+                {
+                    texts[AttributeForm.UnitField(form.FieldName(input))] = string.Empty;
+                }
+            }
+
             var current = stored.GetValueOrDefault(attribute.Property)?.Value;
             var wasShown = shown?.GetValueOrDefault(attribute.Property);
             if (wasShown is not null)
@@ -529,6 +538,8 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
     {
         FormKind.Upload or FormKind.Fixed => [],
         FormKind.Rows => Enumerable.Range(0, rows).SelectMany(row => form.Inputs.Select(input => form.FieldName(input, row))),
-        _ => form.Inputs.Select(input => form.FieldName(input)),
+        _ => form.Inputs.SelectMany(input => input.Kind == InputKind.Duration
+            ? new[] { form.FieldName(input), AttributeForm.UnitField(form.FieldName(input)) }
+            : [form.FieldName(input)]),
     };
 }

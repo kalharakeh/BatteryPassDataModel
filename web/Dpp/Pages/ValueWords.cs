@@ -164,7 +164,7 @@ public static class ValueWords
             return month.ToString("MMMM yyyy", English);
         }
 
-        return input.Hint?.StartsWith("A duration", StringComparison.Ordinal) == true ? Duration(text) : text;
+        return input.Kind == InputKind.Duration ? Duration(text) : text;
     }
 
     /// <summary>A public link or an uploaded file: its title, opening its address.</summary>

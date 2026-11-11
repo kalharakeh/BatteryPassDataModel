@@ -68,9 +68,10 @@
                 <span>Language (optional)</span>
                 <select name="language">
                     <option value=""></option>
-                    @foreach (var language in Model.Languages)
+                    @foreach (var language in BatteryPassWeb.Dpp.Forms.LanguageNames.ByName(Model.Languages))
                     {
-                        <option value="@language">@language</option>
+                        @* W05: chosen by name; the stored code stays the official one. *@
+                        <option value="@language">@BatteryPassWeb.Dpp.Forms.LanguageNames.Of(language)</option>
                     }
                 </select>
             </label>
