@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
+using BatteryPassWeb.Dpp.Assembly;
 using BatteryPassWeb.Services;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -33,6 +34,12 @@ public sealed class SignatureProof
     public required string PublicKeyX { get; init; }
 
     public required string PublicKeyY { get; init; }
+
+    /// <summary>
+    /// The proof over the version's public part (finding R07), made at publication with the same key, which the public
+    /// data carries so anyone can check it. Null for a version published before this existed.
+    /// </summary>
+    public SignatureProof? PublicView { get; init; }
 }
 
 /// <summary>
@@ -80,9 +87,16 @@ public sealed class PassportSigner(DemoSigningKeyService keys)
     public const string ProofType = "DataIntegrityProof";
     public const string Cryptosuite = "ecdsa-p256-sha256-dpp-canonical-2026";
 
+    /// <summary>Signs a version's static core and, separately, its public part (<see cref="SignatureProof.PublicView"/>).</summary>
     public SignatureProof Sign(JsonNode staticCore, DateTime createdUtc)
     {
         ArgumentNullException.ThrowIfNull(staticCore);
+        var publicView = staticCore is JsonObject core ? SignPart(PublicPassport.SignedPart(PublicPassport.Cut(core)), createdUtc, null) : null;
+        return SignPart(staticCore, createdUtc, publicView);
+    }
+
+    private SignatureProof SignPart(JsonNode staticCore, DateTime createdUtc, SignatureProof? publicView)
+    {
         var canonical = CanonicalJson.Serialize(staticCore);
         var signature = keys.SignData(Encoding.UTF8.GetBytes(canonical));
         var publicKey = keys.ExportPublicParameters();
@@ -97,6 +111,7 @@ public sealed class PassportSigner(DemoSigningKeyService keys)
             ProofValue = Base64Url.Encode(signature),
             PublicKeyX = Base64Url.Encode(publicKey.Q.X ?? throw new CryptographicException("The public key has no X coordinate.")),
             PublicKeyY = Base64Url.Encode(publicKey.Q.Y ?? throw new CryptographicException("The public key has no Y coordinate.")),
+            PublicView = publicView,
         };
     }
 

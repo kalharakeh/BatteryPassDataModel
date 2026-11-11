@@ -103,6 +103,15 @@ public sealed record PassportPage(
         ? new PassportMarkView(DppStatuses.Active, null, false, $"{PassportPages.DetailHref(Address)}/invalid", Text(11), BySurveillance: true)
         : null;
 
+    /// <summary>
+    /// The public part as data (finding R07): exactly the public values this page shows, cut by the same rule, in the
+    /// official format's names, with the proof over the public part (null for a version published before it existed).
+    /// </summary>
+    public JsonObject? PublicData { get; init; }
+
+    /// <summary>The address of <see cref="PublicData"/>: this page's address with ".json".</summary>
+    public string DataHref => $"{PassportPages.SummaryHref(Address)}.json";
+
     /// <summary>This version's DPP status (#2) in words, for the hero's pill.</summary>
     public string StatusWords => DppStatuses.Words(Version.DppStatus);
 }
@@ -319,6 +328,7 @@ public sealed class PassportPages(DppStore store, DemoBoundary demo, PassportRea
             recycled)
         {
             KeyFigures = KeyFigures.From(number => Find(everyone, AttributeCatalog.ByNumber(number)), Words, carbon, recycled),
+            PublicData = PublicPassport.Data(everyone, version.Proof.PublicView),
             Chain = detail && (who.Roles.Contains(ReaderRole.Team) || who.Roles.Contains(ReaderRole.MarketSurveillance))
                 ? await PassportChains.ForAsync(store, sources.Pack, cancellationToken)
                 : [],

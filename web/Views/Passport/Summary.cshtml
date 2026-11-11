@@ -7,6 +7,8 @@
 }
 @* The paper version (step 6a-2). *@
 <link rel="stylesheet" href="~/css/bp-print.css" media="print" asp-append-version="true" />
+@* The same passport's public part as data (finding R07). *@
+<link rel="alternate" type="application/json" href="@Model.DataHref" />
 <main class="bp-page">
     <partial name="_PassportHero" model="Model" view-data="ViewData" />
 

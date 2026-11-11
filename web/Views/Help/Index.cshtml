@@ -73,6 +73,17 @@
                         </tr>
                         <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">GET</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>/dpp/{id}.json</code><small>A passport's public part as data</small></span></td>
+                            <td><span class="bp-help-access-pill">No token</span></td>
+                            <td>Read what the public page shows, as data.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-public-data" aria-expanded="false" aria-controls="api-detail-public-data" aria-label="Show public data details" title="Show public data details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">GET</span></td>
                             <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/clusters</code><small>Clusters this token can access</small></span></td>
                             <td><span class="bp-help-access-pill">Read</span></td>
                             <td>Discover cluster IDs before listing batteries.</td>
@@ -249,6 +260,17 @@
                             <li><code>503 Service Unavailable</code>: Backend dependency is unavailable.</li>
                         </ul>
                     </div>
+                </article>
+
+                <article id="api-detail-public-data" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
+                    <div>
+                        <span class="bp-summary-title">Public data</span>
+                        <h3>Read a passport's public part as data, without a token.</h3>
+                        <p>A published passport's public address answers JSON when you ask for it with <code>Accept: application/json</code>, and the same address ending in <code>.json</code> does too. The answer holds exactly the values the public page shows, with the official format's names. Values only some readers may see are left out, so it won't pass the schema as a full passport. <code>proof</code> is the signature over the public values, without the DPP status, the last update and the live values; its key is published at <code>/.well-known/did.json</code>. It is <code>null</code> for a passport published before this signature existed. A passport that isn't published answers <code>404</code>. Public reads have a rate limit.</p>
+                    </div>
+                    <pre class="bp-help-pre"><code>GET /dpp/{battery ID}.json
+GET /dpp/{battery ID}          Accept: application/json
+GET /dpp/{battery ID}/v2.json</code></pre>
                 </article>
 
                 <article id="api-detail-clusters" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
