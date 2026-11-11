@@ -127,6 +127,7 @@ public sealed class CanonicalFormTests
         Assert.Contains("in plain digits from 0.0001 up to below 10<sup>17</sup>", help, StringComparison.Ordinal);
         Assert.Contains("<code>1.0e17</code> → <code>1E+17</code>", help, StringComparison.Ordinal);
         Assert.Contains("After the site changes its signing key, an earlier passport's <code>proof</code> is <code>null</code> until the earlier public key is listed as trusted again", help, StringComparison.Ordinal);
+        Assert.Contains("(<code>DPP_ID_BASE_URL</code> on another host), every earlier passport's <code>proof</code> is <code>null</code> until that passport gets a new version: its proof names the earlier site, and listing the earlier key doesn't bring it back", help, StringComparison.Ordinal); // C3 round four, point 1
         Assert.DoesNotContain("2<sup>63</sup>", help, StringComparison.Ordinal);
         Assert.Contains("<code>&#92;uD83D&#92;uDE00</code>", help, StringComparison.Ordinal);
         Assert.Contains("U+2028, U+2029, U+FEFF", help, StringComparison.Ordinal);
