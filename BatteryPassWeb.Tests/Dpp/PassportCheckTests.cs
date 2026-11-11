@@ -36,7 +36,7 @@ public sealed class PassportCheckTests(MongoFixture mongo)
         var entry = await rig.Context.Database!.GetCollection<BsonDocument>("applicationAuditEvents")
             .Find(Builders<BsonDocument>.Filter.Eq("eventType", PublicationService.CheckedEvent)).SingleAsync();
         Assert.Equal("Checked 1 published battery: 1 now marked as waiting, 0 no longer, 0 old versions archived.", entry["message"].AsString);
-        Assert.Equal(1, entry["metadata"]["batteries"].AsBsonArray.Count);
+        Assert.Single(entry["metadata"]["batteries"].AsBsonArray);
     }
 
     [Fact]
