@@ -106,19 +106,35 @@ public sealed class PassportCheckTests(MongoFixture mongo)
             versionCopy["DigitalProductPassportId"] = $"urn:test:check:{i:D5}";
             versionCopy["StaticCore"]["dppHeader"]["uniqueProductIdentifier"] = $"urn:test:check-battery:{i:D5}"; // the version shows the copy's own IDs
             versionCopy["StaticCore"]["batteryPassportData"]["identifiersAndProductData"]["batterySerialNumber"] = $"CHECK-{i:D5}";
+            versionCopy["Number"] = 4;
             newVersions.Add(versionCopy);
+
+            // Three older versions each, archived: read only as number and status (round seven, 2).
+            for (var number = 1; number <= 3; number++)
+            {
+                var older = versionCopy.DeepClone().AsBsonDocument;
+                older["_id"] = $"version-check-{i:D5}-{number}";
+                older["Number"] = number;
+                older["DppStatus"] = DppStatuses.Archived;
+                older["DigitalProductPassportId"] = $"urn:test:check:{i:D5}:{number}";
+                newVersions.Add(older);
+            }
         }
 
         await packs.InsertManyAsync(newPacks);
         await versions.InsertManyAsync(newVersions);
 
+        var since = await StartProfilingAsync(rig);
         var before = await StartCountingAsync(rig, writesOnly: false);
         var result = await rig.Publication.ReconcileAsync("check-test");
         var used = await StopCountingAsync(rig, before, writesOnly: false);
 
         Assert.Equal(5001, result.Checked);
         Assert.False(result.ChangedAnything); // the copies equal their versions (same content, passport ID aside)
-        Assert.True(used < 40, $"the check of 5,001 batteries used {used} database operations");
+        Assert.True(used < 60, $"the check of 5,001 batteries used {used} database operations");
+
+        // Of 20,001 versions only the 5,001 active ones are read in full; the others as number and status (round seven, 2).
+        Assert.Equal(5001, await FullVersionsReadAsync(rig, since));
     }
 
     [Fact]
@@ -144,6 +160,24 @@ public sealed class PassportCheckTests(MongoFixture mongo)
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["DPP_PASSPORT_CHECK"] = value }).Build();
 
         Assert.Equal(on, PassportCheckService.IsOn(configuration));
+    }
+
+    /// <summary>When the profiling of a test starts, to read back the operations after it.</summary>
+    private static Task<DateTime> StartProfilingAsync(PublicationRig rig) => Task.FromResult(DateTime.UtcNow.AddSeconds(-1));
+
+    /// <summary>How many version documents the profiled reads returned without a projection, i.e. in full.</summary>
+    private static async Task<long> FullVersionsReadAsync(PublicationRig rig, DateTime since)
+    {
+        var database = rig.Context.Database!;
+        var reads = await database.GetCollection<BsonDocument>("system.profile")
+            .Find(Builders<BsonDocument>.Filter.Eq("ns", $"{database.DatabaseNamespace.DatabaseName}.{DppStore.Versions}")
+                & Builders<BsonDocument>.Filter.In("op", new[] { "query", "getmore" })
+                & Builders<BsonDocument>.Filter.Gte("ts", since))
+            .ToListAsync();
+        return reads
+            .Where(read => !(read.GetValue("command", new BsonDocument()).AsBsonDocument.Contains("projection")
+                || read.GetValue("originatingCommand", new BsonDocument()).AsBsonDocument.Contains("projection")))
+            .Sum(read => read.GetValue("nreturned", 0).ToInt64());
     }
 
     /// <summary>MongoDB's profiler on the test's own database (no heartbeats, no other databases).</summary>

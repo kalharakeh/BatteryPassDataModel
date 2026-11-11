@@ -136,11 +136,10 @@ public sealed class PublicationService(
     public async Task<PassportCheckResult> ReconcileAsync(string who, CancellationToken cancellationToken = default)
     {
         var packs = await store.ListAsync<BatteryPack>(cancellationToken);
-        var allVersions = await store.ListAsync<PassportVersion>(cancellationToken);
-        var newest = allVersions.GroupBy(version => version.PackId, StringComparer.Ordinal)
+        // Only the active versions in full, the content compared; the battery, number and status of all (round seven, 2).
+        var newest = (await store.ListVersionSummariesAsync(cancellationToken)).GroupBy(version => version.PackId, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.MaxBy(version => version.Number)!, StringComparer.Ordinal);
-        var actives = allVersions
-            .Where(version => version.DppStatus == DppStatuses.Active)
+        var actives = (await store.ListAllActiveVersionsAsync(cancellationToken))
             .GroupBy(version => version.PackId, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.OrderByDescending(version => version.Number).ToArray(), StringComparer.Ordinal);
         var batches = (await store.ListAsync<ProductionBatch>(cancellationToken)).ToDictionary(item => item.Id, StringComparer.Ordinal);

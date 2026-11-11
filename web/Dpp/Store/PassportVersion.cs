@@ -102,3 +102,6 @@ public sealed class PassportVersion : IDppRecord
         return list.Select(version => version.DppStatus == DppStatuses.Active && version.Number < highest[version.PackId] ? version.ServedAs(DppStatuses.Archived) : version).ToArray();
     }
 }
+
+/// <summary>A version's battery, id, number and status only: what the check needs of every version (round seven, 2).</summary>
+public sealed record VersionSummary(string PackId, string Id, int Number, string DppStatus);

@@ -785,6 +785,31 @@ public sealed class DppStore
         return await Collection<T>().Find(Builders<T>.Filter.Empty).ToListAsync(cancellationToken);
     }
 
+    /// <summary>Every passport version's battery, id, number and status, and nothing else (round seven, 2).</summary>
+    public async Task<IReadOnlyList<VersionSummary>> ListVersionSummariesAsync(CancellationToken cancellationToken = default)
+    {
+        if (_database is null)
+        {
+            return [];
+        }
+
+        return await Collection<PassportVersion>()
+            .Find(Builders<PassportVersion>.Filter.Empty)
+            .Project(version => new VersionSummary(version.PackId, version.Id, version.Number, version.DppStatus))
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>Every active passport version, in full: what the check compares (round seven, 2).</summary>
+    public async Task<IReadOnlyList<PassportVersion>> ListAllActiveVersionsAsync(CancellationToken cancellationToken = default)
+    {
+        if (_database is null)
+        {
+            return [];
+        }
+
+        return await Collection<PassportVersion>().Find(version => version.DppStatus == DppStatuses.Active).ToListAsync(cancellationToken);
+    }
+
     /// <summary>The records with these ids; ids that don't exist are left out.</summary>
     public async Task<IReadOnlyList<T>> GetManyAsync<T>(IEnumerable<string> ids, CancellationToken cancellationToken = default)
         where T : class, IDppRecord
