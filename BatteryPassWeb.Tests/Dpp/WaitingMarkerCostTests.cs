@@ -71,8 +71,9 @@ public sealed class WaitingMarkerCostTests(MongoFixture mongo)
         await rig.Publication.ValuesSavedAsync(TargetKind.Pack, rig.PackId, ["stateOfChargeSoC"], sender, CancellationToken.None);
         var used = await OperationsAsync(rig) - before;
 
-        // The active version, #4's new time, and the battery's marker: one more than before the waiting changes (2).
-        Assert.Equal(3, used);
+        // The active version, #4's new time, and the battery's marker: one more than before the waiting changes (2). The
+        // count includes commands, and the one serverStatus call between the readings (round four, 7).
+        Assert.True(used <= 4, $"a live save with nothing waiting used {used} database operations");
     }
 
     [Fact]
@@ -103,11 +104,14 @@ public sealed class WaitingMarkerCostTests(MongoFixture mongo)
         Assert.Null((await rig.Store.GetAsync<BatteryPack>(rig.PackId))!.ChangesWaitingSinceUtc);
     }
 
-    /// <summary>The database's count of reads and writes so far (finds, more results, inserts, updates, deletes).</summary>
+    /// <summary>
+    /// The database's count of operations so far: finds, more results, inserts, updates, deletes and commands (a count or
+    /// an aggregate per battery would show there; round four, 7).
+    /// </summary>
     private static async Task<long> OperationsAsync(PublicationRig rig)
     {
         var status = await rig.Context.Database!.Client.GetDatabase("admin").RunCommandAsync<BsonDocument>(new BsonDocument("serverStatus", 1));
         var counters = status["opcounters"].AsBsonDocument;
-        return new[] { "query", "getmore", "insert", "update", "delete" }.Sum(name => counters[name].ToInt64());
+        return new[] { "query", "getmore", "insert", "update", "delete", "command" }.Sum(name => counters[name].ToInt64());
     }
 }

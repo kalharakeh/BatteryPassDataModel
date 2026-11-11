@@ -28,7 +28,18 @@ public sealed class ExportProductionDateTests(MongoFixture mongo)
         var entry = Assert.Single(Adapter.Read(RealShape("VPC9-0200", produced)).Entries);
 
         Assert.Equal(taken, entry.Values.ContainsKey("manufacturingDate"));
-        Assert.Equal(!taken, entry.Notes.Contains($"the export's production date {produced} can't be right, so #17 is left as it is; type it"));
+        Assert.Equal(!taken, entry.Notes!.Contains($"the export's production date {produced} can't be right, so #17 is left as it is; type it"));
+    }
+
+    [Fact]
+    public void AnExportDatedInTheFuture_ShouldNotLiftTheLimit()
+    {
+        var export = RealShape("VPC9-0200", "2098-01");
+        export["metadata"]!["exportedAt"] = "2099-01-01T00:00:00Z";
+
+        var entry = Assert.Single(Adapter.Read(export).Entries);
+
+        Assert.False(entry.Values.ContainsKey("manufacturingDate")); // round four, 7: the earlier of exportedAt's month and now
     }
 
     [Fact]
@@ -44,7 +55,7 @@ public sealed class ExportProductionDateTests(MongoFixture mongo)
         Assert.Equal(0, entry.Values["timeSpentInExtremeTemperaturesBelowBoundary"]!.GetValue<int>());
         Assert.Equal(0, entry.Values["timeSpentChargingDuringExtremeTemperaturesAboveBoundary"]!.GetValue<int>());
         Assert.False(entry.Values.ContainsKey("manufacturingDate"));
-        Assert.Contains(BmsExportFormat.NoTemperature, entry.Notes);
+        Assert.Contains(BmsExportFormat.NoTemperature, entry.Notes!);
     }
 
     [Fact]

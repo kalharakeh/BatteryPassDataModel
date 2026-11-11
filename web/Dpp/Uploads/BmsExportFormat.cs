@@ -121,7 +121,9 @@ public sealed partial class BmsExportFormat : IUploadAdapter
         // 2000-01 (decision 63, round three 6).
         if (Formatted(exportValues, "productionDate") is { } produced && YearMonth().IsMatch(produced))
         {
-            var latest = (measuredAt ?? DateTime.UtcNow).ToString("yyyy-MM", CultureInfo.InvariantCulture);
+            // The upper limit is the earlier of the export's month and this month: an exportedAt in 2099 lifts nothing (round four, 7).
+            var now = DateTime.UtcNow;
+            var latest = (measuredAt is { } exportMonth && exportMonth < now ? exportMonth : now).ToString("yyyy-MM", CultureInfo.InvariantCulture);
             if (string.CompareOrdinal(produced, EarliestProductionMonth) >= 0 && string.CompareOrdinal(produced, latest) <= 0)
             {
                 values["manufacturingDate"] = produced;
