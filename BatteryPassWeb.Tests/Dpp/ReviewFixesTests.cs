@@ -65,7 +65,7 @@ public sealed class ReviewFixesTests
         Assert.Contains("href=\"@PassportPages.QrDownloadHref(Model.Identifier)\"", page);
         Assert.Contains("href=\"/admin/audit?q=@Uri.EscapeDataString(Model.Pack.Id)\"", page);
         Assert.Contains("href=\"@PassportPages.DetailHref(row.Version.DigitalProductPassportId)\"", page); // each version opens its own address (6d)
-        Assert.Contains("@row.Version.Proof.Hash", page); // and shows its signature details
+        Assert.Contains("@row.Version.Proof?.Hash", page); // and shows its signature details (a missing proof shows nothing, C3 round two point 3)
     }
 
     [Fact]
