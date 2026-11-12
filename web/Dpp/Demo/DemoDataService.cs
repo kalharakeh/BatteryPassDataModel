@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json.Nodes;
 using BatteryPassWeb.Configuration;
+using BatteryPassWeb.Dpp.Access;
 using BatteryPassWeb.Dpp.Api;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
@@ -141,15 +142,19 @@ public sealed class DemoDataService(
         var notes = new List<string>();
         var demoTokens = new List<DemoToken>();
 
+        var authorisedAt = clock.GetUtcNow().UtcDateTime;
         foreach (var cluster in catalogue.Clusters)
         {
-            if (await Collection("clusters").Find(Builders<BsonDocument>.Filter.Eq("clusterId", cluster.Id)).AnyAsync(cancellationToken))
+            // A demo cluster left from before is the demo's own: it is kept as it is.
+            if (!await Collection("clusters").Find(Builders<BsonDocument>.Filter.Eq("clusterId", cluster.Id)).AnyAsync(cancellationToken))
             {
-                continue; // a demo cluster left from before: the demo's own
+                await clusters.UpsertClusterAsync(cluster.Id, cluster.Name, cancellationToken);
+                await MarkAccountRecordAsync("clusters", Builders<BsonDocument>.Filter.Eq("clusterId", cluster.Id), cancellationToken);
             }
 
-            await clusters.UpsertClusterAsync(cluster.Id, cluster.Name, cancellationToken);
-            await MarkAccountRecordAsync("clusters", Builders<BsonDocument>.Filter.Eq("clusterId", cluster.Id), cancellationToken);
+            // The demo clusters come authorised in writing, so their admins and tokens change their batteries (finding R20);
+            // set every time, so a reset puts it back on a demo cluster from before.
+            await clusters.SetWrittenAuthorisationAsync(cluster.Id, DateOnly.FromDateTime(authorisedAt), SeedActor, authorisedAt, cancellationToken);
         }
 
         // The accounts don't depend on the product data, so they are made side by side with it (redesign R1).
@@ -335,6 +340,12 @@ public sealed class DemoDataService(
             if (uses.Count > 0)
             {
                 await MarkAccountRecordAsync("clusters", Builders<BsonDocument>.Filter.Eq("clusterId", clusterId), cancellationToken, false);
+                if (WrittenAuthorisation.Of(cluster) is { By: SeedActor })
+                {
+                    // The demo's own authorisation isn't a written one: a cluster kept for real use waits for the team's (finding R20).
+                    await clusters.RemoveWrittenAuthorisationAsync(clusterId, clock.GetUtcNow().UtcDateTime, cancellationToken);
+                }
+
                 notes.Add($"Kept cluster {clusterId}: {string.Join(", ", uses)} use it, so it is no longer marked as demo data.");
                 continue;
             }

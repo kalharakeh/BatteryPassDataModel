@@ -82,6 +82,15 @@
                 </span>
             </p>
         }
+        @* Finding R20: without the cluster's written authorisation the page reads as before, and its actions are unavailable
+           with this one line. *@
+        @if (Model.CannotChange is { } cannotChange)
+        {
+            <p class="bp-status-notice" id="authorisation-notice" data-cannot-change>
+                <svg class="bp-i" aria-hidden="true"><use href="#i-shield" /></svg>
+                <span>@cannotChange</span>
+            </p>
+        }
         @if (!Model.ReadOnly && Model.HandOver.Waiting is { } waiting)
         {
             <form method="post" action="@Model.HandOver.Action/cancel" class="bp-status-notice is-quiet">
@@ -105,10 +114,18 @@
                     }
                 </div>
             }
-            @if (!Model.ReadOnly && Model.HandOver.Waiting is null)
+            @if (Model.Changes && Model.HandOver.Waiting is null)
             {
                 @* Opens the window directly, like marking a passport (redesign R5, the owner's answer c). *@
                 <button type="button" class="bp-secondary-button bp-with-icon" data-open-dialog="handover-dialog"><svg class="bp-i" aria-hidden="true"><use href="#i-handover" /></svg>Hand over…</button>
+            }
+            @if (Model.CannotChange is not null)
+            {
+                @* Shown, but unavailable: the line above says why (finding R20). *@
+                <div class="bp-bh-actions" data-action-bar data-unavailable>
+                    <button type="button" class="bp-primary-button bp-with-icon" disabled aria-describedby="authorisation-notice"><svg class="bp-i" aria-hidden="true"><use href="#i-swap" /></svg>Change status</button>
+                    <button type="button" class="bp-secondary-button bp-with-icon" disabled aria-describedby="authorisation-notice"><svg class="bp-i" aria-hidden="true"><use href="#i-handover" /></svg>Hand over…</button>
+                </div>
             }
             <nav class="bp-bh-open" aria-label="This battery elsewhere">
                 <a class="bp-ilink" href="@PassportPages.SummaryHref(Model.Identifier)" title="The public page, as anyone sees it"><svg class="bp-i" aria-hidden="true"><use href="#i-globe" /></svg>Public page</a>
@@ -134,7 +151,9 @@
                     else
                     {
                         <h2>@(active is null ? "Not published" : $"Published · version {active.Number}")</h2>
-                        <p class="mb-0">Your cluster's battery. Change its status after a repair or when it's used again, keep its live values and accident reports, or hand it over to another customer. The team keeps its passport values.</p>
+                        <p class="mb-0">@(Model.CannotChange is null
+                            ? "Your cluster's battery. Change its status after a repair or when it's used again, keep its live values and accident reports, or hand it over to another customer. The team keeps its passport values."
+                            : "Your cluster's battery, to read: its status, live values, accident reports, modules, versions and history.")</p>
                     }
                     @await Html.PartialAsync("~/Views/Batteries/_LiveTiles.cshtml", Model.Tiles)
                 </section>
@@ -181,7 +200,7 @@
     {
         @await Html.PartialAsync("~/Views/Batteries/_StatusDialog.cshtml", statusWindows)
     }
-    @if (!Model.ReadOnly && Model.HandOver.Waiting is null)
+    @if (Model.Changes && Model.HandOver.Waiting is null)
     {
         <div class="bp-console-form-card bp-dialog-host">
             @await Html.PartialAsync("~/Views/ClusterAdmin/_HandOverDialog.cshtml", Model.HandOver)

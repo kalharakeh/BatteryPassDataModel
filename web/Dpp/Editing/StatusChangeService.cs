@@ -218,6 +218,12 @@ public sealed class StatusChangeService(
             return Refused(NotYours);
         }
 
+        // Before every other refusal, so an unauthorised cluster meets this one line first (finding R20).
+        if (await demo.WriteProblemAsync(sender, pack, cancellationToken) is { } unauthorised)
+        {
+            return Refused(unauthorised);
+        }
+
         if (change.What == StatusEvent.Corrected && sender.Kind != SenderKind.Team)
         {
             return Refused(OnlyTheTeamCorrects);
@@ -419,6 +425,11 @@ public sealed class StatusChangeService(
         if (!mayAdd)
         {
             return NotYours;
+        }
+
+        if (await demo.WriteProblemAsync(sender, pack, cancellationToken) is { } unauthorised) // finding R20
+        {
+            return unauthorised;
         }
 
         if (await store.GetActiveVersionAsync(packId, cancellationToken) is null)

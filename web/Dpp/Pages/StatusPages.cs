@@ -69,6 +69,9 @@ public sealed record StatusCardView(
     /// <summary>Where "Add a note to the history" posts (decision 34).</summary>
     public string NoteAction => $"{Restated.SaveAction}/note";
 
+    /// <summary>The cluster isn't authorised in writing (finding R20): nothing here changes, the other operator's form included.</summary>
+    public bool Locked { get; init; }
+
     /// <summary>The status in words, capitalised: "Re-used".</summary>
     public string StatusWords => Status.Length == 0 ? Status : char.ToUpperInvariant(Status[0]) + Status[1..];
 
@@ -111,7 +114,11 @@ public sealed class StatusPages(DppStore store, RecordEditor editor, StatusChang
 {
     /// <summary>The card of a battery; <paramref name="typed"/> is the window as typed after a refused change.</summary>
     /// <param name="href">The battery page's address; the window posts to it plus "/status".</param>
-    public async Task<StatusCardView> CardAsync(PassportSources sources, bool active, string href, bool forTeam, EditorState? typed = null, CancellationToken cancellationToken = default)
+    /// <param name="cannotChange">
+    /// Why this reader changes nothing on the battery (finding R20: the cluster has no written authorisation); it is the
+    /// card's one line, before anything about the passport, so nothing asks for a change they can't make.
+    /// </param>
+    public async Task<StatusCardView> CardAsync(PassportSources sources, bool active, string href, bool forTeam, EditorState? typed = null, CancellationToken cancellationToken = default, string? cannotChange = null)
     {
         ArgumentNullException.ThrowIfNull(sources);
         var pack = sources.Pack;
@@ -136,6 +143,7 @@ public sealed class StatusPages(DppStore store, RecordEditor editor, StatusChang
         var passportStatus = await store.PassportStatusAsync(pack.Id, cancellationToken);
         var successionView = await SuccessionAsync(pack, href, forTeam, cancellationToken);
         var whyNot = DppStatuses.IsNoLongerActive(passportStatus) ? $"The passport is {DppStatuses.Words(passportStatus!).ToLowerInvariant()}: nothing on it changes any more."
+            : cannotChange is not null ? cannotChange // finding R20: first, and instead of what the passport would need
             : !active ? "The status changes once the passport is published."
             : status == "waste" && !forTeam ? "The battery is waste, which is final for you: only the team can undo it."
             : successionView is not null && !forTeam ? "The battery is waiting for its new passport."
@@ -151,11 +159,14 @@ public sealed class StatusPages(DppStore store, RecordEditor editor, StatusChang
             ValueWords.Decimal(sources.Model.Values.GetValueOrDefault("ratedCapacity")?.Value?["amperehourMiliamperehourValue"]),
             DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
             forTeam,
-            MayAddNote: active,
+            MayAddNote: active && cannotChange is null,
             Succession: successionView,
             Predecessor: await PredecessorAsync(pack, forTeam, cancellationToken),
             Remaining: pack.RemainingCapacity,
-            BatteryName: BatteryPages.Text(pack, "batterySerialNumber") ?? pack.Id);
+            BatteryName: BatteryPages.Text(pack, "batterySerialNumber") ?? pack.Id)
+        {
+            Locked = cannotChange is not null,
+        };
     }
 
     private async Task<SuccessionView?> SuccessionAsync(BatteryPack pack, string href, bool forTeam, CancellationToken cancellationToken)

@@ -1,4 +1,5 @@
 using BatteryPassWeb.Configuration;
+using BatteryPassWeb.Dpp.Access;
 using BatteryPassWeb.Dpp.Audit;
 using BatteryPassWeb.Dpp.Demo;
 using BatteryPassWeb.Dpp.Store;
@@ -140,7 +141,8 @@ public class AdminController : Controller
                 ClusterId = BsonHelpers.GetString(cluster, "clusterId"),
                 Name = BsonHelpers.GetString(cluster, "name"),
                 CreatedAt = BsonHelpers.GetString(cluster, "createdAt"),
-                UpdatedAt = BsonHelpers.GetString(cluster, "updatedAt")
+                UpdatedAt = BsonHelpers.GetString(cluster, "updatedAt"),
+                Authorisation = WrittenAuthorisation.Of(cluster), // finding R20
             })
             .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
             .OrderBy(cluster => cluster.Name, StringComparer.OrdinalIgnoreCase)
@@ -290,6 +292,66 @@ public class AdminController : Controller
             "cluster",
             clusterId,
             cancellationToken);
+        return Redirect("/admin/clusters?tab=clusters");
+    }
+
+    /// <summary>
+    /// Finding R20 (the owner's decision, 10 Nov 2026): the team records that the cluster is authorised in writing to
+    /// update passport data, with the date of the authorisation, or takes it away again. Both go to the audit log.
+    /// </summary>
+    [HttpPost("clusters/authorisation")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ClusterAuthorisation([FromServices] TimeProvider clock, CancellationToken cancellationToken)
+    {
+        var clusterId = ClusterRepository.NormalizeClusterId(Text(Request.Form, "clusterId"));
+        var now = clock.GetUtcNow().UtcDateTime;
+        if (await _clusterRepository.GetClusterByIdAsync(clusterId, cancellationToken) is not { } cluster)
+        {
+            TempData["ErrorMessage"] = "That cluster doesn't exist any more.";
+            return Redirect("/admin/clusters?tab=clusters");
+        }
+
+        var name = BsonHelpers.GetString(cluster, "name");
+        if (Text(Request.Form, "remove") == "true")
+        {
+            if (await _clusterRepository.RemoveWrittenAuthorisationAsync(clusterId, now, cancellationToken))
+            {
+                await AppendAdminAuditAsync(
+                    "cluster.authorisation-removed",
+                    $"Cluster {name}: the written authorisation to update passport data was taken away.",
+                    new BsonDocument { ["clusterId"] = clusterId },
+                    "cluster",
+                    clusterId,
+                    cancellationToken);
+            }
+
+            TempData["StatusMessage"] = $"{name} is no longer authorised to update passport data. Its admins and tokens can still read.";
+            return Redirect("/admin/clusters?tab=clusters");
+        }
+
+        var today = DateOnly.FromDateTime(now);
+        if (Text(Request.Form, "authorised") != "true")
+        {
+            TempData["ErrorMessage"] = "Tick \"Authorised in writing to update passport data\" to record it.";
+            return Redirect("/admin/clusters?tab=clusters");
+        }
+
+        if (!DateOnly.TryParseExact(Text(Request.Form, "on"), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var on) || on > today)
+        {
+            TempData["ErrorMessage"] = "Give the date of the written authorisation: today or a day before.";
+            return Redirect("/admin/clusters?tab=clusters");
+        }
+
+        var who = CurrentActor();
+        await _clusterRepository.SetWrittenAuthorisationAsync(clusterId, on, who, now, cancellationToken);
+        await AppendAdminAuditAsync(
+            "cluster.authorised",
+            $"Cluster {name}: authorised in writing to update passport data, on {on.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}.",
+            new BsonDocument { ["clusterId"] = clusterId, ["authorisedOn"] = on.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) },
+            "cluster",
+            clusterId,
+            cancellationToken);
+        TempData["StatusMessage"] = $"{name} is authorised to update passport data.";
         return Redirect("/admin/clusters?tab=clusters");
     }
 

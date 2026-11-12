@@ -61,6 +61,11 @@ public sealed class HandOverService(DppStore store, ClusterRepository clusters, 
             return Refused(NotYours);
         }
 
+        if (await demo.WriteProblemAsync(sender, from, cancellationToken) is { } unauthorised) // finding R20
+        {
+            return Refused(unauthorised);
+        }
+
         if (await store.GetActiveVersionAsync(packId, cancellationToken) is null)
         {
             return Refused(OnlyActive);
@@ -132,6 +137,13 @@ public sealed class HandOverService(DppStore store, ClusterRepository clusters, 
             || ClusterRepository.NormalizeClusterId(now) != ClusterRepository.NormalizeClusterId(handOver.FromClusterId))
         {
             return NotWaiting;
+        }
+
+        // Accepting changes the battery's cluster: the receiving cluster must be authorised in writing (finding R20).
+        // Declining leaves the battery where it is, so it stays open to an unauthorised cluster.
+        if (accept && await demo.WriteProblemAsync(sender, handOver.ToClusterId, cancellationToken) is { } unauthorised)
+        {
+            return unauthorised;
         }
 
         // The passport may have stopped being active while it waited (a successor, a mark): it can't be managed then.

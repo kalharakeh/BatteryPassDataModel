@@ -156,7 +156,7 @@ public sealed class DocumentServiceTests(MongoFixture mongo)
     [Fact]
     public async Task AccidentReport_ShouldBeStoredAndOnlyMoveTheLastUpdate()
     {
-        var rig = await PublicationTesting.PublishedRigAsync(mongo);
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         rig.Clock.Now = rig.Clock.Now.AddDays(3);
 
         var result = await Service(rig).AddAccidentReportAsync(ChangeSender.ClusterAdmin("admin@example.com", "cluster-test"), rig.PackId, new DocumentUpload("incident-2026-11.pdf", DocumentTesting.Pdf()));
@@ -171,7 +171,7 @@ public sealed class DocumentServiceTests(MongoFixture mongo)
     [Fact]
     public async Task AccidentReportFromAnotherCluster_ShouldBeRefusedAndNothingStored()
     {
-        var rig = await PublicationTesting.PublishedRigAsync(mongo);
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
 
         var result = await Service(rig).AddAccidentReportAsync(ChangeSender.ClusterAdmin("other@example.com", "another-cluster"), rig.PackId, new DocumentUpload("incident.pdf", DocumentTesting.Pdf()));
 

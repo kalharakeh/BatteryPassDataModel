@@ -560,6 +560,7 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
             WriteRefusal.NotYours when sender.DemoOnly => (null, Envelope(StatusCodes.Status404NotFound, NoBattery)), // to a demo token, as unknown (finding R03)
             WriteRefusal.NotYours => (null, Envelope(StatusCodes.Status403Forbidden, NotYours)),
             WriteRefusal.Ambiguous => (null, Envelope(StatusCodes.Status409Conflict, Ambiguous)),
+            WriteRefusal.NotAuthorised => (null, Envelope(StatusCodes.Status403Forbidden, WrittenAuthorisation.Missing)), // finding R20
             _ => (null, Envelope(StatusCodes.Status404NotFound, NoBattery)),
         };
     }

@@ -48,4 +48,26 @@ public sealed class DemoBoundary(DppStore store, ClusterRepository clusters)
 
     public async Task<bool> ReachesAsync(ChangeSender sender, string packId, CancellationToken cancellationToken = default) =>
         !sender.DemoOnly || (await store.GetAsync<BatteryPack>(packId, cancellationToken) is { } pack && await InsideAsync(pack, cancellationToken));
+
+    /// <summary>
+    /// Null when the sender may change passport data of a battery in this cluster; otherwise the one line why not: the
+    /// cluster has no written authorisation (<see cref="WrittenAuthorisation"/>, finding R20). The team costs nothing extra.
+    /// </summary>
+    public async Task<string?> WriteProblemAsync(ChangeSender sender, string? clusterId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sender);
+        if (!WrittenAuthorisation.Needed(sender))
+        {
+            return null;
+        }
+
+        var cluster = string.IsNullOrWhiteSpace(clusterId) ? null : await clusters.GetClusterByIdAsync(clusterId, cancellationToken);
+        return WrittenAuthorisation.Problem(sender, cluster);
+    }
+
+    public Task<string?> WriteProblemAsync(ChangeSender sender, BatteryPack pack, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(pack);
+        return WriteProblemAsync(sender, pack.ClusterId, cancellationToken);
+    }
 }

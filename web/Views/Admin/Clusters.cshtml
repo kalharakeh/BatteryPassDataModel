@@ -6,6 +6,7 @@
     var clustersById = Model.Clusters.ToDictionary(cluster => cluster.ClusterId, cluster => cluster, StringComparer.OrdinalIgnoreCase);
     var clusterCreateName = TempData["ClusterCreateName"]?.ToString() ?? string.Empty;
     var clusterCreateId = TempData["ClusterCreateId"]?.ToString() ?? string.Empty;
+    var authorisationToday = DateTime.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture); // finding R20: today by default
     // Access across the app, in sentence case; the first is the default for a new user.
     var globalAccessOptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
@@ -138,7 +139,16 @@
                 var forceDialogId = $"force-delete-{cluster.ClusterId}";
                 <details class="bp-row" data-cluster-row="@cluster.ClusterId">
                     <summary>
-                        <span class="bp-row-title"><strong>@cluster.Name</strong><code>@cluster.ClusterId</code></span>
+                        <span class="bp-row-title"><strong>@cluster.Name</strong><code>@cluster.ClusterId</code>
+                            @if (cluster.Authorisation is { } given)
+                            {
+                                <span class="bp-soft-tag" data-authorised>Authorised @given.On.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB"))</span>
+                            }
+                            else
+                            {
+                                <span class="bp-soft-tag" data-not-authorised>Not authorised</span>
+                            }
+                        </span>
                         <span><span class="bp-row-label">Users</span>@Count(clusterMemberships.Count, "user", "users")</span>
                         <span><span class="bp-row-label">API tokens</span>@Count(clusterTokenCount, "token", "tokens")</span>
                         <span class="bp-row-open"><span class="is-open">Open</span><span class="is-close">Close</span></span>
@@ -156,6 +166,35 @@
                                 <button type="submit" class="bp-secondary-button">Save name</button>
                             </form>
                             <p class="text-secondary small mt-2 mb-0">The ID <code>@cluster.ClusterId</code> stays as it is.</p>
+                        </section>
+                        @* Finding R20: the cluster's written authorisation to update passport data, recorded by the team. *@
+                        <section class="bp-subcard" data-authorisation>
+                            <h3>Written authorisation</h3>
+                            @if (cluster.Authorisation is { } authorisation)
+                            {
+                                <p class="mb-2">Authorised in writing to update passport data on <strong>@authorisation.On.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB"))</strong>.
+                                    <span class="text-secondary small">Recorded by @authorisation.By@(authorisation.RecordedAtUtc is { } at ? $" on {BatteryPassWeb.Dpp.Pages.ValueWords.Time(at)}" : string.Empty).</span></p>
+                                <form method="post" action="/admin/clusters/authorisation" class="bp-inline-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
+                                    <input type="hidden" name="remove" value="true" />
+                                    <button type="submit" class="bp-secondary-button" data-confirm-action data-confirm-title="Take the authorisation away" data-confirm-message="Take away @cluster.Name's authorisation? Its admins and API tokens can then read but no longer change passport data." data-confirm-submit="Take it away">Take the authorisation away</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <p class="mb-2">Not authorised yet. Its admins and API tokens can read, but can't change passport data: status, values, live values, accident reports, hand-overs and uploads.</p>
+                                <form method="post" action="/admin/clusters/authorisation" class="bp-inline-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
+                                    <label class="bp-checkbox-option"><input type="checkbox" name="authorised" value="true" required /> <span>Authorised in writing to update passport data</span></label>
+                                    <label>
+                                        Date of the authorisation
+                                        <input type="date" name="on" value="@authorisationToday" max="@authorisationToday" required />
+                                    </label>
+                                    <button type="submit" class="bp-secondary-button">Record</button>
+                                </form>
+                            }
                         </section>
                         <section class="bp-subcard">
                             <h3>Users</h3>

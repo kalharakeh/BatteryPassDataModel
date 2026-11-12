@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using BatteryPassWeb.Dpp.Access;
 using BatteryPassWeb.Dpp.Api;
 using BatteryPassWeb.Dpp.Catalog;
 using BatteryPassWeb.Dpp.Editing;
@@ -277,6 +278,10 @@ public sealed class UploadService(
             {
                 problem = NotThisBattery(document.Entries[0].NamedAs);
             }
+            else if (named.Refusal == WriteRefusal.NotAuthorised)
+            {
+                problem = WrittenAuthorisation.Refusal; // finding R20
+            }
             else if (await store.PassportStatusAsync(packId, cancellationToken) is { } status && DppStatuses.IsNoLongerActive(status))
             {
                 problem = SavePipeline.NoLongerChanges(status); // a read-only page has no upload section; this guards a stale form
@@ -511,6 +516,7 @@ public sealed class UploadService(
             WriteRefusal.None => (entry, target, null),
             WriteRefusal.NotYours => (entry, null, NotYours),
             WriteRefusal.Ambiguous => (entry, null, Ambiguous),
+            WriteRefusal.NotAuthorised => (entry, target, WrittenAuthorisation.Refusal), // finding R20
             _ => (entry, null, NotFound),
         };
     }

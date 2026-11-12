@@ -125,9 +125,9 @@ public sealed class ReadOnlyClusterPageTests(MongoFixture mongo)
         Assert.Contains("id=\"mark-notice\"", view, StringComparison.Ordinal);
         Assert.DoesNotContain("Reason", view, StringComparison.Ordinal);
         // No hand-over button or windows on a read-only page.
-        Assert.Contains("@if (!Model.ReadOnly && Model.HandOver.Waiting is null)\n            {\n                @* Opens the window directly", view, StringComparison.Ordinal);
+        Assert.Contains("@if (Model.Changes && Model.HandOver.Waiting is null)\n            {\n                @* Opens the window directly", view, StringComparison.Ordinal);
         Assert.Contains("@if (!Model.ReadOnly && Model.Status is { } statusWindows)", view, StringComparison.Ordinal);
-        Assert.Contains("@if (!Model.ReadOnly && Model.HandOver.Waiting is null)\n    {\n        <div class=\"bp-console-form-card bp-dialog-host\">", view, StringComparison.Ordinal);
+        Assert.Contains("@if (Model.Changes && Model.HandOver.Waiting is null)\n    {\n        <div class=\"bp-console-form-card bp-dialog-host\">", view, StringComparison.Ordinal);
         // A frozen passport's live values still show, read-only, with when each was measured.
         Assert.Contains("data-frozen-values", live, StringComparison.Ordinal);
         Assert.Contains("@if (Model.Frozen)", live, StringComparison.Ordinal); // no "type them here" on a frozen passport

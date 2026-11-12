@@ -28,7 +28,7 @@ public sealed class PassportReaderTests(MongoFixture mongo)
     [Fact]
     public async Task Current_ShouldShowTheLatestLiveValue()
     {
-        var rig = await PublicationTesting.PublishedRigAsync(mongo);
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         rig.Clock.Now = rig.Clock.Now.AddMinutes(10);
         await rig.Pipeline.SaveAsync(
             ChangeSender.Feed("bms-feed", "cluster-test"),

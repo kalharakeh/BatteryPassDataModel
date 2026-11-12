@@ -44,7 +44,7 @@ public sealed class ClustersTabTests(MongoFixture mongo)
         var tab = Tab;
         var row = tab[tab.IndexOf("<details class=\"bp-row\" data-cluster-row", StringComparison.Ordinal)..tab.IndexOf("</details>", StringComparison.Ordinal)];
 
-        Assert.Contains("<span class=\"bp-row-title\"><strong>@cluster.Name</strong><code>@cluster.ClusterId</code></span>", row, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"bp-row-title\"><strong>@cluster.Name</strong><code>@cluster.ClusterId</code>", row, StringComparison.Ordinal);
         Assert.Contains("@Count(clusterMemberships.Count, \"user\", \"users\")", row, StringComparison.Ordinal);
         Assert.Contains("@Count(clusterTokenCount, \"token\", \"tokens\")", row, StringComparison.Ordinal);
         Assert.Contains("action=\"/admin/clusters/update\"", row, StringComparison.Ordinal);

@@ -122,6 +122,14 @@ public sealed class SavePipeline(
                 .Select(key => new KeyResult(key, KeyOutcome.Rejected, DemoScope.RealBattery)).ToArray());
         }
 
+        // A cluster admin or battery system changes a battery only once its cluster is authorised in writing (finding R20).
+        // Refused before anything is marked or written, preview included, so a refused save publishes nothing.
+        if (changes.Target == TargetKind.Pack && await demo.WriteProblemAsync(sender, target.ClusterId, cancellationToken) is { } unauthorised)
+        {
+            return new SaveResult(true, false, changes.Values.Keys.Concat(changes.Removals ?? []).Distinct(StringComparer.Ordinal)
+                .Select(key => new KeyResult(key, KeyOutcome.Rejected, unauthorised)).ToArray());
+        }
+
         // An inactive, invalid or marked-for-deletion passport takes no more changes (step 4c, decision 34).
         if (changes.Target == TargetKind.Pack && await store.PassportStatusAsync(changes.TargetId, cancellationToken) is { } status && DppStatuses.IsNoLongerActive(status))
         {

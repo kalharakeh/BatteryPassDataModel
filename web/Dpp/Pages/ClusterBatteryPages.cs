@@ -51,8 +51,17 @@ public sealed record ClusterBatteryPage(
     /// <summary>A marked passport's page: to read only, nothing on it changes (redesign R6b, the owner's choice).</summary>
     public bool ReadOnly => FrozenAs is not null;
 
+    /// <summary>
+    /// Why the cluster admin changes nothing on this active passport: their cluster has no written authorisation (finding
+    /// R20). The page reads as before; its actions are unavailable, with this one line. Null when they may change it.
+    /// </summary>
+    public string? CannotChange { get; init; }
+
+    /// <summary>Whether the page offers its actions: an active passport of an authorised cluster.</summary>
+    public bool Changes => !ReadOnly && CannotChange is null;
+
     /// <summary>The team page's cards, without what only the team does (step 4a); frozen while the passport is marked.</summary>
-    public BatteryCards Cards => new(Pack, Href, Live, AccidentReports, Versions, Live.Languages, ForTeam: false, FrozenAs: FrozenAs);
+    public BatteryCards Cards => new(Pack, Href, Live, AccidentReports, Versions, Live.Languages, ForTeam: false, FrozenAs: FrozenAs, Locked: CannotChange);
 
     /// <summary>The header's thumbnail, as on the team's page.</summary>
     public string? PictureHref => BatteryPages.PictureHref(Sources.Model, Family);
@@ -69,7 +78,7 @@ public sealed record ClusterBatteryPage(
             }
 
             sections.Add(new("live", "Live values", "live", BatterySections.LiveHint(Pack, Live)));
-            if (Upload is { } upload && !ReadOnly)
+            if (Upload is { } upload && Changes)
             {
                 sections.Add(new("upload", "Upload a file", "upload", upload.Hint)); // step 5c, mock-up B4
             }
@@ -88,8 +97,11 @@ public sealed record ClusterBatteryPage(
     }
 }
 
-/// <summary>The "Hand over" card (mock-up S2 and S8): where its forms go, and the hand-over waiting with its receiver's name.</summary>
-public sealed record HandOverCardView(string Action, string SerialNumber, HandOver? Waiting, string? ReceiverName);
+/// <summary>
+/// The "Hand over" card (mock-up S2 and S8): where its forms go, and the hand-over waiting with its receiver's name; with
+/// <paramref name="CannotChange"/>, why no hand-over can be asked (finding R20).
+/// </summary>
+public sealed record HandOverCardView(string Action, string SerialNumber, HandOver? Waiting, string? ReceiverName, string? CannotChange = null);
 
 /// <summary>
 /// The cluster admin's battery page (design 6.1 and 12, step 4a). A cluster admin manages only a battery of a cluster
@@ -141,6 +153,7 @@ public sealed class ClusterBatteryPages(
 
         var href = BatteryHref(pack.Id);
         var serial = BatteryPages.Text(pack, "batterySerialNumber") ?? pack.Id;
+        var cannotChange = frozenAs is null && await demo.WriteProblemAsync(sender, pack, cancellationToken) is not null ? WrittenAuthorisation.Missing : null; // finding R20
         var liveView = new RecordEditorView(
             TargetKind.Pack,
             pack.Id,
@@ -173,15 +186,25 @@ public sealed class ClusterBatteryPages(
             versions.OrderByDescending(version => version.Number).Select(version => new VersionRow(version, passports?.Check(version) ?? BatteryPassWeb.Dpp.Signing.SignatureCheck.Unchecked)).ToArray(),
             await documentStore.ListAsync(TargetKind.Pack, pack.Id, DocumentService.Accidents, cancellationToken))
         {
-            Status = await status.CardAsync(sources, active: frozenAs is null, href, forTeam: false, cancellationToken: cancellationToken),
+            Status = await status.CardAsync(sources, active: frozenAs is null, href, forTeam: false, cancellationToken: cancellationToken, cannotChange: cannotChange),
             Tiles = trends is null ? [] : await trends.TilesAsync(sources.Pack, sources.Model, cancellationToken),
             Chain = await PassportChains.ForAsync(store, pack, cancellationToken),
-            HandOver = new HandOverCardView($"{href}/handover", serial, waiting, waiting is null ? null : names.GetValueOrDefault(waiting.ToClusterId) ?? waiting.ToClusterId),
+            HandOver = new HandOverCardView($"{href}/handover", serial, waiting, waiting is null ? null : names.GetValueOrDefault(waiting.ToClusterId) ?? waiting.ToClusterId, cannotChange),
             History = history is null ? [] : await history.ForAsync(pack, sender.ClusterIds, cancellationToken),
             FrozenAs = frozenAs,
             MarkedSince = frozenAs is null ? null : pack.Mark?.AtUtc,
+            CannotChange = cannotChange,
         };
     }
+
+    /// <summary>
+    /// Why the cluster admin may not change this battery although they manage it (finding R20), as the page's one line;
+    /// null when they may, and for a battery they don't manage (the actions refuse those as before).
+    /// </summary>
+    public async Task<string?> CannotChangeAsync(ChangeSender sender, string packId, CancellationToken cancellationToken = default) =>
+        await ManagedAsync(sender, packId, cancellationToken) is { } pack && await demo.WriteProblemAsync(sender, pack, cancellationToken) is not null
+            ? WrittenAuthorisation.Missing
+            : null;
 
     /// <summary>Adds a note to the history as the cluster admin (decision 34); null when the sender may not manage the battery.</summary>
     public async Task<(string? Done, string? Problem)?> AddHistoryNoteAsync(ChangeSender sender, string packId, string? note, CancellationToken cancellationToken = default) =>

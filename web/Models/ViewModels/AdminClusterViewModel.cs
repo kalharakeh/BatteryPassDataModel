@@ -27,6 +27,9 @@ public sealed class ClusterViewModel
     public string Name { get; init; } = string.Empty;
     public string CreatedAt { get; init; } = string.Empty;
     public string UpdatedAt { get; init; } = string.Empty;
+
+    /// <summary>The cluster's written authorisation to update passport data (finding R20); null while it has none.</summary>
+    public BatteryPassWeb.Dpp.Access.ClusterAuthorisation? Authorisation { get; init; }
 }
 
 public sealed class ClusterMembershipViewModel
