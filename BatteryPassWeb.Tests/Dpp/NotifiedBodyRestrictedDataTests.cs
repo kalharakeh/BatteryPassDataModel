@@ -6,6 +6,7 @@ using BatteryPassWeb.Dpp.Pages;
 using BatteryPassWeb.Dpp.Publication;
 using BatteryPassWeb.Dpp.Signing;
 using BatteryPassWeb.Dpp.Store;
+using BatteryPassWeb.Services;
 using BatteryPassWeb.Tests.Demo;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -68,6 +69,58 @@ public sealed class NotifiedBodyRestrictedDataTests(MongoFixture mongo)
             }
         }
     }
+
+    /// <summary>The public data of every published demo battery as the rule before R05 gave it (round two, 4).</summary>
+    private static readonly string Snapshot = Path.Combine(Path.GetDirectoryName(DppTestFiles.RepoFile("BatteryPassWeb.Tests", "BatteryPassWeb.Tests.csproj"))!, "Dpp", "Snapshots", "r05-public-data-before.txt");
+
+    [Fact]
+    public async Task ThePublicData_ShouldBeTheBytesFromBeforeTheChange_WithAProofThatHolds()
+    {
+        using var rig = await DemoRig.StartAsync(mongo, dunsIds: true); // the real ID scheme: the same IDs at every run
+        await rig.Demo.SeedAsync(DemoRig.Who);
+        var pages = rig.Services.GetRequiredService<PassportPages>();
+        var text = new System.Text.StringBuilder();
+        foreach (var version in (await rig.Store.ListAllActiveVersionsAsync()).OrderBy(version => version.DigitalProductPassportId, StringComparer.Ordinal))
+        {
+            var data = (await pages.SummaryAsync(Reader.Anonymous, version.DigitalProductPassportId))!.PublicData!;
+
+            // The proof, checked as a reader would: the hash of the signed part, and the signature with the proof's key.
+            var proof = data[PublicPassport.ProofProperty]!;
+            var part = PublicPassport.SignedPart(data);
+            Assert.Equal(proof["hash"]!.GetValue<string>(), CanonicalJson.Hash(part));
+            using var key = System.Security.Cryptography.ECDsa.Create(new System.Security.Cryptography.ECParameters
+            {
+                Curve = System.Security.Cryptography.ECCurve.NamedCurves.nistP256,
+                Q = new System.Security.Cryptography.ECPoint { X = Base64Url.Decode(proof["publicKeyX"]!.GetValue<string>()), Y = Base64Url.Decode(proof["publicKeyY"]!.GetValue<string>()) },
+            });
+            Assert.True(key.VerifyData(
+                System.Text.Encoding.UTF8.GetBytes(CanonicalJson.Serialize(part)),
+                Base64Url.Decode(proof["proofValue"]!.GetValue<string>()),
+                System.Security.Cryptography.HashAlgorithmName.SHA256,
+                System.Security.Cryptography.DSASignatureFormat.IeeeP1363FixedFieldConcatenation));
+
+            // The bytes, without the proof (its signature differs at every signing) and with the seed's moments in time
+            // written as placeholders (the demo is seeded at the test's own time).
+            var values = data.DeepClone().AsObject();
+            values.Remove(PublicPassport.ProofProperty);
+            text.Append(version.DigitalProductPassportId).Append('\n').Append(Steady(CanonicalJson.Serialize(values))).Append('\n');
+        }
+
+        if (Environment.GetEnvironmentVariable("BP_WRITE_R05_SNAPSHOT") == "1")
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(Snapshot)!);
+            File.WriteAllText(Snapshot, text.ToString()); // written once, with the rule as it was before R05
+        }
+
+        Assert.Equal(File.ReadAllText(Snapshot), text.ToString());
+    }
+
+    /// <summary>The seed's moments in time (timestamps and days) as placeholders, so the bytes compare across runs.</summary>
+    private static string Steady(string json) =>
+        System.Text.RegularExpressions.Regex.Replace(
+            System.Text.RegularExpressions.Regex.Replace(json, @"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z", "<time>"),
+            @"\d{4}-\d{2}-\d{2}",
+            "<day>");
 
     [Fact]
     public void TheEditorsWords_ShouldNameNotifiedBodies_ForTheRestrictedData()

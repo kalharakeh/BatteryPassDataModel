@@ -53,7 +53,7 @@ public sealed record BatteryRow(
     public RegistryRecord? Registry { get; init; }
 
     /// <summary>A published real battery the team hasn't recorded in the EU registry yet (finding R02).</summary>
-    public bool NotInTheRegistry => Active is not null && !IsDemo && Registry is null;
+    public bool NotInTheRegistry => BatteryPages.InRegistryScope(Active is not null, IsDemo) && Registry is null;
 }
 
 public sealed record BatteriesPage(IReadOnlyList<BatteryRow> Rows, string Query, int Total)
@@ -311,8 +311,18 @@ public sealed class BatteryPages(
     LiveTrends? trends = null,
     Identifiers.BatteryIdPool? pool = null,
     PassportReader? passports = null,
-    PassportRemoval? removal = null)
+    PassportRemoval? removal = null,
+    TimeProvider? clock = null)
 {
+    /// <summary>The app's clock (finding R02, round two): the registry record's day and time.</summary>
+    private DateTime Now => (clock ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+
+    /// <summary>
+    /// Finding R02, round two: the one condition for the EU registry section, the list's count and the CSV: a published
+    /// passport that is active, outside the demo.
+    /// </summary>
+    public static bool InRegistryScope(bool active, bool demo) => active && !demo;
+
     public const string ClusterChangedEvent = "dpp.pack-cluster-changed";
 
     /// <summary>The audit entry of an EU registry record or its correction (finding R02).</summary>
@@ -433,13 +443,13 @@ public sealed class BatteryPages(
     public async Task<string?> RecordRegistryAsync(string who, string packId, string? registeredOn, string? registrationId, CancellationToken cancellationToken = default)
     {
         if (await store.GetAsync<BatteryPack>(packId, cancellationToken) is not { } pack
-            || await store.GetLatestVersionNumberAsync(packId, cancellationToken) == 0
+            || !InRegistryScope(await store.GetActiveVersionAsync(packId, cancellationToken) is not null, demo: false)
             || await new DemoBoundary(store, clusters).InsideAsync(pack, cancellationToken))
         {
-            return "Only a published battery outside the demo is recorded in the EU registry.";
+            return "Only a battery with an active passport, outside the demo, is recorded in the EU registry.";
         }
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(Now);
         if (!DateOnly.TryParseExact(registeredOn?.Trim(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var on) || on > today)
         {
             return "Give the day it was registered: today or a day before.";
@@ -456,7 +466,7 @@ public sealed class BatteryPages(
             RegisteredOn = on.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
             RegistrationId = id,
             RecordedBy = who,
-            RecordedAtUtc = DateTime.UtcNow,
+            RecordedAtUtc = Now,
         };
         await store.SetRegistryAsync(packId, record, cancellationToken);
         var before = pack.Registry;
@@ -756,8 +766,8 @@ public sealed class BatteryPages(
             RemovePassport = removal is null ? null : await removal.PlanAsync(packId, cancellationToken),
             RemovalStarted = await store.GetAsync<RemovedPassport>(packId, cancellationToken) is not null,
             // Finding R02: the EU registry record of a published real battery; demo batteries and drafts have no section.
-            Registry = versions.Count > 0 && !await new DemoBoundary(store, clusters).InsideAsync(pack, cancellationToken)
-                ? new RegistryCardView($"{href}/registry", pack.Registry, DateTime.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))
+            Registry = InRegistryScope(active is not null, await new DemoBoundary(store, clusters).InsideAsync(pack, cancellationToken))
+                ? new RegistryCardView($"{href}/registry", pack.Registry, Now.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))
                 : null,
         };
     }

@@ -44,11 +44,12 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     /// R02). The app's own data, for the team only; it claims nothing about the Registry's own format.
     /// </summary>
     [HttpGet("registry.csv")]
-    public async Task<IActionResult> RegistryCsv(CancellationToken cancellationToken)
+    public async Task<IActionResult> RegistryCsv([FromServices] TimeProvider clock, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(clock);
         var csv = BatteryPages.RegistryCsv(await pages.NotInTheRegistryAsync(cancellationToken));
         Response.Headers.CacheControl = "private, no-store";
-        return File(System.Text.Encoding.UTF8.GetPreamble().Concat(System.Text.Encoding.UTF8.GetBytes(csv)).ToArray(), "text/csv; charset=utf-8", $"not-in-the-eu-registry-{DateTime.UtcNow:yyyy-MM-dd}.csv");
+        return File(System.Text.Encoding.UTF8.GetPreamble().Concat(System.Text.Encoding.UTF8.GetBytes(csv)).ToArray(), "text/csv; charset=utf-8", $"not-in-the-eu-registry-{clock.GetUtcNow():yyyy-MM-dd}.csv");
     }
 
     /// <summary>

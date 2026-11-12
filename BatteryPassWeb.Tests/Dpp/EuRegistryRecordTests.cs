@@ -43,7 +43,7 @@ public sealed class EuRegistryRecordTests(MongoFixture mongo)
         }
 
         Assert.Equal(0, (await pages.TeamListAsync(null)).NotInTheRegistry);
-        Assert.Equal("Only a published battery outside the demo is recorded in the EU registry.", await pages.RecordRegistryAsync("team@example.com", (await rig.Store.ListAllActiveVersionsAsync())[0].PackId, "2026-11-01", "X"));
+        Assert.Equal("Only a battery with an active passport, outside the demo, is recorded in the EU registry.", await pages.RecordRegistryAsync("team@example.com", (await rig.Store.ListAllActiveVersionsAsync())[0].PackId, "2026-11-01", "X"));
     }
 
     [Fact]
@@ -145,7 +145,7 @@ public sealed class EuRegistryRecordTests(MongoFixture mongo)
         var controller = BatteriesControllerTests.Controller(rig, new Dictionary<string, string>());
 
         var saved = Assert.IsType<RedirectResult>(await controller.RecordRegistry(rig.PackId, "2026-11-02", "EU-9", CancellationToken.None));
-        var file = Assert.IsType<FileContentResult>(await BatteriesControllerTests.Controller(rig, new Dictionary<string, string>()).RegistryCsv(CancellationToken.None));
+        var file = Assert.IsType<FileContentResult>(await BatteriesControllerTests.Controller(rig, new Dictionary<string, string>()).RegistryCsv(TimeProvider.System, CancellationToken.None));
 
         Assert.Equal($"/admin/batteries/{rig.PackId}?section=registry", saved.Url);
         Assert.Equal("text/csv; charset=utf-8", file.ContentType);
