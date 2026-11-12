@@ -9695,6 +9695,25 @@ a:hover {
   word-break: break-word;
 }
 
+/* M1 round two F: in the Identifiers panel each label sits on its own line above its address, which then has the panel's
+   whole width. The address breaks after a "/" first: each part ending in "/" stays whole unless it alone is wider than the
+   line, which "anywhere" then breaks as a last resort. The copy button stays level with the address's first line. */
+.bp-report-identity-panel--identifiers .bp-passport-id:has(.bp-id-copy-row.is-full) {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  row-gap: 2px;
+}
+
+.bp-id-copy-row.is-full {
+  align-items: start;
+}
+
+.bp-id-value.is-full .bp-id-part {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
 /* M1: in the versions list the whole passport ID keeps a readable column on a tablet or desktop, rather than a narrow
    one that breaks it every few characters; a phone shows the list as cards, where it wraps across the card. */
 @media (min-width: 768px) {

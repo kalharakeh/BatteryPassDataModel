@@ -17,7 +17,8 @@ public sealed class IdFullAddressTests
         var partial = View("Shared", "_IdValue.cshtml");
 
         Assert.Contains("ViewData[\"IdFull\"] is true", partial, StringComparison.Ordinal);
-        Assert.Contains("<a class=\"bp-id-value is-full\" href=\"@Links.PassportUrl(Model)\">@Model</a>@await Html.PartialAsync(\"_CopyIdButton\", Model)", partial, StringComparison.Ordinal);
+        Assert.Contains("<a class=\"bp-id-value is-full\" href=\"@Links.PassportUrl(Model)\">@foreach (var part in Parts(Model)) {<span class=\"bp-id-part\">@part</span><wbr />}</a>@await Html.PartialAsync(\"_CopyIdButton\", Model)", partial, StringComparison.Ordinal);
+        Assert.Contains("yield return address[..(hostEnd + 1)];", partial, StringComparison.Ordinal); // "https://host/" stays whole
         Assert.Contains("@IdentifierForms.Display(Model)", partial, StringComparison.Ordinal); // the short form stays for lists
     }
 
@@ -63,5 +64,16 @@ public sealed class IdFullAddressTests
         Assert.Contains("white-space: normal;", m1, StringComparison.Ordinal);
         Assert.Contains("overflow-wrap: anywhere;", m1, StringComparison.Ordinal);
         Assert.Contains("text-overflow: clip;", m1, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ThePanel_ShouldPutEachLabelAboveItsAddress_AndBreakAfterASlashFirst()
+    {
+        var css = File.ReadAllText(DppTestFiles.RepoFile("web", "wwwroot", "css", "site.css"));
+        var m1 = css[css.IndexOf("/* M1 round two F", StringComparison.Ordinal)..];
+
+        Assert.Contains(".bp-report-identity-panel--identifiers .bp-passport-id:has(.bp-id-copy-row.is-full) {\n  grid-template-columns: minmax(0, 1fr);", m1, StringComparison.Ordinal);
+        Assert.Contains(".bp-id-value.is-full .bp-id-part {\n  display: inline-block;\n  max-width: 100%;\n  overflow-wrap: anywhere;", m1, StringComparison.Ordinal);
+        Assert.Contains(".bp-id-copy-row.is-full {\n  align-items: start;", m1, StringComparison.Ordinal);
     }
 }
