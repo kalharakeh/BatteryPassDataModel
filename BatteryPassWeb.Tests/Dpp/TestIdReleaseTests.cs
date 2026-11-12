@@ -69,7 +69,7 @@ public sealed class TestIdReleaseTests(MongoFixture mongo)
         Assert.True(released!.IsDemo);
         Assert.Contains("-TEST-", released.Identifier, StringComparison.Ordinal);
         Assert.Equal(counts, await pool.RealCountsAsync());
-        Assert.Equal("Released 2 test battery IDs. They contain TEST, aren't counted, and go when the demo data is cleared.", controller.TempData[ProductDataController.StatusKey]);
+        Assert.Equal("Released 2 test battery IDs. They contain TEST, aren't counted, and go when the demo data is reset or cleared.", controller.TempData[ProductDataController.StatusKey]);
     }
 
     [Fact]
@@ -140,13 +140,35 @@ public sealed class TestIdReleaseTests(MongoFixture mongo)
     }
 
     [Fact]
+    public async Task ResettingTheDemoData_ShouldAlsoRemoveTestIds_AndTheirBatteriesOnRealProductData()
+    {
+        var (rig, pool) = await SeededAsync(mongo);
+        using var _ = rig;
+        var pages = rig.Services.GetRequiredService<ProductDataPages>();
+        var compact = (await rig.Store.ListAsync<BatteryFamily>()).Single(family => family.Name == "Compact");
+        var (familyId, _) = await pages.CopyFamilyAsRealAsync(Who, compact.Id, "Compact S");
+        var demoOperator = (await rig.Store.ListAsync<EconomicOperator>()).Single(item => item.Name == "Scania Industrial Batteries (demo)");
+        var (operatorId, _) = await pages.CopyOperatorAsRealAsync(Who, demoOperator.Id, "Scania Industrial Batteries");
+        var realBatch = (await rig.Store.ListBatchesAsync((await rig.Store.ListModelsAsync(familyId!)).Single(model => model.Name == "Compact 7M").Id)).Single();
+        await pool.ReleaseAsync(Who, new ReleaseRequest("Try-out", null, [], "TRY-0001", IsDemo: true));
+        var made = await rig.Services.GetRequiredService<PackCreationService>().CreateAsync(ChangeSender.Team(Who), new NewPack(realBatch.Id, operatorId!, null, Values("TRY-0001"), FromPool: true));
+
+        var reset = await rig.Demo.ResetAsync(Who);
+
+        Assert.Empty(reset.Notes);
+        Assert.Null(await pool.GetAsync("TRY-0001"));
+        Assert.Null(await rig.Store.GetAsync<BatteryPack>(made.Pack!.Id));
+        Assert.NotNull(await rig.Store.GetAsync<ProductionBatch>(realBatch.Id));
+    }
+
+    [Fact]
     public void TheReleaseForm_ShouldHaveTheTick_WithWhatItMeans()
     {
         var view = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "BatteryIds", "Index.cshtml"));
 
         Assert.Contains("<input type=\"checkbox\" name=\"isTest\" value=\"true\" checked=\"@Model.Form.IsTest\" />", view, StringComparison.Ordinal);
         Assert.Contains("Test IDs (for trying things out; they contain TEST and are never real battery IDs)", view, StringComparison.Ordinal);
-        Assert.Contains("They aren't counted in the numbers above, and Clear demo data removes them with their batteries.", view, StringComparison.Ordinal);
+        Assert.Contains("They aren't counted in the numbers above, and Reset demo data and Clear demo data remove them with their batteries.", view, StringComparison.Ordinal);
     }
 
     private sealed class NoTempDataStorage : ITempDataProvider

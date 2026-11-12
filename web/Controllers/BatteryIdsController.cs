@@ -102,12 +102,12 @@ public sealed class BatteryIdsController(BatteryIdPool pool, DppStore store) : C
         var ranges = Enumerable.Range(0, count)
             .Select(index => new IdRange(At(start, index), At(end, index), At(quantity, index)))
             .ToArray();
-        // Decision 67: "Test IDs" ticked releases IDs marked TEST, never real ones, which Clear demo data removes.
+        // Decision 67: "Test IDs" ticked releases IDs marked TEST, never real ones, which resetting or clearing the demo data removes.
         var isTest = Request.HasFormContentType && Request.Form["isTest"] == "true";
         var result = await pool.ReleaseAsync(Who, new ReleaseRequest(reference, modelId, ranges, list, IsDemo: isTest), cancellationToken);
         if (result.Done && isTest)
         {
-            TempData[ProductDataController.StatusKey] = $"Released {result.Released.ToString(CultureInfo.InvariantCulture)} test battery {(result.Released == 1 ? "ID" : "IDs")}. They contain TEST, aren't counted, and go when the demo data is cleared.";
+            TempData[ProductDataController.StatusKey] = $"Released {result.Released.ToString(CultureInfo.InvariantCulture)} test battery {(result.Released == 1 ? "ID" : "IDs")}. They contain TEST, aren't counted, and go when the demo data is reset or cleared.";
             return Redirect($"/admin/battery-ids/releases/{Uri.EscapeDataString(result.ReleaseId!)}?released=true");
         }
 
