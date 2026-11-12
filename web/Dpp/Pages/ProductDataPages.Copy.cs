@@ -120,6 +120,11 @@ public sealed partial class ProductDataPages
                 ModuleDescription = source.ModuleDescription,
                 PictureContentType = source.PictureContentType,
                 ExampleDocumentIds = [.. documentIds.Values],
+                // The model's three answers come with the copy (R01): they are the demo model's, so the team checks them
+                // with the values; without them every battery of the copy would wait for the questions first.
+                HasCommercialWarranty = source.HasCommercialWarranty,
+                MadeForCyclingUse = source.MadeForCyclingUse,
+                CadmiumOrLeadAboveLimit = source.CadmiumOrLeadAboveLimit,
             };
             if (source.PictureFileId is { } modelPicture)
             {
