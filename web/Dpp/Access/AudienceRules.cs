@@ -51,7 +51,9 @@ public static class AudienceRules
         {
             Audience.Purchaser => ownsTheBattery,
             Audience.Authorities => reader.Roles.Contains(ReaderRole.NotifiedBody) || reader.Roles.Contains(ReaderRole.Commission),
+            // R05 (the owner, 11 Nov 2026): notified bodies also see the model's restricted data, as Article 77(2)(b) says.
             Audience.Shared => ownsTheBattery
+                || reader.Roles.Contains(ReaderRole.NotifiedBody)
                 || reader.Roles.Contains(ReaderRole.Commission)
                 || (reader.Roles.Contains(ReaderRole.LiRepair) && attribute.SharedWith.HasFlag(LegitimateInterestGroups.Repair))
                 || (reader.Roles.Contains(ReaderRole.LiRecycling) && attribute.SharedWith.HasFlag(LegitimateInterestGroups.Recycling))

@@ -160,7 +160,7 @@ public sealed class PassportPages(DppStore store, DemoBoundary demo, PassportRea
     private static readonly (Audience Audience, string Key, string Title, string Note)[] AudienceTexts =
     [
         (Audience.Purchaser, "purchaser", "Purchaser", "Seen by the battery's cluster and market surveillance."),
-        (Audience.Shared, "shared", "Shared", "Seen by the battery's cluster, market surveillance, the Commission and, per value, repairers, recyclers and treatment facilities with a legitimate interest."),
+        (Audience.Shared, "shared", "Shared", "Seen by the battery's cluster, notified bodies, market surveillance, the Commission and, per value, repairers, recyclers and treatment facilities with a legitimate interest."),
         (Audience.Authorities, "authorities", "Authorities", "Seen by notified bodies, market surveillance and the Commission."),
     ];
 

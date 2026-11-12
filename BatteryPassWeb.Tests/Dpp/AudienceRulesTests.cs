@@ -60,13 +60,28 @@ public sealed class AudienceRulesTests
         Assert.False(AudienceRules.MaySee(reader, AttributeCatalog.ByNumber(63), [OwnCluster]));
     }
 
+    [Theory]
+    [InlineData(43)]
+    [InlineData(45)]
+    [InlineData(46)]
+    [InlineData(47)]
+    [InlineData(48)]
+    public void MaySee_ShouldShowANotifiedBodyTheModelsRestrictedData_WhateverTheBatterysCluster(int number)
+    {
+        var notifiedBody = ReaderFor("notified-body");
+
+        Assert.True(AudienceRules.MaySee(notifiedBody, AttributeCatalog.ByNumber(number), [OwnCluster]));
+        Assert.True(AudienceRules.MaySee(notifiedBody, AttributeCatalog.ByNumber(number), []));
+        Assert.False(AudienceRules.MaySee(notifiedBody, AttributeCatalog.ByNumber(63), [OwnCluster])); // purchaser data stays theirs
+    }
+
     // Design 5.2 written out per reader; the shared rows by attribute number, from design 5.1.
     internal static bool Expected(string kind, AttributeDefinition attribute) => kind switch
     {
         "team" or "market-surveillance" => true,
         "anonymous" or "other-cluster" => attribute.Audience == Audience.Public,
         "own-cluster-user" or "own-cluster-admin" => attribute.Audience is Audience.Public or Audience.Purchaser or Audience.Shared,
-        "notified-body" => attribute.Audience is Audience.Public or Audience.Authorities,
+        "notified-body" => attribute.Audience is Audience.Public or Audience.Shared or Audience.Authorities, // R05: the model's restricted data too (the owner, 11 Nov 2026)
         "commission" => attribute.Audience is Audience.Public or Audience.Shared or Audience.Authorities,
         "li-repair" => attribute.Audience == Audience.Public || attribute.Number is 43 or 45 or 46 or 47 or 48,
         "li-recycling" => attribute.Audience == Audience.Public || attribute.Number is 43 or 45 or 48,

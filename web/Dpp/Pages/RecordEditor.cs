@@ -136,7 +136,7 @@ public sealed record EditorField(
     public string SeenBy => Attribute.Audience switch
     {
         Audience.Authorities => "notified bodies, market surveillance, the Commission and your team",
-        Audience.Shared => $"{SharedGroups()}, the battery's cluster, market surveillance, the Commission and your team",
+        Audience.Shared => $"{SharedGroups()}, the battery's cluster, notified bodies, market surveillance, the Commission and your team",
         Audience.Purchaser => "the battery's cluster, market surveillance and your team",
         _ => "everyone",
     };
