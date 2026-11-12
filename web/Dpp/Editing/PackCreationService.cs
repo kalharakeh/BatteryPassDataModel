@@ -40,7 +40,7 @@ public sealed class PackCreationService(
     public const string NotAvailable = "that serial number isn't an available released battery ID for this battery's model; pick one released on the Battery IDs page";
 
     /// <summary>Finding R08: a removed passport's battery ID is never used again.</summary>
-    public const string RemovedId = "that battery ID belonged to a recycled battery whose passport was removed, so it can't be used again";
+    public const string RemovedId = "that battery ID belonged to a battery whose passport was removed after it was recycled or exported, so it can't be used again";
 
     public const string AuditEventType = "dpp.pack-created";
 
@@ -143,6 +143,14 @@ public sealed class PackCreationService(
             if (onDemoData && !pack.IsDemo && await pool.GetAsync(evaluation.Accepted["batterySerialNumber"].GetValue<string>(), cancellationToken) is { IsDemo: false })
             {
                 return Failed(DemoDataRule.Message);
+            }
+
+            // A removed passport's ID never comes back (finding R08): asked before the ID is picked, so nothing is left "used".
+            var asked = evaluation.Accepted["batterySerialNumber"].GetValue<string>();
+            if (await store.FindRemovedAsync(asked, cancellationToken) is not null
+                || (await pool.GetAsync(asked, cancellationToken) is { } released && await store.FindRemovedAsync(released.Identifier, cancellationToken) is not null))
+            {
+                return Failed(RemovedId);
             }
 
             if (await pool.PickAsync(evaluation.Accepted["batterySerialNumber"].GetValue<string>(), pack.Id, batch.ModelId, cancellationToken) is not { } picked)

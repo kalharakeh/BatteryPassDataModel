@@ -122,6 +122,12 @@ public sealed class SavePipeline(
                 .Select(key => new KeyResult(key, KeyOutcome.Rejected, DemoScope.RealBattery)).ToArray());
         }
 
+        // A battery being removed takes no change (finding R08): its marker is written before anything is deleted.
+        if (changes.Target == TargetKind.Pack && await store.GetAsync<RemovedPassport>(changes.TargetId, cancellationToken) is not null)
+        {
+            return new SaveResult(false, false, []);
+        }
+
         // A cluster admin or battery system changes a battery only once its cluster is authorised in writing (finding R20).
         // Refused before anything is marked or written, preview included, so a refused save publishes nothing.
         if (changes.Target == TargetKind.Pack && await demo.WriteProblemAsync(sender, target.ClusterId, cancellationToken) is { } unauthorised)

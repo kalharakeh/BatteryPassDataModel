@@ -174,7 +174,7 @@ public sealed class BatteryPack : IDppRecord
 
 /// <summary>
 /// The marker a removed passport leaves (finding R08): the IDs it answered to (the pack, the battery ID in both forms,
-/// every version's passport ID), so that none is used again and each answers "recycled" (410). No passport data.
+/// every version's passport ID), so that none is used again and each answers 410. No passport data.
 /// </summary>
 public sealed class RemovedPassport : IDppRecord
 {
@@ -192,6 +192,9 @@ public sealed class RemovedPassport : IDppRecord
 
     /// <summary>A demo battery's marker: clearing the demo data removes it, so the demo's IDs are made again.</summary>
     public bool IsDemo { get; init; }
+
+    /// <summary>The pack whose removal took this one: itself, or the newest passport of the same battery (decision 73).</summary>
+    public string? Newest { get; init; }
 }
 
 /// <summary>A battery's registration in the EU's DPP Registry (finding R02): when, its ID there, who recorded it and when.</summary>

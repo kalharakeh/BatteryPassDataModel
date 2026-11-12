@@ -52,8 +52,8 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     }
 
     /// <summary>
-    /// Finding R08: removes a recycled battery's passport, marked for deletion, once its ID is typed. Its addresses then
-    /// answer that the battery was recycled; one audit entry stays.
+    /// Finding R08: removes the passport of a battery marked for deletion (recycled or exported), with its earlier ones, once its ID is typed. Its addresses then
+    /// answer that it no longer exists; one audit entry stays.
     /// </summary>
     [HttpPost("{packId}/remove-passport")]
     [ValidateAntiForgeryToken]
@@ -68,7 +68,7 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
             return Redirect(BatteryPages.BatteryHref(packId));
         }
 
-        TempData[ProductDataController.StatusKey] = $"The passport of battery {serial} is removed. Its addresses now say the battery was recycled; the audit log keeps who removed it and when.";
+        TempData[ProductDataController.StatusKey] = $"The passport of battery {serial} is removed. Its addresses now say it no longer exists; the audit log keeps who removed it and when.";
         return Redirect("/admin/batteries");
     }
 

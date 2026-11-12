@@ -43,7 +43,7 @@ public static class DppServiceCollectionExtensions
         services.AddSingleton<StatusChangeService>();
         services.AddSingleton<SuccessionService>();
         services.AddSingleton<PassportMarks>();
-        services.AddSingleton<PassportRemoval>(); // a recycled battery's passport removed (finding R08)
+        services.AddSingleton<PassportRemoval>(); // a passport removed after recycling or export (finding R08)
         services.AddSingleton<HandOverService>();
         services.AddSingleton<PassportSigner>();
         services.AddSingleton<PublicationChecks>();

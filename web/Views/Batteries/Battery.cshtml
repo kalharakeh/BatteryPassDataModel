@@ -116,6 +116,16 @@
             </div>
         </div>
 
+        @* Finding R08: a removal that stopped half way; the addresses already answer 410, the rest is finished here. *@
+        @if (Model.RemovalStarted)
+        {
+            <form method="post" action="@Model.RemovePassportAction" class="bp-status-notice" id="removal-notice" data-removal-started>
+                @Html.AntiForgeryToken()
+                <svg class="bp-i" aria-hidden="true"><use href="#i-alert" /></svg>
+                <span><strong>The removal of this passport stopped before it was finished.</strong> Its addresses already say it no longer exists.</span>
+                <button type="submit" class="bp-danger-button bp-button-compact">Finish removing</button>
+            </form>
+        }
         @if (Model.Marks.Marked)
         {
             @* Invalid or marked for deletion: the reason and the one Undo, in reach (owner's points 7 and 17). *@
@@ -131,9 +141,9 @@
                     Nothing on the passport changes until it's undone.
                 </span>
                 <button type="submit" class="bp-secondary-button bp-button-compact">Undo: make it active again</button>
-                @if (Model.RemovePassportAction is not null)
+                @if (Model.RemovePassport is not null && !Model.RemovalStarted)
                 {
-                    @* Finding R08: once the battery is recycled, its passport can cease to exist. *@
+                    @* Finding R08: once the battery is recycled or exported, its passport can cease to exist. *@
                     <button type="button" class="bp-danger-button bp-button-compact" data-open-dialog="remove-passport-dialog">Remove the passport…</button>
                 }
             </form>
@@ -421,9 +431,9 @@
     </div>
 
     @* The windows, at page level: one inside a hidden section can't open. *@
-    @if (Model.RemovePassportAction is { } removeAction)
+    @if (Model.RemovePassport is { } removal && !Model.RemovalStarted)
     {
-        @await Html.PartialAsync("~/Views/Batteries/_RemovePassportDialog.cshtml", (removeAction, Model.Identifier))
+        @await Html.PartialAsync("~/Views/Batteries/_RemovePassportDialog.cshtml", (Model.RemovePassportAction, removal))
     }
     <dialog id="cluster-dialog" class="bp-modal-panel bp-dialog" aria-labelledby="cluster-dialog-title">
         <form method="post" action="@href/cluster">

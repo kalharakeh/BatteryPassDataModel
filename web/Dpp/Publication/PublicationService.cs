@@ -42,7 +42,10 @@ public sealed record PassportCheckResult(int Checked, int Marked, int Cleared, i
     /// <summary>A check was already running in this app; this one did nothing (round seven, 6).</summary>
     public bool AlreadyRunning { get; init; }
 
-    public bool ChangedAnything => Marked + Cleared + Archived > 0;
+    /// <summary>Removals that had stopped half way, finished by this check (finding R08).</summary>
+    public int RemovalsFinished { get; init; }
+
+    public bool ChangedAnything => Marked + Cleared + Archived + RemovalsFinished > 0;
 
     /// <summary>The plain result line the battery list shows.</summary>
     public string Words
@@ -59,6 +62,7 @@ public sealed record PassportCheckResult(int Checked, int Marked, int Cleared, i
                 ? $"Checked {batteries}: {Marked} now marked as waiting, {Cleared} no longer, {Archived} old {(Archived == 1 ? "version" : "versions")} archived."
                 : $"Checked {batteries}: nothing to put right.";
             var failed = Failed == 0 ? string.Empty : $" {Failed} couldn't be checked; the next check tries again.";
+            failed += RemovalsFinished == 0 ? string.Empty : $" Finished removing {RemovalsFinished} {(RemovalsFinished == 1 ? "passport" : "passports")} whose removal had stopped half way.";
             var stopped = StoppedEarly ? " The app was stopping, so the check stopped early." : string.Empty;
             return what + failed + stopped;
         }
@@ -89,7 +93,8 @@ public sealed class PublicationService(
     ApplicationAuditService audit,
     TimeProvider clock,
     BatteryIdPool? pool = null,
-    ILogger<PublicationService>? logger = null) : IPackChangeListener
+    ILogger<PublicationService>? logger = null,
+    PassportRemoval? removal = null) : IPackChangeListener
 {
     public const string PublishedEvent = "dpp.published";
     public const string BlockedEvent = "dpp.publish-blocked";
@@ -183,6 +188,26 @@ public sealed class PublicationService(
 
     private async Task<PassportCheckResult> ReconcileCoreAsync(string who, CancellationToken cancellationToken)
     {
+        // Finding R08: a removal that stopped half way is finished here, and logged; a battery being removed is passed by.
+        var removalsFinished = 0;
+        if (removal is not null)
+        {
+            foreach (var packId in await removal.UnfinishedAsync(cancellationToken))
+            {
+                try
+                {
+                    await removal.FinishAsync(packId, CancellationToken.None);
+                    removalsFinished++;
+                    logger?.LogInformation("The passport check finished removing pack {PackId}, whose removal had stopped half way.", packId);
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    logger?.LogError(exception, "The passport check couldn't finish removing pack {PackId}; the next check tries again.", packId);
+                }
+            }
+        }
+
+        var removedIds = (await store.ListAsync<RemovedPassport>(cancellationToken)).Select(marker => marker.Id).ToHashSet(StringComparer.Ordinal);
         var packs = await store.ListAsync<BatteryPack>(cancellationToken);
         // Only the active versions in full, the content compared; the battery, number and status of all (round seven, 2).
         var newest = (await store.ListVersionSummariesAsync(cancellationToken)).GroupBy(version => version.PackId, StringComparer.Ordinal)
@@ -195,6 +220,7 @@ public sealed class PublicationService(
         var models = (await store.ListAsync<BatteryModel>(cancellationToken)).ToDictionary(item => item.Id, StringComparer.Ordinal);
         var sites = (await store.ListAsync<ManufacturingSite>(cancellationToken)).ToDictionary(item => item.Id, StringComparer.Ordinal);
         var operators = (await store.ListAsync<EconomicOperator>(cancellationToken)).ToDictionary(item => item.Id, StringComparer.Ordinal);
+        logger?.LogDebug("The passport check read the active versions of {Count} batteries.", actives.Count);
 
         var now = clock.GetUtcNow().UtcDateTime;
         int checkedCount = 0, marked = 0, cleared = 0, archived = 0, failed = 0;
@@ -211,9 +237,9 @@ public sealed class PublicationService(
                     break;
                 }
 
-                if (!actives.TryGetValue(pack.Id, out var versions))
+                if (removedIds.Contains(pack.Id) || !actives.TryGetValue(pack.Id, out var versions))
                 {
-                    continue; // a draft, or no longer active
+                    continue; // being removed (finding R08), a draft, or no longer active
                 }
 
                 if (!newest.TryGetValue(pack.Id, out var newestVersion))
@@ -244,13 +270,13 @@ public sealed class PublicationService(
         finally
         {
             // Written for what was done, also when the run ended early; the counts are what changed (round seven, 3).
-            if (marked + cleared + archived + failed > 0)
+            if (marked + cleared + archived + failed + removalsFinished > 0)
             {
-                await WriteCheckedAsync(who, new PassportCheckResult(checkedCount, marked, cleared, archived, serials) { Failed = failed, StoppedEarly = stoppedEarly });
+                await WriteCheckedAsync(who, new PassportCheckResult(checkedCount, marked, cleared, archived, serials) { Failed = failed, StoppedEarly = stoppedEarly, RemovalsFinished = removalsFinished });
             }
         }
 
-        return new PassportCheckResult(checkedCount, marked, cleared, archived, serials) { Failed = failed, StoppedEarly = stoppedEarly };
+        return new PassportCheckResult(checkedCount, marked, cleared, archived, serials) { Failed = failed, StoppedEarly = stoppedEarly, RemovalsFinished = removalsFinished };
     }
 
     /// <summary>
@@ -275,6 +301,7 @@ public sealed class PublicationService(
                     ["archived"] = done.Archived,
                     ["failed"] = done.Failed,
                     ["stoppedEarly"] = done.StoppedEarly,
+                    ["removalsFinished"] = done.RemovalsFinished,
                     ["batteries"] = new BsonArray(done.Serials),
                 },
                 entityType: "dpp-passports",
@@ -711,6 +738,12 @@ public sealed class PublicationService(
         if (await store.PassportStatusAsync(packId, cancellationToken) is { } status && DppStatuses.IsNoLongerActive(status))
         {
             return new PublicationResult(null, null, NoNewVersion(status));
+        }
+
+        // A battery being removed never gets a version again (finding R08): its marker comes before any deletion.
+        if (await store.GetAsync<RemovedPassport>(packId, cancellationToken) is not null)
+        {
+            return new PublicationResult(null, null, "the passport was removed after the battery was recycled or exported");
         }
 
         // From the first write onward nothing runs on the request's token (round five). A FIRST publication is marked

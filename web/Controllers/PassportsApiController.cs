@@ -45,11 +45,15 @@ public sealed class PassportsApiController(DppReaders readers, BatteryPages batt
     [HttpGet("{id}")]
     public async Task<IActionResult> Detail(string id, CancellationToken cancellationToken)
     {
+        if (await PassportController.GoneAsync(this, id, json: true, cancellationToken) is { } gone)
+        {
+            return gone; // finding R08: asked before anything is looked up
+        }
+
         var passport = await api.ReadAsync(await readers.ForAsync(User, cancellationToken), id, cancellationToken);
         if (passport is null)
         {
-            return await PassportController.GoneAsync(this, id, json: true, cancellationToken) // finding R08
-                ?? NotFound(new { error = DppApiController.NoPassport, id });
+            return NotFound(new { error = DppApiController.NoPassport, id });
         }
 
         return Ok(new
@@ -72,11 +76,15 @@ public sealed class PassportsApiController(DppReaders readers, BatteryPages batt
     [HttpGet("{id}/verify")]
     public async Task<IActionResult> Verify(string id, CancellationToken cancellationToken)
     {
+        if (await PassportController.GoneAsync(this, id, json: true, cancellationToken) is { } gone)
+        {
+            return gone; // finding R08: before the lookup, so a version left by a removal that stopped never answers
+        }
+
         var version = await pages.FindAsync(id, cancellationToken);
         if (version is null)
         {
-            return await PassportController.GoneAsync(this, id, json: true, cancellationToken) // finding R08
-                ?? NotFound(new { error = DppApiController.NoPassport, id });
+            return NotFound(new { error = DppApiController.NoPassport, id });
         }
 
         var signature = api.Signature(version);

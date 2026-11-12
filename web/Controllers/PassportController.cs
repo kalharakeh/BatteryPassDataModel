@@ -52,19 +52,19 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
     [HttpGet("{id}")]
     public async Task<IActionResult> Summary(string id, CancellationToken cancellationToken, [FromServices] BatteryPassWeb.Dpp.Identifiers.BatteryIdPool? pool = null)
     {
+        Response.Headers[HeaderNames.Vary] = HeaderNames.Accept;
+        if (await GoneAsync(this, Uri.UnescapeDataString(id), json: false, cancellationToken) is { } gone)
+        {
+            return gone; // finding R08: removed after recycling or export; asked before anything is looked up
+        }
+
         var reader = await readers.ForAsync(User, cancellationToken);
         var page = await pages.SummaryAsync(reader, Uri.UnescapeDataString(id), cancellationToken);
-        Response.Headers[HeaderNames.Vary] = HeaderNames.Accept;
         if (page is not null)
         {
             // The same passport as data (finding R07), for programs that read the page's headers.
             Response.Headers[HeaderNames.Link] = $"<{page.DataHref}>; rel=\"alternate\"; type=\"application/json\"";
             return View(nameof(Summary), page);
-        }
-
-        if (await GoneAsync(this, Uri.UnescapeDataString(id), json: false, cancellationToken) is { } gone)
-        {
-            return gone; // finding R08: removed after recycling
         }
 
         // A released ID scanned before its passport is published (6d): ours, but nothing to show yet; a voided one isn't.
@@ -107,12 +107,16 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
         // The same as the page, which gets it from its form protection (C3 round two, point 6), the 404 included.
         Response.Headers[HeaderNames.CacheControl] = "no-cache, no-store";
         Response.Headers[HeaderNames.Pragma] = "no-cache";
+        if (await GoneAsync(this, id, json: true, cancellationToken) is { } gone)
+        {
+            return gone; // finding R08: the same headers and read limit, asked before anything is looked up
+        }
+
         var reader = await readers.ForAsync(User, cancellationToken);
         var page = await pages.SummaryAsync(reader, id, cancellationToken);
         if (page?.PublicData is not { } data)
         {
-            return await GoneAsync(this, id, json: true, cancellationToken) // finding R08: the same headers and read limit
-                ?? NotFound(new { error = "No published passport has this ID." });
+            return NotFound(new { error = "No published passport has this ID." });
         }
 
         return Content(data.ToJsonString(), "application/json");
@@ -153,11 +157,16 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
             return Challenge();
         }
 
+        if (await GoneAsync(this, Uri.UnescapeDataString(id), json: false, cancellationToken) is { } gone)
+        {
+            return gone; // finding R08
+        }
+
         var reader = await readers.ForAsync(User, cancellationToken);
         var page = await pages.DetailAsync(reader, Uri.UnescapeDataString(id), cancellationToken);
         if (page is null)
         {
-            return await GoneAsync(this, Uri.UnescapeDataString(id), json: false, cancellationToken) ?? NotFoundPage(); // finding R08
+            return NotFoundPage();
         }
 
         // The current version's live values over the last week, for those who may see them (decision 30), from the same

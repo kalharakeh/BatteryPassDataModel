@@ -201,9 +201,16 @@ public sealed record BatteryPage(
     public string? HandOverTo { get; init; }
 
     /// <summary>
-    /// Finding R08: where "Remove the passport" posts, for a passport marked for deletion after recycling; null otherwise.
+    /// Finding R08: what "Remove the passport" takes (this passport and its earlier ones), for a passport marked for
+    /// deletion; null otherwise.
     /// </summary>
-    public string? RemovePassportAction => Marks.Status == DppStatuses.MarkedForDeletion ? $"{BatteryPages.BatteryHref(Pack.Id)}/remove-passport" : null;
+    public RemovalPlan? RemovePassport { get; init; }
+
+    /// <summary>Finding R08: a removal of this battery started and stopped half way; the page offers "Finish removing".</summary>
+    public bool RemovalStarted { get; init; }
+
+    /// <summary>Where "Remove the passport" and "Finish removing" post.</summary>
+    public string RemovePassportAction => $"{BatteryPages.BatteryHref(Pack.Id)}/remove-passport";
 
     /// <summary>The "EU registry" section (finding R02), for a published real battery only; null for drafts and demo batteries.</summary>
     public RegistryCardView? Registry { get; init; }
@@ -303,7 +310,8 @@ public sealed class BatteryPages(
     StatusPages status,
     LiveTrends? trends = null,
     Identifiers.BatteryIdPool? pool = null,
-    PassportReader? passports = null)
+    PassportReader? passports = null,
+    PassportRemoval? removal = null)
 {
     public const string ClusterChangedEvent = "dpp.pack-cluster-changed";
 
@@ -744,6 +752,9 @@ public sealed class BatteryPages(
             HandOverTo = await store.FindWaitingHandOverAsync(packId, cancellationToken) is { } waiting
                 ? clusterChoices.FirstOrDefault(cluster => string.Equals(cluster.Id, waiting.ToClusterId, StringComparison.OrdinalIgnoreCase))?.Name ?? waiting.ToClusterId
                 : null,
+            // Finding R08: what removing takes, for a passport marked for deletion; a removal that stopped half way.
+            RemovePassport = removal is null ? null : await removal.PlanAsync(packId, cancellationToken),
+            RemovalStarted = await store.GetAsync<RemovedPassport>(packId, cancellationToken) is not null,
             // Finding R02: the EU registry record of a published real battery; demo batteries and drafts have no section.
             Registry = versions.Count > 0 && !await new DemoBoundary(store, clusters).InsideAsync(pack, cancellationToken)
                 ? new RegistryCardView($"{href}/registry", pack.Registry, DateTime.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))
@@ -906,6 +917,11 @@ public sealed class BatteryPages(
         if (await store.GetLatestVersionNumberAsync(packId, cancellationToken) > 0)
         {
             return ("its passport is published, so it stays with its versions", serial);
+        }
+
+        if (await store.GetAsync<RemovedPassport>(packId, cancellationToken) is not null)
+        {
+            return ("its passport is being removed; finish removing it instead", serial); // finding R08: its ID never comes back
         }
 
         await store.DeleteAsync<BatteryPack>(packId, cancellationToken);

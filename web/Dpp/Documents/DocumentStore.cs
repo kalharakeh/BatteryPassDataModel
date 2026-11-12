@@ -106,6 +106,10 @@ public sealed class DocumentStore
             .ToListAsync(cancellationToken);
     }
 
+    /// <summary>Every document of a record, whatever its attribute.</summary>
+    public async Task<IReadOnlyList<DppDocument>> ListOwnedAsync(TargetKind ownerKind, string ownerId, CancellationToken cancellationToken = default) =>
+        _database is null ? [] : await Collection().Find(d => d.OwnerKind == ownerKind && d.OwnerId == ownerId).ToListAsync(cancellationToken);
+
     /// <summary>Deletes every document of a removed record, with its stored file.</summary>
     public async Task DeleteOwnedAsync(TargetKind ownerKind, string ownerId, CancellationToken cancellationToken = default)
     {

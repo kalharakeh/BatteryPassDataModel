@@ -86,9 +86,13 @@ public sealed class DemoDataService(
     public bool AccountsPossible => !string.IsNullOrWhiteSpace(options.Value.DemoUsersPassword);
 
     /// <summary>True when any demo battery is there; false without a database.</summary>
+    /// <summary>
+    /// Whether the demo catalogue is there (its families), so it is reset or cleared rather than seeded again. Not "a demo
+    /// battery exists": every demo battery may have had its passport removed (finding R08).
+    /// </summary>
     public async Task<bool> HasDemoDataAsync(CancellationToken cancellationToken = default) =>
         mongo.Database is not null
-        && await Collection(DppStore.Packs).CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq(Mark, true), cancellationToken: cancellationToken) > 0;
+        && await Collection(DppStore.Families).CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq(Mark, true), cancellationToken: cancellationToken) > 0;
 
     /// <summary>Clears the demo data, then seeds it again.</summary>
     public async Task<DemoResult> ResetAsync(string who, CancellationToken cancellationToken = default)
@@ -137,6 +141,9 @@ public sealed class DemoDataService(
         {
             return new DemoResult([], inTheWay, []); // nothing seeded into a real cluster (finding R03, point 7)
         }
+
+        // The markers of removed demo passports go first, so the seed can make the demo's IDs again (finding R08).
+        await Collection(DppStore.RemovedPassports).DeleteManyAsync(Builders<BsonDocument>.Filter.Eq("IsDemo", true), cancellationToken);
 
         var team = ChangeSender.Team(who);
         var notes = new List<string>();
