@@ -162,9 +162,25 @@ public sealed class TestIdReleaseTests(MongoFixture mongo)
     }
 
     [Fact]
+    public async Task TestIds_ShouldBeForAnyModel_EvenWithAModelChosen()
+    {
+        var (rig, pool) = await SeededAsync(mongo);
+        using var _ = rig;
+        var models = await rig.Store.ListAsync<BatteryModel>();
+
+        await Controller(rig, test: true).ReleaseIds("Try-out", models[0].Id, [], [], [], "TRY-0001", CancellationToken.None);
+        await Controller(rig, test: false).ReleaseIds("PO 1", models[0].Id, [], [], [], "VPC-12221", CancellationToken.None);
+
+        Assert.Null((await pool.GetAsync("TRY-0001"))!.ModelId);
+        Assert.Contains(await pool.AvailableAsync(models[1].Id), item => item.SerialNumber == "TRY-0001"); // offered for another model's batteries
+        Assert.Equal(models[0].Id, (await pool.GetAsync("VPC-12221"))!.ModelId); // a real release keeps its model
+    }
+
+    [Fact]
     public void TheReleaseForm_ShouldHaveTheTick_WithWhatItMeans()
     {
         var view = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "BatteryIds", "Index.cshtml"));
+        Assert.Contains("Test IDs are for any model, so the model above is ignored.", view, StringComparison.Ordinal);
 
         Assert.Contains("<input type=\"checkbox\" name=\"isTest\" value=\"true\" checked=\"@Model.Form.IsTest\" />", view, StringComparison.Ordinal);
         Assert.Contains("Test IDs (for trying things out; they contain TEST and are never real battery IDs)", view, StringComparison.Ordinal);

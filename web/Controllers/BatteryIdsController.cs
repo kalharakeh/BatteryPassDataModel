@@ -104,7 +104,7 @@ public sealed class BatteryIdsController(BatteryIdPool pool, DppStore store) : C
             .ToArray();
         // Decision 67: "Test IDs" ticked releases IDs marked TEST, never real ones, which resetting or clearing the demo data removes.
         var isTest = Request.HasFormContentType && Request.Form["isTest"] == "true";
-        var result = await pool.ReleaseAsync(Who, new ReleaseRequest(reference, modelId, ranges, list, IsDemo: isTest), cancellationToken);
+        var result = await pool.ReleaseAsync(Who, new ReleaseRequest(reference, isTest ? null : modelId, ranges, list, IsDemo: isTest), cancellationToken); // test IDs are for any model (round two E)
         if (result.Done && isTest)
         {
             TempData[ProductDataController.StatusKey] = $"Released {result.Released.ToString(CultureInfo.InvariantCulture)} test battery {(result.Released == 1 ? "ID" : "IDs")}. They contain TEST, aren't counted, and go when the demo data is reset or cleared.";
