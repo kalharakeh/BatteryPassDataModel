@@ -139,7 +139,7 @@ public sealed class PackCreationService(
             // A real released ID is refused on demo product data before it is picked, so it stays available (U16).
             if (onDemoData && !pack.IsDemo && await pool.GetAsync(evaluation.Accepted["batterySerialNumber"].GetValue<string>(), cancellationToken) is { IsDemo: false })
             {
-                return Failed(DemoDataRule.Message);
+                return Failed(DemoDataRule.MessageFor(batch, model, economicOperator));
             }
 
             if (await pool.PickAsync(evaluation.Accepted["batterySerialNumber"].GetValue<string>(), pack.Id, batch.ModelId, cancellationToken) is not { } picked)
@@ -161,7 +161,7 @@ public sealed class PackCreationService(
 
             if (onDemoData && !pack.IsDemo && !IdentifierForms.IsTest(identifier))
             {
-                return Failed(DemoDataRule.Message);
+                return Failed(DemoDataRule.MessageFor(batch, model, economicOperator));
             }
 
             pack.Values["uniqueProductIdentifier"] = Stored(JsonValue.Create(identifier), now, "system", sender.Who);

@@ -22,6 +22,8 @@ public sealed class RealIdOnDemoDataTests(MongoFixture mongo)
 {
     private const string Who = DemoRig.Who;
 
+    private const string BatchOnly = "The serial number is a real battery ID, but the batch you chose is demo data, and real battery IDs go only on real product data. Choose a test ID instead, or make real product data with \"Copy as real product data\" on the battery family's page.";
+
     private static async Task<(DemoRig Rig, BatteryPack Demo)> SeededAsync(MongoFixture mongo)
     {
         var rig = await DemoRig.StartAsync(mongo, dunsIds: true);
@@ -43,7 +45,7 @@ public sealed class RealIdOnDemoDataTests(MongoFixture mongo)
         var result = await rig.Services.GetRequiredService<PackCreationService>().CreateAsync(ChangeSender.Team(Who), Request(demo, "VPC-12221", fromPool: true));
 
         Assert.Null(result.Pack);
-        Assert.Equal(DemoDataRule.Message, result.Problem);
+        Assert.Equal("The serial number is a real battery ID, but the batch, its model and the economic operator you chose are demo data, and real battery IDs go only on real product data. Choose a test ID instead, or make real product data with \"Copy as real product data\" on the battery family's page and \"Copy as real\" for the operator under Sites and operators.", result.Problem);
         Assert.Equal(ReleasedIdStatuses.Available, (await pool.GetAsync("VPC-12221"))!.Status);
         Assert.Empty(await rig.Store.FindPacksBySerialNumberAsync("VPC-12221"));
     }
@@ -57,7 +59,7 @@ public sealed class RealIdOnDemoDataTests(MongoFixture mongo)
         var result = await rig.Services.GetRequiredService<PackCreationService>().CreateAsync(ChangeSender.Team(Who), Request(demo, "REAL-0001", fromPool: false));
 
         Assert.Null(result.Pack);
-        Assert.Equal(DemoDataRule.Message, result.Problem);
+        Assert.Equal("The serial number is a real battery ID, but the batch, its model and the economic operator you chose are demo data, and real battery IDs go only on real product data. Choose a test ID instead, or make real product data with \"Copy as real product data\" on the battery family's page and \"Copy as real\" for the operator under Sites and operators.", result.Problem);
     }
 
     [Fact]
@@ -114,9 +116,9 @@ public sealed class RealIdOnDemoDataTests(MongoFixture mongo)
         var check = await rig.Publication.CheckAsync(rig.PackId);
         var published = await rig.Publication.PublishAsync(PublicationTesting.Team, rig.PackId);
 
-        Assert.Contains(DemoDataRule.Message, check!.Blocking);
+        Assert.Contains(BatchOnly, check!.Blocking);
         Assert.Null(published.Version);
-        Assert.Contains(DemoDataRule.Message, published.Report!.Blocking);
+        Assert.Contains(BatchOnly, published.Report!.Blocking);
         Assert.Equal(0, await rig.Store.GetLatestVersionNumberAsync(rig.PackId));
 
         await batches.UpdateOneAsync(Builders<BsonDocument>.Filter.Eq("_id", rig.Seed.Sources.Batch.Id), Builders<BsonDocument>.Update.Set("IsDemo", false));
@@ -134,7 +136,7 @@ public sealed class RealIdOnDemoDataTests(MongoFixture mongo)
         var waste = await StatusChangeTests.Service(rig).ChangeAsync(PublicationTesting.Team, rig.PackId, new StatusChange(StatusEvent.Waste, await StatusChangeTests.CurrentAsync(rig)));
         var card = (await BatteryTesting.Pages(rig).BatteryAsync(rig.PackId))!.Publication;
 
-        Assert.DoesNotContain(DemoDataRule.Message, check!.Blocking);
+        Assert.DoesNotContain(BatchOnly, check!.Blocking);
         Assert.Contains(DemoDataRule.Message, check.Warnings);
         Assert.Null(waste.Problem); // its status changes go on
         Assert.Contains(DemoDataRule.Message, card.Notes!);

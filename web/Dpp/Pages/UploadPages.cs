@@ -24,7 +24,14 @@ public sealed record UploadCheckView(
     IReadOnlyList<UploadValueRow> Values,
     string? Modules,
     IReadOnlyList<string> Notes,
-    string? Status = null);
+    string? Status = null)
+{
+    /// <summary>
+    /// Why nothing can be saved, as the card's main message (decision 69): what the file asks for, why it can't be done
+    /// for this battery now, and what to do. Null when the file would change the battery.
+    /// </summary>
+    public string? Refusal { get; init; }
+}
 
 /// <summary>One earlier upload of the battery (mock-up B1, B3), cut to this battery's line.</summary>
 public sealed record UploadHistoryRow(
@@ -80,7 +87,10 @@ public sealed class UploadPages(UploadService uploads, AttributeForms forms, Att
                 Rows(pack, battery.Values.Select(value => (value.Key, value.Outcome, value.Message, battery.Sent?.GetValueOrDefault(value.Key), battery.Kept?.Contains(value.Key) == true)), preview: true, forTeam),
                 battery.Modules is null ? null : Capitalise(battery.Modules),
                 (battery.Notes ?? []).Select(Capitalise).ToArray(),
-                battery.Status);
+                battery.Status)
+            {
+                Refusal = battery.Outcome == UploadService.Saved ? null : RefusalWords(battery.Problem, AskedStatus(shown.Check.Json)),
+            };
         }
 
         var history = (await uploads.HistoryAsync(pack, forTeam, cancellationToken))
@@ -137,6 +147,75 @@ public sealed class UploadPages(UploadService uploads, AttributeForms forms, Att
         return await uploads.SaveCheckedAsync(sender, packId, checkId, cancellationToken) is { } report
             ? (SavedWords(report), report.UploadId, null)
             : (null, null, UploadService.CheckExpired);
+    }
+
+    /// <summary>
+    /// Why a checked file can't be saved for this battery, said plainly (decision 69): what the file asks for, why it can't
+    /// be done now, and what to do. <paramref name="problem"/> is the check's reason (null when nothing would change);
+    /// <paramref name="asked"/> the status change or repair the file asks for, if any.
+    /// </summary>
+    public static string RefusalWords(string? problem, UploadStatus? asked)
+    {
+        var what = asked?.What switch
+        {
+            StatusEvent.Repaired => "a repair",
+            StatusEvent.Waste => "the status waste",
+            StatusEvent.PlacedOnMarketAgain => "the status re-used",
+            StatusEvent.Remanufactured => "the status remanufactured",
+            StatusEvent.Repurposed => "the status repurposed",
+            _ => "a status change",
+        };
+        var takeOut = $"take the {(asked?.What == StatusEvent.Repaired ? "repair" : "status change")} out of the file to save its readings.";
+        var asks = $"This file asks for {what}, and a file is saved whole or not at all. ";
+        if (problem is null)
+        {
+            return "Nothing in this file would change the battery: its values are the same as now, empty, or not saved (the table says which). Check that it is the right file for this battery, or correct the values and check it again.";
+        }
+
+        foreach (var status in new[] { DppStatuses.Invalid, DppStatuses.MarkedForDeletion, DppStatuses.Inactive })
+        {
+            if (problem == SavePipeline.NoLongerChanges(status))
+            {
+                return status == DppStatuses.Inactive
+                    ? "This battery's passport is inactive: the battery has a new passport. Upload the file on the new passport's battery page instead."
+                    : $"This battery's passport is {(status == DppStatuses.Invalid ? "marked invalid" : "marked for deletion")}, so nothing on it changes any more. Nothing from this file can be saved for it; check that the file is for the right battery.";
+            }
+        }
+
+        return problem switch
+        {
+            StatusChangeService.OnlyPublished => $"{asks}A status change needs a published passport, and this battery isn't published yet. Publish the battery first, or {takeOut}",
+            StatusChangeService.WaitingForSuccessor => $"{asks}This battery is waiting for its new passport, so its status doesn't change now. Publish or cancel the new passport on the battery's page first, or {takeOut}",
+            StatusChangeService.WasteIsFinal => $"{asks}This battery is waste, which is final. {Upper(takeOut)}",
+            StatusChangeService.ValuesRefused => $"{asks}A value the status change states again was refused or is missing; the table marks it. Correct it in the file and check it again, or {takeOut}",
+            StatusChangeService.RepairNeedsDescription => $"{asks}The repair doesn't say what was repaired. Add repairDescription to the file and check it again, or {takeOut}",
+            StatusChangeService.RepairNeedsDate => $"{asks}The repair has no day. Add repairDate to the file and check it again, or {takeOut}",
+            StatusChangeService.RepairNotInTheFuture => $"{asks}The repair's day lies in the future. Correct repairDate in the file and check it again, or {takeOut}",
+            StatusChangeService.NotYours => $"{asks}Only the team and the battery's cluster admins change its status. Ask the team, or {takeOut}",
+            UploadService.NamedTwice => "The file names this battery more than once, so none of its entries is used. Keep one entry for this battery and check the file again.",
+            _ when problem.StartsWith("a battery that is ", StringComparison.Ordinal) => $"{asks}{Upper(problem)}. {Upper(takeOut)}",
+            _ when problem.StartsWith("the passport can't get a new version now", StringComparison.Ordinal) =>
+                $"{asks}The passport can't get a new version now; the team sees why on the battery's page. Put that right first, or {takeOut}",
+            _ when asked is not null => $"{asks}It can't be done now: {problem}. {Upper(takeOut)}",
+            _ => $"The file's entry for this battery can't be used: {problem}. Correct the file and check it again.",
+        };
+    }
+
+    private static string Upper(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
+
+    /// <summary>The status change or repair a kept file asks for (the app's upload format only); null when none or unreadable.</summary>
+    private static UploadStatus? AskedStatus(string json)
+    {
+        try
+        {
+            return JsonNode.Parse(json) is JsonObject file && new NativeUploadFormat() is var format && format.Reads(file)
+                ? format.Read(file).Entries.FirstOrDefault()?.Status
+                : null;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
     }
 
     /// <summary>Who sent an upload, in words: a battery system or an API token by what it is, never by its token's ID.</summary>

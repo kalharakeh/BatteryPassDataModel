@@ -62,7 +62,7 @@ public sealed class PublicationService(
         !DemoDataRule.Conflicts(sources)
             ? report
             : versionNumber == 1
-                ? report with { Blocking = [.. report.Blocking, DemoDataRule.Message] }
+                ? report with { Blocking = [.. report.Blocking, DemoDataRule.MessageFor(sources.Batch, sources.Model, sources.Operator)] }
                 : report with { Warnings = [.. report.Warnings, DemoDataRule.Message] };
 
     /// <summary>The battery ID (#6) a version's passport ID names (6d); the pack's own ID for a pack without one.</summary>
