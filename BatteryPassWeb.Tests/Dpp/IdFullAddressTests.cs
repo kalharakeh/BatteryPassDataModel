@@ -76,4 +76,17 @@ public sealed class IdFullAddressTests
         Assert.Contains(".bp-id-value.is-full .bp-id-part {\n  display: inline-block;\n  max-width: 100%;\n  overflow-wrap: anywhere;", m1, StringComparison.Ordinal);
         Assert.Contains(".bp-id-copy-row.is-full {\n  align-items: start;", m1, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void AWholeAddress_ShouldStayOneTextRun_SoSelectingAndCopyingItGivesItWhole()
+    {
+        var css = File.ReadAllText(DppTestFiles.RepoFile("web", "wwwroot", "css", "site.css"));
+        var m1 = css[css.IndexOf("/* M1 round two G", StringComparison.Ordinal)..];
+        var header = File.ReadAllText(DppTestFiles.RepoFile("web", "wwwroot", "css", "bp-product-data.css"));
+
+        // The battery pages' header makes its links flex boxes, which would put a line break between the address's parts
+        // in a copied selection; a full address's link stays an inline box, and this rule is the more specific one.
+        Assert.Contains(".bp-bh-facts dd a {", header, StringComparison.Ordinal);
+        Assert.Contains("a.bp-id-value.is-full,\n.bp-bh-facts dd a.bp-id-value.is-full {\n  display: inline;", m1, StringComparison.Ordinal);
+    }
 }

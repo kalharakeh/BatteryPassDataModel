@@ -9721,3 +9721,11 @@ a:hover {
     min-width: 22rem;
   }
 }
+
+/* M1 round two G: a full address's link stays an inline box everywhere, also where a page makes its links flex boxes
+   (the battery pages' header: .bp-bh-facts dd a), so its parts stay one run of text and selecting and copying the
+   address gives it whole, with no line break between the parts. */
+a.bp-id-value.is-full,
+.bp-bh-facts dd a.bp-id-value.is-full {
+  display: inline;
+}
