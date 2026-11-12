@@ -9694,3 +9694,11 @@ a:hover {
   overflow-wrap: anywhere;
   word-break: break-word;
 }
+
+/* M1: in the versions list the whole passport ID keeps a readable column on a tablet or desktop, rather than a narrow
+   one that breaks it every few characters; a phone shows the list as cards, where it wraps across the card. */
+@media (min-width: 768px) {
+  .bp-versions-table td[data-label="Passport ID"] {
+    min-width: 22rem;
+  }
+}
