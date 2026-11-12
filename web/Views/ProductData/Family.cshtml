@@ -90,7 +90,7 @@
                     <span>Name of the new family (it must differ from every other family's name)</span>
                     <input type="text" name="name" value="@ProductDataPages.RealCopyName(Model.Family.Name)" required />
                 </label>
-                <button type="submit" class="bp-primary-button bp-button-compact text-nowrap">Copy as real product data</button>
+                <button type="submit" class="bp-primary-button bp-button-compact text-nowrap" data-confirm-action data-confirm-title="Copy as real product data" data-confirm-message="Make a real copy of this family with its models, batches, documents and the sites they use? The demo family stays as it is." data-confirm-submit="Copy" data-confirm-busy="Copying the family, its models, batches and documents. This takes a moment; the page opens the copy when it is done.">Copy as real product data</button>
             </form>
         </section>
     }

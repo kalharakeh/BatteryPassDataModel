@@ -120,10 +120,11 @@ public sealed class ProductDataController(ProductDataPages pages, RecordEditor e
             return NotFound();
         }
 
-        var (copyId, problem) = await pages.CopyFamilyAsRealAsync(Who, familyId, name, cancellationToken);
+        // No request token: a copy runs to its end even if the page is closed, as "Reset demo data" does.
+        var (copyId, problem) = await pages.CopyFamilyAsRealAsync(Who, familyId, name, CancellationToken.None);
         if (problem is not null)
         {
-            TempData[ErrorKey] = $"Nothing was copied: {problem}.";
+            TempData[ErrorKey] = CopyProblem(problem);
             return Redirect(ProductDataPages.FamilyHref(familyId) + "#copy-as-real");
         }
 
@@ -455,7 +456,7 @@ public sealed class ProductDataController(ProductDataPages pages, RecordEditor e
             return NotFound();
         }
 
-        var (copyId, problem) = await pages.CopySiteAsRealAsync(Who, siteId, name, cancellationToken);
+        var (copyId, problem) = await pages.CopySiteAsRealAsync(Who, siteId, name, CancellationToken.None);
         return CopiedAsReal("site", siteId, copyId, problem, "manufacturing site");
     }
 
@@ -469,15 +470,18 @@ public sealed class ProductDataController(ProductDataPages pages, RecordEditor e
             return NotFound();
         }
 
-        var (copyId, problem) = await pages.CopyOperatorAsRealAsync(Who, operatorId, name, cancellationToken);
+        var (copyId, problem) = await pages.CopyOperatorAsRealAsync(Who, operatorId, name, CancellationToken.None);
         return CopiedAsReal("operator", operatorId, copyId, problem, "economic operator");
     }
+
+    private static string CopyProblem(string problem) =>
+        problem == ProductDataPages.CopyRunning ? "A copy is already running. Wait for it, then look again." : $"Nothing was copied: {problem}.";
 
     private RedirectResult CopiedAsReal(string kind, string demoId, string? copyId, string? problem, string kindWords)
     {
         if (problem is not null)
         {
-            TempData[ErrorKey] = $"Nothing was copied: {problem}.";
+            TempData[ErrorKey] = CopyProblem(problem);
             return Redirect(ProductDataPages.SitesHref(kind, demoId) + "#copy-as-real");
         }
 
