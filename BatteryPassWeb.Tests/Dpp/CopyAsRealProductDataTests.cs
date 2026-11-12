@@ -248,6 +248,7 @@ public sealed class CopyAsRealProductDataTests(MongoFixture mongo)
 
         var created = await rig.Services.GetRequiredService<PackCreationService>().CreateAsync(ChangeSender.Team(Who), new NewPack(batch.Id, operatorId!, null, values, "form", FromPool: true));
         Assert.Null(created.Problem);
+        await ExampleValuesTests.ReplaceExamplesAsync(rig, created.Pack!.Id); // the demo's example values first (decision 70)
         var published = await rig.Services.GetRequiredService<PublicationService>().PublishAsync(ChangeSender.Team(Who), created.Pack!.Id);
 
         Assert.Null(published.Problem);

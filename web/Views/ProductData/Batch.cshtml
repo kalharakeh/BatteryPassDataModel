@@ -52,6 +52,7 @@
     </header>
 
     @await Html.PartialAsync("_Messages")
+    @await Html.PartialAsync("_Examples", Model.Examples)
     @await Html.PartialAsync("_RecordEditor", Model.Editor)
     @* Asks before a removal that can't be undone (redesign R6). *@
     @await Html.PartialAsync("_ConfirmModal")

@@ -71,6 +71,7 @@
     </section>
 
     @await Html.PartialAsync("_Messages")
+    @await Html.PartialAsync("_Examples", Model.Examples)
 
     @if (Model.Family.IsDemo)
     {

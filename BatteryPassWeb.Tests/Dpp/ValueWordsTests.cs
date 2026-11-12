@@ -66,7 +66,7 @@ public sealed class ValueWordsTests
     }
 
     [Theory]
-    [InlineData(28, "EU declaration", "https://www.example.com/doc.pdf")]
+    [InlineData(28, "EU declaration", "https://www.batteries.scania.test/doc.pdf")]
     [InlineData(45, "Dismantling manual", "https://passport.example.com/dpp/documents/doc-1")]
     [InlineData(92, "Accident information", "https://passport.example.com/dpp/packs/pack-1/accidents")]
     public void ADocument_ShouldReadAsItsTitleLinkingItsAddress(int number, string title, string url)
@@ -80,9 +80,9 @@ public sealed class ValueWordsTests
     [Fact]
     public void AWebAddress_ShouldLinkItself()
     {
-        var line = Assert.Single(Lines(36, "\"https://www.example.com/study\""));
+        var line = Assert.Single(Lines(36, "\"https://www.batteries.scania.test/study\""));
 
-        Assert.Equal("https://www.example.com/study", line.Href);
+        Assert.Equal("https://www.batteries.scania.test/study", line.Href);
     }
 
     [Fact]

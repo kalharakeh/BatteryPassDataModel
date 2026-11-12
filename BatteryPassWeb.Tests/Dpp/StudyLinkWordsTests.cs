@@ -13,7 +13,7 @@ public sealed class StudyLinkWordsTests
     [Fact]
     public void TheStudysLink_ShouldReadAsWords_AndLeadToTheAddress()
     {
-        const string Address = "https://www.example.com/demo/compact-7m/carbon-footprint-study";
+        const string Address = "https://www.batteries.scania.test/demo/compact-7m/carbon-footprint-study";
 
         var line = Assert.Single(ValueWords.Lines(AttributeFormsTests.Forms.For(AttributeCatalog.ByNumber(36)), JsonValue.Create(Address)));
 

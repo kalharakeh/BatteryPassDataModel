@@ -42,6 +42,9 @@ public sealed class DppDocument
     public required DateTime UploadedAtUtc { get; init; }
 
     public required string UploadedBy { get; init; }
+
+    /// <summary>A copy of a demo file made by "Copy as real product data" (decision 70); old records aren't examples.</summary>
+    public bool IsExample { get; init; }
 }
 
 /// <summary>Keeps uploaded files in GridFS and their records in a collection.</summary>

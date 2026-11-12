@@ -99,14 +99,24 @@ public sealed record FamilyPage(
 
     /// <summary>The models a new model can start from: this family's first, then the others by family.</summary>
     public IReadOnlyList<CopySource> CopySources { get; init; } = [];
+
+    /// <summary>What is still the demo's example in this real family's models and batches (decision 70).</summary>
+    public IReadOnlyList<ExampleGroup> Examples { get; init; } = [];
 }
 
-public sealed record BatchPage(ProductionBatch Batch, BatteryModel Model, BatteryFamily Family, ManufacturingSite Site, RecordEditorView Editor);
+public sealed record BatchPage(ProductionBatch Batch, BatteryModel Model, BatteryFamily Family, ManufacturingSite Site, RecordEditorView Editor)
+{
+    /// <summary>What is still the demo's example in this batch (decision 70).</summary>
+    public IReadOnlyList<ExampleGroup> Examples { get; init; } = [];
+}
 
 public sealed record SitesAndOperatorsPage(IReadOnlyList<SiteRow> Sites, IReadOnlyList<OperatorRow> Operators, RecordEditorView? Editor)
 {
     /// <summary>"Copy as real" for the chosen site or operator when it is demo data (decision 66); null otherwise.</summary>
     public RealCopyView? RealCopy { get; init; }
+
+    /// <summary>What is still the demo's example in the chosen real site or operator (decision 70).</summary>
+    public IReadOnlyList<ExampleGroup> Examples { get; init; } = [];
 }
 
 /// <summary>
@@ -167,7 +177,7 @@ public sealed partial class ProductDataPages(
         var copySources = await CopySourcesAsync(family, models, cancellationToken);
         if (selected is null)
         {
-            return new FamilyPage(family, chips, null, [], sites, null) { Removal = removal, CopySources = copySources };
+            return new FamilyPage(family, chips, null, [], sites, null) { Removal = removal, CopySources = copySources, Examples = await ExamplesOfAsync(family, models, cancellationToken) };
         }
 
         var batches = await store.ListBatchesAsync(selected.Id, cancellationToken);
@@ -185,7 +195,7 @@ public sealed partial class ProductDataPages(
                 counts[batch.Id].Published))
             .ToArray();
         var view = await EditorAsync(TargetKind.Model, selected.Id, selected.Name, selected.Values, $"/admin/models/{Uri.EscapeDataString(selected.Id)}", FamilyHref(familyId, selected.Id), state, cancellationToken);
-        return new FamilyPage(family, chips, selected, rows, sites, view) { Removal = removal, CopySources = copySources };
+        return new FamilyPage(family, chips, selected, rows, sites, view) { Removal = removal, CopySources = copySources, Examples = await ExamplesOfAsync(family, models, cancellationToken) };
     }
 
     private async Task<IReadOnlyList<CopySource>> CopySourcesAsync(BatteryFamily family, IReadOnlyList<BatteryModel> own, CancellationToken cancellationToken)
@@ -212,7 +222,7 @@ public sealed partial class ProductDataPages(
 
         var href = $"/admin/batches/{Uri.EscapeDataString(batch.Id)}";
         var view = await EditorAsync(TargetKind.Batch, batch.Id, $"Batch {batch.Year} · {site.Name}", batch.Values, href, href, state, cancellationToken);
-        return new BatchPage(batch, model, family, site, view);
+        return new BatchPage(batch, model, family, site, view) { Examples = batch.IsDemo ? [] : ExampleGroup.Of($"Batch {batch.Year} · {site.Name}", Editing.ExampleValues.Of(batch.Values, batch.ExampleDocumentIds)) };
     }
 
     /// <summary>The site and operator lists, with the editor of the one asked for (a site wins over an operator).</summary>
@@ -244,7 +254,7 @@ public sealed partial class ProductDataPages(
             chosen = selectedOperator;
         }
 
-        return new SitesAndOperatorsPage(siteRows, operatorRows, view) { RealCopy = RealCopyFor(chosen) };
+        return new SitesAndOperatorsPage(siteRows, operatorRows, view) { RealCopy = RealCopyFor(chosen), Examples = ExamplesOf(chosen) };
     }
 
     public async Task<string> CreateFamilyAsync(string who, string name, CancellationToken cancellationToken = default)

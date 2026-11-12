@@ -81,8 +81,8 @@ public sealed class LinkValueSchemeTests
         foreach (var attribute in LinkAttributes())
         {
             JsonNode value = Forms.For(attribute).Kind == FormKind.Link
-                ? new JsonObject { ["contentType"] = "application/pdf", ["url"] = "https://www.example.com/doc.pdf", ["resourceTitle"] = "Document", ["language"] = "en-GB" }
-                : JsonValue.Create("https://www.example.com/doc.pdf")!;
+                ? new JsonObject { ["contentType"] = "application/pdf", ["url"] = "https://www.batteries.scania.test/doc.pdf", ["resourceTitle"] = "Document", ["language"] = "en-GB" }
+                : JsonValue.Create("https://www.batteries.scania.test/doc.pdf")!;
 
             Assert.Empty(Validator.Validate(attribute, value));
         }
@@ -97,7 +97,7 @@ public sealed class LinkValueShowingTests
     [Theory]
     [InlineData("javascript:alert(1)", null)]
     [InlineData("data:text/html,x", null)]
-    [InlineData("https://www.example.com/doc.pdf", "https://www.example.com/doc.pdf")]
+    [InlineData("https://www.batteries.scania.test/doc.pdf", "https://www.batteries.scania.test/doc.pdf")]
     public void ADocumentLink_ShouldBeALinkOnlyForAnHttpOrHttpsAddress(string address, string? href)
     {
         var form = Forms.For(AttributeCatalog.ByNumber(28));
@@ -111,7 +111,7 @@ public sealed class LinkValueShowingTests
 
     [Theory]
     [InlineData("javascript:alert(1)", null)]
-    [InlineData("https://www.example.com/study", "https://www.example.com/study")]
+    [InlineData("https://www.batteries.scania.test/study", "https://www.batteries.scania.test/study")]
     public void AWebLink_ShouldBeALinkOnlyForAnHttpOrHttpsAddress(string address, string? href)
     {
         var form = Forms.For(AttributeCatalog.ByNumber(36));

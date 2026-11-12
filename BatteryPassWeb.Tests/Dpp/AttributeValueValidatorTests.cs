@@ -16,7 +16,7 @@ public sealed class AttributeValueValidatorTests
     [InlineData(19, "\"P3Y6M\"")]
     [InlineData(6, "\"urn:test:battery:VPC8C05-6788\"")]
     [InlineData(4, "\"2026-10-28T09:30:00Z\"")]
-    [InlineData(36, "\"https://www.example.com/carbon-footprint-study\"")]
+    [InlineData(36, "\"https://www.batteries.scania.test/carbon-footprint-study\"")]
     [InlineData(57, """{"amperehourMiliamperehourValue":200,"ampereHourMiliamperehourUnit":"Ah"}""")]
     [InlineData(21, """{"gramKilogramUnit":"kg","gramKilogramValue":512.5}""")]
     [InlineData(22, """{"batteryStatusValues":"re-used"}""")]

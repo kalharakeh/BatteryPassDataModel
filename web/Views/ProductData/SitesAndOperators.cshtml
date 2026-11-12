@@ -92,6 +92,7 @@
         </form>
     </section>
 
+    @await Html.PartialAsync("_Examples", Model.Examples)
     @if (Model.RealCopy is { } copy)
     {
         @* Decision 66: a real copy of a demo site or operator; the demo one stays as it is. *@

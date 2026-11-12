@@ -12,11 +12,11 @@
     "values": {
       "batteryCategory": { "batteryCategoryValue": "industrial/non-stationary battery" },
       "batteryMass": { "gramKilogramUnit": "kg", "gramKilogramValue": 512.5 },
-      "separateCollectionSymbol": { "contentType": "image/svg+xml", "url": "https://www.example.com/battery/symbols/separate-collection.svg", "language": "en-GB", "resourceTitle": "Separate collection symbol" },
-      "symbolsForCadmiumAndLead": { "contentType": "image/svg+xml", "url": "https://www.example.com/battery/symbols/cd-pb.svg", "language": "en-GB", "resourceTitle": "Symbols for cadmium and lead" },
+      "separateCollectionSymbol": { "contentType": "image/svg+xml", "url": "https://www.batteries.scania.test/battery/symbols/separate-collection.svg", "language": "en-GB", "resourceTitle": "Separate collection symbol" },
+      "symbolsForCadmiumAndLead": { "contentType": "image/svg+xml", "url": "https://www.batteries.scania.test/battery/symbols/cd-pb.svg", "language": "en-GB", "resourceTitle": "Symbols for cadmium and lead" },
       "extinguishingAgent": { "agentFireClass": "B", "extinguishingAgent": "Water" },
       "meaningOfLabelsAndSymbols": "The crossed-out wheeled bin means the battery must be collected separately from other waste.",
-      "informationOfDueDiligenceReport": { "contentType": "application/pdf", "url": "https://www.example.com/battery/due-diligence-report.pdf", "language": "en-GB", "resourceTitle": "Due diligence report" },
+      "informationOfDueDiligenceReport": { "contentType": "application/pdf", "url": "https://www.batteries.scania.test/battery/due-diligence-report.pdf", "language": "en-GB", "resourceTitle": "Due diligence report" },
       "batteryChemistry": { "chemicalCodeValue": "Li-ion NMC" },
       "criticalRawMaterials": [ "Cobalt", "Lithium", "Natural graphite", "Nickel" ],
       "materialsUsedInCathodeAnodeAndElectrolyte": [ "Cathode: lithium nickel manganese cobalt oxide (NMC 811)", "Anode: graphite", "Electrolyte: LiPF6 in carbonate solvents" ],
@@ -27,9 +27,9 @@
       "partNumbersForComponents": { "contentType": "application/pdf", "url": "https://passport.example.com/dpp/documents/doc-part-numbers", "language": "en-GB", "resourceTitle": "Part numbers for components" },
       "informationOnSourcesOfSpareParts": { "contentType": "application/pdf", "url": "https://passport.example.com/dpp/documents/doc-spare-parts", "language": "en-GB", "resourceTitle": "Sources of spare parts" },
       "safetyMeasures": { "contentType": "application/pdf", "url": "https://passport.example.com/dpp/documents/doc-safety-measures", "language": "en-GB", "resourceTitle": "Safety measures" },
-      "informationOnTheRoleOfEndUsersInContributingToWastePrevention": { "contentType": "text/html", "url": "https://www.example.com/battery/waste-prevention", "language": "en-GB", "resourceTitle": "Your role in waste prevention" },
-      "informationOnTheRoleOfEndUsersInContributingToTheSeparateCollectionOfWasteBatteries": { "contentType": "text/html", "url": "https://www.example.com/battery/separate-collection", "language": "en-GB", "resourceTitle": "Your role in separate collection" },
-      "informationOnBatteryCollectionPreparationForSecondLifeAndOnTreatmentAtEndOfLife": { "contentType": "application/pdf", "url": "https://www.example.com/battery/collection-and-treatment.pdf", "language": "en-GB", "resourceTitle": "Collection, second life and treatment" },
+      "informationOnTheRoleOfEndUsersInContributingToWastePrevention": { "contentType": "text/html", "url": "https://www.batteries.scania.test/battery/waste-prevention", "language": "en-GB", "resourceTitle": "Your role in waste prevention" },
+      "informationOnTheRoleOfEndUsersInContributingToTheSeparateCollectionOfWasteBatteries": { "contentType": "text/html", "url": "https://www.batteries.scania.test/battery/separate-collection", "language": "en-GB", "resourceTitle": "Your role in separate collection" },
+      "informationOnBatteryCollectionPreparationForSecondLifeAndOnTreatmentAtEndOfLife": { "contentType": "application/pdf", "url": "https://www.batteries.scania.test/battery/collection-and-treatment.pdf", "language": "en-GB", "resourceTitle": "Collection, second life and treatment" },
       "ratedCapacity": { "amperehourMiliamperehourValue": 200, "ampereHourMiliamperehourUnit": "Ah" },
       "capacityFade": { "percentUnit": "%", "percentageValue": 0 },
       "minimumVoltage": { "voltValue": 520.0, "voltUnit": "V" },
@@ -56,7 +56,7 @@
     "name": "Example plant",
     "values": {
       "uniqueManufacturerIdentifier": "urn:test:manufacturer:example-plant",
-      "manufacturerInformation": { "name": "Example Battery Systems AB", "registeredTradeNameOrRegisteredTrademark": "Example Batteries", "postalAddress": "Exempelvägen 1, 111 11 Stockholm, Sweden", "webAddress": "https://www.example.com", "eMailAddress": "battery.passport@example.com" },
+      "manufacturerInformation": { "name": "Example Battery Systems AB", "registeredTradeNameOrRegisteredTrademark": "Example Batteries", "postalAddress": "Exempelvägen 1, 111 11 Stockholm, Sweden", "webAddress": "https://www.batteries.scania.test", "eMailAddress": "battery.passport@batteries.scania.test" },
       "manufacturingPlace": "Example plant, Stockholm, Sweden"
     }
   },
@@ -67,8 +67,8 @@
     "year": 2026,
     "values": {
       "batteryModelIdentifier": "EXB-NMC-100",
-      "carbonFootprintLabel": { "contentType": "image/png", "url": "https://www.example.com/battery/carbon-footprint-label.png", "language": "en-GB", "resourceTitle": "Carbon footprint label" },
-      "euDeclarationOfConformity": { "contentType": "application/pdf", "url": "https://www.example.com/battery/eu-declaration-of-conformity.pdf", "language": "en-GB", "resourceTitle": "EU declaration of conformity" },
+      "carbonFootprintLabel": { "contentType": "image/png", "url": "https://www.batteries.scania.test/battery/carbon-footprint-label.png", "language": "en-GB", "resourceTitle": "Carbon footprint label" },
+      "euDeclarationOfConformity": { "contentType": "application/pdf", "url": "https://www.batteries.scania.test/battery/eu-declaration-of-conformity.pdf", "language": "en-GB", "resourceTitle": "EU declaration of conformity" },
       "resultsOfTestReportsProvingCompliance": { "contentType": "application/pdf", "url": "https://passport.example.com/dpp/documents/doc-test-reports", "language": "en-GB", "resourceTitle": "Test reports" },
       "batteryCarbonFootprintPerFunctionalUnit": { "kgCO2EquivalentPerKilowattHourValue": 75.4, "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh" },
       "contributionOfRawMaterialAcquisitionAndPreProcessingLifecycleStage": { "kgCO2EquivalentPerKilowattHourValue": 48.1, "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh" },
@@ -76,7 +76,7 @@
       "contributionOfDistributionLifecycleStage": { "kgCO2EquivalentPerKilowattHourValue": 2.2, "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh" },
       "contributionOfEndOfLifeAndRecyclingLifecycleStage": { "kgCO2EquivalentPerKilowattHourValue": 4.8, "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh" },
       "carbonFootprintPerformanceClass": "Class B",
-      "webLinkToPublicCarbonFootprintStudy": "https://www.example.com/battery/carbon-footprint-study",
+      "webLinkToPublicCarbonFootprintStudy": "https://www.batteries.scania.test/battery/carbon-footprint-study",
       "nickelRecycledContentShare": { "percentUnit": "%", "percentageValue": 6 },
       "cobaltRecycledContentShare": { "percentUnit": "%", "percentageValue": 16 },
       "lithiumRecycledContentShare": { "percentUnit": "%", "percentageValue": 6 },
@@ -89,7 +89,7 @@
     "name": "Example Battery Systems AB",
     "values": {
       "economicOperatorId": "urn:test:operator:example-battery-systems",
-      "economicOperatorInformation": { "name": "Example Battery Systems AB", "registeredTradeNameOrRegisteredTrademark": "Example Batteries", "postalAddress": "Exempelvägen 1, 111 11 Stockholm, Sweden", "webAddress": "https://www.example.com", "eMailAddress": "battery.passport@example.com" }
+      "economicOperatorInformation": { "name": "Example Battery Systems AB", "registeredTradeNameOrRegisteredTrademark": "Example Batteries", "postalAddress": "Exempelvägen 1, 111 11 Stockholm, Sweden", "webAddress": "https://www.batteries.scania.test", "eMailAddress": "battery.passport@batteries.scania.test" }
     }
   },
   "pack": {

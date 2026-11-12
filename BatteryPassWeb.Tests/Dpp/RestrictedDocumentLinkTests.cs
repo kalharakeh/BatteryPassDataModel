@@ -12,7 +12,7 @@ public sealed class RestrictedDocumentLinkTests(MongoFixture mongo)
     private static readonly ChangeSender Team = ChangeSender.Team("team@example.com");
 
     [Theory]
-    [InlineData("https://www.example.com/dismantling.pdf", KeyOutcome.Rejected)]
+    [InlineData("https://www.batteries.scania.test/dismantling.pdf", KeyOutcome.Rejected)]
     [InlineData("https://passport.example.com/dpp/documents/doc-new", KeyOutcome.Saved)]
     public async Task ModelDocument_ShouldOnlyLinkToTheApp(string url, KeyOutcome expected)
     {
@@ -29,7 +29,7 @@ public sealed class RestrictedDocumentLinkTests(MongoFixture mongo)
     }
 
     [Theory]
-    [InlineData("https://www.example.com/accidents", KeyOutcome.Rejected)]
+    [InlineData("https://www.batteries.scania.test/accidents", KeyOutcome.Rejected)]
     [InlineData("https://passport.example.com/dpp/packs/pack-VPC8C05-6788/accidents", KeyOutcome.Rejected)] // #92 is the app's own value (S03), even with the app's own address
     public async Task ClusterAdmin_ShouldNotPointAccidentsElsewhere(string url, KeyOutcome expected)
     {
@@ -47,7 +47,7 @@ public sealed class RestrictedDocumentLinkTests(MongoFixture mongo)
     {
         var (store, context, seed) = await DppStoreTesting.SeededStoreAsync(mongo);
 
-        var result = await SavePipelineTesting.Pipeline(store, context).SaveAsync(Team, Change(TargetKind.Batch, seed.Sources.Batch.Id, "euDeclarationOfConformity", "https://www.example.com/doc-2026.pdf"));
+        var result = await SavePipelineTesting.Pipeline(store, context).SaveAsync(Team, Change(TargetKind.Batch, seed.Sources.Batch.Id, "euDeclarationOfConformity", "https://www.batteries.scania.test/doc-2026.pdf"));
 
         Assert.True(result.Saved);
     }

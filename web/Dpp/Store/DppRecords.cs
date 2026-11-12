@@ -51,6 +51,12 @@ public sealed class BatteryModel : IDppRecord
     public string? PictureFileId { get; set; }
 
     public string? PictureContentType { get; set; }
+
+    /// <summary>
+    /// The demo's example documents it was copied with (decision 70); a document attribute that still links one is an
+    /// example file. Uploading a real file links a new document. Empty for anything not copied from the demo.
+    /// </summary>
+    public List<string> ExampleDocumentIds { get; set; } = [];
 }
 
 /// <summary>Manufacturer identifier and information, and the manufacturing place (#12, #15, #16).</summary>
@@ -83,6 +89,9 @@ public sealed class ProductionBatch : IDppRecord
     public required int Year { get; init; }
 
     public Dictionary<string, AttributeValue> Values { get; init; } = new(StringComparer.Ordinal);
+
+    /// <summary>The demo's example documents it was copied with (decision 70), as on <see cref="BatteryModel"/>.</summary>
+    public List<string> ExampleDocumentIds { get; set; } = [];
 }
 
 /// <summary>An economic operator's identifier and information (#7, #14), entered once and linked from packs.</summary>

@@ -7,6 +7,12 @@ using BatteryPassWeb.Services;
 
 namespace BatteryPassWeb.Dpp.Pages;
 
+/// <summary>One record's values and files that are still the demo's examples (decision 70), under the record's name.</summary>
+public sealed record ExampleGroup(string Where, IReadOnlyList<ExampleItem> Items)
+{
+    public static IReadOnlyList<ExampleGroup> Of(string where, IReadOnlyList<ExampleItem> items) => items.Count == 0 ? [] : [new ExampleGroup(where, items)];
+}
+
 /// <summary>"Copy as real" on a demo site or operator (decision 66): where it posts and the name it suggests.</summary>
 public sealed record RealCopyView(string Action, string KindWords, string Name, string SuggestedName);
 
@@ -113,6 +119,7 @@ public sealed partial class ProductDataPages
                 Values = CopyValues(source.Values, documentIds, who, now),
                 ModuleDescription = source.ModuleDescription,
                 PictureContentType = source.PictureContentType,
+                ExampleDocumentIds = [.. documentIds.Values],
             };
             if (source.PictureFileId is { } modelPicture)
             {
@@ -138,7 +145,7 @@ public sealed partial class ProductDataPages
                 var batchId = NewId("batch");
                 var batchDocuments = await CopyDocumentsAsync(TargetKind.Batch, sourceBatch.Id, batchId, trail, cancellationToken);
                 await store.InsertAsync(
-                    new ProductionBatch { Id = batchId, ModelId = model.Id, SiteId = siteId, Year = sourceBatch.Year, Values = CopyValues(sourceBatch.Values, batchDocuments, who, now) },
+                    new ProductionBatch { Id = batchId, ModelId = model.Id, SiteId = siteId, Year = sourceBatch.Year, Values = CopyValues(sourceBatch.Values, batchDocuments, who, now), ExampleDocumentIds = [.. batchDocuments.Values] },
                     cancellationToken);
                 trail.Add(() => store.DeleteAsync<ProductionBatch>(batchId, CancellationToken.None));
                 await StepAsync("batch");
@@ -225,6 +232,36 @@ public sealed partial class ProductDataPages
         _ => null,
     };
 
+    /// <summary>A real family's example values and files, per model and batch (decision 70); none for a demo family.</summary>
+    private async Task<IReadOnlyList<ExampleGroup>> ExamplesOfAsync(BatteryFamily family, IReadOnlyList<BatteryModel> models, CancellationToken cancellationToken)
+    {
+        if (family.IsDemo)
+        {
+            return [];
+        }
+
+        var groups = new List<ExampleGroup>();
+        var sites = (await store.ListAsync<ManufacturingSite>(cancellationToken)).ToDictionary(site => site.Id, site => site.Name, StringComparer.Ordinal);
+        foreach (var model in models.Where(model => !model.IsDemo))
+        {
+            groups.AddRange(ExampleGroup.Of($"Model {model.Name}", ExampleValues.Of(model.Values, model.ExampleDocumentIds)));
+            foreach (var batch in (await store.ListBatchesAsync(model.Id, cancellationToken)).Where(batch => !batch.IsDemo))
+            {
+                groups.AddRange(ExampleGroup.Of($"Model {model.Name}, batch {batch.Year} · {sites.GetValueOrDefault(batch.SiteId, batch.SiteId)}", ExampleValues.Of(batch.Values, batch.ExampleDocumentIds)));
+            }
+        }
+
+        return groups;
+    }
+
+    /// <summary>A real site's or operator's example values (decision 70); none for a demo one.</summary>
+    private static IReadOnlyList<ExampleGroup> ExamplesOf(IDppRecord? record) => record switch
+    {
+        ManufacturingSite { IsDemo: false } site => ExampleGroup.Of($"Manufacturing site {site.Name}", ExampleValues.Of(site.Values)),
+        EconomicOperator { IsDemo: false } item => ExampleGroup.Of($"Economic operator {item.Name}", ExampleValues.Of(item.Values)),
+        _ => [],
+    };
+
     private async Task<string?> CopyNameProblemAsync(RecordKind kind, string? name, CancellationToken cancellationToken) =>
         string.IsNullOrWhiteSpace(name)
             ? $"give the new {KindName(kind).ToLowerInvariant()} a name"
@@ -286,6 +323,7 @@ public sealed partial class ProductDataPages
                 Language = document.Language,
                 UploadedAtUtc = document.UploadedAtUtc,
                 UploadedBy = document.UploadedBy,
+                IsExample = true, // the demo's file, until the team uploads a real one (decision 70)
             };
             await documents.InsertAsync(copy, cancellationToken);
             trail.Add(() => documents.DeleteAsync(copy, CancellationToken.None));

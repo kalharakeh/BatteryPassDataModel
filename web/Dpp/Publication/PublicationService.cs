@@ -60,7 +60,7 @@ public sealed class PublicationService(
     /// </summary>
     private static PublicationReport WithDemoRule(PassportSources sources, PublicationReport report, int versionNumber) =>
         !DemoDataRule.Conflicts(sources)
-            ? report
+            ? ExampleValues.Check(sources, report, versionNumber)
             : versionNumber == 1
                 ? report with { Blocking = [.. report.Blocking, DemoDataRule.MessageFor(sources.Batch, sources.Model, sources.Operator)] }
                 : report with { Warnings = [.. report.Warnings, DemoDataRule.Message] };
