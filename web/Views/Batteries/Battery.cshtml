@@ -403,7 +403,7 @@
                     <option value="" selected="@(Model.Pack.ClusterId is null)">No cluster yet</option>
                     @foreach (var cluster in Model.Clusters)
                     {
-                        <option value="@cluster.Id" selected="@(string.Equals(cluster.Id, Model.Pack.ClusterId, StringComparison.OrdinalIgnoreCase))">@cluster.Name</option>
+                        <option value="@cluster.Id" selected="@(string.Equals(cluster.Id, Model.Pack.ClusterId, StringComparison.OrdinalIgnoreCase))">@(cluster.IsDemo ? $"{cluster.Name} (demo customer: test IDs only)" : cluster.Name)</option>
                     }
                 </select>
             </label>

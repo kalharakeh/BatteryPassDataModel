@@ -179,6 +179,17 @@ public sealed class PackCreationService(
             return Failed(DemoScope.RealBattery);
         }
 
+        // A real battery doesn't go into a demo customer (round two D); the picked ID is available again.
+        if (pack.ClusterId is { Length: > 0 } && DemoDataRule.HasRealId(pack) && await demo.ClusterIsDemoOrNoneAsync(pack.ClusterId, cancellationToken))
+        {
+            if (request.FromPool && request.PredecessorPackId is null && pool is not null)
+            {
+                await pool.GiveBackAsync(pack.Id, CancellationToken.None);
+            }
+
+            return Failed(DemoDataRule.DemoCustomer);
+        }
+
         try
         {
             await store.InsertAsync(pack, cancellationToken);

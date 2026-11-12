@@ -62,8 +62,9 @@ public sealed class BatteryIdPoolTests(MongoFixture mongo)
         }
     }
 
+    // No customer: a battery with a real ID doesn't go into the demo's customers (M1 round two D).
     private static NewPack NewBattery(BatteryPack like, string serial) =>
-        new(like.BatchId, like.OperatorId, like.ClusterId, new Dictionary<string, JsonNode?> { ["batterySerialNumber"] = serial }, FromPool: true);
+        new(like.BatchId, like.OperatorId, null, new Dictionary<string, JsonNode?> { ["batterySerialNumber"] = serial }, FromPool: true);
 
     [Fact]
     public async Task ARange_ShouldBeReleasedWithItsBatteryIds_AvailableAndUnderItsReference()
@@ -331,8 +332,8 @@ public sealed class BatteryIdPoolTests(MongoFixture mongo)
         await pool.ReleaseAsync(Who, List("PO api", "API-0001"));
         var api = rig.Services.GetRequiredService<BatteryPassWeb.Dpp.Api.BatteryApi>();
 
-        var made = await api.CreateAsync(ChangeSender.Team(Who), c7.BatchId, c7.OperatorId, c7.ClusterId, new Dictionary<string, JsonNode?> { ["batterySerialNumber"] = "API-0001" });
-        var refused = await api.CreateAsync(ChangeSender.Team(Who), c7.BatchId, c7.OperatorId, c7.ClusterId, new Dictionary<string, JsonNode?> { ["batterySerialNumber"] = "API-0002" });
+        var made = await api.CreateAsync(ChangeSender.Team(Who), c7.BatchId, c7.OperatorId, null, new Dictionary<string, JsonNode?> { ["batterySerialNumber"] = "API-0001" });
+        var refused = await api.CreateAsync(ChangeSender.Team(Who), c7.BatchId, c7.OperatorId, null, new Dictionary<string, JsonNode?> { ["batterySerialNumber"] = "API-0002" });
 
         Assert.EndsWith("/25S/UN778474481-API-0001", made.Pack!.Values["uniqueProductIdentifier"].Value!.GetValue<string>(), StringComparison.Ordinal);
         Assert.Equal(PackCreationService.NotAvailable, refused.Problem);

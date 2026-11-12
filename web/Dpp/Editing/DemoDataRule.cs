@@ -10,6 +10,15 @@ namespace BatteryPassWeb.Dpp.Editing;
 /// </summary>
 public static class DemoDataRule
 {
+    /// <summary>
+    /// A battery with a real ID doesn't go into a demo customer (round two D): it would hold the demo's cluster as real data,
+    /// so Reset demo data would refuse from then on. A test battery may go anywhere.
+    /// </summary>
+    public const string DemoCustomer = "A real battery can't belong to a demo customer. Create the customer under Clusters first, or leave it without one.";
+
+    /// <summary>The same for a cluster admin's hand-over, who doesn't create customers; the page adds the full stop ("Not asked: …").</summary>
+    public const string DemoCustomerHandOver = "A real battery can't go to a demo customer. Hand it over to a real one";
+
     /// <summary>The refusal, said with the way out (decision 69): wherever the rule answers (creating, publishing, the API).</summary>
     public const string Message = "The serial number is a real battery ID, but the batch, its model or the economic operator you chose is demo data, and real battery IDs go only on real product data. Choose a test ID instead, or make real product data with \"Copy as real product data\" on the battery family's page (and \"Copy as real\" for a demo operator under Sites and operators).";
 

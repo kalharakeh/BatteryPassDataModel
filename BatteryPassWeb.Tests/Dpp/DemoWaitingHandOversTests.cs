@@ -1,4 +1,7 @@
+using System.Text.Json.Nodes;
 using BatteryPassWeb.Dpp.Editing;
+using BatteryPassWeb.Dpp.Store;
+using BatteryPassWeb.Dpp.Values;
 using BatteryPassWeb.Services;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -29,6 +32,8 @@ public sealed class DemoWaitingHandOversTests(MongoFixture mongo)
     public async Task ARealBatteryHandedIntoADemoCluster_ShouldNotWaitForADemoAdmin()
     {
         var rig = await RigAsync(mongo);
+        // Outside the demo, with a test ID: a battery with a real ID isn't handed into a demo customer at all (M1 round two D).
+        await rig.Store.SetValuesAsync<BatteryPack>(rig.PackId, new Dictionary<string, AttributeValue> { ["uniqueProductIdentifier"] = new() { Value = JsonValue.Create("https://www.sib-scania-eubp.eu/25S/UN778474481-TEST-0001")!, GeneratedAtUtc = rig.Clock.Now.UtcDateTime, Source = "system" } });
         var service = HandOverTests.Service(rig);
         Assert.Null((await service.AskAsync(ChangeSender.ClusterAdmin("north.admin@example.test", BatteryTesting.North), rig.PackId, DemoCluster, confirm: true)).Problem);
 

@@ -82,6 +82,11 @@ public sealed class HandOverService(DppStore store, ClusterRepository clusters, 
             return Refused(NoSuchCluster);
         }
 
+        if (DemoDataRule.HasRealId(pack) && ClusterRepository.IsDemo(cluster)) // a real battery doesn't go into a demo customer (round two D)
+        {
+            return Refused(DemoDataRule.DemoCustomerHandOver);
+        }
+
         if (await store.FindWaitingHandOverAsync(packId, cancellationToken) is not null)
         {
             return Refused(AlreadyWaiting);

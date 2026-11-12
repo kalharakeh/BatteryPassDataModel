@@ -13,7 +13,8 @@ using BatteryPassWeb.Services;
 namespace BatteryPassWeb.Dpp.Pages;
 
 /// <summary>A registered cluster a battery can belong to.</summary>
-public sealed record ClusterChoice(string Id, string Name);
+/// <param name="IsDemo">A demo customer (round two D): a battery with a real ID can't go there.</param>
+public sealed record ClusterChoice(string Id, string Name, bool IsDemo = false);
 
 /// <summary>One battery in the list: what it is, where it belongs and how far its passport is.</summary>
 public sealed record BatteryRow(
@@ -587,10 +588,16 @@ public sealed class BatteryPages(
             return "it is already there";
         }
 
-        var names = (await ClustersAsync(cancellationToken)).ToDictionary(cluster => cluster.Id, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
+        var choices = await ClustersAsync(cancellationToken);
+        var names = choices.ToDictionary(cluster => cluster.Id, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
         if (wanted is not null && !names.ContainsKey(wanted))
         {
             return $"cluster {wanted} doesn't exist";
+        }
+
+        if (wanted is not null && DemoDataRule.HasRealId(pack) && choices.Any(cluster => cluster.IsDemo && string.Equals(cluster.Id, wanted, StringComparison.OrdinalIgnoreCase)))
+        {
+            return DemoDataRule.DemoCustomer.TrimEnd('.'); // round two D; the page adds the full stop
         }
 
         await store.SetPackClusterAsync(packId, wanted, cancellationToken);
@@ -717,7 +724,7 @@ public sealed class BatteryPages(
 
     public async Task<IReadOnlyList<ClusterChoice>> ClustersAsync(CancellationToken cancellationToken = default) =>
         (await clusters.ListClustersAsync(cancellationToken))
-            .Select(cluster => new ClusterChoice(BsonHelpers.GetString(cluster, "clusterId"), BsonHelpers.GetString(cluster, "name")))
+            .Select(cluster => new ClusterChoice(BsonHelpers.GetString(cluster, "clusterId"), BsonHelpers.GetString(cluster, "name"), ClusterRepository.IsDemo(cluster)))
             .Where(cluster => cluster.Id.Length > 0)
             .OrderBy(cluster => cluster.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();

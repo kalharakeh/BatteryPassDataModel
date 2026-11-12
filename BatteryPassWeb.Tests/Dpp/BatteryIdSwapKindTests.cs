@@ -70,7 +70,7 @@ public sealed class BatteryIdSwapKindTests(MongoFixture mongo)
         await pool.ReleaseAsync(Who, new ReleaseRequest("PO 2", null, [], "REAL-0002\nREAL-0003"));
         var real = (await rig.Services.GetRequiredService<PackCreationService>().CreateAsync(
             ChangeSender.Team(Who),
-            new NewPack(demoDraft.BatchId, demoDraft.OperatorId, demoDraft.ClusterId, new Dictionary<string, JsonNode?> { ["batterySerialNumber"] = "REAL-0002" }, FromPool: true))).Pack!;
+            new NewPack(demoDraft.BatchId, demoDraft.OperatorId, null, new Dictionary<string, JsonNode?> { ["batterySerialNumber"] = "REAL-0002" }, FromPool: true))).Pack!; // no demo customer for a real ID (M1 round two D)
 
         Assert.Equal(BatteryIdPool.SwapNeedsSameKind, await pool.SwapAsync(Who, real.Id, "DEMO-SPARE-0001"));
         Assert.Null(await pool.SwapAsync(Who, real.Id, "REAL-0003"));
