@@ -324,6 +324,10 @@ public sealed class DemoSweepTests(MongoFixture mongo, ITestOutputHelper output)
                     ["clusterId"] = OtherRealCluster, ["toClusterId"] = OtherRealCluster, ["accept"] = "true", ["confirm"] = "true",
                     ["what"] = "repaired", ["name"] = "Sweep", ["email"] = "sweep.new@example.test", ["role"] = "member",
                     ["password"] = Password, ["passwordConfirmation"] = Password, ["systemRole"] = "member", ["text"] = "Sweep text",
+                    // The C2 routes' fields (round two, 5): the cluster's written authorisation (the tick, its day; "remove"
+                    // false so the tick is the path taken), the typed ID that removes a passport, the EU registry record.
+                    ["authorised"] = "true", ["on"] = DateTime.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), ["remove"] = "false",
+                    ["confirmId"] = id, ["registeredOn"] = DateTime.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), ["registrationId"] = "SWEEP-REG-1",
                 });
             }
         }
