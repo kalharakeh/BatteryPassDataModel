@@ -51,7 +51,7 @@ public sealed record PassportCheckResult(int Checked, int Marked, int Cleared, i
         {
             if (AlreadyRunning)
             {
-                return "A check is already running; its result will be in the audit log.";
+                return "A check is already running; if it puts anything right, the audit log will say so.";
             }
 
             var batteries = $"{Checked} published {(Checked == 1 ? "battery" : "batteries")}";
@@ -164,6 +164,7 @@ public sealed class PublicationService(
         // so (round seven, 6). Another app instance may run its own: that is harmless.
         if (!await checkGate.WaitAsync(0, CancellationToken.None))
         {
+            logger?.LogInformation("A passport check asked for by {Who} found one already running; it did nothing.", who);
             return new PassportCheckResult(0, 0, 0, 0, []) { AlreadyRunning = true };
         }
 
@@ -186,6 +187,7 @@ public sealed class PublicationService(
         // Only the active versions in full, the content compared; the battery, number and status of all (round seven, 2).
         var newest = (await store.ListVersionSummariesAsync(cancellationToken)).GroupBy(version => version.PackId, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.MaxBy(version => version.Number)!, StringComparer.Ordinal);
+        logger?.LogDebug("The passport check read the versions of {Count} batteries.", newest.Count);
         var actives = (await store.ListAllActiveVersionsAsync(cancellationToken))
             .GroupBy(version => version.PackId, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.OrderByDescending(version => version.Number).ToArray(), StringComparer.Ordinal);
@@ -194,7 +196,6 @@ public sealed class PublicationService(
         var sites = (await store.ListAsync<ManufacturingSite>(cancellationToken)).ToDictionary(item => item.Id, StringComparer.Ordinal);
         var operators = (await store.ListAsync<EconomicOperator>(cancellationToken)).ToDictionary(item => item.Id, StringComparer.Ordinal);
 
-        var none = CancellationToken.None; // what it writes isn't stopped half way
         var now = clock.GetUtcNow().UtcDateTime;
         int checkedCount = 0, marked = 0, cleared = 0, archived = 0, failed = 0;
         var stoppedEarly = false;
@@ -215,10 +216,15 @@ public sealed class PublicationService(
                     continue; // a draft, or no longer active
                 }
 
+                if (!newest.TryGetValue(pack.Id, out var newestVersion))
+                {
+                    continue; // published between the two reads: the next check sees it whole
+                }
+
                 checkedCount++;
                 try
                 {
-                    var (packMarked, packCleared, packArchived) = await CheckOneAsync(pack, versions, newest[pack.Id], batches, models, sites, operators, now);
+                    var (packMarked, packCleared, packArchived) = await CheckOneAsync(pack, versions, newestVersion, batches, models, sites, operators, now);
                     marked += packMarked;
                     cleared += packCleared;
                     archived += packArchived;
@@ -240,30 +246,45 @@ public sealed class PublicationService(
             // Written for what was done, also when the run ended early; the counts are what changed (round seven, 3).
             if (marked + cleared + archived + failed > 0)
             {
-                var done = new PassportCheckResult(checkedCount, marked, cleared, archived, serials) { Failed = failed, StoppedEarly = stoppedEarly };
-                await audit.AppendApplicationAuditEventAsync(
-                    CheckedEvent,
-                    who,
-                    "system",
-                    "check",
-                    done.Words,
-                    new BsonDocument
-                    {
-                        ["checked"] = checkedCount,
-                        ["marked"] = marked,
-                        ["cleared"] = cleared,
-                        ["archived"] = archived,
-                        ["failed"] = failed,
-                        ["stoppedEarly"] = stoppedEarly,
-                        ["batteries"] = new BsonArray(serials),
-                    },
-                    entityType: "dpp-passports",
-                    entityId: "all",
-                    cancellationToken: none);
+                await WriteCheckedAsync(who, new PassportCheckResult(checkedCount, marked, cleared, archived, serials) { Failed = failed, StoppedEarly = stoppedEarly });
             }
         }
 
         return new PassportCheckResult(checkedCount, marked, cleared, archived, serials) { Failed = failed, StoppedEarly = stoppedEarly };
+    }
+
+    /// <summary>
+    /// The check's audit entry. A failure to write it is logged, never thrown: the changes are made by then, and the
+    /// button mustn't answer an error page for them.
+    /// </summary>
+    private async Task WriteCheckedAsync(string who, PassportCheckResult done)
+    {
+        try
+        {
+            await audit.AppendApplicationAuditEventAsync(
+                CheckedEvent,
+                who,
+                "system",
+                "check",
+                done.Words,
+                new BsonDocument
+                {
+                    ["checked"] = done.Checked,
+                    ["marked"] = done.Marked,
+                    ["cleared"] = done.Cleared,
+                    ["archived"] = done.Archived,
+                    ["failed"] = done.Failed,
+                    ["stoppedEarly"] = done.StoppedEarly,
+                    ["batteries"] = new BsonArray(done.Serials),
+                },
+                entityType: "dpp-passports",
+                entityId: "all",
+                cancellationToken: CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            logger?.LogError(exception, "The passport check couldn't write its audit entry: {Words}", done.Words);
+        }
     }
 
     /// <summary>

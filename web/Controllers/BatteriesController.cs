@@ -38,12 +38,16 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     public async Task<IActionResult> Batteries([FromQuery] string? q, CancellationToken cancellationToken) =>
         View(await pages.TeamListAsync(q, cancellationToken)); // one row per battery (redesign R5), and the waiting changes (round two, A2)
 
-    /// <summary>"Check all passports now" (decision 65): the check of every published battery, with a plain result line.</summary>
+    /// <summary>
+    /// "Check all passports now" (decision 65): the check of every published battery, with a plain result line. It runs
+    /// on the app's stopping token, not the request's: a closed tab doesn't end a long run half way.
+    /// </summary>
     [HttpPost("check")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CheckAll([FromServices] PublicationService publication, CancellationToken cancellationToken)
+    public async Task<IActionResult> CheckAll([FromServices] PublicationService publication, [FromServices] IHostApplicationLifetime lifetime)
     {
-        var result = await publication.ReconcileAsync(Who, cancellationToken);
+        ArgumentNullException.ThrowIfNull(lifetime);
+        var result = await publication.ReconcileAsync(Who, lifetime.ApplicationStopping);
         TempData[ProductDataController.StatusKey] = result.Words;
         return Redirect("/admin/batteries");
     }

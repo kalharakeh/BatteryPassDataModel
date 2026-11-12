@@ -188,6 +188,7 @@ public sealed class PublicDataHttpTests(MongoFixture mongo)
         });
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Logging.ClearProviders();
+        builder.Configuration["DPP_PASSPORT_CHECK"] = "off"; // the hourly check never runs in a test host (round seven, 5)
         var options = new BatteryPassOptions { AppBaseUrl = DocumentTesting.BaseUrl, DemoAdminEmail = string.Empty, ExternalApiEncryptionKey = "http-test-key-for-the-token-hashes-0000" };
         var services = builder.Services;
         services.AddSingleton(Options.Create(options));
