@@ -43,7 +43,7 @@ public sealed class DppController(DppReaders readers, DocumentService documents,
         var page = await pages.AccidentsAsync(reader, packId, cancellationToken);
         if (page is null)
         {
-            return Refused("accidents");
+            return await PassportController.GoneAsync(this, packId, json: false, cancellationToken) ?? Refused("accidents"); // finding R08
         }
 
         Response.Headers[HeaderNames.CacheControl] = "private, no-store";

@@ -1,0 +1,12 @@
+@using BatteryPassWeb.Dpp.Editing
+@{
+    ViewData["Title"] = "Passport removed";
+}
+@* Finding R08: every address of a passport the team removed after the battery was recycled (status 410). *@
+<main class="bp-page">
+    <section class="bp-card bp-report-wide-section" data-removed-passport>
+        <span class="bp-summary-title">Battery passport</span>
+        <h1 class="h5 mt-2 mb-1">@PassportRemoval.Gone</h1>
+        <p class="text-secondary mb-0"><a href="/">Search</a> for another battery's passport.</p>
+    </section>
+</main>

@@ -51,6 +51,27 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
         return File(System.Text.Encoding.UTF8.GetPreamble().Concat(System.Text.Encoding.UTF8.GetBytes(csv)).ToArray(), "text/csv; charset=utf-8", $"not-in-the-eu-registry-{DateTime.UtcNow:yyyy-MM-dd}.csv");
     }
 
+    /// <summary>
+    /// Finding R08: removes a recycled battery's passport, marked for deletion, once its ID is typed. Its addresses then
+    /// answer that the battery was recycled; one audit entry stays.
+    /// </summary>
+    [HttpPost("{packId}/remove-passport")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemovePassport(string packId, [FromForm] string? confirmId, [FromServices] PassportRemoval removal, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(removal);
+        var serial = (await pages.BatteryAsync(packId, cancellationToken: cancellationToken))?.SerialNumber ?? packId;
+        if (await removal.RemoveAsync(ChangeSender.Team(Who), packId, confirmId, cancellationToken) is { } problem)
+        {
+            CardMessages.Put(TempData, packId, CardKey, "mark");
+            CardMessages.Put(TempData, packId, CardErrorKey, $"Not removed: {problem}.");
+            return Redirect(BatteryPages.BatteryHref(packId));
+        }
+
+        TempData[ProductDataController.StatusKey] = $"The passport of battery {serial} is removed. Its addresses now say the battery was recycled; the audit log keeps who removed it and when.";
+        return Redirect("/admin/batteries");
+    }
+
     /// <summary>Records or corrects the battery's EU registry registration (finding R02).</summary>
     [HttpPost("{packId}/registry")]
     [ValidateAntiForgeryToken]

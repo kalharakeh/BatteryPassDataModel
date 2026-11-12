@@ -48,7 +48,8 @@ public sealed class PassportsApiController(DppReaders readers, BatteryPages batt
         var passport = await api.ReadAsync(await readers.ForAsync(User, cancellationToken), id, cancellationToken);
         if (passport is null)
         {
-            return NotFound(new { error = DppApiController.NoPassport, id });
+            return await PassportController.GoneAsync(this, id, json: true, cancellationToken) // finding R08
+                ?? NotFound(new { error = DppApiController.NoPassport, id });
         }
 
         return Ok(new
@@ -74,7 +75,8 @@ public sealed class PassportsApiController(DppReaders readers, BatteryPages batt
         var version = await pages.FindAsync(id, cancellationToken);
         if (version is null)
         {
-            return NotFound(new { error = DppApiController.NoPassport, id });
+            return await PassportController.GoneAsync(this, id, json: true, cancellationToken) // finding R08
+                ?? NotFound(new { error = DppApiController.NoPassport, id });
         }
 
         var signature = api.Signature(version);

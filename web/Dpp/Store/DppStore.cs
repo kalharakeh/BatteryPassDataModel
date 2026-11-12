@@ -27,6 +27,9 @@ public sealed class DppStore
     /// <summary>The battery IDs the team released in advance (step 6d), keyed by the serial number's letters and digits.</summary>
     public const string BatteryIds = "dpp_battery_ids";
 
+    /// <summary>The markers of removed passports (finding R08).</summary>
+    public const string RemovedPassports = "dpp_removed_passports";
+
     private const string UniqueProductIdentifierField = "Values.uniqueProductIdentifier.Value";
     private const string SerialNumberField = "Values.batterySerialNumber.Value";
 
@@ -43,6 +46,7 @@ public sealed class DppStore
         [typeof(UploadRecord)] = Uploads,
         [typeof(UploadCheck)] = UploadChecks,
         [typeof(Identifiers.ReleasedBatteryId)] = BatteryIds,
+        [typeof(RemovedPassport)] = RemovedPassports,
     };
 
     private readonly IMongoDatabase? _database;
@@ -170,6 +174,9 @@ public sealed class DppStore
             new CreateIndexModel<UploadRecord>(Builders<UploadRecord>.IndexKeys.Descending(upload => upload.AtUtc), new CreateIndexOptions { Name = "at" }),
             new CreateIndexModel<UploadRecord>(Builders<UploadRecord>.IndexKeys.Ascending("Batteries.PackId").Descending(upload => upload.AtUtc), new CreateIndexOptions { Name = "pack_at" }),
         ], cancellationToken);
+        await Collection<RemovedPassport>().Indexes.CreateOneAsync(
+            new CreateIndexModel<RemovedPassport>(Builders<RemovedPassport>.IndexKeys.Ascending(removed => removed.Ids)),
+            cancellationToken: cancellationToken);
         await Collection<UploadCheck>().Indexes.CreateOneAsync(
             new CreateIndexModel<UploadCheck>(
                 Builders<UploadCheck>.IndexKeys.Ascending(check => check.ExpiresAtUtc),
@@ -347,6 +354,46 @@ public sealed class DppStore
             Builders<BatteryPack>.Update.Set(pack => pack.ClusterId, clusterId),
             cancellationToken: cancellationToken);
         return result.MatchedCount == 1;
+    }
+
+    /// <summary>Writes the marker of a removed passport (finding R08); writing it again changes nothing.</summary>
+    public async Task AddRemovedAsync(RemovedPassport removed, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(removed);
+        await Collection<RemovedPassport>().ReplaceOneAsync(item => item.Id == removed.Id, removed, new ReplaceOptions { IsUpsert = true }, cancellationToken);
+    }
+
+    /// <summary>
+    /// The marker of the removed passport that answered to this ID: a battery ID in either form, a passport ID or the pack
+    /// ID, as an address may carry it (encoded once). Null when no removed passport had it (finding R08).
+    /// </summary>
+    public async Task<RemovedPassport?> FindRemovedAsync(string? id, CancellationToken cancellationToken = default)
+    {
+        var text = Uri.UnescapeDataString(id?.Trim() ?? string.Empty);
+        if (_database is null || text.Length == 0)
+        {
+            return null;
+        }
+
+        var forms = new[] { text, Identifiers.IdentifierForms.Short(text) }.Distinct(StringComparer.Ordinal).ToArray();
+        return await Collection<RemovedPassport>().Find(Builders<RemovedPassport>.Filter.AnyIn(removed => removed.Ids, forms)).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// What a removed passport leaves besides its pack and documents (finding R08): its versions, hand-overs and kept
+    /// upload checks, and the change history of its values (the save pipeline's audit entries, which carry the values).
+    /// </summary>
+    public async Task DeletePassportDataAsync(string packId, CancellationToken cancellationToken = default)
+    {
+        var database = RequireDatabase();
+        await Collection<PassportVersion>().DeleteManyAsync(version => version.PackId == packId, cancellationToken);
+        await Collection<HandOver>().DeleteManyAsync(Builders<HandOver>.Filter.Eq("PackId", packId), cancellationToken);
+        await Collection<UploadCheck>().DeleteManyAsync(Builders<UploadCheck>.Filter.Eq("PackId", packId), cancellationToken);
+        await database.GetCollection<BsonDocument>("applicationAuditEvents").DeleteManyAsync(
+            Builders<BsonDocument>.Filter.Eq("eventType", Editing.SavePipeline.AuditEventType)
+            & Builders<BsonDocument>.Filter.Eq("entityType", "dpp-pack")
+            & Builders<BsonDocument>.Filter.Eq("entityId", packId),
+            cancellationToken);
     }
 
     /// <summary>Records (or corrects) the pack's EU registry registration (finding R02); nothing else changes. False when the pack doesn't exist.</summary>

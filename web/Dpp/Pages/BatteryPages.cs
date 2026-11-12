@@ -200,6 +200,11 @@ public sealed record BatteryPage(
     /// <summary>The receiving cluster's name while a hand-over waits for its answer (step 4d); null otherwise.</summary>
     public string? HandOverTo { get; init; }
 
+    /// <summary>
+    /// Finding R08: where "Remove the passport" posts, for a passport marked for deletion after recycling; null otherwise.
+    /// </summary>
+    public string? RemovePassportAction => Marks.Status == DppStatuses.MarkedForDeletion ? $"{BatteryPages.BatteryHref(Pack.Id)}/remove-passport" : null;
+
     /// <summary>The "EU registry" section (finding R02), for a published real battery only; null for drafts and demo batteries.</summary>
     public RegistryCardView? Registry { get; init; }
 

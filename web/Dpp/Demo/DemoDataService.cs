@@ -277,6 +277,8 @@ public sealed class DemoDataService(
         var demoPacks = await DemoIdsAsync(DppStore.Packs, cancellationToken);
         await Collection(DppStore.BatteryIds).DeleteManyAsync(Builders<BsonDocument>.Filter.Eq("IsDemo", true), cancellationToken); // the demo release only (6d)
         await Collection(DppStore.UploadChecks).DeleteManyAsync(Builders<BsonDocument>.Filter.In("PackId", demoPacks), cancellationToken);
+        // The markers of removed demo passports, so the seed can make the demo's IDs again (finding R08); a real one stays.
+        await Collection(DppStore.RemovedPassports).DeleteManyAsync(Builders<BsonDocument>.Filter.Eq("IsDemo", true), cancellationToken);
         foreach (var packId in demoPacks)
         {
             await Collection(DppStore.Versions).DeleteManyAsync(Builders<BsonDocument>.Filter.Eq("PackId", packId), cancellationToken);

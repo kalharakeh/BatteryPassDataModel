@@ -172,6 +172,28 @@ public sealed class BatteryPack : IDppRecord
     public RegistryRecord? Registry { get; set; }
 }
 
+/// <summary>
+/// The marker a removed passport leaves (finding R08): the IDs it answered to (the pack, the battery ID in both forms,
+/// every version's passport ID), so that none is used again and each answers "recycled" (410). No passport data.
+/// </summary>
+public sealed class RemovedPassport : IDppRecord
+{
+    /// <summary>The removed pack's ID.</summary>
+    public required string Id { get; init; }
+
+    /// <summary>The battery ID (#6) as it was stored.</summary>
+    public required string BatteryId { get; init; }
+
+    public required List<string> Ids { get; init; }
+
+    public required DateTime RemovedAtUtc { get; init; }
+
+    public required string RemovedBy { get; init; }
+
+    /// <summary>A demo battery's marker: clearing the demo data removes it, so the demo's IDs are made again.</summary>
+    public bool IsDemo { get; init; }
+}
+
 /// <summary>A battery's registration in the EU's DPP Registry (finding R02): when, its ID there, who recorded it and when.</summary>
 public sealed class RegistryRecord
 {

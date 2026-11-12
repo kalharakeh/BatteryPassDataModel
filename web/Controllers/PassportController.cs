@@ -62,6 +62,11 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
             return View(nameof(Summary), page);
         }
 
+        if (await GoneAsync(this, Uri.UnescapeDataString(id), json: false, cancellationToken) is { } gone)
+        {
+            return gone; // finding R08: removed after recycling
+        }
+
         // A released ID scanned before its passport is published (6d): ours, but nothing to show yet; a voided one isn't.
         return pool is not null && await pool.FindUnpublishedAsync(Uri.UnescapeDataString(id), cancellationToken) is { Status: not BatteryPassWeb.Dpp.Identifiers.ReleasedIdStatuses.Voided } released
             ? NotPublishedYet(released)
@@ -106,7 +111,8 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
         var page = await pages.SummaryAsync(reader, id, cancellationToken);
         if (page?.PublicData is not { } data)
         {
-            return NotFound(new { error = "No published passport has this ID." });
+            return await GoneAsync(this, id, json: true, cancellationToken) // finding R08: the same headers and read limit
+                ?? NotFound(new { error = "No published passport has this ID." });
         }
 
         return Content(data.ToJsonString(), "application/json");
@@ -151,7 +157,7 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
         var page = await pages.DetailAsync(reader, Uri.UnescapeDataString(id), cancellationToken);
         if (page is null)
         {
-            return NotFoundPage();
+            return await GoneAsync(this, Uri.UnescapeDataString(id), json: false, cancellationToken) ?? NotFoundPage(); // finding R08
         }
 
         // The current version's live values over the last week, for those who may see them (decision 30), from the same
@@ -176,6 +182,28 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
 
         Response.Headers[HeaderNames.CacheControl] = "private, no-store";
         return View(nameof(Detail), page);
+    }
+
+    /// <summary>
+    /// Finding R08: an address of a passport the team removed after recycling answers 410 with the plain sentence, as a
+    /// page or, for the data addresses, as JSON. Null when no removed passport had this ID.
+    /// </summary>
+    internal static async Task<IActionResult?> GoneAsync(ControllerBase controller, string id, bool json, CancellationToken cancellationToken)
+    {
+        if (controller.HttpContext?.RequestServices?.GetService(typeof(PassportRemoval)) is not PassportRemoval removal
+            || await removal.FindAsync(id, cancellationToken) is null)
+        {
+            return null;
+        }
+
+        if (json || controller is not Controller pages)
+        {
+            return new ObjectResult(new { error = PassportRemoval.Gone }) { StatusCode = StatusCodes.Status410Gone };
+        }
+
+        var view = pages.View("~/Views/Dpp/Removed.cshtml");
+        view.StatusCode = StatusCodes.Status410Gone;
+        return view;
     }
 
     /// <summary>No published passport has this ID; drafts aren't shown to anyone here (J-6).</summary>

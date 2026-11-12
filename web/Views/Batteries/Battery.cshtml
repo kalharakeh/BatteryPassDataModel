@@ -131,6 +131,11 @@
                     Nothing on the passport changes until it's undone.
                 </span>
                 <button type="submit" class="bp-secondary-button bp-button-compact">Undo: make it active again</button>
+                @if (Model.RemovePassportAction is not null)
+                {
+                    @* Finding R08: once the battery is recycled, its passport can cease to exist. *@
+                    <button type="button" class="bp-danger-button bp-button-compact" data-open-dialog="remove-passport-dialog">Remove the passport…</button>
+                }
             </form>
         }
         @{ await CardMessagesAsync("mark"); }
@@ -416,6 +421,10 @@
     </div>
 
     @* The windows, at page level: one inside a hidden section can't open. *@
+    @if (Model.RemovePassportAction is { } removeAction)
+    {
+        @await Html.PartialAsync("~/Views/Batteries/_RemovePassportDialog.cshtml", (removeAction, Model.Identifier))
+    }
     <dialog id="cluster-dialog" class="bp-modal-panel bp-dialog" aria-labelledby="cluster-dialog-title">
         <form method="post" action="@href/cluster">
             @Html.AntiForgeryToken()
