@@ -81,7 +81,7 @@ public sealed class BatteryPageLayoutTests
         Assert.Contains("image.dataset.trimmed = 'true';", trim, StringComparison.Ordinal);
         Assert.True(header.IndexOf("bp-bh-picture", StringComparison.Ordinal) < header.IndexOf("<div class=\"bp-bh-id\">", StringComparison.Ordinal)
             && header.IndexOf("<div class=\"bp-bh-id\">", StringComparison.Ordinal) < header.IndexOf("<div class=\"bp-bh-facts-row\">", StringComparison.Ordinal));
-        Assert.Contains("<dd>@await Html.PartialAsync(\"_IdValue\", Model.Identifier)</dd>", header, StringComparison.Ordinal); // short, linked, copied whole (6d)
+        Assert.Contains("<dd>@await Html.PartialAsync(\"_IdValue\", Model.Identifier, new ViewDataDictionary(ViewData) { [\"IdFull\"] = true })</dd>", header, StringComparison.Ordinal); // the whole address, linked, copied whole (decision 68)
         Assert.Contains("<details class=\"bp-bh-details\" open data-fold-on-phone>", header, StringComparison.Ordinal);
         Assert.Contains("<div class=\"bp-bh-actions\" data-action-bar>", bar, StringComparison.Ordinal);
         Assert.Contains("<nav class=\"bp-bh-open\"", bar, StringComparison.Ordinal);

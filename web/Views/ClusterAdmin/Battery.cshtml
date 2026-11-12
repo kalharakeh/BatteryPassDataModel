@@ -56,7 +56,7 @@
                 <dl class="bp-bh-facts">
                     <div class="bp-bh-fact-id">
                         <dt>Battery ID <span class="bp-attr-number">#6</span></dt>
-                        <dd>@await Html.PartialAsync("_IdValue", Model.Identifier)</dd>
+                        <dd>@await Html.PartialAsync("_IdValue", Model.Identifier, new ViewDataDictionary(ViewData) { ["IdFull"] = true })</dd>
                     </div>
                 </dl>
                 <details class="bp-bh-details" open data-fold-on-phone>

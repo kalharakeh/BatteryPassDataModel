@@ -3,10 +3,18 @@
 @inject BatteryPassWeb.Dpp.Documents.DppLinks Links
 @model string
 @* A battery or passport ID (step 6d, the owner): the short ID to read, its full web address as the link and in the copy
-   button, and the full address on paper. *@
+   button, and the full address on paper. With ViewData["IdFull"] (decision 68: the passport pages and the battery pages)
+   the whole address, website included, is the text itself, so selecting it copies it whole. *@
 @if (IdentifierForms.IsWebAddress(Model) && Links.IsConfigured)
 {
-    <span class="bp-id-copy-row"><a class="bp-id-value d-print-none" href="@Links.PassportUrl(Model)" title="@Model">@IdentifierForms.Display(Model)</a><span class="bp-id-value d-none d-print-inline">@Model</span>@await Html.PartialAsync("_CopyIdButton", Model)</span>
+    if (ViewData["IdFull"] is true)
+    {
+        <span class="bp-id-copy-row is-full"><a class="bp-id-value is-full" href="@Links.PassportUrl(Model)">@Model</a>@await Html.PartialAsync("_CopyIdButton", Model)</span>
+    }
+    else
+    {
+        <span class="bp-id-copy-row"><a class="bp-id-value d-print-none" href="@Links.PassportUrl(Model)" title="@Model">@IdentifierForms.Display(Model)</a><span class="bp-id-value d-none d-print-inline">@Model</span>@await Html.PartialAsync("_CopyIdButton", Model)</span>
+    }
 }
 else
 {

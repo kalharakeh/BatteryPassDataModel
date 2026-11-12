@@ -17,11 +17,11 @@ public sealed class BatteryPanelTablesTests
         Assert.Contains(".bp-bpanel .bp-console-table {\n  min-width: 0;\n}\n\n.bp-bpanel .bp-console-table td[data-label=\"Published\"] {\n  white-space: normal;\n}", Read("web", "wwwroot", "css", "bp-product-data.css"), StringComparison.Ordinal);
 
     [Fact]
-    public void Versions_ShouldShortenThePassportIdAndShowTheBadge()
+    public void Versions_ShouldShowThePassportIdWholeAndTheBadge()
     {
         var versions = Read("web", "Views", "Batteries", "_VersionsCard.cshtml");
 
-        Assert.Contains("title=\"@row.Version.DigitalProductPassportId\">@BatteryPages.ShortId(row.Version.DigitalProductPassportId)</a>@await Html.PartialAsync(\"_CopyIdButton\", row.Version.DigitalProductPassportId)", versions, StringComparison.Ordinal);
+        Assert.Contains("title=\"@row.Version.DigitalProductPassportId\">@row.Version.DigitalProductPassportId</a>@await Html.PartialAsync(\"_CopyIdButton\", row.Version.DigitalProductPassportId)", versions, StringComparison.Ordinal);
         Assert.Contains("@await Html.PartialAsync(\"_StatusBadge\", StatusBadge.Passport(row.Version.DppStatus))", versions, StringComparison.Ordinal);
     }
 }

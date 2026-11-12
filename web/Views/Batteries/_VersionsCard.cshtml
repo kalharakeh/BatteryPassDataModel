@@ -28,7 +28,7 @@
                     {
                         <tr>
                             <td data-label="Version">@row.Version.Number</td>
-                            <td data-label="Passport ID"><span class="bp-id-copy-row"><a class="bp-id-value" href="@PassportPages.DetailHref(row.Version.DigitalProductPassportId)" title="@row.Version.DigitalProductPassportId">@BatteryPages.ShortId(row.Version.DigitalProductPassportId)</a>@await Html.PartialAsync("_CopyIdButton", row.Version.DigitalProductPassportId)</span></td>
+                            <td data-label="Passport ID"><span class="bp-id-copy-row"><a class="bp-id-value is-full" href="@PassportPages.DetailHref(row.Version.DigitalProductPassportId)" title="@row.Version.DigitalProductPassportId">@row.Version.DigitalProductPassportId</a>@await Html.PartialAsync("_CopyIdButton", row.Version.DigitalProductPassportId)</span></td>
                             <td data-label="Status"><div class="bp-badges is-compact">@await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(row.Version.DppStatus))</div></td>
                             <td data-label="Published">@ValueWords.Time(row.Version.PublishedAtUtc) <small class="bp-batteries-muted d-block">by @row.Version.PublishedBy</small></td>
                             <td data-label="Signature">
