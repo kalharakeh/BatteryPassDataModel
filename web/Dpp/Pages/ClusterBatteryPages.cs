@@ -274,6 +274,7 @@ public sealed class ClusterBatteryPages(
     {
         ArgumentNullException.ThrowIfNull(sender);
         if (sender.Kind != SenderKind.ClusterAdmin
+            || await store.GetAsync<RemovedPassport>(packId, cancellationToken) is not null // being removed: as a removed battery (finding R08)
             || await store.GetAsync<BatteryPack>(packId, cancellationToken) is not { ClusterId: { } clusterId } pack
             || !sender.ClusterIds.Contains(ClusterRepository.NormalizeClusterId(clusterId))
             || !await demo.ReachesAsync(sender, pack, cancellationToken)) // a demo cluster admin manages only batteries inside the demo (finding R03)

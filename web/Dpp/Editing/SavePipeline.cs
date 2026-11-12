@@ -125,7 +125,8 @@ public sealed class SavePipeline(
         // A battery being removed takes no change (finding R08): its marker is written before anything is deleted.
         if (changes.Target == TargetKind.Pack && await store.GetAsync<RemovedPassport>(changes.TargetId, cancellationToken) is not null)
         {
-            return new SaveResult(false, false, []);
+            return new SaveResult(true, false, changes.Values.Keys.Concat(changes.Removals ?? []).Distinct(StringComparer.Ordinal)
+                .Select(key => new KeyResult(key, KeyOutcome.Rejected, PassportRemoval.BeingRemoved)).ToArray());
         }
 
         // A cluster admin or battery system changes a battery only once its cluster is authorised in writing (finding R20).

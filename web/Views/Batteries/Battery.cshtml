@@ -140,7 +140,14 @@
                     }
                     Nothing on the passport changes until it's undone.
                 </span>
-                <button type="submit" class="bp-secondary-button bp-button-compact">Undo: make it active again</button>
+                @if (!Model.RemovalStarted)
+                {
+                    <button type="submit" class="bp-secondary-button bp-button-compact">Undo: make it active again</button>
+                }
+                @if (Model.RemovePassportProblem is { } cantRemove)
+                {
+                    <small class="d-block bp-help-text" data-cant-remove>Remove the passport isn't possible yet: @cantRemove.</small>
+                }
                 @if (Model.RemovePassport is not null && !Model.RemovalStarted)
                 {
                     @* Finding R08: once the battery is recycled or exported, its passport can cease to exist. *@

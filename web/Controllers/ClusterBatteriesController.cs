@@ -30,6 +30,11 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
     [HttpGet("{packId}")]
     public async Task<IActionResult> Battery(string packId, CancellationToken cancellationToken)
     {
+        if (await PassportController.GoneAsync(this, packId, json: false, cancellationToken) is { } gone)
+        {
+            return gone; // finding R08: a battery being removed answers as a removed one
+        }
+
         var sender = await readers.EditorForAsync(User, cancellationToken);
         if (sender?.Kind == SenderKind.Team)
         {

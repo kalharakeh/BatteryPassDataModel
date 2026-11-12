@@ -314,7 +314,7 @@ public class AdminController : Controller
         var name = BsonHelpers.GetString(cluster, "name");
         if (Text(Request.Form, "remove") == "true")
         {
-            if (await _clusterRepository.RemoveWrittenAuthorisationAsync(clusterId, now, cancellationToken))
+            if (await _clusterRepository.RemoveWrittenAuthorisationAsync(clusterId, now, cancellationToken, takenAwayBy: CurrentActor()))
             {
                 await AppendAdminAuditAsync(
                     "cluster.authorisation-removed",

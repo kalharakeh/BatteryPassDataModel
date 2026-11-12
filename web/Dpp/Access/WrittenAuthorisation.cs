@@ -19,6 +19,12 @@ public static class WrittenAuthorisation
     /// <summary>The cluster record's field that holds the authorisation; a cluster without it isn't authorised.</summary>
     public const string Field = "writtenAuthorisation";
 
+    /// <summary>The field that says the team took the authorisation away (who, when), so a demo seed doesn't put it back.</summary>
+    public const string TakenAwayField = "writtenAuthorisationTakenAway";
+
+    /// <summary>Whether the team took this cluster's authorisation away (and hasn't ticked it again since).</summary>
+    public static bool TakenAway(BsonDocument? cluster) => cluster?.GetValue(TakenAwayField, BsonNull.Value) is BsonDocument;
+
     /// <summary>The one line a cluster admin or a token of an unauthorised cluster meets on its pages and from the API.</summary>
     public const string Missing = "The Scania team hasn't recorded your authorisation to update passport data yet.";
 

@@ -195,6 +195,60 @@ public sealed class RemovedPassport : IDppRecord
 
     /// <summary>The pack whose removal took this one: itself, or the newest passport of the same battery (decision 73).</summary>
     public string? Newest { get; init; }
+
+    /// <summary>
+    /// Round three: what the removal will do, written down before anything is deleted, the same in every marker of the
+    /// chain, so that any one of them finishes the whole removal. The chain's members with their IDs.
+    /// </summary>
+    public List<RemovalMember> Members { get; init; } = [];
+
+    /// <summary>Every ID and the serial number the battery answered to, to find what names it (refused upload lines, audit rows).</summary>
+    public List<string> Names { get; init; } = [];
+
+    /// <summary>The documents it takes, withdrawn accident reports included (their audit rows are found by these IDs).</summary>
+    public List<string> DocumentIds { get; init; } = [];
+
+    /// <summary>The upload records whose lines it takes; only those it empties are deleted.</summary>
+    public List<string> UploadIds { get; init; } = [];
+
+    /// <summary>Other records only the audit log still names: drafts a cancelled successor left.</summary>
+    public List<string> OtherEntityIds { get; init; } = [];
+
+    /// <summary>The one audit entry the removal owes (decision 72); null on a marker from before round three.</summary>
+    public RemovalAudit? Audit { get; init; }
+
+    /// <summary>Whether the one audit entry is written; a finish writes it while it isn't.</summary>
+    public bool AuditWritten { get; init; }
+}
+
+/// <summary>One passport of a removed battery's chain: its pack, its battery ID and every ID it answered to.</summary>
+public sealed class RemovalMember
+{
+    public required string PackId { get; init; }
+
+    public required string BatteryId { get; init; }
+
+    public List<string> Ids { get; init; } = [];
+
+    public bool IsDemo { get; init; }
+}
+
+/// <summary>The one audit entry a removal writes: who, its message, the battery ID, the earlier IDs and the counts.</summary>
+public sealed class RemovalAudit
+{
+    public required string Who { get; init; }
+
+    public required string Message { get; init; }
+
+    public required string BatteryId { get; init; }
+
+    public List<string> EarlierBatteryIds { get; init; } = [];
+
+    public int Versions { get; init; }
+
+    public int Documents { get; init; }
+
+    public int UploadLines { get; init; }
 }
 
 /// <summary>A battery's registration in the EU's DPP Registry (finding R02): when, its ID there, who recorded it and when.</summary>

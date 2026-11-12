@@ -206,6 +206,9 @@ public sealed record BatteryPage(
     /// </summary>
     public RemovalPlan? RemovePassport { get; init; }
 
+    /// <summary>Why a passport marked for deletion can't be removed yet (an earlier one still active); null otherwise.</summary>
+    public string? RemovePassportProblem { get; init; }
+
     /// <summary>Finding R08: a removal of this battery started and stopped half way; the page offers "Finish removing".</summary>
     public bool RemovalStarted { get; init; }
 
@@ -741,6 +744,7 @@ public sealed class BatteryPages(
             editor.Stamp(RecordEditor.LiveAttributes, pack.Values, null),
             new RemovalView(string.Empty, null));
         var clusterChoices = await ClustersAsync(cancellationToken);
+        var removalCheck = removal is null ? (Plan: (RemovalPlan?)null, Problem: (string?)null) : await removal.CheckPlanAsync(packId, cancellationToken);
         return new BatteryPage(
             pack,
             sources,
@@ -763,7 +767,8 @@ public sealed class BatteryPages(
                 ? clusterChoices.FirstOrDefault(cluster => string.Equals(cluster.Id, waiting.ToClusterId, StringComparison.OrdinalIgnoreCase))?.Name ?? waiting.ToClusterId
                 : null,
             // Finding R08: what removing takes, for a passport marked for deletion; a removal that stopped half way.
-            RemovePassport = removal is null ? null : await removal.PlanAsync(packId, cancellationToken),
+            RemovePassport = removalCheck.Plan,
+            RemovePassportProblem = removalCheck.Problem == PassportRemoval.EarlierStillActive ? removalCheck.Problem : null,
             RemovalStarted = await store.GetAsync<RemovedPassport>(packId, cancellationToken) is not null,
             // Finding R02: the EU registry record of a published real battery; demo batteries and drafts have no section.
             Registry = InRegistryScope(active is not null, await new DemoBoundary(store, clusters).InsideAsync(pack, cancellationToken))
