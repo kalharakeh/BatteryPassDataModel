@@ -72,6 +72,29 @@
 
     @await Html.PartialAsync("_Messages")
 
+    @if (Model.Family.IsDemo)
+    {
+        @* Decision 66: real product data made from the demo data in one step; the demo family stays as it is. *@
+        <section class="bp-card bp-console-form-card mt-4 bp-real-copy" id="copy-as-real">
+            <h2>This family is demo data</h2>
+            <p class="mb-2">
+                Real battery IDs can't be used on demo data, and Reset demo data rebuilds it, so your changes here don't last.
+                Copy as real product data makes a new, real family with a copy of every model (values, module description,
+                picture and documents) and every batch (values and documents). The manufacturing sites they use are copied
+                as real ones too, unless a real site of the same name is already there. Batteries aren't copied. This demo
+                family stays as it is.
+            </p>
+            <form method="post" action="/admin/families/@familyId/copy-as-real" class="d-flex flex-wrap align-items-end gap-2">
+                @Html.AntiForgeryToken()
+                <label class="bp-product-version-selected-field flex-grow-1">
+                    <span>Name of the new family (it must differ from every other family's name)</span>
+                    <input type="text" name="name" value="@ProductDataPages.RealCopyName(Model.Family.Name)" required />
+                </label>
+                <button type="submit" class="bp-primary-button bp-button-compact text-nowrap">Copy as real product data</button>
+            </form>
+        </section>
+    }
+
     <section class="bp-card bp-product-version-console bp-console-form-card mt-4">
         <div class="bp-product-version-console-header">
             <div>

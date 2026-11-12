@@ -106,6 +106,17 @@ public sealed class DocumentStore
             .ToListAsync(cancellationToken);
     }
 
+    /// <summary>Every document of one record, oldest first (decision 66 copies them).</summary>
+    public async Task<IReadOnlyList<DppDocument>> ListOwnedAsync(TargetKind ownerKind, string ownerId, CancellationToken cancellationToken = default)
+    {
+        if (_database is null)
+        {
+            return [];
+        }
+
+        return await Collection().Find(d => d.OwnerKind == ownerKind && d.OwnerId == ownerId).SortBy(d => d.UploadedAtUtc).ToListAsync(cancellationToken);
+    }
+
     /// <summary>Deletes every document of a removed record, with its stored file.</summary>
     public async Task DeleteOwnedAsync(TargetKind ownerKind, string ownerId, CancellationToken cancellationToken = default)
     {

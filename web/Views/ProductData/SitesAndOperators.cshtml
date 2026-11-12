@@ -37,7 +37,7 @@
                         @foreach (var row in Model.Sites)
                         {
                             <tr class="@(Model.Editor?.Id == row.Site.Id ? "table-active" : string.Empty)">
-                                <td><a href="@(Keep(ProductDataPages.SitesHref("site", row.Site.Id)))#editor" aria-current="@(Model.Editor?.Id == row.Site.Id ? "page" : null)">@row.Site.Name</a></td>
+                                <td><a href="@(Keep(ProductDataPages.SitesHref("site", row.Site.Id)))#editor" aria-current="@(Model.Editor?.Id == row.Site.Id ? "page" : null)">@row.Site.Name</a>@if (row.Site.IsDemo) {<text> </text><em class="bp-field-marker">Demo data</em>}</td>
                                 <td>@await Html.PartialAsync("_Completeness", new Completeness(row.Filled, row.Total, row.Missing))</td>
                                 <td>@row.Batches</td>
                             </tr>
@@ -76,7 +76,7 @@
                         @foreach (var row in Model.Operators)
                         {
                             <tr class="@(Model.Editor?.Id == row.Operator.Id ? "table-active" : string.Empty)">
-                                <td><a href="@(ProductDataPages.SitesHref("operator", row.Operator.Id))#editor" aria-current="@(Model.Editor?.Id == row.Operator.Id ? "page" : null)">@row.Operator.Name</a></td>
+                                <td><a href="@(ProductDataPages.SitesHref("operator", row.Operator.Id))#editor" aria-current="@(Model.Editor?.Id == row.Operator.Id ? "page" : null)">@row.Operator.Name</a>@if (row.Operator.IsDemo) {<text> </text><em class="bp-field-marker">Demo data</em>}</td>
                                 <td>@await Html.PartialAsync("_Completeness", new Completeness(row.Filled, row.Total, row.Missing))</td>
                                 <td>@row.Packs</td>
                             </tr>
@@ -92,6 +92,25 @@
         </form>
     </section>
 
+    @if (Model.RealCopy is { } copy)
+    {
+        @* Decision 66: a real copy of a demo site or operator; the demo one stays as it is. *@
+        <section class="bp-card bp-console-form-card mt-4 bp-real-copy" id="copy-as-real">
+            <h2>@copy.Name is demo data</h2>
+            <p class="mb-2">
+                Real battery IDs can't be used with demo data, and Reset demo data rebuilds it. Copy as real makes a real
+                @copy.KindWords with the same values and documents. The demo one stays as it is.
+            </p>
+            <form method="post" action="@copy.Action" class="d-flex flex-wrap align-items-end gap-2">
+                @Html.AntiForgeryToken()
+                <label class="bp-product-version-selected-field flex-grow-1">
+                    <span>Name of the real @copy.KindWords</span>
+                    <input type="text" name="name" value="@copy.SuggestedName" required />
+                </label>
+                <button type="submit" class="bp-primary-button bp-button-compact text-nowrap">Copy as real</button>
+            </form>
+        </section>
+    }
     @if (Model.Editor is { } editor)
     {
         @await Html.PartialAsync("_RecordEditor", editor)

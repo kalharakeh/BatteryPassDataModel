@@ -110,6 +110,27 @@ public sealed class ProductDataController(ProductDataPages pages, RecordEditor e
         return Redirect("/admin/families");
     }
 
+    /// <summary>Decision 66: a real copy of a demo family, with its models, batches, documents and the sites they use.</summary>
+    [HttpPost("families/{familyId}/copy-as-real")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CopyFamilyAsReal(string familyId, [FromForm] string? name, CancellationToken cancellationToken)
+    {
+        if (await store.GetAsync<BatteryFamily>(familyId, cancellationToken) is not { } demo)
+        {
+            return NotFound();
+        }
+
+        var (copyId, problem) = await pages.CopyFamilyAsRealAsync(Who, familyId, name, cancellationToken);
+        if (problem is not null)
+        {
+            TempData[ErrorKey] = $"Nothing was copied: {problem}.";
+            return Redirect(ProductDataPages.FamilyHref(familyId) + "#copy-as-real");
+        }
+
+        TempData[StatusKey] = $"Real product data made: this family is a real copy of the demo family {demo.Name}, with its models, batches and documents. Real battery IDs can be used on its batches. The demo family is unchanged.";
+        return Redirect(ProductDataPages.FamilyHref(copyId!));
+    }
+
     [HttpPost("families/{familyId}/picture")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UploadFamilyPicture(string familyId, IFormFile? picture, CancellationToken cancellationToken)
@@ -422,6 +443,46 @@ public sealed class ProductDataController(ProductDataPages pages, RecordEditor e
             ProductDataPages.SitesHref("site", siteId),
             async state => View("SitesAndOperators", await pages.SitesAndOperatorsAsync(siteId, null, state, cancellationToken)),
             cancellationToken);
+    }
+
+    /// <summary>Decision 66: a real copy of a demo manufacturing site, with its values and documents.</summary>
+    [HttpPost("sites/{siteId}/copy-as-real")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CopySiteAsReal(string siteId, [FromForm] string? name, CancellationToken cancellationToken)
+    {
+        if (await store.GetAsync<ManufacturingSite>(siteId, cancellationToken) is null)
+        {
+            return NotFound();
+        }
+
+        var (copyId, problem) = await pages.CopySiteAsRealAsync(Who, siteId, name, cancellationToken);
+        return CopiedAsReal("site", siteId, copyId, problem, "manufacturing site");
+    }
+
+    /// <summary>Decision 66: a real copy of a demo economic operator, with its values and documents.</summary>
+    [HttpPost("operators/{operatorId}/copy-as-real")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CopyOperatorAsReal(string operatorId, [FromForm] string? name, CancellationToken cancellationToken)
+    {
+        if (await store.GetAsync<EconomicOperator>(operatorId, cancellationToken) is null)
+        {
+            return NotFound();
+        }
+
+        var (copyId, problem) = await pages.CopyOperatorAsRealAsync(Who, operatorId, name, cancellationToken);
+        return CopiedAsReal("operator", operatorId, copyId, problem, "economic operator");
+    }
+
+    private RedirectResult CopiedAsReal(string kind, string demoId, string? copyId, string? problem, string kindWords)
+    {
+        if (problem is not null)
+        {
+            TempData[ErrorKey] = $"Nothing was copied: {problem}.";
+            return Redirect(ProductDataPages.SitesHref(kind, demoId) + "#copy-as-real");
+        }
+
+        TempData[EditorStatusKey] = $"Real copy made: this {kindWords} is real product data with the demo one's values. The demo one is unchanged.";
+        return Redirect(ProductDataPages.SitesHref(kind, copyId!) + EditorAnchor);
     }
 
     [HttpPost("operators")]

@@ -60,7 +60,7 @@
                         }
                     </div>
                     <div class="bp-product-template-card-body">
-                        <h3>@row.Family.Name</h3>
+                        <h3>@row.Family.Name @if (row.Family.IsDemo) {<em class="bp-field-marker">Demo data</em>}</h3>
                         <dl class="bp-product-template-meta">
                             <div><dt>Battery models</dt><dd>@row.Models</dd></div>
                             <div><dt>Batches</dt><dd>@row.Batches</dd></div>

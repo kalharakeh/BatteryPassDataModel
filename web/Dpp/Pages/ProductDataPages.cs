@@ -103,14 +103,18 @@ public sealed record FamilyPage(
 
 public sealed record BatchPage(ProductionBatch Batch, BatteryModel Model, BatteryFamily Family, ManufacturingSite Site, RecordEditorView Editor);
 
-public sealed record SitesAndOperatorsPage(IReadOnlyList<SiteRow> Sites, IReadOnlyList<OperatorRow> Operators, RecordEditorView? Editor);
+public sealed record SitesAndOperatorsPage(IReadOnlyList<SiteRow> Sites, IReadOnlyList<OperatorRow> Operators, RecordEditorView? Editor)
+{
+    /// <summary>"Copy as real" for the chosen site or operator when it is demo data (decision 66); null otherwise.</summary>
+    public RealCopyView? RealCopy { get; init; }
+}
 
 /// <summary>
 /// The team's product data pages (decision 23): battery families with their models and batches, and the shared
 /// manufacturing sites and economic operators. Passport values are saved by <see cref="RecordEditor"/>; this class
 /// loads the pages and makes the changes that aren't passport data (new records, names, the family picture).
 /// </summary>
-public sealed class ProductDataPages(
+public sealed partial class ProductDataPages(
     DppStore store,
     RecordEditor editor,
     DocumentStore documents,
@@ -226,18 +230,21 @@ public sealed class ProductDataPages(
         }
 
         RecordEditorView? view = null;
+        IDppRecord? chosen = null;
         if (sites.FirstOrDefault(site => site.Id == siteId) is { } selectedSite)
         {
             var href = $"/admin/sites/{Uri.EscapeDataString(selectedSite.Id)}";
             view = await EditorAsync(TargetKind.Site, selectedSite.Id, selectedSite.Name, selectedSite.Values, href, SitesHref("site", selectedSite.Id), state, cancellationToken);
+            chosen = selectedSite;
         }
         else if (operators.FirstOrDefault(item => item.Id == operatorId) is { } selectedOperator)
         {
             var href = $"/admin/operators/{Uri.EscapeDataString(selectedOperator.Id)}";
             view = await EditorAsync(TargetKind.Operator, selectedOperator.Id, selectedOperator.Name, selectedOperator.Values, href, SitesHref("operator", selectedOperator.Id), state, cancellationToken);
+            chosen = selectedOperator;
         }
 
-        return new SitesAndOperatorsPage(siteRows, operatorRows, view);
+        return new SitesAndOperatorsPage(siteRows, operatorRows, view) { RealCopy = RealCopyFor(chosen) };
     }
 
     public async Task<string> CreateFamilyAsync(string who, string name, CancellationToken cancellationToken = default)
