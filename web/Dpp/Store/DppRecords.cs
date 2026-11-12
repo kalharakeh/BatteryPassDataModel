@@ -164,6 +164,26 @@ public sealed class BatteryPack : IDppRecord
     /// still holds the token the attempt saw when it started, so a change marked meanwhile stays marked.
     /// </summary>
     public string? ChangesWaitingToken { get; set; }
+
+    /// <summary>
+    /// The battery's registration in the EU's DPP Registry, as the team recorded it (finding R02); null until then. App
+    /// data, not passport data: never published, never shown outside the team. Old records have none.
+    /// </summary>
+    public RegistryRecord? Registry { get; set; }
+}
+
+/// <summary>A battery's registration in the EU's DPP Registry (finding R02): when, its ID there, who recorded it and when.</summary>
+public sealed class RegistryRecord
+{
+    /// <summary>The day it was registered, yyyy-MM-dd.</summary>
+    public required string RegisteredOn { get; init; }
+
+    /// <summary>The Registry's own ID for the registration, as typed.</summary>
+    public required string RegistrationId { get; init; }
+
+    public required string RecordedBy { get; init; }
+
+    public required DateTime RecordedAtUtc { get; init; }
 }
 
 /// <summary>An invalid or marked-for-deletion passport's mark (design 7.6 and 7.7): its reason is seen by the team and market surveillance only.</summary>

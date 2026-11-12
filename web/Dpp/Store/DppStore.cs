@@ -349,6 +349,16 @@ public sealed class DppStore
         return result.MatchedCount == 1;
     }
 
+    /// <summary>Records (or corrects) the pack's EU registry registration (finding R02); nothing else changes. False when the pack doesn't exist.</summary>
+    public async Task<bool> SetRegistryAsync(string packId, RegistryRecord record, CancellationToken cancellationToken = default)
+    {
+        var result = await Collection<BatteryPack>().UpdateOneAsync(
+            pack => pack.Id == packId,
+            Builders<BatteryPack>.Update.Set(pack => pack.Registry, record),
+            cancellationToken: cancellationToken);
+        return result.MatchedCount == 1;
+    }
+
     /// <summary>Adds an entry to a pack's repair history (design 7.9). False when the pack doesn't exist.</summary>
     public async Task<bool> AddRepairAsync(string packId, RepairEntry entry, CancellationToken cancellationToken = default)
     {

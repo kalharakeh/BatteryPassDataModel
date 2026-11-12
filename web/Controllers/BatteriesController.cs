@@ -34,9 +34,34 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     /// <summary>The live-values form's field with the time the values were measured, in the page's time zone.</summary>
     public const string MeasuredAtField = "measuredAt";
 
+    /// <param name="registry">"missing": only the published real batteries not recorded in the EU registry yet (finding R02).</param>
     [HttpGet("")]
-    public async Task<IActionResult> Batteries([FromQuery] string? q, CancellationToken cancellationToken) =>
-        View(await pages.TeamListAsync(q, cancellationToken)); // one row per battery (redesign R5), and the waiting changes (round two, A2)
+    public async Task<IActionResult> Batteries([FromQuery] string? q, CancellationToken cancellationToken, [FromQuery] string? registry = null) =>
+        View(await pages.TeamListAsync(q, cancellationToken, onlyNotInTheRegistry: registry == "missing")); // one row per battery (redesign R5), and the waiting changes (round two, A2)
+
+    /// <summary>
+    /// The published real batteries not recorded in the EU registry yet, as CSV for typing into the Registry (finding
+    /// R02). The app's own data, for the team only; it claims nothing about the Registry's own format.
+    /// </summary>
+    [HttpGet("registry.csv")]
+    public async Task<IActionResult> RegistryCsv(CancellationToken cancellationToken)
+    {
+        var csv = BatteryPages.RegistryCsv(await pages.NotInTheRegistryAsync(cancellationToken));
+        Response.Headers.CacheControl = "private, no-store";
+        return File(System.Text.Encoding.UTF8.GetPreamble().Concat(System.Text.Encoding.UTF8.GetBytes(csv)).ToArray(), "text/csv; charset=utf-8", $"not-in-the-eu-registry-{DateTime.UtcNow:yyyy-MM-dd}.csv");
+    }
+
+    /// <summary>Records or corrects the battery's EU registry registration (finding R02).</summary>
+    [HttpPost("{packId}/registry")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RecordRegistry(string packId, [FromForm] string? registeredOn, [FromForm] string? registrationId, CancellationToken cancellationToken)
+    {
+        var problem = await pages.RecordRegistryAsync(Who, packId, registeredOn, registrationId, cancellationToken);
+        CardMessages.Put(TempData, packId, CardKey, "registry");
+        CardMessages.Put(TempData, packId, CardStatusKey, problem is null ? "Saved: the EU registry record." : null);
+        CardMessages.Put(TempData, packId, CardErrorKey, problem is null ? null : $"Not saved. {problem}");
+        return Redirect($"{BatteryPages.BatteryHref(packId)}?section=registry");
+    }
 
     /// <summary>
     /// "Check all passports now" (decision 65): the check of every published battery, with a plain result line. It runs

@@ -9,6 +9,8 @@ using BatteryPassWeb.Dpp.Publication;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Dpp.Values;
 using BatteryPassWeb.Services;
+using MongoDB.Bson;
+using System.Text.Json.Nodes;
 
 namespace BatteryPassWeb.Dpp.Pages;
 
@@ -46,13 +48,31 @@ public sealed record BatteryRow(
 
     /// <summary>A saved change waits for its published passport: the battery's stored marker (round three, 1).</summary>
     public bool ChangesWaiting { get; init; }
+
+    /// <summary>The battery's EU registry registration as recorded by the team (finding R02); null until then.</summary>
+    public RegistryRecord? Registry { get; init; }
+
+    /// <summary>A published real battery the team hasn't recorded in the EU registry yet (finding R02).</summary>
+    public bool NotInTheRegistry => Active is not null && !IsDemo && Registry is null;
 }
 
 public sealed record BatteriesPage(IReadOnlyList<BatteryRow> Rows, string Query, int Total)
 {
     /// <summary>The team's list only: published batteries whose saved changes their public passport doesn't show yet (round two, A2).</summary>
     public IReadOnlyList<BatteryRow> Waiting { get; init; } = [];
+
+    /// <summary>The team's list only: how many published real batteries aren't recorded in the EU registry yet (finding R02).</summary>
+    public int NotInTheRegistry { get; init; }
+
+    /// <summary>The list shows only those batteries ("?registry=missing").</summary>
+    public bool OnlyNotInTheRegistry { get; init; }
 }
+
+/// <summary>The "EU registry" section of a published real battery's page (finding R02): the record, and where the form posts.</summary>
+public sealed record RegistryCardView(string Action, RegistryRecord? Record, string Today);
+
+/// <summary>One line of the CSV for typing into the EU's DPP Registry (finding R02).</summary>
+public sealed record RegistryLine(string BatteryId, string PassportAddress, string ModelIdentifier, string OperatorIdentifier, string FacilityIdentifier, string PublicationDate);
 
 /// <summary>A batch a new battery can be made in, named by its family, model, year and site.</summary>
 public sealed record BatchChoice(string BatchId, string FamilyName, string ModelName, int Year, string SiteName)
@@ -180,6 +200,9 @@ public sealed record BatteryPage(
     /// <summary>The receiving cluster's name while a hand-over waits for its answer (step 4d); null otherwise.</summary>
     public string? HandOverTo { get; init; }
 
+    /// <summary>The "EU registry" section (finding R02), for a published real battery only; null for drafts and demo batteries.</summary>
+    public RegistryCardView? Registry { get; init; }
+
     /// <summary>The "Upload a file" section (step 5c); the controller adds it, never to a read-only page.</summary>
     public UploadCardView? Upload { get; init; }
 
@@ -245,6 +268,10 @@ public sealed record BatteryPage(
             sections.Add(new("accidents", "Accident reports", "accident", Count: AccidentReports.Count));
             sections.Add(new("modules", "Modules", "modules", Count: Pack.Modules.Count));
             sections.Add(new("versions", "Versions", "versions", Count: Versions.Count));
+            if (Registry is { } registry)
+            {
+                sections.Add(new("registry", "EU registry", "globe", registry.Record is null ? "Not recorded yet" : "Registered")); // finding R02
+            }
 
             // No "Passport status" section (redesign R5, owner's item 2): marking opens a window from "More", and a marked
             // passport's reason and Undo are on the header's red line.
@@ -274,6 +301,9 @@ public sealed class BatteryPages(
     PassportReader? passports = null)
 {
     public const string ClusterChangedEvent = "dpp.pack-cluster-changed";
+
+    /// <summary>The audit entry of an EU registry record or its correction (finding R02).</summary>
+    public const string RegistryRecordedEvent = "dpp.registry-recorded";
     public const string ModulesSetEvent = "dpp.pack-modules-set";
 
     /// <summary>A battery's picture: its model's own (redesign R2), else its family's (decision 20); null when neither has one.</summary>
@@ -338,13 +368,126 @@ public sealed class BatteryPages(
     /// The waiting line reads each battery's stored marker from the rows the list loads anyway: no call and no passport
     /// per battery (round three, 1). It sits outside the search, so a search never hides a waiting change.
     /// </remarks>
-    public async Task<BatteriesPage> TeamListAsync(string? query, CancellationToken cancellationToken = default)
+    /// <param name="onlyNotInTheRegistry">Only the published real batteries not recorded in the EU registry yet (finding R02).</param>
+    public async Task<BatteriesPage> TeamListAsync(string? query, CancellationToken cancellationToken = default, bool onlyNotInTheRegistry = false)
     {
         var (rows, versions) = await RowsAsync(cancellationToken);
-        var page = OnePerBatteryPage(rows, versions, query, _ => true, matchClusters: true);
+        var page = OnePerBatteryPage(rows, versions, query, row => !onlyNotInTheRegistry || row.NotInTheRegistry, matchClusters: true);
         // Every marked battery, not one row per battery: a predecessor still active while its successor is a draft is
         // named too (round four, 5).
-        return page with { Waiting = Sorted(rows.Where(row => row.ChangesWaiting)) };
+        return page with
+        {
+            Waiting = Sorted(rows.Where(row => row.ChangesWaiting)),
+            NotInTheRegistry = rows.Count(row => row.NotInTheRegistry),
+            OnlyNotInTheRegistry = onlyNotInTheRegistry,
+        };
+    }
+
+    /// <summary>
+    /// The published real batteries not recorded in the EU registry yet, as lines for typing into the Registry (finding
+    /// R02): battery ID, passport address, model identifier (#10), operator identifier (#7), facility identifier (#12),
+    /// all as the active version published them, and the day the battery's first version was published.
+    /// </summary>
+    public async Task<IReadOnlyList<RegistryLine>> NotInTheRegistryAsync(CancellationToken cancellationToken = default)
+    {
+        var (rows, versions) = await RowsAsync(cancellationToken);
+        return Sorted(rows.Where(row => row.NotInTheRegistry))
+            .Select(row => new RegistryLine(
+                row.Identifier,
+                links.IsConfigured ? links.PassportUrl(row.Identifier) : string.Empty,
+                Published(row.Active!, 10),
+                Published(row.Active!, 7),
+                Published(row.Active!, 12),
+                versions[row.PackId].MinBy(version => version.Number)!.PublishedAtUtc.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)))
+            .ToArray();
+
+        static string Published(PassportVersion version, int number)
+        {
+            JsonNode? node = version.StaticCore;
+            foreach (var part in AttributeCatalog.ByNumber(number).Path.Split('.'))
+            {
+                node = node is JsonObject json ? json[part] : null;
+            }
+
+            return node is JsonValue value && value.TryGetValue<string>(out var text) ? text : node?.ToJsonString() ?? string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Records or corrects a published real battery's EU registry registration (finding R02), in the audit log with what
+    /// it was before. Null when saved; otherwise why not, in the page's words.
+    /// </summary>
+    public async Task<string?> RecordRegistryAsync(string who, string packId, string? registeredOn, string? registrationId, CancellationToken cancellationToken = default)
+    {
+        if (await store.GetAsync<BatteryPack>(packId, cancellationToken) is not { } pack
+            || await store.GetLatestVersionNumberAsync(packId, cancellationToken) == 0
+            || await new DemoBoundary(store, clusters).InsideAsync(pack, cancellationToken))
+        {
+            return "Only a published battery outside the demo is recorded in the EU registry.";
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        if (!DateOnly.TryParseExact(registeredOn?.Trim(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var on) || on > today)
+        {
+            return "Give the day it was registered: today or a day before.";
+        }
+
+        var id = registrationId?.Trim() ?? string.Empty;
+        if (id.Length is 0 or > 200)
+        {
+            return "Type the registration ID the Registry gave, up to 200 characters.";
+        }
+
+        var record = new RegistryRecord
+        {
+            RegisteredOn = on.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+            RegistrationId = id,
+            RecordedBy = who,
+            RecordedAtUtc = DateTime.UtcNow,
+        };
+        await store.SetRegistryAsync(packId, record, cancellationToken);
+        var before = pack.Registry;
+        await audit.AppendApplicationAuditEventAsync(
+            RegistryRecordedEvent,
+            who,
+            "admin",
+            "admin-ui",
+            before is null
+                ? $"Battery {Text(pack, "batterySerialNumber") ?? packId}: recorded in the EU registry on {record.RegisteredOn}, ID {record.RegistrationId}."
+                : $"Battery {Text(pack, "batterySerialNumber") ?? packId}: EU registry record corrected to {record.RegisteredOn}, ID {record.RegistrationId} (was {before.RegisteredOn}, ID {before.RegistrationId}).",
+            new BsonDocument
+            {
+                ["registeredOn"] = record.RegisteredOn,
+                ["registrationId"] = record.RegistrationId,
+                ["before"] = before is null ? BsonNull.Value : new BsonDocument { ["registeredOn"] = before.RegisteredOn, ["registrationId"] = before.RegistrationId },
+            },
+            entityType: "dpp-pack",
+            entityId: packId,
+            batteryId: Text(pack, "uniqueProductIdentifier") ?? string.Empty,
+            cancellationToken: CancellationToken.None);
+        return null;
+    }
+
+    /// <summary>The CSV of <see cref="NotInTheRegistryAsync"/>: a header line, commas, every field quoted, a field that a
+    /// spreadsheet would read as a formula kept as text.</summary>
+    public static string RegistryCsv(IEnumerable<RegistryLine> lines)
+    {
+        ArgumentNullException.ThrowIfNull(lines);
+        static string Field(string text)
+        {
+            var safe = text.Length > 0 && "=+-@\t\r".Contains(text[0]) ? "'" + text : text;
+            return $"\"{safe.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
+        }
+
+        var csv = new System.Text.StringBuilder();
+        csv.Append("Battery ID,Passport address,Model identifier (#10),Operator identifier (#7),Facility identifier (#12),Publication date\r\n");
+        foreach (var line in lines)
+        {
+            csv.Append(string.Join(',', new[] { line.BatteryId, line.PassportAddress, line.ModelIdentifier, line.OperatorIdentifier, line.FacilityIdentifier, line.PublicationDate }.Select(Field)));
+            csv.Append("\r\n");
+        }
+
+        return csv.ToString();
     }
 
     /// <summary>
@@ -410,6 +553,7 @@ public sealed class BatteryPages(
                 SuccessorOf = pack.SuccessorOf,
                 IsDemo = DemoScope.Inside(pack, batch, model, operators.GetValueOrDefault(pack.OperatorId), pack.ClusterId is null || demoClusters.Contains(pack.ClusterId)),
                 ChangesWaiting = active is not null && pack.ChangesWaitingSinceUtc is not null,
+                Registry = pack.Registry,
             });
         }
 
@@ -594,6 +738,10 @@ public sealed class BatteryPages(
             Chain = await PassportChains.ForAsync(store, sources.Pack, cancellationToken),
             HandOverTo = await store.FindWaitingHandOverAsync(packId, cancellationToken) is { } waiting
                 ? clusterChoices.FirstOrDefault(cluster => string.Equals(cluster.Id, waiting.ToClusterId, StringComparison.OrdinalIgnoreCase))?.Name ?? waiting.ToClusterId
+                : null,
+            // Finding R02: the EU registry record of a published real battery; demo batteries and drafts have no section.
+            Registry = versions.Count > 0 && !await new DemoBoundary(store, clusters).InsideAsync(pack, cancellationToken)
+                ? new RegistryCardView($"{href}/registry", pack.Registry, DateTime.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))
                 : null,
         };
     }

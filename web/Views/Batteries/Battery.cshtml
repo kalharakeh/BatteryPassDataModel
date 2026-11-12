@@ -406,6 +406,12 @@
                 @await Html.PartialAsync("_PassportChain", new ChainView(Model.Chain, ChainReader.Team))
                 @await Html.PartialAsync("~/Views/Batteries/_VersionsCard.cshtml", Model.Cards)
             </div>
+            @if (Model.Registry is { } registry)
+            {
+                <div data-section="registry" hidden="@Hidden("registry")">
+                    @await Html.PartialAsync("~/Views/Batteries/_RegistryCard.cshtml", registry)
+                </div>
+            }
         </div>
     </div>
 
