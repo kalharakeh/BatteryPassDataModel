@@ -196,7 +196,7 @@
     </div>
 
     @* The windows, at page level: one inside a hidden section can't open. *@
-    @if (!Model.ReadOnly && Model.Status is { } statusWindows)
+    @if (Model.Changes && Model.Status is { } statusWindows)
     {
         @await Html.PartialAsync("~/Views/Batteries/_StatusDialog.cshtml", statusWindows)
     }

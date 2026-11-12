@@ -159,9 +159,12 @@ public sealed class DemoDataService(
                 await MarkAccountRecordAsync("clusters", Builders<BsonDocument>.Filter.Eq("clusterId", cluster.Id), cancellationToken);
             }
 
-            // The demo clusters come authorised in writing, so their admins and tokens change their batteries (finding R20);
-            // set every time, so a reset puts it back on a demo cluster from before.
-            await clusters.SetWrittenAuthorisationAsync(cluster.Id, DateOnly.FromDateTime(authorisedAt), SeedActor, authorisedAt, cancellationToken);
+            // The demo clusters come authorised in writing, so their admins and tokens change their batteries (finding R20). A
+            // tick already there (the team's, or an earlier seed's) is kept; a demo cluster from before without one gets it.
+            if (WrittenAuthorisation.Of(await clusters.GetClusterByIdAsync(cluster.Id, cancellationToken)) is null)
+            {
+                await clusters.SetWrittenAuthorisationAsync(cluster.Id, DateOnly.FromDateTime(authorisedAt), SeedActor, authorisedAt, cancellationToken);
+            }
         }
 
         // The accounts don't depend on the product data, so they are made side by side with it (redesign R1).
