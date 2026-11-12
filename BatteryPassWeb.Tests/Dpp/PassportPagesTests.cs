@@ -145,7 +145,7 @@ public sealed class PassportPagesTests(MongoFixture mongo)
     [Fact]
     public async Task EveryValueOnTheDetailPage_ShouldSayWhenAndWhereItCameFrom()
     {
-        var rig = await PublicationTesting.PublishedRigAsync(mongo);
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync(); // its feed value needs an authorised cluster (R20)
         var measured = rig.Clock.Now.UtcDateTime.AddMinutes(-5);
         await rig.Pipeline.SaveAsync(
             ChangeSender.Feed("bms-feed", BatteryTesting.North),
