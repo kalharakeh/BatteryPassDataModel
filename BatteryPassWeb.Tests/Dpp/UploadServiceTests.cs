@@ -190,7 +190,7 @@ public sealed class UploadServiceTests(MongoFixture mongo)
     }
 
     internal static UploadService Service(PublicationRig rig) =>
-        new(rig.Store, rig.Pipeline, BatteryApiTests.Api(rig), new ApplicationAuditService(rig.Context), rig.Clock, StatusChangeTests.Service(rig), [new NativeUploadFormat(), new BmsExportFormat()]);
+        new(rig.Store, rig.Pipeline, BatteryApiTests.Api(rig), new ApplicationAuditService(rig.Context), rig.Clock, StatusChangeTests.Service(rig), [new NativeUploadFormat(), new BmsExportFormat()], rig.Publication);
 
     internal static Task<UploadReport> Run(PublicationRig rig, ChangeSender sender, string file, bool preview = false) =>
         Service(rig).RunAsync(sender, JsonNode.Parse(file), "page", "batteries.json", preview);

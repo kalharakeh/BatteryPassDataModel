@@ -11,7 +11,7 @@ public sealed class PublicationChecksTests
     [Fact]
     public void CompletePassport_ShouldPublishWithoutWarnings()
     {
-        var report = Checks.Check(SeedPassport());
+        var report = Checks.Check(SeedPassport(), DppTestSeed.Answers);
 
         Assert.True(report.CanPublish);
         Assert.Empty(report.Blocking);
@@ -24,7 +24,7 @@ public sealed class PublicationChecksTests
         var passport = SeedPassport();
         Section(passport, "identifiersAndProductData").Remove("thirdPartyServiceProvider");
 
-        var report = Checks.Check(passport);
+        var report = Checks.Check(passport, DppTestSeed.Answers);
 
         Assert.False(report.CanPublish);
         Assert.Contains(report.Blocking, item => item.StartsWith("#13 ", StringComparison.Ordinal));
@@ -34,21 +34,21 @@ public sealed class PublicationChecksTests
     public void MissingAttributeRequiredOnlyLater_ShouldWarn()
     {
         var passport = SeedPassport();
-        Section(passport, "performanceAndDurability").Remove("ratedCapacity");
+        Section(passport, "symbolsLabelsAndDocumentationOfConformity").Remove("carbonFootprintLabel");
 
-        var report = Checks.Check(passport);
+        var report = Checks.Check(passport, DppTestSeed.Answers);
 
         Assert.True(report.CanPublish);
-        Assert.Contains(report.Warnings, item => item.StartsWith("#57 ", StringComparison.Ordinal) && item.Contains("required later", StringComparison.Ordinal));
+        Assert.Contains(report.Warnings, item => item.StartsWith("#25 ", StringComparison.Ordinal) && item.Contains("required later", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void MissingConditionalAttribute_ShouldNeitherBlockNorWarn()
+    public void MissingConditionalAttribute_ShouldNeitherBlockNorWarn_WhenTheModelSaysItIsntNeeded()
     {
         var passport = SeedPassport();
         Section(passport, "identifiersAndProductData").Remove("warrantyPeriod");
 
-        var report = Checks.Check(passport);
+        var report = Checks.Check(passport, DppTestSeed.Answers with { CommercialWarranty = false }); // R01: "no" means not needed
 
         Assert.True(report.CanPublish);
         Assert.Empty(report.Warnings);
@@ -60,7 +60,7 @@ public sealed class PublicationChecksTests
         var passport = SeedPassport();
         Section(passport, "symbolsLabelsAndDocumentationOfConformity")["euDeclarationOfConformity"] = new JsonObject { ["contentType"] = "application/pdf" };
 
-        var report = Checks.Check(passport);
+        var report = Checks.Check(passport, DppTestSeed.Answers);
 
         Assert.False(report.CanPublish);
         Assert.Contains(report.Blocking, item => item.Contains("euDeclarationOfConformity", StringComparison.Ordinal) && item.Contains("url", StringComparison.Ordinal));
@@ -72,7 +72,7 @@ public sealed class PublicationChecksTests
         var passport = SeedPassport();
         Section(passport, "performanceAndDurability")["stateOfChargeSoC"] = JsonNode.Parse("""{"percentUnit":"%","percentageValue":120}""");
 
-        Assert.False(Checks.Check(passport).CanPublish);
+        Assert.False(Checks.Check(passport, DppTestSeed.Answers).CanPublish);
     }
 
     private static JsonObject SeedPassport()

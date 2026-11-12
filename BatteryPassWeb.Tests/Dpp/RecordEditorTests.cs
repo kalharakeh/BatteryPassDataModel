@@ -23,14 +23,14 @@ public sealed class RecordEditorTests(MongoFixture mongo)
     }
 
     [Theory]
-    [InlineData(TargetKind.Model, 28)]
+    [InlineData(TargetKind.Model, 29)]
     [InlineData(TargetKind.Batch, 4)]
     [InlineData(TargetKind.Site, 3)]
     [InlineData(TargetKind.Operator, 2)]
     public void AnEmptyRecord_ShouldMissOnlyItsValuesNeededByFeb2027(TargetKind kind, int count)
     {
-        // Values needed only later (8 of a batch's, 2 of a model's) and conditional ones aren't counted.
-        Assert.Equal(count, RecordEditor.CountMissing(kind, new Dictionary<string, AttributeValue>()));
+        // Values needed only later (8 of a batch's, 1 of a model's) and conditional ones aren't counted. #57 counts (R22).
+        Assert.Equal(count, RecordEditor.CountMissing(kind, new Dictionary<string, AttributeValue>(), BatteryPassWeb.Dpp.Catalog.ModelAnswers.NotAnswered));
     }
 
     [Fact]
@@ -40,11 +40,13 @@ public sealed class RecordEditorTests(MongoFixture mongo)
         var stored = (await rig.Store.GetAsync<BatteryModel>(ModelId))!.Values;
         IReadOnlyDictionary<string, AttributeValue> Without(string property) => stored.Where(pair => pair.Key != property).ToDictionary();
 
-        Assert.Equal(0, RecordEditor.CountMissing(TargetKind.Model, stored));
-        Assert.Equal(0, RecordEditor.CountMissing(TargetKind.Model, Without("symbolsForCadmiumAndLead"))); // #24 is conditional
-        Assert.Equal(1, RecordEditor.CountMissing(TargetKind.Model, Without("batteryMass"))); // #21 is needed by Feb 2027
+        var answers = DppTestSeed.Answers;
+        Assert.Equal(0, RecordEditor.CountMissing(TargetKind.Model, stored, answers));
+        Assert.Equal(0, RecordEditor.CountMissing(TargetKind.Model, Without("symbolsForCadmiumAndLead"), answers with { CadmiumOrLeadAboveLimit = false })); // #24: the model says no (R01)
+        Assert.Equal(1, RecordEditor.CountMissing(TargetKind.Model, Without("symbolsForCadmiumAndLead"), answers)); // #24: the model says yes
+        Assert.Equal(1, RecordEditor.CountMissing(TargetKind.Model, Without("batteryMass"), answers)); // #21 is needed by Feb 2027
 
-        var sections = await PageTesting.Editor(rig).SectionsAsync(TargetKind.Model, ModelId, Without("batteryMass"));
+        var sections = await PageTesting.Editor(rig).SectionsAsync(TargetKind.Model, ModelId, Without("batteryMass"), answers);
         var missing = Assert.Single(sections.SelectMany(section => section.Fields), field => field.IsMissing);
         Assert.Equal(21, missing.Attribute.Number);
         Assert.Equal([1, 0, 0, 0, 0, 0], sections.Select(section => section.Missing));
@@ -84,7 +86,7 @@ public sealed class RecordEditorTests(MongoFixture mongo)
         var uploaded = await PageTesting.Documents(rig).UploadAsync(PublicationTesting.Team, TargetKind.Model, ModelId, "dismantlingInformation", new DocumentUpload("manual.pdf", DocumentTesting.Pdf()));
         var stored = (await rig.Store.GetAsync<BatteryModel>(ModelId))!.Values;
 
-        var sections = await editor.SectionsAsync(TargetKind.Model, ModelId, stored);
+        var sections = await editor.SectionsAsync(TargetKind.Model, ModelId, stored, DppTestSeed.Answers);
 
         Assert.Equal(
             ["Identifiers and product data", "Symbols, labels and conformity", "Due diligence", "Materials and composition", "Circularity", "Performance and durability"],

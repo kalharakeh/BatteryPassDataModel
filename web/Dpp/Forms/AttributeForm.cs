@@ -39,6 +39,9 @@ public enum InputKind
     Url,
     Select,
     Lines,
+
+    /// <summary>A period (#19): a whole number with years or months; the app stores the official form, e.g. P8Y (W05).</summary>
+    Duration,
 }
 
 /// <summary>
@@ -68,6 +71,9 @@ public sealed record AttributeForm(
 
     /// <summary>The posted field that holds the number of rows of a <see cref="FormKind.Rows"/> form.</summary>
     public string RowCountField => $"{Prefix}{Attribute.Property}.rows";
+
+    /// <summary>The posted field with a <see cref="InputKind.Duration"/> input's unit ("Y" or "M"), next to its number.</summary>
+    public static string UnitField(string fieldName) => $"{fieldName}.unit";
 
     /// <summary>The HTML name of an input: v.batteryMass, v.extinguishingAgent.agentFireClass or v.hazardousSubstancesAndTheirImpact[0].identifier.</summary>
     public string FieldName(FormInput input, int? row = null)

@@ -57,6 +57,15 @@ public sealed class BatteryModel : IDppRecord
     /// example file. Uploading a real file links a new document. Empty for anything not copied from the demo.
     /// </summary>
     public List<string> ExampleDocumentIds { get; set; } = [];
+
+    /// <summary>Does this battery come with a commercial warranty? (R01, decides #19.) Null: not answered yet. App data, not passport data.</summary>
+    public bool? HasCommercialWarranty { get; set; }
+
+    /// <summary>Is this battery made for cycling use? (R01, decides #71, #72, #74, #82 to #85.) Null: not answered yet. App data.</summary>
+    public bool? MadeForCyclingUse { get; set; }
+
+    /// <summary>Is its cadmium or lead above the limit for the symbols? (R01, decides #24.) Null: not answered yet. App data.</summary>
+    public bool? CadmiumOrLeadAboveLimit { get; set; }
 }
 
 /// <summary>Manufacturer identifier and information, and the manufacturing place (#12, #15, #16).</summary>
@@ -151,6 +160,19 @@ public sealed class BatteryPack : IDppRecord
 
     /// <summary>Why the passport is invalid or marked for deletion, by whom and when (step 4c-2); null otherwise.</summary>
     public PassportMark? Mark { get; set; }
+
+    /// <summary>
+    /// When a saved change was first held back from this battery's published passport (round three, 1); null when its
+    /// passport shows its saved data. A marker for the team's list and for live saves; the battery's page checks the
+    /// truth and puts it right. Old records have none.
+    /// </summary>
+    public DateTime? ChangesWaitingSinceUtc { get; set; }
+
+    /// <summary>
+    /// A new value at every set of the marker (round four, 1 and 2): a publish attempt clears the marker only while it
+    /// still holds the token the attempt saw when it started, so a change marked meanwhile stays marked.
+    /// </summary>
+    public string? ChangesWaitingToken { get; set; }
 }
 
 /// <summary>An invalid or marked-for-deletion passport's mark (design 7.6 and 7.7): its reason is seen by the team and market surveillance only.</summary>

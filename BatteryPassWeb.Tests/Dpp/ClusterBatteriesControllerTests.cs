@@ -238,7 +238,7 @@ public sealed class ClusterBatteriesControllerTests(MongoFixture mongo)
         Assert.False(card.ForTeam);
         Assert.Equal($"{ClusterBatteryPages.BatteryHref(rig.PackId)}/upload", card.Action);
         Assert.Equal(["Will be saved", "Not saved: #19 can't be changed by this sender"], card.Check!.Values.Select(row => row.Result));
-        Assert.Equal("Saved: 1 value.", saving.TempData[BatteriesController.CardStatusKey]);
+        Assert.Equal("Saved: 1 value. The passport shows them now and keeps version 1.", saving.TempData[BatteriesController.CardStatusKey]); // round two, A3
         Assert.Equal(33, (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!.Values["stateOfChargeSoC"].Value!["percentageValue"]!.GetValue<int>());
         Assert.IsType<NotFoundResult>(await Controller(rig, SouthAdmin, "clusterAdmin").CheckUpload(rig.PackId, Upload("readings.json", bytes), CancellationToken.None));
     }

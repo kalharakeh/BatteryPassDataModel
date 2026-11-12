@@ -37,7 +37,8 @@ internal static class BatteryTesting
         DocumentTesting.Links,
         new ClusterRepository(rig.Context),
         new ApplicationAuditService(rig.Context),
-        StatusChangeTests.Pages(rig));
+        StatusChangeTests.Pages(rig),
+        passports: SigningTesting.Passports(rig.Store));
 
     /// <summary>The fields of a form that shows these attributes, as the page shows them.</summary>
     public static Dictionary<string, string> ShownForm(IEnumerable<AttributeDefinition> attributes, IReadOnlyDictionary<string, AttributeValue> stored)

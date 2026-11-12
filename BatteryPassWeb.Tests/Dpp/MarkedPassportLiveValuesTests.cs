@@ -27,7 +27,7 @@ public sealed class MarkedPassportLiveValuesTests(MongoFixture mongo)
         Assert.Null(await PassportMarkTests.Service(rig).MarkInvalidAsync(Team, rig.PackId, "Wrong carbon footprint figures"));
         var version = (await rig.Store.GetLatestVersionAsync(rig.PackId))!;
 
-        var passport = (await new PassportReader(rig.Store).VersionAsync(version.DigitalProductPassportId))!;
+        var passport = (await SigningTesting.Passports(rig.Store).VersionAsync(version.DigitalProductPassportId))!;
 
         Assert.Equal(DppStatuses.Invalid, version.DppStatus);
         Assert.True(HasStateOfCharge(passport.Passport));
@@ -42,7 +42,7 @@ public sealed class MarkedPassportLiveValuesTests(MongoFixture mongo)
         var versions = await rig.Store.ListVersionsAsync(rig.PackId);
         var latest = (await rig.Store.GetLatestVersionAsync(rig.PackId))!;
 
-        var reader = new PassportReader(rig.Store);
+        var reader = SigningTesting.Passports(rig.Store);
 
         Assert.Equal(DppStatuses.MarkedForDeletion, latest.DppStatus);
         Assert.True(HasStateOfCharge((await reader.VersionAsync(latest.DigitalProductPassportId))!.Passport));
@@ -55,7 +55,7 @@ public sealed class MarkedPassportLiveValuesTests(MongoFixture mongo)
         var rig = await new SuccessionTests(mongo).InactiveAsync();
         var old = (await rig.Store.GetLatestVersionAsync(rig.PackId))!;
 
-        var passport = (await new PassportReader(rig.Store).VersionAsync(old.DigitalProductPassportId))!;
+        var passport = (await SigningTesting.Passports(rig.Store).VersionAsync(old.DigitalProductPassportId))!;
 
         Assert.Equal(DppStatuses.Inactive, old.DppStatus);
         Assert.False(HasStateOfCharge(passport.Passport));

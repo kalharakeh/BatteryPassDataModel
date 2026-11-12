@@ -69,4 +69,39 @@ public sealed class PassportVersion : IDppRecord
     public required JsonNode StaticCore { get; init; }
 
     public required SignatureProof Proof { get; init; }
+
+    /// <summary>
+    /// This version as readers are served it with another status (round six, 2): an active version below the battery's
+    /// highest active one is served as archived, so only one version is ever the battery's active passport.
+    /// </summary>
+    public PassportVersion ServedAs(string status) => new()
+    {
+        Id = Id,
+        PackId = PackId,
+        Number = Number,
+        DigitalProductPassportId = DigitalProductPassportId,
+        DppStatus = status,
+        PublishedAtUtc = PublishedAtUtc,
+        LastUpdatedUtc = LastUpdatedUtc,
+        PublishedBy = PublishedBy,
+        StaticCore = StaticCore,
+        Proof = Proof,
+    };
+
+    /// <summary>
+    /// "The active version" in one place (round six, 2): of a battery's versions, only the highest-numbered active one is
+    /// served as active; a lower active one (left by a fault before the check ran) is served as archived.
+    /// </summary>
+    public static IReadOnlyList<PassportVersion> AsServed(IEnumerable<PassportVersion> versions)
+    {
+        ArgumentNullException.ThrowIfNull(versions);
+        var list = versions.ToList();
+        var highest = list.Where(version => version.DppStatus == DppStatuses.Active)
+            .GroupBy(version => version.PackId, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Max(version => version.Number), StringComparer.Ordinal);
+        return list.Select(version => version.DppStatus == DppStatuses.Active && version.Number < highest[version.PackId] ? version.ServedAs(DppStatuses.Archived) : version).ToArray();
+    }
 }
+
+/// <summary>A version's battery, id, number and status only: what the check needs of every version (round seven, 2).</summary>
+public sealed record VersionSummary(string PackId, string Id, int Number, string DppStatus);

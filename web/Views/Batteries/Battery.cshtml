@@ -14,23 +14,12 @@
     string When(DateTime utc) => TimeZoneInfo.ConvertTimeFromUtc(utc, TimeZoneInfo.Local).ToString("d MMM yyyy, HH:mm", english);
     string Value(string property) => Model.Pack.Values.GetValueOrDefault(property)?.Value?.ToString() ?? "—";
 
-    // "2026-09" as "September 2026", and an ISO 8601 period such as "P3Y6M" as "3 years 6 months".
+    // "2026-09" as "September 2026", and an ISO 8601 period such as "P3Y6M" as "3 years 6 months" (ValueWords.Period:
+    // the one safe reading, which shows a value too large to read as written; round three, 2).
     string Month(string text) => DateTime.TryParseExact(text, "yyyy-MM", CultureInfo.InvariantCulture, DateTimeStyles.None, out var month)
         ? month.ToString("MMMM yyyy", english)
         : text;
-    string Period(string text)
-    {
-        var match = System.Text.RegularExpressions.Regex.Match(text, @"^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?$");
-        if (!match.Success || text == "P")
-        {
-            return text;
-        }
-
-        var parts = new[] { (match.Groups[1].Value, "year"), (match.Groups[2].Value, "month"), (match.Groups[3].Value, "day") }
-            .Where(part => part.Item1.Length > 0)
-            .Select(part => Words.Count(int.Parse(part.Item1, CultureInfo.InvariantCulture), part.Item2));
-        return string.Join(" ", parts);
-    }
+    string Period(string text) => ValueWords.Period(text);
     var card = ViewData[BatteriesController.CardKey] as string;
     var testIds = Identifiers.IsTestIdentifier(Model.Identifier) || Model.Versions.Any(row => Identifiers.IsTestIdentifier(row.Version.DigitalProductPassportId));
     var filesChanged = publication.Files.Count(file => !file.Unchanged);
@@ -225,6 +214,19 @@
                             {
                                 <h2>Published · version @active.Number</h2>
                                 <p class="mb-0">Public since @When(active.PublishedAtUtc). Changing one of its values publishes version @(active.Number + 1), and you're asked first; live values and accident reports change it in place.</p>
+                                @if (publication.Waiting is { } waiting)
+                                {
+                                    @* Round two, A2: the saved data is ahead of the public passport. What holds it back is listed below. *@
+                                    <p class="bp-warning mt-2 mb-0" role="status">Saved changes are waiting: the public passport still shows version @waiting.Version. @(waiting.Blocking.Count > 0 ? "It gets the new version once what is listed below is filled in." : "Nothing is in their way now.")</p>
+                                    @if (waiting.Blocking.Count == 0 && Model.Editor.FrozenNote is null)
+                                    {
+                                        @* Round three, 4: nothing blocks the waiting change, so the team publishes it here. *@
+                                        <form method="post" action="@href/publish-waiting" class="mt-2">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="bp-secondary-button bp-button-compact">Publish the waiting changes</button>
+                                        </form>
+                                    }
+                                }
                             }
                             else if (publication.Latest is { } last)
                             {
@@ -235,6 +237,11 @@
                             {
                                 <h2>Ready to publish</h2>
                                 <p class="mb-0">Every value the passport needs by February 2027 is there. Publishing makes version 1, signs it and shows it to its readers.</p>
+                            }
+                            else if (publication.MissingCount == 0)
+                            {
+                                <h2>Not ready to publish yet</h2>
+                                <p class="mb-0">@(publication.QuestionsHref is not null ? "Its model's three questions aren't answered yet." : "The checks below must pass first.")</p>
                             }
                             else
                             {
@@ -256,10 +263,21 @@
                     {
                         <ul class="bp-todo"><li class="is-none">Nothing needs you.</li></ul>
                     }
-                    @if (publication.Missing.Count > 0)
+                    @if (publication.Missing.Count > 0 || publication.QuestionsHref is not null)
                     {
                         <h3 class="h6 mt-3 mb-0">What the passport still needs</h3>
                         <ul class="bp-missing-groups">
+                            @if (publication.QuestionsHref is { } questionsHref)
+                            {
+                                @* R01: an unanswered model blocks publishing, and new versions too. *@
+                                <li>
+                                    <div class="bp-missing-group-head">
+                                        <strong>Model @publication.ModelName</strong>
+                                        <a href="@questionsHref">Answer</a>
+                                    </div>
+                                    <span>Answer the model's three questions: they decide which values the passport needs.</span>
+                                </li>
+                            }
                             @foreach (var group in publication.Missing)
                             {
                                 <li>
@@ -267,7 +285,7 @@
                                         <strong>@group.Record</strong>
                                         <a href="@group.Href">Fill in</a>
                                     </div>
-                                    <span>@string.Join(", ", group.Attributes.Select(attribute => $"{attribute.Label} {attribute.Name}"))</span>
+                                    <span>@string.Join(", ", group.Attributes.Select(group.Line))</span>
                                 </li>
                             }
                         </ul>

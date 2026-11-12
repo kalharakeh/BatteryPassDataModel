@@ -36,13 +36,16 @@ public sealed record PassportPage(
     string? FamilyName,
     string? PictureHref,
     bool IsTest,
-    bool SignatureHolds,
+    BatteryPassWeb.Dpp.Signing.SignatureCheck Signature,
     bool ReaderSeesMore,
     IReadOnlyList<PassportSection> Sections,
     IReadOnlyList<PassportSection> Audiences,
     IReadOnlyList<ChartPart> Carbon,
     IReadOnlyList<ChartPart> Recycled)
 {
+    /// <summary>The data matches the signature and the key is one the app trusts (finding R23).</summary>
+    public bool SignatureHolds => Signature.Holds;
+
     /// <summary>True for the active version; an archived one links to <see cref="Current"/>.</summary>
     public bool IsCurrent => Version.DppStatus == DppStatuses.Active;
 
@@ -99,6 +102,15 @@ public sealed record PassportPage(
     public PassportMarkView? Marking => MayMarkInvalid
         ? new PassportMarkView(DppStatuses.Active, null, false, $"{PassportPages.DetailHref(Address)}/invalid", Text(11), BySurveillance: true)
         : null;
+
+    /// <summary>
+    /// The public part as data (finding R07): exactly the public values this page shows, cut by the same rule, in the
+    /// official format's names, with the proof over the public part (null for a version published before it existed).
+    /// </summary>
+    public JsonObject? PublicData { get; init; }
+
+    /// <summary>The address of <see cref="PublicData"/>: this page's address with ".json".</summary>
+    public string DataHref => $"{PassportPages.SummaryHref(Address)}.json";
 
     /// <summary>This version's DPP status (#2) in words, for the hero's pill.</summary>
     public string StatusWords => DppStatuses.Words(Version.DppStatus);
@@ -308,7 +320,7 @@ public sealed class PassportPages(DppStore store, DemoBoundary demo, PassportRea
                 ? $"/dpp/models/{Uri.EscapeDataString(sources.Model.Id)}/picture"
                 : family?.PictureFileId is null ? null : $"/dpp/families/{Uri.EscapeDataString(family.Id)}/picture",
             identifiers.IsTestIdentifier(identifier) || identifiers.IsTestIdentifier(version.DigitalProductPassportId),
-            PassportReader.Verify(version),
+            reader.Check(version),
             AttributeCatalog.All.Any(a => a.Audience != Audience.Public && AudienceRules.MaySee(who, a, clusters)),
             sections,
             audiences,
@@ -316,6 +328,7 @@ public sealed class PassportPages(DppStore store, DemoBoundary demo, PassportRea
             recycled)
         {
             KeyFigures = KeyFigures.From(number => Find(everyone, AttributeCatalog.ByNumber(number)), Words, carbon, recycled),
+            PublicData = PublicPassport.Data(everyone, reader.PublicProof(version, everyone)),
             Chain = detail && (who.Roles.Contains(ReaderRole.Team) || who.Roles.Contains(ReaderRole.MarketSurveillance))
                 ? await PassportChains.ForAsync(store, sources.Pack, cancellationToken)
                 : [],

@@ -17,6 +17,8 @@ public sealed class EditRightsTests
     [InlineData("cluster-admin", 22, OwnCluster, true)]
     [InlineData("cluster-admin", 59, OwnCluster, true)]
     [InlineData("cluster-admin", 11, OwnCluster, false)] // not purchaser data
+    [InlineData("team", 19, OwnCluster, true)] // the warranty: the team, also when a correction adds a missing one (R01)
+    [InlineData("cluster-admin", 19, OwnCluster, false)] // a cluster admin asks the Scania team
     [InlineData("cluster-admin", 43, OwnCluster, false)]
     [InlineData("cluster-admin", 63, "another-cluster", false)] // not their battery
     [InlineData("cluster-admin", 59, null, false)] // a model record has no cluster

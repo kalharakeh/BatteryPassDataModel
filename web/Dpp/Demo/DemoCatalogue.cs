@@ -1,3 +1,4 @@
+using BatteryPassWeb.Dpp.Catalog;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -12,9 +13,9 @@ public sealed record DemoFamily(string Key, string Name, string Picture);
 
 /// <summary>
 /// A battery model: its values, its module description, the restricted documents the seed uploads for it, and its own
-/// picture when it looks different from its family's (redesign R2).
+/// picture when it looks different from its family's (redesign R2), and its answers to the three questions (R01).
 /// </summary>
-public sealed record DemoModel(string Key, string Family, string Name, int Modules, string ModuleDescription, Dictionary<string, string> Documents, JsonObject Values, string? Picture = null);
+public sealed record DemoModel(string Key, string Family, string Name, int Modules, string ModuleDescription, Dictionary<string, string> Documents, JsonObject Values, string? Picture = null, ModelAnswers? Answers = null);
 
 public sealed record DemoNamed(string Key, string Name, JsonObject Values);
 

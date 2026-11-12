@@ -1,5 +1,6 @@
 using BatteryPassWeb.Dpp.Access;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Text.Json.Nodes;
 using BatteryPassWeb.Dpp.Catalog;
 using BatteryPassWeb.Dpp.Publication;
@@ -80,6 +81,37 @@ public sealed class StatusChangeService(
     public const string UndoNeedsReason = "say why the waste is undone";
     public const string NotWaste = "the battery isn't waste";
     public const string WaitingForSuccessor = "the battery is waiting for its new passport; the team can cancel it";
+    public const string WarrantyOnlyByCorrection = "a missing warranty is added only by the team, with Correct the values";
+    public const string WarrantyFixed = "the warranty is fixed once the passport is published";
+
+    /// <summary>
+    /// Why a status change can't publish its new version, in plain words (R01, decision 9): what is missing, and for a
+    /// cluster admin that the Scania team has to add it.
+    /// </summary>
+    public static string NoNewVersion(PublicationReport? report, bool forTeam) => PublishWords.WhyNoNewVersion(report?.Blocking, forTeam);
+
+    /// <summary>
+    /// Why no status change can be made now, before anything is typed (decision 60): a status change publishes a new
+    /// version, so a passport that can't get one changes no status, Waste included. The same sentence as the refusal.
+    /// Null when it can. For the team, a missing warranty alone isn't a reason: "Correct the values" adds it.
+    /// </summary>
+    public async Task<string?> BlockedAsync(BatteryPack pack, bool forTeam, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(pack);
+        if (await publication.CheckAsync(pack.Id, cancellationToken) is not { CanPublish: false } report)
+        {
+            return null;
+        }
+
+        var onlyWarranty = report.Blocking.All(line => PublishWords.Attribute(line)?.Property == SavePipeline.AddedByCorrection);
+        if (forTeam && onlyWarranty && !pack.Values.ContainsKey(SavePipeline.AddedByCorrection))
+        {
+            return null;
+        }
+
+        var words = NoNewVersion(report, forTeam);
+        return $"No status change can be made now: {words}.";
+    }
 
     /// <summary>Why a passport that is no longer active changes nothing (step 4c).</summary>
     public static string NoLongerActive(string status) => SavePipeline.NoLongerChanges(status);
@@ -267,10 +299,28 @@ public sealed class StatusChangeService(
             };
         }
 
-        // The status change publishes a new version, so a passport that couldn't get one now changes nothing.
-        if (await publication.CheckAsync(packId, cancellationToken) is not { CanPublish: true })
+        // The team's correction may add a missing warranty (#19) once, e.g. after the model's answer became yes (R01).
+        Dictionary<string, JsonNode>? added = null;
+        if (change.Restated.GetValueOrDefault(SavePipeline.AddedByCorrection) is { } warranty)
         {
-            return Refused("the passport can't get a new version now; the team sees why on its battery page");
+            if (change.What != StatusEvent.Corrected || sender.Kind != SenderKind.Team)
+            {
+                return Refused(WarrantyOnlyByCorrection);
+            }
+
+            if (pack.Values.ContainsKey(SavePipeline.AddedByCorrection))
+            {
+                return Refused(WarrantyFixed);
+            }
+
+            added = new Dictionary<string, JsonNode>(StringComparer.Ordinal) { [SavePipeline.AddedByCorrection] = warranty };
+        }
+
+        // The status change publishes a new version, so a passport that couldn't get one now changes nothing.
+        var report = await publication.CheckAsync(packId, added, cancellationToken);
+        if (report is not { CanPublish: true })
+        {
+            return Refused(NoNewVersion(report, sender.Kind == SenderKind.Team));
         }
 
         var values = new Dictionary<string, JsonNode?>(StringComparer.Ordinal)
@@ -280,6 +330,11 @@ public sealed class StatusChangeService(
         foreach (var attribute in RestatedAttributes(sources.Model))
         {
             values[attribute.Property] = change.Restated.GetValueOrDefault(attribute.Property)?.DeepClone();
+        }
+
+        foreach (var (key, value) in added ?? [])
+        {
+            values[key] = value.DeepClone();
         }
 
         var saved = await pipeline.SaveStatusChangeAsync(sender, packId, values, cancellationToken, preview, source);

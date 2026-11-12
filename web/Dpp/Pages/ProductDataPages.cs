@@ -1,6 +1,8 @@
 using BatteryPassWeb.Configuration;
+using BatteryPassWeb.Dpp.Catalog;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
+using BatteryPassWeb.Dpp.Publication;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Dpp.Values;
 using BatteryPassWeb.Services;
@@ -63,6 +65,12 @@ public sealed record RecordEditorView(
 
     /// <summary>Values the passport needs by February 2027 that are still empty.</summary>
     public int Missing => Sections.Sum(section => section.Missing);
+
+    /// <summary>For a model's or a battery's editor: the model's three questions aren't all answered (R01), so it isn't complete.</summary>
+    public bool QuestionsUnanswered { get; init; }
+
+    /// <summary>Nothing the passport needs is missing and the model's questions are answered (round two, B): the one "complete".</summary>
+    public bool IsComplete => Missing == 0 && !QuestionsUnanswered;
 }
 
 /// <summary>One field as its editor shows it.</summary>
@@ -71,12 +79,38 @@ public sealed record EditorFieldView(RecordEditorView Editor, EditorField Field)
 /// <summary>An editor shown again after a post: what was typed and how the save went.</summary>
 public sealed record EditorState(EditorPost Post, EditorSave Save);
 
-public sealed record FamilyRow(BatteryFamily Family, int Models, int Batches, int Packs, int Published, int Missing);
+/// <summary>What saving a model's answers did: <see cref="Saved"/>, or nothing yet because <see cref="Affected"/> published batteries would lack a value.</summary>
+public sealed record AnswersSave(bool Saved, int Affected, bool NeedsConfirmation = false)
+{
+    /// <summary>What the published passports with waiting changes got once the answers were saved (round two, A3).</summary>
+    public IReadOnlyList<(PassportOutcome Outcome, string SerialNumber)> Outcomes { get; init; } = [];
+}
+
+/// <param name="Unanswered">How many of its models haven't answered their three questions yet (R01).</param>
+public sealed record FamilyRow(BatteryFamily Family, int Models, int Batches, int Packs, int Published, int Missing, int Unanswered = 0);
 
 /// <summary>How complete a record is: values filled in, of how many, and how many the passport needs by Feb 2027 that are still empty.</summary>
-public sealed record Completeness(int Filled, int Total, int Missing);
+public sealed record Completeness(int Filled, int Total, int Missing)
+{
+    /// <summary>
+    /// A model's state in a line (round two, B): its missing count, else "questions to answer" while its three questions
+    /// aren't answered, else complete. The family chip, the batch page and the editors say the same.
+    /// </summary>
+    public static (bool Done, string Words) OfModel(BatteryModel model)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        var missing = RecordEditor.CountMissing(TargetKind.Model, model.Values, model.Answers());
+        return missing > 0 ? (false, $"{missing} missing")
+            : !model.Answers().AllAnswered ? (false, "Questions to answer")
+            : (true, "Complete");
+    }
+}
 
-public sealed record ModelChip(BatteryModel Model, int Filled, int Total, int Missing);
+public sealed record ModelChip(BatteryModel Model, int Filled, int Total, int Missing)
+{
+    /// <summary>The model has answered its three questions (R01); until then its batteries can't be published.</summary>
+    public bool Answered => Model.Answers().AllAnswered;
+}
 
 public sealed record BatchRow(ProductionBatch Batch, string SiteName, int Filled, int Total, int Missing, int Packs, int Published);
 
@@ -130,12 +164,14 @@ public sealed partial class ProductDataPages(
     DocumentStore documents,
     ApplicationAuditService audit,
     IOptions<BatteryPassOptions> options,
-    TimeProvider clock)
+    TimeProvider clock,
+    PublicationService? publication = null)
 {
     public const string CreatedEvent = "dpp.record-created";
     public const string RenamedEvent = "dpp.record-renamed";
     public const string PictureEvent = "dpp.family-picture-set";
     public const string ModuleDescriptionEvent = "dpp.model-module-description-set";
+    public const string AnswersEvent = "dpp.model-answers-set";
     public const string RemovedEvent = "dpp.record-removed";
 
     public async Task<FamiliesPage> FamiliesAsync(CancellationToken cancellationToken = default)
@@ -151,9 +187,10 @@ public sealed partial class ProductDataPages(
             }
 
             var counts = (await store.CountPacksByBatchAsync(batches.Select(batch => batch.Id), cancellationToken)).Values;
-            var missing = models.Sum(model => RecordEditor.CountMissing(TargetKind.Model, model.Values))
-                + batches.Sum(batch => RecordEditor.CountMissing(TargetKind.Batch, batch.Values));
-            rows.Add(new FamilyRow(family, models.Count, batches.Count, counts.Sum(count => count.Packs), counts.Sum(count => count.Published), missing));
+            var missing = models.Sum(model => RecordEditor.CountMissing(TargetKind.Model, model.Values, model.Answers()))
+                + batches.Sum(batch => RecordEditor.CountMissing(TargetKind.Batch, batch.Values, ModelAnswers.NotAnswered));
+            var unanswered = models.Count(model => !model.Answers().AllAnswered);
+            rows.Add(new FamilyRow(family, models.Count, batches.Count, counts.Sum(count => count.Packs), counts.Sum(count => count.Published), missing, unanswered));
         }
 
         return new FamiliesPage(rows);
@@ -170,7 +207,7 @@ public sealed partial class ProductDataPages(
 
         var models = await store.ListModelsAsync(familyId, cancellationToken);
         var total = RecordEditor.AttributesOf(TargetKind.Model).Count;
-        var chips = models.Select(model => new ModelChip(model, RecordEditor.CountFilled(TargetKind.Model, model.Values), total, RecordEditor.CountMissing(TargetKind.Model, model.Values))).ToArray();
+        var chips = models.Select(model => new ModelChip(model, RecordEditor.CountFilled(TargetKind.Model, model.Values), total, RecordEditor.CountMissing(TargetKind.Model, model.Values, model.Answers()))).ToArray();
         var selected = models.FirstOrDefault(model => model.Id == modelId) ?? models.FirstOrDefault();
         var sites = (await store.ListAsync<ManufacturingSite>(cancellationToken)).OrderBy(site => site.Name, StringComparer.OrdinalIgnoreCase).ToArray();
         var removal = new RemovalView($"/admin/families/{Uri.EscapeDataString(familyId)}/remove", await WhyNotRemovableAsync(RecordKind.Family, familyId, cancellationToken));
@@ -190,11 +227,11 @@ public sealed partial class ProductDataPages(
                 siteNames.GetValueOrDefault(batch.SiteId, batch.SiteId),
                 RecordEditor.CountFilled(TargetKind.Batch, batch.Values),
                 batchTotal,
-                RecordEditor.CountMissing(TargetKind.Batch, batch.Values),
+                RecordEditor.CountMissing(TargetKind.Batch, batch.Values, ModelAnswers.NotAnswered),
                 counts[batch.Id].Packs,
                 counts[batch.Id].Published))
             .ToArray();
-        var view = await EditorAsync(TargetKind.Model, selected.Id, selected.Name, selected.Values, $"/admin/models/{Uri.EscapeDataString(selected.Id)}", FamilyHref(familyId, selected.Id), state, cancellationToken);
+        var view = await EditorAsync(TargetKind.Model, selected.Id, selected.Name, selected.Values, $"/admin/models/{Uri.EscapeDataString(selected.Id)}", FamilyHref(familyId, selected.Id), state, cancellationToken, selected.Answers());
         return new FamilyPage(family, chips, selected, rows, sites, view) { Removal = removal, CopySources = copySources, Examples = await ExamplesOfAsync(family, models, cancellationToken) };
     }
 
@@ -231,12 +268,12 @@ public sealed partial class ProductDataPages(
         var sites = (await store.ListAsync<ManufacturingSite>(cancellationToken)).OrderBy(site => site.Name, StringComparer.OrdinalIgnoreCase).ToArray();
         var operators = (await store.ListAsync<EconomicOperator>(cancellationToken)).OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase).ToArray();
         var batchesPerSite = (await store.ListAsync<ProductionBatch>(cancellationToken)).GroupBy(batch => batch.SiteId).ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
-        var siteRows = sites.Select(site => new SiteRow(site, RecordEditor.CountFilled(TargetKind.Site, site.Values), RecordEditor.AttributesOf(TargetKind.Site).Count, RecordEditor.CountMissing(TargetKind.Site, site.Values), batchesPerSite.GetValueOrDefault(site.Id))).ToArray();
+        var siteRows = sites.Select(site => new SiteRow(site, RecordEditor.CountFilled(TargetKind.Site, site.Values), RecordEditor.AttributesOf(TargetKind.Site).Count, RecordEditor.CountMissing(TargetKind.Site, site.Values, ModelAnswers.NotAnswered), batchesPerSite.GetValueOrDefault(site.Id))).ToArray();
         var operatorRows = new List<OperatorRow>();
         foreach (var item in operators)
         {
             var packs = (await store.FindPackIdsUsingAsync(operatorId: item.Id, cancellationToken: cancellationToken)).Count;
-            operatorRows.Add(new OperatorRow(item, RecordEditor.CountFilled(TargetKind.Operator, item.Values), RecordEditor.AttributesOf(TargetKind.Operator).Count, RecordEditor.CountMissing(TargetKind.Operator, item.Values), packs));
+            operatorRows.Add(new OperatorRow(item, RecordEditor.CountFilled(TargetKind.Operator, item.Values), RecordEditor.AttributesOf(TargetKind.Operator).Count, RecordEditor.CountMissing(TargetKind.Operator, item.Values, ModelAnswers.NotAnswered), packs));
         }
 
         RecordEditorView? view = null;
@@ -527,6 +564,88 @@ public sealed partial class ProductDataPages(
         return null;
     }
 
+    /// <summary>
+    /// Saves a model's answers to its three questions (R01). A question left without an answer keeps the one it has: an
+    /// answer is changed, never taken back. When a new "yes" asks for values that published batteries of this model lack,
+    /// nothing is saved until <paramref name="confirmed"/>: those batteries can't get a new version until the values are
+    /// filled in. The answers aren't passport data, so no passport changes.
+    /// </summary>
+    public async Task<AnswersSave> SetModelAnswersAsync(string who, BatteryModel model, ModelAnswers posted, bool confirmed, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        ArgumentNullException.ThrowIfNull(posted);
+        var before = model.Answers();
+        var after = before;
+        foreach (var question in ModelQuestions.All)
+        {
+            if (posted.Of(question) is { } answer)
+            {
+                after = after.With(question, answer);
+            }
+        }
+
+        if (after == before)
+        {
+            return new AnswersSave(false, 0);
+        }
+
+        var affected = await BatteriesLackingAsync(model, before, after, cancellationToken);
+        if (affected > 0 && !confirmed)
+        {
+            return new AnswersSave(false, affected, NeedsConfirmation: true);
+        }
+
+        await store.SetModelAnswersAsync(model.Id, after.CommercialWarranty, after.CyclingUse, after.CadmiumOrLeadAboveLimit, cancellationToken);
+        var words = string.Join("; ", ModelQuestions.All.Select(question => $"{ModelQuestions.Text(question)} {Answer(after.Of(question))}"));
+        await AuditAsync(AnswersEvent, who, $"Answers of battery model {model.Name} saved: {words}", "dpp-model", model.Id, cancellationToken);
+
+        // A change saved while the model couldn't publish is in its published passports once they can (decision 9). The
+        // answers say, per passport that had a change waiting, what it got (round two, A3).
+        IReadOnlyList<(PassportOutcome, string)> outcomes = [];
+        if (publication is not null && after.AllAnswered)
+        {
+            var reached = await editor.AffectedAsync(TargetKind.Model, model.Id, cancellationToken);
+            var marked = (await store.GetManyAsync<BatteryPack>(reached.Select(passport => passport.PackId), cancellationToken))
+                .Where(pack => pack.ChangesWaitingSinceUtc is not null)
+                .Select(pack => pack.Id)
+                .ToHashSet(StringComparer.Ordinal);
+            var waiting = reached.Where(passport => marked.Contains(passport.PackId)).ToList(); // the stored markers (round three, 1)
+
+            await publication.RepublishAsync(ChangeSender.Team(who), waiting.Select(passport => passport.PackId), cancellationToken);
+            outcomes = await editor.OutcomesAsync(waiting, cancellationToken);
+        }
+
+        return new AnswersSave(true, affected) { Outcomes = outcomes };
+    }
+
+    /// <summary>An answer in words, as the audit log and the page say it.</summary>
+    public static string Answer(bool? answer) => answer switch
+    {
+        true => "Yes",
+        false => "No",
+        null => "Not answered yet",
+    };
+
+    /// <summary>
+    /// How many published batteries of the model lack a value that the <paramref name="after"/> answers ask for and the
+    /// <paramref name="before"/> answers didn't (the model's own value, or the battery's own for #19 and #83).
+    /// </summary>
+    private async Task<int> BatteriesLackingAsync(BatteryModel model, ModelAnswers before, ModelAnswers after, CancellationToken cancellationToken)
+    {
+        var newlyNeeded = AttributeCatalog.All
+            .Where(attribute => PassportNeeds.NeedOf(attribute, after) == Need.Required && PassportNeeds.NeedOf(attribute, before) != Need.Required)
+            .ToArray();
+        if (newlyNeeded.Length == 0)
+        {
+            return 0;
+        }
+
+        var packIds = await store.FindPackIdsUsingAsync(modelId: model.Id, cancellationToken: cancellationToken);
+        var published = (await store.ListActiveVersionsAsync(packIds, cancellationToken)).Select(version => version.PackId).ToHashSet(StringComparer.Ordinal);
+        var packs = await store.GetManyAsync<BatteryPack>(published, cancellationToken);
+        return packs.Count(pack => newlyNeeded.Any(attribute => !pack.Values.ContainsKey(attribute.Property) && !model.Values.ContainsKey(attribute.Property)));
+    }
+
     /// <summary>The family's picture; null when the family or its picture doesn't exist.</summary>
     /// <summary>Stores a PNG or JPEG as a model's own picture, shown instead of its family's (redesign R2); the problem when it isn't accepted.</summary>
     public async Task<string?> SetModelPictureAsync(string who, string modelId, string fileName, byte[] content, CancellationToken cancellationToken = default)
@@ -622,10 +741,11 @@ public sealed partial class ProductDataPages(
         string saveAction,
         string cancelHref,
         EditorState? state,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        ModelAnswers? answers = null)
     {
         var refusals = state?.Save.Refusals(editor.Forms);
-        var sections = await editor.SectionsAsync(kind, id, stored, state?.Post, refusals, cancellationToken);
+        var sections = await editor.SectionsAsync(kind, id, stored, answers ?? ModelAnswers.NotAnswered, state?.Post, refusals, cancellationToken);
         var published = await editor.AffectedAsync(kind, id, cancellationToken);
         var recordKind = kind switch
         {
@@ -645,7 +765,10 @@ public sealed partial class ProductDataPages(
             published.Count,
             editor.Forms.Languages,
             editor.Stamp(kind, stored, kind == TargetKind.Batch ? null : name),
-            new RemovalView($"{saveAction}/remove", await WhyNotRemovableAsync(recordKind, id, cancellationToken)));
+            new RemovalView($"{saveAction}/remove", await WhyNotRemovableAsync(recordKind, id, cancellationToken)))
+        {
+            QuestionsUnanswered = kind == TargetKind.Model && answers is { AllAnswered: false },
+        };
     }
 
     private Task AuditAsync(string eventType, string who, string summary, string entityType, string entityId, CancellationToken cancellationToken) =>

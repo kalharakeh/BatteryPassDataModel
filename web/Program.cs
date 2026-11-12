@@ -32,6 +32,34 @@ if (DemoAdminFallbackConfiguration.ProductionRefusal(
     throw new InvalidOperationException(fallbackInProduction);
 }
 
+// The QR code's address and the battery IDs' address must be one site (finding D18); outside Production a warning.
+// A setting that is there but empty counts as not set (C3 round three, point 1).
+var appBaseUrlSetting = SiteAddressSettings.AppBaseUrl(Environment.GetEnvironmentVariable, builder.Configuration);
+var idBaseUrlSetting = SiteAddressSettings.IdBaseUrl(Environment.GetEnvironmentVariable, builder.Configuration);
+
+// Production needs the site's own signing key and two whole http(s) addresses (the manager's decision 61).
+if (DemoSigningKeyService.ProductionKeyProblem(builder.Environment.IsProduction(), Environment.GetEnvironmentVariable(DemoSigningKeyService.PrivateKeySetting)) is { } missingSigningKey)
+{
+    throw new InvalidOperationException(missingSigningKey);
+}
+
+if (DppLinks.ProductionAddressProblem(builder.Environment.IsProduction(), appBaseUrlSetting, idBaseUrlSetting) is { } addressProblem)
+{
+    throw new InvalidOperationException(addressProblem);
+}
+
+if (DppLinks.HostMismatch(appBaseUrlSetting, idBaseUrlSetting) is { } hostMismatch && builder.Environment.IsProduction())
+{
+    throw new InvalidOperationException(hostMismatch);
+}
+
+// Older public keys the app still trusts after a key change (finding R23): an unreadable entry stops Production.
+var trustedSigningKeysSetting = EnvironmentOrConfig(builder.Configuration, DemoSigningKeyService.TrustedKeysSetting, "SigningTrustedPublicKeys");
+if (DemoSigningKeyService.UnreadableTrustedKeys(trustedSigningKeysSetting) is { } unreadableTrustedKeys && builder.Environment.IsProduction())
+{
+    throw new InvalidOperationException(unreadableTrustedKeys);
+}
+
 var enableRateLimiting = ParseFeatureFlag(
     EnvironmentOrConfig(builder.Configuration, "ENABLE_RATE_LIMITING", "EnableRateLimiting"),
     BatteryPassOptions.DefaultEnableRateLimiting);
@@ -102,12 +130,8 @@ builder.Services.Configure<BatteryPassOptions>(options =>
         ?? "Battery Pass";
     options.IdAgency = (Environment.GetEnvironmentVariable("DPP_ID_AGENCY") ?? builder.Configuration["BatteryPass:IdAgency"] ?? string.Empty).Trim();
     options.IdCompany = (Environment.GetEnvironmentVariable("DPP_ID_COMPANY") ?? builder.Configuration["BatteryPass:IdCompany"] ?? string.Empty).Trim();
-    options.IdBaseUrl = (Environment.GetEnvironmentVariable("DPP_ID_BASE_URL") ?? builder.Configuration["BatteryPass:IdBaseUrl"] ?? string.Empty).Trim().TrimEnd('/');
-    options.AppBaseUrl = Environment.GetEnvironmentVariable("APP_BASE_URL")
-        ?? Environment.GetEnvironmentVariable("APP_URL")
-        ?? builder.Configuration["BatteryPass:AppBaseUrl"]
-        ?? builder.Configuration["BatteryPass:AppUrl"]
-        ?? string.Empty;
+    options.IdBaseUrl = (idBaseUrlSetting ?? string.Empty).Trim().TrimEnd('/');
+    options.AppBaseUrl = appBaseUrlSetting ?? string.Empty;
     options.RequireHttpsRedirection = DeploymentSecurityConfiguration.ParseRequireHttpsRedirection(
         Environment.GetEnvironmentVariable("REQUIRE_HTTPS_REDIRECTION")
             ?? builder.Configuration["BatteryPass:RequireHttpsRedirection"]);
@@ -190,6 +214,9 @@ builder.Services.AddRateLimiter(options =>
         RateLimitPartition.GetFixedWindowLimiter(
             FileUploadRateLimitPartitionKey(context),
             _ => FixedWindowOptions(fileUploadRateLimitPerWindow, rateLimitWindowSeconds)));
+
+    // A passport's public data takes no token: counted by the caller's address only (C3 round two, point 5).
+    PublicDataRateLimit.Add(options, externalApiReadRateLimitPerWindow, rateLimitWindowSeconds);
 });
 
 builder.Services.AddControllersWithViews();
@@ -219,7 +246,8 @@ builder.Services.AddSingleton(new BatteryPassWeb.Dpp.Demo.DemoDataSwitch(Battery
     builder.Environment.IsProduction())));
 builder.Services.AddSingleton<MongoContext>();
 builder.Services.AddSingleton<ClusterRepository>();
-builder.Services.AddSingleton<DemoSigningKeyService>();
+// The issuer is the battery IDs' site (finding R23); without DPP_ID_BASE_URL, the app's own address.
+builder.Services.AddSingleton(_ => new DemoSigningKeyService(idBaseUrlSetting, appBaseUrlSetting, trustedSigningKeysSetting));
 builder.Services.AddSingleton<ApplicationAuditService>();
 builder.Services.AddSingleton<ApplicationSettingsService>();
 builder.Services.AddSingleton<AuthenticationSessionService>();
@@ -371,6 +399,22 @@ using (var scope = app.Services.CreateScope())
     if (!scope.ServiceProvider.GetRequiredService<DppLinks>().IsConfigured)
     {
         app.Logger.LogWarning("APP_BASE_URL is not set: battery packs can't be created and documents can't be linked until it is.");
+    }
+    if (DemoSigningKeyService.UnreadableTrustedKeys(trustedSigningKeysSetting) is { } trustedKeysWarning)
+    {
+        app.Logger.LogWarning(trustedKeysWarning);
+    }
+    var signingKeys = scope.ServiceProvider.GetRequiredService<DemoSigningKeyService>();
+    app.Logger.LogInformation(
+        "Passports are signed as {Issuer}, key {KeyId}. The key is published at {DidDocumentPath}. After a key change, add this public key to {TrustedKeysSetting}: {PublicKey}",
+        signingKeys.Issuer,
+        signingKeys.KeyId,
+        DemoSigningKeyService.DidDocumentPath,
+        DemoSigningKeyService.TrustedKeysSetting,
+        signingKeys.PublicKeyText());
+    if (DppLinks.HostMismatch(fallbackOptions.AppBaseUrl, fallbackOptions.IdBaseUrl) is { } addressWarning)
+    {
+        app.Logger.LogWarning(addressWarning);
     }
     var initializer = scope.ServiceProvider.GetRequiredService<ExternalApiInitializer>();
     await initializer.InitializeAsync();

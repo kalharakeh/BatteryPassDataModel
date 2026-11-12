@@ -60,6 +60,12 @@
                     <span class="bp-missing-dot" aria-hidden="true"></span>
                     <span><strong>@Words.Count(Model.Missing, "value")</strong> the passport needs by Feb 2027 @Words.Is(Model.Missing) missing.</span>
                 }
+                else if (Model.QuestionsUnanswered)
+                {
+                    @* Round two, B: an unanswered model is never complete. *@
+                    <span class="bp-missing-dot" aria-hidden="true"></span>
+                    <span>@(Model.Kind == TargetKind.Model ? "Answer the model's three questions above: until then its batteries can't be published." : "Its model's three questions aren't answered yet: until then the passport can't be published.")</span>
+                }
                 else
                 {
                     <span class="bp-done-mark" aria-hidden="true">✓</span>

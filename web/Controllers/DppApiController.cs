@@ -118,6 +118,7 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
             version = passport.Version.Number,
             dppStatus = passport.Version.DppStatus,
             signatureVerified = passport.SignatureVerified,
+            signatureReason = passport.Signature.Reason,
             passport = passport.Passport,
         });
     }
@@ -136,14 +137,15 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
         return Envelope(StatusCodes.Status200OK, "Battery passport versions read successfully.", new
         {
             batteryId = passport.Location.Identifier,
-            passports = versions.Select(version => new
+            passports = versions.Select(version => (Version: version, Signature: api.Signature(version))).Select(row => new
             {
-                passportId = version.DigitalProductPassportId,
-                version = version.Number,
-                dppStatus = version.DppStatus,
-                publishedAt = PassportApi.Timestamp(version.PublishedAtUtc),
-                lastUpdated = PassportApi.Timestamp(version.LastUpdatedUtc),
-                signatureVerified = PassportReader.Verify(version),
+                passportId = row.Version.DigitalProductPassportId,
+                version = row.Version.Number,
+                dppStatus = row.Version.DppStatus,
+                publishedAt = PassportApi.Timestamp(row.Version.PublishedAtUtc),
+                lastUpdated = PassportApi.Timestamp(row.Version.LastUpdatedUtc),
+                signatureVerified = row.Signature.Holds,
+                signatureReason = row.Signature.Reason,
             }).ToArray(),
         });
     }
@@ -387,6 +389,23 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
                     values = Keys(battery.Values),
                     modules = battery.Modules,
                     notes = battery.Notes ?? [],
+
+                    // Round two, A3: for a published battery, what its passport got: "new version", "nothing changed" or
+                    // "held back" with what blocks it; null for a draft or a preview.
+                    passport = battery.Passport is { } passport
+                        ? new
+                        {
+                            outcome = passport.Outcome switch
+                            {
+                                PublishOutcome.NewVersion => "new version",
+                                PublishOutcome.NothingChanged => "nothing changed",
+                                PublishOutcome.NotPublished => "not published",
+                                _ => "held back",
+                            },
+                            version = passport.Version,
+                            blocking = passport.Blocking,
+                        }
+                        : null,
                 }).ToArray(),
             });
     }

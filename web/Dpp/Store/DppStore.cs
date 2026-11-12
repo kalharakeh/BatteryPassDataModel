@@ -269,6 +269,21 @@ public sealed class DppStore
         return result.MatchedCount == 1;
     }
 
+    /// <summary>
+    /// As <see cref="SetValuesAsync{T}(string, IReadOnlyDictionary{string, AttributeValue}, IReadOnlyCollection{string}, CancellationToken)"/>,
+    /// only while the record still has no value for <paramref name="mustBeMissing"/>; false when it has one by now
+    /// (round two, F: two corrections adding the warranty at the same moment, only one is saved).
+    /// </summary>
+    public async Task<bool> SetValuesIfMissingAsync<T>(string id, IReadOnlyDictionary<string, AttributeValue> values, string mustBeMissing, CancellationToken cancellationToken = default)
+        where T : class, IDppRecord
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        RequireDatabase();
+        var update = Builders<T>.Update.Combine(values.Select(entry => Builders<T>.Update.Set($"Values.{entry.Key}", entry.Value)));
+        var filter = Builders<T>.Filter.Eq("_id", id) & Builders<T>.Filter.Exists($"Values.{mustBeMissing}", false);
+        return (await Collection<T>().UpdateOneAsync(filter, update, cancellationToken: cancellationToken)).MatchedCount == 1;
+    }
+
     /// <summary>All packs with this serial number (#11). Serial numbers are not unique.</summary>
     /// <summary>
     /// The pack and every earlier and later passport of the same battery (design 7.5): they share its serial number. A
@@ -375,6 +390,19 @@ public sealed class DppStore
         var result = await Collection<BatteryModel>().UpdateOneAsync(
             model => model.Id == modelId,
             Builders<BatteryModel>.Update.Set(model => model.ModuleDescription, description),
+            cancellationToken: cancellationToken);
+        return result.MatchedCount == 1;
+    }
+
+    /// <summary>Sets a model's answers to its three questions (R01); null clears one. False when the model doesn't exist.</summary>
+    public async Task<bool> SetModelAnswersAsync(string modelId, bool? commercialWarranty, bool? cyclingUse, bool? cadmiumOrLeadAboveLimit, CancellationToken cancellationToken = default)
+    {
+        var result = await Collection<BatteryModel>().UpdateOneAsync(
+            model => model.Id == modelId,
+            Builders<BatteryModel>.Update
+                .Set(model => model.HasCommercialWarranty, commercialWarranty)
+                .Set(model => model.MadeForCyclingUse, cyclingUse)
+                .Set(model => model.CadmiumOrLeadAboveLimit, cadmiumOrLeadAboveLimit),
             cancellationToken: cancellationToken);
         return result.MatchedCount == 1;
     }
@@ -546,6 +574,59 @@ public sealed class DppStore
     }
 
     /// <summary>Sets or clears a pack's invalid or deletion mark (step 4c-2). False when the pack doesn't exist.</summary>
+    /// <summary>
+    /// Marks these packs as having a saved change waiting for their published passports, in one write (round four, 1):
+    /// a new token each time, and the first time kept. Done before any publishing, so an interrupted run leaves them marked.
+    /// </summary>
+    /// <returns>How many packs it marked.</returns>
+    public async Task<long> MarkChangesWaitingAsync(IReadOnlyCollection<string> packIds, DateTime nowUtc, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(packIds);
+        if (packIds.Count == 0)
+        {
+            return 0;
+        }
+
+        var set = new BsonDocument("$set", new BsonDocument
+        {
+            [nameof(BatteryPack.ChangesWaitingToken)] = Guid.NewGuid().ToString("N"),
+            [nameof(BatteryPack.ChangesWaitingSinceUtc)] = new BsonDocument("$ifNull", new BsonArray { "$" + nameof(BatteryPack.ChangesWaitingSinceUtc), new BsonDateTime(nowUtc) }),
+        });
+        return (await Collection<BatteryPack>().UpdateManyAsync(
+            Builders<BatteryPack>.Filter.In(pack => pack.Id, packIds),
+            Builders<BatteryPack>.Update.Pipeline(new BsonDocument[] { set }),
+            cancellationToken: cancellationToken)).ModifiedCount;
+    }
+
+    /// <summary>The packs among these that have at least one passport version (active, marked or inactive).</summary>
+    public async Task<IReadOnlyList<string>> PublishedPackIdsAsync(IReadOnlyCollection<string> packIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(packIds);
+        if (packIds.Count == 0)
+        {
+            return [];
+        }
+
+        var found = await Collection<PassportVersion>().DistinctAsync(version => version.PackId, Builders<PassportVersion>.Filter.In(version => version.PackId, packIds), cancellationToken: cancellationToken);
+        return await found.ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Clears a pack's marker of a waiting change, only while it still holds <paramref name="tokenSeen"/>: the token the
+    /// clearing attempt read before the data it published (round four, 2). A change marked meanwhile stays marked. False
+    /// when nothing was cleared.
+    /// </summary>
+    public async Task<bool> ClearChangesWaitingAsync(string packId, string? tokenSeen, CancellationToken cancellationToken = default)
+    {
+        var result = await Collection<BatteryPack>().UpdateOneAsync(
+            Builders<BatteryPack>.Filter.Eq(pack => pack.Id, packId)
+            & Builders<BatteryPack>.Filter.Ne(pack => pack.ChangesWaitingSinceUtc, null)
+            & Builders<BatteryPack>.Filter.Eq(pack => pack.ChangesWaitingToken, tokenSeen),
+            Builders<BatteryPack>.Update.Unset(pack => pack.ChangesWaitingSinceUtc).Unset(pack => pack.ChangesWaitingToken),
+            cancellationToken: cancellationToken);
+        return result.ModifiedCount == 1;
+    }
+
     public async Task<bool> SetMarkAsync(string packId, PassportMark? mark, CancellationToken cancellationToken = default)
     {
         var result = await Collection<BatteryPack>().UpdateOneAsync(
@@ -573,7 +654,12 @@ public sealed class DppStore
             return null;
         }
 
-        return await Collection<PassportVersion>().Find(version => version.DigitalProductPassportId == passportId).FirstOrDefaultAsync(cancellationToken);
+        var version = await Collection<PassportVersion>().Find(version => version.DigitalProductPassportId == passportId).FirstOrDefaultAsync(cancellationToken);
+
+        // Only the battery's highest active version is served as active (round six, 2).
+        return version is { DppStatus: DppStatuses.Active } && (await GetActiveVersionAsync(version.PackId, cancellationToken))?.Number > version.Number
+            ? version.ServedAs(DppStatuses.Archived)
+            : version;
     }
 
     public async Task<IReadOnlyList<PassportVersion>> ListVersionsAsync(string packId, CancellationToken cancellationToken = default)
@@ -583,7 +669,7 @@ public sealed class DppStore
             return [];
         }
 
-        return await Collection<PassportVersion>().Find(version => version.PackId == packId).SortBy(version => version.Number).ToListAsync(cancellationToken);
+        return PassportVersion.AsServed(await Collection<PassportVersion>().Find(version => version.PackId == packId).SortBy(version => version.Number).ToListAsync(cancellationToken));
     }
 
     /// <summary>The highest version number of the pack; 0 before its first publication.</summary>
@@ -598,11 +684,16 @@ public sealed class DppStore
     }
 
     /// <summary>Marks every other active version of the pack as archived.</summary>
-    public Task ArchiveOtherVersionsAsync(string packId, string activeVersionId, CancellationToken cancellationToken = default) =>
-        Collection<PassportVersion>().UpdateManyAsync(
-            version => version.PackId == packId && version.DppStatus == DppStatuses.Active && version.Id != activeVersionId,
+    /// <remarks>
+    /// Only versions with a lower number than the one just made active are archived (round five): a slower publisher's
+    /// archive step then can't archive a faster publisher's newer version and leave the battery with no active version.
+    /// </remarks>
+    /// <returns>How many versions it archived.</returns>
+    public async Task<long> ArchiveOtherVersionsAsync(string packId, string activeVersionId, int activeNumber, CancellationToken cancellationToken = default) =>
+        (await Collection<PassportVersion>().UpdateManyAsync(
+            version => version.PackId == packId && version.DppStatus == DppStatuses.Active && version.Id != activeVersionId && version.Number < activeNumber,
             Builders<PassportVersion>.Update.Set(version => version.DppStatus, DppStatuses.Archived),
-            cancellationToken: cancellationToken);
+            cancellationToken: cancellationToken)).ModifiedCount;
 
     /// <summary>Sets #4 of a version (a live update made available now).</summary>
     public Task SetVersionLastUpdatedAsync(string versionId, DateTime lastUpdatedUtc, CancellationToken cancellationToken = default) =>
@@ -694,6 +785,31 @@ public sealed class DppStore
         }
 
         return await Collection<T>().Find(Builders<T>.Filter.Empty).ToListAsync(cancellationToken);
+    }
+
+    /// <summary>Every passport version's battery, id, number and status, and nothing else (round seven, 2).</summary>
+    public async Task<IReadOnlyList<VersionSummary>> ListVersionSummariesAsync(CancellationToken cancellationToken = default)
+    {
+        if (_database is null)
+        {
+            return [];
+        }
+
+        return await Collection<PassportVersion>()
+            .Find(Builders<PassportVersion>.Filter.Empty)
+            .Project(version => new VersionSummary(version.PackId, version.Id, version.Number, version.DppStatus))
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>Every active passport version, in full: what the check compares (round seven, 2).</summary>
+    public async Task<IReadOnlyList<PassportVersion>> ListAllActiveVersionsAsync(CancellationToken cancellationToken = default)
+    {
+        if (_database is null)
+        {
+            return [];
+        }
+
+        return await Collection<PassportVersion>().Find(version => version.DppStatus == DppStatuses.Active).ToListAsync(cancellationToken);
     }
 
     /// <summary>The records with these ids; ids that don't exist are left out.</summary>

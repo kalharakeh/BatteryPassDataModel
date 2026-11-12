@@ -65,7 +65,7 @@ public sealed class ReviewFixesTests
         Assert.Contains("href=\"@PassportPages.QrDownloadHref(Model.Identifier)\"", page);
         Assert.Contains("href=\"/admin/audit?q=@Uri.EscapeDataString(Model.Pack.Id)\"", page);
         Assert.Contains("href=\"@PassportPages.DetailHref(row.Version.DigitalProductPassportId)\"", page); // each version opens its own address (6d)
-        Assert.Contains("@row.Version.Proof.Hash", page); // and shows its signature details
+        Assert.Contains("@row.Version.Proof?.Hash", page); // and shows its signature details (a missing proof shows nothing, C3 round two point 3)
     }
 
     [Fact]
@@ -77,7 +77,8 @@ public sealed class ReviewFixesTests
         Assert.All(conditional, a => Assert.False(string.IsNullOrWhiteSpace(BatteryPassWeb.Dpp.Catalog.AttributeCatalog.ConditionOf(a))));
         Assert.All(BatteryPassWeb.Dpp.Catalog.AttributeCatalog.All.Except(conditional), a => Assert.Null(BatteryPassWeb.Dpp.Catalog.AttributeCatalog.ConditionOf(a)));
         Assert.Equal("Not needed when the battery contains no nickel.", BatteryPassWeb.Dpp.Catalog.AttributeCatalog.ConditionOf(BatteryPassWeb.Dpp.Catalog.AttributeCatalog.ByNumber(49)));
-        Assert.Contains("AttributeCatalog.ConditionOf(definition)", Read("web", "Views", "ProductData", "_EditorField.cshtml"));
+        // R01: the field's line says whether this model needs it; values no question decides keep the file's condition.
+        Assert.Contains("field.NeedLine", Read("web", "Views", "ProductData", "_EditorField.cshtml"));
     }
 
     [Fact]

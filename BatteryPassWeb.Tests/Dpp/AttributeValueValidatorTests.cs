@@ -13,7 +13,11 @@ public sealed class AttributeValueValidatorTests
     [InlineData(59, """{"percentUnit":"%","percentageValue":12}""")]
     [InlineData(17, "\"2026-10\"")]
     [InlineData(19, "\"P8Y\"")]
-    [InlineData(19, "\"P3Y6M\"")]
+    [InlineData(19, "\"P100Y\"")] // round two, D: 1 to 100 years
+    [InlineData(19, "\"P6M\"")]
+    [InlineData(19, "\"P1200M\"")] // or 1 to 1200 months
+    [InlineData(19, "\"P3Y6M\"")] // round three, 3: the official combined form
+    [InlineData(19, "\"P99Y12M\"")] // 1200 months in all
     [InlineData(6, "\"urn:test:battery:VPC8C05-6788\"")]
     [InlineData(4, "\"2026-10-28T09:30:00Z\"")]
     [InlineData(36, "\"https://www.batteries.scania.test/carbon-footprint-study\"")]
@@ -32,7 +36,19 @@ public sealed class AttributeValueValidatorTests
     [InlineData(28, """{"contentType":"application/pdf","url":"ftp://example.com/doc.pdf"}""", "pattern")]
     [InlineData(17, "\"2026-10-14\"", "decision 18")] // year and month only
     [InlineData(17, "\"2026-13\"", "decision 18")]
-    [InlineData(19, "\"8 years\"", "ISO 8601 period")]
+    [InlineData(19, "\"8 years\"", "whole number of years")]
+    [InlineData(19, "\"P0Y\"", "whole number of years")] // round two, D: 0 is no warranty
+    [InlineData(19, "\"P101Y\"", "1 to 100")]
+    [InlineData(19, "\"P1201M\"", "1 to 1200")]
+    [InlineData(19, "\"P99999999999Y\"", "whole number of years")]
+    [InlineData(19, "\"P8X\"", "whole number of years")] // a unit other than years or months
+    [InlineData(19, "\"P100Y1M\"", "whole number of years")] // round three, 3: more than 1200 months in all
+    [InlineData(19, "\"P0Y0M\"", "whole number of years")]
+    [InlineData(19, "\"P30D\"", "whole number of years")] // days aren't a warranty
+    [InlineData(19, "\"P1Y6M10D\"", "whole number of years")]
+    [InlineData(19, "\"P\u0663Y\"", "whole number of years")] // round four, 6: an Arabic-Indic digit 3
+    [InlineData(19, "\"P\uFF11\uFF12M\"", "whole number of years")] // full-width 12
+    [InlineData(17, "\"\u0662\u0660\u0662\u0666-10\"", "decision 18")] // other digits in a year
     [InlineData(6, "\"not an identifier\"", "absolute URI")]
     [InlineData(4, "\"2026-10-28 09:30\"", "UTC timestamp")]
     [InlineData(57, """{"amperehourMiliamperehourValue":200000,"ampereHourMiliamperehourUnit":"mAh"}""", "\"Ah\"")]

@@ -44,9 +44,16 @@ public sealed record BatteryRow(
 
     /// <summary>Whether the battery is inside the demo (<see cref="DemoScope.Inside"/>), from the stored records, so lists keep demo readers inside it (finding R03).</summary>
     public bool IsDemo { get; init; }
+
+    /// <summary>A saved change waits for its published passport: the battery's stored marker (round three, 1).</summary>
+    public bool ChangesWaiting { get; init; }
 }
 
-public sealed record BatteriesPage(IReadOnlyList<BatteryRow> Rows, string Query, int Total);
+public sealed record BatteriesPage(IReadOnlyList<BatteryRow> Rows, string Query, int Total)
+{
+    /// <summary>The team's list only: published batteries whose saved changes their public passport doesn't show yet (round two, A2).</summary>
+    public IReadOnlyList<BatteryRow> Waiting { get; init; } = [];
+}
 
 /// <summary>A batch a new battery can be made in, named by its family, model, year and site.</summary>
 public sealed record BatchChoice(string BatchId, string FamilyName, string ModelName, int Year, string SiteName)
@@ -84,7 +91,18 @@ public sealed record NewBatteryPage(
 }
 
 /// <summary>Values the passport still needs, grouped by the record that holds them, with a link to its editor.</summary>
-public sealed record MissingGroup(string Record, string Href, IReadOnlyList<AttributeDefinition> Attributes);
+/// <param name="Reasons">Why a value is needed when only the model's answer makes it so, by attribute number (R01).</param>
+public sealed record MissingGroup(string Record, string Href, IReadOnlyList<AttributeDefinition> Attributes, IReadOnlyDictionary<int, string>? Reasons = null)
+{
+    /// <summary>"#82 Expected lifetime … (needed because this model is made for cycling use)".</summary>
+    public string Line(AttributeDefinition attribute)
+    {
+        ArgumentNullException.ThrowIfNull(attribute);
+        return Reasons?.GetValueOrDefault(attribute.Number) is { } reason
+            ? $"{attribute.Label} {attribute.Name} ({reason})"
+            : $"{attribute.Label} {attribute.Name}";
+    }
+}
 
 /// <summary>An uploaded file the passport uses, and whether its bytes still match the SHA-256 taken at upload.</summary>
 public sealed record FileCheck(DppDocument Document, string Owner, bool Unchanged);
@@ -99,6 +117,15 @@ public sealed record PublicationView(
     IReadOnlyList<FileCheck> Files,
     IReadOnlyList<string>? Notes = null)
 {
+    /// <summary>Where the model's three questions are answered, while they aren't (R01); null once they are.</summary>
+    public string? QuestionsHref { get; init; }
+
+    /// <summary>The model's name, for the line that asks for its answers.</summary>
+    public string? ModelName { get; init; }
+
+    /// <summary>Saved changes the public passport doesn't show yet, and what holds them back (round two, A2); null when none.</summary>
+    public WaitingChange? Waiting { get; init; }
+
     public bool IsPublished => Latest is not null;
 
     /// <summary>Published once and no longer active: inactive, invalid or marked for deletion (step 4c).</summary>
@@ -107,7 +134,7 @@ public sealed record PublicationView(
     /// <summary>An earlier passport, replaced by a newer one (redesign R7): kept as it was.</summary>
     public bool Replaced => Active is null && Latest?.DppStatus == DppStatuses.Inactive;
 
-    public bool Ready => Missing.Count == 0 && Problems.Count == 0;
+    public bool Ready => Missing.Count == 0 && Problems.Count == 0 && QuestionsHref is null;
 
     public int MissingCount => Missing.Sum(group => group.Attributes.Count);
 }
@@ -124,7 +151,11 @@ public sealed record PassportMarkView(string? Status, PassportMark? Mark, bool W
 }
 
 /// <summary>One published version of the passport and whether its signature still holds.</summary>
-public sealed record VersionRow(PassportVersion Version, bool SignatureHolds);
+public sealed record VersionRow(PassportVersion Version, BatteryPassWeb.Dpp.Signing.SignatureCheck Signature)
+{
+    /// <summary>The data matches the signature and the key is one the app trusts (finding R23).</summary>
+    public bool SignatureHolds => Signature.Holds;
+}
 
 /// <summary>Everything the battery page shows.</summary>
 public sealed record BatteryPage(
@@ -185,7 +216,8 @@ public sealed record BatteryPage(
     public RecordEditorView Editor => Cards.FrozenNote is { } note ? Values with { FrozenNote = note } : Values;
 
     /// <summary>What the overview asks the team to do: the missing values by group, the problems, and publishing once ready.</summary>
-    public int NeedsYou => Publication.Missing.Count + Publication.Problems.Count + (!Publication.IsPublished && Publication.Ready ? 1 : 0);
+    public int NeedsYou => Publication.Missing.Count + Publication.Problems.Count + (Publication.QuestionsHref is null ? 0 : 1)
+        + (!Publication.IsPublished && Publication.Ready ? 1 : 0);
 
     /// <summary>The header's thumbnail: the model's own picture, else its family's; null when neither has one (redesign R4).</summary>
     public string? PictureHref => BatteryPages.PictureHref(Sources.Model, Family);
@@ -198,7 +230,7 @@ public sealed record BatteryPage(
             var sections = new List<BatterySection>
             {
                 new(BatterySections.Overview, "Overview", "overview", NeedsYou == 0 ? "Nothing needs you" : $"{Words.Count(NeedsYou, "thing")} to do"),
-                new("values", "Passport values", "values", Editor.Missing > 0 ? $"{Editor.Missing} missing" : "All filled in"),
+                new("values", "Passport values", "values", Editor.Missing > 0 ? $"{Editor.Missing} missing" : Editor.QuestionsUnanswered ? "Model questions to answer" : "All filled in"),
             };
             if (Status is { } status)
             {
@@ -239,7 +271,8 @@ public sealed class BatteryPages(
     ApplicationAuditService audit,
     StatusPages status,
     LiveTrends? trends = null,
-    Identifiers.BatteryIdPool? pool = null)
+    Identifiers.BatteryIdPool? pool = null,
+    PassportReader? passports = null)
 {
     public const string ClusterChangedEvent = "dpp.pack-cluster-changed";
     public const string ModulesSetEvent = "dpp.pack-modules-set";
@@ -286,11 +319,33 @@ public sealed class BatteryPages(
     {
         ArgumentNullException.ThrowIfNull(mayList);
         var (rows, versions) = await RowsAsync(cancellationToken);
+        return OnePerBatteryPage(rows, versions, query, mayList, matchClusters);
+    }
+
+    private static BatteriesPage OnePerBatteryPage(List<BatteryRow> rows, ILookup<string, PassportVersion> versions, string? query, Func<BatteryRow, bool> mayList, bool matchClusters)
+    {
         var batteries = OnePerBattery(rows.Where(mayList).ToArray());
         var byPack = rows.ToDictionary(row => row.PackId, StringComparer.Ordinal);
         var wanted = query?.Trim() ?? string.Empty;
         var shown = Sorted(batteries.Where(row => wanted.Length == 0 || Earlier(row, byPack).Prepend(row).Any(each => Matches(each, wanted, versions[each.PackId], matchClusters))));
         return new BatteriesPage(shown, wanted, batteries.Count);
+    }
+
+    /// <summary>
+    /// The team's list (round two, A2): one row per battery, and the published ones whose saved changes wait for what
+    /// holds them back, so the team sees them without opening each battery.
+    /// </summary>
+    /// <remarks>
+    /// The waiting line reads each battery's stored marker from the rows the list loads anyway: no call and no passport
+    /// per battery (round three, 1). It sits outside the search, so a search never hides a waiting change.
+    /// </remarks>
+    public async Task<BatteriesPage> TeamListAsync(string? query, CancellationToken cancellationToken = default)
+    {
+        var (rows, versions) = await RowsAsync(cancellationToken);
+        var page = OnePerBatteryPage(rows, versions, query, _ => true, matchClusters: true);
+        // Every marked battery, not one row per battery: a predecessor still active while its successor is a draft is
+        // named too (round four, 5).
+        return page with { Waiting = Sorted(rows.Where(row => row.ChangesWaiting)) };
     }
 
     /// <summary>
@@ -355,6 +410,7 @@ public sealed class BatteryPages(
                 BatteryStatus = StatusChangeService.CurrentStatus(pack),
                 SuccessorOf = pack.SuccessorOf,
                 IsDemo = DemoScope.Inside(pack, batch, model, operators.GetValueOrDefault(pack.OperatorId), pack.ClusterId is null || demoClusters.Contains(pack.ClusterId)),
+                ChangesWaiting = active is not null && pack.ChangesWaitingSinceUtc is not null,
             });
         }
 
@@ -424,7 +480,7 @@ public sealed class BatteryPages(
             .ToArray();
         var operators = (await store.ListAsync<EconomicOperator>(cancellationToken)).OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase).ToArray();
         var empty = new Dictionary<string, AttributeValue>(StringComparer.Ordinal);
-        var sections = await editor.SectionsAsync(TargetKind.Pack, string.Empty, empty, state?.Post, state?.Save.Refusals(editor.Forms), cancellationToken);
+        var sections = await editor.SectionsAsync(TargetKind.Pack, string.Empty, empty, ModelAnswers.NotAnswered, state?.Post, state?.Save.Refusals(editor.Forms), cancellationToken);
         var values = new RecordEditorView(TargetKind.Pack, string.Empty, string.Empty, "/admin/batteries", "/admin/batteries", sections, [], 0, editor.Forms.Languages, string.Empty, new RemovalView(string.Empty, null));
         return new NewBatteryPage(choices, operators, await ClustersAsync(cancellationToken), values, batchId, operatorId, clusterId, links.IsConfigured)
         {
@@ -434,6 +490,10 @@ public sealed class BatteryPages(
             PickedSerial = state?.Post.Texts.GetValueOrDefault("v.batterySerialNumber"),
         };
     }
+
+    /// <summary>What was typed on the "new battery" page, read as <see cref="CreateAsync"/> reads it.</summary>
+    public EditorPost ReadNew(Func<string, string?> field) =>
+        editor.Read(TargetKind.Pack, new Dictionary<string, AttributeValue>(StringComparer.Ordinal), field);
 
     /// <summary>
     /// Creates a draft battery (design 7.1). The cluster is optional (decision of 29 Oct 2026) but must exist; the
@@ -485,7 +545,7 @@ public sealed class BatteryPages(
         var active = versions.Where(version => version.DppStatus == DppStatuses.Active).MaxBy(version => version.Number);
         var href = BatteryHref(packId);
         var valueAttributes = ValueAttributes(published: versions.Count > 0);
-        var valueSections = await editor.SectionsAsync(TargetKind.Pack, packId, valueAttributes, pack.Values, values?.Post, values?.Save.Refusals(editor.Forms), cancellationToken);
+        var valueSections = await editor.SectionsAsync(TargetKind.Pack, packId, valueAttributes, pack.Values, sources.Model.Answers(), values?.Post, values?.Save.Refusals(editor.Forms), cancellationToken);
         var valuesView = new RecordEditorView(
             TargetKind.Pack,
             packId,
@@ -497,8 +557,11 @@ public sealed class BatteryPages(
             active is null ? 0 : 1,
             editor.Forms.Languages,
             editor.Stamp(valueAttributes, pack.Values, null),
-            new RemovalView(string.Empty, null));
-        var liveSections = await editor.SectionsAsync(TargetKind.Pack, packId, RecordEditor.LiveAttributes, pack.Values, live?.Post, live?.Save.Refusals(editor.Forms), cancellationToken);
+            new RemovalView(string.Empty, null))
+        {
+            QuestionsUnanswered = !sources.Model.Answers().AllAnswered, // round two, B: never "all filled in" then
+        };
+        var liveSections = await editor.SectionsAsync(TargetKind.Pack, packId, RecordEditor.LiveAttributes, pack.Values, sources.Model.Answers(), live?.Post, live?.Save.Refusals(editor.Forms), cancellationToken);
         var liveView = new RecordEditorView(
             TargetKind.Pack,
             packId,
@@ -523,7 +586,7 @@ public sealed class BatteryPages(
             valuesView,
             liveView,
             await PublicationAsync(sources, active, cancellationToken),
-            versions.OrderByDescending(version => version.Number).Select(version => new VersionRow(version, PassportReader.Verify(version))).ToArray(),
+            versions.OrderByDescending(version => version.Number).Select(version => new VersionRow(version, passports?.Check(version) ?? BatteryPassWeb.Dpp.Signing.SignatureCheck.Unchecked)).ToArray(),
             await documents.ListAsync(TargetKind.Pack, packId, DocumentService.Accidents, cancellationToken),
             new RemovalView($"{href}/remove", versions.Count > 0 ? "its passport is published, so it stays with its versions." : null))
         {
@@ -737,10 +800,24 @@ public sealed class BatteryPages(
     private async Task<PublicationView> PublicationAsync(PassportSources sources, PassportVersion? active, CancellationToken cancellationToken)
     {
         var report = await publication.CheckAsync(sources.Pack.Id, cancellationToken) ?? new PublicationReport([], []);
+
+        // The truth for this one battery; the stored marker the list reads is put right if it differs (round three, 1).
+        var waiting = active is null ? null : await publication.WaitingAsync(sources.Pack.Id, cancellationToken);
+        if (active is not null && (waiting is not null) != (sources.Pack.ChangesWaitingSinceUtc is not null))
+        {
+            await publication.MarkWaitingAsync(sources.Pack.Id, waiting is not null, sources.Pack.ChangesWaitingToken, cancellationToken);
+        }
+
         var missing = new List<AttributeDefinition>();
         var problems = new List<string>();
+        var answers = sources.Model.Answers();
         foreach (var item in report.Blocking)
         {
+            if (item == PassportNeeds.QuestionsNotAnswered)
+            {
+                continue; // its own line, with a link to the model (R01)
+            }
+
             if (Numbered(item) is { } attribute)
             {
                 missing.Add(attribute);
@@ -754,11 +831,22 @@ public sealed class BatteryPages(
         var groups = missing
             .GroupBy(Holder)
             .OrderBy(group => group.Key)
-            .Select(group => Group(group.Key, sources, group.OrderBy(attribute => attribute.Number).ToArray()))
+            .Select(group => Group(group.Key, sources, group.OrderBy(attribute => attribute.Number).ToArray()) with
+            {
+                Reasons = group
+                    .Select(attribute => (attribute.Number, Reason: PassportNeeds.Reason(attribute, answers)))
+                    .Where(entry => entry.Reason is not null)
+                    .ToDictionary(entry => entry.Number, entry => entry.Reason!),
+            })
             .ToArray();
         var later = report.Warnings.Select(Numbered).OfType<AttributeDefinition>().OrderBy(attribute => attribute.Number).ToArray();
         return new PublicationView(active, await store.GetLatestVersionAsync(sources.Pack.Id, cancellationToken), groups, problems, later, await FilesAsync(sources, cancellationToken),
-            report.Warnings.Where(warning => Numbered(warning) is null).ToArray());
+            report.Warnings.Where(warning => Numbered(warning) is null).ToArray())
+        {
+            QuestionsHref = report.Blocking.Contains(PassportNeeds.QuestionsNotAnswered) ? $"{ProductDataPages.FamilyHref(sources.Model.FamilyId, sources.Model.Id)}#questions" : null,
+            ModelName = sources.Model.Name,
+            Waiting = waiting,
+        };
     }
 
     /// <summary>The attribute a report line such as "#21 Battery mass is missing" is about.</summary>

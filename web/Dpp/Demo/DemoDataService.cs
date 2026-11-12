@@ -182,6 +182,10 @@ public sealed class DemoDataService(
 
             var stored = await store.GetAsync<BatteryModel>(id, cancellationToken);
             await productData.SetModuleDescriptionAsync(who, stored!, model.ModuleDescription, cancellationToken);
+            if (model.Answers is { } answers)
+            {
+                await productData.SetModelAnswersAsync(who, stored!, answers, confirmed: true, cancellationToken);
+            }
             if (model.Picture is { } picture)
             {
                 await productData.SetModelPictureAsync(who, id, picture, DemoCatalogue.Picture(picture), cancellationToken);

@@ -1,3 +1,4 @@
+@using BatteryPassWeb.Dpp.Catalog
 @using BatteryPassWeb.Dpp.Editing
 @using BatteryPassWeb.Dpp.Pages
 @inject Microsoft.Extensions.Options.IOptions<BatteryPassWeb.Configuration.BatteryPassOptions> AppOptions
@@ -115,8 +116,8 @@
                             <strong>@chip.Model.Name</strong>
                         </a>
                         <small class="bp-chip-meta"
-                               title="@(chip.Missing > 0 ? $"{Words.Count(chip.Missing, "value")} needed by Feb 2027 {Words.Is(chip.Missing)} missing" : "Every value needed by Feb 2027 is filled in")">
-                            <span class="@(chip.Missing > 0 ? "bp-missing-note" : "bp-done-note")">@(chip.Missing > 0 ? $"{chip.Missing} missing" : "Complete")</span>
+                               title="@(chip.Missing > 0 ? $"{Words.Count(chip.Missing, "value")} needed by Feb 2027 {Words.Is(chip.Missing)} missing" : !chip.Answered ? "Its three questions aren't answered yet" : "Every value needed by Feb 2027 is filled in")">
+                            <span class="@(chip.Missing > 0 || !chip.Answered ? "bp-missing-note" : "bp-done-note")">@(chip.Missing > 0 ? $"{chip.Missing} missing" : !chip.Answered ? "Questions to answer" : "Complete")</span>
                             <span>@chip.Filled of @chip.Total filled</span>
                         </small>
                     </article>
@@ -202,6 +203,55 @@
         </section>
     }
 
+    @if (selected is not null)
+    {
+        @* R01: the three questions that decide which conditional values this model's passports need. App data, not published. *@
+        var answers = selected.Answers();
+        var pending = (TempData[BatteryPassWeb.Controllers.ProductDataController.PendingAnswersKey] as string)?.Split('|');
+        var pendingHere = pending is { Length: 4 } && pending[0] == selected.Id;
+        var pendingAffected = TempData[BatteryPassWeb.Controllers.ProductDataController.PendingAffectedKey] as int? ?? 0;
+        string PendingValue(string name) => pendingHere ? pending!.Skip(1).Select(part => part.Split('=', 2)).FirstOrDefault(part => part[0] == name)?.ElementAtOrDefault(1) ?? string.Empty : string.Empty;
+        <section class="bp-card bp-console-form-card mt-4" id="questions">
+            <div class="bp-product-section-heading">
+                <div>
+                    <h2>Three questions about model @selected.Name</h2>
+                    <p class="bp-help-text mb-0">They decide which values its passports need. They aren't passport data: readers don't see them.</p>
+                </div>
+            </div>
+            @if (!answers.AllAnswered)
+            {
+                <p class="bp-warning mt-2 mb-0" role="status">Not answered yet: this model's batteries can't be published until all three are answered.</p>
+            }
+            @if (pendingHere)
+            {
+                <form method="post" action="/admin/models/@Uri.EscapeDataString(selected.Id)/questions" class="bp-warning mt-2" role="alert">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="warranty" value="@PendingValue("warranty")" />
+                    <input type="hidden" name="cycling" value="@PendingValue("cycling")" />
+                    <input type="hidden" name="cadmiumOrLead" value="@PendingValue("cadmiumOrLead")" />
+                    <input type="hidden" name="confirmed" value="true" />
+                    <p class="mb-2">@Words.Count(pendingAffected, "published battery", "published batteries") of this model @(pendingAffected == 1 ? "lacks" : "lack") a value these answers ask for. @(pendingAffected == 1 ? "It" : "They") can't get a new version until the value is filled in. Nothing is saved yet.</p>
+                    <button type="submit" class="bp-secondary-button bp-button-compact">Save the answers anyway</button>
+                    <a href="@here#questions" class="ms-2">Cancel</a>
+                </form>
+            }
+            <form method="post" action="/admin/models/@Uri.EscapeDataString(selected.Id)/questions">
+                @Html.AntiForgeryToken()
+                @foreach (var question in ModelQuestions.All)
+                {
+                    var field = ModelQuestions.FieldName(question);
+                    var answer = answers.Of(question);
+                    <fieldset class="bp-choice-list mt-3">
+                        <legend>@ModelQuestions.Text(question) <span class="bp-field-help">@(answer is null ? "Not answered yet" : string.Empty)</span></legend>
+                        <label class="bp-choice"><input type="radio" name="@field" value="yes" checked="@(answer == true)" /><strong>Yes</strong><small>Its values are needed: @string.Join(", ", ModelQuestions.Decides[question].Select(number => $"#{number}")).</small></label>
+                        <label class="bp-choice"><input type="radio" name="@field" value="no" checked="@(answer == false)" /><strong>No</strong><small>They aren't needed. A value filled in anyway is kept and published.</small></label>
+                    </fieldset>
+                }
+                <button type="submit" class="bp-secondary-button bp-button-compact mt-3">Save answers</button>
+            </form>
+        </section>
+    }
+
     @if (Model.ModelEditor is { } modelEditor)
     {
         @await Html.PartialAsync("_RecordEditor", modelEditor)
@@ -272,7 +322,7 @@
                             <option value="">Choose a site…</option>
                             @foreach (var site in Model.Sites)
                             {
-                                var siteMissing = RecordEditor.CountMissing(TargetKind.Site, site.Values);
+                                var siteMissing = RecordEditor.CountMissing(TargetKind.Site, site.Values, ModelAnswers.NotAnswered);
                                 <option value="@site.Id">@(siteMissing > 0 ? $"{site.Name} ({siteMissing} missing)" : site.Name)</option>
                             }
                         </select>

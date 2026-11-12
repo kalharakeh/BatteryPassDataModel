@@ -1,6 +1,8 @@
+using BatteryPassWeb.Dpp.Catalog;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Pages;
+using BatteryPassWeb.Dpp.Publication;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Dpp.Values;
 using BatteryPassWeb.Services;
@@ -293,6 +295,50 @@ public sealed class ProductDataController(ProductDataPages pages, RecordEditor e
         return Redirect($"{ProductDataPages.FamilyHref(model.FamilyId, modelId)}#modules");
     }
 
+    /// <summary>A save of a model's answers that waits for the team's yes: "modelId|warranty=yes|cycling=no|…" and the count.</summary>
+    public const string PendingAnswersKey = "PendingAnswers";
+    public const string PendingAffectedKey = "PendingAnswersAffected";
+
+    [HttpPost("models/{modelId}/questions")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetAnswers(string modelId, [FromForm] string? warranty, [FromForm] string? cycling, [FromForm] string? cadmiumOrLead, [FromForm] bool confirmed, CancellationToken cancellationToken)
+    {
+        var model = await store.GetAsync<BatteryModel>(modelId, cancellationToken);
+        if (model is null)
+        {
+            return NotFound();
+        }
+
+        static bool? Read(string? posted) => posted switch
+        {
+            "yes" => true,
+            "no" => false,
+            _ => null,
+        };
+
+        var posted = new ModelAnswers(Read(warranty), Read(cycling), Read(cadmiumOrLead));
+        var save = await pages.SetModelAnswersAsync(Who, model, posted, confirmed, cancellationToken);
+        if (save.NeedsConfirmation)
+        {
+            TempData[PendingAnswersKey] = $"{modelId}|warranty={warranty}|cycling={cycling}|cadmiumOrLead={cadmiumOrLead}";
+            TempData[PendingAffectedKey] = save.Affected;
+        }
+        else if (!save.Saved)
+        {
+            TempData[InfoKey] = "Nothing changed.";
+        }
+        else
+        {
+            var answers = (await store.GetAsync<BatteryModel>(modelId, cancellationToken))!.Answers();
+            TempData[StatusKey] = (answers.AllAnswered
+                ? "Answers saved. The passport doesn't show them; they decide which values it needs."
+                : "Answers saved. Answer all three before this model's batteries can be published.")
+                + (save.Outcomes.Count > 0 ? " Changes that were waiting: " + PublishWords.ForMany(save.Outcomes) : string.Empty);
+        }
+
+        return Redirect($"{ProductDataPages.FamilyHref(model.FamilyId, modelId)}#questions");
+    }
+
     [HttpPost("models/{modelId}/batches")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateBatch(string modelId, [FromForm] int? year, [FromForm] string? siteId, CancellationToken cancellationToken)
@@ -581,8 +627,8 @@ public sealed class ProductDataController(ProductDataPages pages, RecordEditor e
         var save = await editor.SaveAsync(ChangeSender.Team(Who), kind, id, post, confirmed, cancellationToken);
         var nameNote = nameTaken is null ? string.Empty : $" The name wasn't changed: {nameTaken}.";
         var notes = (renamed ? " Name saved." : string.Empty)
-            + (save.Affected.Count > 0 && save.Outcome is EditorOutcome.Saved or EditorOutcome.Refused
-                ? $" {Words.Count(save.Affected.Count, "passport")} got a new version."
+            + (save.Outcomes.Count > 0 && save.Outcome is EditorOutcome.Saved or EditorOutcome.Refused
+                ? " " + PublishWords.ForMany(save.Outcomes) // round two, A3: per passport
                 : string.Empty);
         var done = (save.SavedCount, save.RemovedCount) switch
         {
@@ -639,8 +685,9 @@ public sealed class ProductDataController(ProductDataPages pages, RecordEditor e
         }
 
         var result = await documents.UploadAsync(ChangeSender.Team(Who), kind, id, property, new DocumentUpload(file.FileName, await ReadAsync(file, cancellationToken), title, language), cancellationToken);
+        var outcomes = result.Problem is null ? await editor.OutcomesAsync(published, cancellationToken) : [];
         TempData[result.Problem is null ? EditorStatusKey : EditorErrorKey] = result.Problem is null
-            ? $"{result.Document!.FileName} uploaded."
+            ? $"{result.Document!.FileName} uploaded.{(outcomes.Count > 0 ? " " + PublishWords.ForMany(outcomes) : string.Empty)}"
             : $"The file was not uploaded: {result.Problem}.";
         return Redirect(pageHref + EditorAnchor);
     }

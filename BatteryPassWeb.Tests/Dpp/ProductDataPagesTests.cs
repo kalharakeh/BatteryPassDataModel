@@ -31,10 +31,10 @@ public sealed class ProductDataPagesTests(MongoFixture mongo)
         var family = Assert.Single((await pages.FamiliesAsync()).Families);
         var page = (await pages.FamilyAsync("family-test", modelId))!;
 
-        Assert.Equal(27, family.Missing); // the seeded model and batch are complete; #20 is filled in on creation
+        Assert.Equal(28, family.Missing); // the seeded model and batch are complete; #20 is filled in on creation; #57 counts (R22)
         var chips = page.Models.ToDictionary(chip => chip.Model.Id, chip => chip.Missing);
-        Assert.Equal((0, 27), (chips["model-test"], chips[modelId]));
-        Assert.Equal(27, page.ModelEditor!.Missing);
+        Assert.Equal((0, 28), (chips["model-test"], chips[modelId]));
+        Assert.Equal(28, page.ModelEditor!.Missing);
     }
 
     [Fact]

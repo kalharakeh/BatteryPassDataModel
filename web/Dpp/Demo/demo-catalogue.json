@@ -106,6 +106,7 @@
       "name": "Compact 7M",
       "modules": 7,
       "moduleDescription": "Seven liquid-cooled NMC modules in one pack housing, with the battery management unit at the front.",
+      "answers": { "commercialWarranty": true, "cyclingUse": true, "cadmiumOrLeadAboveLimit": true },
       "documents": {
         "dismantlingInformation": "Dismantling manual",
         "partNumbersForComponents": "Part numbers for components",
@@ -276,6 +277,7 @@
       "picture": "compact13.png",
       "modules": 13,
       "moduleDescription": "Thirteen liquid-cooled NMC modules in two rows, with the battery management unit at the front.",
+      "answers": { "commercialWarranty": false, "cyclingUse": true, "cadmiumOrLeadAboveLimit": true },
       "documents": {
         "dismantlingInformation": "Dismantling manual",
         "partNumbersForComponents": "Part numbers for components",
@@ -445,6 +447,7 @@
       "name": "Core",
       "modules": 10,
       "moduleDescription": "Ten liquid-cooled NMC modules around a central cooling plate, with the battery management unit on top.",
+      "answers": { "commercialWarranty": false, "cyclingUse": true, "cadmiumOrLeadAboveLimit": true },
       "documents": {
         "dismantlingInformation": "Dismantling manual",
         "partNumbersForComponents": "Part numbers for components",

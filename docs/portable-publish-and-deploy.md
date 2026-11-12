@@ -49,6 +49,12 @@ Also in `artifacts/releases`:
    - `SESSION_SECRET`
    - `EXTERNAL_API_ENCRYPTION_KEY`
    - `ID_GENERATION_SECRET`
+   - `APP_BASE_URL` and `DPP_ID_BASE_URL`: the site's address, both the same site (scheme, host and port).
+   - `BATTERY_PASS_SIGNING_PRIVATE_KEY_BASE64`: the site's private signing key (P-256, base64 PKCS#8). `.env.local.example` says how to make one. Make it once and keep it: with another key, every passport signed before shows "Not verified".
+
+   - `ENABLE_DEMO_ADMIN_FALLBACK=false`: the example's `true` is for a developer's PC.
+
+   `run-batterypass.cmd` starts the app in Production. Production doesn't start without the signing key, or when either address isn't a whole `http://` or `https://` address, or when the two aren't the same site, or with `ENABLE_DEMO_ADMIN_FALLBACK=true`; the message says which.
 
    Optional: `ENABLE_DEMO_DATA` (on outside Production unless `false`) switches the demo data, demo accounts and demo tokens. The fallback admin (`ENABLE_DEMO_ADMIN_FALLBACK`) works only with a password you set in `DEMO_ADMIN_PASSWORD`; it has no default and never works in Production.
 5. Run `run-batterypass.cmd`.

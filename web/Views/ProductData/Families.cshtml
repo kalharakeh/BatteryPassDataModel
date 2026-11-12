@@ -71,7 +71,11 @@
                         {
                             <span class="bp-missing-note">@row.Missing missing for Feb 2027</span>
                         }
-                        else if (row.Models > 0)
+                        @if (row.Unanswered > 0)
+                        {
+                            <span class="bp-missing-note">@Words.Count(row.Unanswered, "model") with questions to answer</span>
+                        }
+                        else if (row.Missing == 0 && row.Models > 0)
                         {
                             <span class="bp-done-note">Complete for Feb 2027</span>
                         }

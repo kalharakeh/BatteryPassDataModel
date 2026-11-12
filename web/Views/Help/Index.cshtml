@@ -73,6 +73,17 @@
                         </tr>
                         <tr class="bp-help-doc-item">
                             <td><span class="bp-help-method">GET</span></td>
+                            <td><span class="bp-help-endpoint-cell"><code>/dpp/{id}.json</code><small>A passport's public part as data</small></span></td>
+                            <td><span class="bp-help-access-pill">No token</span></td>
+                            <td>Read what the public page shows, as data.</td>
+                            <td class="bp-action-cell">
+                                <button type="button" class="bp-action-button bp-help-detail-toggle" data-api-help-detail-target="api-detail-public-data" aria-expanded="false" aria-controls="api-detail-public-data" aria-label="Show public data details" title="Show public data details" data-tooltip="Details">
+                                    <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="bp-help-doc-item">
+                            <td><span class="bp-help-method">GET</span></td>
                             <td><span class="bp-help-endpoint-cell"><code>@Model.BasePath/clusters</code><small>Clusters this token can access</small></span></td>
                             <td><span class="bp-help-access-pill">Read</span></td>
                             <td>Discover cluster IDs before listing batteries.</td>
@@ -251,6 +262,24 @@
                     </div>
                 </article>
 
+                <article id="api-detail-public-data" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
+                    <div>
+                        <span class="bp-summary-title">Public data</span>
+                        <h3>Read a passport's public part as data, without a token.</h3>
+                        <p>A published passport's public address answers JSON when you ask for it with <code>Accept: application/json</code>, and the same address ending in <code>.json</code> does too. The address gives JSON only when <code>application/json</code> is rated above the page: <code>text/html</code>, <code>text/*</code> and <code>*/*</code> all count as the page, and a tie goes to the page. Many HTTP clients send <code>application/json, */*</code> by default, which gets the page, so programs should use the <code>.json</code> address. The answer holds exactly the values the public page shows, with the official format's names. Values only some readers may see are left out, so it won't pass the schema as a full passport. <code>proof</code> is the site's signature over the public values. It is <code>null</code> when no signature holds for the data as served: for a passport published before this signature existed, or when the rule on who may see a value has changed since publication. After the site changes its signing key, an earlier passport's <code>proof</code> is <code>null</code> until the earlier public key is listed as trusted again; did.json then lists it too. After the site moves its battery IDs to another address (<code>DPP_ID_BASE_URL</code> on another host), every earlier passport's <code>proof</code> is <code>null</code> until that passport gets a new version: its proof names the earlier site, and listing the earlier key doesn't bring it back. A passport that isn't published answers <code>404</code>. Public reads have a rate limit, counted by the caller's address.</p>
+                        <p id="api-public-data-check"><strong>How to check the proof yourself.</strong></p>
+                        <ol>
+                            <li><strong>The key.</strong> Read <code>/.well-known/did.json</code> on the site and take the entry of <code>verificationMethod</code> whose <code>id</code> equals the proof's <code>verificationMethod</code>; its <code>publicKeyJwk</code> is the P-256 key. Never use <code>publicKeyX</code> and <code>publicKeyY</code> written inside the proof: anyone can write a key there. An entry that isn't in did.json is a key this site doesn't vouch for.</li>
+                            <li><strong>What is signed.</strong> The answer without <code>proof</code>, without <code>dppHeader.dppStatus</code> and <code>dppHeader.lastUpdated</code>, and without the live values in <code>batteryPassportData.performanceAndDurability</code> (<code>stateOfChargeSoC</code>, <code>numberOfFullChargingAndDischargingCycles</code>, <code>temperatureInformation</code>, <code>informationOnAccidents</code> and the four <code>timeSpent…</code> values). Those change without a new version: the status when the passport is replaced or marked, the last update and the live values with each reading. Then remove every object left empty, inner ones first, going through objects only: nothing inside an array is touched, at any depth, so an empty object stays when it is in an array or anywhere below one. Everything else in the answer is signed.</li>
+                            <li><strong>The text that is hashed.</strong> That part as JSON in UTF-8 with no spaces or line breaks. Object keys are sorted by their UTF-16 code units (as JavaScript's default sort does); arrays keep their order; <code>true</code>, <code>false</code> and <code>null</code> as they are. A number written in the answer as digits only (an optional minus, no point, no exponent) that fits a signed 64-bit integer stays as written (<code>100000000000000000</code>). Any other number is read as a 64-bit floating-point number. If that is a whole number below 10<sup>15</sup>, it is written as an integer (<code>520.0</code> → <code>520</code>, <code>-0</code> → <code>0</code>). Otherwise it is written in its shortest form that reads back as the same number: in plain digits from 0.0001 up to below 10<sup>17</sup> (<code>2.5</code>, <code>0.1</code>, <code>1.5e15</code> → <code>1500000000000000</code>), else with an uppercase <code>E</code>, a sign and at least two exponent digits (<code>0.00001</code> → <code>1E-05</code>, <code>1.0e17</code> → <code>1E+17</code>). In text and keys, <code>"</code> and <code>&#92;</code> are written <code>&#92;"</code> and <code>&#92;&#92;</code>; backspace, tab, line feed, form feed and carriage return are written <code>&#92;b &#92;t &#92;n &#92;f &#92;r</code>. These are written as <code>&#92;u</code> with four uppercase hex digits: the other control characters (U+0000–U+001F, U+007F–U+009F), every space other than the ordinary space (the no-break space U+00A0, U+1680, U+2000–U+200A, U+202F, U+205F, U+3000), U+2028, U+2029, U+FEFF, private-use characters (U+E000–U+F8FF), characters that .NET 10's Unicode tables count as unassigned (some characters added in recent Unicode versions among them, such as U+20C1), and every character outside the Basic Multilingual Plane, as its two UTF-16 halves (an emoji such as U+1F600 is <code>&#92;uD83D&#92;uDE00</code>). Every other character is written as it is, unescaped: <code>é</code>, <code>中</code>, <code>/</code>, <code>&lt;</code>, <code>&amp;</code>, <code>'</code>.</li>
+                            <li><strong>The check.</strong> <code>"sha256:"</code> and the lowercase hex SHA-256 of those bytes must equal the proof's <code>hash</code>. <code>proofValue</code> is the ECDSA P-256 signature over the same bytes with SHA-256: r and s as 32 bytes each (64 bytes), base64url without padding.</li>
+                        </ol>
+                    </div>
+                    <pre class="bp-help-pre"><code>GET /dpp/{battery ID}.json
+GET /dpp/{battery ID}          Accept: application/json
+GET /dpp/{battery ID}/v2.json</code></pre>
+                </article>
+
                 <article id="api-detail-clusters" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
                     <div><span class="bp-summary-title">Clusters</span><h3>List the clusters available to the token.</h3><p>Returns cluster IDs and names for the token's clusters. A global token is the team's token: it lists every registered cluster.</p></div>
                     <pre class="bp-help-pre"><code>GET @Model.BasePath/clusters</code></pre>
@@ -394,7 +423,7 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                 </article>
 
                 <article id="api-detail-passport-list" class="bp-help-detail-panel" data-api-help-detail-panel hidden>
-                    <div><span class="bp-summary-title">Passport versions</span><h3>List the battery's published versions.</h3><p>Newest first, each with its passport ID, version number, status (active or archived), when it was published and last updated, and whether its signature still holds.</p></div>
+                    <div><span class="bp-summary-title">Passport versions</span><h3>List the battery's published versions.</h3><p>Newest first, each with its passport ID, version number, status (active or archived), when it was published and last updated, and whether its signature is verified: the data matches what was signed, with a key this site knows.</p></div>
                     <pre class="bp-help-pre"><code>GET @Model.BasePath/batteries/{id}/passports</code></pre>
                 </article>
 
@@ -1119,7 +1148,7 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
             const code = (text) => text ? `<code>${escapeHtml(text)}</code>` : '-';
             const factWords = {
                 batteryId: 'Battery ID', passportId: 'Passport ID', serialNumber: 'Serial number', clusterId: 'Cluster', clusterName: 'Cluster name',
-                version: 'Version', dppStatus: 'Status', signatureVerified: 'Signature holds', unchanged: 'Unchanged', preview: 'Preview only',
+                version: 'Version', dppStatus: 'Status', signatureVerified: 'Signature verified', signatureReason: 'Why not verified', unchanged: 'Unchanged', preview: 'Preview only',
                 saved: 'Saved', measuredAt: 'Measured at', hours: 'Hours', section: 'Section', globalAccess: 'Team token', publishPath: 'Publish with'
             };
             const outcomeWords = { saved: ['Saved', 'done'], kept: ['Kept (empty)', ''], ignored: ['Ignored', ''], removed: ['Removed', ''], rejected: ['Refused', 'refused'] };
@@ -1165,7 +1194,7 @@ GET @Model.BasePath/batteries/{id}/paths?section=performanceAndDurability</code>
                     parts.push(answerTable(['Cluster ID', 'Name'], data.clusters.map(cluster => [code(cluster.clusterId), escapeHtml(cluster.name)])));
                 } else if (Array.isArray(data.passports)) {
                     parts.push(answerTable(['Version', 'Passport ID', 'Status', 'Published', 'Signature'], data.passports.map(version =>
-                        [escapeHtml(version.version), code(version.passportId), answerTag(version.dppStatus, version.dppStatus === 'active' ? 'done' : ''), escapeHtml(version.publishedAt), version.signatureVerified ? answerTag('Holds', 'done') : answerTag('Broken', 'refused')])));
+                        [escapeHtml(version.version), code(version.passportId), answerTag(version.dppStatus, version.dppStatus === 'active' ? 'done' : ''), escapeHtml(version.publishedAt), version.signatureVerified ? answerTag('Verified', 'done') : `${answerTag('Not verified', 'refused')}${version.signatureReason ? ` <small>${escapeHtml(version.signatureReason)}</small>` : ''}`])));
                 } else if (Array.isArray(data.attributes)) {
                     parts.push(answerTable(['Value', 'Key', 'Name', 'Unit'], data.attributes.map(attribute =>
                         [escapeHtml(attribute.attribute), code(attribute.key), escapeHtml(attribute.name), escapeHtml(attribute.unit || '-')])));

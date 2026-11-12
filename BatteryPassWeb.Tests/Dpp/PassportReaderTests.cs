@@ -15,7 +15,7 @@ public sealed class PassportReaderTests(MongoFixture mongo)
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo);
 
-        var current = await new PassportReader(rig.Store).CurrentAsync(rig.PackId);
+        var current = await SigningTesting.Passports(rig.Store).CurrentAsync(rig.PackId);
 
         Assert.NotNull(current);
         var passport = current.Passport;
@@ -34,7 +34,7 @@ public sealed class PassportReaderTests(MongoFixture mongo)
             ChangeSender.Feed("bms-feed", "cluster-test"),
             new ChangeSet(TargetKind.Pack, rig.PackId, new Dictionary<string, JsonNode?> { ["stateOfChargeSoC"] = 55 }, "feed"));
 
-        var passport = (await new PassportReader(rig.Store).CurrentAsync(rig.PackId))!.Passport;
+        var passport = (await SigningTesting.Passports(rig.Store).CurrentAsync(rig.PackId))!.Passport;
 
         Assert.Equal(55, passport["batteryPassportData"]!["performanceAndDurability"]!["stateOfChargeSoC"]!["percentageValue"]!.GetValue<int>());
         Assert.Equal("2026-10-29T08:10:00Z", passport["dppHeader"]!["lastUpdated"]!.GetValue<string>());
@@ -49,13 +49,13 @@ public sealed class PassportReaderTests(MongoFixture mongo)
             PublicationTesting.Team,
             new ChangeSet(TargetKind.Pack, rig.PackId, new Dictionary<string, JsonNode?> { ["thirdPartyServiceProvider"] = "New Hosting AB" }, "form"));
 
-        var archived = await new PassportReader(rig.Store).VersionAsync(first.DigitalProductPassportId);
+        var archived = await SigningTesting.Passports(rig.Store).VersionAsync(first.DigitalProductPassportId);
 
         Assert.NotNull(archived);
         Assert.Equal("archived", archived.Passport["dppHeader"]!["dppStatus"]!["dppStatusValue"]!.GetValue<string>());
         Assert.Equal("Example Passport Hosting AB", archived.Passport["batteryPassportData"]!["identifiersAndProductData"]!["thirdPartyServiceProvider"]!.GetValue<string>());
         Assert.Null(archived.Passport["batteryPassportData"]!["performanceAndDurability"]!["stateOfChargeSoC"]);
-        Assert.True(PassportReader.Verify(archived.Version));
+        Assert.True(SigningTesting.Passports(rig.Store).Check(archived.Version).Holds);
     }
 
     [Fact]
@@ -69,14 +69,14 @@ public sealed class PassportReaderTests(MongoFixture mongo)
 
         var reloaded = (await rig.Store.GetActiveVersionAsync(rig.PackId))!;
 
-        Assert.False(PassportReader.Verify(reloaded));
+        Assert.False(SigningTesting.Passports(rig.Store).Check(reloaded).Holds);
     }
 
     [Fact]
     public async Task UnknownPackOrPassportId_ShouldReadAsNothing()
     {
         var rig = await PublicationTesting.RigAsync(mongo);
-        var reader = new PassportReader(rig.Store);
+        var reader = SigningTesting.Passports(rig.Store);
 
         Assert.Null(await reader.CurrentAsync(rig.PackId)); // a draft has no published passport
         Assert.Null(await reader.VersionAsync("urn:x-battery-pass:TEST-DPP-none"));

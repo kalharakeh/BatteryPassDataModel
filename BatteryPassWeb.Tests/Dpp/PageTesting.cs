@@ -20,7 +20,7 @@ namespace BatteryPassWeb.Tests.Dpp;
 internal static class PageTesting
 {
     public static RecordEditor Editor(PublicationRig rig) =>
-        new(AttributeFormsTests.Forms, rig.Pipeline, rig.Store, new DocumentStore(rig.Context));
+        new(AttributeFormsTests.Forms, rig.Pipeline, rig.Store, new DocumentStore(rig.Context), rig.Publication);
 
     public static DocumentService Documents(PublicationRig rig) => new(
         new DocumentStore(rig.Context),
@@ -62,7 +62,8 @@ internal static class PageTesting
         new DocumentStore(rig.Context),
         new ApplicationAuditService(rig.Context),
         Options.Create(new BatteryPassOptions { AppBaseUrl = DocumentTesting.BaseUrl }),
-        rig.Clock);
+        rig.Clock,
+        rig.Publication);
 
     /// <summary>The controller as a signed-in team member (role "admin") would reach it, with the given form posted.</summary>
     public static ProductDataController Controller(PublicationRig rig, IReadOnlyDictionary<string, string>? form = null)

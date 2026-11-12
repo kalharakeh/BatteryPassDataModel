@@ -12,6 +12,9 @@ namespace BatteryPassWeb.Tests.Dpp;
 /// </summary>
 internal static class DppTestSeed
 {
+    /// <summary>The seed model's answers to its three questions: yes to all (R01).</summary>
+    public static readonly BatteryPassWeb.Dpp.Catalog.ModelAnswers Answers = new(true, true, true);
+
     public static readonly DateTime GeneratedAtUtc = new(2026, 10, 28, 9, 30, 0, DateTimeKind.Utc);
 
     public static SeedPassport Load()
@@ -41,7 +44,18 @@ internal static class DppTestSeed
                 Year = batch["year"]!.GetValue<int>(),
                 Values = Values(batch),
             },
-            new BatteryModel { Id = Text(model, "id"), FamilyId = Text(model, "familyId"), Name = Text(model, "name"), Values = Values(model) },
+            new BatteryModel
+            {
+                Id = Text(model, "id"),
+                FamilyId = Text(model, "familyId"),
+                Name = Text(model, "name"),
+                Values = Values(model),
+
+                // The seed fills every conditional value, so its model answers yes to its three questions (R01).
+                HasCommercialWarranty = true,
+                MadeForCyclingUse = true,
+                CadmiumOrLeadAboveLimit = true,
+            },
             new ManufacturingSite { Id = Text(site, "id"), Name = Text(site, "name"), Values = Values(site) },
             new EconomicOperator { Id = Text(economicOperator, "id"), Name = Text(economicOperator, "name"), Values = Values(economicOperator) });
 

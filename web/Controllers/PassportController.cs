@@ -2,9 +2,11 @@ using BatteryPassWeb.Dpp.Api;
 using BatteryPassWeb.Dpp.Access;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Pages;
+using BatteryPassWeb.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Net.Http.Headers;
 
 namespace BatteryPassWeb.Controllers;
@@ -52,8 +54,11 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
     {
         var reader = await readers.ForAsync(User, cancellationToken);
         var page = await pages.SummaryAsync(reader, Uri.UnescapeDataString(id), cancellationToken);
+        Response.Headers[HeaderNames.Vary] = HeaderNames.Accept;
         if (page is not null)
         {
+            // The same passport as data (finding R07), for programs that read the page's headers.
+            Response.Headers[HeaderNames.Link] = $"<{page.DataHref}>; rel=\"alternate\"; type=\"application/json\"";
             return View(nameof(Summary), page);
         }
 
@@ -61,6 +66,50 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
         return pool is not null && await pool.FindUnpublishedAsync(Uri.UnescapeDataString(id), cancellationToken) is { Status: not BatteryPassWeb.Dpp.Identifiers.ReleasedIdStatuses.Voided } released
             ? NotPublishedYet(released)
             : NotFoundPage();
+    }
+
+    /// <summary>
+    /// The public part as data (finding R07), at the page's own address when the request asks for JSON. No token: the
+    /// public values only, the same as the page shows, found the same way; 404 wherever the page answers 404.
+    /// </summary>
+    [HttpGet("{id}")]
+    [PrefersJson]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.PublicDataRead)]
+    public Task<IActionResult> SummaryData(string id, CancellationToken cancellationToken) => DataAsync(Uri.UnescapeDataString(id), cancellationToken);
+
+    /// <summary>The same data at the page's address with ".json": <c>/dpp/UN778474481-VBC-92921.json</c>.</summary>
+    [HttpGet("{id}.json")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.PublicDataRead)]
+    public Task<IActionResult> SummaryJson(string id, CancellationToken cancellationToken) => DataAsync(Uri.UnescapeDataString(id), cancellationToken);
+
+    /// <summary>A version's public part as data, at its own address when the request asks for JSON.</summary>
+    [HttpGet("{id}/v{version:int}")]
+    [PrefersJson]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.PublicDataRead)]
+    public Task<IActionResult> VersionData(string id, int version, [FromServices] Microsoft.Extensions.Options.IOptions<BatteryPassWeb.Configuration.BatteryPassOptions> options, CancellationToken cancellationToken) =>
+        DataAsync(BatteryPassWeb.Dpp.Identifiers.IdentifierForms.PassportAddress(options.Value.IdBaseUrl, Uri.UnescapeDataString(id), version), cancellationToken);
+
+    /// <summary>A version's public part as data at its address with ".json": <c>/dpp/UN778474481-VBC-92921/v2.json</c>.</summary>
+    [HttpGet("{id}/v{version:int}.json")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.PublicDataRead)]
+    public Task<IActionResult> VersionJson(string id, int version, [FromServices] Microsoft.Extensions.Options.IOptions<BatteryPassWeb.Configuration.BatteryPassOptions> options, CancellationToken cancellationToken) =>
+        VersionData(id, version, options, cancellationToken);
+
+    private async Task<IActionResult> DataAsync(string id, CancellationToken cancellationToken)
+    {
+        Response.Headers[HeaderNames.Vary] = HeaderNames.Accept;
+
+        // The same as the page, which gets it from its form protection (C3 round two, point 6), the 404 included.
+        Response.Headers[HeaderNames.CacheControl] = "no-cache, no-store";
+        Response.Headers[HeaderNames.Pragma] = "no-cache";
+        var reader = await readers.ForAsync(User, cancellationToken);
+        var page = await pages.SummaryAsync(reader, id, cancellationToken);
+        if (page?.PublicData is not { } data)
+        {
+            return NotFound(new { error = "No published passport has this ID." });
+        }
+
+        return Content(data.ToJsonString(), "application/json");
     }
 
     /// <summary>"Not published yet": a 404, so it is never read as a passport, with the scanned ID and no battery data.</summary>

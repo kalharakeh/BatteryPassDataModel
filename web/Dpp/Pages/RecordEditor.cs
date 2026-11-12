@@ -6,6 +6,7 @@ using BatteryPassWeb.Dpp.Catalog;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Forms;
+using BatteryPassWeb.Dpp.Publication;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Dpp.Values;
 
@@ -53,6 +54,15 @@ public enum EditorOutcome
 /// </summary>
 public sealed record EditorSave(EditorOutcome Outcome, IReadOnlyList<KeyResult> Keys, IReadOnlyList<AffectedPassport> Affected)
 {
+    /// <summary>
+    /// After a save: the published passports the change reached that couldn't get their new version (decision 9, R01):
+    /// their published version stays until what they need is filled in. Their battery pages say what.
+    /// </summary>
+    public IReadOnlyList<AffectedPassport> KeptTheirVersion { get; init; } = [];
+
+    /// <summary>After a save: what each published passport the change reached got (round two, A3), with its serial number.</summary>
+    public IReadOnlyList<(PassportOutcome Outcome, string SerialNumber)> Outcomes { get; init; } = [];
+
     public int SavedCount => Keys.Count(key => key.Outcome == KeyOutcome.Saved);
 
     public int RemovedCount => Keys.Count(key => key.Outcome == KeyOutcome.Removed);
@@ -92,11 +102,31 @@ public sealed record EditorField(
     /// <summary>For a document field without an uploaded file in the app: the link its stored value points to.</summary>
     public string? StoredLink { get; init; }
 
+    /// <summary>The model's answers to its three questions (R01), which decide whether a conditional value is needed.</summary>
+    public ModelAnswers Answers { get; init; } = ModelAnswers.NotAnswered;
+
+    /// <summary>Whether the passport needs this value before it is published (<see cref="PassportNeeds"/>).</summary>
+    public Need Need => PassportNeeds.NeedOf(Attribute, Answers);
+
     /// <summary>
-    /// Empty although the passport needs it by February 2027 (the file's M or (M), with the Feb 2027 mark): what the team
-    /// still has to fill in. Conditional values and values needed only later are not counted.
+    /// Empty although the passport needs it before publishing (<see cref="PassportNeeds"/>): what the team still has to
+    /// fill in. Values needed only later, and conditional values the model's answers don't ask for, are not counted.
     /// </summary>
-    public bool IsMissing => !HasValue && Attribute.Requirement != Requirement.Conditional && Attribute.MandatoryFromFeb2027;
+    public bool IsMissing => !HasValue && Need == Need.Required;
+
+    /// <summary>For a conditional value, the short line that says whether this model needs it; null for the others.</summary>
+    public string? NeedLine => PassportNeeds.EditorLine(Attribute, Answers);
+
+    /// <summary>True on a battery's own editors (its values and live values, and the status window).</summary>
+    public bool OnABattery { get; init; }
+
+    /// <summary>
+    /// R09, round two E: on a battery whose temperature (#87) is still empty, the line that says the battery system's
+    /// export has none yet, so it is typed. Null once a temperature is there, and for every other field.
+    /// </summary>
+    public string? ExportNote => OnABattery && Attribute.Number == 87 && !HasValue
+        ? "The battery system's export has no temperature yet: type it here."
+        : null;
 
     /// <summary>True when this input of a grouped value should be marked as refused.</summary>
     public bool IsRefused(FormInput input) =>
@@ -140,7 +170,7 @@ public sealed record EditorField(
     /// <summary>The requirement in the grey marker: the file's M, (M) or C, and whether it is needed by February 2027.</summary>
     public string Marker => Attribute.Requirement == Requirement.Conditional
         ? "Conditional"
-        : Attribute.MandatoryFromFeb2027 ? "Required by Feb 2027" : "Required later";
+        : Need == Need.Required ? "Required by Feb 2027" : "Required later";
 
     /// <summary>Who may see the value, shown only when it isn't public.</summary>
     public string? AudienceLabel => Attribute.Audience switch
@@ -165,7 +195,7 @@ public sealed record EditorSection(string Id, string Title, string Note, IReadOn
 /// grouped by schema section, reads what was typed, keeps only the values that changed, asks before a change publishes
 /// new versions, and saves through the save pipeline.
 /// </summary>
-public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, DppStore store, DocumentStore documents)
+public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, DppStore store, DocumentStore documents, PublicationService? publication = null)
 {
     /// <summary>The title and intro line of each schema section.</summary>
     private static readonly Dictionary<string, (string Title, string Note)> SectionTexts = new(StringComparer.Ordinal)
@@ -226,10 +256,13 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
     public static int CountFilled(TargetKind kind, IReadOnlyDictionary<string, AttributeValue> stored) =>
         AttributesOf(kind).Count(attribute => stored.ContainsKey(attribute.Property));
 
-    /// <summary>How many of the record's values the passport needs by February 2027 are still empty (see <see cref="EditorField.IsMissing"/>).</summary>
-    public static int CountMissing(TargetKind kind, IReadOnlyDictionary<string, AttributeValue> stored) =>
+    /// <summary>
+    /// How many of the record's values the passport needs before publishing are still empty (see <see cref="EditorField.IsMissing"/>).
+    /// <paramref name="answers"/> are the model's (for a model, or a battery of it); a batch, site or operator has no value they decide.
+    /// </summary>
+    public static int CountMissing(TargetKind kind, IReadOnlyDictionary<string, AttributeValue> stored, ModelAnswers answers) =>
         AttributesOf(kind).Count(attribute =>
-            !stored.ContainsKey(attribute.Property) && attribute.Requirement != Requirement.Conditional && attribute.MandatoryFromFeb2027);
+            !stored.ContainsKey(attribute.Property) && PassportNeeds.NeedOf(attribute, answers) == Need.Required);
 
     /// <summary>
     /// The values the schema allows only one way, which have no input (#20 battery category). A new record starts with
@@ -297,6 +330,15 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
             foreach (var name in names)
             {
                 texts[name] = field(name) ?? string.Empty;
+            }
+
+            // A period's unit without a number is no value (W05): the page always posts a unit.
+            foreach (var input in form.Inputs.Where(input => input.Kind == InputKind.Duration && form.Kind == FormKind.Single))
+            {
+                if (string.IsNullOrWhiteSpace(texts[form.FieldName(input)]))
+                {
+                    texts[AttributeForm.UnitField(form.FieldName(input))] = string.Empty;
+                }
             }
 
             var current = stored.GetValueOrDefault(attribute.Property)?.Value;
@@ -390,14 +432,16 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
     /// The editor's sections. Without <paramref name="post"/> the fields show the stored values; with it, what was typed,
     /// so a refused value can be corrected in place.
     /// </summary>
+    /// <param name="answers">The model's answers (for a model, or a battery of it); a batch, site or operator has no value they decide.</param>
     public Task<IReadOnlyList<EditorSection>> SectionsAsync(
         TargetKind kind,
         string id,
         IReadOnlyDictionary<string, AttributeValue> stored,
+        ModelAnswers answers,
         EditorPost? post = null,
         IReadOnlyDictionary<string, Refusal>? refusals = null,
         CancellationToken cancellationToken = default) =>
-        SectionsAsync(kind, id, AttributesOf(kind), stored, post, refusals, cancellationToken);
+        SectionsAsync(kind, id, AttributesOf(kind), stored, answers, post, refusals, cancellationToken);
 
     /// <summary>The sections of a form that shows only these <paramref name="attributes"/> of the record.</summary>
     public async Task<IReadOnlyList<EditorSection>> SectionsAsync(
@@ -405,12 +449,14 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
         string id,
         IReadOnlyList<AttributeDefinition> attributes,
         IReadOnlyDictionary<string, AttributeValue> stored,
+        ModelAnswers answers,
         EditorPost? post = null,
         IReadOnlyDictionary<string, Refusal>? refusals = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(attributes);
         ArgumentNullException.ThrowIfNull(stored);
+        ArgumentNullException.ThrowIfNull(answers);
         var fields = new List<EditorField>();
         foreach (var attribute in attributes)
         {
@@ -430,6 +476,8 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
             fields.Add(new EditorField(form, texts, rows, refusal?.Text, document, value is not null)
             {
                 RefusedParts = refusal?.Parts ?? new HashSet<string>(StringComparer.Ordinal),
+                Answers = answers,
+                OnABattery = kind == TargetKind.Pack,
                 StoredLink = form.Kind == FormKind.Upload && value?["url"] is JsonValue url && url.TryGetValue<string>(out var link) ? link : null,
             });
         }
@@ -475,10 +523,37 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
             return new EditorSave(EditorOutcome.NeedsConfirmation, [.. preview.Keys, .. conflicts], affected);
         }
 
-        // Saved or refused: Affected now lists the passports that got a new version.
+        // Saved or refused: Affected now lists the passports that got a new version, KeptTheirVersion those that couldn't.
+        // A battery's live values reach its own passport too: a change waiting there may follow them (round two, A1).
+        var reached = kind == TargetKind.Pack && affected.Count == 0 ? await AffectedAsync(kind, id, cancellationToken) : affected;
         var result = await pipeline.SaveAsync(sender, changes, preview: false, cancellationToken);
         IReadOnlyList<KeyResult> keys = [.. result.Keys, .. conflicts];
-        return new EditorSave(keys.Any(key => key.Outcome == KeyOutcome.Rejected) ? EditorOutcome.Refused : EditorOutcome.Saved, keys, affected);
+        var outcomes = result.Saved ? await OutcomesAsync(reached, cancellationToken) : [];
+        var outcome = keys.Any(key => key.Outcome == KeyOutcome.Rejected) ? EditorOutcome.Refused : EditorOutcome.Saved;
+        return new EditorSave(outcome, keys, Having(PublishOutcome.NewVersion))
+        {
+            KeptTheirVersion = Having(PublishOutcome.HeldBack),
+            Outcomes = outcomes,
+        };
+
+        AffectedPassport[] Having(PublishOutcome kind) =>
+            reached.Where(passport => outcomes.Any(item => item.Outcome.PackId == passport.PackId && item.Outcome.Outcome == kind)).ToArray();
+    }
+
+    /// <summary>
+    /// What each of these published passports got from a change just made (round two, A3): a new version, nothing to
+    /// publish, or held back with what blocks it. Empty without the publication service (some tests).
+    /// </summary>
+    public async Task<IReadOnlyList<(PassportOutcome Outcome, string SerialNumber)>> OutcomesAsync(IReadOnlyList<AffectedPassport> passports, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(passports);
+        if (publication is null || passports.Count == 0)
+        {
+            return [];
+        }
+
+        var outcomes = await publication.OutcomesAsync(passports.Select(passport => (passport.PackId, passport.CurrentVersion)), cancellationToken);
+        return outcomes.Select(outcome => (outcome, passports.First(passport => passport.PackId == outcome.PackId).SerialNumber)).ToArray();
     }
 
     /// <summary>Why an edit made on a page that was open while someone else saved the same value is refused.</summary>
@@ -512,6 +587,8 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
     {
         FormKind.Upload or FormKind.Fixed => [],
         FormKind.Rows => Enumerable.Range(0, rows).SelectMany(row => form.Inputs.Select(input => form.FieldName(input, row))),
-        _ => form.Inputs.Select(input => form.FieldName(input)),
+        _ => form.Inputs.SelectMany(input => input.Kind == InputKind.Duration
+            ? new[] { form.FieldName(input), AttributeForm.UnitField(form.FieldName(input)) }
+            : [form.FieldName(input)]),
     };
 }

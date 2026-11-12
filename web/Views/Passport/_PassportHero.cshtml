@@ -115,7 +115,7 @@
                 <div><dt>Last updated</dt><dd>@Model.Text(4)</dd></div>
                 @if (detail)
                 {
-                    <div><dt>Signature</dt><dd>@(Model.SignatureHolds ? "Verified" : "Doesn't match the signed passport")</dd></div>
+                    <div><dt>Signature</dt><dd>@Model.Signature.Words</dd></div>
                 }
             </dl>
 

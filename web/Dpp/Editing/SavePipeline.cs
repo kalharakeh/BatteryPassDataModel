@@ -79,6 +79,12 @@ public sealed class SavePipeline(
 {
     public const string AuditEventType = "dpp.change";
 
+    /// <summary>
+    /// A pack's fixed value the team's correction may add once, when the battery has none (R01): the warranty (#19), which
+    /// a model's "yes" can make needed after the passport was published. A stored one stays fixed.
+    /// </summary>
+    public const string AddedByCorrection = "warrantyPeriod";
+
     /// <summary>#92: the passport's accident link, which the app keeps itself.</summary>
     private const string AppOwnedAccidentLink = "informationOnAccidents";
 
@@ -128,7 +134,7 @@ public sealed class SavePipeline(
         var evaluation = EvaluateCore(sender, changes.Target, target.ClusterId, changes.Values, statusChange, changes.ByTheApp);
         if (changes.Target == TargetKind.Pack)
         {
-            evaluation = await CheckPackRulesAsync(changes.TargetId, evaluation, cancellationToken);
+            evaluation = await CheckPackRulesAsync(changes.TargetId, evaluation, statusChange && !target.Values.ContainsKey(AddedByCorrection), cancellationToken);
         }
 
         var removals = await EvaluateRemovalsAsync(sender, changes, target, cancellationToken);
@@ -145,9 +151,32 @@ public sealed class SavePipeline(
             entry => entry.Key,
             entry => new AttributeValue { Value = entry.Value, GeneratedAtUtc = generatedAt, Source = changes.Source, Who = sender.Who },
             StringComparer.Ordinal);
-        var saved = await ApplyAsync(changes.Target, changes.TargetId, stored, removed, cancellationToken);
+        // Round five, the rule: a static value about to be written can make published passports differ from their saved
+        // data, so every published battery it reaches is marked FIRST, before the write. From that write onward nothing
+        // runs on the request's cancellation token: the write, the re-mark, the audit entry and the publishing.
+        var staticWrite = stored.Keys.Concat(removed).Any(key => AttributeCatalog.FindByProperty(key)?.Change != ChangeRule.Live);
+        var reached = staticWrite ? await PublishedPacksReachedAsync(changes.Target, changes.TargetId, cancellationToken) : [];
+        var none = CancellationToken.None;
+        await store.MarkChangesWaitingAsync(reached, clock.GetUtcNow().UtcDateTime, none);
+
+        // A correction that adds the warranty writes only while the battery still has none (round two, F).
+        var addsWarranty = statusChange && changes.Target == TargetKind.Pack && stored.ContainsKey(AddedByCorrection);
+        var saved = addsWarranty
+            ? await store.SetValuesIfMissingAsync<BatteryPack>(changes.TargetId, stored, AddedByCorrection, none)
+            : await ApplyAsync(changes.Target, changes.TargetId, stored, removed, none);
+        if (!saved && addsWarranty)
+        {
+            return new SaveResult(true, false, results
+                .Select(result => result.Key == AddedByCorrection ? result with { Outcome = KeyOutcome.Rejected, Message = FixedOncePublished } : result)
+                .ToArray());
+        }
+
         if (saved)
         {
+            // Marked again after the write, with a new token: a publish attempt that read the first token together with
+            // the old data can't clear it (round five).
+            // The list is read again: a battery first published in between is marked too (round six, 3).
+            await store.MarkChangesWaitingAsync(staticWrite ? await PublishedPacksReachedAsync(changes.Target, changes.TargetId, none) : [], clock.GetUtcNow().UtcDateTime, none);
             await audit.AppendApplicationAuditEventAsync(
                 AuditEventType,
                 sender.Who,
@@ -159,10 +188,12 @@ public sealed class SavePipeline(
                 AuditMetadata(results, target.Values, stored),
                 entityType: $"dpp-{changes.Target.ToString().ToLowerInvariant()}",
                 entityId: changes.TargetId,
-                cancellationToken: cancellationToken);
+                cancellationToken: none);
+            // The values are saved: what follows (new versions) isn't stopped by a cancelled request, a closed browser or
+            // a proxy's time-out (round four, 1).
             foreach (var listener in _listeners)
             {
-                await listener.ValuesSavedAsync(changes.Target, changes.TargetId, stored.Keys.Concat(removed).ToArray(), sender, cancellationToken);
+                await listener.ValuesSavedAsync(changes.Target, changes.TargetId, stored.Keys.Concat(removed).ToArray(), sender, none);
             }
         }
 
@@ -182,6 +213,7 @@ public sealed class SavePipeline(
         }
 
         bool? published = null;
+        ModelAnswers? answers = null;
         var results = new List<KeyResult>();
         foreach (var key in removals.Distinct(StringComparer.Ordinal))
         {
@@ -209,7 +241,8 @@ public sealed class SavePipeline(
             {
                 results.Add(new KeyResult(key, KeyOutcome.Rejected, FixedOncePublished));
             }
-            else if (attribute.Requirement != Requirement.Conditional && attribute.MandatoryFromFeb2027
+            // A value the model's unanswered question may ask for counts as needed: the answer may well be yes (R01).
+            else if (PassportNeeds.NeedOf(attribute, answers ??= await AnswersAsync(changes.Target, changes.TargetId, cancellationToken)) is Need.Required or Need.Unanswered
                 && (published ??= await UsedByPublishedPassportAsync(changes.Target, changes.TargetId, cancellationToken)))
             {
                 results.Add(new KeyResult(key, KeyOutcome.Rejected, "The published passports need this value, so it can't be removed. Change it instead."));
@@ -246,7 +279,8 @@ public sealed class SavePipeline(
     /// The rules for a pack's own values: its fixed values can't change once a version has been published, and no two
     /// batteries share a serial number (ignoring case). A refused key doesn't block the others (J-12).
     /// </summary>
-    private async Task<Evaluation> CheckPackRulesAsync(string packId, Evaluation evaluation, CancellationToken cancellationToken)
+    /// <param name="mayAddWarranty">True for the status change of a battery without a warranty (#19): it may add one (R01).</param>
+    private async Task<Evaluation> CheckPackRulesAsync(string packId, Evaluation evaluation, bool mayAddWarranty, CancellationToken cancellationToken)
     {
         var results = evaluation.Results.ToList();
         var accepted = new Dictionary<string, JsonNode>(evaluation.Accepted, StringComparer.Ordinal);
@@ -260,7 +294,8 @@ public sealed class SavePipeline(
             }
 
             string? refusal = null;
-            if (IsFixedPackValue(attribute) && (published ??= await store.GetLatestVersionNumberAsync(packId, cancellationToken) > 0))
+            if (IsFixedPackValue(attribute) && !(mayAddWarranty && attribute.Property == AddedByCorrection)
+                && (published ??= await store.GetLatestVersionNumberAsync(packId, cancellationToken) > 0))
             {
                 refusal = FixedOncePublished;
             }
@@ -285,6 +320,32 @@ public sealed class SavePipeline(
     /// <summary>The pack and every earlier and later passport of the same battery, which share its serial number (R6).</summary>
     private Task<IReadOnlyCollection<string>> LinkedPacksAsync(string packId, CancellationToken cancellationToken) =>
         store.ChainPackIdsAsync(packId, cancellationToken);
+
+    /// <summary>The answers of the model a model or pack belongs to; a batch, site or operator holds no value they decide.</summary>
+    private async Task<ModelAnswers> AnswersAsync(TargetKind target, string id, CancellationToken cancellationToken) => target switch
+    {
+        TargetKind.Model => (await store.GetAsync<BatteryModel>(id, cancellationToken))?.Answers() ?? ModelAnswers.NotAnswered,
+        TargetKind.Pack => (await store.LoadSourcesAsync(id, cancellationToken))?.Model.Answers() ?? ModelAnswers.NotAnswered,
+        _ => ModelAnswers.NotAnswered,
+    };
+
+    /// <summary>
+    /// The published batteries (any version: active, marked or inactive) built from this record, which a static change to it
+    /// can make differ from their passports (round five).
+    /// </summary>
+    private async Task<IReadOnlyList<string>> PublishedPacksReachedAsync(TargetKind target, string id, CancellationToken cancellationToken)
+    {
+        var packIds = target switch
+        {
+            TargetKind.Pack => [id],
+            TargetKind.Model => await store.FindPackIdsUsingAsync(modelId: id, cancellationToken: cancellationToken),
+            TargetKind.Site => await store.FindPackIdsUsingAsync(siteId: id, cancellationToken: cancellationToken),
+            TargetKind.Batch => await store.FindPackIdsUsingAsync(batchId: id, cancellationToken: cancellationToken),
+            TargetKind.Operator => await store.FindPackIdsUsingAsync(operatorId: id, cancellationToken: cancellationToken),
+            _ => [],
+        };
+        return await store.PublishedPackIdsAsync(packIds.ToArray(), cancellationToken);
+    }
 
     private async Task<bool> UsedByPublishedPassportAsync(TargetKind target, string id, CancellationToken cancellationToken)
     {
@@ -351,7 +412,7 @@ public sealed class SavePipeline(
         }
 
         var throughStatusChange = target == TargetKind.Pack && attribute.Change is ChangeRule.OnStatusChange or ChangeRule.RestatedOnStatusChange;
-        if (throughStatusChange != statusChange)
+        if (throughStatusChange != statusChange && !(statusChange && attribute.Property == AddedByCorrection))
         {
             return (KeyOutcome.Rejected, statusChange ? $"{attribute.Label} isn't part of the status change" : $"{attribute.Label} changes only through the status change", null);
         }

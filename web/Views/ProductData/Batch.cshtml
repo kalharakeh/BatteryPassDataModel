@@ -1,10 +1,11 @@
+@using BatteryPassWeb.Dpp.Catalog
 @using BatteryPassWeb.Dpp.Editing
 @using BatteryPassWeb.Dpp.Pages
 @model BatchPage
 @{
     ViewData["Title"] = $"Batch {Model.Batch.Year} · {Model.Site.Name} · {Model.Model.Name}";
-    var modelMissing = RecordEditor.CountMissing(TargetKind.Model, Model.Model.Values);
-    var siteMissing = RecordEditor.CountMissing(TargetKind.Site, Model.Site.Values);
+    var modelState = Completeness.OfModel(Model.Model); // round two, B: the model's missing count, or its questions
+    var siteMissing = RecordEditor.CountMissing(TargetKind.Site, Model.Site.Values, ModelAnswers.NotAnswered);
 }
 
 <main class="bp-page bp-admin-page">
@@ -28,14 +29,7 @@
             </li>
             <li>
                 <a href="@ProductDataPages.FamilyHref(Model.Family.Id, Model.Model.Id)#editor">Model @Model.Model.Name</a>
-                @if (modelMissing > 0)
-                {
-                    <span class="bp-missing-note">@modelMissing missing</span>
-                }
-                else
-                {
-                    <span class="bp-done-note">Complete</span>
-                }
+                <span class="@(modelState.Done ? "bp-done-note" : "bp-missing-note")">@modelState.Words</span>
             </li>
             <li>
                 <a href="@ProductDataPages.SitesHref("site", Model.Site.Id)#editor">Site @Model.Site.Name</a>

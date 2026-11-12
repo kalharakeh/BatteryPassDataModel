@@ -4,6 +4,7 @@ using BatteryPassWeb.Dpp.Access;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Pages;
+using BatteryPassWeb.Dpp.Publication;
 using BatteryPassWeb.Dpp.Uploads;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -35,7 +36,17 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
 
     [HttpGet("")]
     public async Task<IActionResult> Batteries([FromQuery] string? q, CancellationToken cancellationToken) =>
-        View(await pages.ListOnePerBatteryAsync(q, _ => true, matchClusters: true, cancellationToken)); // one row per battery (redesign R5)
+        View(await pages.TeamListAsync(q, cancellationToken)); // one row per battery (redesign R5), and the waiting changes (round two, A2)
+
+    /// <summary>"Check all passports now" (decision 65): the check of every published battery, with a plain result line.</summary>
+    [HttpPost("check")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CheckAll([FromServices] PublicationService publication, CancellationToken cancellationToken)
+    {
+        var result = await publication.ReconcileAsync(Who, cancellationToken);
+        TempData[ProductDataController.StatusKey] = result.Words;
+        return Redirect("/admin/batteries");
+    }
 
     [HttpGet("new")]
     public async Task<IActionResult> NewBattery([FromQuery] string? batch, CancellationToken cancellationToken) =>
@@ -43,13 +54,50 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
 
     [HttpPost("")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateBattery([FromForm] string? batchId, [FromForm] string? operatorId, [FromForm] string? clusterId, CancellationToken cancellationToken)
+    [RequestSizeLimit(UploadService.MaxBytes + 65536)]
+    public async Task<IActionResult> CreateBattery([FromForm] string? batchId, [FromForm] string? operatorId, [FromForm] string? clusterId, CancellationToken cancellationToken, IFormFile? export = null)
     {
         var form = Request.Form;
-        var (result, post) = await pages.CreateAsync(Who, batchId, operatorId, clusterId, name => form.TryGetValue(name, out var value) ? value.ToString() : null, cancellationToken);
+        string? Field(string name) => form.TryGetValue(name, out var value) ? value.ToString() : null;
+
+        // R09: the battery system's export, when chosen, gives the battery its first readings; it must name this battery.
+        byte[]? exportBytes = null;
+        if (export is { Length: > 0 })
+        {
+            using var buffer = new MemoryStream();
+            await export.CopyToAsync(buffer, cancellationToken);
+            exportBytes = buffer.ToArray();
+            if (uploads.NewBatteryFileProblem(exportBytes, Field("v.batterySerialNumber")) is { } fileProblem)
+            {
+                ViewData[ProductDataController.ErrorKey] = $"The battery wasn't created: {fileProblem}.";
+                var typed = new EditorState(pages.ReadNew(Field), new EditorSave(EditorOutcome.Refused, [], []));
+                return View("NewBattery", await pages.NewAsync(batchId, operatorId, clusterId, typed, cancellationToken));
+            }
+        }
+
+        var (result, post) = await pages.CreateAsync(Who, batchId, operatorId, clusterId, Field, cancellationToken);
         if (result.Pack is { } pack)
         {
             TempData[ProductDataController.StatusKey] = "Draft battery created. Fill in what its passport still needs, then publish it.";
+            if (exportBytes is not null)
+            {
+                var (done, problem) = await uploads.FillNewBatteryAsync(ChangeSender.Team(Who), pack.Id, Path.GetFileName(export!.FileName), exportBytes, cancellationToken);
+                if (problem is null && done?.StartsWith(UploadPages.NothingSaved, StringComparison.Ordinal) == true)
+                {
+                    // Round two, E: every reading was refused, so the battery has none of them.
+                    TempData[ProductDataController.StatusKey] = $"Draft battery created, but none of its export's readings were saved{done[UploadPages.NothingSaved.Length..]} Type its readings on its page.";
+                }
+                else if (problem is null)
+                {
+                    TempData[ProductDataController.StatusKey] = $"Draft battery created with its export's readings. {done} Type its temperature: the export has none yet.";
+                }
+                else
+                {
+                    TempData[ProductDataController.StatusKey] = null;
+                    TempData[ProductDataController.ErrorKey] = $"Draft battery created, but its export's readings weren't saved: {problem}.";
+                }
+            }
+
             return Redirect(BatteryPages.BatteryHref(pack.Id));
         }
 
@@ -156,6 +204,21 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
         var problem = await pages.SetModulesAsync(Who, packId, modules, cancellationToken);
         Card(packId, "module-list", problem is null ? "Modules saved. The passport didn't change: modules aren't passport data." : null, problem is null ? null : $"The modules weren't saved: {problem}.");
         return Redirect($"{BatteryPages.BatteryHref(packId)}#modules");
+    }
+
+    /// <summary>"Publish the waiting changes" (round three, 4): a change saved while the passport couldn't publish, now that nothing blocks it.</summary>
+    [HttpPost("{packId}/publish-waiting")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PublishWaiting(string packId, [FromServices] PublicationService publication, CancellationToken cancellationToken)
+    {
+        var outcome = await publication.PublishWaitingAsync(ChangeSender.Team(Who), packId, cancellationToken);
+        if (outcome is null)
+        {
+            return NotFound();
+        }
+
+        Card(packId, "publication", outcome.Outcome == PublishOutcome.HeldBack ? null : PublishWords.For(outcome), outcome.Outcome == PublishOutcome.HeldBack ? PublishWords.For(outcome) : null);
+        return Redirect(BatteryPages.BatteryHref(packId));
     }
 
     [HttpPost("{packId}/publish")]
@@ -275,8 +338,13 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     /// <summary>The team undoes "invalid" or "marked for deletion" (J-8).</summary>
     [HttpPost("{packId}/mark/undo")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UndoMark(string packId, CancellationToken cancellationToken) =>
-        MarkResult(packId, await marks.UndoAsync(ChangeSender.Team(Who), packId, cancellationToken), "Undone: the passport is active again.");
+    public async Task<IActionResult> UndoMark(string packId, CancellationToken cancellationToken)
+    {
+        var (problem, published) = await marks.UndoWithOutcomeAsync(ChangeSender.Team(Who), packId, cancellationToken);
+        return MarkResult(packId, problem, published is { Outcome: PublishOutcome.NewVersion or PublishOutcome.HeldBack }
+            ? $"Undone: the passport is active again. {PublishWords.For(published)}" // round three, 4
+            : "Undone: the passport is active again.");
+    }
 
     private RedirectResult MarkResult(string packId, string? problem, string done)
     {
@@ -359,7 +427,9 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
             (_, > 0) => $"{Words.Count(save.RemovedCount, "value")} removed.",
             _ => string.Empty,
         };
-        var version = !liveValues && save.Affected.Count > 0 && save.Outcome is EditorOutcome.Saved or EditorOutcome.Refused ? " The passport got a new version." : string.Empty;
+        var version = !liveValues && save.Outcomes.Count == 1 && save.Outcome is EditorOutcome.Saved or EditorOutcome.Refused
+            ? " " + PublishWords.For(save.Outcomes[0].Outcome) // round two, A3
+            : string.Empty;
         EditorState state = new(post, save);
         switch (save.Outcome)
         {
@@ -393,7 +463,7 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
             default:
                 if (liveValues)
                 {
-                    Card(packId, "live", $"{done} Live values change the passport in place, without a new version.", null);
+                    Card(packId, "live", $"{done} {PublishWords.AfterLiveValues(save.Outcomes)}", null); // round two, A3
                 }
                 else
                 {
