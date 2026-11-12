@@ -77,6 +77,10 @@ public sealed class DemoSweepTests(MongoFixture mongo, ITestOutputHelper output)
         await clusters.UpsertClusterAsync(OtherRealCluster, "Other real customer");
         await clusters.UpsertClusterAsync(DemoCluster, "Demo customer");
         await database.GetCollection<BsonDocument>("clusters").UpdateOneAsync(Builders<BsonDocument>.Filter.Eq("clusterId", DemoCluster), Builders<BsonDocument>.Update.Set(ClusterRepository.DemoMark, true));
+        foreach (var authorised in new[] { RealCluster, OtherRealCluster, DemoCluster })
+        {
+            await clusters.AuthoriseAsync(authorised); // the sweep is about demo identities, not the written authorisation (R20)
+        }
         var team = PublicationTesting.Team;
         var pack = seed.Sources.Pack;
         await store.SetPackClusterAsync(pack.Id, RealCluster);
@@ -152,6 +156,7 @@ public sealed class DemoSweepTests(MongoFixture mongo, ITestOutputHelper output)
             {
                 await clusters.UpsertClusterAsync(cluster, name);
                 await database.GetCollection<BsonDocument>("clusters").UpdateOneAsync(Builders<BsonDocument>.Filter.Eq("clusterId", cluster), Builders<BsonDocument>.Update.Set(ClusterRepository.DemoMark, demo));
+                await clusters.AuthoriseAsync(cluster); // R20
             }
 
             foreach (var setup in setups)
