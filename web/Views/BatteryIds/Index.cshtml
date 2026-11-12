@@ -241,6 +241,13 @@
                         <small class="bp-field-help">Pasted from a list, one per line. Use them with ranges or on their own. Capital letters, digits and single dashes only.</small>
                     </label>
 
+                    @* Decision 67: test IDs for trying things out, on demo or real product data. *@
+                    <label class="bp-release-demo bp-release-test">
+                        <input type="checkbox" name="isTest" value="true" checked="@Model.Form.IsTest" />
+                        <span>Test IDs (for trying things out; they contain TEST and are never real battery IDs)</span>
+                    </label>
+                    <small class="bp-field-help d-block">A test ID makes a test battery, on demo or real product data. They aren't counted in the numbers above, and Clear demo data removes them with their batteries.</small>
+
                     <div class="bp-release-actions">
                         <small class="bp-field-help">All or nothing: if any serial number can't be released, none is, and each reason is listed.</small>
                         <button type="submit" class="bp-primary-button">Check and release</button>

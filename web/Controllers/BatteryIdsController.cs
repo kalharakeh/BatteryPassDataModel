@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace BatteryPassWeb.Controllers;
 
 /// <summary>The release form as typed, kept when a release is refused.</summary>
-public sealed record ReleaseForm(string? Reference, string? ModelId, IReadOnlyList<IdRange> Ranges, string? List)
+public sealed record ReleaseForm(string? Reference, string? ModelId, IReadOnlyList<IdRange> Ranges, string? List, bool IsTest = false)
 {
     public static readonly ReleaseForm Empty = new(null, null, [new IdRange(null, null, null)], null);
 }
@@ -102,7 +102,15 @@ public sealed class BatteryIdsController(BatteryIdPool pool, DppStore store) : C
         var ranges = Enumerable.Range(0, count)
             .Select(index => new IdRange(At(start, index), At(end, index), At(quantity, index)))
             .ToArray();
-        var result = await pool.ReleaseAsync(Who, new ReleaseRequest(reference, modelId, ranges, list), cancellationToken);
+        // Decision 67: "Test IDs" ticked releases IDs marked TEST, never real ones, which Clear demo data removes.
+        var isTest = Request.HasFormContentType && Request.Form["isTest"] == "true";
+        var result = await pool.ReleaseAsync(Who, new ReleaseRequest(reference, modelId, ranges, list, IsDemo: isTest), cancellationToken);
+        if (result.Done && isTest)
+        {
+            TempData[ProductDataController.StatusKey] = $"Released {result.Released.ToString(CultureInfo.InvariantCulture)} test battery {(result.Released == 1 ? "ID" : "IDs")}. They contain TEST, aren't counted, and go when the demo data is cleared.";
+            return Redirect($"/admin/battery-ids/releases/{Uri.EscapeDataString(result.ReleaseId!)}?released=true");
+        }
+
         if (result.Done)
         {
             // Straight to the new release, its export at the top, for the labels (the owner, 6d-2b).
@@ -115,7 +123,7 @@ public sealed class BatteryIdsController(BatteryIdPool pool, DppStore store) : C
             ViewData[ProductDataController.ErrorKey] = $"Nothing was released: {result.Problem}."; // a listed refusal says it in its own box
         }
 
-        var form = new ReleaseForm(reference, modelId, ranges.Length == 0 ? ReleaseForm.Empty.Ranges : ranges, list);
+        var form = new ReleaseForm(reference, modelId, ranges.Length == 0 ? ReleaseForm.Empty.Ranges : ranges, list, isTest);
         Response.StatusCode = StatusCodes.Status422UnprocessableEntity;
         return View(nameof(Index), await PageAsync(BatteryIdsTabs.New, form, result, new ReleasedIdFilter(), cancellationToken));
     }
