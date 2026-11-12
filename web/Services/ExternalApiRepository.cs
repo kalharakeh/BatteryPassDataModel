@@ -37,19 +37,23 @@ public sealed class ExternalApiTokenContext
     public bool IsActive { get; init; }
     public IReadOnlyList<string> ClusterIds { get; init; } = [];
     public bool IsSample { get; init; }
+
+    /// <summary>A demo token: marked, or for demo clusters only. It reaches only demo batteries (finding R03).</summary>
+    public bool IsDemo { get; init; }
 }
 
 public sealed class ExternalApiRepository
 {
-    public const string ValidateSignPublish = "validateSignPublish";
-
     private readonly MongoContext _mongoContext;
     private readonly ExternalApiSecurityService _securityService;
 
-    public ExternalApiRepository(MongoContext mongoContext, ExternalApiSecurityService securityService)
+    private readonly BatteryPassWeb.Dpp.Demo.DemoDataSwitch _demoData;
+
+    public ExternalApiRepository(MongoContext mongoContext, ExternalApiSecurityService securityService, BatteryPassWeb.Dpp.Demo.DemoDataSwitch? demoData = null)
     {
         _mongoContext = mongoContext;
         _securityService = securityService;
+        _demoData = demoData ?? BatteryPassWeb.Dpp.Demo.DemoDataSwitch.On;
     }
 
     public bool IsAvailable => _mongoContext.Database != null;
@@ -119,6 +123,7 @@ public sealed class ExternalApiRepository
         string? fixedToken = null,
         string? fixedTokenId = null,
         string? autoClusterId = null,
+        bool isDemo = false,
         CancellationToken cancellationToken = default)
     {
         if (_mongoContext.Database == null)
@@ -150,7 +155,9 @@ public sealed class ExternalApiRepository
             ["updatedBy"] = actor,
             ["createdAt"] = now,
             ["updatedAt"] = now,
-            ["lastUsedAt"] = BsonNull.Value
+            ["lastUsedAt"] = BsonNull.Value,
+            // The demo mark goes in the token's own write (finding R03, point 5).
+            [ClusterRepository.DemoMark] = isDemo
         };
 
         if (!string.IsNullOrWhiteSpace(autoClusterId))
@@ -331,6 +338,21 @@ public sealed class ExternalApiRepository
             }
 
             var context = ToTokenContext(document);
+            if (!context.IsDemo && await AllDemoClustersAsync(context.ClusterIds, cancellationToken))
+            {
+                context = ToTokenContext(document, forDemoClustersOnly: true);
+            }
+
+            if (context.IsDemo && !_demoData.Enabled)
+            {
+                return new ExternalApiTokenValidationResult
+                {
+                    Success = false,
+                    StatusCode = StatusCodes.Status401Unauthorized,
+                    Message = BatteryPassWeb.Dpp.Demo.DemoDataSwitch.TokenOff
+                };
+            }
+
             if (!HasRequiredAccess(context.AccessMode, requirement))
             {
                 return new ExternalApiTokenValidationResult
@@ -372,7 +394,22 @@ public sealed class ExternalApiRepository
         };
     }
 
-    private static ExternalApiTokenContext ToTokenContext(BsonDocument tokenDocument)
+    /// <summary>
+    /// A token counts as demo when it is marked or when every cluster it is for is a demo cluster (finding R03, point 5):
+    /// so a token the team or the start-up made for a demo cluster, or one regenerated from it, stays inside the demo.
+    /// </summary>
+    private async Task<bool> AllDemoClustersAsync(IReadOnlyCollection<string> clusterIds, CancellationToken cancellationToken)
+    {
+        if (clusterIds.Count == 0 || _mongoContext.Database == null)
+        {
+            return false;
+        }
+
+        var demoClusters = await new ClusterRepository(_mongoContext).DemoClusterIdsAsync(cancellationToken);
+        return clusterIds.All(clusterId => demoClusters.Contains(ClusterRepository.NormalizeClusterId(clusterId)));
+    }
+
+    private static ExternalApiTokenContext ToTokenContext(BsonDocument tokenDocument, bool forDemoClustersOnly = false)
     {
         var accessMode = AccessModeFromValue(BsonHelpers.GetString(tokenDocument, "accessMode"));
 
@@ -394,7 +431,8 @@ public sealed class ExternalApiRepository
             AllowUnassigned = tokenDocument.GetValue("allowUnassigned", false).ToBoolean(),
             IsActive = tokenDocument.GetValue("isActive", false).ToBoolean(),
             ClusterIds = clusters,
-            IsSample = tokenDocument.GetValue("isSample", false).ToBoolean()
+            IsSample = tokenDocument.GetValue("isSample", false).ToBoolean(),
+            IsDemo = forDemoClustersOnly || tokenDocument.GetValue(BatteryPassWeb.Dpp.Demo.DemoDataService.AccountMark, false).ToBoolean()
         };
     }
 

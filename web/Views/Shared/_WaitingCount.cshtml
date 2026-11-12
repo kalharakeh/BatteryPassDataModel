@@ -1,0 +1,15 @@
+@inject BatteryPassWeb.Dpp.Access.DppReaders Readers
+@inject BatteryPassWeb.Dpp.Editing.HandOverService HandOvers
+@* The Registry's entry in the top bar counts the hand-overs waiting for a cluster admin (redesign R3, owner's point 12). *@
+@{
+    if (Context.Items["waiting-count"] is not int count)
+    {
+        var editor = User.IsInRole("clusterAdmin") ? await Readers.EditorForAsync(User) : null;
+        count = editor is null ? 0 : await HandOvers.WaitingCountAsync(editor);
+        Context.Items["waiting-count"] = count;
+    }
+}
+@if (count > 0)
+{
+    <span class="bp-nav-count" title="@BatteryPassWeb.Dpp.Pages.Words.Count(count, "hand-over") waiting for you">@count</span>
+}

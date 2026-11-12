@@ -23,7 +23,7 @@ public sealed class ForgotPasswordFlowTests
         Assert.Contains("POWER_AUTOMATE_RESET_WEBHOOK_URL", program);
         Assert.Contains("PowerAutomateEmailSender", program);
         Assert.Contains("Forgot password?", view);
-        Assert.Contains("If an account exists, a temporary password has been sent.", view);
+        Assert.Contains("If an account exists, a temporary password has been sent.", controller); // shown only after a request (finding U03)
         Assert.True(File.Exists(RepoPath("web", "Views", "Login", "ChangeTemporaryPassword.cshtml")));
         Assert.False(File.Exists(RepoPath("web", "Views", "Login", "ResetPassword.cshtml")));
     }

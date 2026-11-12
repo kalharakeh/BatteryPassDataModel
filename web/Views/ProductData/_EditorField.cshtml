@@ -1,0 +1,230 @@
+@using System.Globalization
+@using BatteryPassWeb.Configuration
+@using BatteryPassWeb.Dpp.Catalog
+@using BatteryPassWeb.Dpp.Forms
+@using BatteryPassWeb.Dpp.Identifiers
+@using BatteryPassWeb.Dpp.Pages
+@using Microsoft.Extensions.Options
+@inject IOptions<BatteryPassOptions> Options
+@model EditorFieldView
+@{
+    var field = Model.Field;
+    var form = field.Form;
+    var definition = field.Attribute;
+    var refusalId = $"refusal-{definition.Property}";
+
+    // A unit in brackets, unless the name already says it as a word ("Expected lifetime in calendar years"). A whole-word
+    // match, so "V" isn't found inside "voltage" or "s" inside "spent".
+    string WithUnit(string label, string? unit) =>
+        unit is null || System.Text.RegularExpressions.Regex.IsMatch(label, $@"(?<![\p{{L}}\p{{N}}]){System.Text.RegularExpressions.Regex.Escape(unit)}(?![\p{{L}}\p{{N}}])", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+            ? label
+            : $"{label} ({unit})";
+
+    var required = definition.Requirement != Requirement.Conditional;
+    var hint = definition.Number is 7 or 12 ? IdentifierForms.ActorIdHint : form.Kind switch
+    {
+        FormKind.Link => "A link to the document on your website.",
+        FormKind.Rows => "One row per substance. Phrases go one per line.",
+        FormKind.Fixed => "Set automatically: the only value allowed.",
+        FormKind.Group when required && form.Inputs.All(input => !input.Required) => "Fill in at least one.",
+        _ => form.Inputs.Count == 1 ? form.Inputs[0].Hint : null,
+    };
+
+    // Friendly names for the file types a public document link can declare.
+    var optionNames = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["application/pdf"] = "PDF document",
+        ["text/html"] = "Web page",
+        ["image/png"] = "PNG image",
+        ["image/jpeg"] = "JPEG image",
+    };
+
+    async Task Input(FormInput input, string name, string text, string? formId = null, bool invalid = false)
+    {
+        var ariaInvalid = invalid ? "true" : null;
+        var describedBy = invalid ? refusalId : null;
+        switch (input.Kind)
+        {
+            case InputKind.Select:
+                <select name="@name" form="@formId" aria-label="@input.Label" aria-invalid="@ariaInvalid" aria-describedby="@describedBy">
+                    <option value=""></option>
+                    @foreach (var option in input.Options)
+                    {
+                        <option value="@option" selected="@(option == text)">@(optionNames.GetValueOrDefault(option, option))</option>
+                    }
+                    @if (text.Length > 0 && !input.Options.Contains(text))
+                    {
+                        <option value="@text" selected>@text</option>
+                    }
+                </select>
+                break;
+            case InputKind.Lines:
+                <textarea name="@name" rows="4" aria-label="@input.Label" aria-invalid="@ariaInvalid" aria-describedby="@describedBy">@text</textarea>
+                break;
+            case InputKind.LongText:
+                <textarea name="@name" rows="3" aria-label="@input.Label" aria-invalid="@ariaInvalid" aria-describedby="@describedBy">@text</textarea>
+                break;
+            case InputKind.Month:
+                <input type="month" name="@name" value="@text" aria-label="@input.Label" aria-invalid="@ariaInvalid" aria-describedby="@describedBy" />
+                break;
+            case InputKind.Url:
+                <input type="url" name="@name" value="@text" aria-label="@input.Label" aria-invalid="@ariaInvalid" aria-describedby="@describedBy" />
+                break;
+            case InputKind.Number:
+                <input type="text" inputmode="decimal" name="@name" value="@text" aria-label="@input.Label" aria-invalid="@ariaInvalid" aria-describedby="@describedBy" />
+                break;
+            case InputKind.Integer:
+                <input type="text" inputmode="numeric" name="@name" value="@text" aria-label="@input.Label" aria-invalid="@ariaInvalid" aria-describedby="@describedBy" />
+                break;
+            default:
+                <input type="text" name="@name" value="@text" aria-label="@input.Label" aria-invalid="@ariaInvalid" aria-describedby="@describedBy" />
+                break;
+        }
+    }
+
+    async Task Parts(IEnumerable<FormInput> inputs, int? row = null)
+    {
+        <div class="bp-attr-parts">
+            @foreach (var input in inputs)
+            {
+                var wide = input.Kind is InputKind.Url or InputKind.LongText;
+                var refused = row is null && field.IsRefused(input);
+                <label class="@($"{(wide ? "bp-attr-wide" : string.Empty)} {(refused ? "is-invalid-part" : string.Empty)}".Trim())">
+                    <span>@WithUnit(input.Label, input.Unit)@if (!input.Required) {<span class="bp-attr-optional"> (optional)</span>}</span>
+                    @{ await Input(input, form.FieldName(input, row), field.Text(form.FieldName(input, row)), invalid: refused || (row is not null && field.Refusal is not null)); }
+                </label>
+            }
+        </div>
+    }
+
+    // A row's title: its first filled-in text, so a list of substances reads as one.
+    string RowTitle(int row) =>
+        form.Inputs.Select(input => field.Text(form.FieldName(input, row)).Trim()).FirstOrDefault(text => text.Length > 0) is { } first
+            ? $"Row {row + 1} · {(first.Length > 60 ? first[..60] + "…" : first)}"
+            : $"Row {row + 1}";
+
+    static string Size(long bytes) => bytes < 1024
+        ? $"{bytes} bytes"
+        : bytes < 1048576 ? $"{(bytes / 1024.0).ToString("0.#", CultureInfo.InvariantCulture)} KB" : $"{(bytes / 1048576.0).ToString("0.#", CultureInfo.InvariantCulture)} MB";
+}
+
+<div class="bp-attr-row@(field.Refusal is null ? string.Empty : " is-invalid")@(field.IsMissing ? " is-missing" : string.Empty)">
+    <div class="bp-attr-label">
+        <strong><span class="bp-attr-number">@definition.Label</span> @WithUnit(definition.Name, form.Kind == FormKind.Single ? form.Inputs[0].Unit : null)</strong>
+        @if (field.Marker != "Required by Feb 2027")
+        {
+            <em class="bp-field-marker">@field.Marker</em>
+        }
+        @if (field.IsMissing)
+        {
+            <span class="bp-attr-missing">Missing</span>
+        }
+        @if (field.AudienceLabel is not null)
+        {
+            <details class="bp-attr-audience">
+                <summary><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5" /><path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7" /></svg>Not public</summary>
+                <span>@(form.Kind == FormKind.Upload ? "Downloaded" : "Seen") only by @(Model.Editor.ForTeam ? field.SeenBy : field.SeenByOutsideTheTeam).</span>
+            </details>
+        }
+        @if (AttributeCatalog.ConditionOf(definition) is { } condition)
+        {
+            <small class="bp-field-help bp-attr-condition">@condition</small>
+        }
+        @if (hint is not null)
+        {
+            <small class="bp-field-help">@hint</small>
+        }
+        @if (IdentifierForms.ActorIdNote(definition.Number, field.Texts.Values.FirstOrDefault()) is { } note)
+        {
+            <small class="bp-field-help text-warning-emphasis" data-actor-id-note>@note</small>
+        }
+    </div>
+
+    <div class="bp-attr-inputs">
+        @switch (form.Kind)
+        {
+            case FormKind.Single:
+            case FormKind.Lines:
+                await Input(form.Inputs[0], form.FieldName(form.Inputs[0]), field.Text(form.FieldName(form.Inputs[0])), invalid: field.Refusal is not null);
+                break;
+
+            case FormKind.Fixed:
+                <div class="bp-attr-fixed">@string.Join(", ", form.Constants.Values)</div>
+                break;
+
+            case FormKind.Group:
+            case FormKind.Link:
+                await Parts(form.Inputs);
+                break;
+
+            case FormKind.Rows:
+                <input type="hidden" name="@form.RowCountField" value="@field.Rows" />
+                @for (var row = 0; row < field.Rows; row++)
+                {
+                    var blank = row == field.Rows - 1;
+                    <div class="bp-attr-repeat@(blank ? " is-new-row" : string.Empty)">
+                        <div class="bp-attr-repeat-head">
+                            <span class="bp-attr-row-title">@(blank ? "New row" : RowTitle(row))</span>
+                            @if (!blank)
+                            {
+                                <button type="button" class="bp-secondary-button bp-button-compact" data-remove-row>Remove row</button>
+                            }
+                        </div>
+                        @{ await Parts(form.Inputs, row); }
+                    </div>
+                }
+                <button type="button" class="bp-secondary-button bp-button-compact bp-add-row" data-add-row hidden>+ Add a row</button>
+                break;
+
+            case FormKind.Upload:
+                var formId = $"upload-{definition.Property}";
+                var document = field.Document;
+                var limit = Options.Value.MaxUploadBytes;
+                var current = document is not null
+                    ? $"{document.FileName} · {Size(document.Length)} · uploaded {document.UploadedAtUtc:d MMM yyyy} by {document.UploadedBy}"
+                    : field.StoredLink is { } link ? $"Linked: {link}" : "No file uploaded yet";
+                <input type="text" readonly value="@current" aria-label="Current file" data-upload-name />
+                @if (document is not null)
+                {
+                    <small class="bp-field-help"><a href="@ReaderPages.DocumentHref(document.Id)" target="_blank" rel="noreferrer">Open the file</a> · SHA-256 <code>@document.Sha256</code></small>
+                }
+                <fieldset class="bp-attr-upload">
+                    <legend>@(document is null ? "Upload a file" : "Upload a new file")</legend>
+                    <div class="bp-attr-file">
+                        <label class="bp-secondary-button bp-button-compact bp-document-smart-upload position-relative text-nowrap mb-0">
+                            Choose file
+                            <input type="file" name="file" class="bp-document-hidden-file" accept="application/pdf,image/png,image/jpeg" form="@formId" data-kind-words="a PDF, PNG or JPEG" data-max-bytes="@Options.Value.MaxUploadBytes" data-upload-file />
+                        </label>
+                        <span class="bp-help-text" data-upload-chosen>No file chosen</span>
+                        <button type="submit" class="bp-secondary-button bp-button-compact text-nowrap" form="@formId" data-upload-button>Upload</button>
+                    </div>
+                    <div class="bp-attr-parts">
+                        <label>
+                            <span>Title (optional)</span>
+                            <input type="text" name="title" form="@formId" value="@document?.Title" />
+                        </label>
+                        <label>
+                            <span>Language (optional)</span>
+                            @{ await Input(new FormInput("language", "Language", InputKind.Select, false, Model.Editor.Languages), "language", document?.Language ?? string.Empty, formId); }
+                        </label>
+                    </div>
+                    <small class="bp-field-help">
+                        PDF, PNG or JPEG@(limit > 0 ? $", up to {(limit / 1048576.0).ToString("0.#", CultureInfo.InvariantCulture)} MB" : string.Empty), checked by its content. Uploaded on its own, not with Save.
+                    </small>
+                    @if (Model.Editor.PublishedPassports > 0)
+                    {
+                        <label class="bp-attr-confirm">
+                            <input type="checkbox" name="confirmed" value="true" form="@formId" required />
+                            <span>Publish new versions of the @Words.Count(Model.Editor.PublishedPassports, "passport") that use this file</span>
+                        </label>
+                    }
+                </fieldset>
+                break;
+        }
+
+        @if (field.Refusal is not null)
+        {
+            <small class="bp-field-help text-danger" id="@refusalId">@field.Refusal</small>
+        }
+    </div>
+</div>

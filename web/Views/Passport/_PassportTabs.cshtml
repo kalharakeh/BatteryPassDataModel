@@ -1,0 +1,176 @@
+@using BatteryPassWeb.Dpp.Pages
+@model PassportPage
+@{
+    // The passport's data as today's tabs: on the detail page, first one tab per audience the reader may see (with a
+    // lock), then the public data by schema section. Each value on the detail page says when and where it came from.
+    var tabs = Model.Audiences.Select(section => (Section: section, Restricted: true))
+        .Concat(Model.Sections.Select(section => (Section: section, Restricted: false)))
+        .ToArray();
+    // Live values and Modules are tabs too (redesign R5, the owner's item 8), after the audiences' tabs, each only for a
+    // reader it has something for: the live history is cut for the reader, the modules are null for those who may not see them.
+    // Live values: whenever this reader may see one on the battery's latest passport (redesign R6), with the last week's
+    // readings when there are any; an older version leads to the current one instead.
+    var liveValues = Model.Audiences.SelectMany(section => section.Values).Where(value => value.Attribute.Change == BatteryPassWeb.Dpp.Catalog.ChangeRule.Live).ToArray();
+    var live = Model.Current is null && liveValues.Length > 0
+        ? new LiveTab(liveValues, ViewData["LiveHistory"] as IReadOnlyList<BatteryPassWeb.Dpp.Api.LiveHistoryEntry> ?? [], ViewData["LiveWeekEnd"] as DateTime?)
+        : null;
+    var modules = Model.Modules is { Count: > 0 } listed ? listed : null;
+    var extra = new List<(string Key, string Tab)>();
+    if (live is not null)
+    {
+        extra.Add(("live", "Live values"));
+    }
+
+    if (modules is not null)
+    {
+        extra.Add(("modules", "Modules"));
+    }
+
+    var buttons = tabs.Take(Model.Audiences.Count).Select(tab => (tab.Section.Key, tab.Section.Tab, Restricted: true))
+        .Concat(extra.Select(tab => (tab.Key, tab.Tab, Restricted: true)))
+        .Concat(tabs.Skip(Model.Audiences.Count).Select(tab => (tab.Section.Key, tab.Section.Tab, Restricted: false)))
+        .ToArray();
+}
+<section class="bp-card bp-report-wide-section">
+    <ul class="nav nav-tabs bp-tabs" id="passport-tabs" role="tablist" style="flex-wrap:wrap;overflow-x:visible">
+        @for (var index = 0; index < buttons.Length; index++)
+        {
+            var (key, label, restricted) = buttons[index];
+            <li class="nav-item" role="presentation">
+                <button class="nav-link@(index == 0 ? " active" : string.Empty)" data-bs-toggle="tab" data-bs-target="#tab-@key" type="button" role="tab" aria-selected="@(index == 0 ? "true" : "false")">
+                    @if (restricted)
+                    {
+                        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="vertical-align:-2px;margin-right:4px"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5" /><path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7" /></svg>
+                    }
+                    @label
+                </button>
+            </li>
+        }
+    </ul>
+
+    <div class="tab-content pt-4">
+        @if (live is not null)
+        {
+            <div class="tab-pane fade@(buttons[0].Key == "live" ? " show active" : string.Empty)" id="tab-live" role="tabpanel">
+                <partial name="_LiveHistory" model="live" />
+            </div>
+        }
+        @if (modules is not null)
+        {
+            <div class="tab-pane fade@(buttons[0].Key == "modules" ? " show active" : string.Empty)" id="tab-modules" role="tabpanel">
+                <h2 class="h5 mb-2">@Words.Count(modules.Count, "module")</h2>
+                <p class="bp-help-text">Seen only by the battery's cluster, market surveillance and the manufacturer's team.</p>
+                <div class="bp-table-scroll">
+                    <table class="table align-middle bp-console-table bp-mobile-card-table mb-0">
+                        <thead><tr><th>Position</th><th>Serial number</th><th>Connectivity ID</th></tr></thead>
+                        <tbody>
+                            @foreach (var module in modules)
+                            {
+                                <tr>
+                                    <td data-label="Position">@module.Position</td>
+                                    <td data-label="Serial number">@(module.SerialNumber ?? "-")</td>
+                                    <td data-label="Connectivity ID">@(module.ConnectivityId ?? "-")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+        @for (var index = 0; index < tabs.Length; index++)
+        {
+            var (tab, _) = tabs[index];
+            <div class="tab-pane fade@(buttons[0].Key == tab.Key ? " show active" : string.Empty)" id="tab-@tab.Key" role="tabpanel">
+                @if (tab.Key == "purchaser" && Model.Marking is not null)
+                {
+                    @* Market surveillance has no admin pages, so its button sits in the card (mock-up S6, U11). *@
+                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3" data-mark-invalid>
+                        <div>
+                            <h2 class="h5 mb-2">@tab.Title</h2>
+                            <p class="bp-help-text">@tab.Note</p>
+                        </div>
+                        <button type="button" class="bp-secondary-button" data-passport-dialog="mark-dialog">Mark as invalid…</button>
+                    </div>
+                }
+                else
+                {
+                    <h2 class="h5 mb-2">@tab.Title</h2>
+                    <p class="bp-help-text">@tab.Note</p>
+                }
+                @if (tab.Key == "purchaser" && Model.Current is not null)
+                {
+                    <p class="bp-warning">The live values (state of charge, cycles, temperature, accidents and the extreme-temperature times) are on the <a href="@PassportPages.DetailHref(Model.Identifier)">current version</a>.</p>
+                }
+                @if (tab.Values.Count == 0)
+                {
+                    <p class="text-secondary mb-0">No values in this version.</p>
+                }
+                else
+                {
+                    <dl class="bp-field-grid">
+                        @foreach (var value in tab.Values)
+                        {
+                            var single = value.Lines.Count == 1 && value.Lines[0].Label is null;
+                            @* Each entry has an id, where the key figures' links land (redesign R5). *@
+                            <div id="@KeyFigures.Anchor(value.Attribute.Number)">
+                                <dt>@(value.Attribute.IsExtension ? $"{value.Attribute.Label} {value.Attribute.Name}" : value.Attribute.Name)</dt>
+                                <dd>
+                                    @for (var line = 0; line < value.Lines.Count; line++)
+                                    {
+                                        var part = value.Lines[line];
+                                        <span class="@(single ? string.Empty : "d-block")@(part.StartsRow && line > 0 ? " mt-2" : string.Empty)">
+                                            @if (part.Label is not null)
+                                            {
+                                                <span class="text-secondary">@part.Label:</span>
+                                            }
+                                            @if (part.Href is not null)
+                                            {
+                                                <a href="@part.Href" target="_blank" rel="noreferrer" title="@part.Href">@part.Text</a>
+                                            }
+                                            else
+                                            {
+                                                @part.Text
+                                            }
+                                        </span>
+                                    }
+                                    @if (value.Origin is { } origin)
+                                    {
+                                        <span class="d-block small text-secondary">@(origin.Measured ? "Measured" : "Entered") @ValueWords.Time(origin.GeneratedAtUtc) · @PassportPages.SourceWord(origin.Source)</span>
+                                    }
+                                </dd>
+                            </div>
+                        }
+                    </dl>
+                }
+                @if (tab.Key == BatteryPassWeb.Dpp.Catalog.AttributeDefinition.HeaderSection && Model.Chain.Count > 1)
+                {
+                    @* The battery's passports, for the team and market surveillance (redesign R6, the owner's item 12). *@
+                    <div class="mt-4">@await Html.PartialAsync("_PassportChain", new ChainView(Model.Chain, ChainReader.Detail))</div>
+                }
+                @if (tab.Key == "purchaser" && Model.Repairs is { } repairs)
+                {
+                    <h3 class="h6 mt-3 mb-0">Repair history</h3>
+                    @if (repairs.Count == 0)
+                    {
+                        <p class="text-secondary mt-2 mb-0">No repairs recorded.</p>
+                    }
+                    else
+                    {
+                        <dl class="bp-field-grid mt-2">
+                            @foreach (var repair in repairs)
+                            {
+                                <div>
+                                    <dt><time datetime="@repair.Date">@ValueWords.Day(repair.Date)</time></dt>
+                                    <dd>
+                                        @(repair.IsCorrection ? $"Correction: {repair.Description}" : repair.Description)
+                                        <span class="d-block small text-secondary">@(repair.IsCorrection ? "Added" : "Recorded") by @(repair.RecordedAs == "Team" ? "the manufacturer's team" : "the battery's cluster")</span>
+                                    </dd>
+                                </div>
+                            }
+                        </dl>
+                    }
+                }
+            </div>
+        }
+    </div>
+</section>

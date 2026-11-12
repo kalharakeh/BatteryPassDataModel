@@ -1,33 +1,24 @@
 @{
     ViewData["Title"] = "Scania Battery Passport Viewer";
-    var samplePassportId = ViewData["SamplePassportId"] as string ?? string.Empty;
     var searchQuery = ViewData["SearchQuery"] as string ?? string.Empty;
     var searchWasNotFound = ViewData["SearchNotFound"] is true;
-    var isAdminSearch = ViewData["IsAdminSearch"] is true;
 }
 <main class="bp-landing">
     <div class="bp-landing-content">
         <div>
             <h1>Scania Battery Passport Viewer</h1>
-            <p>Enter a battery ID or passport ID to open the public demonstrator view. The placeholder is a sample battery ID for the public sample passport.</p>
+            <p>Enter a battery's serial number, battery ID or passport ID, or scan its QR code, to open its battery passport.</p>
         </div>
         @if (searchWasNotFound && !string.IsNullOrWhiteSpace(searchQuery))
         {
             <p class="bp-warning">
-                @if (isAdminSearch)
-                {
-                    <span>No battery passport ID was found for <span class="fw-semibold">@searchQuery</span>.</span>
-                }
-                else
-                {
-                    <span>No active public battery passport was found for <span class="fw-semibold">@searchQuery</span>. Check the ID, or ask an admin whether the passport is archived, unpublished, or still waiting for signing.</span>
-                }
+                <span>No published battery passport was found for <span class="fw-semibold">@searchQuery</span>. Check the serial number or ID; a battery's passport is found here once it is published.</span>
             </p>
         }
         <form action="/search" class="bp-search-form bp-landing-search" data-search-form>
             <div class="bp-search-main-row">
                 <div class="bp-search-input-shell">
-                    <input name="q" value="@searchQuery" placeholder="@samplePassportId" data-search-query aria-describedby="bpLandingSearchMessage" />
+                    <input name="q" value="@searchQuery" placeholder="Serial number, battery ID or passport ID" data-search-query aria-describedby="bpLandingSearchMessage" />
                     <button type="button" class="bp-qr-trigger" data-qr-trigger aria-label="Scan a battery passport QR code">
                         <span class="bp-qr-trigger-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" focusable="false">
@@ -39,12 +30,14 @@
                 <button type="submit">Search</button>
             </div>
             <p id="bpLandingSearchMessage" class="bp-search-inline-message" data-empty-search-message hidden>
-                Enter a battery ID, passport ID, or use the QR icon inside the field before searching.
+                Enter a serial number, battery ID or passport ID, or use the QR icon inside the field before searching.
             </p>
         </form>
-        <div class="bp-landing-links">
-            <a href="/search?q=@Uri.EscapeDataString(samplePassportId)">Search sample battery</a>
-        </div>
+        @if (ViewData[BatteryPassWeb.Controllers.HomeController.SampleKey] is string { Length: > 0 } sample)
+        {
+            @* A published demo battery to try, while demo data exists (redesign R6, the owner's choice 7). *@
+            <p class="bp-landing-sample mt-3 mb-0"><a href="/dpp/@Uri.EscapeDataString(sample)">Open a sample battery passport</a></p>
+        }
     </div>
 
     <div class="bp-qr-modal" data-qr-modal hidden>
@@ -68,7 +61,7 @@
                 Scan an image file
                 <input type="file" accept="image/*,.svg" data-qr-file />
             </label>
-            <p class="bp-qr-status" data-qr-status>QR scan failed? Enter the DID manually in the search field.</p>
+            <p class="bp-qr-status" data-qr-status>QR scan failed? Type the battery's serial number in the search field.</p>
         </section>
     </div>
 </main>
@@ -109,7 +102,7 @@
             const openModal = () => {
                 modal.hidden = false;
                 document.body.classList.add('bp-modal-open');
-                setStatus('Use the camera or scan a saved QR image. Manual DID search stays available behind this dialog.');
+                setStatus("Use the camera or scan a saved QR image. You can also type the battery's serial number behind this dialog.");
             };
 
             const detectQrWithNativeDetector = async (source) => {
@@ -178,36 +171,12 @@
                 });
             };
 
-            const extractDidFromQr = (value) => {
-                const raw = (value || '').trim();
-                if (raw.startsWith('did:web:')) {
-                    return raw;
-                }
-
-                try {
-                    const parsed = new URL(raw, window.location.origin);
-                    const queryValue = parsed.searchParams.get('q') || parsed.searchParams.get('passportId');
-                    if (queryValue && queryValue.startsWith('did:web:')) {
-                        return queryValue;
-                    }
-
-                    for (const segment of parsed.pathname.split('/').filter(Boolean)) {
-                        const decoded = decodeURIComponent(segment);
-                        if (decoded.startsWith('did:web:')) {
-                            return decoded;
-                        }
-                    }
-                } catch {
-                    // Keep the fallback regex below for plain text QR payloads.
-                }
-
-                const match = raw.match(/did:web:[A-Za-z0-9:._-]+/);
-                return match ? match[0] : '';
-            };
+            // The search reads the battery ID out of the QR code's address, so the scanned text goes in as it is.
+            const extractDidFromQr = (value) => (value || '').trim();
 
             const submitDid = (did) => {
                 if (!did) {
-                    setStatus('QR scan failed. The code did not contain a Battery Pass DID.', true);
+                    setStatus('QR scan failed. The code was empty.', true);
                     return;
                 }
 
@@ -307,7 +276,7 @@
                     scanFrame();
                 } catch (error) {
                     stopCamera();
-                    setStatus(`QR scan failed. ${error.message} Use manual DID search instead.`, true);
+                    setStatus(`QR scan failed. ${error.message} Type the battery's serial number instead.`, true);
                 }
             });
 
@@ -343,7 +312,7 @@
                         throw error || lastError;
                     }
                 } catch (error) {
-                    setStatus(`QR scan failed. ${error.message} Use manual DID search instead.`, true);
+                    setStatus(`QR scan failed. ${error.message} Type the battery's serial number instead.`, true);
                 } finally {
                     fileInput.value = '';
                 }

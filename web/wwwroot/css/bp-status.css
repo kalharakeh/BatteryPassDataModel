@@ -1,0 +1,571 @@
+/* ==== The two statuses, on every page (redesign R3, decision 36) ====================================================
+   Loaded by the layout, so the public pages, the Registry and the battery pages draw the same badges. The battery status
+   (#22, what happened to the battery) is a square "Battery" tag; the passport status (#2, whether this passport counts)
+   a round "Passport" pill. Each status has its own colour and icon (Views/Shared/_Icons.cshtml), so they never look
+   alike. site.css is not changed. */
+
+/* Icons: one inline SVG sprite; each icon is a stroke drawing in the text colour. */
+.bp-i {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 2px 10px 2px 7px;
+  border: 1px solid;
+  font-size: 0.86rem;
+  font-weight: 650;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.bp-badge .bp-i {
+  width: 16px;
+  height: 16px;
+}
+
+.bp-badge-kind {
+  margin-right: 2px;
+  font-size: 0.66rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+.bp-badge small {
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.bp-badge.is-battery {
+  border-radius: 6px;
+}
+
+.bp-badge.is-passport {
+  border-radius: 999px;
+}
+
+/* Battery status #22: what happened to the battery. Calm colours, one per status. */
+.bp-badge.is-original { border-color: #cbd5e1; background: #f8fafc; color: #334155; }
+.bp-badge.is-reused { border-color: #99f6e4; background: #f0fdfa; color: #0f5e57; }
+.bp-badge.is-repurposed { border-color: #ddd6fe; background: #f5f3ff; color: #5b21b6; }
+.bp-badge.is-remanufactured { border-color: #bfdbfe; background: #eff6ff; color: #1e40af; }
+.bp-badge.is-waste { border-color: #a8a29e; background: #f5f5f4; color: #44403c; }
+
+/* Passport status #2: green while it counts, grey once retired, red when something is wrong. */
+.bp-badge.is-active { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
+.bp-badge.is-draft { border-style: dashed; border-color: #94a3b8; background: transparent; color: #475569; }
+.bp-badge.is-inactive,
+.bp-badge.is-archived { border-color: #cbd5e1; background: #f1f5f9; color: #475569; }
+.bp-badge.is-invalid { border-color: #fca5a5; background: #fef2f2; color: #991b1b; }
+.bp-badge.is-marked { border-style: dashed; border-color: #f87171; background: #fff; color: #991b1b; }
+
+.bp-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.bp-badges.is-compact .bp-badge {
+  min-height: 24px;
+  font-size: 0.78rem;
+}
+
+/* "What do the two statuses mean?": a small round button opening the explainer (a popover, no script needed). */
+/* "What do these mean?": a calm text link with its icon beside the badges, easy to spot (redesign R5, item 5). */
+.bp-status-help-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 2px 9px 2px 5px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--bp-primary);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgba(42, 110, 207, 0.35);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.bp-status-help-button .bp-i {
+  width: 17px;
+  height: 17px;
+}
+
+.bp-status-help-button:hover,
+.bp-status-help-button:focus-visible {
+  background: rgba(42, 110, 207, 0.08);
+  text-decoration-color: currentColor;
+}
+
+/* In a list's Status heading: the "?" alone, in a small ring; its words stay for screen readers. */
+th .bp-status-help-button {
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  min-height: 0;
+  margin-left: 4px;
+  padding: 0;
+  border: 1px solid var(--bp-border);
+  color: var(--bp-muted);
+  text-decoration: none;
+  vertical-align: -5px;
+}
+
+th .bp-status-help-button .bp-i {
+  width: 14px;
+  height: 14px;
+}
+
+th .bp-status-help-words {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.bp-status-help {
+  width: min(100% - 32px, 560px);
+  max-height: calc(100% - 48px);
+  padding: 20px;
+  border: 1px solid var(--bp-border);
+  border-radius: 12px;
+  background: var(--bp-surface);
+  color: var(--bp-text);
+  box-shadow: 0 22px 44px rgba(15, 23, 42, 0.24);
+}
+
+.bp-status-help::backdrop {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.bp-status-help h2 {
+  margin: 0 0 6px;
+  font-size: 1.2rem;
+}
+
+/* The lists' explainer: in the Status heading on a desktop; on a phone, where the heading row is hidden, beside the
+   count instead, and the hidden heading's copy takes no focus (step 6c, the owner's choice). */
+.bp-batteries-count-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.bp-batteries-count-row > .bp-status-help-button {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .bp-batteries-count-row > .bp-status-help-button {
+    display: inline-flex;
+  }
+
+  .bp-mobile-card-table thead .bp-status-help-button {
+    display: none;
+  }
+
+  /* A long badge ("Passport Marked for deletion · version 2") wraps instead of widening the page (step 6c). */
+  .bp-badge {
+    max-width: 100%;
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+}
+
+/* The statuses in words: in the badges' explainer window and in the Help's "Statuses" part (step 6b-1). */
+.bp-status-meanings {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 14px;
+  align-items: center;
+  margin: 12px 0 16px;
+}
+
+.bp-status-meanings dd {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* An earlier or newer passport: a calm chip beside the passport badge and one plain line, never a banner (Q4). */
+.bp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 1px 10px 1px 7px;
+  border: 1px solid var(--bp-border);
+  border-radius: 999px;
+  background: var(--bp-surface);
+  color: var(--bp-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.bp-chip .bp-i {
+  width: 15px;
+  height: 15px;
+}
+
+.bp-chip:hover {
+  border-color: var(--bp-primary);
+}
+
+.bp-lineage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 0;
+  color: var(--bp-muted);
+  font-size: 0.88rem;
+}
+
+.bp-lineage .bp-i {
+  width: 15px;
+  height: 15px;
+}
+
+/* A notice that matters (invalid, marked for deletion): one slim line with its action in reach. */
+.bp-status-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 0;
+  padding: 8px 10px 8px 12px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #7f1d1d;
+  font-size: 0.92rem;
+}
+
+.bp-status-notice > span {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.bp-status-notice.is-quiet {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+  color: #334155;
+}
+
+/* The Registry's waiting card stands out (owner's point 12), and the top bar counts what waits. */
+.bp-wait {
+  border-left: 5px solid var(--bp-primary);
+  background: linear-gradient(90deg, rgba(42, 110, 207, 0.07), transparent 60%), var(--bp-surface);
+}
+
+.bp-wait-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bp-wait-bell {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--bp-primary);
+  color: #fff;
+}
+
+.bp-wait-bell .bp-i {
+  width: 22px;
+  height: 22px;
+}
+
+.bp-nav-count {
+  margin-left: 6px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #1f2937;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.bp-with-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* A test passport or battery: a small amber tag that explains itself on a tap or a hover (owner's point 7). */
+.bp-test-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 1px 8px;
+  border: 1px solid #fcd34d;
+  border-radius: 999px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.74rem;
+  font-weight: 650;
+  cursor: help;
+}
+
+.bp-test-tag .bp-i {
+  width: 14px;
+  height: 14px;
+}
+
+.bp-test-help {
+  width: min(100% - 32px, 440px);
+}
+
+.bp-test-note {
+  margin: 4px 0 0;
+  color: #92400e;
+  font-size: 0.85rem;
+}
+
+/* The public hero (owner's item 10): the picture inside the card, top right, at its own shape and the height of the
+   top block; the facts at the card's full width; "View more" in the card. Scoped to .bp-hero-compact, so site.css and
+   every other page stay as they are. The battery pages' header picture follows the same sizes (bp-product-data.css). */
+.bp-hero-compact .bp-report-hero-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.bp-hero-compact .bp-report-hero-info.bp-summary-identity-grid {
+  grid-template-columns: minmax(220px, 1fr) minmax(260px, 1.2fr) minmax(150px, 190px) auto;
+  grid-template-areas:
+    "battery ids qr picture"
+    "fields fields fields fields"
+    "cta cta cta cta";
+}
+
+.bp-hero-compact .bp-report-identity-panel--battery { grid-area: battery; }
+.bp-hero-compact .bp-report-identity-panel--identifiers { grid-area: ids; }
+.bp-hero-compact .bp-report-identity-panel--qr { grid-area: qr; }
+.bp-hero-compact .bp-hero-picture { grid-area: picture; }
+.bp-hero-compact .bp-summary-fields-panel { grid-area: fields; }
+/* The hero picture is hidden only while bp-picture-trim.js cuts its transparent margins off (no JavaScript: it shows as it is). */
+.bp-hero-compact .bp-hero-picture img.is-trimming {
+  opacity: 0;
+}
+
+.bp-hero-compact .bp-hero-ctas { grid-area: cta; }
+
+.bp-hero-compact .bp-hero-picture {
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  border: 1px solid var(--bp-border);
+  border-radius: 8px;
+  background: #f3f6fa;
+}
+
+.bp-hero-compact .bp-hero-picture .bp-image-wrap {
+  width: auto;
+  height: auto;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.bp-hero-compact .bp-hero-picture .bp-battery-image {
+  width: auto;
+  height: 160px;
+  max-width: 220px;
+  max-height: none;
+  aspect-ratio: auto;
+  object-fit: contain;
+  filter: none;
+}
+
+.bp-hero-compact .bp-hero-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.bp-hero-compact .bp-hero-ctas .bp-report-hero-cta {
+  width: auto;
+}
+
+@media (max-width: 1180px) {
+  .bp-hero-compact .bp-report-hero-info.bp-summary-identity-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    grid-template-areas:
+      "battery battery picture"
+      "ids qr qr"
+      "fields fields fields"
+      "cta cta cta";
+  }
+}
+
+@media (max-width: 760px) {
+  .bp-hero-compact .bp-report-hero-info.bp-summary-identity-grid {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "battery picture"
+      "ids ids"
+      "qr qr"
+      "fields fields"
+      "cta cta";
+  }
+
+  /* On a phone the picture sits small beside the battery's name, never on a row of its own. */
+  .bp-hero-compact .bp-hero-picture {
+    align-self: start;
+    padding: 6px;
+  }
+
+  .bp-hero-compact .bp-hero-picture .bp-battery-image {
+    height: 100px;
+    max-width: 120px;
+  }
+
+  .bp-hero-compact .bp-hero-ctas {
+    justify-content: stretch;
+  }
+
+  .bp-hero-compact .bp-hero-ctas .bp-report-hero-cta {
+    width: 100%;
+  }
+}
+
+/* ---- Dark ---------------------------------------------------------------------------------------------------------- */
+[data-theme="dark"] .bp-badge { background: transparent; }
+[data-theme="dark"] .bp-badge.is-original { border-color: #64748b; color: #cbd5e1; }
+[data-theme="dark"] .bp-badge.is-reused { border-color: #2dd4bf; color: #5eead4; }
+[data-theme="dark"] .bp-badge.is-repurposed { border-color: #a78bfa; color: #c4b5fd; }
+[data-theme="dark"] .bp-badge.is-remanufactured { border-color: #60a5fa; color: #93c5fd; }
+[data-theme="dark"] .bp-badge.is-waste { border-color: #a8a29e; color: #d6d3d1; }
+[data-theme="dark"] .bp-badge.is-active { border-color: #22c55e; color: #86efac; }
+[data-theme="dark"] .bp-badge.is-draft,
+[data-theme="dark"] .bp-badge.is-inactive,
+[data-theme="dark"] .bp-badge.is-archived { border-color: #64748b; color: #cbd5e1; }
+[data-theme="dark"] .bp-badge.is-invalid,
+[data-theme="dark"] .bp-badge.is-marked { border-color: #f87171; color: #fca5a5; }
+[data-theme="dark"] .bp-status-notice { border-color: #7f1d1d; background: rgba(127, 29, 29, 0.25); color: #fecaca; }
+[data-theme="dark"] .bp-status-notice.is-quiet { border-color: var(--bp-border); background: transparent; color: var(--bp-text); }
+[data-theme="dark"] .bp-status-help { background: #101f35; }
+[data-theme="dark"] .bp-test-tag { border-color: #b45309; background: transparent; color: #fcd34d; }
+[data-theme="dark"] .bp-test-note { color: #fcd34d; }
+[data-theme="dark"] .bp-hero-compact .bp-hero-picture { background: #e9eef5; }
+
+/* ==== Key figures (redesign R5, owner's item 4, decision 37) =========================================================
+   The public values a reader wants first, as tiles, on the summary and on the detail page under the hero. */
+.bp-kf-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
+.bp-kf-head p { margin: 0; color: var(--bp-muted); font-size: 0.88rem; }
+.bp-kf-group { margin: 16px 0 8px; color: var(--bp-muted); font-size: 0.72rem; font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; }
+.bp-kf-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.bp-kf { min-width: 0; padding: 14px 16px; border: 1px solid var(--bp-border); border-radius: 12px; background: var(--bp-surface); }
+.bp-kf.is-wide { grid-column: span 2; }
+.bp-kf-label { display: flex; align-items: center; gap: 8px; color: var(--bp-muted); font-size: 0.8rem; font-weight: 650; }
+.bp-kf-label .bp-i { width: 18px; height: 18px; color: var(--bp-primary); }
+.bp-kf-value { margin-top: 6px; font-size: 1.45rem; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.bp-kf-value small { color: var(--bp-muted); font-size: 0.9rem; font-weight: 600; }
+.bp-kf-sub { margin: 2px 0 0; color: var(--bp-muted); font-size: 0.84rem; line-height: 1.35; }
+.bp-kf-class { display: inline-block; margin-left: 8px; padding: 1px 9px; border: 1px solid #86efac; border-radius: 999px; background: #f0fdf4; color: #166534; font-size: 0.8rem; font-weight: 700; vertical-align: 4px; }
+.bp-kf-stack { display: flex; height: 12px; margin-top: 10px; overflow: hidden; border-radius: 999px; background: #e2e8f0; }
+.bp-kf-stack span { display: block; height: 100%; }
+.bp-kf-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 0 0; padding: 0; list-style: none; color: var(--bp-muted); font-size: 0.8rem; }
+.bp-kf-legend i { display: inline-block; width: 9px; height: 9px; margin-right: 5px; border-radius: 2px; }
+.bp-kf-legend b { color: var(--bp-text); font-weight: 650; }
+.bp-kf-bars { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 6px 10px; margin-top: 10px; font-size: 0.84rem; }
+.bp-kf-track { height: 8px; overflow: hidden; border-radius: 999px; background: #e2e8f0; }
+.bp-kf-track span { display: block; height: 100%; border-radius: 999px; background: #08a348; }
+.bp-kf-bars b { font-weight: 650; text-align: right; }
+
+/* On the detail page a figure's title leads down to its full entry, which is marked for a moment where it lands. */
+.bp-kf-label a { display: inline-flex; align-items: center; gap: 8px; color: inherit; text-decoration: none; }
+.bp-kf-label a:hover, .bp-kf-label a:focus-visible { color: var(--bp-primary); text-decoration: underline; text-underline-offset: 3px; }
+.bp-kf-down { color: var(--bp-primary); font-weight: 700; }
+.bp-field-grid > div { scroll-margin-top: 96px; }
+.bp-field-grid > div.is-landed { border-radius: 8px; background: rgba(42, 110, 207, 0.08); box-shadow: 0 0 0 2px rgba(42, 110, 207, 0.55); }
+
+@media (max-width: 991.98px) {
+  .bp-kf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 575.98px) {
+  .bp-kf { padding: 12px; }
+  .bp-kf-value { font-size: 1.25rem; }
+}
+
+[data-theme="dark"] .bp-kf-stack,
+[data-theme="dark"] .bp-kf-track { background: #334155; }
+[data-theme="dark"] .bp-kf-class { border-color: #166534; background: #052e16; color: #86efac; }
+
+/* ==== The detail page's live values as charts (redesign R5, the owner's item 7) ======================================
+   One small chart per value: the latest large, the last 7 days on a day axis, its low and high; every reading folded. */
+.bp-live-charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.bp-live-chart { display: grid; gap: 4px; min-width: 0; margin: 0; padding: 14px 16px; border: 1px solid var(--bp-border); border-radius: 12px; background: var(--bp-surface); }
+.bp-live-chart figcaption { color: var(--bp-muted); font-size: 0.8rem; font-weight: 650; }
+.bp-live-chart-value { font-size: 1.35rem; line-height: 1.2; overflow-wrap: anywhere; }
+.bp-live-chart-plot { width: 100%; height: auto; overflow: visible; }
+.bp-live-chart-plot polyline { fill: none; stroke: var(--bp-primary); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.bp-live-chart-day { stroke: var(--bp-border); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.bp-live-chart-label { fill: var(--bp-muted); font-size: 11px; text-anchor: middle; }
+.bp-live-chart-range { color: var(--bp-text); font-size: 0.8rem; }
+.bp-live-chart-flat { color: var(--bp-muted); font-size: 0.85rem; }
+.bp-live-chart small { color: var(--bp-muted); }
+.bp-live-all { margin-top: 16px; }
+.bp-live-all > summary { cursor: pointer; color: var(--bp-primary); font-weight: 600; }
+
+/* The passport hero's buttons carry the app's arrow icons, not typed arrows (redesign R6). */
+.bp-report-hero-cta { gap: 8px; }
+.bp-report-hero-cta .bp-i { width: 18px; height: 18px; flex: none; }
+
+/* On a phone the statuses in words stack, each badge above its meaning, so the words get the window's width (step 6c).
+   After the list's own rule, which this overrides. */
+@media (max-width: 767px) {
+  .bp-status-meanings {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px 0;
+  }
+
+  .bp-status-meanings dd {
+    margin-bottom: 8px;
+  }
+}
+
+/* Step 6d: a battery or passport ID is a web address whose telling part is its end (UN778474481VPC12221/v2), so on the
+   passport pages it wraps instead of being cut with "…" (site.css cuts it on wide screens). */
+.bp-report-hero-info .bp-report-identity-panel--identifiers .bp-id-value {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Step 6d: a value can be a long web address with no spaces (a passport ID, https://www.sib-scania-eubp.eu/dpp/…/v4), so
+   a field's value may break anywhere rather than push a phone's page sideways. */
+.bp-field-grid dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,99 @@
+@using BatteryPassWeb.Dpp.Pages
+@model StatusCardView
+@* The battery status card (step 4b, mock-up S2), on both battery pages: the "Status & repairs" section of the side menu
+   (redesign R4). Its windows are at page level (_StatusDialog); an earlier or new passport shows in the header. *@
+<section class="bp-card bp-console-form-card bp-battery-card" id="status">
+    <div class="bp-battery-card-head">
+        <div>
+            <span class="bp-summary-title">Battery status <span class="bp-attr-number">#22</span></span>
+            <div class="bp-battery-status">
+                @if (StatusBadge.Battery(Model.Status) is { } badge)
+                {
+                    @await Html.PartialAsync("_StatusBadge", badge)
+                }
+                @if (Model.Since is { } since)
+                {
+                    <span class="text-secondary">since @ValueWords.Time(since)@(Model.AfterRepair ? ", after a repair" : string.Empty)</span>
+                }
+            </div>
+            <p class="mb-0">@(Model.WhyNot ?? (Model.Status == "waste" ? "The battery is waste. Mistyped values can still be corrected, and the team can undo the waste if it was set by mistake." : "A status change also re-states the fades and the expected lifetime, and publishes a new version of this passport."))</p>
+        </div>
+        @* Change status and Add a note are the header's actions only (redesign R5's page review: one place per action). *@
+        @if (Model.CanChange || Model.MayAddNote)
+        {
+            <p class="bp-help-text mb-0">@(Model.CanChange && Model.MayAddNote ? "Change status and Add a note are" : Model.CanChange ? "Change status is" : "Add a note is") among the page's actions.</p>
+        }
+    </div>
+    @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "status")
+    @if (Model.Succession is { Linked: false } next)
+    {
+        <div class="mt-3 pt-3 border-top" id="successor">
+            @if (next.SuccessorMade)
+            {
+                <p class="mb-2"><strong>The new passport is @(next.SuccessorPublished ? "published" : "a draft").</strong> This passport becomes inactive once it is published.
+                    <a href="@next.SuccessorHref">Open the new battery</a>
+                </p>
+            }
+            else
+            {
+                <p class="mb-2">This passport becomes inactive once the battery's new passport is published or linked. Who places it on the market again?</p>
+                @if (Model.ForTeam)
+                {
+                    <form method="post" action="@next.Action" class="bp-dialog-form mb-3">
+                        @Html.AntiForgeryToken()
+                        <label><span><strong>Scania</strong>: the team makes the new passport as a draft, with a new battery ID, the same batch and cluster, and these values to start.</span>
+                            <select name="operatorId">
+                                @foreach (var (id, name) in next.Operators)
+                                {
+                                    <option value="@id" selected="@(id == next.DefaultOperatorId)">@name</option>
+                                }
+                            </select>
+                        </label>
+                        <div class="bp-dialog-actions"><button type="submit" class="bp-primary-button">Make the new passport</button></div>
+                    </form>
+                }
+                else
+                {
+                    <p class="bp-help-text">If Scania places it on the market again, the team makes the new passport.</p>
+                }
+                <form method="post" action="@next.Action/other" class="bp-dialog-form">
+                    @Html.AntiForgeryToken()
+                    <p class="mb-1"><strong>Another operator</strong>: their details, and the new passport's ID or web address once known.</p>
+                    <label><span>Operator identifier <span class="bp-attr-number">#7</span></span><input type="text" name="operatorIdentifier" value="@next.OtherOperatorId" placeholder="e.g. urn:…" /></label>
+                    <label><span>Operator name and contact <span class="bp-attr-number">#14</span></span><input type="text" name="operatorInfo" value="@next.OtherOperatorInfo" placeholder="Name, postal address, e-mail, web address" /></label>
+                    <label><span>New passport's ID or web address (once known)</span><input type="text" name="passport" value="@next.OtherPassport" placeholder="e.g. https://…" /></label>
+                    <div class="bp-dialog-actions">
+                        <button type="submit" name="link" value="false" class="bp-secondary-button">Save details</button>
+                        <button type="submit" name="link" value="true" class="bp-primary-button">Link and set this passport inactive</button>
+                    </div>
+                </form>
+            }
+            @if (Model.ForTeam && !next.SuccessorPublished)
+            {
+                <form method="post" action="@next.Action/cancel" class="mt-3">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="bp-text-button">Cancel the new passport (it was a mistake)</button>
+                    <small class="bp-field-help d-block">The status goes back to what it was, with a new version, and a draft new battery is removed.</small>
+                </form>
+            }
+        </div>
+    }
+    <h3 class="h6 mt-3 mb-0">Repair history <em class="bp-field-marker">Not passport data</em></h3>
+    @if (Model.Repairs.Count == 0)
+    {
+        <p class="bp-help-text mt-2 mb-0">No repairs recorded.</p>
+    }
+    else
+    {
+        <ul class="bp-history">
+            @foreach (var repair in Model.Repairs)
+            {
+                <li><time datetime="@repair.Date">@ValueWords.Day(repair.Date)</time><span>@if (repair.IsCorrection)
+                    {
+                        <span class="bp-soft-tag">Correction</span>
+                    } @repair.Description</span><small>@(repair.IsCorrection ? "Added" : "Recorded") @ValueWords.Time(repair.RecordedAtUtc) by @repair.RecordedBy</small></li>
+            }
+        </ul>
+    }
+    <small class="bp-field-help d-block mt-2">Seen by the battery's cluster, market surveillance and @(Model.ForTeam ? "your team" : "the team"), with the status.</small>
+</section>

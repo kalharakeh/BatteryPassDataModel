@@ -6,7 +6,7 @@
 <main class="bp-page bp-admin-page">
     <div>
         <h1 class="mb-1">Account</h1>
-        <p class="text-secondary mb-0">Update your customer profile, email, and password.</p>
+        <p class="text-secondary mb-0">Your name, e-mail and password.</p>
     </div>
 
     @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
@@ -21,22 +21,19 @@
     <section class="bp-card mt-4">
         <form method="post" action="/account" class="bp-stack-form">
             @Html.AntiForgeryToken()
+            <p class="mb-0">Your role: <strong>@Model.RoleLabel</strong></p>
             <label>
-                Customer name
+                Your name
                 <input type="text" name="name" value="@Model.Name" />
             </label>
             <label>
-                Customer email
+                Your e-mail
                 <input type="email" name="email" value="@Model.Email" required />
             </label>
             <label>
-                Role
-                <input type="text" value="@Model.RoleLabel" readonly />
-            </label>
-            <label>
-                New password
+                Current password
                 <span class="bp-password-field">
-                    <input type="password" name="password" placeholder="Leave empty to keep current password" />
+                    <input type="password" name="currentPassword" autocomplete="current-password" placeholder="Needed to change your password or e-mail" />
                     <button type="button" class="bp-password-reveal" data-password-reveal aria-label="Show password" title="Show password">
                         <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
@@ -44,6 +41,19 @@
                         </svg>
                     </button>
                 </span>
+            </label>
+            <label>
+                New password
+                <span class="bp-password-field">
+                    <input type="password" name="password" placeholder="Leave empty to keep current password" autocomplete="new-password" minlength="12" />
+                    <button type="button" class="bp-password-reveal" data-password-reveal aria-label="Show password" title="Show password">
+                        <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+                            <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                        </svg>
+                    </button>
+                </span>
+                <small class="text-secondary">At least 12 characters.</small>
             </label>
             <label>
                 Confirm password

@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using BatteryPassWeb.Configuration;
+using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 
 namespace BatteryPassWeb.Services;
@@ -11,18 +13,121 @@ public sealed class AccessControlService
     public const string RoleNotifiedBody = "notifiedBody";
     public const string RoleMarketSurveillanceAuthority = "marketSurveillanceAuthority";
     public const string RoleCommission = "commission";
-    public const string RoleLegitimateInterest = "legitimateInterest";
+    public const string RoleLiRepair = "liRepair";
+    public const string RoleLiRecycling = "liRecycling";
+    public const string RoleLiTreatment = "liTreatment";
+
+    /// <summary>
+    /// The three legitimate-interest roles of decision 6 (design 5.2), in place of the single "legitimateInterest" role,
+    /// which no longer gives anything beyond public data.
+    /// </summary>
+    public static IReadOnlyList<string> LegitimateInterestRoles { get; } = [RoleLiRepair, RoleLiRecycling, RoleLiTreatment];
+
+    /// <summary>The one answer a cluster admin gets for any account they can't change (finding R19): it says nothing about the account.</summary>
+    public const string CantChangeThisAccount = "You can't change this person's account here. Ask the Scania team.";
+    public const string AddressKeptForTheTeam = "Only the team can use this address.";
+    public const string NewPasswordForAppWideRole = "Set a new password when you give this account access across the app: someone else may know its old one.";
+    public const string NotYourOwnAccount = "You can't change your own account here. Use Account at the top of the page.";
 
     private readonly ClusterRepository _clusterRepository;
+    private readonly string _fallbackAdminEmail;
 
-    public AccessControlService(ClusterRepository clusterRepository)
+    public AccessControlService(ClusterRepository clusterRepository, IOptions<BatteryPassOptions>? options = null)
     {
         _clusterRepository = clusterRepository;
+        _fallbackAdminEmail = options?.Value.DemoAdminEmail?.Trim() ?? string.Empty;
+    }
+
+    /// <summary>Whether the address is the fallback admin's (DemoAdminEmail), whatever its capitals and outer spaces.</summary>
+    public bool IsFallbackAdminAddress(string? email) =>
+        _fallbackAdminEmail.Length > 0 && string.Equals(email?.Trim(), _fallbackAdminEmail, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// A role that gives something across the app: the team, the authorities and the legitimate-interest roles. A plain
+    /// member (and the old "viewer") has none; "clusterAdmin" is a cluster's role, not one across the app.
+    /// </summary>
+    public static bool IsAppWideRole(string? role) =>
+        !string.IsNullOrWhiteSpace(role)
+        && !role.Trim().Equals(RoleNormalUser, StringComparison.OrdinalIgnoreCase)
+        && !role.Trim().Equals("viewer", StringComparison.OrdinalIgnoreCase)
+        && !role.Trim().Equals(RoleClusterAdmin, StringComparison.OrdinalIgnoreCase);
+
+    public static bool HasAppWideRole(IEnumerable<string> roles) => roles.Any(IsAppWideRole);
+
+    /// <summary>
+    /// Finding R19's rule: a cluster admin may change the name or set the password of an account only when a cluster admin
+    /// of one of their clusters made it (<paramref name="createdInCluster"/>, the account's mark; none for the team's
+    /// accounts and older ones), it has no role across the app, and every cluster it belongs to (at least one) is theirs.
+    /// </summary>
+    public static bool ClusterAdminMayChangeNameAndPassword(
+        IEnumerable<string> accountRoles,
+        IReadOnlyCollection<string> accountClusterIds,
+        IReadOnlySet<string> administeredClusterIds,
+        string? createdInCluster) =>
+        !string.IsNullOrWhiteSpace(createdInCluster)
+        && administeredClusterIds.Contains(createdInCluster)
+        && !HasAppWideRole(accountRoles)
+        && accountClusterIds.Count > 0
+        && accountClusterIds.All(administeredClusterIds.Contains);
+
+    public static IReadOnlyList<string> RolesOf(BsonDocument? user) =>
+        user?.GetValue("roles", new BsonArray()) is BsonArray roles
+            ? roles.Where(role => role.IsString).Select(role => role.AsString).ToList()
+            : [];
+
+    /// <summary>
+    /// What <paramref name="actor"/> may do to the account with this address (finding R19). Every path that changes an
+    /// account from the cluster admins' pages asks this first: "Add user", the row's name, password and clusters, removing.
+    /// </summary>
+    public async Task<AccountRights> RightsOverAccountAsync(ClaimsPrincipal actor, string email, CancellationToken cancellationToken = default)
+    {
+        var account = await _clusterRepository.GetUserByEmailAsync(email, cancellationToken);
+        if (IsAdmin(actor))
+        {
+            return new AccountRights(account is not null, null, true);
+        }
+
+        if (IsFallbackAdminAddress(email))
+        {
+            return new AccountRights(account is not null, CantChangeThisAccount, false);
+        }
+
+        if (string.Equals(email.Trim(), CurrentEmail(actor).Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            return new AccountRights(account is not null, NotYourOwnAccount, false);
+        }
+
+        var administered = (await GetAdministeredClusterIdsForUserAsync(actor, cancellationToken)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var clusters = (await _clusterRepository.GetClusterMembershipsForUserAsync(email, cancellationToken))
+            .Select(membership => BsonHelpers.GetString(membership, "clusterId"))
+            .ToList();
+        if (account is null)
+        {
+            // A new account would inherit memberships the address already has: only in the admin's own clusters.
+            return clusters.All(administered.Contains)
+                ? new AccountRights(false, null, false)
+                : new AccountRights(false, CantChangeThisAccount, false);
+        }
+
+        var roles = RolesOf(account);
+        if (roles.Contains(RoleAdmin, StringComparer.OrdinalIgnoreCase))
+        {
+            return new AccountRights(true, CantChangeThisAccount, false);
+        }
+
+        // A demo account changes only demo accounts: it doesn't pull real people into the demo (finding R03).
+        if (!ClusterRepository.IsDemo(account) && await IsDemoAccountAsync(actor, cancellationToken))
+        {
+            return new AccountRights(true, CantChangeThisAccount, false);
+        }
+
+        return new AccountRights(true, null, ClusterAdminMayChangeNameAndPassword(
+            roles, clusters, administered, BsonHelpers.GetString(account, ClusterRepository.CreatedInClusterField)));
     }
 
     public static bool IsAdmin(ClaimsPrincipal user) => user.IsInRole(RoleAdmin);
 
-    public static bool IsClusterAdmin(ClaimsPrincipal user) => user.IsInRole(RoleClusterAdmin) || user.IsInRole(RoleAdmin);
+    public static bool HasLegitimateInterestRole(ClaimsPrincipal user) => LegitimateInterestRoles.Any(user.IsInRole);
 
     public static string DisplayRoleLabel(ClaimsPrincipal user)
     {
@@ -31,8 +136,10 @@ public sealed class AccessControlService
         if (user.IsInRole(RoleCommission)) return "Commission";
         if (user.IsInRole(RoleMarketSurveillanceAuthority)) return "Market Surveillance Authorities";
         if (user.IsInRole(RoleNotifiedBody)) return "Notified Body";
-        if (user.IsInRole(RoleLegitimateInterest)) return "Person with Legitimate Interest";
-        if (user.IsInRole(RoleNormalUser)) return "Normal User";
+        if (user.IsInRole(RoleLiRepair)) return "Legitimate interest: repair, repurposing, remanufacturing";
+        if (user.IsInRole(RoleLiRecycling)) return "Legitimate interest: recycling and battery treatment";
+        if (user.IsInRole(RoleLiTreatment)) return "Legitimate interest: authorised or WEEE treatment";
+        if (user.IsInRole(RoleNormalUser)) return "Cluster member"; // as the user lists say (finding W04)
         return "Cluster Member";
     }
 
@@ -45,56 +152,18 @@ public sealed class AccessControlService
             RoleCommission => "Commission",
             RoleMarketSurveillanceAuthority => "Market Surveillance Authorities",
             RoleNotifiedBody => "Notified Body",
-            RoleLegitimateInterest => "Person with Legitimate Interest",
-            RoleNormalUser => "Normal User",
+            RoleLiRepair => "Legitimate interest: repair, repurposing, remanufacturing",
+            RoleLiRecycling => "Legitimate interest: recycling and battery treatment",
+            RoleLiTreatment => "Legitimate interest: authorised or WEEE treatment",
+            RoleNormalUser => "Cluster member",
             _ => "Cluster Member"
         };
     }
-
-    public static bool CanSeeDraftPassports(ClaimsPrincipal user) =>
-        CanSeeUnpublishedAcrossClusters(user);
-
-    public static bool CanSeeSignedPassports(ClaimsPrincipal user) =>
-        IsAdmin(user)
-        || user.IsInRole(RoleNotifiedBody)
-        || user.IsInRole(RoleMarketSurveillanceAuthority)
-        || user.IsInRole(RoleCommission)
-        || user.IsInRole(RoleLegitimateInterest);
-
-    public static bool HasGlobalReportReadRole(ClaimsPrincipal user) =>
-        user.IsInRole(RoleNotifiedBody)
-        || user.IsInRole(RoleMarketSurveillanceAuthority)
-        || user.IsInRole(RoleCommission)
-        || user.IsInRole(RoleLegitimateInterest);
-
-    public static bool HasAllClusterReadScope(ClaimsPrincipal user) =>
-        IsAdmin(user) || HasGlobalReportReadRole(user);
-
-    public static bool CanSeeUnpublishedAcrossClusters(ClaimsPrincipal user) =>
-        IsAdmin(user)
-        || user.IsInRole(RoleMarketSurveillanceAuthority)
-        || user.IsInRole(RoleCommission);
 
     public static string CurrentEmail(ClaimsPrincipal user) =>
         user.FindFirstValue(ClaimTypes.Email)
         ?? user.Identity?.Name
         ?? string.Empty;
-
-    public async Task<IReadOnlyList<string>> GetClusterIdsForUserAsync(ClaimsPrincipal user, CancellationToken cancellationToken = default)
-    {
-        var email = CurrentEmail(user).Trim().ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            return [];
-        }
-
-        var memberships = await _clusterRepository.GetClusterMembershipsForUserAsync(email, cancellationToken);
-        return memberships
-            .Select(membership => BsonHelpers.GetString(membership, "clusterId"))
-            .Where(clusterId => !string.IsNullOrWhiteSpace(clusterId))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-    }
 
     public async Task<IReadOnlyList<string>> GetAdministeredClusterIdsForUserAsync(ClaimsPrincipal user, CancellationToken cancellationToken = default)
     {
@@ -110,13 +179,26 @@ public sealed class AccessControlService
         }
 
         var memberships = await _clusterRepository.GetClusterMembershipsForUserAsync(email, cancellationToken);
-        return memberships
+        var administered = memberships
             .Where(membership => BsonHelpers.GetString(membership, "role").Equals(RoleClusterAdmin, StringComparison.OrdinalIgnoreCase))
             .Select(membership => BsonHelpers.GetString(membership, "clusterId"))
             .Where(clusterId => !string.IsNullOrWhiteSpace(clusterId))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+        if (administered.Count == 0 || !ClusterRepository.IsDemo(await _clusterRepository.GetUserByEmailAsync(CurrentEmail(user), cancellationToken)))
+        {
+            return administered;
+        }
+
+        // A demo account's forms reach only the demo clusters, whatever else it was made admin of (finding R03).
+        var demoClusters = await _clusterRepository.DemoClusterIdsAsync(cancellationToken);
+        return administered.Where(demoClusters.Contains).ToList();
     }
+
+    /// <summary>Whether the signed-in person's account is one the demo data made, or a demo cluster admin made (finding R03).</summary>
+    public async Task<bool> IsDemoAccountAsync(ClaimsPrincipal user, CancellationToken cancellationToken = default) =>
+        user.Identity?.IsAuthenticated == true
+        && ClusterRepository.IsDemo(await _clusterRepository.GetUserByEmailAsync(CurrentEmail(user), cancellationToken));
 
     public async Task<bool> CanAdministerClusterAsync(ClaimsPrincipal user, string clusterId, CancellationToken cancellationToken = default)
     {
@@ -133,198 +215,11 @@ public sealed class AccessControlService
         var managedClusterIds = await GetAdministeredClusterIdsForUserAsync(user, cancellationToken);
         return managedClusterIds.Contains(clusterId, StringComparer.OrdinalIgnoreCase);
     }
-
-    public async Task<bool> CanOpenPassportDetailAsync(ClaimsPrincipal user, string clusterId, CancellationToken cancellationToken = default)
-    {
-        if (IsAdmin(user))
-        {
-            return true;
-        }
-
-        if (HasGlobalReportReadRole(user))
-        {
-            return true;
-        }
-
-        if (string.IsNullOrWhiteSpace(clusterId))
-        {
-            return false;
-        }
-
-        var clusterIds = await GetClusterIdsForUserAsync(user, cancellationToken);
-        return clusterIds.Contains(clusterId, StringComparer.OrdinalIgnoreCase);
-    }
-
-    public async Task<bool> CanOpenPassportSummaryAsync(
-        ClaimsPrincipal user,
-        BsonDocument passport,
-        PassportPublishPolicyService passportPublishPolicyService,
-        CancellationToken cancellationToken = default)
-    {
-        if (passportPublishPolicyService.IsPubliclyVisible(passport))
-        {
-            return true;
-        }
-
-        if (user.Identity?.IsAuthenticated != true)
-        {
-            return false;
-        }
-
-        return await CanOpenPassportDetailAsync(user, passport, passportPublishPolicyService, cancellationToken);
-    }
-
-    public async Task<bool> CanOpenPassportDetailAsync(
-        ClaimsPrincipal user,
-        BsonDocument passport,
-        PassportPublishPolicyService passportPublishPolicyService,
-        CancellationToken cancellationToken = default)
-    {
-        if (IsArchived(passport))
-        {
-            return false;
-        }
-
-        if (IsAdmin(user))
-        {
-            return true;
-        }
-
-        if (user.Identity?.IsAuthenticated != true)
-        {
-            return false;
-        }
-
-        if (HasGlobalReportReadRole(user))
-        {
-            return CanSeeDraftPassports(user) && IsDraft(passport)
-                || IsSignedOrPublished(passport, passportPublishPolicyService);
-        }
-
-        var clusterId = BsonHelpers.GetString(passport, "clusterId");
-        if (string.IsNullOrWhiteSpace(clusterId))
-        {
-            return false;
-        }
-
-        if (await CanAdministerClusterAsync(user, clusterId, cancellationToken))
-        {
-            return true;
-        }
-
-        var clusterIds = await GetClusterIdsForUserAsync(user, cancellationToken);
-        return clusterIds.Contains(clusterId, StringComparer.OrdinalIgnoreCase)
-            && IsSignedOrPublished(passport, passportPublishPolicyService);
-    }
-
-    public async Task<bool> CanViewTrustConformanceAsync(ClaimsPrincipal user, string clusterId, CancellationToken cancellationToken = default)
-    {
-        if (IsAdmin(user))
-        {
-            return true;
-        }
-
-        if (user.IsInRole(RoleMarketSurveillanceAuthority) || user.IsInRole(RoleCommission))
-        {
-            return true;
-        }
-
-        if (string.IsNullOrWhiteSpace(clusterId) || !user.IsInRole(RoleClusterAdmin))
-        {
-            return false;
-        }
-
-        var managedClusterIds = await GetAdministeredClusterIdsForUserAsync(user, cancellationToken);
-        return managedClusterIds.Contains(clusterId, StringComparer.OrdinalIgnoreCase);
-    }
-
-    public async Task<bool> CanViewBatteryHistoryAsync(ClaimsPrincipal user, string clusterId, CancellationToken cancellationToken = default)
-    {
-        if (IsAdmin(user))
-        {
-            return true;
-        }
-
-        return await CanAdministerClusterAsync(user, clusterId, cancellationToken);
-    }
-
-    public async Task<bool> CanEditLatestBatteryPassportAsync(
-        ClaimsPrincipal user,
-        BsonDocument passport,
-        CancellationToken cancellationToken = default)
-    {
-        if (IsAdmin(user))
-        {
-            return true;
-        }
-
-        return passport.GetValue("isLatestForBattery", false).ToBoolean()
-            && await CanAdministerClusterAsync(user, BsonHelpers.GetString(passport, "clusterId"), cancellationToken);
-    }
-
-    public async Task<bool> CanDownloadPassportDocumentAsync(
-        ClaimsPrincipal user,
-        string clusterId,
-        string visibility,
-        bool isPassportPublic,
-        CancellationToken cancellationToken = default)
-    {
-        if (IsPublicVisibility(visibility) && isPassportPublic)
-        {
-            return true;
-        }
-
-        if (user.Identity?.IsAuthenticated != true)
-        {
-            return false;
-        }
-
-        return await CanOpenPassportDetailAsync(user, clusterId, cancellationToken);
-    }
-
-    public async Task<bool> CanDownloadPassportDocumentAsync(
-        ClaimsPrincipal user,
-        BsonDocument passport,
-        string visibility,
-        bool isPassportPublic,
-        PassportPublishPolicyService passportPublishPolicyService,
-        CancellationToken cancellationToken = default)
-    {
-        if (IsPublicVisibility(visibility) && isPassportPublic)
-        {
-            return true;
-        }
-
-        if (user.Identity?.IsAuthenticated != true)
-        {
-            return false;
-        }
-
-        return await CanOpenPassportDetailAsync(user, passport, passportPublishPolicyService, cancellationToken);
-    }
-
-    private static bool IsPublicVisibility(string visibility)
-    {
-        return visibility.Equals("public", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool IsArchived(BsonDocument passport)
-    {
-        return BsonHelpers.GetString(passport, "registryInfo", "status")
-            .Equals("archived", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool IsDraft(BsonDocument passport)
-    {
-        return BsonHelpers.GetString(passport, "registryInfo", "status")
-            .Equals("draft", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool IsSignedOrPublished(BsonDocument passport, PassportPublishPolicyService passportPublishPolicyService)
-    {
-        var registryStatus = BsonHelpers.GetString(passport, "registryInfo", "status");
-        return registryStatus.Equals("published", StringComparison.OrdinalIgnoreCase)
-            || registryStatus.Equals("signed", StringComparison.OrdinalIgnoreCase)
-            || passportPublishPolicyService.HasCurrentValidSignature(passport);
-    }
 }
+
+/// <summary>
+/// What someone may do to one account: <see cref="Refusal"/> says why they may change nothing; otherwise they may create it
+/// (when it doesn't exist) or add and remove their own clusters' memberships, and change its name and password only when
+/// <see cref="MayChangeNameAndPassword"/>.
+/// </summary>
+public sealed record AccountRights(bool Exists, string? Refusal, bool MayChangeNameAndPassword);

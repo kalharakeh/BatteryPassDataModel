@@ -1,0 +1,65 @@
+@using BatteryPassWeb.Dpp.Audit
+@model AuditLine
+@{
+    // One event of the audit log: a line in plain English that opens on its details. <details> needs no script.
+    var zone = ViewData["Zone"] as TimeZoneInfo ?? TimeZoneInfo.Local;
+    var local = Model.When is { } when ? TimeZoneInfo.ConvertTime(when, zone) : (DateTimeOffset?)null;
+    var icon = Model.Icon.ToString().ToLowerInvariant();
+}
+<details class="bp-auditlog-item@(Model.IsProblem ? " is-problem" : string.Empty)">
+    <summary>
+        <time class="bp-auditlog-time" datetime="@Model.When?.ToString("O")">@(local?.ToString("HH:mm") ?? "–")</time>
+        <span class="bp-auditlog-icon"><svg aria-hidden="true" focusable="false"><use href="#audit-i-@icon" /></svg></span>
+        <span class="bp-auditlog-text">
+            @* One line, so no space shows between the words (redesign R6 review: "team : Battery"). *@
+            @foreach (var word in Model.Sentence) { if (word.Strong) {<b>@word.Text</b>} else {@word.Text} }
+            @if (Model.Change is not null)
+            {
+                <span class="bp-auditlog-change">@Model.Change</span>
+            }
+        </span>
+        <span class="bp-auditlog-tags">
+            @foreach (var tag in Model.Tags)
+            {
+                <span>@tag</span>
+            }
+        </span>
+        <svg class="bp-auditlog-chevron" aria-hidden="true" focusable="false"><use href="#audit-i-chevron" /></svg>
+    </summary>
+    <div class="bp-auditlog-detail">
+        <dl class="bp-auditlog-facts">
+            @foreach (var fact in Model.Facts)
+            {
+                <div>
+                    <dt>@fact.Term</dt>
+                    <dd>
+                        @if (fact.Href is not null)
+                        {
+                            <a href="@fact.Href">@fact.Detail</a>
+                        }
+                        else
+                        {
+                            @fact.Detail
+                        }
+                    </dd>
+                </div>
+            }
+        </dl>
+        @if (Model.Values.Count > 0)
+        {
+            <table class="bp-auditlog-values">
+                <thead><tr><th>Value</th><th>Before</th><th>After</th><th>Result</th></tr></thead>
+                <tbody>
+                    @foreach (var row in Model.Values)
+                    {
+                        <tr class="@(row.Refused ? "is-refused" : null)"><td>@row.Name</td><td>@row.Before</td><td>@row.After</td><td>@row.Result</td></tr>
+                    }
+                </tbody>
+            </table>
+        }
+        <details class="bp-auditlog-tech">
+            <summary>Technical details</summary>
+            <pre>@Model.Technical</pre>
+        </details>
+    </div>
+</details>

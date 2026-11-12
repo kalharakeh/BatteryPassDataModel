@@ -1,0 +1,47 @@
+@using BatteryPassWeb.Dpp.Identifiers
+@using BatteryPassWeb.Dpp.Pages
+@inject BatteryPassWeb.Dpp.Documents.DppLinks Links
+@model string
+@functions {
+    // The address in parts that each end in "/" (the first is "https://host/"): a line breaks after a slash first, never
+    // inside "https://" or the host, and inside a part only when the part alone is wider than the line (M1 round two F).
+    private static IEnumerable<string> Parts(string address)
+    {
+        var start = address.IndexOf("://", StringComparison.Ordinal);
+        var hostEnd = start < 0 ? -1 : address.IndexOf('/', start + 3);
+        if (hostEnd < 0)
+        {
+            yield return address;
+            yield break;
+        }
+
+        yield return address[..(hostEnd + 1)];
+        var rest = address[(hostEnd + 1)..];
+        var at = 0;
+        while (at < rest.Length)
+        {
+            var slash = rest.IndexOf('/', at);
+            var end = slash < 0 ? rest.Length : slash + 1;
+            yield return rest[at..end];
+            at = end;
+        }
+    }
+}
+@* A battery or passport ID (step 6d, the owner): the short ID to read, its full web address as the link and in the copy
+   button, and the full address on paper. With ViewData["IdFull"] (decision 68: the passport pages and the battery pages)
+   the whole address, website included, is the text itself, so selecting it copies it whole. *@
+@if (IdentifierForms.IsWebAddress(Model) && Links.IsConfigured)
+{
+    if (ViewData["IdFull"] is true)
+    {
+        <span class="bp-id-copy-row is-full"><a class="bp-id-value is-full" href="@Links.PassportUrl(Model)">@foreach (var part in Parts(Model)) {<span class="bp-id-part">@part</span><wbr />}</a>@await Html.PartialAsync("_CopyIdButton", Model)</span>
+    }
+    else
+    {
+        <span class="bp-id-copy-row"><a class="bp-id-value d-print-none" href="@Links.PassportUrl(Model)" title="@Model">@IdentifierForms.Display(Model)</a><span class="bp-id-value d-none d-print-inline">@Model</span>@await Html.PartialAsync("_CopyIdButton", Model)</span>
+    }
+}
+else
+{
+    <span class="bp-id-copy-row"><span class="bp-id-value" title="@Model">@BatteryPages.ShortId(Model)</span>@await Html.PartialAsync("_CopyIdButton", Model)</span>
+}

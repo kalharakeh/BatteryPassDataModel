@@ -5,18 +5,8 @@ public sealed class AntiForgeryProtectionTests
     [Fact]
     public void CookieAuthenticatedJsonMutationApis_ShouldRequireAntiForgeryTokens()
     {
-        var passportsApi = File.ReadAllText(RepoFile("web", "Controllers", "PassportsApiController.cs"));
-        var filesApi = File.ReadAllText(RepoFile("web", "Controllers", "FilesApiController.cs"));
         var authApi = File.ReadAllText(RepoFile("web", "Controllers", "AuthApiController.cs"));
 
-        AssertMethodHasAttribute(passportsApi, "Create", "ValidateAntiForgeryToken");
-        AssertMethodHasAttribute(passportsApi, "Update", "ValidateAntiForgeryToken");
-        AssertMethodHasAttribute(passportsApi, "Validate", "ValidateAntiForgeryToken");
-        AssertMethodHasAttribute(passportsApi, "Sign", "ValidateAntiForgeryToken");
-        AssertMethodHasAttribute(passportsApi, "Publish", "ValidateAntiForgeryToken");
-        AssertMethodHasAttribute(passportsApi, "Archive", "ValidateAntiForgeryToken");
-
-        AssertMethodHasAttribute(filesApi, "Upload", "ValidateAntiForgeryToken");
         AssertMethodHasAttribute(authApi, "Login", "ValidateAntiForgeryToken");
         AssertMethodHasAttribute(authApi, "Logout", "ValidateAntiForgeryToken");
     }
@@ -24,21 +14,11 @@ public sealed class AntiForgeryProtectionTests
     [Fact]
     public void ExternalApiTokenEndpoints_ShouldNotRequireBrowserAntiForgeryTokens()
     {
-        var externalApi = File.ReadAllText(RepoFile("web", "Controllers", "ExternalApiController.cs"));
+        var externalApi = File.ReadAllText(RepoFile("web", "Controllers", "DppApiController.cs"));
 
         Assert.DoesNotContain("ValidateAntiForgeryToken", externalApi);
-        Assert.Contains("Authorization", externalApi);
+        Assert.Contains("ExternalApiCredentials.Token(Request)", externalApi);
         Assert.Contains("ValidateTokenAsync", externalApi);
-    }
-
-    [Fact]
-    public void ExistingFileUploadJavascript_ShouldSendAntiForgeryHeader()
-    {
-        var editPassport = File.ReadAllText(RepoFile("web", "Views", "Admin", "EditPassport.cshtml"));
-
-        Assert.Contains("@Html.AntiForgeryToken()", editPassport);
-        Assert.Contains("fetch('/api/files'", editPassport);
-        Assert.Contains("'RequestVerificationToken': token", editPassport);
     }
 
     private static void AssertMethodHasAttribute(string source, string methodName, string attribute)

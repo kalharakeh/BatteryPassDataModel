@@ -1,0 +1,34 @@
+@using BatteryPassWeb.Controllers
+@using BatteryPassWeb.Dpp.Identifiers
+@model string
+@* The two void windows (6d-2b), on the tabs and on a release's page; they come back to the page they were opened from. *@
+<div class="bp-console-form-card bp-dialog-host">
+    <dialog id="void-dialog" class="bp-modal-panel bp-dialog" aria-labelledby="void-dialog-title">
+        <form method="post" action="/admin/battery-ids/void" class="bp-dialog-form">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="serialNumber" data-void-serial-field />
+            <input type="hidden" name="returnTo" value="@Model" />
+            <h2 id="void-dialog-title">Void battery ID <span data-void-serial-name></span></h2>
+            <p class="bp-help-text">A voided ID is never used again, and stays listed with its reason. Only an available ID can be voided.</p>
+            <label><span>Reason</span><input type="text" name="reason" maxlength="@BatteryIdPool.MaxReason" placeholder="e.g. Label damaged" required /></label>
+            <div class="bp-dialog-actions">
+                <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
+                <button type="submit" class="bp-danger-button">Void the ID</button>
+            </div>
+        </form>
+    </dialog>
+    <dialog id="@BatteryIdsController.ReleaseDialog" class="bp-modal-panel bp-dialog" aria-labelledby="void-unused-title">
+        <form method="post" action="/admin/battery-ids/void-unused" class="bp-dialog-form">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="releaseId" data-void-release-field />
+            <input type="hidden" name="returnTo" value="@Model" />
+            <h2 id="void-unused-title">Void the unused IDs of <span data-void-release-name></span></h2>
+            <p class="bp-help-text">Its <strong data-void-release-count></strong> available IDs are voided and never used again. IDs a battery already has stay as they are.</p>
+            <label><span>Reason</span><input type="text" name="reason" maxlength="@BatteryIdPool.MaxReason" placeholder="e.g. Order cancelled" required /></label>
+            <div class="bp-dialog-actions">
+                <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
+                <button type="submit" class="bp-danger-button">Void the unused IDs</button>
+            </div>
+        </form>
+    </dialog>
+</div>

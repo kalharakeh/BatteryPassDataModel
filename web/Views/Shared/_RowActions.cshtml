@@ -1,0 +1,21 @@
+@using BatteryPassWeb.Dpp.Pages
+@model RowActions
+@* A battery row's actions as icons, each named on hover (redesign R5, owner's item 1; the old app's row actions). *@
+<div class="bp-icon-action-row">
+    @if (Model.Manage is { } manage)
+    {
+        <a class="bp-report-action" href="@manage" aria-label="Open the battery page of @Model.Serial" data-tooltip="Battery page"><svg class="bp-report-action-icon" aria-hidden="true"><use href="#i-pencil" /></svg></a>
+    }
+    @if (Model.Public is { } publicPage)
+    {
+        <a class="bp-report-action" href="@publicPage" aria-label="Public page of @Model.Serial" data-tooltip="Public page"><svg class="bp-report-action-icon" aria-hidden="true"><use href="#i-globe" /></svg></a>
+    }
+    @if (Model.Detail is { } detail)
+    {
+        <a class="bp-report-action" href="@detail" aria-label="Detail page of @Model.Serial" data-tooltip="Detail page"><svg class="bp-report-action-icon" aria-hidden="true"><use href="#i-doc" /></svg></a>
+    }
+    @if (Model.History is { } history)
+    {
+        <a class="bp-report-action" href="@history" aria-label="History of @Model.Serial" data-tooltip="History"><svg class="bp-report-action-icon" aria-hidden="true"><use href="#i-history" /></svg></a>
+    }
+</div>

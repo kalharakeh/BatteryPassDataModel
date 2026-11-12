@@ -1,0 +1,12 @@
+@model (string Icon, string Label, string Anchor)
+@* A key figure's title: on the detail page a link down to its full entry (redesign R5); on the summary plain words. *@
+<div class="bp-kf-label">
+    @if (ViewData["Detail"] is true)
+    {
+        <a href="#@Model.Anchor" data-key-figure-link><svg class="bp-i" aria-hidden="true"><use href="#i-@Model.Icon" /></svg>@Model.Label <span class="bp-kf-down" aria-hidden="true">↓</span></a>
+    }
+    else
+    {
+        <svg class="bp-i" aria-hidden="true"><use href="#i-@Model.Icon" /></svg>@Model.Label
+    }
+</div>

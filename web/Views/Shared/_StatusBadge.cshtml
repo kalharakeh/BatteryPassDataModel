@@ -1,0 +1,9 @@
+@using BatteryPassWeb.Dpp.Pages
+@model StatusBadge
+@* One status as a badge (redesign R3, decision 36): a square Battery tag (#22) or a round Passport pill (#2). *@
+<span class="bp-badge is-@Model.Kind @Model.Css"><svg class="bp-i" aria-hidden="true"><use href="#i-@Model.Icon" /></svg><span class="bp-badge-kind">@(Model.Kind == StatusBadge.BatteryKind ? "Battery" : "Passport")</span>@Model.Words
+    @if (Model.Detail is { } detail)
+    {
+        <small>@detail</small>
+    }
+</span>

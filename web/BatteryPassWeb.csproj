@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="JsonSchema.Net" Version="9.5.0" />
     <PackageReference Include="MongoDB.Driver" Version="3.9.0" />
     <PackageReference Include="QRCoder" Version="1.6.0" />
     <PackageReference Include="Snappier" Version="1.3.1" />
@@ -16,6 +17,13 @@
   <ItemGroup>
     <Content Remove=".env;.env.*" />
     <None Remove=".env;.env.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="Dpp\Schemas\**" />
+    <EmbeddedResource Include="Dpp\Schemas\v2.0.1\*.json" LogicalName="Dpp.Schemas.%(Filename)%(Extension)" />
+    <Content Remove="Dpp\Demo\**" />
+    <EmbeddedResource Include="Dpp\Demo\demo-catalogue.json;Dpp\Demo\Pictures\*.png" LogicalName="Dpp.Demo.%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

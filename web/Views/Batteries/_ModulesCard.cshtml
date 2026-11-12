@@ -1,0 +1,62 @@
+@using BatteryPassWeb.Dpp.Pages
+@model BatteryCards
+@* The module list (decision 31): the team edits it on its battery page; the cluster admin's page shows it (step 4a). *@
+<section class="bp-card bp-console-form-card bp-battery-card mt-4" id="modules">
+    <span class="bp-summary-title">Modules <em class="bp-field-marker">Not passport data</em></span>
+    <h2>@(Model.Pack.Modules.Count == 0 ? "No modules listed" : Words.Count(Model.Pack.Modules.Count, "module"))</h2>
+    <p class="mb-0">
+        @if (Model.ForTeam)
+        {
+            <text>The public page shows how many modules the battery has, with the model's
+            <a href="@Model.ModuleDescriptionHref">module description</a>@(Model.HasModuleDescription ? string.Empty : " (not typed yet)"). The battery
+            system's export sets this list through "Upload a file"; type or correct it here.</text>
+        }
+        else
+        {
+            <text>The battery system's export sets this list, through "Upload a file" or the API; the team corrects it.</text>
+        }
+        The module IDs are seen only by the battery's cluster, market surveillance and @Model.Team.
+    </p>
+    @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "modules")
+    @if (Model.Pack.Modules.Count > 0)
+    {
+        <div class="bp-table-scroll">
+            <table class="table align-middle bp-console-table bp-mobile-card-table bp-module-table mb-0">
+                <thead><tr><th>Position</th><th>Serial number</th><th>Connectivity ID</th></tr></thead>
+                <tbody>
+                    @foreach (var module in Model.Pack.Modules)
+                    {
+                        <tr>
+                            <td data-label="Position">@module.Position</td>
+                            <td data-label="Serial number">@(module.SerialNumber ?? "—")</td>
+                            <td data-label="Connectivity ID">@(module.ConnectivityId ?? "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    @if (Model.ForTeam && Model.Replaced)
+    {
+        <p class="bp-help-text mt-2 mb-0" data-frozen>The module list stays as it was on this earlier passport; change it on the newest one.</p>
+    }
+    else if (Model.ForTeam)
+    {
+        var listCard = ViewData[BatteryPassWeb.Controllers.BatteriesController.CardKey] as string;
+        <details class="bp-module-edit" open="@(listCard == "module-list")">
+            <summary>Type or correct the list</summary>
+            @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "module-list")
+            <form method="post" action="@Model.Href/modules">
+                @Html.AntiForgeryToken()
+                <label>
+                    <span>One module per line: position; serial number; connectivity ID. One of the IDs may be empty. An empty list clears it.</span>
+                    <textarea name="modules" rows="@Math.Clamp(Model.Pack.Modules.Count + 2, 4, 14)" spellcheck="false" placeholder="1; ; MD-A9ASVW8">@ModuleList.ToText(Model.Pack.Modules)</textarea>
+                </label>
+                <div class="bp-live-save">
+                    <span></span>
+                    <button type="submit" class="bp-secondary-button">Save modules</button>
+                </div>
+            </form>
+        </details>
+    }
+</section>

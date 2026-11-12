@@ -1,0 +1,130 @@
+@using BatteryPassWeb.Dpp.Pages
+@model SitesAndOperatorsPage
+@{
+    ViewData["Title"] = "Sites and operators";
+    var back = ProductDataPages.SafeReturn(Context.Request.Query["returnTo"].ToString());
+    string Keep(string href) => back is null ? href : $"{href}&returnTo={Uri.EscapeDataString(back)}";
+}
+
+<main class="bp-page bp-admin-page">
+    <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
+    @await Html.PartialAsync("_AdminTabs", "sites-and-operators")
+    @if (back is not null)
+    {
+        <div class="bp-page-return-row mt-3">
+            <a href="@back" class="bp-page-return-link">Back to the battery model, to add its batch</a>
+        </div>
+    }
+    @await Html.PartialAsync("_Messages")
+
+    <section class="bp-card bp-product-editor-section bp-console-form-card mt-4">
+        <div class="bp-product-section-heading">
+            <div>
+                <h2>Manufacturing sites</h2>
+                <p class="bp-help-text mb-0">Manufacturer identifier and information, and the manufacturing place (#12, #15, #16). Chosen when you add a batch.</p>
+            </div>
+        </div>
+        @if (Model.Sites.Count == 0)
+        {
+            <p class="mb-0">No manufacturing sites yet.</p>
+        }
+        else
+        {
+            <div class="bp-table-scroll">
+                <table class="table table-hover align-middle bp-console-table mb-0">
+                    <thead><tr><th>Site</th><th>Values</th><th>Batches</th></tr></thead>
+                    <tbody>
+                        @foreach (var row in Model.Sites)
+                        {
+                            <tr class="@(Model.Editor?.Id == row.Site.Id ? "table-active" : string.Empty)">
+                                <td><a href="@(Keep(ProductDataPages.SitesHref("site", row.Site.Id)))#editor" aria-current="@(Model.Editor?.Id == row.Site.Id ? "page" : null)">@row.Site.Name</a>@if (row.Site.IsDemo) {<text> </text><em class="bp-field-marker">Demo data</em>}</td>
+                                <td>@await Html.PartialAsync("_Completeness", new Completeness(row.Filled, row.Total, row.Missing))</td>
+                                <td>@row.Batches</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        <form method="post" action="/admin/sites" class="d-flex gap-2">
+            @Html.AntiForgeryToken()
+            @if (back is not null)
+            {
+                <input type="hidden" name="returnTo" value="@back" />
+            }
+            <input type="text" name="name" placeholder="New site name" aria-label="New site name" class="flex-grow-1" required />
+            <button type="submit" class="bp-secondary-button bp-button-compact text-nowrap">Add site</button>
+        </form>
+    </section>
+    <section class="bp-card bp-product-editor-section bp-console-form-card mt-4">
+        <div class="bp-product-section-heading">
+            <div>
+                <h2>Economic operators</h2>
+                <p class="bp-help-text mb-0">The operator identifier and information (#7, #14). Chosen when you add a battery.</p>
+            </div>
+        </div>
+        @if (Model.Operators.Count == 0)
+        {
+            <p class="mb-0">No economic operators yet.</p>
+        }
+        else
+        {
+            <div class="bp-table-scroll">
+                <table class="table table-hover align-middle bp-console-table mb-0">
+                    <thead><tr><th>Operator</th><th>Values</th><th>Batteries</th></tr></thead>
+                    <tbody>
+                        @foreach (var row in Model.Operators)
+                        {
+                            <tr class="@(Model.Editor?.Id == row.Operator.Id ? "table-active" : string.Empty)">
+                                <td><a href="@(ProductDataPages.SitesHref("operator", row.Operator.Id))#editor" aria-current="@(Model.Editor?.Id == row.Operator.Id ? "page" : null)">@row.Operator.Name</a>@if (row.Operator.IsDemo) {<text> </text><em class="bp-field-marker">Demo data</em>}</td>
+                                <td>@await Html.PartialAsync("_Completeness", new Completeness(row.Filled, row.Total, row.Missing))</td>
+                                <td>@row.Packs</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        <form method="post" action="/admin/operators" class="d-flex gap-2">
+            @Html.AntiForgeryToken()
+            <input type="text" name="name" placeholder="New operator name" aria-label="New operator name" class="flex-grow-1" required />
+            <button type="submit" class="bp-secondary-button bp-button-compact text-nowrap">Add operator</button>
+        </form>
+    </section>
+
+    @await Html.PartialAsync("_Examples", Model.Examples)
+    @if (Model.RealCopy is { } copy)
+    {
+        @* Decision 66: a real copy of a demo site or operator; the demo one stays as it is. *@
+        <section class="bp-card bp-console-form-card mt-4 bp-real-copy" id="copy-as-real">
+            <h2>@copy.Name is demo data</h2>
+            <p class="mb-2">
+                Real battery IDs can't be used with demo data, and Reset demo data rebuilds it. Copy as real makes a real
+                @copy.KindWords with the same values and documents. The demo one stays as it is.
+            </p>
+            <form method="post" action="@copy.Action" class="d-flex flex-wrap align-items-end gap-2">
+                @Html.AntiForgeryToken()
+                <label class="bp-product-version-selected-field flex-grow-1">
+                    <span>Name of the real @copy.KindWords</span>
+                    <input type="text" name="name" value="@copy.SuggestedName" required />
+                </label>
+                <button type="submit" class="bp-primary-button bp-button-compact text-nowrap" data-confirm-action data-confirm-title="Copy as real" data-confirm-message="Make a real copy with the same values and documents? The demo one stays as it is." data-confirm-submit="Copy" data-confirm-busy="Copying. The page opens the copy when it is done.">Copy as real</button>
+            </form>
+        </section>
+    }
+    @if (Model.Editor is { } editor)
+    {
+        @await Html.PartialAsync("_RecordEditor", editor)
+    }
+    else
+    {
+        <div class="bp-card mt-4">Choose a site or an operator above to edit its passport values.</div>
+    }
+    @* Asks before a removal that can't be undone (redesign R6). *@
+    @await Html.PartialAsync("_ConfirmModal")
+</main>
+
+@section Scripts {
+    <script src="~/js/bp-record-editor.js" asp-append-version="true"></script>
+    <script src="~/js/bp-confirm.js" asp-append-version="true"></script>
+}

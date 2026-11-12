@@ -7,10 +7,69 @@ public sealed class ClusterRepository
 {
     private readonly MongoContext _mongoContext;
 
+    /// <summary>
+    /// Compares addresses without regard to capitals (finding U28): new writers store them in lower case, but an older
+    /// one may not have, and no index forces it.
+    /// </summary>
+    /// <summary>The cluster a cluster admin made the account in (finding R19); the team's accounts have none.</summary>
+    public const string CreatedInClusterField = "createdInCluster";
+
+    /// <summary>The demo data's mark on accounts, clusters, memberships and tokens (decision 32).</summary>
+    public const string DemoMark = "isDemo";
+
+    /// <summary>Whether a record carries the demo data's mark.</summary>
+    public static bool IsDemo(BsonDocument? record) =>
+        record?.GetValue(DemoMark, false) is { IsBoolean: true, AsBoolean: true };
+
+    /// <summary>The clusters the demo data made (finding R03).</summary>
+    public async Task<IReadOnlySet<string>> DemoClusterIdsAsync(CancellationToken cancellationToken = default) =>
+        _mongoContext.Database == null
+            ? new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            : (await _mongoContext.Database.GetCollection<BsonDocument>("clusters")
+                .Find(Builders<BsonDocument>.Filter.Eq(DemoMark, true))
+                .ToListAsync(cancellationToken))
+                .Select(cluster => NormalizeClusterId(BsonHelpers.GetString(cluster, "clusterId")))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    public static readonly Collation IgnoreCase = new("en", strength: CollationStrength.Secondary);
+
     public ClusterRepository(MongoContext mongoContext)
     {
         _mongoContext = mongoContext;
     }
+
+    /// <summary>An address as the app writes it: no outer spaces, lower case.</summary>
+    public static string NormalizeEmail(string? email) => (email ?? string.Empty).Trim().ToLowerInvariant();
+
+    /// <summary>
+    /// The account with this address whatever its capitals and outer spaces (finding U28): the address exactly as typed
+    /// first (so two old accounts that differ only in capitals each still sign in as before), then in lower case, as the
+    /// app stores it, then one stored with other capitals. Every account look-up goes through here, sign-in included.
+    /// </summary>
+    public static async Task<BsonDocument?> FindUserAsync(IMongoDatabase database, string? email, CancellationToken cancellationToken = default)
+    {
+        var typed = (email ?? string.Empty).Trim();
+        var normalizedEmail = NormalizeEmail(email);
+        if (normalizedEmail.Length == 0)
+        {
+            return null;
+        }
+
+        var users = database.GetCollection<BsonDocument>("users");
+        if (typed != normalizedEmail
+            && await users.Find(Builders<BsonDocument>.Filter.Eq("email", typed)).FirstOrDefaultAsync(cancellationToken) is { } asTyped)
+        {
+            return asTyped;
+        }
+
+        return await users.Find(Builders<BsonDocument>.Filter.Eq("email", normalizedEmail)).FirstOrDefaultAsync(cancellationToken)
+            ?? await users.Find(Builders<BsonDocument>.Filter.Eq("email", normalizedEmail), new FindOptions { Collation = IgnoreCase })
+                .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>The memberships of this address, whatever the capitals they were stored with (finding U28).</summary>
+    public static FilterDefinition<BsonDocument> MembershipsOf(string? email) =>
+        Builders<BsonDocument>.Filter.Eq("email", NormalizeEmail(email));
 
     public async Task EnsureIndexesAsync(CancellationToken cancellationToken = default)
     {
@@ -78,7 +137,7 @@ public sealed class ClusterRepository
         }
 
         return await _mongoContext.Database.GetCollection<BsonDocument>("clusterMemberships")
-            .Find(Builders<BsonDocument>.Filter.Eq("email", email.Trim().ToLowerInvariant()))
+            .Find(MembershipsOf(email), new FindOptions { Collation = IgnoreCase })
             .SortBy(membership => membership["clusterId"])
             .ToListAsync(cancellationToken);
     }
@@ -104,10 +163,7 @@ public sealed class ClusterRepository
             return null;
         }
 
-        var normalizedEmail = email.Trim().ToLowerInvariant();
-        return await _mongoContext.Database.GetCollection<BsonDocument>("users")
-            .Find(Builders<BsonDocument>.Filter.Eq("email", normalizedEmail))
-            .FirstOrDefaultAsync(cancellationToken);
+        return await FindUserAsync(_mongoContext.Database, email, cancellationToken);
     }
 
     public async Task<long> CountMembershipsByClusterAsync(string clusterId, CancellationToken cancellationToken = default)
@@ -146,7 +202,7 @@ public sealed class ClusterRepository
 
         var updates = new List<UpdateDefinition<BsonDocument>>
         {
-            Builders<BsonDocument>.Update.Set("email", normalizedEmail),
+            Builders<BsonDocument>.Update.SetOnInsert("email", normalizedEmail),
             Builders<BsonDocument>.Update.Set("name", string.IsNullOrWhiteSpace(name) ? normalizedEmail : name.Trim()),
             Builders<BsonDocument>.Update.Set("roles", new BsonArray(normalizedRoles)),
             Builders<BsonDocument>.Update.Set("updatedAt", now),
@@ -158,11 +214,82 @@ public sealed class ClusterRepository
             updates.Add(Builders<BsonDocument>.Update.Set("passwordHash", passwordHash));
         }
 
+        // An account stored with capitals is updated where it is, so no second one is made (finding U28).
         await _mongoContext.Database.GetCollection<BsonDocument>("users").UpdateOneAsync(
-            Builders<BsonDocument>.Filter.Eq("email", normalizedEmail),
+            await UserFilterAsync(normalizedEmail, cancellationToken),
             Builders<BsonDocument>.Update.Combine(updates),
             new UpdateOptions { IsUpsert = true },
             cancellationToken);
+    }
+
+    /// <summary>
+    /// A cluster admin's new account: a member with this password, marked with the cluster it was made in, so that cluster's
+    /// admins may later change its name and password (finding R19). Only ever inserts: an account that exists meanwhile is
+    /// left as it is.
+    /// </summary>
+    public async Task CreateAccountInClusterAsync(string email, string name, string passwordHash, string clusterId, CancellationToken cancellationToken = default, bool isDemo = false)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(clusterId))
+        {
+            return;
+        }
+
+        var normalizedEmail = NormalizeEmail(email);
+        var now = DateTime.UtcNow.ToString("O");
+        await _mongoContext.Database.GetCollection<BsonDocument>("users").UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("email", normalizedEmail),
+            Builders<BsonDocument>.Update
+                .SetOnInsert("email", normalizedEmail)
+                .SetOnInsert("name", string.IsNullOrWhiteSpace(name) ? normalizedEmail : name.Trim())
+                .SetOnInsert("roles", new BsonArray { AccessControlService.RoleNormalUser })
+                .SetOnInsert("passwordHash", passwordHash)
+                .SetOnInsert(CreatedInClusterField, NormalizeClusterId(clusterId))
+                .SetOnInsert(DemoMark, isDemo)
+                .SetOnInsert("createdAt", now)
+                .SetOnInsert("updatedAt", now),
+            new UpdateOptions { IsUpsert = true, Collation = IgnoreCase },
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// A cluster admin's name or password change, written only while the rule of finding R19 still holds for the stored
+    /// account: it carries the mark of one of <paramref name="administeredClusterIds"/> and has no role across the app.
+    /// The update's own filter says so, so a save in flight when the team gives the account a role changes nothing.
+    /// Returns whether it was written.
+    /// </summary>
+    public async Task<bool> ChangeIfAClusterAdminMayAsync(
+        string email,
+        IReadOnlySet<string> administeredClusterIds,
+        string? name,
+        string? passwordHash,
+        CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email) || administeredClusterIds.Count == 0
+            || (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(passwordHash)))
+        {
+            return false;
+        }
+
+        var notAppWide = new BsonArray { AccessControlService.RoleNormalUser, "viewer", AccessControlService.RoleClusterAdmin };
+        var filter = Builders<BsonDocument>.Filter.And(
+            await UserFilterAsync(email, cancellationToken),
+            Builders<BsonDocument>.Filter.In(CreatedInClusterField, administeredClusterIds.Select(NormalizeClusterId)),
+            new BsonDocumentFilterDefinition<BsonDocument>(new BsonDocument(
+                "roles", new BsonDocument("$not", new BsonDocument("$elemMatch", new BsonDocument("$nin", notAppWide))))));
+        var updates = new List<UpdateDefinition<BsonDocument>> { Builders<BsonDocument>.Update.Set("updatedAt", DateTime.UtcNow.ToString("O")) };
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            updates.Add(Builders<BsonDocument>.Update.Set("name", name.Trim()));
+        }
+
+        if (!string.IsNullOrWhiteSpace(passwordHash))
+        {
+            updates.Add(Builders<BsonDocument>.Update.Set("passwordHash", passwordHash));
+        }
+
+        var result = await _mongoContext.Database.GetCollection<BsonDocument>("users").UpdateOneAsync(
+            filter, Builders<BsonDocument>.Update.Combine(updates), cancellationToken: cancellationToken);
+        return result.MatchedCount > 0;
     }
 
     public async Task UpdateUserProfileAsync(
@@ -188,8 +315,29 @@ public sealed class ClusterRepository
         }
 
         await _mongoContext.Database.GetCollection<BsonDocument>("users").UpdateOneAsync(
-            Builders<BsonDocument>.Filter.Eq("email", normalizedEmail),
+            await UserFilterAsync(email, cancellationToken),
             Builders<BsonDocument>.Update.Combine(updates),
+            cancellationToken: cancellationToken);
+    }
+
+    /// <summary>The stored account by its id when it exists (whatever its capitals), else the lower-case address.</summary>
+    private async Task<FilterDefinition<BsonDocument>> UserFilterAsync(string email, CancellationToken cancellationToken) =>
+        await FindUserAsync(_mongoContext.Database!, email, cancellationToken) is { } user
+            ? Builders<BsonDocument>.Filter.Eq("_id", user["_id"])
+            : Builders<BsonDocument>.Filter.Eq("email", NormalizeEmail(email));
+
+    public async Task SetPasswordHashAsync(string email, string passwordHash, CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(passwordHash))
+        {
+            return;
+        }
+
+        await _mongoContext.Database.GetCollection<BsonDocument>("users").UpdateOneAsync(
+            await UserFilterAsync(email, cancellationToken),
+            Builders<BsonDocument>.Update
+                .Set("passwordHash", passwordHash)
+                .Set("updatedAt", DateTime.UtcNow.ToString("O")),
             cancellationToken: cancellationToken);
     }
 
@@ -209,17 +357,18 @@ public sealed class ClusterRepository
 
         var now = DateTime.UtcNow.ToString("O");
         await _mongoContext.Database.GetCollection<BsonDocument>("users").UpdateOneAsync(
-            Builders<BsonDocument>.Filter.Eq("email", current),
+            await UserFilterAsync(currentEmail, cancellationToken),
             Builders<BsonDocument>.Update
                 .Set("email", next)
                 .Set("updatedAt", now),
             cancellationToken: cancellationToken);
         await _mongoContext.Database.GetCollection<BsonDocument>("clusterMemberships").UpdateManyAsync(
-            Builders<BsonDocument>.Filter.Eq("email", current),
+            MembershipsOf(current),
             Builders<BsonDocument>.Update
                 .Set("email", next)
                 .Set("updatedAt", now),
-            cancellationToken: cancellationToken);
+            new UpdateOptions { Collation = IgnoreCase },
+            cancellationToken);
     }
 
     public async Task UpsertClusterAsync(string clusterId, string name, CancellationToken cancellationToken = default)
@@ -285,16 +434,40 @@ public sealed class ClusterRepository
         var now = DateTime.UtcNow.ToString("O");
         await _mongoContext.Database.GetCollection<BsonDocument>("clusterMemberships").UpdateOneAsync(
             Builders<BsonDocument>.Filter.And(
-                Builders<BsonDocument>.Filter.Eq("email", normalizedEmail),
+                MembershipsOf(normalizedEmail),
                 Builders<BsonDocument>.Filter.Eq("clusterId", normalizedClusterId)),
             Builders<BsonDocument>.Update
-                .Set("email", normalizedEmail)
-                .Set("clusterId", normalizedClusterId)
+                .SetOnInsert("email", normalizedEmail)
+                .SetOnInsert("clusterId", normalizedClusterId)
                 .Set("role", normalizedRole)
                 .Set("updatedAt", now)
                 .SetOnInsert("createdAt", now),
-            new UpdateOptions { IsUpsert = true },
+            new UpdateOptions { IsUpsert = true, Collation = IgnoreCase },
             cancellationToken);
+    }
+
+    /// <summary>Deletes an account and every cluster membership it has (decision 30).</summary>
+    public async Task DeleteUserAsync(string email, CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email))
+        {
+            return;
+        }
+
+        await _mongoContext.Database.GetCollection<BsonDocument>("clusterMemberships")
+            .DeleteManyAsync(MembershipsOf(email), new DeleteOptions { Collation = IgnoreCase }, cancellationToken);
+        await _mongoContext.Database.GetCollection<BsonDocument>("users")
+            .DeleteOneAsync(await UserFilterAsync(email, cancellationToken), cancellationToken);
+    }
+
+    /// <summary>"North User is no longer in Customer North.": what removing a membership did, by name (finding U29).</summary>
+    public async Task<string> MembershipRemovedMessageAsync(string email, string clusterId, CancellationToken cancellationToken = default)
+    {
+        var user = await GetUserByEmailAsync(email, cancellationToken);
+        var cluster = await GetClusterByIdAsync(clusterId, cancellationToken);
+        var person = user is null ? string.Empty : BsonHelpers.GetString(user, "name");
+        var clusterName = cluster is null ? string.Empty : BsonHelpers.GetString(cluster, "name");
+        return $"{(string.IsNullOrWhiteSpace(person) ? NormalizeEmail(email) : person)} is no longer in {(string.IsNullOrWhiteSpace(clusterName) ? clusterId : clusterName)}.";
     }
 
     public async Task DeleteClusterMembershipAsync(string email, string clusterId, CancellationToken cancellationToken = default)
@@ -304,26 +477,28 @@ public sealed class ClusterRepository
             return;
         }
 
-        await _mongoContext.Database.GetCollection<BsonDocument>("clusterMemberships").DeleteOneAsync(
+        await _mongoContext.Database.GetCollection<BsonDocument>("clusterMemberships").DeleteManyAsync(
             Builders<BsonDocument>.Filter.And(
-                Builders<BsonDocument>.Filter.Eq("email", email.Trim().ToLowerInvariant()),
+                MembershipsOf(email),
                 Builders<BsonDocument>.Filter.Eq("clusterId", NormalizeClusterId(clusterId))),
+            new DeleteOptions { Collation = IgnoreCase },
             cancellationToken);
     }
 
     public static string NormalizeClusterId(string clusterId) =>
         clusterId.Trim().ToLowerInvariant();
 
+    public const string OnlyTwoClusterRoles = "A person is a user or a cluster admin in a cluster.";
+
+    /// <summary>Whether a form's membership role is one of the two a cluster has (finding S08).</summary>
+    public static bool IsClusterMembershipRole(string? role) =>
+        role?.Trim() is AccessControlService.RoleNormalUser or AccessControlService.RoleClusterAdmin;
+
     public static string NormalizeClusterMembershipRole(string role)
     {
-        return role.Trim() switch
-        {
-            AccessControlService.RoleClusterAdmin => AccessControlService.RoleClusterAdmin,
-            AccessControlService.RoleNotifiedBody => AccessControlService.RoleNotifiedBody,
-            AccessControlService.RoleMarketSurveillanceAuthority => AccessControlService.RoleMarketSurveillanceAuthority,
-            AccessControlService.RoleCommission => AccessControlService.RoleCommission,
-            AccessControlService.RoleLegitimateInterest => AccessControlService.RoleLegitimateInterest,
-            _ => AccessControlService.RoleNormalUser
-        };
+        // A cluster has two roles (finding S08); anything else is stored, and read, as a plain user.
+        return role.Trim() == AccessControlService.RoleClusterAdmin
+            ? AccessControlService.RoleClusterAdmin
+            : AccessControlService.RoleNormalUser;
     }
 }

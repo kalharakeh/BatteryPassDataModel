@@ -1,0 +1,60 @@
+@using BatteryPassWeb.Controllers
+@using BatteryPassWeb.Dpp.Identifiers
+@using BatteryPassWeb.Dpp.Pages
+@model ReleasePage
+@* One release's page (6d-2b): where a release lands, with its export at the top for the labels. It is the full record:
+   every ID with its status, voided ones too (6d-4). *@
+@{
+    var release = Model.Release;
+    ViewData["Title"] = release.Reference;
+    var here = Context.Request.Path.ToString();
+    var export = $"/admin/battery-ids/export?release={Uri.EscapeDataString(release.ReleaseId)}&voided=true";
+}
+
+<main class="bp-page bp-admin-page">
+    <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/bp-battery-ids.css" asp-append-version="true" />
+    <nav class="bp-breadcrumb" aria-label="Breadcrumb">
+        <a href="/admin/battery-ids">Battery IDs</a>
+        <span aria-current="page">@release.Reference</span>
+    </nav>
+    @await Html.PartialAsync("~/Views/ProductData/_Messages.cshtml")
+
+    <section class="bp-card bp-console-form-card bp-release-head mt-3">
+        <div class="bp-release-head-text">
+            <span class="bp-summary-title">Release@(release.IsDemo ? " · demo" : null)</span>
+            <h1>@release.Reference</h1>
+            <p class="mb-0">@Model.ModelName(release.ModelId) · released @ValueWords.Time(release.ReleasedAtUtc) by @release.ReleasedBy</p>
+            <span class="bp-release-counts mt-2">
+                <strong>@Words.Count(release.Total, "ID")</strong>
+                @foreach (var status in ReleasedIdStatuses.All.Where(status => release.Count(status) > 0))
+                {
+                    <span class="bp-id-status is-@status">@release.Count(status) @ReleasedIdStatuses.Words(status).ToLowerInvariant()</span>
+                }
+            </span>
+        </div>
+        <div class="bp-release-head-actions">
+            <a class="bp-primary-button" href="@export"><svg class="bp-i" aria-hidden="true"><use href="#i-download" /></svg>Export to Excel</a>
+            @if (release.Count(ReleasedIdStatuses.Available) > 0)
+            {
+                <button type="button" class="bp-secondary-button" data-void-unused data-release-id="@release.ReleaseId" data-release-reference="@release.Reference" data-release-available="@release.Count(ReleasedIdStatuses.Available)">Void unused…</button>
+            }
+        </div>
+        @if (Model.JustReleased)
+        {
+            <p class="bp-help-text bp-release-next mb-0">Next: export the IDs for the label printer, then create each battery from its serial number on <a href="/admin/batteries/new">Create battery</a>.</p>
+        }
+    </section>
+
+    <section class="bp-card bp-console-form-card mt-4">
+        <h2 class="h5">Its IDs</h2>
+        @await Html.PartialAsync("_IdRows", (Model.Items, (Func<string?, string>)Model.ModelName, false))
+    </section>
+
+    @await Html.PartialAsync("_VoidDialogs", here)
+</main>
+
+@section Scripts {
+    <script src="~/js/bp-admin-pages.js" asp-append-version="true"></script>
+    <script src="~/js/bp-battery-ids.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,93 @@
+@using BatteryPassWeb.Dpp.Pages
+@model BatteryListView
+@* One battery list for the team's Batteries page and the Registry (redesign R7, the owner's choices 3 and 4): the same
+   search, columns and row icons, every row on one line at 1280 px; cards on a phone. The battery ID is behind the copy
+   icon (copied in full) and on the serial number's hover; long text ends in "…", whole on hover. *@
+<section class="bp-console-toolbar bp-battery-list-tools mt-4">
+    <form method="get" action="@Model.Action" class="bp-batteries-search" role="search">
+        <label class="visually-hidden" for="battery-search">Search batteries</label>
+        <input id="battery-search" type="search" name="q" value="@Model.Query" placeholder="@Model.Placeholder" />
+        <button type="submit" class="bp-secondary-button">Search</button>
+    </form>
+    @if (Model.CreateHref is { } create)
+    {
+        <a href="@create" class="bp-primary-button text-nowrap">Create battery</a>
+    }
+</section>
+
+<section class="bp-card bp-table-card bp-batteries-card mt-3">
+    @if (Model.Rows.Count == 0)
+    {
+        <p class="bp-batteries-count">@(Model.Searched ? $"No battery matches “{Model.Query}”." : Model.Empty)@if (Model.Searched)
+            {
+                <text> <a href="@Model.Action">Show all</a></text>
+            }</p>
+    }
+    else
+    {
+        <div class="bp-batteries-count-row">
+            <p class="bp-batteries-count">@(Model.Searched ? $"{Words.Count(Model.Rows.Count, "battery", "batteries")} match “{Model.Query}”." : $"{Words.Count(Model.Rows.Count, "battery", "batteries")}.")@if (Model.Searched)
+                {
+                    <text> <a href="@Model.Action">Show all</a></text>
+                }</p>
+            @* On a phone the Status heading is hidden, so its explainer shows here (step 6c, the owner's choice). *@
+            @await Html.PartialAsync("_StatusHelp")
+        </div>
+        <div class="bp-table-scroll">
+            <table class="table align-middle bp-console-table bp-batteries-table bp-mobile-card-table bp-one-line-list">
+                <thead>
+                    <tr>
+                        <th>Serial number</th>
+                        <th>Model</th>
+                        <th>Batch</th>
+                        @if (Model.ShowClusters)
+                        {
+                            <th>Cluster</th>
+                        }
+                        <th>Status @await Html.PartialAsync("_StatusHelp")</th>
+                        <th>Updated</th>
+                        <th class="bp-actions-column"><span class="visually-hidden">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Rows)
+                    {
+                        <tr>
+                            <td data-label="Serial number">
+                                <span class="bp-id-copy-row"><a href="@Model.OpenHref(row)" class="bp-battery-link bp-one-line-clip is-serial" title="@row.SerialNumber · battery ID @row.Identifier">@row.SerialNumber</a>@await Html.PartialAsync("_CopyIdButton", row.Identifier)</span>
+                            </td>
+                            <td data-label="Model"><span class="bp-one-line-clip" title="@row.ModelName · @row.FamilyName family">@row.ModelName</span></td>
+                            <td data-label="Batch"><span class="bp-one-line-clip" title="@row.BatchLabel">@row.BatchLabel</span></td>
+                            @if (Model.ShowClusters)
+                            {
+                                <td data-label="Cluster">
+                                    @if (row.ClusterId is null)
+                                    {
+                                        <span class="bp-batteries-muted">No cluster yet</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="bp-one-line-clip" title="@row.ClusterLabel">@row.ClusterLabel</span>
+                                    }
+                                </td>
+                            }
+                            <td data-label="Status">
+                                <div class="bp-badges is-compact">
+                                    @if (Model.ShowsBatteryStatus(row) && StatusBadge.Battery(row.BatteryStatus) is { } battery)
+                                    {
+                                        @await Html.PartialAsync("_StatusBadge", battery)
+                                    }
+                                    @await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(row.IsDraft ? null : (row.Active ?? row.Latest)!.DppStatus))
+                                </div>
+                            </td>
+                            <td data-label="Updated" title="@BatteryListView.UpdatedInFull(row)">@(BatteryListView.Updated(row) ?? "—")</td>
+                            <td class="bp-action-cell" data-label="Actions">
+                                @await Html.PartialAsync("_RowActions", Model.Actions(row))
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

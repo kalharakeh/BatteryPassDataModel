@@ -1,0 +1,139 @@
+@using BatteryPassWeb.Models.ViewModels
+@model ApiTokenListViewModel
+@{
+    // One row per token: its name, permission, batteries and last use. A row opens to its ID, regenerating it,
+    // switching it off and on (the team's page only) and, last, deleting it (on a cluster admin's page: switching it off).
+    string DisplayName(ApiTokenViewModel token)
+    {
+        // Tokens made per cluster end in " - read" or " - readwrite"; the permission column says that already.
+        var suffixes = token.AccessMode.Equals("readWriteSign", StringComparison.OrdinalIgnoreCase)
+            ? new[] { " - readwritesign", "-readwritesign" }
+            : token.AccessMode.Equals("readWrite", StringComparison.OrdinalIgnoreCase)
+                ? new[] { " - readwrite", "-readwrite" }
+                : token.AccessMode.Equals("read", StringComparison.OrdinalIgnoreCase)
+                    ? new[] { " - read", "-read" }
+                    : [];
+        var suffix = suffixes.FirstOrDefault(candidate => token.Name.EndsWith(candidate, StringComparison.OrdinalIgnoreCase));
+        return string.IsNullOrWhiteSpace(suffix) ? token.Name : token.Name[..^suffix.Length];
+    }
+    string AccessLabel(ApiTokenViewModel token) => token.AccessMode.ToLowerInvariant() switch
+    {
+        "readwritesign" => "Full access",
+        "sign" => "Passport lifecycle",
+        "readwrite" => "Read + write",
+        _ => "Read"
+    };
+    string Batteries(ApiTokenViewModel token) => token.GlobalAccess
+        ? "All batteries"
+        : token.ClusterScopeNames.Count == 0 ? "No clusters" : string.Join(", ", token.ClusterScopeNames);
+}
+
+<section class="bp-card bp-list-card mt-4" data-list aria-label="API tokens" style="--bp-row-columns: minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr) 96px">
+    <div class="bp-list-tools">
+        <h2>Tokens</h2>
+        <label class="bp-list-search">
+            <span class="visually-hidden">Search tokens</span>
+            <input type="search" placeholder="Search name, ID, permission or cluster" data-list-search />
+        </label>
+    </div>
+    @if (Model.Tokens.Count == 0)
+    {
+        <p class="bp-list-empty">@Model.EmptyText</p>
+    }
+    else
+    {
+        <div class="bp-list-head" aria-hidden="true"><span>Token</span><span>Permission</span><span>Batteries</span><span>Last used</span><span></span></div>
+        <p class="bp-list-empty" data-list-no-results hidden>No tokens match the search.</p>
+    }
+    @foreach (var token in Model.Tokens)
+    {
+        var name = DisplayName(token);
+        var access = AccessLabel(token);
+        var searchText = $"{token.Name} {token.TokenId} {access} {Batteries(token)} {(token.IsActive ? "Active" : "Inactive")}";
+        <details class="bp-row" data-token-row="@token.TokenId" data-search-text="@searchText">
+            <summary>
+                <span class="bp-row-title">
+                    <strong>@name</strong>
+                    <code>@token.TokenId</code>
+                    @if (token.IsSample)
+                    {
+                        <small>Sample token</small>
+                    }
+                </span>
+                <span class="bp-tags">
+                    <span class="bp-row-label">Permission</span>
+                    <span class="bp-soft-tag">@access</span>
+                    @if (!token.IsActive)
+                    {
+                        <span class="bp-soft-tag is-off">Inactive</span>
+                    }
+                </span>
+                <span>
+                    <span class="bp-row-label">Batteries</span>@Batteries(token)
+                    @if (token.AllowUnassigned && !token.GlobalAccess)
+                    {
+                        <small class="d-block text-secondary">Also batteries in no cluster</small>
+                    }
+                </span>
+                <span class="text-secondary"><span class="bp-row-label">Last used</span>@(string.IsNullOrWhiteSpace(token.LastUsedAt) ? "Never" : token.LastUsedAt)</span>
+                <span class="bp-row-open"><span class="is-open">Open</span><span class="is-close">Close</span></span>
+            </summary>
+            <div class="bp-row-panel bp-console-form-card">
+                <section class="bp-subcard">
+                    <h3>Token ID</h3>
+                    <span class="bp-id-copy-row">
+                        <code class="bp-id-value">@token.TokenId</code>
+                        @await Html.PartialAsync("_CopyIdButton", token.TokenId)
+                    </span>
+                    <p class="text-secondary small mt-2 mb-0">The ID names the token in the audit log. The value a system sends is shown only when the token is made or regenerated.</p>
+                </section>
+                <section class="bp-subcard">
+                    <h3>Regenerate</h3>
+                    <p class="text-secondary small">Makes a new value and shows it once. Systems using the old value stop working until they get the new one.</p>
+                    <form method="post" action="@Model.ActionBase/regenerate">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="tokenId" value="@token.TokenId" />
+                        <button type="submit" class="bp-secondary-button bp-button-compact" data-confirm-action data-confirm-title="Regenerate token" data-confirm-message="Make a new value for @name? Systems using the old value stop working until they get the new one." data-confirm-submit="Regenerate">Regenerate value</button>
+                    </form>
+                </section>
+                @if (Model.CanSetActive)
+                {
+                    <section class="bp-subcard">
+                        <h3>Active <span class="bp-soft-tag ms-1@(token.IsActive ? "" : " is-off")">@(token.IsActive ? "Active" : "Inactive")</span></h3>
+                        <p class="text-secondary small">@(token.IsActive ? "Deactivating stops the token until it is activated again." : "Activating lets systems use the token again.")</p>
+                        <form method="post" action="@Model.ActionBase/set-active">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="tokenId" value="@token.TokenId" />
+                            <input type="hidden" name="isActive" value="@(token.IsActive ? "false" : "true")" />
+                            <button type="submit" class="bp-secondary-button bp-button-compact">@(token.IsActive ? "Deactivate" : "Activate")</button>
+                        </form>
+                    </section>
+                }
+                <div class="bp-danger-zone">
+                    @if (Model.CanDelete)
+                    {
+                        <p>Deleting the token stops every system that uses it. It can't be undone.</p>
+                        <form method="post" action="@Model.ActionBase/delete">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="tokenId" value="@token.TokenId" />
+                            <button type="submit" class="bp-danger-button bp-button-compact" data-confirm-action data-confirm-title="Delete API token" data-confirm-message="Delete @name? Systems using this token will stop working." data-confirm-submit="Delete">Delete token</button>
+                        </form>
+                    }
+                    else if (token.IsActive)
+                    {
+                        <p>Deactivating the token stops every system that uses it. Only the team can switch it on again or delete it.</p>
+                        <form method="post" action="@Model.ActionBase/delete">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="tokenId" value="@token.TokenId" />
+                            <button type="submit" class="bp-danger-button bp-button-compact" data-confirm-action data-confirm-title="Deactivate API token" data-confirm-message="Deactivate @name? Systems using it will stop working, and only the team can switch it on again." data-confirm-submit="Deactivate">Deactivate token</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <p>This token is switched off. Only the team can switch it on again or delete it.</p>
+                    }
+                </div>
+            </div>
+        </details>
+    }
+</section>

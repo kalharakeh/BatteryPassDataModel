@@ -1,0 +1,85 @@
+@using BatteryPassWeb.Dpp.Documents
+@using BatteryPassWeb.Dpp.Pages
+@inject Microsoft.Extensions.Options.IOptions<BatteryPassWeb.Configuration.BatteryPassOptions> AppOptions
+@model BatteryCards
+@* The accident reports card (#92): on the team's battery page and on the cluster admin's (step 4a). The place to see and
+   add the reports: the list and the upload first, how the passport's readers see them last (redesign R5, item 6). *@
+<section class="bp-card bp-console-form-card bp-battery-card mt-4" id="accidents">
+    <span class="bp-summary-title">Accident reports <span class="bp-attr-number">#92</span></span>
+    <h2>@(Model.AccidentReports.Count == 0 ? "No accidents reported" : Words.Count(Model.AccidentReports.Count, "accident report"))</h2>
+    <p class="mb-0">See and add this battery's accident reports here. They're seen only by the battery's cluster, market surveillance and @Model.Team.</p>
+    @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "accidents")
+    @if (Model.AccidentReports.Count > 0)
+    {
+        <ul class="bp-file-checks">
+            @foreach (var report in Model.AccidentReports)
+            {
+                <li>
+                    <span><a href="@ReaderPages.DocumentHref(report.Id)" target="_blank" rel="noreferrer"><strong>@report.Title</strong></a> · @report.FileName · @BatteryCards.Size(report.Length)</span>
+                    <span class="bp-batteries-muted">@ValueWords.Time(report.UploadedAtUtc) by @report.UploadedBy</span>
+                    @if (Model.ForTeam)
+                    {
+                        @* The team withdraws a report added by mistake (S07): a reason, then the app's confirm question. *@
+                        <details class="bp-withdraw">
+                            <summary>Withdraw…</summary>
+                            <form method="post" action="@Model.Href/accidents/@Uri.EscapeDataString(report.Id)/withdraw" class="bp-withdraw-form">
+                                @Html.AntiForgeryToken()
+                                <label><span>Why is it withdrawn? (kept in the audit log)</span><input type="text" name="reason" maxlength="@DocumentService.MaxReason" placeholder="e.g. Added to the wrong battery" required /></label>
+                                <button type="submit" class="bp-danger-button bp-button-compact text-nowrap" data-confirm-action data-needs-reason data-confirm-title="Withdraw this report" data-confirm-message="Withdraw @(report.FileName)? Nobody can open it afterwards, its file is deleted and it no longer counts as an accident report of this battery. The audit log keeps who, when, why and the file's name." data-confirm-submit="Withdraw">Withdraw report</button>
+                            </form>
+                        </details>
+                    }
+                </li>
+            }
+        </ul>
+    }
+    @if (Model.FrozenNote is { } frozen)
+    {
+        @* Why adding is off, and where the battery's reports go now (R5, item 6). *@
+        <div class="bp-accident-frozen" data-frozen>
+            <svg class="bp-i" aria-hidden="true"><use href="#i-pause" /></svg>
+            <p class="mb-0">
+                <strong>Adding reports is off on this passport.</strong> @frozen
+                @if (Model.NewPassportHref is { } next)
+                {
+                    <a href="@next">Add them on the new passport</a>
+                }
+            </p>
+        </div>
+    }
+    else
+    {
+    <form method="post" action="@Model.Href/accidents" enctype="multipart/form-data" class="bp-attr-upload bp-accident-upload" data-upload-row>
+        @Html.AntiForgeryToken()
+        <h3 class="bp-subheading">Add a report</h3>
+        <div class="bp-attr-file">
+            <label class="bp-secondary-button bp-button-compact bp-document-smart-upload position-relative text-nowrap mb-0">
+                Choose file
+                <input type="file" name="file" class="bp-document-hidden-file" accept="application/pdf,image/png,image/jpeg" data-kind-words="a PDF, PNG or JPEG" data-max-bytes="@AppOptions.Value.MaxUploadBytes" data-upload-file />
+            </label>
+            <span class="bp-help-text" data-upload-chosen>No file chosen</span>
+        </div>
+        <div class="bp-attr-parts">
+            <label>
+                <span>Title (optional)</span>
+                <input type="text" name="title" placeholder="e.g. Collision on 12 Oct 2026" />
+            </label>
+            <label>
+                <span>Language (optional)</span>
+                <select name="language">
+                    <option value=""></option>
+                    @foreach (var language in Model.Languages)
+                    {
+                        <option value="@language">@language</option>
+                    }
+                </select>
+            </label>
+        </div>
+        <div class="bp-live-save">
+            <small class="bp-field-help">PDF, PNG or JPEG, up to @BatteryCards.Size(AppOptions.Value.MaxUploadBytes), checked by its content.</small>
+            <button type="submit" class="bp-secondary-button" data-upload-button>Add report</button>
+        </div>
+    </form>
+    }
+    <p class="bp-accident-readers"><a href="@ReaderPages.AccidentsHref(Model.Pack.Id)"><svg class="bp-i" aria-hidden="true"><use href="#i-globe" /></svg>How readers see it</a> <span class="bp-batteries-muted">· the accident page the passport links to</span></p>
+</section>

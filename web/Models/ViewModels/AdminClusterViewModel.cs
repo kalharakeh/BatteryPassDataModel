@@ -1,136 +1,24 @@
-using BatteryPassWeb.Models.Trust;
+using BatteryPassWeb.Dpp.Demo;
 using BatteryPassWeb.Services;
 
 namespace BatteryPassWeb.Models.ViewModels;
 
 public sealed class AdminClusterViewModel
 {
-    public string SelectedTab { get; init; } = "passports";
+    public string SelectedTab { get; init; } = "clusters";
     public string SelectedCredentialTab { get; init; } = "api-tokens";
-    public string PassportsQuery { get; init; } = string.Empty;
-    public BatteryTablePageViewModel BatteryTable { get; init; } = new();
     public IReadOnlyList<ClusterViewModel> Clusters { get; init; } = [];
-    public IReadOnlyList<BatterySummaryViewModel> Batteries { get; init; } = [];
-    public IReadOnlyList<PassportSummaryViewModel> Passports { get; init; } = [];
     public IReadOnlyList<UserViewModel> Users { get; init; } = [];
     public IReadOnlyList<ClusterMembershipViewModel> Memberships { get; init; } = [];
     public IReadOnlyList<ApiTokenViewModel> ApiTokens { get; init; } = [];
-    public IReadOnlyList<ProductTemplateSummaryViewModel> ProductTemplates { get; init; } = [];
-    public EditableFieldPolicySnapshot LocalEditableFieldPolicy { get; init; } = EditableFieldPolicyService.CreateDefaultPolicy();
-    public string SamplePassportId { get; init; } = string.Empty;
-    public string SampleReadToken { get; init; } = string.Empty;
-    public string SampleReadWriteToken { get; init; } = string.Empty;
     public string StatusMessage { get; init; } = string.Empty;
     public string ErrorMessage { get; init; } = string.Empty;
     public string GeneratedCredential { get; init; } = string.Empty;
+    public IReadOnlyList<DemoToken> GeneratedCredentials { get; init; } = [];
+    public bool HasDemoData { get; init; }
+    public bool DemoAccountsPossible { get; init; }
+    public int DemoBatteryCount { get; init; }
     public int SessionTimeoutMinutes { get; init; } = 180;
-}
-
-public sealed class ProductTemplateSummaryViewModel
-{
-    public string ProductId { get; init; } = string.Empty;
-    public string ProductName { get; init; } = string.Empty;
-    public string Description { get; init; } = string.Empty;
-    public string ImageUrl { get; init; } = string.Empty;
-    public int ModuleCount { get; init; }
-    public int BatteryVersionCount { get; init; }
-    public int RequiredFieldCount { get; init; }
-    public int DocumentCount { get; init; }
-}
-
-public sealed class ProductVersionEditViewModel
-{
-    public string Version { get; init; } = string.Empty;
-    public double BatteryMassKg { get; init; }
-    public double RatedEnergyKwh { get; init; }
-    public double RatedCapacityAh { get; init; }
-    public double RatedMaximumPowerKw { get; init; }
-    public double NominalVoltageV { get; init; }
-    public double ExpectedLifetimeYears { get; init; }
-    public double ExpectedCycles { get; init; }
-    public double SupplyChainIndex { get; init; }
-    public double CarbonFootprint { get; init; }
-    public string PerformanceClass { get; init; } = string.Empty;
-    public IReadOnlyDictionary<string, double> MaterialMassesKg { get; init; } = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-    public IReadOnlyDictionary<string, double> CarbonStages { get; init; } = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-    public IReadOnlyDictionary<string, ProductTemplateRecycledContentViewModel> RecycledContent { get; init; } = new Dictionary<string, ProductTemplateRecycledContentViewModel>(StringComparer.OrdinalIgnoreCase);
-    public string SoftwareVersion { get; init; } = string.Empty;
-    public string SoftwareReleaseDate { get; init; } = string.Empty;
-    public string SoftwareLatestUpdate { get; init; } = string.Empty;
-    public IReadOnlyList<ProductSoftwareVersionEditViewModel> SoftwareVersions { get; init; } = [];
-    public IReadOnlyList<ProductTemplateDocumentViewModel> TemplateDocuments { get; init; } = [];
-    public IReadOnlyList<string> RequiredFieldKeys { get; init; } = [];
-}
-
-public sealed class ProductSoftwareVersionEditViewModel
-{
-    public string SoftwareVersion { get; init; } = string.Empty;
-    public string SoftwareReleaseDate { get; init; } = string.Empty;
-    public string SoftwareLatestUpdate { get; init; } = string.Empty;
-}
-
-public sealed class ProductTemplateDocumentViewModel
-{
-    public string DocumentKey { get; init; } = string.Empty;
-    public string Label { get; init; } = string.Empty;
-    public string FileName { get; init; } = string.Empty;
-    public string Visibility { get; init; } = string.Empty;
-}
-
-public sealed class ProductTemplateFormCatalogItemViewModel
-{
-    public string ProductId { get; init; } = string.Empty;
-    public string ProductName { get; init; } = string.Empty;
-    public string ImageUrl { get; init; } = string.Empty;
-    public int ModuleCount { get; init; }
-    public double BatteryMassKg { get; init; }
-    public double RatedEnergyKwh { get; init; }
-    public double RatedCapacityAh { get; init; }
-    public double RatedMaximumPowerKw { get; init; }
-    public double NominalVoltageV { get; init; }
-    public double ExpectedLifetimeYears { get; init; }
-    public double ExpectedCycles { get; init; }
-    public double SupplyChainIndex { get; init; }
-    public double CarbonFootprint { get; init; }
-    public string PerformanceClass { get; init; } = string.Empty;
-    public IReadOnlyDictionary<string, double> MaterialMassesKg { get; init; } = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-    public IReadOnlyDictionary<string, double> CarbonStages { get; init; } = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-    public IReadOnlyDictionary<string, ProductTemplateRecycledContentViewModel> RecycledContent { get; init; } = new Dictionary<string, ProductTemplateRecycledContentViewModel>(StringComparer.OrdinalIgnoreCase);
-    public IReadOnlyList<ProductVersionEditViewModel> ProductVersions { get; init; } = [];
-    public string LatestProductVersion { get; init; } = string.Empty;
-}
-
-public sealed class ProductTemplateRecycledContentViewModel
-{
-    public double PreConsumerShare { get; init; }
-    public double PostConsumerShare { get; init; }
-}
-
-public sealed class ProductTemplateEditViewModel
-{
-    public string ProductId { get; init; } = string.Empty;
-    public string ProductName { get; init; } = string.Empty;
-    public string Description { get; init; } = string.Empty;
-    public string ImageUrl { get; init; } = string.Empty;
-    public int ModuleCount { get; init; }
-    public double BatteryMassKg { get; init; }
-    public double RatedEnergyKwh { get; init; }
-    public double RatedCapacityAh { get; init; }
-    public double RatedMaximumPowerKw { get; init; }
-    public double NominalVoltageV { get; init; }
-    public double ExpectedLifetimeYears { get; init; }
-    public double ExpectedCycles { get; init; }
-    public double SupplyChainIndex { get; init; }
-    public double CarbonFootprint { get; init; }
-    public string PerformanceClass { get; init; } = string.Empty;
-    public IReadOnlyDictionary<string, double> MaterialMassesKg { get; init; } = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-    public IReadOnlyDictionary<string, double> CarbonStages { get; init; } = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-    public IReadOnlyDictionary<string, ProductTemplateRecycledContentViewModel> RecycledContent { get; init; } = new Dictionary<string, ProductTemplateRecycledContentViewModel>(StringComparer.OrdinalIgnoreCase);
-    public DataCompletionPolicySnapshot DataRequirements { get; init; } = new();
-    public string StatusMessage { get; init; } = string.Empty;
-    public string ErrorMessage { get; init; } = string.Empty;
-    public IReadOnlyList<ProductVersionEditViewModel> ProductVersions { get; init; } = [];
-    public IReadOnlyList<ProductTemplateFormCatalogItemViewModel> BaseProductCatalog { get; init; } = [];
 }
 
 public sealed class ClusterViewModel
@@ -167,6 +55,7 @@ public sealed class ApiTokenViewModel
     public bool IsActive { get; init; } = true;
     public bool IsSample { get; init; }
     public string ClusterIdsLabel { get; init; } = string.Empty;
+    public IReadOnlyList<string> ClusterIds { get; init; } = [];
     public IReadOnlyList<string> ClusterScopeNames { get; init; } = [];
     public string CreatedAt { get; init; } = string.Empty;
     public string UpdatedAt { get; init; } = string.Empty;

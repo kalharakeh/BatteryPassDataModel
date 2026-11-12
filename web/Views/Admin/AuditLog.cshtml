@@ -4,51 +4,74 @@
 @{
     ViewData["Title"] = "Application audit log";
     var filter = Model.Filter;
+    var moreFilters = !string.IsNullOrWhiteSpace(filter.Category) || !string.IsNullOrWhiteSpace(filter.Source);
+    var lineCount = Model.Days.Sum(day => day.Lines.Count);
+
+    // "Show 50 more" keeps the filters and asks for 50 more events.
+    var query = Context.Request.Query
+        .Where(entry => entry.Key != "show")
+        .Select(entry => $"{Uri.EscapeDataString(entry.Key)}={Uri.EscapeDataString(entry.Value.ToString())}")
+        .Append($"show={Model.Show + 50}");
+    var moreHref = $"/admin/audit?{string.Join("&", query)}";
 }
 
 <main class="bp-page bp-admin-page bp-audit-log">
-    <div>
-        <h1 class="mb-1">Administration</h1>
-        <p class="text-secondary mb-0">Manage batteries, passport snapshots, battery families, cluster assignments, registered clusters, user memberships, credentials, and audit history from one page.</p>
-    </div>
-
+    <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
     @await Html.PartialAsync("_AdminTabs", "audit")
 
-    <section class="bp-card bp-ledger-panel">
-        <form method="get" class="bp-audit-filter-grid">
-            <label>
+    <svg width="0" height="0" class="position-absolute" aria-hidden="true" focusable="false">
+        <symbol id="audit-i-edit" viewBox="0 0 16 16"><path d="M10.5 2.5l3 3L6 13H3v-3z" /></symbol>
+        <symbol id="audit-i-add" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" /></symbol>
+        <symbol id="audit-i-remove" viewBox="0 0 16 16"><path d="M3 8h10" /></symbol>
+        <symbol id="audit-i-upload" viewBox="0 0 16 16"><path d="M8 11V3M4.5 6.5L8 3l3.5 3.5M3 13h10" /></symbol>
+        <symbol id="audit-i-publish" viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7" /></symbol>
+        <symbol id="audit-i-lock" viewBox="0 0 16 16"><path d="M4 7h8v6H4zM6 7V5a2 2 0 014 0v2" /></symbol>
+        <symbol id="audit-i-key" viewBox="0 0 16 16"><circle cx="5.5" cy="10.5" r="2.5" /><path d="M7.5 8.5L13 3M11 5l1.5 1.5" /></symbol>
+        <symbol id="audit-i-image" viewBox="0 0 16 16"><path d="M2.5 3.5h11v9h-11zM2.5 10.5l3-3 3 3 2-2 3 3" /></symbol>
+        <symbol id="audit-i-alert" viewBox="0 0 16 16"><path d="M8 4v5M8 11.5v.5" /></symbol>
+        <symbol id="audit-i-other" viewBox="0 0 16 16"><circle cx="8" cy="8" r="1.6" /></symbol>
+        <symbol id="audit-i-chevron" viewBox="0 0 12 12"><path d="M4.5 2.5L8 6l-3.5 3.5" /></symbol>
+    </svg>
+
+    @if (ViewData[BatteryPassWeb.Controllers.AdminController.AuditBatteryKey] is BatteryPassWeb.Controllers.AuditBattery battery)
+    {
+        @* Opened from a battery's History link: whose history this is, and the ways back (redesign R6). *@
+        <p class="bp-audit-battery mt-4 mb-0">History of battery <strong>@battery.SerialNumber</strong> · <a href="@battery.Href">Back to the battery page</a> · <a href="/admin/audit">The whole audit log</a>@if (battery.OtherPassports is { Count: > 0 } others)
+            {
+                <text> · Its other passports' histories: </text>
+                @for (var index = 0; index < others.Count; index++)
+                {
+                    <a href="@others[index].Href">@others[index].Label</a>@(index < others.Count - 1 ? ", " : null)
+                }
+            }</p>
+    }
+    <section class="bp-card bp-console-form-card bp-product-editor-section mt-4">
+        <form method="get" class="bp-auditlog-filters">
+            <label class="bp-auditlog-search">
                 <span>Search</span>
-                <input type="search" name="q" value="@filter.Search" placeholder="ID, actor, event, message" />
+                <input type="search" name="q" value="@filter.Search" placeholder="A name, value, person or ID" />
             </label>
             <label>
-                <span>Entity</span>
+                <span>Record</span>
                 <select name="entityType">
-                    @Option("", "All entities", filter.EntityType)
-                    @Option("battery", "Battery", filter.EntityType)
-                    @Option("passport", "Passport", filter.EntityType)
-                    @Option("cluster", "Cluster", filter.EntityType)
-                    @Option("apiToken", "API token", filter.EntityType)
-                    @Option("account", "Account", filter.EntityType)
+                    @Option("", "Everything", filter.EntityType)
+                    @Option("dpp-family", "Battery families", filter.EntityType)
+                    @Option("dpp-model", "Battery models", filter.EntityType)
+                    @Option("dpp-batch", "Batches", filter.EntityType)
+                    @Option("dpp-site", "Manufacturing sites", filter.EntityType)
+                    @Option("dpp-operator", "Economic operators", filter.EntityType)
+                    @Option("dpp-pack", "Batteries", filter.EntityType)
+                    @Option("dpp-battery-ids", "Battery IDs", filter.EntityType)
+                    @Option("dpp-document", "Documents", filter.EntityType)
+                    @Option("cluster", "Clusters", filter.EntityType)
+                    @Option("apiToken", "API tokens", filter.EntityType)
+                    @Option("account", "Accounts", filter.EntityType)
+                    @* The old model's entity types are gone: its data was reset (decision 1; redesign R6). *@
                 </select>
             </label>
             <label>
-                <span>Category</span>
-                <select name="category">
-                    @Option("", "All categories", filter.Category)
-                    @Option("battery", "Battery", filter.Category)
-                    @Option("passport", "Passport", filter.Category)
-                    @Option("file", "Files", filter.Category)
-                    @Option("admin", "Admin", filter.Category)
-                    @Option("security", "Security", filter.Category)
-                </select>
-            </label>
-            <label>
-                <span>Actor</span>
-                <input type="text" name="actor" value="@filter.Actor" placeholder="email or token name" />
-            </label>
-            <label>
-                <span>Source</span>
-                <input type="text" name="source" value="@filter.Source" placeholder="admin-ui, external-api" />
+                <span>Who</span>
+                <input type="text" name="actor" value="@filter.Actor" placeholder="Email or token name" />
             </label>
             <label>
                 <span>From</span>
@@ -58,33 +81,61 @@
                 <span>To</span>
                 <input type="date" name="to" value="@filter.To" />
             </label>
-            <div class="bp-audit-filter-actions">
-                <button type="submit" class="bp-primary-button">Apply</button>
+            <div class="bp-auditlog-filter-actions">
+                <button type="submit" class="bp-primary-button">Show</button>
                 <a href="/admin/audit" class="bp-secondary-button">Reset</a>
             </div>
+            <details class="bp-auditlog-more" open="@moreFilters">
+                <summary>More filters</summary>
+                <div>
+                    <label>
+                        <span>Kind of event</span>
+                        <select name="category">
+                            @Option("", "All", filter.Category)
+                            @Option("dpp", "Product data and passports", filter.Category)
+                            @Option("security", "Sign-ins, accounts and tokens", filter.Category)
+                            @Option("admin", "Clusters and other admin", filter.Category)
+                        </select>
+                    </label>
+                    <label>
+                        <span>Came from</span>
+                        <select name="source">
+                            @Option("", "Anywhere", filter.Source)
+                            @Option("form", "The team's pages", filter.Source)
+                            @Option("documents", "Document uploads and downloads", filter.Source)
+                            @Option("publication", "Publishing", filter.Source)
+                            @Option("external-api", "The API", filter.Source)
+                            @Option("admin-ui", "The admin pages", filter.Source)
+                        </select>
+                    </label>
+                </div>
+            </details>
         </form>
     </section>
 
-    <section class="bp-card bp-ledger-panel">
-        <div class="bp-ledger-panel-heading">
-            <div>
-                <span class="bp-summary-title">@Model.Events.Count event@(Model.Events.Count == 1 ? string.Empty : "s")</span>
-                <h2>Timeline</h2>
+    <section class="bp-card bp-console-form-card bp-product-editor-section mt-4">
+        <div class="bp-auditlog-head">
+            <h2>What happened</h2>
+            <p>@(lineCount == 0 ? "No events match these filters." : Model.HasMore ? $"The latest {lineCount} events" : $"{lineCount} event{(lineCount == 1 ? string.Empty : "s")}")</p>
+        </div>
+
+        @foreach (var day in Model.Days)
+        {
+            <h3 class="bp-auditlog-day">@day.Title</h3>
+            <div class="bp-auditlog-list">
+                @foreach (var line in day.Lines)
+                {
+                    @await Html.PartialAsync("_AuditLine", line, new ViewDataDictionary(ViewData) { ["Zone"] = Model.Zone })
+                }
             </div>
-            <p>Events are normalized from passport, battery, and application audit collections.</p>
-        </div>
+        }
 
-        <div class="bp-ledger-timeline">
-            @foreach (var auditEvent in Model.Events)
-            {
-                @await Html.PartialAsync("_AuditEventRow", auditEvent)
-            }
-
-            @if (Model.Events.Count == 0)
-            {
-                <div class="bp-table-empty">No audit events match the current filters.</div>
-            }
-        </div>
+        @if (Model.HasMore)
+        {
+            <div class="bp-auditlog-more-events">
+                <a class="bp-secondary-button" href="@moreHref">Show 50 more</a>
+            </div>
+        }
     </section>
 </main>
 

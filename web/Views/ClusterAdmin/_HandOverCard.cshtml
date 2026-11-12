@@ -1,0 +1,26 @@
+@using BatteryPassWeb.Dpp.Pages
+@model HandOverCardView
+@* The "Hand over" card (step 4d, mock-up S2): what a hand-over does, or the one waiting. The window is at page level
+   (_HandOverDialog), opened by the header's "Hand over…" (redesign R5, the owner's answer c), so no second button here. *@
+<section class="bp-card bp-console-form-card bp-battery-card mt-4" id="handover">
+    @if (Model.Waiting is { } waiting)
+    {
+        <span class="bp-summary-title">Hand over <em class="bp-field-marker">Not passport data</em></span>
+        <h2>Waiting for @Model.ReceiverName</h2>
+        <p class="mb-2">Asked @ValueWords.Time(waiting.AskedAtUtc). The battery stays with your cluster until they accept.</p>
+        <p class="bp-help-text mb-0">To cancel it, use <strong>Cancel the hand-over</strong> on the line at the top of the page.</p>
+        @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "handover")
+    }
+    else
+    {
+        <div class="bp-battery-card-head">
+            <div>
+                <span class="bp-summary-title">Hand over <em class="bp-field-marker">Not passport data</em></span>
+                <h2>Sold or moved to another customer?</h2>
+                <p class="mb-0">Hand the battery over to their cluster. It moves once their cluster admin accepts; your cluster then no longer sees its purchaser data. The passport doesn't change.</p>
+                <p class="bp-help-text mt-2 mb-0">Start it with <strong>Hand over…</strong> among the page's actions.</p>
+            </div>
+        </div>
+        @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "handover")
+    }
+</section>

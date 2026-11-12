@@ -1,0 +1,60 @@
+@using BatteryPassWeb.Dpp.Pages
+@using BatteryPassWeb.Dpp.Store
+@model BatteryCards
+@* The passport's versions with their signatures: on the team's battery page and on the cluster admin's (step 4a). *@
+<section class="bp-card bp-console-form-card bp-battery-card mt-4" id="versions">
+    <span class="bp-summary-title">Versions</span>
+    @if (Model.Versions.Count == 0)
+    {
+        <h2>No versions yet</h2>
+        <p class="mb-0">Publishing makes version 1. Each later change to its values makes a new version; the older ones stay readable by their passport ID.</p>
+    }
+    else
+    {
+        <h2>@Words.Count(Model.Versions.Count, "version")</h2>
+        <div class="bp-table-scroll">
+            <table class="table align-middle bp-console-table bp-mobile-card-table bp-versions-table">
+                <thead>
+                    <tr>
+                        <th>Version</th>
+                        <th>Passport ID <span class="bp-attr-number">#5</span></th>
+                        <th>Status</th>
+                        <th>Published</th>
+                        <th>Signature</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Versions)
+                    {
+                        <tr>
+                            <td data-label="Version">@row.Version.Number</td>
+                            <td data-label="Passport ID"><span class="bp-id-copy-row"><a class="bp-id-value is-full" href="@PassportPages.DetailHref(row.Version.DigitalProductPassportId)" title="@row.Version.DigitalProductPassportId">@row.Version.DigitalProductPassportId</a>@await Html.PartialAsync("_CopyIdButton", row.Version.DigitalProductPassportId)</span></td>
+                            <td data-label="Status"><div class="bp-badges is-compact">@await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(row.Version.DppStatus))</div></td>
+                            <td data-label="Published">@ValueWords.Time(row.Version.PublishedAtUtc) <small class="bp-batteries-muted d-block">by @row.Version.PublishedBy</small></td>
+                            <td data-label="Signature">
+                                @if (row.SignatureHolds)
+                                {
+                                    <span class="bp-done-note">Verified</span>
+                                }
+                                else
+                                {
+                                    <span class="bp-missing-note">Doesn't match</span>
+                                }
+                                <details class="bp-signature-details">
+                                    <summary>Details</summary>
+                                    <dl>
+                                        <div><dt>Signed</dt><dd>@ValueWords.Time(row.Version.Proof.CreatedUtc)</dd></div>
+                                        <div><dt>Issuer</dt><dd>@row.Version.Proof.Issuer</dd></div>
+                                        <div><dt>Key</dt><dd>@row.Version.Proof.VerificationMethod</dd></div>
+                                        <div><dt>Method</dt><dd>@row.Version.Proof.Cryptosuite</dd></div>
+                                        <div><dt>Hash</dt><dd><code>@row.Version.Proof.Hash</code></dd></div>
+                                    </dl>
+                                </details>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

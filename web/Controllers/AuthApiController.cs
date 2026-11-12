@@ -39,7 +39,7 @@ public class AuthApiController : ControllerBase
             return Redirect(safeNext);
         }
 
-        return Redirect("/admin");
+        return Redirect(LoginController.StartPage(principal));
     }
 
     [HttpPost("logout")]

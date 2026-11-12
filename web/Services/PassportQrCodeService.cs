@@ -2,14 +2,9 @@ using QRCoder;
 
 namespace BatteryPassWeb.Services;
 
+/// <summary>Draws a battery's QR code; its address comes from <see cref="Dpp.Documents.DppLinks.PassportUrl"/>.</summary>
 public sealed class PassportQrCodeService
 {
-    public string BuildPayloadUrl(HttpRequest request, string batteryId)
-    {
-        var escapedBatteryId = Uri.EscapeDataString(batteryId);
-        return $"{request.Scheme}://{request.Host}/{escapedBatteryId}/latest/summary";
-    }
-
     public string GenerateSvg(string payload)
     {
         using var generator = new QRCodeGenerator();

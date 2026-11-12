@@ -1,0 +1,22 @@
+@model IReadOnlyList<BatteryPassWeb.Dpp.Pages.ExampleGroup>
+@* Decision 70: what a copy of the demo data still holds of the demo's examples, until the team replaces it. *@
+@if (Model.Count > 0)
+{
+    <section class="bp-card bp-console-form-card mt-4 bp-examples" id="examples" role="note">
+        <h2>Still the demo's example values: replace them before a real battery is published</h2>
+        <p class="mb-2">
+            They came with the copy of the demo data. A battery with a real ID isn't published for the first time while
+            its passport holds one of them; a test ID can be published to try things out. This list goes when none is left.
+        </p>
+        @foreach (var group in Model)
+        {
+            <h3 class="h6 mt-3 mb-1">@group.Where</h3>
+            <ul class="mb-0">
+                @foreach (var item in group.Items)
+                {
+                    <li>@item.Label@(item.IsFile ? " (file)" : string.Empty)</li>
+                }
+            </ul>
+        }
+    </section>
+}

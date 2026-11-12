@@ -29,35 +29,20 @@ public sealed class CopyIdButtonLayoutTests
     [Fact]
     public void PassportReports_ShouldRenderCopyButtonsForPassportAndBatteryIds()
     {
-        var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
-        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
-        var combined = summary + Environment.NewLine + detail;
+        var hero = File.ReadAllText(RepoFile("web", "Views", "Passport", "_PassportHero.cshtml"));
 
-        Assert.Contains("Passport ID:", summary);
-        Assert.Contains("Battery ID:", summary);
-        Assert.Contains("Passport ID:", detail);
-        Assert.Contains("Battery ID:", detail);
-        Assert.True(CountOccurrences(combined, "_CopyIdButton") >= 4);
-        Assert.True(CountOccurrences(combined, "bp-id-copy-row") >= 4);
+        Assert.Contains("Passport ID:", hero);
+        Assert.Contains("Battery ID:", hero);
+        Assert.True(CountOccurrences(hero, "_CopyIdButton") >= 2);
+        Assert.True(CountOccurrences(hero, "bp-id-copy-row") >= 2);
     }
 
     [Fact]
     public void AdminAndRegistryIdSurfaces_ShouldRenderInlineCopyButtons()
     {
-        var sharedBatteryTable = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
-        Assert.Contains("_CopyIdButton", sharedBatteryTable);
-        Assert.Contains("bp-id-copy-row", sharedBatteryTable);
-
         var files = new[]
         {
-            RepoFile("web", "Views", "Passport", "Battery.cshtml"),
-            RepoFile("web", "Views", "Admin", "Clusters.cshtml"),
-            RepoFile("web", "Views", "Admin", "BatteryPassports.cshtml"),
-            RepoFile("web", "Views", "Admin", "Conformance.cshtml"),
-            RepoFile("web", "Views", "Admin", "Audit.cshtml"),
-            RepoFile("web", "Views", "Admin", "Revisions.cshtml"),
-            RepoFile("web", "Views", "Admin", "EditPassport.cshtml"),
-            RepoFile("web", "Views", "ClusterAdmin", "BatteryPassports.cshtml"),
+            RepoFile("web", "Views", "Shared", "_ApiTokenList.cshtml"),
             RepoFile("web", "Views", "Help", "Index.cshtml")
         };
 

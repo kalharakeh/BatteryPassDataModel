@@ -1,0 +1,37 @@
+@using BatteryPassWeb.Dpp.Identifiers
+@model (string Action, ReleasedBatteryId From, IReadOnlyList<ReleasedBatteryId> Available)
+@* "Change its battery ID…" (step 6d, the owner's "swap while draft"): a draft takes another released ID, for example when
+   its label was put on another battery. The old ID is available again. After publication the ID is fixed. *@
+<div class="bp-console-form-card bp-dialog-host">
+    <dialog id="swap-id-dialog" class="bp-modal-panel bp-dialog" aria-labelledby="swap-id-title">
+        <form method="post" action="@Model.Action" class="bp-dialog-form">
+            @Html.AntiForgeryToken()
+            <h2 id="swap-id-title">Change its battery ID</h2>
+            <p class="bp-help-text">Now <strong>@Model.From.SerialNumber</strong> (@IdentifierForms.Display(Model.From.Identifier)). The battery takes another released serial number and its battery ID; @Model.From.SerialNumber is available again. Once the passport is published, the ID is fixed.</p>
+            @if (Model.Available.Count == 0)
+            {
+                <p class="mb-0">No other battery ID is available for this battery's model. Release some on the <a href="/admin/battery-ids">Battery IDs</a> page.</p>
+                <div class="bp-dialog-actions">
+                    <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Close</button>
+                </div>
+            }
+            else
+            {
+                <label>
+                    <span>New serial number</span>
+                    <select name="serialNumber" required>
+                        <option value="">Choose a released serial number</option>
+                        @foreach (var item in Model.Available)
+                        {
+                            <option value="@item.SerialNumber">@item.SerialNumber · @item.Reference</option>
+                        }
+                    </select>
+                </label>
+                <div class="bp-dialog-actions">
+                    <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
+                    <button type="submit" class="bp-primary-button">Change the battery ID</button>
+                </div>
+            }
+        </form>
+    </dialog>
+</div>

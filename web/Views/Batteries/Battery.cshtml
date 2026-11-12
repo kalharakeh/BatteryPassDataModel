@@ -1,0 +1,459 @@
+@using System.Globalization
+@using BatteryPassWeb.Controllers
+@using BatteryPassWeb.Dpp.Identifiers
+@using BatteryPassWeb.Dpp.Pages
+@using BatteryPassWeb.Dpp.Store
+@inject IIdentifierScheme Identifiers
+@model BatteryPage
+@{
+    ViewData["Title"] = $"Battery {Model.SerialNumber}";
+    var href = BatteryPages.BatteryHref(Model.Pack.Id);
+    var sources = Model.Sources;
+    var publication = Model.Publication;
+    var english = CultureInfo.GetCultureInfo("en-GB");
+    string When(DateTime utc) => TimeZoneInfo.ConvertTimeFromUtc(utc, TimeZoneInfo.Local).ToString("d MMM yyyy, HH:mm", english);
+    string Value(string property) => Model.Pack.Values.GetValueOrDefault(property)?.Value?.ToString() ?? "—";
+
+    // "2026-09" as "September 2026", and an ISO 8601 period such as "P3Y6M" as "3 years 6 months".
+    string Month(string text) => DateTime.TryParseExact(text, "yyyy-MM", CultureInfo.InvariantCulture, DateTimeStyles.None, out var month)
+        ? month.ToString("MMMM yyyy", english)
+        : text;
+    string Period(string text)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(text, @"^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?$");
+        if (!match.Success || text == "P")
+        {
+            return text;
+        }
+
+        var parts = new[] { (match.Groups[1].Value, "year"), (match.Groups[2].Value, "month"), (match.Groups[3].Value, "day") }
+            .Where(part => part.Item1.Length > 0)
+            .Select(part => Words.Count(int.Parse(part.Item1, CultureInfo.InvariantCulture), part.Item2));
+        return string.Join(" ", parts);
+    }
+    var card = ViewData[BatteriesController.CardKey] as string;
+    var testIds = Identifiers.IsTestIdentifier(Model.Identifier) || Model.Versions.Any(row => Identifiers.IsTestIdentifier(row.Version.DigitalProductPassportId));
+    var filesChanged = publication.Files.Count(file => !file.Unchanged);
+
+    // The side menu (redesign R4): the open section comes from ?section=, the card a form just sent, or a values save.
+    var valuesMessage = TempData.Peek(ProductDataController.EditorStatusKey) is not null || TempData.Peek(ProductDataController.EditorErrorKey) is not null
+        || TempData.Peek(ProductDataController.EditorInfoKey) is not null || ViewData[ProductDataController.EditorErrorKey] is not null;
+    var sections = Model.Sections;
+    var chosen = BatterySections.Chosen(sections, Context.Request.Query["section"], card, valuesMessage);
+    bool Hidden(string id) => id != chosen;
+    var passportBadge = StatusBadge.Passport(Model.Marks.Status).With((publication.Active ?? publication.Latest) is { } shown ? $"· version {shown.Number}" : "· only your team sees it");
+
+    async Task CardMessagesAsync(string name)
+    {
+        @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", name)
+    }
+}
+
+<main class="bp-page bp-admin-page bp-battery-page">
+    <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
+    <nav class="bp-breadcrumb" aria-label="Breadcrumb">
+        <a href="/admin/batteries">Batteries</a>
+        <span aria-current="page">@Model.SerialNumber</span>
+    </nav>
+
+    @* The header (redesign R4, mock-up H): the model's picture, who the battery is, its two statuses, its facts, and one
+       toolbar row with what to do and where to open it. On a phone the less used facts fold behind "More details" and the
+       actions sit in a bar at the bottom of the screen. *@
+    <header class="bp-bh">
+        @* The picture is a real picture, a column from the label down to the facts, with the text beside it
+           (owner's feedback, 2 Nov 2026); the actions and links stay below, across the header. *@
+        <div class="bp-bh-main@(Model.PictureHref is null ? " no-picture" : string.Empty)">
+            @if (Model.PictureHref is { } picture)
+            {
+                <div class="bp-bh-picture"><img src="@picture" alt="Picture of the @sources.Model.Name battery model" /></div>
+            }
+            <div class="bp-bh-id">
+                <span class="bp-summary-title">Battery · <a href="@ProductDataPages.FamilyHref(sources.Model.FamilyId, sources.Model.Id)">@sources.Model.Name</a> · @Model.Family.Name family</span>
+                <h1>@Model.SerialNumber</h1>
+                <div class="bp-badges">
+                    @if (StatusBadge.Battery(Model.Status?.Status) is { } battery)
+                    {
+                        @await Html.PartialAsync("_StatusBadge", battery)
+                    }
+                    @await Html.PartialAsync("_StatusBadge", passportBadge)
+                    @if (testIds)
+                    {
+                        @await Html.PartialAsync("_TestTag", "Test ID")
+                    }
+                    @if (Model.Chain.Count == 0 && Model.Status?.Predecessor is { } earlier)
+                    {
+                        <a class="bp-chip" href="@earlier.Href"><svg class="bp-i" aria-hidden="true"><use href="#i-history" /></svg>Earlier passport</a>
+                    }
+                    @if (Model.Chain.Count == 0 && Model.Status?.Succession is { Linked: true } next && next.NewPassportLink is { } newPassport)
+                    {
+                        <a class="bp-chip" href="@newPassport"><svg class="bp-i" aria-hidden="true"><use href="#i-arrow" /></svg>New passport</a>
+                    }
+                    @await Html.PartialAsync("_StatusHelp")
+                </div>
+                @* An earlier passport of a battery placed on the market again: one line says so, with the way to the newest
+                   (redesign R7, the owner's item 2); it replaces the two lines below. *@
+                @if (Model.Chain.FirstOrDefault(link => link.IsThis) is { IsNewest: false } thisPassport && Model.Chain.FirstOrDefault(link => link.IsNewest) is { } newestPassport)
+                {
+                    <p class="bp-lineage" id="earlier-passport"><svg class="bp-i" aria-hidden="true"><use href="#i-history" /></svg>Passport @thisPassport.Number of @Model.Chain.Count, an earlier passport, read only: nothing on it changes. <a href="@BatteryPages.BatteryHref(newestPassport.PackId)">Open the newest passport's page</a></p>
+                }
+                else if (Model.Status?.Predecessor is { } replaced)
+                {
+                    <p class="bp-lineage"><svg class="bp-i" aria-hidden="true"><use href="#i-history" /></svg>New passport of @replaced.SerialNumber, whose passport @(replaced.Inactive ? "is now inactive" : "becomes inactive when this one is published").</p>
+                }
+                @if (Model.Chain.FirstOrDefault(link => link.IsThis) is not { IsNewest: false } && Model.Status?.Succession is { Linked: true } linked && Model.Pack.Succession is { } succession)
+                {
+                    <p class="bp-lineage"><svg class="bp-i" aria-hidden="true"><use href="#i-history" /></svg>@(StatusBadge.Battery(succession.Status)?.Words ?? succession.Status) on @ValueWords.Day(succession.StartedAtUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))@(linked.OtherPassport is { } other ? $" by {linked.OtherOperatorInfo ?? linked.OtherOperatorId}, which issued its new passport: {other}" : "; the battery continues on its new passport").</p>
+                }
+            </div>
+            <div class="bp-bh-facts-row">
+                <dl class="bp-bh-facts">
+                    <div class="bp-bh-fact-id">
+                        <dt>Battery ID <span class="bp-attr-number">#6</span></dt>
+                        <dd>@await Html.PartialAsync("_IdValue", Model.Identifier, new ViewDataDictionary(ViewData) { ["IdFull"] = true })</dd>
+                    </div>
+                </dl>
+                <details class="bp-bh-details" open data-fold-on-phone>
+                    <summary>More details</summary>
+                    <dl class="bp-bh-facts">
+                        <div><dt>Batch</dt><dd class="text-wrap" title="@Model.BatchLabel"><a href="/admin/batches/@Uri.EscapeDataString(sources.Batch.Id)">@Model.BatchLabel</a></dd></div>
+                        <div><dt>Economic operator</dt><dd class="text-wrap" title="@sources.Operator.Name"><a href="@ProductDataPages.SitesHref("operator", sources.Operator.Id)">@sources.Operator.Name</a></dd></div>
+                        <div><dt>Cluster @if (!publication.Replaced) {<button type="button" class="bp-text-button" data-open-dialog="cluster-dialog">Change</button>}</dt><dd class="text-wrap@(Model.Pack.ClusterId is null ? " bp-batteries-muted" : null)">@Model.ClusterLabel</dd></div>
+                        @if (publication.IsPublished)
+                        {
+                            <div><dt>Made <span class="bp-attr-number">#17</span> · warranty <span class="bp-attr-number">#19</span></dt><dd>@Month(Value("manufacturingDate")) · @Period(Value("warrantyPeriod"))</dd></div>
+                        }
+                    </dl>
+                </details>
+            </div>
+        </div>
+
+        @if (Model.Marks.Marked)
+        {
+            @* Invalid or marked for deletion: the reason and the one Undo, in reach (owner's points 7 and 17). *@
+            <form method="post" action="@Model.Marks.Action/undo" class="bp-status-notice" id="mark-notice">
+                @Html.AntiForgeryToken()
+                <svg class="bp-i" aria-hidden="true"><use href="#i-shield" /></svg>
+                <span>
+                    <strong>@DppStatuses.Words(Model.Marks.Status!) since @(Model.Marks.Mark is { } mark ? ValueWords.Time(mark.AtUtc) : "—").</strong>
+                    @if (Model.Marks.Mark is { } why)
+                    {
+                        <text>Marked by @(why.ByRole == "MarketSurveillance" ? "market surveillance" : "the team") (@why.By)@(why.Reason is null ? "." : $": “{why.Reason}”.")</text>
+                    }
+                    Nothing on the passport changes until it's undone.
+                </span>
+                <button type="submit" class="bp-secondary-button bp-button-compact">Undo: make it active again</button>
+            </form>
+        }
+        @{ await CardMessagesAsync("mark"); }
+        @if (Model.HandOverTo is { } receiver)
+        {
+            <form method="post" action="@href/handover/cancel" class="bp-status-notice is-quiet">
+                @Html.AntiForgeryToken()
+                <svg class="bp-i" aria-hidden="true"><use href="#i-handover" /></svg>
+                <span>Hand-over to <strong>@receiver</strong> waiting for their answer.</span>
+                <button type="submit" class="bp-secondary-button bp-button-compact">Cancel it</button>
+            </form>
+        }
+        @{ await CardMessagesAsync("cluster"); }
+
+        @* One toolbar row: what to do on the left, where to open the battery on the right (owner's improvement 3). *@
+        <div class="bp-bh-bar">
+            @if ((!publication.IsPublished && publication.Ready) || Model.Status is { CanChange: true } || Model.Status is { MayAddNote: true })
+            {
+                <div class="bp-bh-actions" data-action-bar>
+                    @if (!publication.IsPublished && publication.Ready)
+                    {
+                        <button type="button" class="bp-primary-button bp-with-icon" data-open-dialog="publish-dialog"><svg class="bp-i" aria-hidden="true"><use href="#i-publish" /></svg>Publish passport</button>
+                    }
+                    @if (Model.Status is { CanChange: true })
+                    {
+                        <button type="button" class="bp-primary-button bp-with-icon" data-open-dialog="status-dialog"><svg class="bp-i" aria-hidden="true"><use href="#i-swap" /></svg>Change status</button>
+                    }
+                    @if (Model.Status is { MayAddNote: true })
+                    {
+                        <button type="button" class="bp-secondary-button bp-with-icon" data-open-dialog="note-dialog"><svg class="bp-i" aria-hidden="true"><use href="#i-note" /></svg>Add a note</button>
+                    }
+                </div>
+            }
+            @if (Model.Marks is { Active: true, Marked: false } || !publication.IsPublished)
+            {
+                <details class="bp-more">
+                    <summary class="bp-secondary-button bp-with-icon"><svg class="bp-i" aria-hidden="true"><use href="#i-more" /></svg>More</summary>
+                    <div class="bp-more-list">
+                        @if (Model.Marks is { Active: true, Marked: false })
+                        {
+                            @* Opens a window, like Change status (redesign R5, owner's item 2). *@
+                            <button type="button" class="is-danger" data-open-dialog="mark-dialog"><svg class="bp-i" aria-hidden="true"><use href="#i-alert" /></svg><span>Mark as invalid or for deletion…<small>Freezes the passport; every page says so</small></span></button>
+                        }
+                        @if (!publication.IsPublished && ViewData[BatteriesController.SwapFromKey] is BatteryPassWeb.Dpp.Identifiers.ReleasedBatteryId)
+                        {
+                            <button type="button" data-open-dialog="swap-id-dialog"><svg class="bp-i" aria-hidden="true"><use href="#i-swap" /></svg><span>Change its battery ID…<small>Take another released ID while it is a draft</small></span></button>
+                        }
+                        @if (!publication.IsPublished)
+                        {
+                            <a href="@href?section=overview&open=remove#remove" class="is-danger"><svg class="bp-i" aria-hidden="true"><use href="#i-trash" /></svg><span>Remove this draft battery…<small>Only while nothing is published</small></span></a>
+                        }
+                    </div>
+                </details>
+            }
+            <nav class="bp-bh-open" aria-label="This battery elsewhere">
+                @if (publication.IsPublished)
+                {
+                    <a class="bp-ilink" href="@PassportPages.SummaryHref(Model.Identifier)" title="The public page, as anyone sees it"><svg class="bp-i" aria-hidden="true"><use href="#i-globe" /></svg>Public page</a>
+                    <a class="bp-ilink" href="@PassportPages.DetailHref(Model.Identifier)" title="Everything its readers see, by who they are"><svg class="bp-i" aria-hidden="true"><use href="#i-doc" /></svg>Detail page</a>
+                }
+                <a class="bp-ilink" href="@PassportPages.QrHref(Model.Identifier)" target="_blank" rel="noreferrer" title="@(publication.IsPublished ? "Opens the public page" : "Opens the public page once the passport is published")"><svg class="bp-i" aria-hidden="true"><use href="#i-qr" /></svg>QR code</a>
+                <a class="bp-ilink" href="@PassportPages.QrDownloadHref(Model.Identifier)" title="Save the QR code as a picture"><svg class="bp-i" aria-hidden="true"><use href="#i-download" /></svg>Save QR</a>
+                <a class="bp-ilink" href="/admin/audit?q=@Uri.EscapeDataString(Model.Pack.Id)" title="Every change to this battery, in the audit log"><svg class="bp-i" aria-hidden="true"><use href="#i-history" /></svg>History</a>
+            </nav>
+        </div>
+    </header>
+
+    @await Html.PartialAsync("~/Views/ProductData/_Messages.cshtml")
+
+    <div class="bp-bpage">
+        @await Html.PartialAsync("~/Views/Batteries/_BatteryNav.cshtml", new BatteryNav(sections, chosen, href))
+        <div class="bp-bpanel">
+            @* The overview (redesign R4, the owner's improvement 4): where the passport stands, the live values with their last
+               7 days, and what needs doing, once. Today's Publication card, whole, with clearer words. *@
+            <div data-section="overview" hidden="@Hidden("overview")">
+                <section class="bp-card bp-console-form-card bp-battery-card" id="publication">
+                    <div class="bp-battery-card-head">
+                        <div>
+                            <span class="bp-summary-title">Overview</span>
+                            @if (publication.Active is { } active)
+                            {
+                                <h2>Published · version @active.Number</h2>
+                                <p class="mb-0">Public since @When(active.PublishedAtUtc). Changing one of its values publishes version @(active.Number + 1), and you're asked first; live values and accident reports change it in place.</p>
+                            }
+                            else if (publication.Latest is { } last)
+                            {
+                                <h2>@DppStatuses.Words(last.DppStatus) · version @last.Number</h2>
+                                <p class="mb-0">Since @When(last.LastUpdatedUtc). Nothing on this passport changes any more; it stays readable by its passport and battery IDs.</p>
+                            }
+                            else if (publication.Ready)
+                            {
+                                <h2>Ready to publish</h2>
+                                <p class="mb-0">Every value the passport needs by February 2027 is there. Publishing makes version 1, signs it and shows it to its readers.</p>
+                            }
+                            else
+                            {
+                                <h2>Not ready to publish yet</h2>
+                                <p class="mb-0"><span class="bp-missing-note">@Words.Count(publication.MissingCount, "value") missing</span> that the passport needs by February 2027.</p>
+                            }
+                        </div>
+                        @* One Publish button, the header's (redesign R5's page review). *@
+                        @if (!publication.IsPublished && publication.Ready)
+                        {
+                            <p class="bp-help-text mb-0">Publish it with <strong>Publish passport</strong> among the page's actions.</p>
+                        }
+                    </div>
+                    @{ await CardMessagesAsync("publication"); }
+
+                    @await Html.PartialAsync("~/Views/Batteries/_LiveTiles.cshtml", Model.Tiles)
+
+                    @if (Model.NeedsYou == 0 && publication.IsPublished)
+                    {
+                        <ul class="bp-todo"><li class="is-none">Nothing needs you.</li></ul>
+                    }
+                    @if (publication.Missing.Count > 0)
+                    {
+                        <h3 class="h6 mt-3 mb-0">What the passport still needs</h3>
+                        <ul class="bp-missing-groups">
+                            @foreach (var group in publication.Missing)
+                            {
+                                <li>
+                                    <div class="bp-missing-group-head">
+                                        <strong>@group.Record</strong>
+                                        <a href="@group.Href">Fill in</a>
+                                    </div>
+                                    <span>@string.Join(", ", group.Attributes.Select(attribute => $"{attribute.Label} {attribute.Name}"))</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    @foreach (var note in publication.Notes ?? [])
+                    {
+                        @* A battery published before a rule keeps working; the rule's sentence is only a warning for it (U16). *@
+                        <p class="bp-warning mt-2 mb-0" role="status">@note</p>
+                    }
+                    @if (publication.Problems.Count > 0)
+                    {
+                        <ul class="bp-missing-groups">
+                            @foreach (var problem in publication.Problems)
+                            {
+                                <li><span class="text-danger">@problem</span></li>
+                            }
+                        </ul>
+                    }
+
+                    <div class="bp-battery-checks">
+                        @if (publication.NeededLater.Count > 0)
+                        {
+                            <details>
+                                <summary>@Words.Count(publication.NeededLater.Count, "value") needed only after February 2027</summary>
+                                <p class="mb-0">@string.Join(", ", publication.NeededLater.Select(attribute => $"{attribute.Label} {attribute.Name}"))</p>
+                            </details>
+                        }
+                        @if (publication.Files.Count == 0)
+                        {
+                            <p class="mb-0 bp-batteries-muted">No documents uploaded yet.</p>
+                        }
+                        else
+                        {
+                            <details open="@(filesChanged > 0)">
+                                <summary>
+                                    @if (filesChanged == 0)
+                                    {
+                                        <span class="bp-done-note">Documents: @publication.Files.Count, all unchanged since they were uploaded</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="bp-missing-note">Documents: @filesChanged of @publication.Files.Count changed since they were uploaded</span>
+                                    }
+                                </summary>
+                                <ul class="bp-file-checks">
+                                    @foreach (var file in publication.Files)
+                                    {
+                                        <li>
+                                            <span>@file.Document.FileName · @file.Owner</span>
+                                            @if (file.Unchanged)
+                                            {
+                                                <span class="bp-done-note">Unchanged</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="bp-missing-note">Changed or missing: its SHA-256 no longer matches</span>
+                                            }
+                                        </li>
+                                    }
+                                </ul>
+                                <small class="bp-field-help">Each document is checked against the SHA-256 fingerprint taken when it was uploaded.</small>
+                            </details>
+                        }
+                    </div>
+                </section>
+
+                @if (!publication.IsPublished)
+                {
+                    <details class="bp-card bp-remove-record mt-4" id="remove" open="@(card == "remove" || Context.Request.Query["open"] == "remove")">
+                        <summary>Remove this battery</summary>
+                        @{ await CardMessagesAsync("remove"); }
+                        @if (Model.Removal.Blocked is { } blocked)
+                        {
+                            <p class="mb-0 mt-2">It can't be removed: @blocked</p>
+                        }
+                        else
+                        {
+                            <form method="post" action="@Model.Removal.Action" class="d-flex flex-wrap align-items-center gap-3 mt-2">
+                                @Html.AntiForgeryToken()
+                                <span>It's a draft, so nothing has been published. Removing it deletes it with its accident reports; this can't be undone.</span>
+                                <button type="submit" class="bp-danger-button bp-button-compact text-nowrap" data-confirm-action data-confirm-title="Remove draft battery" data-confirm-message="Remove this draft battery and its values? It can't be undone." data-confirm-submit="Remove">Remove draft battery</button>
+                            </form>
+                        }
+                    </details>
+                }
+            </div>
+
+            <div data-section="values" hidden="@Hidden("values")" id="values">
+                @await Html.PartialAsync("~/Views/ProductData/_RecordEditor.cshtml", Model.Editor)
+                @if (publication.IsPublished)
+                {
+                    <p class="bp-battery-fixed-note">The serial number, manufacturing date and warranty are fixed now that the passport is published; they're shown at the top.</p>
+                }
+            </div>
+
+            @if (Model.Status is { } statusCard)
+            {
+                <div data-section="status" hidden="@Hidden("status")">
+                    @await Html.PartialAsync("~/Views/Batteries/_StatusCard.cshtml", statusCard)
+                </div>
+            }
+            <div data-section="live" hidden="@Hidden("live")">
+                @await Html.PartialAsync("~/Views/Batteries/_LiveValuesCard.cshtml", Model.Cards)
+            </div>
+            @if (Model.Upload is { } upload)
+            {
+                <div data-section="upload" hidden="@Hidden("upload")">
+                    @await Html.PartialAsync("~/Views/Batteries/_UploadCard.cshtml", upload)
+                </div>
+            }
+            <div data-section="accidents" hidden="@Hidden("accidents")">
+                @await Html.PartialAsync("~/Views/Batteries/_AccidentsCard.cshtml", Model.Cards)
+            </div>
+            <div data-section="modules" hidden="@Hidden("modules")">
+                @await Html.PartialAsync("~/Views/Batteries/_ModulesCard.cshtml", Model.Cards)
+            </div>
+            <div data-section="versions" hidden="@Hidden("versions")">
+                @await Html.PartialAsync("_PassportChain", new ChainView(Model.Chain, ChainReader.Team))
+                @await Html.PartialAsync("~/Views/Batteries/_VersionsCard.cshtml", Model.Cards)
+            </div>
+        </div>
+    </div>
+
+    @* The windows, at page level: one inside a hidden section can't open. *@
+    <dialog id="cluster-dialog" class="bp-modal-panel bp-dialog" aria-labelledby="cluster-dialog-title">
+        <form method="post" action="@href/cluster">
+            @Html.AntiForgeryToken()
+            <h2 id="cluster-dialog-title">Change the cluster</h2>
+            <p class="bp-help-text">The customer the battery belongs to. Its members see its purchaser data. The passport doesn't change.@(Model.HandOverTo is { } waitingFor ? $" Moving it cancels the hand-over waiting for {waitingFor}." : null)</p>
+            <label class="bp-product-version-selected-field">
+                <span>Cluster</span>
+                <select name="clusterId">
+                    <option value="" selected="@(Model.Pack.ClusterId is null)">No cluster yet</option>
+                    @foreach (var cluster in Model.Clusters)
+                    {
+                        <option value="@cluster.Id" selected="@(string.Equals(cluster.Id, Model.Pack.ClusterId, StringComparison.OrdinalIgnoreCase))">@(cluster.IsDemo ? $"{cluster.Name} (demo customer: test IDs only)" : cluster.Name)</option>
+                    }
+                </select>
+            </label>
+            <div class="bp-dialog-actions">
+                <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
+                <button type="submit" class="bp-primary-button">Save cluster</button>
+            </div>
+        </form>
+    </dialog>
+
+    @if (!publication.IsPublished && publication.Ready)
+    {
+        <dialog id="publish-dialog" class="bp-modal-panel bp-dialog" aria-labelledby="publish-dialog-title">
+            <form method="post" action="@href/publish">
+                @Html.AntiForgeryToken()
+                <h2 id="publish-dialog-title">Publish this passport?</h2>
+                <p class="bp-help-text">
+                    Version 1 gets its passport ID and signature, and its readers see it: everyone the public values,
+                    the cluster and authorities theirs. The serial number, manufacturing date and warranty can't change after this.
+                </p>
+                <div class="bp-dialog-actions">
+                    <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
+                    <button type="submit" class="bp-primary-button">Publish version 1</button>
+                </div>
+            </form>
+        </dialog>
+    }
+
+    @if (Model.Status is { } statusWindows)
+    {
+        @await Html.PartialAsync("~/Views/Batteries/_StatusDialog.cshtml", statusWindows)
+    }
+
+    @if (Model.Marks is { Active: true, Marked: false } markable)
+    {
+        @await Html.PartialAsync("~/Views/Batteries/_MarkDialog.cshtml", markable)
+    }
+    @if (!publication.IsPublished && ViewData[BatteriesController.SwapFromKey] is BatteryPassWeb.Dpp.Identifiers.ReleasedBatteryId swapFrom)
+    {
+        @await Html.PartialAsync("~/Views/Batteries/_SwapIdDialog.cshtml", ($"{href}/battery-id", swapFrom, (IReadOnlyList<BatteryPassWeb.Dpp.Identifiers.ReleasedBatteryId>)ViewData[BatteriesController.SwapIdsKey]!))
+    }
+    @* Asks before a removal that can't be undone (redesign R6). *@
+    @await Html.PartialAsync("_ConfirmModal")
+</main>
+
+@section Scripts {
+    <script src="~/js/bp-record-editor.js" asp-append-version="true"></script>
+    <script src="~/js/bp-confirm.js" asp-append-version="true"></script>
+    <script src="~/js/bp-status-change.js" asp-append-version="true"></script>
+    <script src="~/js/bp-battery-page.js" asp-append-version="true"></script>
+    <script src="~/js/bp-picture-trim.js" asp-append-version="true"></script>
+    <script src="~/js/bp-passport-actions.js" asp-append-version="true"></script>
+}

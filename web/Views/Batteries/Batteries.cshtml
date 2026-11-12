@@ -1,0 +1,30 @@
+@using BatteryPassWeb.Dpp.Pages
+@using BatteryPassWeb.Dpp.Store
+@model BatteriesPage
+@{
+    ViewData["Title"] = "Batteries";
+}
+
+<main class="bp-page bp-admin-page">
+    <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
+    @await Html.PartialAsync("_AdminTabs", "batteries")
+    @await Html.PartialAsync("~/Views/ProductData/_Messages.cshtml")
+
+    <section class="bp-card bp-product-template-hero bp-console-form-card bp-batteries-hero mt-4">
+        <div>
+            <span class="bp-summary-title">Batteries</span>
+            <h2>Batteries and their passports</h2>
+            <p class="mb-0">
+                One passport per battery. A new battery is a draft, seen only by your team, until its passport is published.
+            </p>
+        </div>
+    </section>
+
+    @* The shared list (redesign R7, the owner's choice "One shared list"): every battery, drafts too, and Create. *@
+    @await Html.PartialAsync("_BatteryList", new BatteryListView("/admin/batteries", Model.Query, Model.Rows, ShowClusters: true,
+        row => BatteryPages.BatteryHref(row.PackId), row => RowActions.For(row, BatteryPages.BatteryHref(row.PackId), team: true), _ => true)
+    {
+        CreateHref = "/admin/batteries/new",
+        Empty = "No batteries yet. Use Create battery to add the first; it starts as a draft.",
+    })
+</main>

@@ -1,7 +1,9 @@
+using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Models.ViewModels;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MongoDB.Bson;
 using BCryptNet = BCrypt.Net.BCrypt;
 
@@ -15,17 +17,20 @@ public sealed class AccountController : Controller
     private readonly AuthService _authService;
     private readonly ApplicationAuditService _applicationAuditService;
     private readonly AuthenticationSessionService _authenticationSessionService;
+    private readonly AccessControlService _accessControlService;
 
     public AccountController(
         ClusterRepository clusterRepository,
         AuthService authService,
         ApplicationAuditService applicationAuditService,
-        AuthenticationSessionService authenticationSessionService)
+        AuthenticationSessionService authenticationSessionService,
+        AccessControlService accessControlService)
     {
         _clusterRepository = clusterRepository;
         _authService = authService;
         _applicationAuditService = applicationAuditService;
         _authenticationSessionService = authenticationSessionService;
+        _accessControlService = accessControlService;
     }
 
     [HttpGet("")]
@@ -35,10 +40,12 @@ public sealed class AccountController : Controller
     }
 
     [HttpPost("")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.Login)] // it checks the current password, as a sign-in does (finding S06)
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Save(CancellationToken cancellationToken)
     {
-        var currentEmail = AccessControlService.CurrentEmail(User).Trim().ToLowerInvariant();
+        // The signed-in account by its own identity, as stored, never a lower-cased copy (finding U28).
+        var currentEmail = AccessControlService.CurrentEmail(User).Trim();
         var newEmail = Text(Request.Form, "email").Trim().ToLowerInvariant();
         var name = Text(Request.Form, "name", currentEmail);
         var password = Text(Request.Form, "password");
@@ -68,7 +75,43 @@ public sealed class AccountController : Controller
             });
         }
 
-        if (!newEmail.Equals(currentEmail, StringComparison.OrdinalIgnoreCase))
+        // A new password or e-mail needs the current password first, and a new password has 12 characters (finding S06).
+        var emailChanges = !newEmail.Equals(currentEmail, StringComparison.OrdinalIgnoreCase);
+
+        // Nobody but the team takes the fallback admin's address (finding R19, decision 4).
+        if (emailChanges && !AccessControlService.IsAdmin(User) && _accessControlService.IsFallbackAdminAddress(newEmail))
+        {
+            var model = await BuildModelAsync(cancellationToken);
+            return View("Index", new AccountProfileViewModel
+            {
+                Email = model.Email,
+                Name = name,
+                RoleLabel = model.RoleLabel,
+                ErrorMessage = AccessControlService.AddressKeptForTheTeam
+            });
+        }
+        if (emailChanges || !string.IsNullOrWhiteSpace(password))
+        {
+            var currentPassword = Request.Form["currentPassword"].FirstOrDefault() ?? string.Empty;
+            var problem = string.IsNullOrEmpty(currentPassword)
+                ? AuthService.CurrentPasswordNeeded
+                : !await _authService.IsCurrentPasswordAsync(currentEmail, currentPassword, cancellationToken)
+                    ? AuthService.CurrentPasswordWrong
+                    : string.IsNullOrWhiteSpace(password) ? null : AuthService.NewPasswordProblem(password);
+            if (problem is not null)
+            {
+                var model = await BuildModelAsync(cancellationToken);
+                return View("Index", new AccountProfileViewModel
+                {
+                    Email = model.Email,
+                    Name = name,
+                    RoleLabel = model.RoleLabel,
+                    ErrorMessage = problem
+                });
+            }
+        }
+
+        if (emailChanges)
         {
             var existing = await _clusterRepository.GetUserByEmailAsync(newEmail, cancellationToken);
             if (existing != null)
@@ -105,7 +148,7 @@ public sealed class AccountController : Controller
             newEmail,
             cancellationToken: cancellationToken);
 
-        var principal = await _authService.CreatePrincipalForUserAsync(newEmail, cancellationToken);
+        var principal = await _authService.CreatePrincipalForUserAsync(emailChanges ? newEmail : currentEmail, cancellationToken);
         if (principal != null)
         {
             await _authenticationSessionService.SignInAsync(HttpContext, principal, cancellationToken);
@@ -113,7 +156,7 @@ public sealed class AccountController : Controller
 
         return View("Index", new AccountProfileViewModel
         {
-            Email = newEmail,
+            Email = emailChanges ? newEmail : currentEmail,
             Name = name,
             RoleLabel = principal == null ? AccessControlService.DisplayRoleLabel(User) : AccessControlService.DisplayRoleLabel(principal),
             StatusMessage = "Account updated."
@@ -122,7 +165,7 @@ public sealed class AccountController : Controller
 
     private async Task<AccountProfileViewModel> BuildModelAsync(CancellationToken cancellationToken)
     {
-        var email = AccessControlService.CurrentEmail(User).Trim().ToLowerInvariant();
+        var email = AccessControlService.CurrentEmail(User).Trim();
         var user = await _clusterRepository.GetUserByEmailAsync(email, cancellationToken);
         var name = user == null ? User.Identity?.Name ?? email : BsonHelpers.GetString(user, "name");
         return new AccountProfileViewModel

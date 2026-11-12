@@ -1,0 +1,43 @@
+@using BatteryPassWeb.Dpp.Identifiers
+@using BatteryPassWeb.Dpp.Pages
+@model (IReadOnlyList<ReleasedBatteryId> Items, Func<string?, string> ModelName, bool ShowReference)
+@* Released IDs as rows (6d-2b): serial number, battery ID, model, reference, status, and a small menu per row; voiding is
+   in the menu, not a red link on every row. A battery's ID opens its battery instead. *@
+<div class="bp-table-scroll">
+    <table class="table align-middle mb-0 bp-console-table bp-released-table">
+        <thead><tr><th>Serial number</th><th>Battery ID</th><th>Model</th><th>@(Model.ShowReference ? "Reference" : "Released")</th><th>Status</th><th><span class="visually-hidden">Actions</span></th></tr></thead>
+        <tbody>
+            @foreach (var item in Model.Items)
+            {
+                <tr>
+                    <td data-label="Serial number"><strong>@item.SerialNumber</strong>@if (item.IsDemo) {<span class="bp-id-demo">Demo</span>}</td>
+                    <td data-label="Battery ID">@await Html.PartialAsync("_IdValue", item.Identifier)</td>
+                    <td data-label="Model">@Model.ModelName(item.ModelId)</td>
+                    <td data-label="@(Model.ShowReference ? "Reference" : "Released")">@(Model.ShowReference ? item.Reference : ValueWords.Day(item.ReleasedAtUtc.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)))</td>
+                    <td data-label="Status">
+                        <span class="bp-id-status is-@item.Status">@ReleasedIdStatuses.Words(item.Status)</span>
+                        @if (item.Status == ReleasedIdStatuses.Voided)
+                        {
+                            <small class="bp-batteries-muted d-block">@item.VoidReason</small>
+                        }
+                    </td>
+                    <td data-label="Actions" class="bp-release-row-actions">
+                        @if (item.PackId is { } packId)
+                        {
+                            <a href="@BatteryPages.BatteryHref(packId)">Open battery</a>
+                        }
+                        else if (item.Status == ReleasedIdStatuses.Available)
+                        {
+                            <details class="bp-row-menu">
+                                <summary aria-label="More for @item.SerialNumber" title="More"><svg class="bp-i" aria-hidden="true"><use href="#i-more" /></svg></summary>
+                                <div class="bp-row-menu-list">
+                                    <button type="button" data-void-id data-serial="@item.SerialNumber">Void…<small>Never used again</small></button>
+                                </div>
+                            </details>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

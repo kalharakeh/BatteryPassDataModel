@@ -1,24 +1,54 @@
-@model BatteryPassWeb.Models.ViewModels.BatteryTablePageViewModel
+@using BatteryPassWeb.Dpp.Pages
+@model RegistryPage
 @{
     ViewData["Title"] = "Scania Passport Registry";
 }
 <main class="bp-page bp-admin-page bp-registry-page">
+    <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
     <header class="bp-console-header">
         <div>
             <h1>Scania Passport Registry</h1>
-            <p class="text-secondary mb-0">@Model.ScopeLabel</p>
+            <p class="text-secondary mb-0">@Model.Scope</p>
         </div>
     </header>
 
-    <section class="bp-console-toolbar bp-battery-table-toolbar">
-        <form action="@Model.SearchAction" class="bp-search-form">
-            <input
-                name="q"
-                value="@Model.Query"
-                placeholder="@Model.SearchPlaceholder" />
-            <button type="submit">Search</button>
-        </form>
-    </section>
+    @await Html.PartialAsync("~/Views/ProductData/_Messages.cshtml")
+    @if (Model.Waiting.Count > 0)
+    {
+        @* Waiting for you stands out from the list (redesign R3, owner's point 12). *@
+        <section class="bp-card bp-console-form-card bp-product-editor-section bp-wait mt-4" id="waiting">
+            <div class="bp-wait-head">
+                <span class="bp-wait-bell"><svg class="bp-i" aria-hidden="true"><use href="#i-bell" /></svg></span>
+                <div>
+                    <span class="bp-summary-title">Waiting for you</span>
+                    <h2 class="h5 mb-0">@Words.Count(Model.Waiting.Count, "battery", "batteries") handed over to your cluster</h2>
+                </div>
+            </div>
+            <p class="bp-help-text mt-2 mb-2">Accept it to see its purchaser data and manage it. Until then it stays with the sending cluster.</p>
+            @foreach (var waiting in Model.Waiting)
+            {
+                <div class="bp-handover-row">
+                    <div>
+                        <strong>@waiting.SerialNumber</strong>@(waiting.ModelName.Length > 0 ? $" · {waiting.ModelName}" : null)
+                        <small class="d-block text-secondary">From @waiting.FromName, asked @ValueWords.Time(waiting.HandOver.AskedAtUtc) by @waiting.HandOver.AskedBy</small>
+                    </div>
+                    <form method="post" action="/registry/handovers/@Uri.EscapeDataString(waiting.HandOver.Id)">
+                        @Html.AntiForgeryToken()
+                        <div class="bp-dialog-actions">
+                            <button type="submit" name="accept" value="true" class="bp-primary-button">Accept</button>
+                            <button type="submit" name="accept" value="false" class="bp-secondary-button">Decline</button>
+                        </div>
+                    </form>
+                </div>
+            }
+        </section>
+    }
 
-    @await Html.PartialAsync("_BatteryTable", Model)
+    @* The shared list (redesign R7, the owner's choice "One shared list"): the same search, columns and icons as the
+       team's Batteries page; each reader's rows, clusters and battery statuses as before. *@
+    @await Html.PartialAsync("_BatteryList", new BatteryListView("/registry", Model.Query, Model.Rows, Model.ShowClusters,
+        Model.OpenHref, Model.Actions, row => Model.BatteryStatusShown.Contains(row.PackId))
+    {
+        Empty = Model.Scope,
+    })
 </main>

@@ -1,0 +1,248 @@
+@using BatteryPassWeb.Services
+@{
+    // The one Help place (step 3e): each reader sees only the parts for their role. The team's workflow used to be its
+    // own page under the admin tabs (/help/team and /admin/help now lead here). Step 6b-1: a part for every kind of
+    // reader of design 5.2, the statuses in words, and printing.
+    ViewData["Title"] = "Help";
+    var signedIn = User.Identity?.IsAuthenticated == true;
+    var isTeam = User.IsInRole(AccessControlService.RoleAdmin);
+    var runsACluster = isTeam || User.IsInRole(AccessControlService.RoleClusterAdmin);
+    var inACluster = !isTeam && !runsACluster && User.IsInRole(AccessControlService.RoleNormalUser);
+    var isMsa = User.IsInRole(AccessControlService.RoleMarketSurveillanceAuthority);
+    var authorityOrInterest = new[]
+    {
+        (Role: AccessControlService.RoleNotifiedBody, Who: "Notified body", Sees: "the authorities' values: the economic operator's and manufacturer's IDs, the service provider and the test reports"),
+        (Role: AccessControlService.RoleCommission, Who: "Commission", Sees: "the shared values (materials, dismantling manuals, part numbers, spare parts, safety measures) and the authorities' values; not the purchaser's values"),
+        (Role: AccessControlService.RoleLiRepair, Who: "Repair, repurposing and remanufacturing", Sees: "the materials, the dismantling manuals, the part numbers, the spare parts sources and the safety measures"),
+        (Role: AccessControlService.RoleLiRecycling, Who: "Recycling and battery treatment", Sees: "the materials, the dismantling manuals and the safety measures"),
+        (Role: AccessControlService.RoleLiTreatment, Who: "Authorised treatment and WEEE facilities", Sees: "the safety measures"),
+    }.Where(role => User.IsInRole(role.Role)).ToArray();
+}
+<main class="bp-page bp-help-page">
+    <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
+    <div class="bp-admin-heading">
+        <h1>Help</h1>
+        <p>How the battery passport works, for you.</p>
+    </div>
+
+    <div class="bp-help-layout mt-4">
+        @await Html.PartialAsync("_HelpContents", "guide")
+        <div class="bp-help-parts">
+            <section class="bp-card bp-help-part" id="find">
+                <h2>Find a passport</h2>
+                <p class="mb-0">On the <a href="/">home page</a>, type the battery's serial number, battery ID or passport ID, or scan the QR code on the battery. A label scanned before its battery's passport is published says "Not published yet". @(signedIn ? "The Registry lists the batteries you may open." : "Signed in, the Registry also lists the batteries you may open. No account yet? Ask your contact at Scania.")</p>
+            </section>
+
+            <section class="bp-card bp-help-part" id="see">
+                <h2>What each reader sees</h2>
+                <dl class="bp-word-list">
+                    <dt>Everyone</dt>
+                    <dd>The public page: the public values, the document links and the family's picture.</dd>
+                    <dt>The battery's cluster, market surveillance</dt>
+                    <dd>Also the purchaser values, such as state of charge, temperature, battery status and accident reports.</dd>
+                    <dt>Repair, recycling, treatment, Commission</dt>
+                    <dd>Also the shared values meant for them.</dd>
+                    <dt>Notified bodies, market surveillance, Commission</dt>
+                    <dd>Also the authorities' values, such as test reports.</dd>
+                </dl>
+                <p class="mt-3 mb-0">Signed in, the passport's detail page shows one section per group you belong to. Each value says when it was measured or entered, and how.</p>
+            </section>
+
+            <section class="bp-card bp-help-part" id="statuses">
+                <h2>Statuses</h2>
+                <p>Every passport page shows two badges. <strong>Battery</strong> (square tag) says what has happened to the battery; only the battery's cluster, market surveillance and the team see it. <strong>Passport</strong> (round pill) says whether this passport is the one that counts; everyone sees it.</p>
+                @await Html.PartialAsync("_StatusMeanings")
+            </section>
+
+            @* Signed out, the Help is the three parts above (the owner, Q1 of step 6b). *@
+            @if (signedIn)
+            {
+                <section class="bp-card bp-help-part" id="print">
+                    <h2>Print a passport</h2>
+                    <p class="mb-0">Print the public page or the detail page from the browser (Ctrl+P), or save it as PDF. The paper copy starts with the QR code, the page's address and when it was printed, and shows every section open. Live values print as their latest readings.</p>
+                </section>
+            }
+
+            @if (signedIn)
+            {
+                <section class="bp-card bp-help-part" id="account">
+                    <h2>Your account</h2>
+                    <p>Under Account at the top, you can change your name, your e-mail and your password. To change your password or your e-mail, type your current password too. A new password has at least 12 characters.</p>
+                    <p class="mb-0">When the team changes your access, it applies on your next page. When someone else sets your password, or your account is deleted, you are signed out.</p>
+                </section>
+            }
+
+            @if (inACluster)
+            {
+                <section class="bp-card bp-help-part" id="your-batteries">
+                    <h2>Your cluster's batteries <span class="bp-soft-tag">Cluster users</span></h2>
+                    <ol class="bp-steps">
+                        <li><strong><a href="/registry">The Registry</a></strong><p>Lists your cluster's batteries, each with its two badges. Its icons open the battery's public page and detail page.</p></li>
+                        <li><strong>The detail page</strong><p>The purchaser values, the repair history and the shared values. "Live values" shows the last week's readings as small charts; "Modules" lists the battery's modules.</p></li>
+                        <li><strong>Changes</strong><p>Your cluster admins correct live values, add accident reports, record repairs and hand batteries over. Ask them, or the manufacturer's team.</p></li>
+                    </ol>
+                </section>
+            }
+
+            @if (isMsa)
+            {
+                <section class="bp-card bp-help-part" id="msa">
+                    <h2>Market surveillance <span class="bp-soft-tag">Market surveillance</span></h2>
+                    <ol class="bp-steps">
+                        <li><strong><a href="/registry">Every published passport</a></strong><p>The Registry lists them all, invalid and marked ones included. The detail page shows every section: purchaser, shared and authorities' values, the live values and the modules.</p></li>
+                        <li><strong>Mark as invalid…</strong><p>On an active passport's detail page, press "Mark as invalid…" in the Purchaser card: give the reason, then confirm. The public page then says the passport is invalid, with the date. The reason is seen only by you and the manufacturer's team, and only the team can undo it. An invalid passport takes no new versions, status changes or live values.</p></li>
+                    </ol>
+                </section>
+            }
+
+            @if (authorityOrInterest.Length > 0)
+            {
+                <section class="bp-card bp-help-part" id="your-access">
+                    <h2>What your account adds</h2>
+                    <dl class="bp-word-list">
+                        @foreach (var role in authorityOrInterest)
+                        {
+                            <dt>@role.Who</dt>
+                            <dd>Besides the public values: @role.Sees.</dd>
+                        }
+                    </dl>
+                    <p class="mt-3 mb-0">The <a href="/registry">Registry</a> lists every published passport; open its detail page to see these values. The manufacturer's team gives this access to named accounts.</p>
+                </section>
+            }
+
+            @if (signedIn && !runsACluster)
+            {
+                <section class="bp-card bp-help-part" id="access">
+                    <h2>Need more access?</h2>
+                    <p class="mb-0">If you should see more than you do, ask your cluster admin or the manufacturer's team.</p>
+                </section>
+            }
+
+            @if (runsACluster)
+            {
+                <section class="bp-card bp-help-part" id="cluster">
+                    <h2>Your cluster <span class="bp-soft-tag">Cluster admins</span></h2>
+                    <ol class="bp-steps">
+                        <li><strong><a href="/cluster-admin/users">Add your people</a></strong><p>Under Cluster admin, Users: "Add user" makes an account for a new address, as a user (sees your cluster's batteries) or as a cluster admin (also looks after its users and tokens). If the person already has an account, they are only added to your cluster: their name and password stay as they are. You can change the name and password only of people who are in your clusters alone and have no role across the app; for anyone else, ask the team. The x beside a cluster asks first, then removes the person from that cluster.</p></li>
+                        <li><strong><a href="/cluster-admin/api-tokens">Give your systems a token</a></strong><p>Under Cluster admin, API tokens: "Read" reads your batteries' passports; "Read + write" also sends their live values. Copy the value when it is shown: it is shown once.</p></li>
+                        <li><strong><a href="/registry">Check what they see</a></strong><p>Your users find your cluster's batteries in the Registry, with the purchaser values on the detail page.</p></li>
+                    </ol>
+                </section>
+
+                <section class="bp-card bp-help-part" id="look-after">
+                    <h2>Look after a battery <span class="bp-soft-tag">Cluster admins</span></h2>
+                    <p>In the <a href="/registry">Registry</a>, a battery's icon opens its page; its side menu has one section at a time.</p>
+                    <dl class="bp-word-list">
+                        <dt>Live values</dt>
+                        <dd>Correct the state of charge, cycles, temperature and the extreme-temperature times. The battery system usually sends them.</dd>
+                        <dt>Accident reports</dt>
+                        <dd>"Add a report" uploads one; the passport's accident page lists them for its readers. A report added by mistake is withdrawn by the team.</dd>
+                        <dt>Change status</dt>
+                        <dd>"What happened?": Repaired, Prepared for re-use and placed on the market again, Remanufactured, Repurposed or Waste. The window asks for the re-stated fades and lifetime, filled in with the current ones. A repair keeps the passport and adds to its repair history. The three that place the battery on the market again lead to a new linked passport, from Scania or another operator. Waste asks a second question ("Is it waste?" with "Yes, it is waste" or "No, go back") before it is saved, and it is final for you: only the team can undo it.</dd>
+                        <dt>Add a note</dt>
+                        <dd>A correction to the repair history; nothing in the history is changed or removed.</dd>
+                        <dt>Hand over…</dt>
+                        <dd>Type the receiving cluster's ID; the app shows its name to confirm. Until its admins accept on their Registry's "Waiting for you" card, the battery stays yours. Afterwards your cluster no longer sees its purchaser values.</dd>
+                        <dt>Waiting for you</dt>
+                        <dd>A battery another cluster hands to you: Accept or Decline.</dd>
+                    </dl>
+                    <p class="mt-3 mb-0">A passport that is invalid, marked for deletion or replaced by a new passport is read only.</p>
+                </section>
+
+                <section class="bp-card bp-help-part" id="upload">
+                    <h2>Upload a file <span class="bp-soft-tag">Team and cluster admins</span></h2>
+                    <p>On a battery's page, "Upload a file" takes one JSON file for that battery: the app's upload format, or the battery system's export as it is. You see what would change before anything is saved. A marked or earlier passport takes no file.</p>
+                    <ul>
+                        <li><a href="/help/samples/@BatteryPassWeb.Dpp.Uploads.UploadSamples.UploadFileName" download>An upload file</a>: live values and a repair, with one re-stated value, for the demo battery @BatteryPassWeb.Dpp.Uploads.UploadSamples.Serial. A status change goes in the same way: <code>"batteryStatus": "waste"</code> (or re-used, remanufactured, repurposed) among the values.</li>
+                        <li><a href="/help/samples/@BatteryPassWeb.Dpp.Uploads.UploadSamples.ExportFileName" download>A battery system export</a> (mapping BMS2_ACO) of the same demo battery, with made-up values.</li>
+                    </ul>
+                    <p>A value the app keeps itself, such as the accident link (#92), is never changed by a file: it shows "Not saved". "Check the file" shows a battery's current value only for values you may see.</p>
+                    <p class="bp-help-text mb-0">Status changes and repairs are made on the battery's page only; the API refuses them. Many batteries in one file go through the API's upload.</p>
+                </section>
+            }
+
+            @if (isTeam)
+            {
+                <section class="bp-card bp-help-part" id="team-users">
+                    <h2>Accounts <span class="bp-soft-tag">Team</span></h2>
+                    <p>"Add user" is for new addresses; change an existing account from its row. Giving an account access across the app needs a new password in the same step. A new password has at least 12 characters. Your own access, and the last team account's access, can't be lowered. The x beside a cluster asks first, then removes the person from it.</p>
+                    <p class="mb-0">Deleting an account, lowering its access, removing it from a cluster or changing its password ends its open sessions on their next page.</p>
+                </section>
+
+                <section class="bp-card bp-help-part" id="workflow">
+                    <h2>From product data to a published passport <span class="bp-soft-tag">Team</span></h2>
+                    <ol class="bp-steps">
+                        <li><strong><a href="/admin/families">Set up product data</a></strong><p>Families, models and batches, and <a href="/admin/sites-and-operators">sites and operators</a>. Most values are entered once and shared by every battery made from them; the V3 attribute list decides which are required, and by when. To start from the demo data, "Copy as real product data" on a demo family's page makes a real copy of its models, batches and documents (and of the sites they use); "Copy as real" does the same for a demo site or operator. The demo data stays as it is. The copy keeps the demo's example values and files until you replace them; the pages list them, and a battery with a real ID isn't published for the first time while its passport holds one (a test ID is).</p></li>
+                        <li><strong><a href="/admin/battery-ids">Release battery IDs</a></strong><p>Reserve the serial numbers before the batteries are made, so their labels can be printed. Each gets its battery ID at once, fixed for life.</p></li>
+                        <li><strong><a href="/admin/batteries/new">Create the battery</a></strong><p>Choose its batch, economic operator and cluster, and pick its serial number from the released IDs; then its manufacturing date and warranty. A real battery ID can't be used with demo product data (batch, model or operator): use a test ID, or make real product data with "Copy as real product data". It starts as a draft only the team sees, with its battery ID and QR code.</p></li>
+                        <li><strong><a href="/admin/batteries">Fill in what is missing</a></strong><p>Every field says whether it is required by Feb 2027, required later or conditional. Only "required by Feb 2027" blocks publishing, the first state of charge and temperature included.</p></li>
+                        <li><strong>Publish</strong><p>On the battery page, one step checks the passport against the official schema, signs it and publishes it. Later changes ask first, then publish a new version; live values and accident reports change it in place.</p></li>
+                    </ol>
+                    <p class="mt-3 mb-0">Other systems get <a href="/admin/clusters?tab=api-token-management">API tokens</a>: a cluster token reads that cluster's batteries and, with "Read + write", sends their live values; only a token for all batteries creates and publishes them.</p>
+                </section>
+
+                <section class="bp-card bp-help-part" id="battery-ids">
+                    <h2>Battery IDs <span class="bp-soft-tag">Team</span></h2>
+                    <p>A battery's ID (#6) is the company's DUNS, a dash and its serial number as written, such as <code>UN778474481-VPC-12221</code>. The team releases serial numbers in advance on the <a href="/admin/battery-ids">Battery IDs</a> tab, and each battery is created from one. At the top, the real IDs by status (demo IDs aren't counted) and "Release new IDs"; below, three tabs: Releases, All IDs and Release new IDs.</p>
+                    <dl class="bp-word-list">
+                        <dt>Release new IDs</dt>
+                        <dd>Give a reference, such as the purchase order, and optionally the model. Add one or more ranges (start, end and quantity) or paste serial numbers, one per line. A serial number holds capital letters, digits and single dashes only, at most 34 characters; one that differs from another only in its dashes is refused. It is all or nothing: if one can't be released, none is, and each reason is listed. Once released, the app opens the release's page. Tick "Test IDs" to release IDs for trying things out: they contain TEST, are never real battery IDs, are for any model (the model is ignored), can be used on demo or real product data, aren't counted, and go with their batteries when the demo data is reset or cleared.</dd>
+                        <dt>Releases</dt>
+                        <dd>The first tab: one row per release, with its reference, model, date and counts. "Open" shows the release's page: its IDs, "Export to Excel" at the top and "Void unused…". The demo data's release is tagged Demo. A release whose IDs are all voided shows only with "Show voided" ticked; its page still lists every ID.</dd>
+                        <dt>All IDs</dt>
+                        <dd>Every released ID, searched by serial number and filtered by status, release and model. Demo IDs show only with "Show demo IDs" ticked, and voided IDs only with "Show voided" ticked or the status Voided chosen.</dd>
+                        <dt>Export to Excel</dt>
+                        <dd>One row per ID, with the QR code's full address for the label printer or a mail merge. On a release's page or row, all of that release's IDs; on All IDs, the ones shown.</dd>
+                        <dt>Statuses</dt>
+                        <dd>Available, Used (a draft has it), Published (fixed for life) and Voided (never used again).</dd>
+                        <dt>Void…</dt>
+                        <dd>Only an available ID, with a reason such as a damaged label: in its row's ⋯ menu. "Void unused…" voids a release's available IDs at once.</dd>
+                        <dt>A red notice</dt>
+                        <dd>"The battery ID settings aren't set": the app isn't given its DUNS and web address (<code>DPP_ID_AGENCY</code>, <code>DPP_ID_COMPANY</code>, <code>DPP_ID_BASE_URL</code>), so nothing can be released and no battery can be created from a released ID, as they would get test IDs. Whoever runs the app sets them and restarts it. The demo data works without them.</dd>
+                        <dt>Change its battery ID…</dt>
+                        <dd>On a draft's page, under More: it takes another available ID, and its old one is available again. Removing a draft gives its ID back too.</dd>
+                        <dt>A new passport</dt>
+                        <dd>The battery keeps its serial number, and its new passport's battery ID adds -R1, -R2, …; it isn't released.</dd>
+                    </dl>
+                </section>
+
+                <section class="bp-card bp-help-part" id="lifecycle">
+                    <h2>After publishing <span class="bp-soft-tag">Team</span></h2>
+                    <dl class="bp-word-list">
+                        <dt>Everything a cluster admin does</dt>
+                        <dd>Live values, accident reports, status changes, notes and uploads, on any battery. Only the team gets "Correct the values" in the status window: the status stays, and a new version is published. Only the team gets "Undo the waste" there: give a reason, and the battery goes back to the status it had before.</dd>
+                        <dt>Withdraw…</dt>
+                        <dd>On the Accident reports section, beside a report added by mistake (team only): give a reason and confirm. The report disappears from the accident page and its file is deleted. The audit log keeps who, when, why and the file's name; the cluster's history shows one line.</dd>
+                        <dt>A new passport</dt>
+                        <dd>After "placed on the market again", "Remanufactured" or "Repurposed", the battery page asks who places it on the market. Scania's new passport starts from the old battery as a draft; publishing it makes the old one inactive. Another operator's passport is linked by its ID or web address. Until then, the team can cancel the new passport.</dd>
+                        <dt>More: Mark as invalid or for deletion…</dt>
+                        <dd>Invalid, with a reason, for an active passport; for deletion, for a waste battery after recycling. The header then shows the reason and the one Undo.</dd>
+                        <dt>Cluster: Change</dt>
+                        <dd>Moves a battery to another cluster at once, logged; or cancel a waiting hand-over.</dd>
+                        <dt><a href="/admin/clusters?tab=clusters">Demo data</a></dt>
+                        <dd>At the end of the Clusters tab: "Reset demo data" makes the demo clusters, accounts, tokens and batteries again; "Clear demo data" removes them and keeps real data. A battery is inside the demo only when the battery, its batch, model and operator are demo and its cluster is a demo cluster or none. Demo accounts and demo tokens work only inside the demo. A demo-numbered battery made on real product data is allowed, so the team can try things out, but demo accounts then see it as a visitor does; and for anything outside the demo a demo token gets the same answer as for an ID that does not exist. "Reset demo data" stops and changes nothing when a real account, battery or API token uses one of the demo's clusters, and names that cluster; demo accounts a demo admin added or made never stop it. A site can switch the demo off; the card then says so, demo accounts and tokens stop working, and only "Clear demo data" is offered.</dd>
+                    </dl>
+                </section>
+
+                <section class="bp-card bp-help-part" id="ready">
+                    <h2>Before you call a battery ready <span class="bp-soft-tag">Team</span></h2>
+                    <ul class="mb-0">
+                        <li>The model, batch, site and operator are complete.</li>
+                        <li>The battery's own values and first live values are in.</li>
+                        <li>Nothing blocks publication, and the battery says "Published" with the latest version.</li>
+                        <li>The QR code opens the public page.</li>
+                    </ul>
+                </section>
+            }
+
+            @if (signedIn)
+            {
+                <section class="bp-card bp-help-part" id="api">
+                    <h2>API reference and workbench</h2>
+                    <p class="mb-2">Every call, with examples for the demo clusters (<code>demo-north</code>, <code>demo-south</code>, <code>demo-fleet</code>), and a workbench to try a call with a token.</p>
+                    <a class="bp-secondary-button bp-button-compact" href="/help/api">Open the API reference</a>
+                </section>
+            }
+        </div>
+    </div>
+</main>

@@ -1,123 +1,85 @@
-using BatteryPassWeb.Services;
+using BatteryPassWeb.Dpp.Pages;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BatteryPassWeb.Controllers;
 
+/// <summary>
+/// The home page and its search (step 3b): a battery's serial number, battery ID (#6), passport ID (#5) or the address
+/// its QR code carries opens the public summary, or the detail page when signed in.
+/// </summary>
 [Route("")]
-public class HomeController : Controller
+public class HomeController(PassportPages pages) : Controller
 {
-    private readonly BatteryRouteResolutionService _batteryRouteResolutionService;
-    private readonly BatteryIdService _batteryIdService;
+    /// <summary>Address parts that aren't an ID: the passport pages' prefix and suffixes, and today's old ones.</summary>
+    private static readonly HashSet<string> RouteWords = new(StringComparer.OrdinalIgnoreCase) { "dpp", "detail", "summary", "latest", "25S" };
 
-    public HomeController(
-        BatteryRouteResolutionService batteryRouteResolutionService,
-        BatteryIdService batteryIdService)
-    {
-        _batteryRouteResolutionService = batteryRouteResolutionService;
-        _batteryIdService = batteryIdService;
-    }
+    /// <summary>Where the home page finds the sample battery's ID: a published demo battery, or none (redesign R6).</summary>
+    public const string SampleKey = "SampleBatteryId";
 
     [HttpGet("")]
-    public IActionResult Index([FromQuery] string? q, [FromQuery] string? notFound)
+    public async Task<IActionResult> Index([FromQuery] string? q, [FromQuery] string? notFound, [FromServices] BatteryPages batteries, CancellationToken cancellationToken)
     {
-        ViewData["SamplePassportId"] = ExternalApiInitializer.CreateSampleBatteryId(_batteryIdService);
         ViewData["SearchQuery"] = q?.Trim() ?? string.Empty;
         ViewData["SearchNotFound"] = string.Equals(notFound, "1", StringComparison.OrdinalIgnoreCase);
-        ViewData["IsAdminSearch"] = AccessControlService.IsAdmin(User);
+        // A sample to open, as the old app had: a published demo battery, never a real one (as the API help, 30 Oct 2026).
+        ViewData[SampleKey] = await batteries.ExampleBatteryIdAsync(cancellationToken);
+        return View();
+    }
+
+    /// <summary>
+    /// Where a signed-in user lands when their role may not open a page. It used to be the sign-in page, which sent a
+    /// signed-in user straight back: an endless redirect.
+    /// </summary>
+    [HttpGet("not-allowed")]
+    public IActionResult NotAllowed()
+    {
+        Response.StatusCode = StatusCodes.Status403Forbidden;
         return View();
     }
 
     [HttpGet("search")]
     public async Task<IActionResult> Search([FromQuery] string? q, CancellationToken cancellationToken)
     {
-        var query = ExtractIdFromQrPayload(q?.Trim() ?? string.Empty);
+        var query = IdFromSearch(q);
         if (query.Length == 0)
         {
             return RedirectToAction(nameof(Index));
         }
 
-        var resolution = await _batteryRouteResolutionService.ResolveAsync(query, cancellationToken);
-        if (resolution.Kind == BatteryRouteTargetKind.Battery)
+        var passport = await pages.LocateAsync(query, cancellationToken);
+        if (passport is null)
         {
-            var resolvedBatteryId = BsonHelpers.GetString(resolution.Document!, "batteryId");
-            var routeBatteryId = string.IsNullOrWhiteSpace(resolvedBatteryId) ? query : resolvedBatteryId;
-            return Redirect($"/{Uri.EscapeDataString(routeBatteryId)}/latest");
+            return RedirectToAction(nameof(Index), new { q = query, notFound = "1" });
         }
 
-        if (resolution.Kind == BatteryRouteTargetKind.Passport)
-        {
-            var passportPath = $"/{Uri.EscapeDataString(query)}";
-            return User.Identity?.IsAuthenticated == true
-                ? Redirect(passportPath)
-                : Redirect($"{passportPath}/summary");
-        }
-
-        return RedirectToAction(nameof(Index), new
-        {
-            q = query,
-            notFound = "1"
-        });
+        return Redirect(User.Identity?.IsAuthenticated == true
+            ? PassportPages.DetailHref(passport.Address)
+            : PassportPages.SummaryHref(passport.Address));
     }
 
-    private static string ExtractIdFromQrPayload(string value)
+    /// <summary>
+    /// The ID in what was typed or scanned: from a web address (a QR code's), its first path part that isn't a route
+    /// word, or its "q" or "id"; anything else as typed, so a battery ID such as urn:x-battery-pass:TEST-… keeps its form.
+    /// </summary>
+    public static string IdFromSearch(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value))
+        var text = value?.Trim() ?? string.Empty;
+        if (!Uri.TryCreate(text, UriKind.Absolute, out var address) || (address.Scheme != Uri.UriSchemeHttp && address.Scheme != Uri.UriSchemeHttps))
         {
-            return string.Empty;
+            return text;
         }
 
-        if (value.StartsWith("did:web:", StringComparison.OrdinalIgnoreCase))
+        foreach (var key in new[] { "q", "id" })
         {
-            return value;
-        }
-
-        if (Uri.TryCreate(value, UriKind.Absolute, out var absoluteUri)
-            || Uri.TryCreate($"https://local.test{(value.StartsWith('/') ? string.Empty : "/")}{value}", UriKind.Absolute, out absoluteUri))
-        {
-            foreach (var key in new[] { "q", "batteryId", "passportId", "id" })
+            var candidate = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(address.Query).TryGetValue(key, out var found) ? found.ToString().Trim() : string.Empty;
+            if (candidate.Length > 0)
             {
-                var candidate = ReadQueryValue(absoluteUri.Query, key);
-                if (!string.IsNullOrWhiteSpace(candidate))
-                {
-                    return candidate;
-                }
-            }
-
-            foreach (var segment in absoluteUri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries))
-            {
-                var candidate = Uri.UnescapeDataString(segment);
-                if (!IsRouteSuffix(candidate))
-                {
-                    return candidate;
-                }
+                return candidate;
             }
         }
 
-        return value;
-    }
-
-    private static bool IsRouteSuffix(string value)
-    {
-        return value.Equals("latest", StringComparison.OrdinalIgnoreCase)
-            || value.Equals("summary", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string ReadQueryValue(string query, string key)
-    {
-        if (string.IsNullOrWhiteSpace(query))
-        {
-            return string.Empty;
-        }
-
-        foreach (var pair in query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var parts = pair.Split('=', 2);
-            if (parts.Length == 2 && Uri.UnescapeDataString(parts[0]).Equals(key, StringComparison.OrdinalIgnoreCase))
-            {
-                return Uri.UnescapeDataString(parts[1].Replace("+", " "));
-            }
-        }
-
-        return string.Empty;
+        return address.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .Select(Uri.UnescapeDataString)
+            .FirstOrDefault(segment => !RouteWords.Contains(segment)) ?? string.Empty;
     }
 }

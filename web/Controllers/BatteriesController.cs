@@ -1,0 +1,418 @@
+using System.Globalization;
+using BatteryPassWeb.Configuration;
+using BatteryPassWeb.Dpp.Access;
+using BatteryPassWeb.Dpp.Documents;
+using BatteryPassWeb.Dpp.Editing;
+using BatteryPassWeb.Dpp.Pages;
+using BatteryPassWeb.Dpp.Uploads;
+using BatteryPassWeb.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+
+namespace BatteryPassWeb.Controllers;
+
+/// <summary>
+/// The team's batteries pages (design 12 and 14, step 2d-2): the list, a new battery and the battery page. They replace
+/// the old "Batteries" admin pages under the same menu entry. Passport values go through the save pipeline.
+/// </summary>
+[Authorize(Policy = "AdminOnly")]
+[Route("admin/batteries")]
+public sealed class BatteriesController(BatteryPages pages, DocumentService documents, StatusPages status, PassportMarks marks, UploadPages uploads) : Controller
+{
+    /// <summary>Which card of the battery page a message belongs to, so it shows where the action was taken.</summary>
+    public const string CardKey = "BatteryCard";
+
+    public const string CardStatusKey = "BatteryCardStatus";
+
+    public const string CardErrorKey = "BatteryCardError";
+
+    /// <summary>Neutral information in a card ("Nothing changed."): neither a success nor a problem.</summary>
+    public const string CardInfoKey = "BatteryCardInfo";
+
+    /// <summary>The live-values form's field with the time the values were measured, in the page's time zone.</summary>
+    public const string MeasuredAtField = "measuredAt";
+
+    [HttpGet("")]
+    public async Task<IActionResult> Batteries([FromQuery] string? q, CancellationToken cancellationToken) =>
+        View(await pages.ListOnePerBatteryAsync(q, _ => true, matchClusters: true, cancellationToken)); // one row per battery (redesign R5)
+
+    [HttpGet("new")]
+    public async Task<IActionResult> NewBattery([FromQuery] string? batch, CancellationToken cancellationToken) =>
+        View(await pages.NewAsync(batchId: batch, cancellationToken: cancellationToken));
+
+    [HttpPost("")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateBattery([FromForm] string? batchId, [FromForm] string? operatorId, [FromForm] string? clusterId, CancellationToken cancellationToken)
+    {
+        var form = Request.Form;
+        var (result, post) = await pages.CreateAsync(Who, batchId, operatorId, clusterId, name => form.TryGetValue(name, out var value) ? value.ToString() : null, cancellationToken);
+        if (result.Pack is { } pack)
+        {
+            TempData[ProductDataController.StatusKey] = "Draft battery created. Fill in what its passport still needs, then publish it.";
+            return Redirect(BatteryPages.BatteryHref(pack.Id));
+        }
+
+        var refused = result.Keys.Count(key => key.Outcome == KeyOutcome.Rejected);
+        ViewData[ProductDataController.ErrorKey] = refused > 0
+            ? $"The battery wasn't created: {Words.Count(refused, "value")} {(refused == 1 ? "was" : "were")} refused; {(refused == 1 ? "it's" : "they're")} marked below."
+            : $"The battery wasn't created: {result.Problem?.TrimEnd('.')}.";
+        var state = new EditorState(post, new EditorSave(EditorOutcome.Refused, result.Keys, []));
+        return View("NewBattery", await pages.NewAsync(batchId, operatorId, clusterId, state, cancellationToken));
+    }
+
+    [HttpGet("{packId}")]
+    public async Task<IActionResult> Battery(string packId, CancellationToken cancellationToken, [FromServices] Dpp.Identifiers.BatteryIdPool? pool = null)
+    {
+        var page = await WithUploadAsync(await pages.BatteryAsync(packId, cancellationToken: cancellationToken), cancellationToken);
+        if (page is null)
+        {
+            return NotFound();
+        }
+
+        // A draft whose ID was picked may swap it for another available one (6d).
+        if (pool is not null && await pool.OfAsync(packId, cancellationToken) is { Status: Dpp.Identifiers.ReleasedIdStatuses.Used } picked)
+        {
+            ViewData[SwapFromKey] = picked;
+            ViewData[SwapIdsKey] = await pool.AvailableAsync(page.Sources.Model.Id, picked.IsDemo, cancellationToken);
+        }
+
+        return View(page);
+    }
+
+    /// <summary>The draft's released ID (6d), for "Change its battery ID…".</summary>
+    public const string SwapFromKey = "SwapFrom";
+
+    /// <summary>The IDs a draft may swap to: available, for its model or any.</summary>
+    public const string SwapIdsKey = "SwapIds";
+
+    [HttpPost("{packId}/battery-id")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SwapBatteryId(string packId, [FromForm] string? serialNumber, [FromServices] Dpp.Identifiers.BatteryIdPool pool, CancellationToken cancellationToken)
+    {
+        var problem = await pool.SwapAsync(Who, packId, serialNumber, cancellationToken);
+        Card(packId, "mark", problem is null ? $"The battery now has serial number {serialNumber} and its battery ID; the old one is available again." : null, problem is null ? null : $"The battery ID didn't change: {problem}.");
+        return Redirect(BatteryPages.BatteryHref(packId));
+    }
+
+    /// <summary>"Check the file" in the "Upload a file" section (decision 35, step 5c): the check shows in the section.</summary>
+    [HttpPost("{packId}/upload")]
+    [ValidateAntiForgeryToken]
+    [RequestSizeLimit(UploadService.MaxBytes + 65536)]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.FileUpload)]
+    public async Task<IActionResult> CheckUpload(string packId, IFormFile? file, CancellationToken cancellationToken)
+    {
+        var (checkId, problem) = await uploads.CheckAsync(ChangeSender.Team(Who), packId, file?.FileName, file?.OpenReadStream(), file?.Length ?? 0, cancellationToken);
+        CardMessages.Put(TempData, packId, UploadPages.CheckKey, checkId);
+        Card(packId, "upload", null, problem is null ? null : $"Not checked: {problem}.");
+        return Redirect($"{BatteryPages.BatteryHref(packId)}?section=upload");
+    }
+
+    /// <summary>"Save" after the check (step 5c): the kept file goes through the save pipeline as the team.</summary>
+    [HttpPost("{packId}/upload/save")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveUpload(string packId, [FromForm] string? checkId, CancellationToken cancellationToken)
+    {
+        var (done, uploadId, problem) = await uploads.SaveAsync(ChangeSender.Team(Who), packId, checkId, cancellationToken);
+        CardMessages.Put(TempData, packId, UploadPages.OpenKey, uploadId);
+        Card(packId, "upload", done, problem is null ? null : $"Not saved: {problem}.");
+        return Redirect($"{BatteryPages.BatteryHref(packId)}?section=upload");
+    }
+
+    [HttpPost("{packId}")]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> SaveValues(string packId, [FromForm] bool confirmed, CancellationToken cancellationToken) =>
+        SaveAsync(packId, liveValues: false, confirmed, cancellationToken);
+
+    [HttpPost("{packId}/live")]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> SaveLiveValues(string packId, CancellationToken cancellationToken) =>
+        SaveAsync(packId, liveValues: true, confirmed: true, cancellationToken);
+
+    [HttpPost("{packId}/cluster")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetCluster(string packId, [FromForm] string? clusterId, CancellationToken cancellationToken)
+    {
+        var problem = await pages.SetClusterAsync(Who, packId, clusterId, cancellationToken);
+        Card(packId, "cluster", problem is null ? "Cluster changed. The passport didn't change: the cluster isn't passport data." : null, problem is null ? null : $"The cluster wasn't changed: {problem}.");
+        return Redirect(BatteryPages.BatteryHref(packId));
+    }
+
+    /// <summary>The team cancels a hand-over waiting for the receiving cluster's answer (design 7.8, step 4d).</summary>
+    [HttpPost("{packId}/handover/cancel")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CancelHandOver(string packId, [FromServices] HandOverService handOvers, CancellationToken cancellationToken)
+    {
+        var problem = await handOvers.CancelAsync(ChangeSender.Team(Who), packId, cancellationToken);
+        Card(packId, "cluster", problem is null ? "Hand-over cancelled. The battery stays in its cluster." : null, problem is null ? null : $"Not cancelled: {problem}.");
+        return Redirect(BatteryPages.BatteryHref(packId));
+    }
+
+
+    [HttpPost("{packId}/modules")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetModules(string packId, [FromForm] string? modules, CancellationToken cancellationToken)
+    {
+        var problem = await pages.SetModulesAsync(Who, packId, modules, cancellationToken);
+        Card(packId, "module-list", problem is null ? "Modules saved. The passport didn't change: modules aren't passport data." : null, problem is null ? null : $"The modules weren't saved: {problem}.");
+        return Redirect($"{BatteryPages.BatteryHref(packId)}#modules");
+    }
+
+    [HttpPost("{packId}/publish")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Publish(string packId, CancellationToken cancellationToken)
+    {
+        var result = await pages.PublishAsync(Who, packId, cancellationToken);
+        if (result.Version is { } version && result.Problem is null)
+        {
+            Card(packId, "publication", result.Unchanged ? "Nothing new to publish: the passport is already up to date." : $"Version {version.Number} published.", null);
+        }
+        else
+        {
+            Card(packId, "publication", null, $"The passport wasn't published: {result.Problem}.");
+        }
+
+        return Redirect($"{BatteryPages.BatteryHref(packId)}#publication");
+    }
+
+    [HttpPost("{packId}/accidents")]
+    [ValidateAntiForgeryToken]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.FileUpload)]
+    public async Task<IActionResult> AddAccidentReport(string packId, IFormFile? file, [FromForm] string? title, [FromForm] string? language, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+        {
+            Card(packId, "accidents", null, "Choose a file first.");
+            return Redirect($"{BatteryPages.BatteryHref(packId)}#accidents");
+        }
+
+        using var buffer = new MemoryStream();
+        await file.CopyToAsync(buffer, cancellationToken);
+        var result = await documents.AddAccidentReportAsync(ChangeSender.Team(Who), packId, new DocumentUpload(file.FileName, buffer.ToArray(), title, language), cancellationToken);
+        Card(packId, "accidents", result.Problem is null ? $"{result.Document!.FileName} added." : null, result.Problem is null ? null : $"The report wasn't added: {result.Problem}.");
+        return Redirect($"{BatteryPages.BatteryHref(packId)}#accidents");
+    }
+
+    /// <summary>The team withdraws an accident report (S07): with its reason, after the page's confirm question.</summary>
+    [HttpPost("{packId}/accidents/{documentId}/withdraw")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WithdrawAccidentReport(string packId, string documentId, [FromForm] string? reason, CancellationToken cancellationToken)
+    {
+        var fileName = (await documents.AccidentReportsAsync(Reader.With(Who, ReaderRole.Team), packId, cancellationToken))?.FirstOrDefault(report => report.Id == documentId)?.FileName;
+        var problem = await documents.WithdrawAccidentReportAsync(ChangeSender.Team(Who), packId, documentId, reason, cancellationToken);
+        Card(packId, "accidents", problem is null ? $"{fileName} withdrawn." : null, problem is null ? null : $"The report wasn't withdrawn: {problem}.");
+        return Redirect($"{BatteryPages.BatteryHref(packId)}#accidents");
+    }
+
+    /// <summary>The "Change status" window (design 7.4, step 4b): what happened, the re-stated values, a repair's details.</summary>
+    [HttpPost("{packId}/status")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangeStatus(string packId, [FromForm] string? what, [FromForm] string? repairDate, [FromForm] string? repairDescription, CancellationToken cancellationToken)
+    {
+        var form = Request.Form;
+        var before = (await pages.BatteryAsync(packId, cancellationToken: cancellationToken))?.Versions.Count ?? 0;
+        if (await status.ChangeAsync(ChangeSender.Team(Who), packId, what, name => form.TryGetValue(name, out var value) ? value.ToString() : null, repairDate, repairDescription, cancellationToken) is not { Found: true } result)
+        {
+            return NotFound();
+        }
+
+        var (done, problem) = status.Message(result, before);
+        Card(packId, "status", done, problem);
+        return Redirect($"{BatteryPages.BatteryHref(packId)}#status");
+    }
+
+    /// <summary>"Add a note to the history" (decision 34): a correcting entry, with no new version.</summary>
+    [HttpPost("{packId}/status/note")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddHistoryNote(string packId, [FromForm] string? note, CancellationToken cancellationToken)
+    {
+        var (done, problem) = await status.AddNoteAsync(ChangeSender.Team(Who), packId, note, cancellationToken);
+        Card(packId, "status", done, problem);
+        return Redirect($"{BatteryPages.BatteryHref(packId)}#status");
+    }
+
+    /// <summary>Scania places the battery on the market again (design 7.5): the team makes its new passport as a draft.</summary>
+    [HttpPost("{packId}/successor")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MakeSuccessor(string packId, [FromForm] string? operatorId, CancellationToken cancellationToken)
+    {
+        var (done, problem, successorId) = await status.MakeSuccessorAsync(ChangeSender.Team(Who), packId, operatorId, cancellationToken);
+        Card(packId, "status", done, problem);
+        return Redirect($"{BatteryPages.BatteryHref(successorId ?? packId)}#status");
+    }
+
+    /// <summary>Another operator places it on the market again (design 7.5): their details, or the link to their passport.</summary>
+    [HttpPost("{packId}/successor/other")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> OtherOperator(string packId, [FromForm] string? operatorIdentifier, [FromForm] string? operatorInfo, [FromForm] string? passport, [FromForm] bool link, CancellationToken cancellationToken)
+    {
+        var (done, problem) = await status.OtherOperatorAsync(ChangeSender.Team(Who), packId, new OtherOperator(operatorIdentifier, operatorInfo, passport), link, cancellationToken);
+        Card(packId, "status", done, problem);
+        return Redirect($"{BatteryPages.BatteryHref(packId)}#status");
+    }
+
+    /// <summary>The team cancels the new passport while the old one isn't inactive (decision 34).</summary>
+    [HttpPost("{packId}/successor/cancel")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CancelSuccessor(string packId, CancellationToken cancellationToken)
+    {
+        var (done, problem) = await status.CancelSuccessorAsync(ChangeSender.Team(Who), packId, cancellationToken);
+        Card(packId, "status", done, problem);
+        return Redirect($"{BatteryPages.BatteryHref(packId)}#status");
+    }
+
+    /// <summary>
+    /// The team marks the passport invalid (design 7.7) or, for a waste battery, for deletion (design 7.6), with a reason,
+    /// from the "Mark…" window that "More" opens (redesign R5, owner's item 2).
+    /// </summary>
+    [HttpPost("{packId}/mark")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Mark(string packId, [FromForm] string? what, [FromForm] string? reason, CancellationToken cancellationToken) =>
+        what == "deletion"
+            ? MarkResult(packId, await marks.MarkForDeletionAsync(ChangeSender.Team(Who), packId, reason, cancellationToken), "The passport is marked for deletion. It stays readable until it is deleted.")
+            : MarkResult(packId, await marks.MarkInvalidAsync(ChangeSender.Team(Who), packId, reason, cancellationToken), "The passport is marked invalid. Every page says so; only the team undoes it.");
+
+    /// <summary>The team undoes "invalid" or "marked for deletion" (J-8).</summary>
+    [HttpPost("{packId}/mark/undo")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UndoMark(string packId, CancellationToken cancellationToken) =>
+        MarkResult(packId, await marks.UndoAsync(ChangeSender.Team(Who), packId, cancellationToken), "Undone: the passport is active again.");
+
+    private RedirectResult MarkResult(string packId, string? problem, string done)
+    {
+        // The message shows in the header, by the red line that says what the passport is (redesign R5).
+        Card(packId, "mark", problem is null ? done : null, problem is null ? null : $"Nothing changed: {problem}.");
+        return Redirect(BatteryPages.BatteryHref(packId));
+    }
+
+    [HttpPost("{packId}/remove")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Remove(string packId, CancellationToken cancellationToken)
+    {
+        var (problem, serial) = await pages.RemoveDraftAsync(Who, packId, cancellationToken);
+        if (problem is not null)
+        {
+            Card(packId, "remove", null, $"The battery wasn't removed: {problem}.");
+            return Redirect($"{BatteryPages.BatteryHref(packId)}#remove");
+        }
+
+        TempData[ProductDataController.StatusKey] = $"Draft battery {serial} removed.";
+        return Redirect("/admin/batteries");
+    }
+
+    private string Who => AccessControlService.CurrentEmail(User) is { Length: > 0 } email ? email : "admin";
+
+    /// <summary>
+    /// The page with its "Upload a file" section: the check kept by "Check the file" and the upload just saved. A page
+    /// that takes no changes (a marked or earlier passport) gets none.
+    /// </summary>
+    /// <remarks>The battery's one-time messages move from TempData into ViewData here, on every path that shows the page.</remarks>
+    private async Task<BatteryPage?> WithUploadAsync(BatteryPage? page, CancellationToken cancellationToken)
+    {
+        if (page is null)
+        {
+            return null;
+        }
+
+        CardMessages.Take(TempData, ViewData, page.Pack.Id);
+        return page.Cards.FrozenAs is not null ? page : page with
+        {
+            Upload = await uploads.CardAsync(page.Pack, BatteryPages.BatteryHref(page.Pack.Id), forTeam: true, ViewData[UploadPages.CheckKey] as string, ViewData[UploadPages.OpenKey] as string, cancellationToken, viewer: Who),
+        };
+    }
+
+    private void Card(string packId, string card, string? status, string? error)
+    {
+        CardMessages.Put(TempData, packId, CardKey, card);
+        CardMessages.Put(TempData, packId, CardStatusKey, status);
+        CardMessages.Put(TempData, packId, CardErrorKey, error);
+    }
+
+    /// <summary>
+    /// Saves the battery's own values (the values card, which asks before publishing a new version) or its live values
+    /// (in place, with the time they were measured). Refused values show the page again as typed.
+    /// </summary>
+    private async Task<IActionResult> SaveAsync(string packId, bool liveValues, bool confirmed, CancellationToken cancellationToken)
+    {
+        var form = Request.Form;
+        var measured = liveValues ? MeasuredAt(form[MeasuredAtField].ToString()) : null;
+        var saved = await pages.SaveAsync(
+            Who,
+            packId,
+            liveValues,
+            name => form.TryGetValue(name, out var value) ? value.ToString() : null,
+            form[ProductDataController.StampField].ToString(),
+            measured,
+            confirmed,
+            cancellationToken);
+        if (saved is not { } result)
+        {
+            return NotFound();
+        }
+
+        var (post, save) = result;
+        var anchor = liveValues ? "#live" : "#values";
+        var done = (save.SavedCount, save.RemovedCount) switch
+        {
+            (> 0, > 0) => $"{Words.Count(save.SavedCount, "value")} saved and {save.RemovedCount} removed.",
+            (> 0, _) => $"{Words.Count(save.SavedCount, "value")} saved.",
+            (_, > 0) => $"{Words.Count(save.RemovedCount, "value")} removed.",
+            _ => string.Empty,
+        };
+        var version = !liveValues && save.Affected.Count > 0 && save.Outcome is EditorOutcome.Saved or EditorOutcome.Refused ? " The passport got a new version." : string.Empty;
+        EditorState state = new(post, save);
+        switch (save.Outcome)
+        {
+            case EditorOutcome.NotFound:
+                return NotFound();
+            case EditorOutcome.NeedsConfirmation:
+                return View("Battery", await WithUploadAsync(await pages.BatteryAsync(packId, values: state, cancellationToken: cancellationToken), cancellationToken));
+            case EditorOutcome.Refused:
+                var refused = $"{done} {Words.Count(save.RefusedCount, "value")} not saved; {(save.RefusedCount == 1 ? "it's" : "they're")} marked below.{version}".TrimStart();
+                if (liveValues)
+                {
+                    ViewData[CardKey] = "live";
+                    ViewData[CardErrorKey] = refused;
+                    return View("Battery", await WithUploadAsync(await pages.BatteryAsync(packId, live: state, cancellationToken: cancellationToken), cancellationToken));
+                }
+
+                ViewData[ProductDataController.EditorErrorKey] = refused;
+                return View("Battery", await WithUploadAsync(await pages.BatteryAsync(packId, values: state, cancellationToken: cancellationToken), cancellationToken));
+            case EditorOutcome.NothingChanged:
+                if (liveValues)
+                {
+                    CardMessages.Put(TempData, packId, CardKey, "live");
+                    CardMessages.Put(TempData, packId, CardInfoKey, "Nothing changed.");
+                }
+                else
+                {
+                    TempData[ProductDataController.EditorInfoKey] = "Nothing changed.";
+                }
+
+                return Redirect(BatteryPages.BatteryHref(packId) + anchor);
+            default:
+                if (liveValues)
+                {
+                    Card(packId, "live", $"{done} Live values change the passport in place, without a new version.", null);
+                }
+                else
+                {
+                    TempData[ProductDataController.EditorStatusKey] = $"{done}{version}";
+                }
+
+                return Redirect(BatteryPages.BatteryHref(packId) + anchor);
+        }
+    }
+
+    /// <summary>A measurement time typed in the page's time zone (a datetime-local input), as UTC; null when blank or unreadable.</summary>
+    public static DateTime? MeasuredAt(string? typed)
+    {
+        if (string.IsNullOrWhiteSpace(typed)
+            || !DateTime.TryParse(typed, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out var local))
+        {
+            return null;
+        }
+
+        return TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(local, DateTimeKind.Unspecified), TimeZoneInfo.Local);
+    }
+}

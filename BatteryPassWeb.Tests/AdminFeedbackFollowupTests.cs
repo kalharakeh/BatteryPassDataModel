@@ -6,47 +6,27 @@ namespace BatteryPassWeb.Tests;
 public sealed class AdminFeedbackFollowupTests
 {
     [Fact]
-    public void BatteryFamilyResetButtons_ShouldUseBatteryFamilyCopy()
-    {
-        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
-        var help = File.ReadAllText(RepoFile("web", "Views", "Admin", "Help.cshtml"));
-
-        Assert.Contains("Reset battery-family passports", clusters);
-        Assert.Contains("Reset battery-family passports", help);
-        Assert.DoesNotContain("Reset template passports", clusters);
-        Assert.DoesNotContain("Reset battery family passports", help);
-    }
-
-    [Fact]
     public void PassportReportHero_ShouldNotShowPassportStatusAbovePassportId()
     {
-        var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
-        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
+        var hero = File.ReadAllText(RepoFile("web", "Views", "Passport", "_PassportHero.cshtml"));
 
-        Assert.DoesNotContain("<span class=\"bp-pill bp-pill-muted\">@passport.PassportStatus</span>", summary);
-        Assert.DoesNotContain("<span class=\"bp-pill bp-pill-muted\">@passport.PassportStatus</span>", detail);
-        Assert.Contains("<div><dt>Passport status</dt><dd>@passport.PassportStatus</dd></div>", summary);
-        Assert.Contains("<div><dt>Passport status</dt><dd>@passport.PassportStatus</dd></div>", detail);
+        Assert.DoesNotContain("bp-pill bp-pill-muted", hero);
+        Assert.Contains("@await Html.PartialAsync(\"_StatusBadge\", StatusBadge.Passport(", hero); // the badge shows it (redesign R3)
     }
 
     [Fact]
     public void ReportActions_ShouldUseConsistentIconButtonsWithDesignedTooltips()
     {
         var registry = File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml"));
-        var batteryTable = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
-        var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
-        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
+        var hero = File.ReadAllText(RepoFile("web", "Views", "Passport", "_PassportHero.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        var combined = string.Join(Environment.NewLine, registry, batteryTable, summary, detail);
+        var rowActions = File.ReadAllText(RepoFile("web", "Views", "Shared", "_RowActions.cshtml")); // the lists' icons since R5
+        var combined = string.Join(Environment.NewLine, registry, hero, rowActions);
         Assert.Contains("bp-report-action", combined);
-        Assert.Contains("data-tooltip=\"Summary report\"", batteryTable);
-        Assert.Contains("data-tooltip=\"Detailed report\"", batteryTable);
-        Assert.Contains("View more about this passport", summary);
-        Assert.Contains("Back to summary", detail);
+        Assert.Contains("View more about this passport", hero);
+        Assert.Contains("Back to the public page", hero);
         Assert.Contains("bp-report-action-icon", combined);
-        Assert.DoesNotContain("<span aria-hidden=\"true\">S</span>", batteryTable);
-        Assert.DoesNotContain("<span aria-hidden=\"true\">D</span>", batteryTable);
         Assert.Contains(".bp-report-action::after", css);
         Assert.Contains("top: calc(-100% -", css);
     }
@@ -54,30 +34,20 @@ public sealed class AdminFeedbackFollowupTests
     [Fact]
     public void ReportActions_ShouldUseHeroCtaWithoutOldHeaderRailLabels()
     {
-        var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
-        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
+        var hero = File.ReadAllText(RepoFile("web", "Views", "Passport", "_PassportHero.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        Assert.Contains("bp-report-header", summary);
-        Assert.Contains("bp-report-header", detail);
-        Assert.Contains("bp-report-title-block", summary);
-        Assert.Contains("bp-report-title-block", detail);
-        Assert.Contains("bp-report-hero-cta", summary);
-        Assert.Contains("bp-report-hero-cta", detail);
-        Assert.Contains("View more about this passport", summary);
-        Assert.Contains("Back to summary", detail);
-        Assert.DoesNotContain("bp-report-header-actions", summary);
-        Assert.DoesNotContain("bp-report-header-actions", detail);
-        Assert.DoesNotContain("bp-report-action-strip", summary);
-        Assert.DoesNotContain("bp-report-action-strip", detail);
-        Assert.DoesNotContain("bp-report-action-label", summary);
-        Assert.DoesNotContain("bp-report-action-label", detail);
-        Assert.DoesNotContain(">Latest</span>", summary);
-        Assert.DoesNotContain(">Latest</span>", detail);
-        Assert.DoesNotContain(">Detailed report</span>", summary);
-        Assert.DoesNotContain(">Summary report</span>", detail);
-        Assert.Contains("bp-latest-passport-action-icon", summary);
-        Assert.Contains("bp-latest-passport-action-icon", detail);
+        Assert.Contains("bp-report-header", hero);
+        Assert.Contains("bp-report-title-block", hero);
+        Assert.Contains("bp-report-hero-cta", hero);
+        Assert.Contains("View more about this passport", hero);
+        Assert.Contains("Back to the public page", hero);
+        Assert.DoesNotContain("bp-report-header-actions", hero);
+        Assert.DoesNotContain("bp-report-action-strip", hero);
+        Assert.DoesNotContain("bp-report-action-label", hero);
+        Assert.DoesNotContain(">Latest</span>", hero);
+        Assert.DoesNotContain(">Detailed report</span>", hero);
+        Assert.Contains(">Open the current version</a>", hero); // one link, under the badges (R6)
         Assert.Contains(".bp-report-title-block", css);
         Assert.Contains(".bp-report-hero-cta", css);
         Assert.Contains("font-weight: 400;", css);
@@ -87,23 +57,19 @@ public sealed class AdminFeedbackFollowupTests
     [Fact]
     public void PassportReportHero_ShouldUseApprovedSplitHeaderDesign()
     {
+        var hero = File.ReadAllText(RepoFile("web", "Views", "Passport", "_PassportHero.cshtml"));
+        var tabs = File.ReadAllText(RepoFile("web", "Views", "Passport", "_PassportTabs.cshtml"));
         var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
-        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        Assert.Contains("bp-report-hero-card", summary);
-        Assert.Contains("bp-report-hero-card", detail);
-        Assert.Contains("bp-report-wide-section", summary);
-        Assert.Contains("bp-report-wide-section", detail);
-        Assert.Contains("bp-report-hero-layout", summary);
-        Assert.Contains("bp-report-hero-layout", detail);
-        Assert.Contains("bp-report-hero-media", summary);
-        Assert.Contains("bp-report-hero-media", detail);
-        Assert.Contains("View more about this passport", summary);
-        Assert.Contains("Back to summary", detail);
-        Assert.Contains("bp-report-hero-qr", summary);
-        Assert.Contains("bp-report-hero-qr", detail);
-        Assert.DoesNotContain("QR code for battery ID", summary);
+        Assert.Contains("bp-report-hero-card", hero);
+        Assert.Contains("bp-report-wide-section", File.ReadAllText(RepoFile("web", "Views", "Passport", "_KeyFigures.cshtml"))); // the report card is Key figures since R5
+        Assert.Contains("bp-report-wide-section", tabs);
+        Assert.Contains("bp-report-hero-layout", hero);
+        Assert.Contains("bp-report-hero-media", hero);
+        Assert.Contains("View more about this passport", hero);
+        Assert.Contains("Back to the public page", hero);
+        Assert.Contains("bp-report-hero-qr", hero);
         Assert.Contains(".bp-report-hero-card", css);
         Assert.Contains(".bp-report-wide-section", css);
         Assert.Contains("width: min(1860px, calc(100vw - 96px));", css);
@@ -124,154 +90,52 @@ public sealed class AdminFeedbackFollowupTests
 
         Assert.DoesNotContain("confirm(", clusters);
         Assert.DoesNotContain("confirm(", clusterTokens);
-        Assert.Contains("bp-confirm-modal", clusters);
-        Assert.Contains("bp-confirm-modal", clusterTokens);
+        Assert.Contains("_ConfirmModal", clusters);
+        Assert.Contains("_ConfirmModal", clusterTokens);
         Assert.Contains("data-confirm-action", clusters);
-        Assert.Contains("data-confirm-action", clusterTokens);
-        Assert.Contains("bp-cluster-management-table", clusters);
-        Assert.Contains("bp-user-management-table", clusters);
-        Assert.Contains("bp-user-management-table", clusterUsers);
+        Assert.Contains("<details class=\"bp-row\" data-open-user", clusterUsers);
         Assert.DoesNotContain("class=\"bp-tag\"", clusters);
         Assert.DoesNotContain("class=\"bp-tag\"", clusterUsers);
-        Assert.Contains("bp-token-console", clusters);
-        Assert.Contains("bp-token-cluster-chip-picker", clusters);
-        Assert.Contains("bp-token-cluster-chip-picker", clusterTokens);
         Assert.Contains(".bp-confirm-modal", css);
         Assert.Contains(".bp-token-cluster-chip-picker", css);
-    }
-
-    [Fact]
-    public void RegistryController_ShouldPreserveBatteryIdentityFieldsForNormalUsers()
-    {
-        var source = File.ReadAllText(RepoFile("web", "Controllers", "RegistryController.cs"));
-        var batteryTable = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
-        var service = File.ReadAllText(RepoFile("web", "Services", "BatteryTableService.cs"));
-
-        Assert.Contains("BatterySummaryViewModel", source);
-        Assert.Contains("_batteryRepository.ToSummary", service);
-        Assert.Contains("BatteryPassportHistoryRowViewModel", source);
-        Assert.Contains("LatestPassportStatus", batteryTable);
-    }
-
-    [Fact]
-    public void RemovedNameAndModelNumber_ShouldNotBlockPassportValidationOrCreation()
-    {
-        var policy = DataCompletionPolicyService.CreateDefaultPolicy();
-        var fields = policy.Sections.SelectMany(section => section.Fields).ToList();
-        var document = new BsonDocument
-        {
-            ["passportId"] = "did:web:acme.battery.pass:identity-without-model",
-            ["registryInfo"] = new BsonDocument
-            {
-                ["registryId"] = "registry-001",
-                ["status"] = "draft"
-            },
-            ["app"] = new BsonDocument
-            {
-                ["display"] = new BsonDocument
-                {
-                    ["serialNumber"] = "SERIAL-1",
-                    ["manufacturerName"] = "ACME Batteries",
-                    ["facilityId"] = "FAC-1"
-                },
-                ["product"] = new BsonDocument
-                {
-                    ["productId"] = "compact-7m",
-                    ["productVersion"] = "1.0",
-                    ["softwareVersion"] = "2.0"
-                }
-            }
-        };
-
-        var summary = new PassportValidationService(new SchemaRegistryService(), new JsonSchemaValidationService())
-            .Validate(document, policy);
-        var issuePaths = summary.Sections.SelectMany(section => section.Issues).Select(issue => issue.Path).ToList();
-
-        Assert.DoesNotContain(fields, field => field.FieldKey == "general.name");
-        Assert.DoesNotContain(fields, field => field.FieldKey == "general.modelNumber");
-        Assert.DoesNotContain("app.display.name", issuePaths);
-        Assert.DoesNotContain("app.display.modelNumber", issuePaths);
     }
 
     [Fact]
     public void PublicSearchEmptyCopy_ShouldSayActivePublicPassport()
     {
         var home = File.ReadAllText(RepoFile("web", "Views", "Home", "Index.cshtml"));
-        var search = File.ReadAllText(RepoFile("web", "Views", "Home", "Search.cshtml"));
 
-        Assert.Contains("No active public battery passport was found", home);
-        Assert.Contains("No active public battery passport was found", search);
+        Assert.Contains("No published battery passport was found", home);
         Assert.DoesNotContain("No published, verified battery passport ID was found", home);
-        Assert.DoesNotContain("No published, verified battery passport ID was found", search);
     }
 
     [Fact]
-    public void ReportCharts_ShouldUseTableLegendsAndOriginalPowerHeading()
+    public void ReportCharts_ShouldBeTheKeyFiguresCard()
     {
-        var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
-        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
+        // The "Summary report" card became "Key figures" (redesign R5); its legend is a list beside one bar.
+        var card = File.ReadAllText(RepoFile("web", "Views", "Passport", "_KeyFigures.cshtml"));
 
-        Assert.Contains("<h3 class=\"bp-subheading\">Original Power</h3>", summary);
-        Assert.Contains("bp-chart-value-legend", summary);
-        Assert.Contains("bp-chart-value-legend", detail);
-        Assert.Contains("filter(row => Number.isFinite", detail);
+        Assert.Contains(">Key figures</span>", card);
+        Assert.Contains("bp-kf-legend", card);
     }
 
     [Fact]
     public void FollowupReportHeader_ShouldUseFixedThreeColumnIdentityGrid()
     {
+        var hero = File.ReadAllText(RepoFile("web", "Views", "Passport", "_PassportHero.cshtml"));
         var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
-        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        foreach (var view in new[] { summary, detail })
-        {
-            Assert.Contains("bp-report-identity-grid", view);
-            Assert.Contains("bp-report-identity-panel--battery", view);
-            Assert.Contains("bp-report-identity-panel--identifiers", view);
-            Assert.Contains("bp-report-identity-panel--qr", view);
-            Assert.DoesNotContain("bp-report-media-code-row", view);
-            Assert.Contains("CultureInfo.InvariantCulture", view);
-        }
-
+        Assert.Contains("bp-report-identity-grid", hero);
+        Assert.Contains("bp-report-identity-panel--battery", hero);
+        Assert.Contains("bp-report-identity-panel--identifiers", hero);
+        Assert.Contains("bp-report-identity-panel--qr", hero);
+        Assert.DoesNotContain("bp-report-media-code-row", hero);
+        Assert.Contains("CultureInfo.InvariantCulture", File.ReadAllText(RepoFile("web", "Views", "Passport", "_KeyFigures.cshtml"))); // the percent widths, in Key figures since R5
         Assert.Contains("grid-template-columns: minmax(220px, 1fr) minmax(280px, 1.2fr) minmax(160px, 220px);", css);
         Assert.Contains(".bp-report-identity-panel--qr", css);
         Assert.Contains("@media (max-width: 1180px)", css);
         Assert.Contains("@media (max-width: 760px)", css);
-    }
-
-    [Fact]
-    public void FollowupSharedBatteryTable_ShouldUseCompactColumnsAndStatusCell()
-    {
-        var table = File.ReadAllText(RepoFile("web", "Views", "Shared", "_BatteryTable.cshtml"));
-        var registry = File.ReadAllText(RepoFile("web", "Views", "Registry", "Index.cshtml"));
-        var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
-
-        var expectedOrder = new[]
-        {
-            "<th>Battery serial number</th>",
-            "<th>Battery ID</th>",
-            "<th>Family</th>",
-            "<th>Model</th>",
-            "<th>Cluster</th>",
-            "<th>Passports</th>",
-            "<th>Status</th>",
-            "<th>Updated</th>",
-            "<th class=\"bp-action-cell\">Actions</th>"
-        };
-        var previousIndex = -1;
-        foreach (var heading in expectedOrder)
-        {
-            var index = table.IndexOf(heading, StringComparison.Ordinal);
-            Assert.True(index > previousIndex, $"{heading} should appear after the previous compact table column.");
-            previousIndex = index;
-        }
-
-        Assert.Contains("row.DisplayStatus", table);
-        Assert.Contains("New passport needed", table);
-        Assert.DoesNotContain("Latest passport status", table);
-        Assert.Contains("bp-battery-table-toolbar", registry);
-        Assert.Contains("bp-battery-table-toolbar", clusters);
     }
 
     [Fact]
@@ -286,7 +150,7 @@ public sealed class AdminFeedbackFollowupTests
         Assert.Contains("TempData[\"ClusterCreateName\"]", adminController);
         Assert.Contains("TempData[\"ClusterCreateId\"]", adminController);
         Assert.Contains("Cluster ID already exists.", adminController);
-        Assert.Contains("[\"member\"] = \"Cluster Member\"", clusters);
+        Assert.Contains("[\"member\"] = \"Cluster member (sees only their clusters' batteries)\"", clusters);
         Assert.Contains("selected=\"@(option.Key.Equals(\"member\"", clusters);
         Assert.Contains("data-open-user", clusters);
         Assert.Contains("data-open-user", clusterUsers);
@@ -294,20 +158,6 @@ public sealed class AdminFeedbackFollowupTests
         Assert.Contains("openUser", clusterAdminController);
         Assert.Contains("::-ms-reveal", css);
         Assert.Contains("::-ms-clear", css);
-    }
-
-    [Fact]
-    public void FollowupPerformanceCharts_ShouldUseEqualBoundedChartGrid()
-    {
-        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
-        var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
-
-        Assert.Contains("bp-telemetry-chart-grid", detail);
-        Assert.Contains("bp-telemetry-chart-card", detail);
-        Assert.Contains("maintainAspectRatio: false", detail);
-        Assert.Contains(".bp-telemetry-chart-grid", css);
-        Assert.Contains(".bp-telemetry-chart-card", css);
-        Assert.Contains("height: clamp(220px, 28vw, 300px);", css);
     }
 
     private static string RepoFile(params string[] parts)
