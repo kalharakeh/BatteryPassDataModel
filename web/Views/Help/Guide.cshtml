@@ -50,8 +50,17 @@
 
             <section class="bp-card bp-help-part" id="statuses">
                 <h2>Statuses</h2>
-                <p>Every passport page shows two badges. <strong>Battery</strong> (square tag) says what has happened to the battery; only the battery's cluster, market surveillance and the team see it. <strong>Passport</strong> (round pill) says whether this passport is the one that counts; everyone sees it.</p>
-                @await Html.PartialAsync("_StatusMeanings")
+                @if (signedIn)
+                {
+                    <p>Every passport page shows two badges. <strong>Battery</strong> (square tag) says what has happened to the battery; only the battery's customer, market surveillance and the team see it. <strong>Passport</strong> (round pill) says whether this passport is the one that counts; everyone sees it.</p>
+                    @await Html.PartialAsync("_StatusMeanings")
+                }
+                else
+                {
+                    @* A visitor never sees the Battery tag (finding U25). *@
+                    <p>Every passport page shows a <strong>Passport</strong> badge (round pill): whether this passport is the one that counts.</p>
+                    @await Html.PartialAsync("_StatusMeanings", null, new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData) { ["PassportOnly"] = true })
+                }
             </section>
 
             @* Signed out, the Help is the three parts above (the owner, Q1 of step 6b). *@
