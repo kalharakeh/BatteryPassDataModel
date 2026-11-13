@@ -26,7 +26,7 @@ public sealed class AdminTestFeedbackFixesTests
         Assert.Contains("NormalizeClusterMembershipRole", clusterRepository);
         Assert.Contains("CreateIndexOptions { Unique = true", clusterRepository);
         Assert.Contains("RoleNotifiedBody", accessControl);
-        Assert.Contains("Cluster Member", accessControl);
+        Assert.Contains("Customer user", accessControl); // "customer" on the pages customers see (decision 55)
     }
 
     [Fact]

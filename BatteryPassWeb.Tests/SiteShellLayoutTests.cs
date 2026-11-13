@@ -7,23 +7,18 @@ public sealed class SiteShellLayoutTests
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Shared", "_Layout.cshtml"));
 
-        Assert.Contains("bp-scania-header", markup);
-        Assert.Contains("bp-header-top-row", markup);
-        Assert.Contains("bp-header-wordmark", markup);
-        Assert.Contains("bp-header-wordmark-image", markup);
-        Assert.Contains("bp-header-symbol-link", markup);
-        Assert.Contains("bp-header-symbol-logo", markup);
-        Assert.Contains("bp-header-nav-row", markup);
-        Assert.Contains("bp-header-right-group", markup);
-        Assert.Contains("bp-header-primary-links", markup);
-        Assert.Contains("bp-header-account-links", markup);
-        Assert.Contains("bp-header-actions", markup);
-        Assert.Contains("bp-footer-extended", markup);
+        // One bar since finding L04: the wordmark and the app's name; the Scania symbol's second row is gone.
+        Assert.Contains("class=\"bp-topbar", markup);
+        Assert.Contains("bp-topbar-brand", markup);
+        Assert.Contains("bp-topbar-wordmark", markup);
+        Assert.Contains("bp-topbar-product", markup);
+        Assert.Contains("bp-topbar-nav", markup);
         Assert.Contains("bp-footer-legal", markup);
         Assert.Contains("bp-footer-wordmark", markup);
         Assert.Contains("bp-footer-wordmark-image", markup);
         Assert.Contains("~/images/scania_wordmark_blue_rgb.svg", markup);
-        Assert.Contains("~/images/scania_symbol_L_rgb.svg", markup);
+        Assert.DoesNotContain("bp-header-nav-row", markup);
+        Assert.DoesNotContain("bp-identity", markup);
         Assert.Contains("Copyright Scania Industrial Batteries 2026 All rights reserved. Scania Industrial Batteries AB, SE-151 87 Stockholm, Sweden. Tel: +46-8-55 38 10 00", markup);
         Assert.DoesNotContain("Scania in region:", markup);
         Assert.DoesNotContain("API help", markup);
@@ -31,46 +26,35 @@ public sealed class SiteShellLayoutTests
     }
 
     [Fact]
-    public void LayoutHeaderActions_ShouldPinAuthenticatedActionsToRightInRequestedOrder()
+    public void LayoutHeader_ShouldPutTheLinksBeforeTheAccount()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Shared", "_Layout.cshtml"));
-        var navRow = Slice(markup, "<div class=\"bp-header-nav-row\"", "</nav>");
+        var header = Slice(markup, "<header class=\"bp-topbar", "</header>");
 
-        Assert.Contains("bp-header-right-group", navRow);
-        Assert.Contains("bp-header-primary-links", navRow);
-        Assert.Contains("bp-header-account-links", navRow);
         Assert.True(
-            navRow.IndexOf("href=\"/registry\"", StringComparison.Ordinal) <
-            navRow.IndexOf("href=\"/admin\"", StringComparison.Ordinal),
-            "Open Registry should render before Admin in the right-pinned authenticated action group.");
+            header.IndexOf("bp-topbar-nav", StringComparison.Ordinal) < header.IndexOf("data-account-menu", StringComparison.Ordinal),
+            "The main links come before the account menu.");
         Assert.True(
-            navRow.IndexOf("href=\"/admin\"", StringComparison.Ordinal) <
-            navRow.IndexOf("href=\"/help\"", StringComparison.Ordinal),
-            "Admin should render before Help in the right-pinned authenticated action group.");
-        Assert.True(
-            navRow.IndexOf("bp-header-primary-links", StringComparison.Ordinal) <
-            navRow.IndexOf("bp-identity", StringComparison.Ordinal),
-            "Authenticated identity should render after Open Registry/Admin/Help.");
-        Assert.True(
-            navRow.IndexOf("bp-identity", StringComparison.Ordinal) <
-            navRow.IndexOf("bp-header-account-links", StringComparison.Ordinal),
-            "Logout should remain after the logged-in user and at the far right of the group.");
-        Assert.Contains("Logout", navRow);
-        Assert.Contains("Login", navRow);
+            header.IndexOf(">Your account</a>", StringComparison.Ordinal) < header.IndexOf(">Log out</button>", StringComparison.Ordinal),
+            "Log out is the account menu's last entry.");
+        Assert.Contains(">Log in</a>", header);
     }
 
     [Fact]
-    public void LayoutExtendedFooter_ShouldOnlyShowAppColumns()
+    public void TheFooter_ShouldNotRepeatTheMenu()
     {
         var markup = File.ReadAllText(RepoFile("web", "Views", "Shared", "_Layout.cshtml"));
-        var extendedFooter = Slice(markup, "<div class=\"bp-footer-extended\"", "<div class=\"bp-footer-legal\">");
+        var footer = Slice(markup, "<footer class=\"bp-footer\">", "</footer>");
 
-        Assert.Contains("BATTERY PASSPORT", extendedFooter);
-        Assert.Contains("TOOLS", extendedFooter);
-        Assert.DoesNotContain("bp-footer-about", extendedFooter);
-        Assert.DoesNotContain("SCANIA INDUSTRIAL BATTERIES", extendedFooter);
-        Assert.DoesNotContain("https://www.scania.com/industrial-batteries/en/home.html", extendedFooter);
-        Assert.DoesNotContain("https://www.scania.com/se/sv/home.html", extendedFooter);
+        // Finding L05: the footer's second menu repeated the bar's entries under other names; the Help links the API reference.
+        Assert.DoesNotContain("bp-footer-extended", footer);
+        Assert.DoesNotContain("Search passport", footer);
+        Assert.DoesNotContain("Open registry", footer);
+        Assert.DoesNotContain("Admin workspace", footer);
+        Assert.DoesNotContain("Developer help", footer);
+        Assert.DoesNotContain("Account access", footer);
+        Assert.Contains("bp-footer-legal", footer);
+        Assert.Contains("href=\"/help/api\"", File.ReadAllText(RepoFile("web", "Views", "Help", "Guide.cshtml")));
     }
 
     [Fact]
@@ -96,16 +80,12 @@ public sealed class SiteShellLayoutTests
         Assert.Contains("--bp-scania-blue: #041e42;", css);
         Assert.Contains("--bp-scania-blue-border: #0f3263;", css);
         Assert.Contains("--bp-primary: #2a6ecf;", css);
-        Assert.Contains(".bp-scania-header", css);
+        Assert.Contains(".bp-topbar {", css);
         Assert.Contains(".bp-footer-wordmark", css);
         Assert.Contains(".bp-footer-wordmark-image", css);
-        Assert.Contains(".bp-header-wordmark-image", css);
+        Assert.Contains(".bp-topbar-wordmark", css);
         Assert.Contains("filter: brightness(0) invert(1);", css);
-        Assert.Contains(".bp-footer-extended", css);
-        Assert.Contains(".bp-header-nav-row", css);
-        Assert.Contains(".bp-header-right-group", css);
-        Assert.Contains(".bp-header-account-links", css);
-        Assert.Contains("justify-content: flex-end;", css);
+        Assert.Contains(".bp-account-panel", css);
         Assert.Contains("grid-template-columns: repeat(2, minmax(0, 1fr));", css);
     }
 

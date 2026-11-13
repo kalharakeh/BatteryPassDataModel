@@ -62,7 +62,7 @@ public sealed class AdminHeadingTests
     {
         Assert.DoesNotContain("/help", Tabs, StringComparison.Ordinal);
         Assert.DoesNotContain(">Help<", Tabs, StringComparison.Ordinal);
-        Assert.Contains("<a href=\"/help\">Help</a>", Read("web", "Views", "Shared", "_Layout.cshtml"), StringComparison.Ordinal);
+        Assert.Contains("new TopBarLink(\"Help\", \"/help\"", Read("web", "Services", "TopBar.cs"), StringComparison.Ordinal); // the one bar (L04)
     }
 
     [Fact]

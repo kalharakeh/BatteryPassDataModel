@@ -42,7 +42,7 @@ public sealed class RegistryBadgesTests(MongoFixture mongo)
 
         Assert.Equal(1, await service.WaitingCountAsync(southAdmin));
         Assert.Equal(0, await service.WaitingCountAsync(ChangeSender.Team("team@example.com")));
-        Assert.Equal(2, View("Shared", "_Layout.cshtml").Split("Open Registry<partial name=\"_WaitingCount\" /></a>").Length - 1);
+        Assert.Equal(2, View("Shared", "_Layout.cshtml").Split("@link.Text@if (link.CountsWaiting){<partial name=\"_WaitingCount\" />}</a>").Length - 1); // the bar, and the account menu on a phone (L04)
         Assert.Contains("<span class=\"bp-nav-count\"", View("Shared", "_WaitingCount.cshtml"), StringComparison.Ordinal);
     }
 
