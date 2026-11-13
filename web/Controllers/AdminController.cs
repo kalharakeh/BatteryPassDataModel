@@ -415,6 +415,12 @@ public class AdminController : Controller
         var email = Text(Request.Form, "email");
         var clusterId = Text(Request.Form, "clusterId");
         var role = Text(Request.Form, "role", "member");
+        if (!EmailAddressRule.IsClean(Request.Form["email"].FirstOrDefault()))
+        {
+            TempData["ErrorMessage"] = EmailAddressRule.Words;
+            return Redirect("/admin/clusters?tab=users");
+        }
+
         if (!ClusterRepository.IsClusterMembershipRole(role))
         {
             TempData["ErrorMessage"] = ClusterRepository.OnlyTwoClusterRoles;
@@ -460,11 +466,24 @@ public class AdminController : Controller
             return Redirect("/admin/clusters?tab=users");
         }
 
+        // One rule for every typed address (finding W6): the whole rule for a new account, the look-up part for an account that exists.
+        var typedEmail = Request.Form["email"].FirstOrDefault();
+        if (!EmailAddressRule.IsClean(typedEmail))
+        {
+            TempData["ErrorMessage"] = EmailAddressRule.Words;
+            return Redirect("/admin/clusters?tab=users");
+        }
+
         var displayName = Text(Request.Form, "name", email);
         var password = Text(Request.Form, "password");
         var passwordConfirmation = Text(Request.Form, "passwordConfirmation");
         var requestedSystemRole = Text(Request.Form, "systemRole", "member");
         var existingUser = await _clusterRepository.GetUserByEmailAsync(email, cancellationToken);
+        if (existingUser == null && EmailAddressRule.Problem(typedEmail) is { } newAddressProblem)
+        {
+            TempData["ErrorMessage"] = newAddressProblem;
+            return Redirect("/admin/clusters?tab=users");
+        }
 
         var roles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -632,6 +651,12 @@ public class AdminController : Controller
     {
         var email = Text(Request.Form, "email");
         var clusterId = Text(Request.Form, "clusterId");
+        if (!EmailAddressRule.IsClean(Request.Form["email"].FirstOrDefault()))
+        {
+            TempData["ErrorMessage"] = EmailAddressRule.Words;
+            return Redirect("/admin/clusters?tab=users");
+        }
+
         await _clusterRepository.DeleteClusterMembershipAsync(email, clusterId, cancellationToken);
         TempData["StatusMessage"] = await _clusterRepository.MembershipRemovedMessageAsync(email, clusterId, cancellationToken);
         await AppendAdminAuditAsync(
@@ -658,7 +683,7 @@ public class AdminController : Controller
     {
         var email = Text(Request.Form, "email").Trim().ToLowerInvariant();
         var back = $"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}";
-        if (email.Length == 0)
+        if (email.Length == 0 || !EmailAddressRule.IsClean(Request.Form["email"].FirstOrDefault()))
         {
             return Redirect("/admin/clusters?tab=users");
         }

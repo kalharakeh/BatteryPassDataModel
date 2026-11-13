@@ -51,6 +51,20 @@ public sealed class AccountController : Controller
         var password = Text(Request.Form, "password");
         var passwordConfirmation = Text(Request.Form, "passwordConfirmation");
 
+        // One rule for every typed address (finding W6), applied to the text as typed; an unchanged address is not looked at again.
+        if (!newEmail.Equals(currentEmail, StringComparison.OrdinalIgnoreCase)
+            && EmailAddressRule.Problem(Request.Form["email"].FirstOrDefault()) is { } emailProblem)
+        {
+            var model = await BuildModelAsync(cancellationToken);
+            return View("Index", new AccountProfileViewModel
+            {
+                Email = model.Email,
+                Name = name,
+                RoleLabel = model.RoleLabel,
+                ErrorMessage = emailProblem
+            });
+        }
+
         if (string.IsNullOrWhiteSpace(newEmail))
         {
             var model = await BuildModelAsync(cancellationToken);

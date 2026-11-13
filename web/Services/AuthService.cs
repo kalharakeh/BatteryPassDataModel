@@ -112,6 +112,12 @@ public sealed class AuthService
             return LoginAuthenticationResult.Invalid();
         }
 
+        // Finding W6: an address that is too long or holds a line break or other control character is no sign-in.
+        if (!EmailAddressRule.IsClean(email))
+        {
+            return LoginAuthenticationResult.Invalid();
+        }
+
         // Finding W4: a locked address is refused before the password is looked at, so the right one gets in no more than a wrong one.
         if (await IsLockedAsync(email, cancellationToken))
         {
@@ -378,7 +384,7 @@ public sealed class AuthService
         string requestBaseUrl,
         CancellationToken cancellationToken = default)
     {
-        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email))
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email) || !EmailAddressRule.IsClean(email))
         {
             return;
         }
@@ -449,6 +455,7 @@ public sealed class AuthService
     {
         if (_mongoContext.Database == null
             || string.IsNullOrWhiteSpace(email)
+            || !EmailAddressRule.IsClean(email)
             || string.IsNullOrWhiteSpace(temporaryPassword)
             || NewPasswordProblem(newPassword) is not null)
         {
