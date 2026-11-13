@@ -409,14 +409,37 @@ public sealed class DppStore
 
 
 
-    /// <summary>Writes every marker of a removal in one bulk write (round three); writing them again changes nothing.</summary>
+    /// <summary>
+    /// Writes every marker of a removal in one bulk write (round three), each only where none is yet (round four): a marker
+    /// already there keeps the plan it was written with.
+    /// </summary>
     public async Task AddRemovalMarkersAsync(IReadOnlyList<RemovedPassport> markers, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(markers);
-        await Collection<RemovedPassport>().BulkWriteAsync(
-            markers.Select(marker => new ReplaceOneModel<RemovedPassport>(Builders<RemovedPassport>.Filter.Eq(item => item.Id, marker.Id), marker) { IsUpsert = true }),
-            new BulkWriteOptions { IsOrdered = false },
-            cancellationToken);
+        try
+        {
+            await Collection<RemovedPassport>().BulkWriteAsync(
+                markers.Select(marker => new InsertOneModel<RemovedPassport>(marker)),
+                new BulkWriteOptions { IsOrdered = false },
+                cancellationToken);
+        }
+        catch (MongoBulkWriteException<RemovedPassport> exception) when (exception.WriteErrors.All(error => error.Category == ServerErrorCategory.DuplicateKey) && exception.WriteConcernError is null)
+        {
+            // Those markers were there already; the others are written.
+        }
+    }
+
+    /// <summary>Inserts a removal's one audit entry (its id is fixed); one already there counts as written (round four).</summary>
+    public async Task InsertRemovalEntryAsync(BsonDocument row, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await RequireDatabase().GetCollection<BsonDocument>("applicationAuditEvents").InsertOneAsync(row, cancellationToken: cancellationToken);
+        }
+        catch (MongoWriteException exception) when (exception.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+        {
+            // Written by a finish that ran at the same time.
+        }
     }
 
     /// <summary>Writes the markers of a removal that aren't there yet, in one bulk write; existing ones stay as they are.</summary>
@@ -480,17 +503,22 @@ public sealed class DppStore
     /// Takes the battery's lines, with the values as sent, out of the upload records this removal wrote down (decision 72),
     /// and deletes those of them left without a line; no other record is touched (round three).
     /// </summary>
-    public async Task RemoveUploadLinesAsync(IReadOnlyCollection<string> uploadIds, IReadOnlyCollection<string> packIds, IReadOnlyCollection<string> names, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<string>> RemoveUploadLinesAsync(IReadOnlyCollection<string> uploadIds, IReadOnlyCollection<string> packIds, IReadOnlyCollection<string> names, CancellationToken cancellationToken = default)
     {
-        if (uploadIds.Count == 0)
+        // The records written down, and any record logged since that still has such a line (round four: an upload while the
+        // removal was stopped); the lines are pulled from those only, and only those left empty go.
+        var uploads = Collection<UploadRecord>();
+        var named = await UploadIdsNamingAsync(packIds, names, cancellationToken);
+        var touched = uploadIds.Concat(named).Distinct(StringComparer.Ordinal).ToArray();
+        if (touched.Length == 0)
         {
-            return;
+            return [];
         }
 
-        var uploads = Collection<UploadRecord>();
-        var these = Builders<UploadRecord>.Filter.In(upload => upload.Id, uploadIds);
+        var these = Builders<UploadRecord>.Filter.In(upload => upload.Id, touched);
         await uploads.UpdateManyAsync(these, Builders<UploadRecord>.Update.PullFilter(upload => upload.Batteries, LineOf(packIds, names)), cancellationToken: cancellationToken);
         await uploads.DeleteManyAsync(these & Builders<UploadRecord>.Filter.Size(upload => upload.Batteries, 0), cancellationToken);
+        return touched;
     }
 
     /// <summary>Which of these upload records still exist.</summary>

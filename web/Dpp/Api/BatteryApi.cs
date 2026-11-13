@@ -27,6 +27,9 @@ public enum WriteRefusal
 
     /// <summary>The battery's cluster isn't authorised in writing to update passport data (finding R20).</summary>
     NotAuthorised,
+
+    /// <summary>The battery's passport was removed, or its removal has started (finding R08): as gone, 410.</summary>
+    Gone,
 }
 
 /// <summary>The battery a write names, or why there is none.</summary>
@@ -98,6 +101,12 @@ public sealed class BatteryApi(
             return new WriteTarget(null, WriteRefusal.NotFound);
         }
 
+        // A removed passport's ID, or a battery whose removal has started: gone, before anything is looked up (finding R08).
+        if (await store.FindRemovedAsync(text, cancellationToken) is not null)
+        {
+            return new WriteTarget(null, WriteRefusal.Gone);
+        }
+
         var candidates = new List<BatteryPack>();
         if (await store.FindPackByUniqueProductIdentifierAsync(text, cancellationToken) is { } byIdentifier)
         {
@@ -139,6 +148,22 @@ public sealed class BatteryApi(
             known = current;
         }
 
+        // A battery being removed is gone to every write, also when named by its serial number (round four).
+        var removing = new List<BatteryPack>();
+        foreach (var pack in known)
+        {
+            if (await store.GetAsync<RemovedPassport>(pack.Id, cancellationToken) is not null)
+            {
+                removing.Add(pack);
+            }
+        }
+
+        if (removing.Count > 0 && removing.Count == known.Count)
+        {
+            return new WriteTarget(null, WriteRefusal.Gone);
+        }
+
+        known.RemoveAll(removing.Contains);
         var mine = known.Where(pack => MayChange(sender, pack)).ToArray();
         if (mine.Length == 1 && await demo.WriteProblemAsync(sender, mine[0], cancellationToken) is not null)
         {

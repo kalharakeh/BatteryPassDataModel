@@ -571,6 +571,7 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
             WriteRefusal.NotYours => (null, Envelope(StatusCodes.Status403Forbidden, NotYours)),
             WriteRefusal.Ambiguous => (null, Envelope(StatusCodes.Status409Conflict, Ambiguous)),
             WriteRefusal.NotAuthorised => (null, Envelope(StatusCodes.Status403Forbidden, WrittenAuthorisation.Missing)), // finding R20
+            WriteRefusal.Gone => (null, Envelope(StatusCodes.Status410Gone, PassportRemoval.Gone)), // finding R08
             _ => (null, Envelope(StatusCodes.Status404NotFound, NoBattery)),
         };
     }
