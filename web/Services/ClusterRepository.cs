@@ -88,6 +88,7 @@ public sealed class ClusterRepository
                 Builders<BsonDocument>.IndexKeys.Ascending("email").Ascending("clusterId"),
                 new CreateIndexOptions { Unique = true }),
             cancellationToken: cancellationToken);
+        await SignInAttempts.EnsureIndexesAsync(_mongoContext.Database, cancellationToken);
     }
 
     public async Task<IReadOnlyList<BsonDocument>> ListClustersAsync(CancellationToken cancellationToken = default)
@@ -220,6 +221,19 @@ public sealed class ClusterRepository
             Builders<BsonDocument>.Update.Combine(updates),
             new UpdateOptions { IsUpsert = true },
             cancellationToken);
+        if (!string.IsNullOrWhiteSpace(passwordHash))
+        {
+            await ClearSignInCountAsync(normalizedEmail, cancellationToken);
+        }
+    }
+
+    /// <summary>A new password clears the account's count of wrong passwords and its lock (finding W4).</summary>
+    private async Task ClearSignInCountAsync(string email, CancellationToken cancellationToken)
+    {
+        if (_mongoContext.Database != null)
+        {
+            await SignInAttempts.ClearAsync(_mongoContext.Database, email, cancellationToken);
+        }
     }
 
     /// <summary>
@@ -289,6 +303,11 @@ public sealed class ClusterRepository
 
         var result = await _mongoContext.Database.GetCollection<BsonDocument>("users").UpdateOneAsync(
             filter, Builders<BsonDocument>.Update.Combine(updates), cancellationToken: cancellationToken);
+        if (result.MatchedCount > 0 && !string.IsNullOrWhiteSpace(passwordHash))
+        {
+            await ClearSignInCountAsync(email, cancellationToken);
+        }
+
         return result.MatchedCount > 0;
     }
 
@@ -318,6 +337,10 @@ public sealed class ClusterRepository
             await UserFilterAsync(email, cancellationToken),
             Builders<BsonDocument>.Update.Combine(updates),
             cancellationToken: cancellationToken);
+        if (!string.IsNullOrWhiteSpace(passwordHash))
+        {
+            await ClearSignInCountAsync(email, cancellationToken);
+        }
     }
 
     /// <summary>The stored account by its id when it exists (whatever its capitals), else the lower-case address.</summary>
@@ -339,6 +362,7 @@ public sealed class ClusterRepository
                 .Set("passwordHash", passwordHash)
                 .Set("updatedAt", DateTime.UtcNow.ToString("O")),
             cancellationToken: cancellationToken);
+        await ClearSignInCountAsync(email, cancellationToken);
     }
 
     public async Task UpdateUserEmailAsync(string currentEmail, string newEmail, CancellationToken cancellationToken = default)

@@ -38,6 +38,7 @@ public sealed class ResetCollectionsTests
     [InlineData("batteryProductTemplates", CollectionFate.OldData)]
     [InlineData("passportFiles.chunks", CollectionFate.OldData)]
     [InlineData("passwordResetRequests", CollectionFate.Cleared)]
+    [InlineData("signInAttempts", CollectionFate.Cleared)]
     [InlineData("users", CollectionFate.Reviewed)]
     [InlineData("apiTokens", CollectionFate.Reviewed)]
     [InlineData("applicationAuditEvents", CollectionFate.Kept)]

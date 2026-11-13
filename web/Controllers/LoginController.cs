@@ -56,7 +56,7 @@ public class LoginController : Controller
 
         if (loginResult.Status != LoginAuthenticationStatus.Authenticated || loginResult.Principal == null)
         {
-            model.ErrorMessage = "Invalid email or password.";
+            model.ErrorMessage = loginResult.Status == LoginAuthenticationStatus.Locked ? SignInAttempts.LockedWords : SignInAttempts.WrongWords;
             return View(model);
         }
 
