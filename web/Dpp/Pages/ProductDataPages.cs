@@ -347,23 +347,13 @@ public sealed partial class ProductDataPages(
     public async Task<string?> NameTakenAsync(RecordKind kind, string name, string? familyId = null, string? exceptId = null, CancellationToken cancellationToken = default)
     {
         var wanted = name.Trim();
-
-        // A name is taken only by a record of the same kind: real product data may carry a name the demo data uses
-        // (the real family "Core" next to the demo's "Core"); the lists mark the demo ones. A new record is real, and
-        // a record that is renamed is compared with its own kind.
-        bool Taken<T>(IEnumerable<T> records, Func<T, string> id, Func<T, string> itemName, Func<T, bool> isDemo)
-        {
-            var items = records.ToList();
-            var subjectIsDemo = exceptId is not null && items.Any(item => id(item) == exceptId && isDemo(item));
-            return items.Any(item => id(item) != exceptId && isDemo(item) == subjectIsDemo && string.Equals(itemName(item).Trim(), wanted, StringComparison.OrdinalIgnoreCase));
-        }
-
+        bool Same(string id, string other) => id != exceptId && string.Equals(other.Trim(), wanted, StringComparison.OrdinalIgnoreCase);
         return kind switch
         {
-            RecordKind.Family when Taken(await store.ListAsync<BatteryFamily>(cancellationToken), item => item.Id, item => item.Name, item => item.IsDemo) => $"another battery family is already called {wanted}",
-            RecordKind.Model when Taken(await store.ListModelsAsync(familyId ?? string.Empty, cancellationToken), item => item.Id, item => item.Name, item => item.IsDemo) => $"this family already has a model called {wanted}",
-            RecordKind.Site when Taken(await store.ListAsync<ManufacturingSite>(cancellationToken), item => item.Id, item => item.Name, item => item.IsDemo) => $"another manufacturing site is already called {wanted}",
-            RecordKind.Operator when Taken(await store.ListAsync<EconomicOperator>(cancellationToken), item => item.Id, item => item.Name, item => item.IsDemo) => $"another economic operator is already called {wanted}",
+            RecordKind.Family when (await store.ListAsync<BatteryFamily>(cancellationToken)).Any(item => Same(item.Id, item.Name)) => $"another battery family is already called {wanted}",
+            RecordKind.Model when (await store.ListModelsAsync(familyId ?? string.Empty, cancellationToken)).Any(item => Same(item.Id, item.Name)) => $"this family already has a model called {wanted}",
+            RecordKind.Site when (await store.ListAsync<ManufacturingSite>(cancellationToken)).Any(item => Same(item.Id, item.Name)) => $"another manufacturing site is already called {wanted}",
+            RecordKind.Operator when (await store.ListAsync<EconomicOperator>(cancellationToken)).Any(item => Same(item.Id, item.Name)) => $"another economic operator is already called {wanted}",
             _ => null,
         };
     }
