@@ -264,10 +264,8 @@ builder.Services.AddSingleton<BatteryPassWeb.Dpp.Demo.DemoDataService>();
 var app = builder.Build();
 var batteryPassOptions = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<BatteryPassOptions>>().Value;
 
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/error");
-}
+// The error page outside Development, and the "not found" page after the routes (finding U04).
+app.UseErrorPages();
 
 var healthDiagnosticsEnabled = BatteryPassHealthCheck.DiagnosticsEnabled(
     builder.Configuration[BatteryPassHealthCheck.DiagnosticsEnvironmentVariable]);
@@ -386,6 +384,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapNotFoundPage();
 
 using (var scope = app.Services.CreateScope())
 {

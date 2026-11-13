@@ -703,6 +703,40 @@ a:hover {
   font-weight: 600;
 }
 
+/* The "not found" and error pages (finding U04). */
+.bp-message-page {
+  max-width: 640px;
+  margin: 40px auto 0;
+  font-size: 16px;
+}
+
+.bp-message-page h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.bp-message-page p {
+  margin: 0;
+}
+
+.bp-message-search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bp-message-search input {
+  flex: 1 1 240px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--bp-border);
+  border-radius: 8px;
+  background: var(--bp-surface);
+  color: var(--bp-text);
+  font: inherit;
+}
+
 .bp-main {
   flex: 1;
   width: 100%;

@@ -86,6 +86,7 @@ internal sealed class ShellSite : IAsyncDisposable
         });
 
         var app = builder.Build();
+        app.UseErrorPages();
         if (throwOn is not null)
         {
             app.Use(async (http, next) =>
@@ -104,6 +105,7 @@ internal sealed class ShellSite : IAsyncDisposable
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
+        app.MapNotFoundPage();
         await app.StartAsync();
         var address = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.First();
         return new ShellSite(app, new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }) { BaseAddress = new Uri(address), Timeout = TimeSpan.FromSeconds(60) });
