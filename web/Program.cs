@@ -254,6 +254,7 @@ builder.Services.AddSingleton<AuthenticationSessionService>();
 builder.Services.AddSingleton<AccessControlService>();
 builder.Services.AddSingleton<PassportQrCodeService>();
 builder.Services.AddSingleton<AuthService>();
+builder.Services.AddSingleton<FirstTeamAccount>();
 builder.Services.AddHttpClient<IEmailSender, PowerAutomateEmailSender>();
 builder.Services.AddSingleton<ExternalApiSecurityService>();
 builder.Services.AddSingleton<ExternalApiRepository>();
@@ -391,6 +392,13 @@ using (var scope = app.Services.CreateScope())
 {
     await scope.ServiceProvider.GetRequiredService<DppStore>().EnsureIndexesAsync();
     await scope.ServiceProvider.GetRequiredService<DocumentStore>().EnsureIndexesAsync();
+    // The first team account on a database that has none (decision 78); the log says only whether it was made or ignored.
+    var firstTeamAccount = await scope.ServiceProvider.GetRequiredService<FirstTeamAccount>()
+        .RunAsync(EnvironmentOrConfig(builder.Configuration, FirstTeamAccount.Setting, "FirstTeamAccountEmail"));
+    if (firstTeamAccount.LogLine is { } firstTeamAccountLine)
+    {
+        app.Logger.LogInformation("{FirstTeamAccount}", firstTeamAccountLine);
+    }
     var fallbackOptions = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<BatteryPassOptions>>().Value;
     if (fallbackOptions.EnableDemoAdminFallback && string.IsNullOrWhiteSpace(fallbackOptions.DemoAdminPassword))
     {
