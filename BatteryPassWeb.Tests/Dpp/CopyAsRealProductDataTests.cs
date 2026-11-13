@@ -130,9 +130,9 @@ public sealed class CopyAsRealProductDataTests(MongoFixture mongo)
         using var _ = rig;
         var before = await rig.Count(DppStore.Families);
 
-        Assert.Contains("another battery family is already called core", (await pages.CopyFamilyAsRealAsync(Who, compact.Id, "core")).Problem);
         Assert.NotNull((await pages.CopyFamilyAsRealAsync(Who, compact.Id, "  ")).Problem);
         var (realId, _) = await pages.CopyFamilyAsRealAsync(Who, compact.Id, "Compact S");
+        Assert.Contains("another battery family is already called compact s", (await pages.CopyFamilyAsRealAsync(Who, compact.Id, "compact s")).Problem); // a real name is taken by a real family
         Assert.Equal("it is already real product data", (await pages.CopyFamilyAsRealAsync(Who, realId!, "Compact T")).Problem);
         var realOperator = await pages.CreateOperatorAsync(Who, "Real operator");
         Assert.Equal("it is already real product data", (await pages.CopyOperatorAsRealAsync(Who, realOperator, "Another")).Problem);
