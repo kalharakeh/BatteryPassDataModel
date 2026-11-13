@@ -115,6 +115,13 @@ public sealed class SavePipeline(
             return new SaveResult(false, false, []);
         }
 
+        // A measurement time ahead of the clock is refused for every writer, preview included (finding W12).
+        if (changes.MeasuredAtUtc is { } measuredAt && MeasuredAtRule.InTheFuture(measuredAt, clock.GetUtcNow().UtcDateTime))
+        {
+            return new SaveResult(true, false, changes.Values.Keys.Distinct(StringComparer.Ordinal)
+                .Select(key => new KeyResult(key, KeyOutcome.Rejected, MeasuredAtRule.Words)).ToArray());
+        }
+
         // A demo sender changes only demo batteries (finding R03).
         if (changes.Target == TargetKind.Pack && !await demo.ReachesAsync(sender, changes.TargetId, cancellationToken))
         {

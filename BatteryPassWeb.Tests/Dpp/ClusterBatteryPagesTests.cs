@@ -70,7 +70,7 @@ public sealed class ClusterBatteryPagesTests(MongoFixture mongo)
         var stored = (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!.Values;
         var form = BatteryTesting.ShownForm(RecordEditor.LiveAttributes, stored);
         form[BatteryTesting.Field("stateOfChargeSoC")] = "42";
-        var measured = new DateTime(2026, 10, 31, 8, 0, 0, DateTimeKind.Utc);
+        var measured = new DateTime(2026, 10, 28, 8, 0, 0, DateTimeKind.Utc);
 
         var (_, save) = (await Pages(rig).SaveLiveAsync(NorthAdmin, rig.PackId, PageTesting.Field(form), PageTesting.Editor(rig).Stamp(RecordEditor.LiveAttributes, stored, null), measured))!.Value;
 
