@@ -245,6 +245,8 @@ builder.Services.AddSingleton(new BatteryPassWeb.Dpp.Demo.DemoDataSwitch(Battery
     EnvironmentOrConfig(builder.Configuration, "ENABLE_DEMO_DATA", "DemoDataEnabled"),
     builder.Environment.IsProduction())));
 builder.Services.AddSingleton<MongoContext>();
+// The sign-in and form keys live in the database, so a restart signs nobody out (finding S09).
+builder.Services.AddBatteryPassDataProtection();
 builder.Services.AddSingleton<ClusterRepository>();
 // The issuer is the battery IDs' site (finding R23); without DPP_ID_BASE_URL, the app's own address.
 builder.Services.AddSingleton(_ => new DemoSigningKeyService(idBaseUrlSetting, appBaseUrlSetting, trustedSigningKeysSetting));

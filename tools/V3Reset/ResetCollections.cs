@@ -69,6 +69,7 @@ public static class ResetCollections
         ["applicationAuditEvents"] = CollectionFate.Kept,
         ["auditEvents"] = CollectionFate.Kept,
         ["batteryAuditEvents"] = CollectionFate.Kept,
+        ["dataProtectionKeys"] = CollectionFate.Kept, // finding S09: the keys of every sign-in and open form; a reset never touches them
     };
 
     public static CollectionFate FateOf(string collection) =>
