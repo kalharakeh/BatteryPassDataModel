@@ -20,7 +20,7 @@ public sealed class AdminTestFeedbackFixesTests
         Assert.Contains("Market surveillance authority", adminUsers);
         Assert.Contains("Commission", adminUsers);
         Assert.Contains("Legitimate interest: repair, repurposing, remanufacturing", adminUsers);
-        Assert.Contains("Legitimate interest: recycling and battery treatment", adminUsers);
+        Assert.Contains("Legitimate interest: recycling and training", adminUsers); // R12
         Assert.Contains("Legitimate interest: authorised or WEEE treatment", adminUsers);
         Assert.DoesNotContain("Notified body", clusterUsers); // a cluster has two roles (finding S08)
         Assert.Contains("NormalizeClusterMembershipRole", clusterRepository);

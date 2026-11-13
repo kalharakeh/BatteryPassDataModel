@@ -14,7 +14,7 @@
         (Role: AccessControlService.RoleNotifiedBody, Who: "Notified body", Sees: "the authorities' values: the economic operator's and manufacturer's IDs, the service provider and the test reports"),
         (Role: AccessControlService.RoleCommission, Who: "Commission", Sees: "the shared values (materials, dismantling manuals, part numbers, spare parts, safety measures) and the authorities' values; not the purchaser's values"),
         (Role: AccessControlService.RoleLiRepair, Who: "Repair, repurposing and remanufacturing", Sees: "the materials, the dismantling manuals, the part numbers, the spare parts sources and the safety measures"),
-        (Role: AccessControlService.RoleLiRecycling, Who: "Recycling and battery treatment", Sees: "the materials, the dismantling manuals and the safety measures"),
+        (Role: AccessControlService.RoleLiRecycling, Who: "Recycling and training", Sees: "the materials, the dismantling manuals and the safety measures"),
         (Role: AccessControlService.RoleLiTreatment, Who: "Authorised treatment and WEEE facilities", Sees: "the safety measures"),
     }.Where(role => User.IsInRole(role.Role)).ToArray();
 }
@@ -40,7 +40,7 @@
                     <dd>The public page: the public values, the document links and the family's picture.</dd>
                     <dt>The battery's cluster, market surveillance</dt>
                     <dd>Also the purchaser values, such as state of charge, temperature, battery status and accident reports.</dd>
-                    <dt>Repair, recycling, treatment, Commission</dt>
+                    <dt>Repair, recycling and training, treatment, Commission</dt>
                     <dd>Also the shared values meant for them.</dd>
                     <dt>Notified bodies, market surveillance, Commission</dt>
                     <dd>Also the authorities' values, such as test reports.</dd>

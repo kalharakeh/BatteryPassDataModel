@@ -137,7 +137,7 @@ public sealed class AccessControlService
         if (user.IsInRole(RoleMarketSurveillanceAuthority)) return "Market Surveillance Authorities";
         if (user.IsInRole(RoleNotifiedBody)) return "Notified Body";
         if (user.IsInRole(RoleLiRepair)) return "Legitimate interest: repair, repurposing, remanufacturing";
-        if (user.IsInRole(RoleLiRecycling)) return "Legitimate interest: recycling and battery treatment";
+        if (user.IsInRole(RoleLiRecycling)) return "Legitimate interest: recycling and training";
         if (user.IsInRole(RoleLiTreatment)) return "Legitimate interest: authorised or WEEE treatment";
         if (user.IsInRole(RoleNormalUser)) return "Customer user"; // decision 55
         return "Customer user";
@@ -153,7 +153,7 @@ public sealed class AccessControlService
             RoleMarketSurveillanceAuthority => "Market Surveillance Authorities",
             RoleNotifiedBody => "Notified Body",
             RoleLiRepair => "Legitimate interest: repair, repurposing, remanufacturing",
-            RoleLiRecycling => "Legitimate interest: recycling and battery treatment",
+            RoleLiRecycling => "Legitimate interest: recycling and training",
             RoleLiTreatment => "Legitimate interest: authorised or WEEE treatment",
             RoleNormalUser => "Customer user",
             _ => "Customer user"
