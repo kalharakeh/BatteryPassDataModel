@@ -56,6 +56,8 @@ Also in `artifacts/releases`:
 
    `run-batterypass.cmd` starts the app in Production. Production doesn't start without the signing key, or when either address isn't a whole `http://` or `https://` address, or when the two aren't the same site, or with `ENABLE_DEMO_ADMIN_FALLBACK=true`; the message says which.
 
+   Optional: `BATTERY_PASS_SIGNING_TRUSTED_PUBLIC_KEYS` (earlier public keys, comma-separated; list the current one here before you change the signing key, or every earlier passport shows "Not verified"), and `DPP_PASSPORT_CHECK=off` (the hourly check of all passports; leave it on). `/.well-known/did.json` on the site's address lists its public keys and must reach the app.
+
    Optional: `ENABLE_DEMO_DATA` (on outside Production unless `false`) switches the demo data, demo accounts and demo tokens. The fallback admin (`ENABLE_DEMO_ADMIN_FALLBACK`) works only with a password you set in `DEMO_ADMIN_PASSWORD`; it has no default and never works in Production.
 5. Run `run-batterypass.cmd`.
 6. Open `http://localhost:5186`.
@@ -63,6 +65,7 @@ Also in `artifacts/releases`:
 ## Notes
 
 - No .NET runtime installation is required on the target PC.
+- Back up the database before updating a deployed copy: the earlier version can't open it once a model is answered, a passport is published or a copy is made. After an update the team answers each model's three questions and ticks each customer's written authorisation.
 - MongoDB must still be reachable by the app (local or remote URI). It must support collation (MongoDB and Atlas do; Amazon DocumentDB does not).
 - Copy or extract the whole package. Do not copy only `BatteryPassWeb.exe`; reset requires the `BatteryPass` folder next to the executable.
 - For the current QA/demo data to generate the same IDs as development, use `ID_GENERATION_SECRET=battery-pass-local-development-id-secret`.

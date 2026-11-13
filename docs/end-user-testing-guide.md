@@ -29,6 +29,12 @@ Each step says what to do, then **Expected:** what should happen.
    **Expected:** the newest passport, with a line that it replaces an earlier passport of this battery. No battery status is named.
 7. Print the public page (Ctrl+P, A4).
    **Expected:** the QR code, the page's address and "Printed …" at the top, every tab open, and no menus or buttons.
+8. Open `/dpp/UN778474481-TEST-DEMO-C7M-0001.json` (or the battery's address with `Accept: application/json`), with no sign-in.
+   **Expected:** the public part as data, with a `proof`, and no #13 (service provider) and no battery status. The same address with a browser's Accept gives the page. Select the Passport ID and Battery ID on the page and copy: each is the whole address, with no line break.
+9. Open `/.well-known/did.json`.
+   **Expected:** the site's public keys, no private part. The proof's key ID in the data is one of them.
+10. Open a passport address the team removed (section 4, step 25), also its `.json` and `/v1`.
+   **Expected:** every one answers 410: "This battery's passport no longer exists. It was removed after the battery was recycled or exported."
 
 ## 2. Cluster user: `demo.north.user@example.test`
 
@@ -96,6 +102,10 @@ Each step says what to do, then **Expected:** what should happen.
     - "Deactivate token" switches a token off.
 11. Open a demo-south battery's page address, e.g. a manage link copied from `demo.south.admin`'s Registry.
     **Expected:** refused.
+12. After the team has taken demo-north's written authorisation away (section 4, step 23), open DEMO-C7M-0001's battery page again.
+    **Expected:** a line says the Scania team hasn't recorded your authorisation; every section shows its values and no form; Change status and Hand over are disabled and open no window; declining or cancelling a hand-over still works and accepting doesn't.
+13. With a model's questions unanswered (section 4, step 21), open a published battery of that model, Status section.
+    **Expected:** "No status change can be made now: the passport can't get a new version until …", naming what is missing and who adds it; no "Change status"; "Add a note" is still offered. After the missing live value is typed: "Version N of the passport is published, with the saved changes that were waiting."
 
 ## 4. The team
 
@@ -157,6 +167,30 @@ Each step says what to do, then **Expected:** what should happen.
    **Expected:** refused with a plain sentence: a real battery ID can't be used with demo product data. The same battery on real product data is made. "Change its battery ID…" on a demo draft offers demo IDs only.
 20. Users tab: "Add user" with an address that already has an account.
    **Expected:** "This address already has an account. Change it from its row in the list." Giving an account that has no role across the app one, without a new password, is refused; with a new password it is saved. Your own account and the last team account can't be lowered.
+21. Families, a model, "Three questions about model …" (a new copy of Compact 7M is unanswered).
+   **Expected:**
+   - each question says "Not answered yet", with the line that its batteries can't be published until all three are answered; the model and its batch say "Questions to answer", never "Complete";
+   - a battery of it says "Not ready to publish yet", with "Answer the model's three questions" first;
+   - Yes to cycling use lists #82 and the other cycling values as needed, No says "Not needed: this model isn't made for cycling use.";
+   - on a model with a published battery, a Yes the battery lacks the values for asks first, with "Save the answers anyway";
+   - a warranty of 8 years is kept as P8Y and shows "8 years" (18 months shows as 18 months); 0 and "P99999999999Y" are refused with "The warranty must be a whole number of years (1 to 100) or months (1 to 1200)."; the rated capacity #57 is listed as needed.
+22. New battery, with the battery system's export for its serial number (the help's export file, for a draft's serial).
+   **Expected:** "Draft battery created with its export's readings. Saved: N values, and the module list was set (the numbers depend on the file). Type its temperature: the export has no temperature yet." The overview shows the state of charge and cycles and lists #87 under its live values. An export for another serial creates nothing. An export dated before 2015-01 isn't taken as the production date.
+23. Clusters tab, open demo-north: "Written authorisation": take it away, then record it again with today's date.
+   **Expected:** the row's tag changes between "Authorised …" and "Not authorised"; the audit log has both entries; a future date is refused; with it away, `demo.north.admin`'s page and token are read only (section 3, step 12); "Reset demo data" keeps it away if you took it away, and ticks the others.
+24. A published battery whose model says Yes to a question it lacks a value for (step 21), then the battery list.
+   **Expected:** "Saved changes are waiting on N published batteries: …", with links, also while a search is typed. Press "Check all passports now": "Checked N published batteries: …" and nothing is published. Add the missing value as the cluster admin or team: the passport gets its new version, and the waiting line is gone. "Publish the waiting changes" appears only when a change waits and nothing is in the way.
+25. DEMO-CORE-0003 (waste, marked for deletion): "Remove the passport…".
+   **Expected:** a window that says it can't be undone and asks for the battery's ID; a wrong ID gives "Not removed: type the battery's ID exactly as it is shown, to confirm."; the right one removes it ("The passport of battery … is removed."). It is gone from the list; its addresses answer 410 (section 1, step 10); creating it again is refused; the audit log has one entry. Reset demo data brings it back.
+26. A published real battery (not demo): its "EU registry" section.
+   **Expected:** "Not recorded yet"; the list says "N published batteries are not yet in the EU registry" and offers the CSV. Record a day and "EUREG-TEST-42": "Registered on …", and the line is gone. A day in the future is refused. The public page, the data and the detail page as the cluster admin don't show it. A demo battery has no such section.
+27. Families, Compact (demo): "Copy as real product data", then Release new IDs with "Test IDs" ticked, then Create battery.
+   **Expected:**
+   - the copy is a real family with its models (answers copied), batches, documents and sites; the demo family is as it was; a second press while one copy runs says "A copy is already running";
+   - a real battery ID on the demo batch is refused with a sentence naming what is demo and the way out; on the copy it is made, but its first publication is blocked with lines such as "Still the demo's example value: #25 …" until they are replaced; a test ID on the copy or on the demo batch publishes at once;
+   - Battery IDs: the test release isn't counted and goes with the reset; a real battery can't go into a demo customer ("A real battery can't belong to a demo customer.").
+28. A key change (only with the person who runs the site): restart the app with another `BATTERY_PASS_SIGNING_PRIVATE_KEY_BASE64`.
+   **Expected:** the battery page's versions say "Not verified / Signed with a key this site doesn't know." (the team's page also says to list the earlier key in `BATTERY_PASS_SIGNING_TRUSTED_PUBLIC_KEYS`), the public data says `"proof": null`, and with the earlier key listed everything is Verified again.
 
 ## 5. Market surveillance: `demo.msa@example.test`
 
@@ -180,7 +214,7 @@ For each account, open the Registry and DEMO-C7M-0001's detail page.
 
 | Account | Expected tabs before the public sections | Shared tab lists |
 |---|---|---|
-| `demo.notified-body@example.test` | Authorities | — |
+| `demo.notified-body@example.test` | Shared, Authorities | Materials, dismantling, part numbers, spare parts, safety measures |
 | `demo.commission@example.test` | Shared, Authorities | Materials, dismantling, part numbers, spare parts, safety measures |
 | `demo.repair@example.test` | Shared | Materials, dismantling, part numbers, spare parts, safety measures |
 | `demo.recycling@example.test` | Shared | Materials, dismantling, safety measures |
@@ -211,6 +245,12 @@ Use the tokens copied after the reset, on `/help/api`'s workbench or with any HT
    A demo token on a battery that isn't demo is answered as an unknown ID, and no change is accepted.
 7. `GET /api/passports` with a cluster token.
    **Expected:** refused (team only).
+8. `GET /api/external/v1/batteries/<a demo battery ID>` with any token, and `GET /api/passports/<ID>/verify`.
+   **Expected:** `signatureVerified: true` and `signatureReason: null`. After a key change: false with "Signed with a key this site doesn't know.".
+9. `POST /api/external/v1/uploads` for a published battery, then the same for a battery that holds a change back.
+   **Expected:** each battery has `passport: { outcome, version, blocking }`: "new version", "nothing changed" or "held back". With demo-north's authorisation taken away, a cluster token's POST of a live value is 403 with the line.
+10. Any call for a removed battery.
+   **Expected:** 410 with "This battery's passport no longer exists. It was removed after the battery was recycled or exported."
 
 ## Report
 

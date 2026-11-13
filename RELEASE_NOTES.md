@@ -1,6 +1,65 @@
 # Changelog
 All notable changes to the battery passport data model will be documented in this file.
 
+## Wave 2: the values a passport must have, the signature, public data, authorisation and removal (11 to 13 Nov 2026)
+
+Fixes from the review of the app on tag `new-app-v3.2`, on top of `new-app-v3.3.1`. The finding IDs are in brackets. Read "Before you update" first.
+
+### Before you update
+
+- **Back up the database.** The earlier version can't open a database this version has written to once a model is answered, a passport is published or a copy is made (it answers 500). Only the back-up goes back [decision 62].
+- **Production needs its signing key and its two addresses.** The app doesn't start without `BATTERY_PASS_SIGNING_PRIVATE_KEY_BASE64`, or when `APP_BASE_URL` or `DPP_ID_BASE_URL` isn't a whole `http://` or `https://` address, or when the two aren't the same site [R23, D18].
+- **Every model is "not answered" after the update.** Until the team answers a model's three questions, its drafts can't be published and its published batteries get no status change and no new version [R01].
+- **No cluster is authorised after the update.** The team ticks each customer's written authorisation; until then its admins and tokens read only [R20].
+- `/.well-known/did.json` must reach the app. New settings: `BATTERY_PASS_SIGNING_TRUSTED_PUBLIC_KEYS` and `DPP_PASSPORT_CHECK`. The two `BATTERY_PASS_SIGNING_ISSUER` and `…_VERIFICATION_METHOD` settings are gone.
+
+### For the team
+
+- **Three questions per model** (commercial warranty, cycling use, cadmium or lead above the limit): a "yes" makes the matching values needed before publishing. This reverses the earlier rule that conditional values never block [R01].
+- **The rated capacity (#57) is needed before publishing**, although the official list says "not by February 2027" [R22].
+- **A status change needs a passport that can publish**, Waste included. The Status section says so before anything is typed, and names who can add what is missing [R01].
+- **Saved changes that wait:** a published battery whose saved data differs from its public passport says "Saved changes are waiting", on its page and on the battery list. Adding what is missing publishes the change by itself; "Publish the waiting changes" does it when nothing is in the way. Every saving message says which passports got a new version and which kept theirs [R01].
+- **"Check all passports now"**, and a check shortly after start and every hour: it compares every published battery with its passport, puts the waiting marks right and archives all but the newest active version. It never publishes [R01].
+- **A new battery can take the battery system's export:** its state of charge and cycles become the first values, and the temperature is typed. The export's production date counts only when it can be true [R09].
+- **The warranty** is typed as years (1 to 100) or months (1 to 1200), also in the official form (P3Y6M shows as 42 months); a missing one is added, once, with "Correct the values". Languages are shown by name [W05].
+- **The signature's issuer is the passport's own web address** (`did:web:` plus the battery IDs' host). The site publishes its public keys at `/.well-known/did.json`. "Verified" also means the key is trusted; "Not verified" says why. Earlier public keys are listed in `BATTERY_PASS_SIGNING_TRUSTED_PUBLIC_KEYS` before a key is changed [R23].
+- **Written authorisation:** a dated tick per cluster on the Clusters tab. Without it a cluster's admins and tokens read but change nothing, and a hand-over is accepted only when both clusters are authorised [R20].
+- **The EU registry record:** a published real battery's page has an "EU registry" section for the day and the registration ID; the battery list says how many aren't recorded yet and gives them as a CSV [R02].
+- **Removing a passport:** after a battery is recycled or exported, the team can remove its passport (with its earlier passports) by typing its ID. Everything is deleted except a marker for its IDs and one audit entry; a removal that stops half way is finished from the marker. The addresses answer 410 "This battery's passport no longer exists. It was removed after the battery was recycled or exported." The IDs are never used again [R08].
+- Production refuses a passport address that isn't a whole http(s) address, and two addresses that are different sites [D18].
+
+### For cluster admins
+
+- A cluster changes passport data only once the team has recorded its written authorisation; until then the battery page says so and offers no forms. Declining or cancelling a hand-over still works; accepting needs both clusters' authorisation [R20].
+- When a passport can't get a new version yet, the Status section says "No status change can be made now" and names what is missing, such as "until you add #83 … under Live values". Adding it publishes the waiting change [R01].
+- The warranty is shown and typed as years or months [W05].
+
+### For readers
+
+- **The public part of a published passport is also given as data,** without a token: `/dpp/{ID}.json`, or the address with `Accept: application/json`, with its own signature over the public part. The Help says how to check it from outside [R07].
+- **Notified bodies see the model's restricted data** (#43, #45 to #48), as the Regulation says [R05].
+- A passport whose signature can't be read or is missing says "Not verified" and still opens. The APIs say why in `signatureReason` [R23].
+- The API's upload answer says, for each published battery, what its passport got (`passport.outcome`: "new version", "nothing changed" or "held back"). A removed battery answers 410 on every route [R01, R08].
+
+## new-app-v3.3.1: for the first real cycle (12 Nov 2026)
+
+The owner's Monday package: real product data from the demo, test IDs, and the whole addresses.
+
+### For the team
+
+- **"Copy as real product data"** on a demo family makes a real copy of its models, batches and documents (and of the sites they use); "Copy as real" does the same for a demo site or operator. The demo data stays as it is. A copy runs to its end, one at a time, and undoes itself if it fails part way [decision 66].
+- **Test IDs:** "Release new IDs" can release IDs that contain TEST. They are for any model, aren't counted, can be used on demo or real product data, and go when the demo data is reset or cleared [decision 67].
+- **A real battery doesn't publish the demo's example values.** The copy keeps the demo's example texts and files until you replace them; the pages list them, and the first publication of a battery with a real ID is blocked while its passport holds one (a test ID isn't). A real battery can't belong to a demo customer [decision 70].
+- **Two plainer messages:** a file that can't be saved says why and what to do, as the card's main message; a real ID on demo product data is refused in a sentence that names what is demo and the way out [decision 69].
+
+### For cluster admins
+
+- A real battery can't be handed to a demo customer, and the customer pickers mark demo customers [decision 70].
+
+### For readers
+
+- **The passport ID and the battery ID are shown as their whole address,** website included, on the public and detailed pages and the battery pages. Selecting the text and copying gives the address whole [decision 68].
+
 ## Wave 1: security fixes (10 Nov 2026)
 
 Fixes from the review of the app on tag `new-app-v3.2`. The finding IDs are in brackets.

@@ -35,10 +35,10 @@ DNS, HTTPS and the www redirect need no change.
    - Build its connection string as the launcher's, with the new user. This is the new `MONGODB_URI`.
    - Never give it access to `battery_pass_demo`.
 3. **The signing key** (the owner's own steps; nobody else reads or copies it):
-   - Passports are signed with the key in `BATTERY_PASS_SIGNING_PRIVATE_KEY_BASE64`, or else with the one-line file `%LOCALAPPDATA%\BatteryPassDemo\signing-key-p256.pkcs8` on the machine that runs the app.
-   - The passports in `battery_pass_v3` were signed on the PC. Each signature stores its own public key, so they keep showing "Verified" on any machine.
+   - Passports are signed with the key in `BATTERY_PASS_SIGNING_PRIVATE_KEY_BASE64`. **In Production the app doesn't start without it** (or with a value that isn't a P-256 key in base64 PKCS#8; the message names the setting, never the value). Outside Production it can fall back to the one-line file `%LOCALAPPDATA%\BatteryPassDemo\signing-key-p256.pkcs8` on the machine that runs the app.
+   - The passports in `battery_pass_v3` were signed on the PC. Each signature stores its own public key, and they show "Verified" on any site whose key is that same one (or lists it in `BATTERY_PASS_SIGNING_TRUSTED_PUBLIC_KEYS`, below): "Verified" now also means the key is one the site knows.
    - The live site still needs the same key, so that passports published there are signed by the same key as those published on the PC. One key is what a reader or authority can trust; a new key per machine would split the passports between keys.
-   - The instance would otherwise make a new key, and lose it whenever it is replaced.
+   - Without the setting the app would have no key to sign with, and Production refuses to start.
    - Back up that one-line value (or the launcher's `BATTERY_PASS_SIGNING_PRIVATE_KEY_BASE64`, if the launcher sets it) in a safe place, e.g. the company password manager.
    - Never put it in Git, a chat or a file in the repository.
 4. **The restore points** (section 7):
@@ -62,13 +62,15 @@ The new app reads these. "Same" means the live environment's current value stays
 | `ASPNETCORE_ENVIRONMENT` | `Production` (same) | |
 | `MONGODB_URI` | the `beanstalk-v3` user's connection string (new) | access to `battery_pass_v3` only. The database must be MongoDB with collation support (the app finds an e-mail address whatever its capitals): Atlas has it; **Amazon DocumentDB does not**, so it can't be used. |
 | `MONGODB_DB` | `battery_pass_v3` (new) | Since plan 6a-1 the app refuses to start in Production without it. |
-| `APP_BASE_URL` | `https://www.sib-scania-eubp.eu/` (new) | QR codes, document links and the accident page are built from it. A trailing `/` is fine. |
+| `APP_BASE_URL` | `https://www.sib-scania-eubp.eu/` (new) | QR codes, document links and the accident page are built from it. A trailing `/` is fine. In Production it must be a whole `http://` or `https://` address, and **the same site as `DPP_ID_BASE_URL`** (scheme, host and port, a trailing dot ignored), or the app doesn't start; the message says what differs. |
 | `APP_URL` | remove, or the same as `APP_BASE_URL` | the old name; `APP_BASE_URL` wins |
 | `REQUIRE_HTTPS_REDIRECTION` | `true` (same) | |
 | `SESSION_SECRET` | same | |
 | `EXTERNAL_API_ENCRYPTION_KEY` | same | Must be set, or the API tokens stop working. They are stored as salted hashes that don't use it, so existing tokens keep working whatever its value. |
-| `BATTERY_PASS_SIGNING_PRIVATE_KEY_BASE64` | the PC's key (section 2.3; new) | passports keep their signatures |
-| `BATTERY_PASS_SIGNING_ISSUER`, `BATTERY_PASS_SIGNING_VERIFICATION_METHOD` | as on the PC: not set | Each signature records them, so all passports name the same issuer. |
+| `BATTERY_PASS_SIGNING_PRIVATE_KEY_BASE64` | the PC's key (section 2.3; new) | **Required in Production:** the app doesn't start without it. Passports keep their signatures. |
+| `BATTERY_PASS_SIGNING_TRUSTED_PUBLIC_KEYS` | not set (optional) | Earlier public keys the site still vouches for: base64 SubjectPublicKeyInfo, separated by commas. **Before changing the signing key**, copy the current public key from the start-up log line "After a key change, add this public key to …" and put it here, or every earlier passport shows "Not verified: signed with a key this site doesn't know" and its public data says `"proof": null`. An entry that isn't a P-256 public key stops the app in Production. |
+| `BATTERY_PASS_SIGNING_ISSUER`, `BATTERY_PASS_SIGNING_VERIFICATION_METHOD` | not used any more | Both settings are gone. The issuer is `did:web:` plus the host of `DPP_ID_BASE_URL` (`did:web:www.sib-scania-eubp.eu`); the key's ID is its fingerprint. |
+| `DPP_PASSPORT_CHECK` | not set (on) | The check of all published passports, shortly after start and every hour (it puts the "changes are waiting" marks right and never publishes). `off` turns it off; leave it on in Production. |
 | `DEMO_USERS_PASSWORD` | the owner's choice (section 2.8) | Demo accounts sign in only while `ENABLE_DEMO_DATA` is on (see below). |
 | `ENABLE_DEMO_DATA` | not set (off in Production) | Switches the demo data, demo accounts and demo tokens on. Off: there is no "Reset demo data", demo accounts can't sign in and demo tokens are refused; "Clear demo data" stays. Set it to `true` only on a test site, or for the days the demo is wanted. |
 | `ENABLE_DEMO_ADMIN_FALLBACK` | `false` or not set | never a fallback admin on a public site. **In Production the app refuses to start if it is on.** |
@@ -80,7 +82,7 @@ The new app reads these. "Same" means the live environment's current value stays
 | `ID_GENERATION_SECRET` | same | Only the old app reads it. Keeping it makes a roll-back simpler. |
 | `DPP_ID_AGENCY` | `UN` (new) | The battery IDs' issuing agency: DUNS (decision 38). |
 | `DPP_ID_COMPANY` | `778474481` (new) | Scania Industrial Batteries AB's DUNS. |
-| `DPP_ID_BASE_URL` | `https://www.sib-scania-eubp.eu` (new) | The start of every battery ID and passport ID, e.g. `https://www.sib-scania-eubp.eu/25S/UN778474481-…`. Without all three, the Battery IDs page shows a red notice naming the missing ones, and every real release and create is refused (check 9). |
+| `DPP_ID_BASE_URL` | `https://www.sib-scania-eubp.eu` (new) | The start of every battery ID and passport ID, e.g. `https://www.sib-scania-eubp.eu/25S/UN778474481-…`, and the site the passports' signatures name. In Production it must be a whole `http://` or `https://` address and the same site as `APP_BASE_URL`. If it is later moved to another host, every earlier passport's public data says `"proof": null` until that passport gets a new version (listing the earlier key doesn't bring it back). Without all three, the Battery IDs page shows a red notice naming the missing ones, and every real release and create is refused (check 9). |
 
 ## 4. Why the switch is one command, and the command
 
@@ -129,12 +131,13 @@ Leave out the `DEMO_USERS_PASSWORD` line if no demo accounts are wanted.
 3. Sign in with the team's account (accounts in `battery_pass_v3` keep their passwords).
 4. **Signatures:**
    - Open a published passport's detail page (Registry, then a battery, "View more about this passport"). The hero card's "Signature" says **Verified**.
-   - That shows the passport wasn't changed since it was signed, whatever key the site has, because each signature carries its own public key.
+   - That shows the passport wasn't changed since it was signed and that it was signed with a key this site knows: the PC's key, which is the site's key now. A passport whose key the site doesn't know says "Not verified: signed with a key this site doesn't know".
    - **That the live site signs with the PC's key**, check in Atlas (read-only):
      - Before the switch, in Data Explorer, `battery_pass_v3`, `dpp_passport_versions`, note the field `Proof.PublicKeyX` of one version published on the PC.
      - After the switch, publish one change on the live site (e.g. a draft demo battery, or "Reset demo data" in check 6).
      - The newest version's `Proof.PublicKeyX` must be the same value. If it differs, `BATTERY_PASS_SIGNING_PRIVATE_KEY_BASE64` isn't the PC's key.
    - The pages don't show the key itself; their "Key" line is its name.
+   - **The key's address:** `https://www.sib-scania-eubp.eu/.well-known/did.json` must reach the app (no sign-in). It lists the site's public keys, and anyone checks a passport's public data against it. If the load balancer or a rule in front of the site sends `/.well-known/` elsewhere, fix that.
 5. **QR code:** scanning a passport's QR code opens `https://www.sib-scania-eubp.eu/dpp/…`.
 6. **Links made on the PC:**
    - A battery's accident page link (#92) and its restricted documents' links were saved with the PC's address (`http://localhost:5186/…`) when they were made. Batteries made on the live site get the live address.
@@ -144,6 +147,9 @@ Leave out the `DEMO_USERS_PASSWORD` line if no demo accounts are wanted.
 8. **Load:** after a day, check the instance's CPU and memory in Beanstalk's Monitoring. If the instance is short of memory, a larger instance type is a cost question for the owner.
 9. **The ID settings** (on the day): signed in as the team, open the Battery IDs tab (`/admin/battery-ids`). The page shows **no red notice**. A red notice names the missing `DPP_ID_*` settings: add them in Beanstalk (Configuration, Environment properties) and check again.
 10. **A demo battery's ID** (after check 6's "Reset demo data", if the demo is on): on Battery IDs, All IDs, tick "Show demo IDs". A demo ID reads `UN778474481-TEST-…`, and `https://www.sib-scania-eubp.eu/25S/<that ID>` opens its battery's public summary once it is published, or "Not published yet" while it isn't.
+11. **The first passport check:** a minute after the app starts, it compares every published battery with its passport (the audit log gets an entry `dpp.passports-checked` if it changed anything). The team can press "Check all passports now" on the battery list.
+12. **Before real use** (the team, once): open each model's page and answer its three questions (commercial warranty, cycling use, cadmium or lead above the limit): until then nothing of that model can be published and its published batteries get no status change. Open Clusters and tick each customer's written authorisation (with its date): until then its admins and tokens only read.
+13. **The removed-passport collection:** `dpp_removed_passports` is made with its index when the app starts; nothing to do. It is empty until the team removes a recycled battery's passport.
 
 ## 7. Restore points, and rolling back to the old app
 
@@ -152,6 +158,7 @@ Leave out the `DEMO_USERS_PASSWORD` line if no demo accounts are wanted.
 - the old application version in Beanstalk (its label, noted in section 2.6);
 - the saved configuration `old-app-final`;
 - the database `battery_pass_demo`, untouched;
+- **a back-up of `battery_pass_v3`**: take one before every later update of the new app. An earlier version of the app can't open a database a later one has written to once a model is answered, a passport is published or a copy of product data is made (it answers 500). Only the back-up goes back;
 - the new app: the branch `feature/dpp-v3-step2d-team-pages` on `origin`, its tag `new-app-v3`, its application version and the database `battery_pass_v3`.
 
 **Roll back** (one command again, for the same reason as section 4):

@@ -61,7 +61,7 @@ public sealed class HelpTests(MongoFixture mongo)
 
         Assert.Contains("<a href=\"/admin/families\">Set up product data</a>", workflow, StringComparison.Ordinal);
         Assert.Contains("<a href=\"/admin/batteries/new\">Create the battery</a>", workflow, StringComparison.Ordinal);
-        Assert.Contains("Only \"required by Feb 2027\" blocks publishing", workflow, StringComparison.Ordinal);
+        Assert.Contains("Required values block publishing", workflow, StringComparison.Ordinal);
         Assert.Contains("checks the passport against the official schema, signs it and publishes it", workflow, StringComparison.Ordinal);
         Assert.Contains("<h2>Statuses</h2>", Guide, StringComparison.Ordinal); // step 6b-1: every status, in place of "Status words"
         foreach (var gone in new[] { "Validate passport", "Sign passport", "Dirty", "Evidence readiness", "Trust &amp; conformance" })

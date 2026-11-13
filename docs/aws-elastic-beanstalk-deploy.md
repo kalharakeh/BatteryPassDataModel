@@ -127,11 +127,18 @@ MONGODB_DB=<your existing database name>
 SESSION_SECRET=<long random value>
 EXTERNAL_API_ENCRYPTION_KEY=<32 character random value>
 ID_GENERATION_SECRET=<long random value>
+BATTERY_PASS_SIGNING_PRIVATE_KEY_BASE64=<the site's P-256 private key, base64 PKCS#8>
+APP_BASE_URL=<the site's whole address, https://…>
+DPP_ID_BASE_URL=<the same site, https://…>
 ```
+
+In Production the app doesn't start without the signing key (a value that isn't a P-256 key stops it too), or when `APP_BASE_URL` or `DPP_ID_BASE_URL` isn't a whole `http://` or `https://` address, or when the two aren't the same site (scheme, host and port); the message says which. Make the key once and keep it (never put it in Git or a chat): with another key, every earlier passport shows "Not verified". **Before changing it**, copy the current public key from the start-up log line "After a key change, add this public key to …" into `BATTERY_PASS_SIGNING_TRUSTED_PUBLIC_KEYS` (comma-separated; an entry that isn't a P-256 public key stops the app). The site's key list is `/.well-known/did.json` on the site's address: it must reach the app.
 
 There is no fallback admin in Production: the app doesn't start if `ENABLE_DEMO_ADMIN_FALLBACK` is on, and `DEMO_ADMIN_PASSWORD` has no default. Sign in with a team account stored in the database. The database must be MongoDB with collation support (Atlas has it; Amazon DocumentDB does not).
 
 Demo data, demo accounts and demo tokens are off in Production unless `ENABLE_DEMO_DATA=true` is set. File uploads (including the team's and cluster admins' file actions) are limited by `FILE_UPLOAD_RATE_LIMIT_PER_WINDOW` (10 per window by default) while rate limiting is on.
+
+The app also checks every published passport against its saved data shortly after it starts and every hour; `DPP_PASSPORT_CHECK=off` turns that off (leave it on). A collection `dpp_removed_passports` is made with its index at start-up.
 
 Optional if you use password reset emails:
 
@@ -162,6 +169,7 @@ While using this temporary Beanstalk URL, keep these environment properties:
 ```text
 APP_BASE_URL=http://battery-pass-env.eba-2a34ep5k.eu-north-1.elasticbeanstalk.com
 APP_URL=http://battery-pass-env.eba-2a34ep5k.eu-north-1.elasticbeanstalk.com
+DPP_ID_BASE_URL=http://battery-pass-env.eba-2a34ep5k.eu-north-1.elasticbeanstalk.com
 REQUIRE_HTTPS_REDIRECTION=false
 ```
 
@@ -282,6 +290,7 @@ After `https://sib-dpd.eu` works:
    REQUIRE_HTTPS_REDIRECTION=true
    APP_BASE_URL=https://sib-dpd.eu
    APP_URL=https://sib-dpd.eu
+   DPP_ID_BASE_URL=https://sib-dpd.eu
    ```
 
 6. Apply.
@@ -301,6 +310,11 @@ After `https://sib-dpd.eu` works:
 
 After an update to a newer version of the app:
 
+- **Back up the database first.** The earlier version of the app can't open a database the new one has written to once a model is answered, a passport is published or a copy of product data is made (it answers 500, for example "Element 'CadmiumOrLeadAboveLimit' does not match any field"). Going back needs the back-up: take an Atlas snapshot or a `mongodump` before you update, and note which one it is.
+- **Check the settings.** Production doesn't start without `BATTERY_PASS_SIGNING_PRIVATE_KEY_BASE64`, or when `APP_BASE_URL` or `DPP_ID_BASE_URL` isn't a whole http(s) address, or when the two are different sites. If the signing key changes, list the earlier public key in `BATTERY_PASS_SIGNING_TRUSTED_PUBLIC_KEYS` first. `/.well-known/did.json` must reach the app. Moving `DPP_ID_BASE_URL` to another host makes every earlier passport's public data say `"proof": null` until it gets a new version.
+- **Answer each model's three questions** (the team, on each model's page): until a model is answered, its drafts can't be published and its published batteries get no status change and no new version. Every existing model is "not answered" after the update.
+- **Tick each customer's written authorisation** (the team, Clusters tab, each cluster's row, with the date): a cluster without the tick, every cluster from before the update included, can read but its admins and tokens change nothing.
+- **The first passport check** runs a minute after the app starts and then every hour. It finds whatever was already waiting, also from before the update, and marks it; the battery list then names those batteries. The team can press "Check all passports now". Leave `DPP_PASSPORT_CHECK` on.
 - **If the site keeps demo data** (`ENABLE_DEMO_DATA` on): sign in as the team and press "Reset demo data" once (Clusters tab, end), so the demo is rebuilt under the new rules. Until then an old demo keeps working. The reset stops and changes nothing if a real account, battery or API token uses one of the demo's clusters; the message names the cluster. Take the real use out of it, then reset again. Open demo sessions are signed out by the reset.
 - **Real accounts need no step.**
 - **Customer (cluster) admins** can set a new password or name only for people they added after the update. For people who existed before, the team sets the password.
