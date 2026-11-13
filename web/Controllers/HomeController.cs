@@ -16,11 +16,30 @@ public class HomeController(PassportPages pages) : Controller
     /// <summary>Where the home page finds the sample battery's ID: a published demo battery, or none (redesign R6).</summary>
     public const string SampleKey = "SampleBatteryId";
 
+    /// <summary>The near matches the home page offers (finding U02): serial number, model and address.</summary>
+    public const string NearMatchesKey = "NearMatches";
+
+    /// <summary>Whether more passports match than are offered.</summary>
+    public const string NearMatchesMoreKey = "NearMatchesMore";
+
+    /// <summary>How many characters a search needs before near matches are offered, and how many at most.</summary>
+    public const int NearMatchMinimum = 3;
+
+    public const int NearMatchLimit = 3;
+
     [HttpGet("")]
     public async Task<IActionResult> Index([FromQuery] string? q, [FromQuery] string? notFound, [FromServices] BatteryPages batteries, CancellationToken cancellationToken)
     {
         ViewData["SearchQuery"] = q?.Trim() ?? string.Empty;
         ViewData["SearchNotFound"] = string.Equals(notFound, "1", StringComparison.OrdinalIgnoreCase);
+        if (ViewData["SearchNotFound"] is true && IdFromSearch(q) is { Length: >= NearMatchMinimum } typed)
+        {
+            // Near matches (finding U02): the Registry's own matching, among the published passports only.
+            var (matches, total) = await NearMatchesAsync(batteries, typed, cancellationToken);
+            ViewData[NearMatchesKey] = matches;
+            ViewData[NearMatchesMoreKey] = total > matches.Count;
+        }
+
         // A sample to open, as the old app had: a published demo battery, never a real one (as the API help, 30 Oct 2026).
         ViewData[SampleKey] = await batteries.ExampleBatteryIdAsync(cancellationToken);
         return View();
@@ -38,7 +57,7 @@ public class HomeController(PassportPages pages) : Controller
     }
 
     [HttpGet("search")]
-    public async Task<IActionResult> Search([FromQuery] string? q, CancellationToken cancellationToken)
+    public async Task<IActionResult> Search([FromQuery] string? q, CancellationToken cancellationToken, [FromServices] BatteryPages? batteries = null)
     {
         var query = IdFromSearch(q);
         if (query.Length == 0)
@@ -46,16 +65,54 @@ public class HomeController(PassportPages pages) : Controller
             return RedirectToAction(nameof(Index));
         }
 
-        var passport = await pages.LocateAsync(query, cancellationToken);
-        if (passport is null)
+        if (await pages.LocateAsync(query, cancellationToken) is { } passport)
         {
-            return RedirectToAction(nameof(Index), new { q = query, notFound = "1" });
+            return Redirect(PageOf(passport.Address));
         }
 
-        return Redirect(User.Identity?.IsAuthenticated == true
-            ? PassportPages.DetailHref(passport.Address)
-            : PassportPages.SummaryHref(passport.Address));
+        // In other capitals (finding U02): the one published passport whose serial number, battery ID or passport ID it is.
+        if (batteries is not null && query.Length >= NearMatchMinimum)
+        {
+            var list = await batteries.ListOnePerBatteryAsync(query, IsPublished, matchClusters: false, cancellationToken);
+            var same = list.Rows.Where(row => string.Equals(row.SerialNumber, query, StringComparison.OrdinalIgnoreCase) || string.Equals(row.Identifier, query, StringComparison.OrdinalIgnoreCase)).ToArray();
+            if (same.Length == 1 && same[0].Identifier.Length > 0)
+            {
+                return Redirect(PageOf(same[0].Identifier));
+            }
+
+            if (list.Rows.Count == 1 && list.Rows[0].Active?.DigitalProductPassportId is { } passportId && string.Equals(passportId, query, StringComparison.OrdinalIgnoreCase))
+            {
+                return Redirect(PageOf(list.Rows[0].Identifier));
+            }
+        }
+
+        return RedirectToAction(nameof(Index), new { q = query, notFound = "1" });
     }
+
+    /// <summary>A near match on the home page: the battery's serial number, its model, and its passport's address.</summary>
+    public sealed record NearMatch(string SerialNumber, string ModelName, string Href);
+
+    /// <summary>
+    /// The published passports the search text is part of, with the Registry's own matching (finding U02), one per
+    /// battery; at most <see cref="NearMatchLimit"/> of them, and the total. Clusters don't count, as for a visitor.
+    /// </summary>
+    private async Task<(IReadOnlyList<NearMatch> Matches, int Total)> NearMatchesAsync(BatteryPages batteries, string query, CancellationToken cancellationToken)
+    {
+        var list = await batteries.ListOnePerBatteryAsync(query, IsPublished, matchClusters: false, cancellationToken);
+        var matches = list.Rows
+            .Where(row => row.Identifier.Length > 0)
+            .Take(NearMatchLimit)
+            .Select(row => new NearMatch(row.SerialNumber, row.ModelName, PageOf(row.Identifier)))
+            .ToArray();
+        return (matches, list.Rows.Count);
+    }
+
+    /// <summary>A passport the public may open: the battery's active one.</summary>
+    private static bool IsPublished(BatteryRow row) => row.Active is not null;
+
+    /// <summary>The detail page when signed in, the public page otherwise.</summary>
+    private string PageOf(string address) =>
+        User.Identity?.IsAuthenticated == true ? PassportPages.DetailHref(address) : PassportPages.SummaryHref(address);
 
     /// <summary>
     /// The ID in what was typed or scanned: from a web address (a QR code's), its first path part that isn't a route

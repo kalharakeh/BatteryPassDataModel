@@ -737,6 +737,28 @@ a:hover {
   font: inherit;
 }
 
+/* The home search's near matches (finding U02). */
+.bp-near-matches {
+  padding: 12px 16px;
+  border: 1px solid var(--bp-border);
+  border-radius: 8px;
+  background: var(--bp-surface);
+  font-size: 14px;
+}
+
+.bp-near-matches ul {
+  margin: 0 0 4px;
+  padding-left: 18px;
+}
+
+.bp-near-matches li span {
+  color: var(--bp-muted);
+}
+
+.bp-near-match {
+  font-weight: 600;
+}
+
 .bp-main {
   flex: 1;
   width: 100%;
