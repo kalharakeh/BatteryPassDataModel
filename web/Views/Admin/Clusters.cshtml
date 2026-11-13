@@ -275,9 +275,15 @@
                     <button type="submit" class="bp-secondary-button" data-confirm-action data-confirm-title="Reset demo data" data-confirm-message="Remove the demo data and make it again? Real data stays as it is. The new API tokens are shown once." data-confirm-submit="Reset demo data" data-confirm-busy="Resetting the demo data… This takes a little over a minute. Keep this page open; it reloads when done.">Reset demo data</button>
                 </form>
                 }
+                @{
+                    // Decision 82: clearing also removes every test ID and test battery, also on real product data; the question says how many.
+                    var testData = Context.RequestServices.GetService(typeof(DemoDataService)) is DemoDataService demoData
+                        ? await demoData.TestDataOutsideTheDemoAsync()
+                        : new TestDataOutsideTheDemo(0, 0);
+                }
                 <form method="post" action="/admin/demo-data/clear">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="bp-danger-button" data-confirm-action data-confirm-title="Clear demo data" data-confirm-message="Remove the demo data? Real data stays as it is, and a demo record that real data uses is kept." data-confirm-submit="Clear demo data" data-confirm-busy="Clearing the demo data… This takes about 20 seconds. Keep this page open; it reloads when done.">Clear demo data</button>
+                    <button type="submit" class="bp-danger-button" data-confirm-action data-confirm-title="Clear demo data" data-confirm-message="@DemoDataService.ClearConfirmation(testData)" data-confirm-submit="Clear demo data" data-confirm-busy="Clearing the demo data… This takes about 20 seconds. Keep this page open; it reloads when done.">Clear demo data</button>
                 </form>
             </div>
         </section>
