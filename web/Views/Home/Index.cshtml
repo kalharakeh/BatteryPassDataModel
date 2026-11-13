@@ -1,12 +1,12 @@
 @{
-    ViewData["Title"] = "Scania Battery Passport Viewer";
+    ViewData["Title"] = BatteryPassWeb.Services.TopBar.AppName; // the tab says the app's name once (W03)
     var searchQuery = ViewData["SearchQuery"] as string ?? string.Empty;
     var searchWasNotFound = ViewData["SearchNotFound"] is true;
 }
 <main class="bp-landing">
     <div class="bp-landing-content">
         <div>
-            <h1>Scania Battery Passport Viewer</h1>
+            <h1>Find a battery passport</h1>
             <p>Enter a battery's serial number, battery ID or passport ID, or scan its QR code, to open its battery passport.</p>
         </div>
         @if (searchWasNotFound && !string.IsNullOrWhiteSpace(searchQuery))

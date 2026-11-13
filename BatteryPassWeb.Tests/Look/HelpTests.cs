@@ -28,7 +28,7 @@ public sealed class HelpTests(MongoFixture mongo)
         Assert.True(Contents.IndexOf("@if (runsACluster)", StringComparison.Ordinal) < Contents.IndexOf("Part(\"cluster\")", StringComparison.Ordinal));
         Assert.True(Contents.IndexOf("@if (isTeam)", StringComparison.Ordinal) < Contents.IndexOf("Part(\"workflow\")", StringComparison.Ordinal));
         Assert.Contains("@if (signedIn && !runsACluster)", Contents, StringComparison.Ordinal);
-        Assert.Contains("<a href=\"/help/api\" aria-current=\"@(onGuide ? null : \"page\")\">API reference and workbench</a>", Contents, StringComparison.Ordinal);
+        Assert.Contains("<a href=\"/help/api\" aria-current=\"@(onGuide ? null : \"page\")\">API reference</a>", Contents, StringComparison.Ordinal);
 
         // The page itself shows the same parts under the same conditions.
         Assert.True(Guide.IndexOf("@if (runsACluster)", StringComparison.Ordinal) < Guide.IndexOf("id=\"cluster\"", StringComparison.Ordinal));
@@ -43,7 +43,7 @@ public sealed class HelpTests(MongoFixture mongo)
         {
             Assert.Contains("@await Html.PartialAsync(\"_HelpContents\"", page, StringComparison.Ordinal);
             Assert.Contains("<div class=\"bp-help-layout mt-4\">", page, StringComparison.Ordinal);
-            Assert.Contains("<h1>Help</h1>", page, StringComparison.Ordinal);
+            Assert.Contains(page == Guide ? "<h1>Help</h1>" : "<h1>API reference</h1>", page, StringComparison.Ordinal); // W03
             Assert.DoesNotContain("_AdminTabs", page, StringComparison.Ordinal);
             Assert.DoesNotContain("_HelpTabs", page, StringComparison.Ordinal);
         }

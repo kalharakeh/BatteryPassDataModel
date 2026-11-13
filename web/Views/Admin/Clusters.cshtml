@@ -1,7 +1,7 @@
 @model BatteryPassWeb.Models.ViewModels.AdminClusterViewModel
 @using BatteryPassWeb.Dpp.Demo
 @{
-    ViewData["Title"] = "Administration";
+    ViewData["Title"] = "Admin";
     var selectedTab = Model.SelectedTab;
     var clustersById = Model.Clusters.ToDictionary(cluster => cluster.ClusterId, cluster => cluster, StringComparer.OrdinalIgnoreCase);
     var clusterCreateName = TempData["ClusterCreateName"]?.ToString() ?? string.Empty;

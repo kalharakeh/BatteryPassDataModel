@@ -22,7 +22,7 @@ public sealed class AdminHeadingTests
     [Fact]
     public void Heading_ShouldBeSharedByEveryAdminTab()
     {
-        Assert.Contains("<h1>Administration</h1>", Tabs, StringComparison.Ordinal);
+        Assert.Contains("<h1>Admin</h1>", Tabs, StringComparison.Ordinal); // one name per thing (W03)
         Assert.Contains("<p>Batteries, product data, clusters, users and API tokens.</p>", Tabs, StringComparison.Ordinal);
 
         foreach (var page in AdminPages)
