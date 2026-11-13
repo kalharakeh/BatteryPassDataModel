@@ -120,6 +120,22 @@ public sealed class DocumentStore
         return await Collection().Find(d => d.OwnerKind == ownerKind && d.OwnerId == ownerId).SortBy(d => d.UploadedAtUtc).ToListAsync(cancellationToken);
     }
 
+    /// <summary>Deletes these documents with their stored files; those already gone are fine (a removal's finish).</summary>
+    public async Task DeleteManyAsync(IEnumerable<string> documentIds, CancellationToken cancellationToken = default)
+    {
+        if (_database is null)
+        {
+            return;
+        }
+
+        var ids = documentIds.ToArray();
+        foreach (var document in await Collection().Find(d => ids.Contains(d.Id)).ToListAsync(cancellationToken))
+        {
+            await DeleteFileAsync(document.FileId, cancellationToken);
+            await Collection().DeleteOneAsync(d => d.Id == document.Id, cancellationToken);
+        }
+    }
+
     /// <summary>Deletes every document of a removed record, with its stored file.</summary>
     public async Task DeleteOwnedAsync(TargetKind ownerKind, string ownerId, CancellationToken cancellationToken = default)
     {

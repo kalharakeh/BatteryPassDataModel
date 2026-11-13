@@ -44,6 +44,7 @@ public static class ResetCollections
         ["dpp_uploads"] = CollectionFate.NewTestData,
         ["dpp_upload_checks"] = CollectionFate.NewTestData,
         ["dpp_battery_ids"] = CollectionFate.NewTestData,
+        ["dpp_removed_passports"] = CollectionFate.NewTestData, // finding R08: the markers of removed passports go with the test data
         ["dpp_documents"] = CollectionFate.NewTestData,
         ["dpp_files.files"] = CollectionFate.NewTestData,
         ["dpp_files.chunks"] = CollectionFate.NewTestData,

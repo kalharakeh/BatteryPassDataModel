@@ -13,6 +13,7 @@ namespace BatteryPassWeb.Dpp.Pages;
 /// <param name="FrozenAs">The DPP status (#2) of a passport that is no longer active (inactive, invalid or marked for
 /// deletion); null while it is active or a draft.</param>
 /// <param name="NewPassportHref">An inactive passport's new passport, where the battery's reports go now (redesign R5); null otherwise.</param>
+/// <param name="Locked">Why the reader changes nothing on an active passport (finding R20: no written authorisation); null otherwise.</param>
 public sealed record BatteryCards(
     BatteryPack Pack,
     string Href,
@@ -24,7 +25,8 @@ public sealed record BatteryCards(
     string? ModuleDescriptionHref = null,
     bool HasModuleDescription = false,
     string? FrozenAs = null,
-    string? NewPassportHref = null)
+    string? NewPassportHref = null,
+    string? Locked = null)
 {
     /// <summary>Whether nothing on the passport changes any more (step 4c).</summary>
     public bool Frozen => FrozenAs is not null;
@@ -35,7 +37,7 @@ public sealed record BatteryCards(
     /// <summary>Why nothing on the passport changes, in words that fit its status (redesign R1); null while it can change.</summary>
     public string? FrozenNote => FrozenAs switch
     {
-        null => null,
+        null => Locked,
         DppStatuses.Invalid => $"The passport is invalid: nothing on it changes until {Team} undoes it.",
         DppStatuses.MarkedForDeletion => $"The passport is marked for deletion: nothing on it changes until {Team} undoes it.",
         _ => "The passport is no longer active: nothing on it changes any more. The battery's data continue on its new passport.",

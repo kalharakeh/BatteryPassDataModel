@@ -30,6 +30,11 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
     [HttpGet("{packId}")]
     public async Task<IActionResult> Battery(string packId, CancellationToken cancellationToken)
     {
+        if (await PassportController.GoneAsync(this, packId, json: false, cancellationToken) is { } gone)
+        {
+            return gone; // finding R08: a battery being removed answers as a removed one
+        }
+
         var sender = await readers.EditorForAsync(User, cancellationToken);
         if (sender?.Kind == SenderKind.Team)
         {
@@ -49,6 +54,11 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
         if (await ClusterAdminAsync(cancellationToken) is not { } sender)
         {
             return NotFound();
+        }
+
+        if (await CannotChangeAsync(sender, packId, cancellationToken) is { } refused)
+        {
+            return refused; // finding R20
         }
 
         var form = Request.Form;
@@ -96,6 +106,11 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
             return NotFound();
         }
 
+        if (await CannotChangeAsync(sender, packId, cancellationToken) is { } refused)
+        {
+            return refused; // finding R20
+        }
+
         if (file is null || file.Length == 0)
         {
             Card(packId, "accidents", null, "Choose a file first.");
@@ -123,6 +138,11 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
             return NotFound();
         }
 
+        if (await CannotChangeAsync(sender, packId, cancellationToken) is { } refused)
+        {
+            return refused; // finding R20
+        }
+
         var form = Request.Form;
         var before = (await pages.BatteryAsync(sender, packId, cancellationToken: cancellationToken))?.Versions.Count ?? 0;
         if (await pages.ChangeStatusAsync(sender, packId, what, name => form.TryGetValue(name, out var value) ? value.ToString() : null, repairDate, repairDescription, cancellationToken) is not { } result)
@@ -140,8 +160,17 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddHistoryNote(string packId, [FromForm] string? note, CancellationToken cancellationToken)
     {
-        if (await ClusterAdminAsync(cancellationToken) is not { } sender
-            || await pages.AddHistoryNoteAsync(sender, packId, note, cancellationToken) is not { } message)
+        if (await ClusterAdminAsync(cancellationToken) is not { } sender)
+        {
+            return NotFound();
+        }
+
+        if (await CannotChangeAsync(sender, packId, cancellationToken) is { } refused)
+        {
+            return refused; // finding R20
+        }
+
+        if (await pages.AddHistoryNoteAsync(sender, packId, note, cancellationToken) is not { } message)
         {
             return NotFound();
         }
@@ -155,8 +184,17 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> OtherOperator(string packId, [FromForm] string? operatorIdentifier, [FromForm] string? operatorInfo, [FromForm] string? passport, [FromForm] bool link, CancellationToken cancellationToken)
     {
-        if (await ClusterAdminAsync(cancellationToken) is not { } sender
-            || await pages.OtherOperatorAsync(sender, packId, new OtherOperator(operatorIdentifier, operatorInfo, passport), link, cancellationToken) is not { } message)
+        if (await ClusterAdminAsync(cancellationToken) is not { } sender)
+        {
+            return NotFound();
+        }
+
+        if (await CannotChangeAsync(sender, packId, cancellationToken) is { } refused)
+        {
+            return refused; // finding R20
+        }
+
+        if (await pages.OtherOperatorAsync(sender, packId, new OtherOperator(operatorIdentifier, operatorInfo, passport), link, cancellationToken) is not { } message)
         {
             return NotFound();
         }
@@ -176,6 +214,11 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
         if (await ClusterAdminAsync(cancellationToken) is not { } sender)
         {
             return NotFound();
+        }
+
+        if (await CannotChangeAsync(sender, packId, cancellationToken) is { } refused)
+        {
+            return refused; // finding R20
         }
 
         var typed = string.IsNullOrWhiteSpace(toClusterId) ? string.Empty : ClusterRepository.NormalizeClusterId(toClusterId);
@@ -221,9 +264,15 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
     [EnableRateLimiting(SecurityRateLimitPolicyNames.FileUpload)]
     public async Task<IActionResult> CheckUpload(string packId, IFormFile? file, CancellationToken cancellationToken)
     {
-        if (await ClusterAdminAsync(cancellationToken) is not { } sender || await pages.BatteryAsync(sender, packId, cancellationToken: cancellationToken) is not { ReadOnly: false })
+        if (await ClusterAdminAsync(cancellationToken) is not { } sender || await pages.BatteryAsync(sender, packId, cancellationToken: cancellationToken) is not { ReadOnly: false } page)
         {
             return NotFound();
+        }
+
+        if (page.CannotChange is { } cannotChange)
+        {
+            TempData[ProductDataController.ErrorKey] = cannotChange; // finding R20
+            return Redirect(ClusterBatteryPages.BatteryHref(packId));
         }
 
         var (checkId, problem) = await uploads.CheckAsync(sender, packId, file?.FileName, file?.OpenReadStream(), file?.Length ?? 0, cancellationToken);
@@ -237,9 +286,15 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveUpload(string packId, [FromForm] string? checkId, CancellationToken cancellationToken)
     {
-        if (await ClusterAdminAsync(cancellationToken) is not { } sender || await pages.BatteryAsync(sender, packId, cancellationToken: cancellationToken) is not { ReadOnly: false })
+        if (await ClusterAdminAsync(cancellationToken) is not { } sender || await pages.BatteryAsync(sender, packId, cancellationToken: cancellationToken) is not { ReadOnly: false } page)
         {
             return NotFound();
+        }
+
+        if (page.CannotChange is { } cannotChange)
+        {
+            TempData[ProductDataController.ErrorKey] = cannotChange; // finding R20
+            return Redirect(ClusterBatteryPages.BatteryHref(packId));
         }
 
         var (done, uploadId, problem) = await uploads.SaveAsync(sender, packId, checkId, cancellationToken);
@@ -258,11 +313,26 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
         }
 
         CardMessages.Take(TempData, ViewData, page.Pack.Id);
-        return page.ReadOnly ? page : page with
+        return !page.Changes ? page : page with
         {
             Upload = await uploads.CardAsync(page.Pack, ClusterBatteryPages.BatteryHref(page.Pack.Id), forTeam: false, ViewData[UploadPages.CheckKey] as string, ViewData[UploadPages.OpenKey] as string, cancellationToken,
                 viewer: AccessControlService.CurrentEmail(User).Trim().ToLowerInvariant()),
         };
+    }
+
+    /// <summary>
+    /// Finding R20: a form sent from (or past) a page whose cluster has no written authorisation changes nothing; it goes
+    /// back to the battery's page with the one line why. Null when the cluster admin may change the battery.
+    /// </summary>
+    private async Task<IActionResult?> CannotChangeAsync(ChangeSender sender, string packId, CancellationToken cancellationToken)
+    {
+        if (await pages.CannotChangeAsync(sender, packId, cancellationToken) is not { } cannotChange)
+        {
+            return null;
+        }
+
+        TempData[ProductDataController.ErrorKey] = cannotChange;
+        return Redirect(ClusterBatteryPages.BatteryHref(packId));
     }
 
     private async Task<ChangeSender?> ClusterAdminAsync(CancellationToken cancellationToken) =>

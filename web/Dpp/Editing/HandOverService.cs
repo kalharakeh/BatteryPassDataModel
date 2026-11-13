@@ -9,7 +9,11 @@ namespace BatteryPassWeb.Dpp.Editing;
 public sealed record HandOverAsk(string? Problem, string? ReceiverName, HandOver? HandOver);
 
 /// <summary>A hand-over waiting for a cluster admin's answer, with what the Registry card shows about it.</summary>
-public sealed record WaitingHandOver(HandOver HandOver, string SerialNumber, string ModelName, string FromName);
+public sealed record WaitingHandOver(HandOver HandOver, string SerialNumber, string ModelName, string FromName)
+{
+    /// <summary>Why "Accept" is unavailable (finding R20): a cluster's written authorisation is missing; null when it can be accepted.</summary>
+    public string? CannotAccept { get; init; }
+}
 
 /// <summary>
 /// Hand-overs between clusters (design 7.8, decisions 9, 14 and 34; step 4d). A battery's cluster admin names the receiving
@@ -59,6 +63,11 @@ public sealed class HandOverService(DppStore store, ClusterRepository clusters, 
             || !await demo.ReachesAsync(sender, pack, cancellationToken)) // finding R03
         {
             return Refused(NotYours);
+        }
+
+        if (await demo.WriteProblemAsync(sender, from, cancellationToken) is { } unauthorised) // finding R20
+        {
+            return Refused(unauthorised);
         }
 
         if (await store.GetActiveVersionAsync(packId, cancellationToken) is null)
@@ -137,6 +146,18 @@ public sealed class HandOverService(DppStore store, ClusterRepository clusters, 
             || ClusterRepository.NormalizeClusterId(now) != ClusterRepository.NormalizeClusterId(handOver.FromClusterId))
         {
             return NotWaiting;
+        }
+
+        // Accepting changes the battery's cluster: both clusters must be authorised in writing, the receiving one and the
+        // giving one still (finding R20, round two). Declining leaves the battery where it is, so it stays open.
+        if (accept && await demo.WriteProblemAsync(sender, handOver.ToClusterId, cancellationToken) is { } unauthorised)
+        {
+            return unauthorised;
+        }
+
+        if (accept && await demo.WriteProblemAsync(sender, handOver.FromClusterId, cancellationToken) is not null)
+        {
+            return WrittenAuthorisation.GiverRefusal;
         }
 
         // The passport may have stopped being active while it waited (a successor, a mark): it can't be managed then.
@@ -233,7 +254,13 @@ public sealed class HandOverService(DppStore store, ClusterRepository clusters, 
                 handOver,
                 sources is null ? handOver.PackId : Serial(sources.Pack),
                 sources?.Model.Name ?? string.Empty,
-                from is null ? handOver.FromClusterId : BsonHelpers.GetString(from, "name")));
+                from is null ? handOver.FromClusterId : BsonHelpers.GetString(from, "name"))
+            {
+                // Finding R20: Accept is shown as unavailable, with the one line, rather than answering a refusal.
+                CannotAccept = await demo.WriteProblemAsync(sender, handOver.ToClusterId, cancellationToken) is not null ? WrittenAuthorisation.Missing
+                    : await demo.WriteProblemAsync(sender, handOver.FromClusterId, cancellationToken) is not null ? WrittenAuthorisation.GiverMissing
+                    : null,
+            });
         }
 
         return waiting;

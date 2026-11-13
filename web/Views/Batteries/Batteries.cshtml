@@ -33,6 +33,26 @@
         </p>
     }
 
+    @* Finding R02: the published real batteries the team hasn't recorded in the EU registry yet, and their CSV. *@
+    @if (Model.NotInTheRegistry > 0 || Model.OnlyNotInTheRegistry)
+    {
+        <p class="bp-help-text mt-3 mb-0" data-registry-line>
+            @if (Model.OnlyNotInTheRegistry)
+            {
+                <text>Showing the @Words.Count(Model.NotInTheRegistry, "published battery", "published batteries") not yet in the EU registry.</text>
+                <a href="/admin/batteries">Show all batteries</a>
+            }
+            else
+            {
+                <a href="/admin/batteries?registry=missing">@Words.Count(Model.NotInTheRegistry, "published battery is", "published batteries are") not yet in the EU registry</a>
+            }
+            @if (Model.NotInTheRegistry > 0)
+            {
+                <text> · </text><a href="/admin/batteries/registry.csv" download>Download them as CSV</a>
+            }
+        </p>
+    }
+
     @* Decision 65: the check of all published passports runs every hour; the team can run it now. *@
     <form method="post" action="/admin/batteries/check" class="mt-3">
         @Html.AntiForgeryToken()

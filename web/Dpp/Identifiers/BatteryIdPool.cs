@@ -79,6 +79,9 @@ public sealed partial class BatteryIdPool(
     /// <summary>Why a release was refused when another took some of its serial numbers at the same moment.</summary>
     public const string RaceLost = "another release took some of these serial numbers at the same moment; nothing was released, try again";
 
+    /// <summary>Why a removed passport's serial number or battery ID can't be released or taken again (finding R08).</summary>
+    public const string RemovedId = "it belonged to a battery whose passport was removed after it was recycled or exported, so it can't be used again";
+
     public async Task<ReleaseResult> ReleaseAsync(string who, ReleaseRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -143,6 +146,13 @@ public sealed partial class BatteryIdPool(
             if (seen.TryGetValue(key, out var first))
             {
                 problems.Add(new IdProblem(serial, first == serial ? "it is in this release twice" : $"it is in this release twice, also as {first}"));
+                continue;
+            }
+
+            // A removed passport's serial number or battery ID never comes back (finding R08).
+            if (await store.FindRemovedAsync(serial, cancellationToken) is not null || await store.FindRemovedAsync(identifier, cancellationToken) is not null)
+            {
+                problems.Add(new IdProblem(serial, RemovedId));
                 continue;
             }
 
@@ -357,6 +367,13 @@ public sealed partial class BatteryIdPool(
         if (await OfAsync(packId, cancellationToken) is not { Status: ReleasedIdStatuses.Used } old)
         {
             return "its battery ID wasn't picked from the released IDs";
+        }
+
+        // A removed passport's ID never comes back (finding R08).
+        if (await store.FindRemovedAsync(serialNumber, cancellationToken) is not null
+            || (await GetAsync(serialNumber, cancellationToken) is { } named && await store.FindRemovedAsync(named.Identifier, cancellationToken) is not null))
+        {
+            return RemovedId;
         }
 
         // A demo battery takes a demo ID and a real battery a real one: a swap can't put a real ID on demo product data (U16).

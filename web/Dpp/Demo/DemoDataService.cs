@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json.Nodes;
 using BatteryPassWeb.Configuration;
+using BatteryPassWeb.Dpp.Access;
 using BatteryPassWeb.Dpp.Api;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
@@ -49,8 +50,26 @@ public sealed class DemoDataService(
     TimeProvider clock,
     UploadService uploads,
     Identifiers.BatteryIdPool? pool = null,
-    DemoDataSwitch? demoSwitch = null)
+    DemoDataSwitch? demoSwitch = null,
+    PassportRemoval? removal = null)
 {
+    /// <summary>
+    /// Finding R08, round three: finishes the demo's removals that stopped half way, then deletes the demo's markers, so
+    /// the demo's IDs are made again and nothing half-removed comes back readable. A real marker stays.
+    /// </summary>
+    private async Task ForgetDemoRemovalsAsync(CancellationToken cancellationToken)
+    {
+        if (removal is not null)
+        {
+            foreach (var packId in await removal.UnfinishedAsync(cancellationToken, demoOnly: true))
+            {
+                await removal.FinishAsync(packId, CancellationToken.None);
+            }
+        }
+
+        await Collection(DppStore.RemovedPassports).DeleteManyAsync(Builders<BsonDocument>.Filter.Eq("IsDemo", true), cancellationToken);
+    }
+
     /// <summary>Whether this site has demo data (ENABLE_DEMO_DATA, finding R03).</summary>
     public bool Enabled => (demoSwitch ?? DemoDataSwitch.On).Enabled;
 
@@ -85,9 +104,13 @@ public sealed class DemoDataService(
     public bool AccountsPossible => !string.IsNullOrWhiteSpace(options.Value.DemoUsersPassword);
 
     /// <summary>True when any demo battery is there; false without a database.</summary>
+    /// <summary>
+    /// Whether the demo catalogue is there (its families), so it is reset or cleared rather than seeded again. Not "a demo
+    /// battery exists": every demo battery may have had its passport removed (finding R08).
+    /// </summary>
     public async Task<bool> HasDemoDataAsync(CancellationToken cancellationToken = default) =>
         mongo.Database is not null
-        && await Collection(DppStore.Packs).CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq(Mark, true), cancellationToken: cancellationToken) > 0;
+        && await Collection(DppStore.Families).CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq(Mark, true), cancellationToken: cancellationToken) > 0;
 
     /// <summary>Clears the demo data, then seeds it again.</summary>
     public async Task<DemoResult> ResetAsync(string who, CancellationToken cancellationToken = default)
@@ -109,8 +132,33 @@ public sealed class DemoDataService(
             return new DemoResult([], inTheWay, []);
         }
 
+        // The team's word on a demo cluster's written authorisation outlives the reset (finding R20, round three): a tick
+        // the team set is put back as it was, and a tick the team took away isn't put back by the seed.
+        var teamsWord = new Dictionary<string, BsonDocument>(StringComparer.Ordinal);
+        foreach (var cluster in DemoCatalogue.Load().Clusters)
+        {
+            if (await clusters.GetClusterByIdAsync(cluster.Id, cancellationToken) is { } record && ClusterRepository.IsDemo(record)
+                && (WrittenAuthorisation.Of(record) is { } tick ? tick.By != SeedActor : WrittenAuthorisation.TakenAway(record)))
+            {
+                teamsWord[cluster.Id] = record;
+            }
+        }
+
         var cleared = await ClearAsync(who, cancellationToken);
         var seeded = await SeedAsync(who, cancellationToken);
+        foreach (var (clusterId, record) in teamsWord)
+        {
+            var now = clock.GetUtcNow().UtcDateTime;
+            if (WrittenAuthorisation.Of(record) is { } tick)
+            {
+                await clusters.SetWrittenAuthorisationAsync(clusterId, tick.On, tick.By, tick.RecordedAtUtc ?? now, cancellationToken);
+            }
+            else
+            {
+                await clusters.RemoveWrittenAuthorisationAsync(clusterId, now, cancellationToken, takenAwayBy: BsonHelpers.GetString(record, WrittenAuthorisation.TakenAwayField, "by"));
+            }
+        }
+
         return new DemoResult([.. cleared.Done, .. seeded.Done], [.. cleared.Notes, .. seeded.Notes], seeded.Tokens);
     }
 
@@ -137,19 +185,30 @@ public sealed class DemoDataService(
             return new DemoResult([], inTheWay, []); // nothing seeded into a real cluster (finding R03, point 7)
         }
 
+        // The demo's removals are finished and their markers go first, so the seed can make the demo's IDs again (finding R08).
+        await ForgetDemoRemovalsAsync(cancellationToken);
+
         var team = ChangeSender.Team(who);
         var notes = new List<string>();
         var demoTokens = new List<DemoToken>();
 
+        var authorisedAt = clock.GetUtcNow().UtcDateTime;
         foreach (var cluster in catalogue.Clusters)
         {
-            if (await Collection("clusters").Find(Builders<BsonDocument>.Filter.Eq("clusterId", cluster.Id)).AnyAsync(cancellationToken))
+            // A demo cluster left from before is the demo's own: it is kept as it is.
+            if (!await Collection("clusters").Find(Builders<BsonDocument>.Filter.Eq("clusterId", cluster.Id)).AnyAsync(cancellationToken))
             {
-                continue; // a demo cluster left from before: the demo's own
+                await clusters.UpsertClusterAsync(cluster.Id, cluster.Name, cancellationToken);
+                await MarkAccountRecordAsync("clusters", Builders<BsonDocument>.Filter.Eq("clusterId", cluster.Id), cancellationToken);
             }
 
-            await clusters.UpsertClusterAsync(cluster.Id, cluster.Name, cancellationToken);
-            await MarkAccountRecordAsync("clusters", Builders<BsonDocument>.Filter.Eq("clusterId", cluster.Id), cancellationToken);
+            // The demo clusters come authorised in writing, so their admins and tokens change their batteries (finding R20). A
+            // tick already there (the team's, or an earlier seed's) is kept, and a tick the team took away isn't put back.
+            if (await clusters.GetClusterByIdAsync(cluster.Id, cancellationToken) is var record
+                && WrittenAuthorisation.Of(record) is null && !WrittenAuthorisation.TakenAway(record))
+            {
+                await clusters.SetWrittenAuthorisationAsync(cluster.Id, DateOnly.FromDateTime(authorisedAt), SeedActor, authorisedAt, cancellationToken);
+            }
         }
 
         // The accounts don't depend on the product data, so they are made side by side with it (redesign R1).
@@ -272,6 +331,8 @@ public sealed class DemoDataService(
         var demoPacks = await DemoIdsAsync(DppStore.Packs, cancellationToken);
         await Collection(DppStore.BatteryIds).DeleteManyAsync(Builders<BsonDocument>.Filter.Eq("IsDemo", true), cancellationToken); // the demo release only (6d)
         await Collection(DppStore.UploadChecks).DeleteManyAsync(Builders<BsonDocument>.Filter.In("PackId", demoPacks), cancellationToken);
+        // The markers of removed demo passports, so the seed can make the demo's IDs again (finding R08); a real one stays.
+        await ForgetDemoRemovalsAsync(cancellationToken); // finished first, then the demo markers go (finding R08, round three)
         foreach (var packId in demoPacks)
         {
             await Collection(DppStore.Versions).DeleteManyAsync(Builders<BsonDocument>.Filter.Eq("PackId", packId), cancellationToken);
@@ -335,6 +396,12 @@ public sealed class DemoDataService(
             if (uses.Count > 0)
             {
                 await MarkAccountRecordAsync("clusters", Builders<BsonDocument>.Filter.Eq("clusterId", clusterId), cancellationToken, false);
+                if (WrittenAuthorisation.Of(cluster) is { By: SeedActor })
+                {
+                    // The demo's own authorisation isn't a written one: a cluster kept for real use waits for the team's (finding R20).
+                    await clusters.RemoveWrittenAuthorisationAsync(clusterId, clock.GetUtcNow().UtcDateTime, cancellationToken);
+                }
+
                 notes.Add($"Kept cluster {clusterId}: {string.Join(", ", uses)} use it, so it is no longer marked as demo data.");
                 continue;
             }

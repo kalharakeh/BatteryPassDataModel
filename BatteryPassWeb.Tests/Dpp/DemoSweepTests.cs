@@ -77,6 +77,10 @@ public sealed class DemoSweepTests(MongoFixture mongo, ITestOutputHelper output)
         await clusters.UpsertClusterAsync(OtherRealCluster, "Other real customer");
         await clusters.UpsertClusterAsync(DemoCluster, "Demo customer");
         await database.GetCollection<BsonDocument>("clusters").UpdateOneAsync(Builders<BsonDocument>.Filter.Eq("clusterId", DemoCluster), Builders<BsonDocument>.Update.Set(ClusterRepository.DemoMark, true));
+        foreach (var authorised in new[] { RealCluster, OtherRealCluster, DemoCluster })
+        {
+            await clusters.AuthoriseAsync(authorised); // the sweep is about demo identities, not the written authorisation (R20)
+        }
         var team = PublicationTesting.Team;
         var pack = seed.Sources.Pack;
         await store.SetPackClusterAsync(pack.Id, RealCluster);
@@ -152,6 +156,7 @@ public sealed class DemoSweepTests(MongoFixture mongo, ITestOutputHelper output)
             {
                 await clusters.UpsertClusterAsync(cluster, name);
                 await database.GetCollection<BsonDocument>("clusters").UpdateOneAsync(Builders<BsonDocument>.Filter.Eq("clusterId", cluster), Builders<BsonDocument>.Update.Set(ClusterRepository.DemoMark, demo));
+                await clusters.AuthoriseAsync(cluster); // R20
             }
 
             foreach (var setup in setups)
@@ -319,6 +324,10 @@ public sealed class DemoSweepTests(MongoFixture mongo, ITestOutputHelper output)
                     ["clusterId"] = OtherRealCluster, ["toClusterId"] = OtherRealCluster, ["accept"] = "true", ["confirm"] = "true",
                     ["what"] = "repaired", ["name"] = "Sweep", ["email"] = "sweep.new@example.test", ["role"] = "member",
                     ["password"] = Password, ["passwordConfirmation"] = Password, ["systemRole"] = "member", ["text"] = "Sweep text",
+                    // The C2 routes' fields (round two, 5): the cluster's written authorisation (the tick, its day; "remove"
+                    // false so the tick is the path taken), the typed ID that removes a passport, the EU registry record.
+                    ["authorised"] = "true", ["on"] = DateTime.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), ["remove"] = "false",
+                    ["confirmId"] = id, ["registeredOn"] = DateTime.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), ["registrationId"] = "SWEEP-REG-1",
                 });
             }
         }

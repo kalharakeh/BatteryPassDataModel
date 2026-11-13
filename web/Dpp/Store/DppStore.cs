@@ -27,6 +27,9 @@ public sealed class DppStore
     /// <summary>The battery IDs the team released in advance (step 6d), keyed by the serial number's letters and digits.</summary>
     public const string BatteryIds = "dpp_battery_ids";
 
+    /// <summary>The markers of removed passports (finding R08).</summary>
+    public const string RemovedPassports = "dpp_removed_passports";
+
     private const string UniqueProductIdentifierField = "Values.uniqueProductIdentifier.Value";
     private const string SerialNumberField = "Values.batterySerialNumber.Value";
 
@@ -43,6 +46,7 @@ public sealed class DppStore
         [typeof(UploadRecord)] = Uploads,
         [typeof(UploadCheck)] = UploadChecks,
         [typeof(Identifiers.ReleasedBatteryId)] = BatteryIds,
+        [typeof(RemovedPassport)] = RemovedPassports,
     };
 
     private readonly IMongoDatabase? _database;
@@ -170,6 +174,9 @@ public sealed class DppStore
             new CreateIndexModel<UploadRecord>(Builders<UploadRecord>.IndexKeys.Descending(upload => upload.AtUtc), new CreateIndexOptions { Name = "at" }),
             new CreateIndexModel<UploadRecord>(Builders<UploadRecord>.IndexKeys.Ascending("Batteries.PackId").Descending(upload => upload.AtUtc), new CreateIndexOptions { Name = "pack_at" }),
         ], cancellationToken);
+        await Collection<RemovedPassport>().Indexes.CreateOneAsync(
+            new CreateIndexModel<RemovedPassport>(Builders<RemovedPassport>.IndexKeys.Ascending(removed => removed.Ids)),
+            cancellationToken: cancellationToken);
         await Collection<UploadCheck>().Indexes.CreateOneAsync(
             new CreateIndexModel<UploadCheck>(
                 Builders<UploadCheck>.IndexKeys.Ascending(check => check.ExpiresAtUtc),
@@ -345,6 +352,186 @@ public sealed class DppStore
         var result = await Collection<BatteryPack>().UpdateOneAsync(
             pack => pack.Id == packId,
             Builders<BatteryPack>.Update.Set(pack => pack.ClusterId, clusterId),
+            cancellationToken: cancellationToken);
+        return result.MatchedCount == 1;
+    }
+
+    /// <summary>Writes the marker of a removed passport (finding R08); writing it again changes nothing.</summary>
+    public async Task AddRemovedAsync(RemovedPassport removed, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(removed);
+        await Collection<RemovedPassport>().ReplaceOneAsync(item => item.Id == removed.Id, removed, new ReplaceOptions { IsUpsert = true }, cancellationToken);
+    }
+
+    /// <summary>
+    /// The marker of the removed passport that answered to this ID: a battery ID in either form, a passport ID or the pack
+    /// ID, as an address may carry it (encoded once). Null when no removed passport had it (finding R08).
+    /// </summary>
+    public async Task<RemovedPassport?> FindRemovedAsync(string? id, CancellationToken cancellationToken = default)
+    {
+        var text = Uri.UnescapeDataString(id?.Trim() ?? string.Empty);
+        if (_database is null || text.Length == 0)
+        {
+            return null;
+        }
+
+        var forms = new[] { text, Identifiers.IdentifierForms.Short(text) }.Distinct(StringComparer.Ordinal).ToArray();
+        return await Collection<RemovedPassport>().Find(Builders<RemovedPassport>.Filter.AnyIn(removed => removed.Ids, forms)).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>Whether anything of a removed pack is left: the pack itself or a version (finding R08).</summary>
+    public async Task<bool> IsAnythingLeftAsync(string packId, CancellationToken cancellationToken = default) =>
+        await Collection<BatteryPack>().Find(pack => pack.Id == packId).AnyAsync(cancellationToken)
+        || await Collection<PassportVersion>().Find(version => version.PackId == packId).AnyAsync(cancellationToken);
+
+    /// <summary>Deletes every version of a pack (finding R08).</summary>
+    public Task DeleteVersionsAsync(string packId, CancellationToken cancellationToken = default) =>
+        Collection<PassportVersion>().DeleteManyAsync(version => version.PackId == packId, cancellationToken);
+
+    /// <summary>
+    /// Empties a pack being removed (finding R08): its values and live values, modules, repairs, marks and every other app
+    /// record on it, so what is left until the pack itself goes holds no data.
+    /// </summary>
+    public Task ClearPackDataAsync(string packId, CancellationToken cancellationToken = default) =>
+        Collection<BatteryPack>().UpdateOneAsync(
+            pack => pack.Id == packId,
+            Builders<BatteryPack>.Update
+                .Set(pack => pack.Values, new Dictionary<string, AttributeValue>(StringComparer.Ordinal))
+                .Set(pack => pack.Modules, [])
+                .Set(pack => pack.Repairs, [])
+                .Unset(pack => pack.RemainingCapacity)
+                .Unset(pack => pack.Succession)
+                .Unset(pack => pack.Mark)
+                .Unset(pack => pack.Registry)
+                .Unset(pack => pack.ChangesWaitingSinceUtc)
+                .Unset(pack => pack.ChangesWaitingToken),
+            cancellationToken: cancellationToken);
+
+
+
+    /// <summary>Writes every marker of a removal in one bulk write (round three); writing them again changes nothing.</summary>
+    public async Task AddRemovalMarkersAsync(IReadOnlyList<RemovedPassport> markers, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(markers);
+        await Collection<RemovedPassport>().BulkWriteAsync(
+            markers.Select(marker => new ReplaceOneModel<RemovedPassport>(Builders<RemovedPassport>.Filter.Eq(item => item.Id, marker.Id), marker) { IsUpsert = true }),
+            new BulkWriteOptions { IsOrdered = false },
+            cancellationToken);
+    }
+
+    /// <summary>Writes the markers of a removal that aren't there yet, in one bulk write; existing ones stay as they are.</summary>
+    public async Task AddMissingRemovalMarkersAsync(IReadOnlyList<RemovedPassport> markers, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(markers);
+        var ids = markers.Select(marker => marker.Id).ToArray();
+        var there = (await Collection<RemovedPassport>().Find(Builders<RemovedPassport>.Filter.In(item => item.Id, ids)).Project(item => item.Id).ToListAsync(cancellationToken)).ToHashSet(StringComparer.Ordinal);
+        var missing = markers.Where(marker => !there.Contains(marker.Id)).ToList();
+        if (missing.Count > 0)
+        {
+            await AddRemovalMarkersAsync(missing, cancellationToken);
+        }
+    }
+
+    /// <summary>Whether the removal whose newest passport is this pack has written its one audit entry.</summary>
+    public Task<bool> RemovalEntryExistsAsync(string newestPackId, CancellationToken cancellationToken = default) =>
+        RequireDatabase().GetCollection<BsonDocument>("applicationAuditEvents")
+            .Find(Builders<BsonDocument>.Filter.Eq("eventType", Editing.PassportRemoval.RemovedEvent) & Builders<BsonDocument>.Filter.Eq("entityId", newestPackId))
+            .AnyAsync(cancellationToken);
+
+    /// <summary>Notes on these markers that the removal's one audit entry is written.</summary>
+    public Task SetRemovalAuditWrittenAsync(IEnumerable<string> packIds, CancellationToken cancellationToken = default) =>
+        Collection<RemovedPassport>().UpdateManyAsync(Builders<RemovedPassport>.Filter.In(item => item.Id, packIds), Builders<RemovedPassport>.Update.Set(item => item.AuditWritten, true), cancellationToken: cancellationToken);
+
+    /// <summary>The documents withdrawn from these packs earlier, from their withdrawal rows (their own rows name them only by ID).</summary>
+    public async Task<IReadOnlyList<string>> WithdrawnDocumentIdsAsync(IEnumerable<string> packIds, CancellationToken cancellationToken = default) =>
+        (await RequireDatabase().GetCollection<BsonDocument>("applicationAuditEvents")
+            .Find(Builders<BsonDocument>.Filter.Eq("eventType", Documents.DocumentService.WithdrawnEvent) & Builders<BsonDocument>.Filter.In("entityId", packIds))
+            .ToListAsync(cancellationToken))
+            .Select(row => row.GetValue("metadata", new BsonDocument()).AsBsonDocument.GetValue("documentId", BsonNull.Value))
+            .Where(id => id.IsString)
+            .Select(id => id.AsString)
+            .ToList();
+
+    /// <summary>The drafts a successor made for these packs left (cancelled or not), from the packs' own rows.</summary>
+    public async Task<IReadOnlyList<string>> SuccessorDraftIdsAsync(IEnumerable<string> packIds, CancellationToken cancellationToken = default) =>
+        (await RequireDatabase().GetCollection<BsonDocument>("applicationAuditEvents")
+            .Find(Builders<BsonDocument>.Filter.In("entityId", packIds) & Builders<BsonDocument>.Filter.Exists("metadata.successor"))
+            .ToListAsync(cancellationToken))
+            .Select(row => row["metadata"]["successor"])
+            .Where(id => id.IsString)
+            .Select(id => id.AsString)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+    private static FilterDefinition<UploadedBattery> LineOf(IReadOnlyCollection<string> packIds, IReadOnlyCollection<string> names) =>
+        Builders<UploadedBattery>.Filter.In(line => line.PackId, packIds)
+        | (Builders<UploadedBattery>.Filter.Eq(line => line.PackId, null) & Builders<UploadedBattery>.Filter.In(line => line.NamedAs, names));
+
+    /// <summary>The upload records with a line about these packs, or refused before a pack was found under one of these names.</summary>
+    public async Task<IReadOnlyList<string>> UploadIdsNamingAsync(IReadOnlyCollection<string> packIds, IReadOnlyCollection<string> names, CancellationToken cancellationToken = default) =>
+        await Collection<UploadRecord>().Find(Builders<UploadRecord>.Filter.ElemMatch(upload => upload.Batteries, LineOf(packIds, names))).Project(upload => upload.Id).ToListAsync(cancellationToken);
+
+    /// <summary>How many of those records' lines are the battery's.</summary>
+    public async Task<int> CountUploadLinesAsync(IReadOnlyCollection<string> uploadIds, IReadOnlyCollection<string> packIds, IReadOnlyCollection<string> names, CancellationToken cancellationToken = default) =>
+        (await Collection<UploadRecord>().Find(Builders<UploadRecord>.Filter.In(upload => upload.Id, uploadIds)).ToListAsync(cancellationToken))
+            .Sum(upload => upload.Batteries.Count(line => (line.PackId is not null && packIds.Contains(line.PackId)) || (line.PackId is null && names.Contains(line.NamedAs))));
+
+    /// <summary>
+    /// Takes the battery's lines, with the values as sent, out of the upload records this removal wrote down (decision 72),
+    /// and deletes those of them left without a line; no other record is touched (round three).
+    /// </summary>
+    public async Task RemoveUploadLinesAsync(IReadOnlyCollection<string> uploadIds, IReadOnlyCollection<string> packIds, IReadOnlyCollection<string> names, CancellationToken cancellationToken = default)
+    {
+        if (uploadIds.Count == 0)
+        {
+            return;
+        }
+
+        var uploads = Collection<UploadRecord>();
+        var these = Builders<UploadRecord>.Filter.In(upload => upload.Id, uploadIds);
+        await uploads.UpdateManyAsync(these, Builders<UploadRecord>.Update.PullFilter(upload => upload.Batteries, LineOf(packIds, names)), cancellationToken: cancellationToken);
+        await uploads.DeleteManyAsync(these & Builders<UploadRecord>.Filter.Size(upload => upload.Batteries, 0), cancellationToken);
+    }
+
+    /// <summary>Which of these upload records still exist.</summary>
+    public async Task<IReadOnlyList<string>> ExistingUploadIdsAsync(IReadOnlyCollection<string> uploadIds, CancellationToken cancellationToken = default) =>
+        await Collection<UploadRecord>().Find(Builders<UploadRecord>.Filter.In(upload => upload.Id, uploadIds)).Project(upload => upload.Id).ToListAsync(cancellationToken);
+
+    /// <summary>
+    /// Deletes every audit row of a removed battery (decision 72): rows about its packs, its documents, its emptied uploads
+    /// and drafts it left, and rows naming one of its IDs; the removal's own entry (<paramref name="keep"/>) stays.
+    /// </summary>
+    public Task DeleteAuditRowsAsync(IEnumerable<string> entityIds, IEnumerable<string> ids, string keep, CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<BsonDocument>.Filter;
+        var named = ids.Where(id => id.Length > 0).Distinct(StringComparer.Ordinal).ToArray();
+        return RequireDatabase().GetCollection<BsonDocument>("applicationAuditEvents").DeleteManyAsync(
+            filter.Ne("eventType", keep)
+            & (filter.In("entityId", entityIds) | filter.In("batteryId", named) | filter.In("passportId", named)),
+            cancellationToken);
+    }
+
+    /// <summary>Takes these names out of the passport check's own entries, which list the serial numbers they changed.</summary>
+    public Task PullFromCheckEntriesAsync(IEnumerable<string> names, CancellationToken cancellationToken = default) =>
+        RequireDatabase().GetCollection<BsonDocument>("applicationAuditEvents").UpdateManyAsync(
+            Builders<BsonDocument>.Filter.Eq("eventType", Publication.PublicationService.CheckedEvent),
+            Builders<BsonDocument>.Update.PullAll("metadata.batteries", names.Distinct(StringComparer.Ordinal).Select(name => (BsonValue)name)),
+            cancellationToken: cancellationToken);
+
+    /// <summary>Deletes a removed pack's hand-overs and kept upload checks (finding R08).</summary>
+    public async Task DeleteHandOversAndChecksAsync(string packId, CancellationToken cancellationToken = default)
+    {
+        await Collection<HandOver>().DeleteManyAsync(Builders<HandOver>.Filter.Eq("PackId", packId), cancellationToken);
+        await Collection<UploadCheck>().DeleteManyAsync(Builders<UploadCheck>.Filter.Eq("PackId", packId), cancellationToken);
+    }
+
+
+    /// <summary>Records (or corrects) the pack's EU registry registration (finding R02); nothing else changes. False when the pack doesn't exist.</summary>
+    public async Task<bool> SetRegistryAsync(string packId, RegistryRecord record, CancellationToken cancellationToken = default)
+    {
+        var result = await Collection<BatteryPack>().UpdateOneAsync(
+            pack => pack.Id == packId,
+            Builders<BatteryPack>.Update.Set(pack => pack.Registry, record),
             cancellationToken: cancellationToken);
         return result.MatchedCount == 1;
     }

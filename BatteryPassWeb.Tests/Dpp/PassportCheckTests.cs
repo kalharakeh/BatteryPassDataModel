@@ -144,7 +144,7 @@ public sealed class PassportCheckTests(MongoFixture mongo)
         await rig.Store.MarkChangesWaitingAsync([rig.PackId], DateTime.UtcNow);
         var controller = BatteriesControllerTests.Controller(rig, new Dictionary<string, string>());
 
-        var result = Assert.IsType<RedirectResult>(await controller.CheckAll(rig.Publication, CancellationToken.None));
+        var result = Assert.IsType<RedirectResult>(await controller.CheckAll(rig.Publication, new PassportCheckLeftoversTests.NotStopping()));
 
         Assert.Equal("/admin/batteries", result.Url);
         Assert.Equal("Checked 1 published battery: 0 now marked as waiting, 1 no longer, 0 old versions archived.", controller.TempData[ProductDataController.StatusKey]);

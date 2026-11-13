@@ -52,9 +52,14 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
     [HttpGet("{id}")]
     public async Task<IActionResult> Summary(string id, CancellationToken cancellationToken, [FromServices] BatteryPassWeb.Dpp.Identifiers.BatteryIdPool? pool = null)
     {
+        Response.Headers[HeaderNames.Vary] = HeaderNames.Accept;
+        if (await GoneAsync(this, Uri.UnescapeDataString(id), json: false, cancellationToken) is { } gone)
+        {
+            return gone; // finding R08: removed after recycling or export; asked before anything is looked up
+        }
+
         var reader = await readers.ForAsync(User, cancellationToken);
         var page = await pages.SummaryAsync(reader, Uri.UnescapeDataString(id), cancellationToken);
-        Response.Headers[HeaderNames.Vary] = HeaderNames.Accept;
         if (page is not null)
         {
             // The same passport as data (finding R07), for programs that read the page's headers.
@@ -102,6 +107,11 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
         // The same as the page, which gets it from its form protection (C3 round two, point 6), the 404 included.
         Response.Headers[HeaderNames.CacheControl] = "no-cache, no-store";
         Response.Headers[HeaderNames.Pragma] = "no-cache";
+        if (await GoneAsync(this, id, json: true, cancellationToken) is { } gone)
+        {
+            return gone; // finding R08: the same headers and read limit, asked before anything is looked up
+        }
+
         var reader = await readers.ForAsync(User, cancellationToken);
         var page = await pages.SummaryAsync(reader, id, cancellationToken);
         if (page?.PublicData is not { } data)
@@ -147,6 +157,11 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
             return Challenge();
         }
 
+        if (await GoneAsync(this, Uri.UnescapeDataString(id), json: false, cancellationToken) is { } gone)
+        {
+            return gone; // finding R08
+        }
+
         var reader = await readers.ForAsync(User, cancellationToken);
         var page = await pages.DetailAsync(reader, Uri.UnescapeDataString(id), cancellationToken);
         if (page is null)
@@ -176,6 +191,28 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
 
         Response.Headers[HeaderNames.CacheControl] = "private, no-store";
         return View(nameof(Detail), page);
+    }
+
+    /// <summary>
+    /// Finding R08: an address of a passport the team removed after recycling answers 410 with the plain sentence, as a
+    /// page or, for the data addresses, as JSON. Null when no removed passport had this ID.
+    /// </summary>
+    internal static async Task<IActionResult?> GoneAsync(ControllerBase controller, string id, bool json, CancellationToken cancellationToken)
+    {
+        if (controller.HttpContext?.RequestServices?.GetService(typeof(PassportRemoval)) is not PassportRemoval removal
+            || await removal.FindAsync(id, cancellationToken) is null)
+        {
+            return null;
+        }
+
+        if (json || controller is not Controller pages)
+        {
+            return new ObjectResult(new { error = PassportRemoval.Gone }) { StatusCode = StatusCodes.Status410Gone };
+        }
+
+        var view = pages.View("~/Views/Dpp/Removed.cshtml");
+        view.StatusCode = StatusCodes.Status410Gone;
+        return view;
     }
 
     /// <summary>No published passport has this ID; drafts aren't shown to anyone here (J-6).</summary>

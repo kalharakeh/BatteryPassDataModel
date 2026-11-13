@@ -1,0 +1,30 @@
+@using BatteryPassWeb.Dpp.Editing
+@using BatteryPassWeb.Dpp.Identifiers
+@model (string Action, RemovalPlan Plan)
+@* Finding R08: "Remove the passport" of a battery marked for deletion, confirmed by typing its ID; its earlier passports go with it (decision 73). *@
+@{
+    var shown = IdentifierForms.Short(Model.Plan.BatteryId);
+    var earlier = Model.Plan.EarlierIds;
+}
+<dialog id="remove-passport-dialog" class="bp-modal-panel bp-dialog bp-console-form-card" aria-labelledby="remove-passport-title">
+    <form method="post" action="@Model.Action" class="bp-dialog-form">
+        @Html.AntiForgeryToken()
+        <div>
+            <h2 id="remove-passport-title">Remove the passport?</h2>
+            <p class="bp-help-text mb-0">The battery was recycled or exported, so its passport ceases to exist. This deletes everything the app holds about it: its versions, values and live values, accident reports and their files, hand-overs, upload lines and history. It can't be undone.</p>
+            @if (earlier.Count > 0)
+            {
+                <p class="bp-help-text mb-0" data-earlier-passports>@(earlier.Count == 1 ? "Its earlier passport goes with it" : $"Its {earlier.Count} earlier passports go with it"): @string.Join(", ", earlier.Select(IdentifierForms.Short)).</p>
+            }
+            <p class="bp-help-text mb-0">Afterwards its addresses and QR code say the passport no longer exists, its IDs are never used again, and the audit log keeps one entry: who removed it and when.</p>
+        </div>
+        <label>
+            <span>Type the battery's ID, <strong>@shown</strong>, to confirm</span>
+            <input type="text" name="confirmId" autocomplete="off" required />
+        </label>
+        <div class="bp-dialog-actions">
+            <button type="submit" formmethod="dialog" formnovalidate class="bp-secondary-button">Cancel</button>
+            <button type="submit" class="bp-danger-button">Remove the passport</button>
+        </div>
+    </form>
+</dialog>

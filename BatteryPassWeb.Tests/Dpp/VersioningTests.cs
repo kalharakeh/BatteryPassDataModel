@@ -32,7 +32,7 @@ public sealed class VersioningTests(MongoFixture mongo)
     [Fact]
     public async Task LiveChange_ShouldOnlyMoveTheLastUpdateToTheSaveTime()
     {
-        var rig = await PublicationTesting.PublishedRigAsync(mongo);
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         rig.Clock.Now = rig.Clock.Now.AddHours(2);
         var measured = rig.Clock.Now.UtcDateTime.AddMinutes(-30);
         var change = new ChangeSet(TargetKind.Pack, rig.PackId, Values(("stateOfChargeSoC", "55")), "feed", measured);

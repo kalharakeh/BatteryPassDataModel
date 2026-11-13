@@ -408,6 +408,53 @@ public sealed class ClusterRepository
             cancellationToken: cancellationToken);
     }
 
+    /// <summary>
+    /// Records the cluster's written authorisation to update passport data (finding R20): the date it was given, who
+    /// recorded it and when. False when there is no such cluster.
+    /// </summary>
+    public async Task<bool> SetWrittenAuthorisationAsync(string clusterId, DateOnly on, string by, DateTime atUtc, CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(clusterId))
+        {
+            return false;
+        }
+
+        var result = await _mongoContext.Database.GetCollection<BsonDocument>("clusters").UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("clusterId", NormalizeClusterId(clusterId)),
+            Builders<BsonDocument>.Update
+                .Set(BatteryPassWeb.Dpp.Access.WrittenAuthorisation.Field, new BsonDocument
+                {
+                    ["on"] = on.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+                    ["by"] = by,
+                    ["at"] = atUtc,
+                })
+                .Unset(BatteryPassWeb.Dpp.Access.WrittenAuthorisation.TakenAwayField)
+                .Set("updatedAt", atUtc.ToString("O")),
+            cancellationToken: cancellationToken);
+        return result.MatchedCount > 0;
+    }
+
+    /// <summary>Takes the cluster's written authorisation away (finding R20). False when it had none.</summary>
+    /// <param name="takenAwayBy">The team member who took it away: noted, so a demo seed doesn't put it back (round three).</param>
+    public async Task<bool> RemoveWrittenAuthorisationAsync(string clusterId, DateTime atUtc, CancellationToken cancellationToken = default, string? takenAwayBy = null)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(clusterId))
+        {
+            return false;
+        }
+
+        var result = await _mongoContext.Database.GetCollection<BsonDocument>("clusters").UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("clusterId", NormalizeClusterId(clusterId)) & Builders<BsonDocument>.Filter.Exists(BatteryPassWeb.Dpp.Access.WrittenAuthorisation.Field),
+            takenAwayBy is null
+                ? Builders<BsonDocument>.Update.Unset(BatteryPassWeb.Dpp.Access.WrittenAuthorisation.Field).Set("updatedAt", atUtc.ToString("O"))
+                : Builders<BsonDocument>.Update
+                    .Unset(BatteryPassWeb.Dpp.Access.WrittenAuthorisation.Field)
+                    .Set(BatteryPassWeb.Dpp.Access.WrittenAuthorisation.TakenAwayField, new BsonDocument { ["by"] = takenAwayBy, ["at"] = atUtc })
+                    .Set("updatedAt", atUtc.ToString("O")),
+            cancellationToken: cancellationToken);
+        return result.ModifiedCount > 0;
+    }
+
     public async Task DeleteClusterAsync(string clusterId, CancellationToken cancellationToken = default)
     {
         if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(clusterId))

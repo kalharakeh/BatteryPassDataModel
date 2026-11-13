@@ -39,6 +39,11 @@ public sealed class DppController(DppReaders readers, DocumentService documents,
     [HttpGet("packs/{packId}/accidents")]
     public async Task<IActionResult> Accidents(string packId, CancellationToken cancellationToken)
     {
+        if (await PassportController.GoneAsync(this, packId, json: false, cancellationToken) is { } gone)
+        {
+            return gone; // finding R08
+        }
+
         var reader = await readers.ForAsync(User, cancellationToken);
         var page = await pages.AccidentsAsync(reader, packId, cancellationToken);
         if (page is null)

@@ -173,6 +173,105 @@ public sealed class BatteryPack : IDppRecord
     /// still holds the token the attempt saw when it started, so a change marked meanwhile stays marked.
     /// </summary>
     public string? ChangesWaitingToken { get; set; }
+
+    /// <summary>
+    /// The battery's registration in the EU's DPP Registry, as the team recorded it (finding R02); null until then. App
+    /// data, not passport data: never published, never shown outside the team. Old records have none.
+    /// </summary>
+    public RegistryRecord? Registry { get; set; }
+}
+
+/// <summary>
+/// The marker a removed passport leaves (finding R08): the IDs it answered to (the pack, the battery ID in both forms,
+/// every version's passport ID), so that none is used again and each answers 410. No passport data.
+/// </summary>
+public sealed class RemovedPassport : IDppRecord
+{
+    /// <summary>The removed pack's ID.</summary>
+    public required string Id { get; init; }
+
+    /// <summary>The battery ID (#6) as it was stored.</summary>
+    public required string BatteryId { get; init; }
+
+    public required List<string> Ids { get; init; }
+
+    public required DateTime RemovedAtUtc { get; init; }
+
+    public required string RemovedBy { get; init; }
+
+    /// <summary>A demo battery's marker: clearing the demo data removes it, so the demo's IDs are made again.</summary>
+    public bool IsDemo { get; init; }
+
+    /// <summary>The pack whose removal took this one: itself, or the newest passport of the same battery (decision 73).</summary>
+    public string? Newest { get; init; }
+
+    /// <summary>
+    /// Round three: what the removal will do, written down before anything is deleted, the same in every marker of the
+    /// chain, so that any one of them finishes the whole removal. The chain's members with their IDs.
+    /// </summary>
+    public List<RemovalMember> Members { get; init; } = [];
+
+    /// <summary>Every ID and the serial number the battery answered to, to find what names it (refused upload lines, audit rows).</summary>
+    public List<string> Names { get; init; } = [];
+
+    /// <summary>The documents it takes, withdrawn accident reports included (their audit rows are found by these IDs).</summary>
+    public List<string> DocumentIds { get; init; } = [];
+
+    /// <summary>The upload records whose lines it takes; only those it empties are deleted.</summary>
+    public List<string> UploadIds { get; init; } = [];
+
+    /// <summary>Other records only the audit log still names: drafts a cancelled successor left.</summary>
+    public List<string> OtherEntityIds { get; init; } = [];
+
+    /// <summary>The one audit entry the removal owes (decision 72); null on a marker from before round three.</summary>
+    public RemovalAudit? Audit { get; init; }
+
+    /// <summary>Whether the one audit entry is written; a finish writes it while it isn't.</summary>
+    public bool AuditWritten { get; init; }
+}
+
+/// <summary>One passport of a removed battery's chain: its pack, its battery ID and every ID it answered to.</summary>
+public sealed class RemovalMember
+{
+    public required string PackId { get; init; }
+
+    public required string BatteryId { get; init; }
+
+    public List<string> Ids { get; init; } = [];
+
+    public bool IsDemo { get; init; }
+}
+
+/// <summary>The one audit entry a removal writes: who, its message, the battery ID, the earlier IDs and the counts.</summary>
+public sealed class RemovalAudit
+{
+    public required string Who { get; init; }
+
+    public required string Message { get; init; }
+
+    public required string BatteryId { get; init; }
+
+    public List<string> EarlierBatteryIds { get; init; } = [];
+
+    public int Versions { get; init; }
+
+    public int Documents { get; init; }
+
+    public int UploadLines { get; init; }
+}
+
+/// <summary>A battery's registration in the EU's DPP Registry (finding R02): when, its ID there, who recorded it and when.</summary>
+public sealed class RegistryRecord
+{
+    /// <summary>The day it was registered, yyyy-MM-dd.</summary>
+    public required string RegisteredOn { get; init; }
+
+    /// <summary>The Registry's own ID for the registration, as typed.</summary>
+    public required string RegistrationId { get; init; }
+
+    public required string RecordedBy { get; init; }
+
+    public required DateTime RecordedAtUtc { get; init; }
 }
 
 /// <summary>An invalid or marked-for-deletion passport's mark (design 7.6 and 7.7): its reason is seen by the team and market surveillance only.</summary>

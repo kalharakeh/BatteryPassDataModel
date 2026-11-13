@@ -56,6 +56,8 @@
                 {
                     <p class="bp-help-text">If Scania places it on the market again, the team makes the new passport.</p>
                 }
+                @if (!Model.Locked)
+                {
                 <form method="post" action="@next.Action/other" class="bp-dialog-form">
                     @Html.AntiForgeryToken()
                     <p class="mb-1"><strong>Another operator</strong>: their details, and the new passport's ID or web address once known.</p>
@@ -67,6 +69,7 @@
                         <button type="submit" name="link" value="true" class="bp-primary-button">Link and set this passport inactive</button>
                     </div>
                 </form>
+                }
             }
             @if (Model.ForTeam && !next.SuccessorPublished)
             {

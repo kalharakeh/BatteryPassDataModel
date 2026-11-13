@@ -18,7 +18,14 @@
                 <span class="bp-summary-title">Hand over <em class="bp-field-marker">Not passport data</em></span>
                 <h2>Sold or moved to another customer?</h2>
                 <p class="mb-0">Hand the battery over to their cluster. It moves once their cluster admin accepts; your cluster then no longer sees its purchaser data. The passport doesn't change.</p>
-                <p class="bp-help-text mt-2 mb-0">Start it with <strong>Hand over…</strong> among the page's actions.</p>
+                <p class="bp-help-text mt-2 mb-0">@if (Model.CannotChange is { } cannotChange)
+                    {
+                        @cannotChange
+                    }
+                    else
+                    {
+                        <text>Start it with <strong>Hand over…</strong> among the page's actions.</text>
+                    }</p>
             </div>
         </div>
         @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "handover")

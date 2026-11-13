@@ -22,7 +22,21 @@ internal static class BatteryTesting
         var clusters = new ClusterRepository(rig.Context);
         await clusters.UpsertClusterAsync(North, "Customer North");
         await clusters.UpsertClusterAsync(South, "Customer South");
+        // Both are authorised in writing, so their admins and tokens change their batteries as before (finding R20).
+        await clusters.AuthoriseAsync(North);
+        await clusters.AuthoriseAsync(South);
         return rig;
+    }
+
+    /// <summary>The cluster, made if missing, authorised in writing to update passport data (finding R20).</summary>
+    public static async Task AuthoriseAsync(this ClusterRepository clusters, string clusterId)
+    {
+        if (await clusters.GetClusterByIdAsync(clusterId) is null)
+        {
+            await clusters.UpsertClusterAsync(clusterId, clusterId);
+        }
+
+        await clusters.SetWrittenAuthorisationAsync(clusterId, new DateOnly(2026, 11, 1), "team@example.com", DateTime.UtcNow);
     }
 
     public static PackCreationService Creation(PublicationRig rig) =>
@@ -38,7 +52,8 @@ internal static class BatteryTesting
         new ClusterRepository(rig.Context),
         new ApplicationAuditService(rig.Context),
         StatusChangeTests.Pages(rig),
-        passports: SigningTesting.Passports(rig.Store));
+        passports: SigningTesting.Passports(rig.Store),
+        removal: PassportRemovalTests.Removal(rig));
 
     /// <summary>The fields of a form that shows these attributes, as the page shows them.</summary>
     public static Dictionary<string, string> ShownForm(IEnumerable<AttributeDefinition> attributes, IReadOnlyDictionary<string, AttributeValue> stored)

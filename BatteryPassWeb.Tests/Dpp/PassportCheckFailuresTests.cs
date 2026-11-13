@@ -87,7 +87,7 @@ public sealed class PassportCheckFailuresTests(MongoFixture mongo)
         }
 
         Assert.True(second!.AlreadyRunning);
-        Assert.Equal("A check is already running; its result will be in the audit log.", second.Words);
+        Assert.Equal("A check is already running; if it puts anything right, the audit log will say so.", second.Words);
         Assert.False(first.AlreadyRunning);
         Assert.Equal(1, first.Marked);
         Assert.False((await service.ReconcileAsync("check-test-3")).AlreadyRunning); // free again afterwards

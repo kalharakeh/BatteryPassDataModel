@@ -24,6 +24,9 @@ public enum WriteRefusal
 
     /// <summary>A serial number that more than one battery the sender may change has.</summary>
     Ambiguous,
+
+    /// <summary>The battery's cluster isn't authorised in writing to update passport data (finding R20).</summary>
+    NotAuthorised,
 }
 
 /// <summary>The battery a write names, or why there is none.</summary>
@@ -137,6 +140,11 @@ public sealed class BatteryApi(
         }
 
         var mine = known.Where(pack => MayChange(sender, pack)).ToArray();
+        if (mine.Length == 1 && await demo.WriteProblemAsync(sender, mine[0], cancellationToken) is not null)
+        {
+            return new WriteTarget(mine[0], WriteRefusal.NotAuthorised); // finding R20: the battery is known, the change refused
+        }
+
         return mine.Length switch
         {
             1 => new WriteTarget(mine[0], WriteRefusal.None),

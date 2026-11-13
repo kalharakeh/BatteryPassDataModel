@@ -45,7 +45,7 @@ public sealed class AccidentSectionTests(MongoFixture mongo)
     {
         var card = Card();
 
-        Assert.Contains("<strong>Adding reports is off on this passport.</strong> @frozen", card, StringComparison.Ordinal);
+        Assert.Contains("<strong>Adding reports is off@(Model.Frozen ? \" on this passport\" : string.Empty).</strong> @frozen", card, StringComparison.Ordinal);
         Assert.Contains("@if (Model.NewPassportHref is { } next)", card, StringComparison.Ordinal);
         Assert.Contains("<a href=\"@next\">Add them on the new passport</a>", card, StringComparison.Ordinal);
     }

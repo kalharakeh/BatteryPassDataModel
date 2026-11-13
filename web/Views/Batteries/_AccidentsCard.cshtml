@@ -39,7 +39,7 @@
         <div class="bp-accident-frozen" data-frozen>
             <svg class="bp-i" aria-hidden="true"><use href="#i-pause" /></svg>
             <p class="mb-0">
-                <strong>Adding reports is off on this passport.</strong> @frozen
+                <strong>Adding reports is off@(Model.Frozen ? " on this passport" : string.Empty).</strong> @frozen
                 @if (Model.NewPassportHref is { } next)
                 {
                     <a href="@next">Add them on the new passport</a>

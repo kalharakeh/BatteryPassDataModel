@@ -153,6 +153,11 @@ public sealed class SuccessionService(
             return NotYours;
         }
 
+        if (await demo.WriteProblemAsync(sender, old, cancellationToken) is { } unauthorised) // finding R20
+        {
+            return unauthorised;
+        }
+
         if (old.Succession is not { LinkedAtUtc: null } succession)
         {
             return NotAwaited;

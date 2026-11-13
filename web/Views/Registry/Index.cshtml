@@ -35,9 +35,21 @@
                     <form method="post" action="/registry/handovers/@Uri.EscapeDataString(waiting.HandOver.Id)">
                         @Html.AntiForgeryToken()
                         <div class="bp-dialog-actions">
-                            <button type="submit" name="accept" value="true" class="bp-primary-button">Accept</button>
+                            @if (waiting.CannotAccept is { } cannotAccept)
+                            {
+                                @* Finding R20: unavailable, with the one line; Decline stays open. *@
+                                <button type="button" class="bp-primary-button" disabled aria-describedby="cannot-accept-@waiting.HandOver.Id">Accept</button>
+                            }
+                            else
+                            {
+                                <button type="submit" name="accept" value="true" class="bp-primary-button">Accept</button>
+                            }
                             <button type="submit" name="accept" value="false" class="bp-secondary-button">Decline</button>
                         </div>
+                        @if (waiting.CannotAccept is { } why)
+                        {
+                            <p class="bp-help-text mb-0" id="cannot-accept-@waiting.HandOver.Id" data-cannot-accept>@why</p>
+                        }
                     </form>
                 </div>
             }

@@ -31,6 +31,7 @@ public sealed class SavePipelineTests(MongoFixture mongo)
     public async Task FeedValue_ShouldBeStoredInTheSchemaFormWithItsMeasurementTime()
     {
         var (store, context, _) = await DppStoreTesting.SeededStoreAsync(mongo);
+        await new ClusterRepository(context).AuthoriseAsync(BatteryTesting.North); // finding R20
         var measured = new DateTime(2026, 10, 27, 10, 2, 59, DateTimeKind.Utc);
         var change = new ChangeSet(TargetKind.Pack, PackId, Values(("stateOfChargeSoC", "55")), "feed", measured);
 
@@ -107,6 +108,7 @@ public sealed class SavePipelineTests(MongoFixture mongo)
     public async Task ClusterAdmin_ShouldChangeOnlyPurchaserDataOfTheirOwnBatteries(string adminCluster, string key, bool saved)
     {
         var (store, context, _) = await DppStoreTesting.SeededStoreAsync(mongo);
+        await new ClusterRepository(context).AuthoriseAsync(BatteryTesting.North); // finding R20
         var value = key == "temperatureInformation" ? "31" : "\"X-1\"";
 
         var result = await SavePipelineTesting.Pipeline(store, context).SaveAsync(ChangeSender.ClusterAdmin("admin@example.com", adminCluster), PackChange((key, value)));

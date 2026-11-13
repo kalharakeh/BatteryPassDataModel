@@ -42,7 +42,7 @@ public sealed class BatterySectionsTests(MongoFixture mongo)
         var published = (await BatteryTesting.Pages(rig).BatteryAsync(rig.PackId))!.Sections;
         var unpublished = (await BatteryTesting.Pages(draft).BatteryAsync(draft.PackId))!.Sections;
 
-        Assert.Equal(["overview", "values", "status", "live", "accidents", "modules", "versions"], published.Select(section => section.Id)); // no Passport status section (R5)
+        Assert.Equal(["overview", "values", "status", "live", "accidents", "modules", "versions", "registry"], published.Select(section => section.Id)); // no Passport status section (R5); the EU registry last (R02)
         Assert.Equal("Nothing needs you", published[0].Hint);
         Assert.Equal("Original", published.Single(section => section.Id == "status").Hint);
         Assert.Equal(1, published.Single(section => section.Id == "versions").Count);

@@ -34,16 +34,67 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     /// <summary>The live-values form's field with the time the values were measured, in the page's time zone.</summary>
     public const string MeasuredAtField = "measuredAt";
 
+    /// <param name="registry">"missing": only the published real batteries not recorded in the EU registry yet (finding R02).</param>
     [HttpGet("")]
-    public async Task<IActionResult> Batteries([FromQuery] string? q, CancellationToken cancellationToken) =>
-        View(await pages.TeamListAsync(q, cancellationToken)); // one row per battery (redesign R5), and the waiting changes (round two, A2)
+    public async Task<IActionResult> Batteries([FromQuery] string? q, CancellationToken cancellationToken, [FromQuery] string? registry = null) =>
+        View(await pages.TeamListAsync(q, cancellationToken, onlyNotInTheRegistry: registry == "missing")); // one row per battery (redesign R5), and the waiting changes (round two, A2)
 
-    /// <summary>"Check all passports now" (decision 65): the check of every published battery, with a plain result line.</summary>
+    /// <summary>
+    /// The published real batteries not recorded in the EU registry yet, as CSV for typing into the Registry (finding
+    /// R02). The app's own data, for the team only; it claims nothing about the Registry's own format.
+    /// </summary>
+    [HttpGet("registry.csv")]
+    public async Task<IActionResult> RegistryCsv([FromServices] TimeProvider clock, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(clock);
+        var csv = BatteryPages.RegistryCsv(await pages.NotInTheRegistryAsync(cancellationToken));
+        Response.Headers.CacheControl = "private, no-store";
+        return File(System.Text.Encoding.UTF8.GetPreamble().Concat(System.Text.Encoding.UTF8.GetBytes(csv)).ToArray(), "text/csv; charset=utf-8", $"not-in-the-eu-registry-{clock.GetUtcNow():yyyy-MM-dd}.csv");
+    }
+
+    /// <summary>
+    /// Finding R08: removes the passport of a battery marked for deletion (recycled or exported), with its earlier ones, once its ID is typed. Its addresses then
+    /// answer that it no longer exists; one audit entry stays.
+    /// </summary>
+    [HttpPost("{packId}/remove-passport")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemovePassport(string packId, [FromForm] string? confirmId, [FromServices] PassportRemoval removal, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(removal);
+        var serial = (await pages.BatteryAsync(packId, cancellationToken: cancellationToken))?.SerialNumber ?? packId;
+        if (await removal.RemoveAsync(ChangeSender.Team(Who), packId, confirmId, cancellationToken) is { } problem)
+        {
+            CardMessages.Put(TempData, packId, CardKey, "mark");
+            CardMessages.Put(TempData, packId, CardErrorKey, $"Not removed: {problem}.");
+            return Redirect(BatteryPages.BatteryHref(packId));
+        }
+
+        TempData[ProductDataController.StatusKey] = $"The passport of battery {serial} is removed. Its addresses now say it no longer exists; the audit log keeps who removed it and when.";
+        return Redirect("/admin/batteries");
+    }
+
+    /// <summary>Records or corrects the battery's EU registry registration (finding R02).</summary>
+    [HttpPost("{packId}/registry")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RecordRegistry(string packId, [FromForm] string? registeredOn, [FromForm] string? registrationId, CancellationToken cancellationToken)
+    {
+        var problem = await pages.RecordRegistryAsync(Who, packId, registeredOn, registrationId, cancellationToken);
+        CardMessages.Put(TempData, packId, CardKey, "registry");
+        CardMessages.Put(TempData, packId, CardStatusKey, problem is null ? "Saved: the EU registry record." : null);
+        CardMessages.Put(TempData, packId, CardErrorKey, problem is null ? null : $"Not saved. {problem}");
+        return Redirect($"{BatteryPages.BatteryHref(packId)}?section=registry");
+    }
+
+    /// <summary>
+    /// "Check all passports now" (decision 65): the check of every published battery, with a plain result line. It runs
+    /// on the app's stopping token, not the request's: a closed tab doesn't end a long run half way.
+    /// </summary>
     [HttpPost("check")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CheckAll([FromServices] PublicationService publication, CancellationToken cancellationToken)
+    public async Task<IActionResult> CheckAll([FromServices] PublicationService publication, [FromServices] IHostApplicationLifetime lifetime)
     {
-        var result = await publication.ReconcileAsync(Who, cancellationToken);
+        ArgumentNullException.ThrowIfNull(lifetime);
+        var result = await publication.ReconcileAsync(Who, lifetime.ApplicationStopping);
         TempData[ProductDataController.StatusKey] = result.Words;
         return Redirect("/admin/batteries");
     }

@@ -262,6 +262,11 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
             return error!;
         }
 
+        if (await GoneAsync(id, cancellationToken) is { } gone)
+        {
+            return gone; // finding R08
+        }
+
         var passport = await api.ReadAsync(reader, id, cancellationToken);
         if (passport is null)
         {
@@ -553,6 +558,11 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
     /// <summary>The battery a write names, for this sender; on failure the answer to send (404, 403 or 409).</summary>
     private async Task<(WriteTarget? Target, IActionResult? Error)> TargetAsync(ChangeSender sender, string id, CancellationToken cancellationToken)
     {
+        if (await GoneAsync(id, cancellationToken) is { } gone)
+        {
+            return (null, gone); // finding R08: a removed battery's ID, for any token that passed authentication
+        }
+
         var target = await writing.FindAsync(sender, id, cancellationToken);
         return target.Refusal switch
         {
@@ -560,6 +570,7 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
             WriteRefusal.NotYours when sender.DemoOnly => (null, Envelope(StatusCodes.Status404NotFound, NoBattery)), // to a demo token, as unknown (finding R03)
             WriteRefusal.NotYours => (null, Envelope(StatusCodes.Status403Forbidden, NotYours)),
             WriteRefusal.Ambiguous => (null, Envelope(StatusCodes.Status409Conflict, Ambiguous)),
+            WriteRefusal.NotAuthorised => (null, Envelope(StatusCodes.Status403Forbidden, WrittenAuthorisation.Missing)), // finding R20
             _ => (null, Envelope(StatusCodes.Status404NotFound, NoBattery)),
         };
     }
@@ -601,6 +612,11 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
             return (null, error);
         }
 
+        if (await GoneAsync(id, cancellationToken) is { } gone)
+        {
+            return (null, gone); // finding R08
+        }
+
         var passport = await api.ReadAsync(reader, id, cancellationToken);
         // Outside the demo, a demo token gets exactly what an unknown ID gets (finding R03).
         return passport is null || !await demo.ReachesAsync(reader, passport.Sources.Pack, cancellationToken)
@@ -611,6 +627,13 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
     /// <summary>A cluster's batteries are listed to the team and to the cluster's own tokens.</summary>
     private static bool MayList(Reader reader, string clusterId) =>
         reader.Roles.Contains(ReaderRole.Team) || reader.ClusterIds.Contains(ClusterRepository.NormalizeClusterId(clusterId));
+
+    /// <summary>Finding R08 (decision 4): the 410 envelope for an ID a removed passport had; null otherwise.</summary>
+    private async Task<IActionResult?> GoneAsync(string id, CancellationToken cancellationToken) =>
+        HttpContext?.RequestServices?.GetService(typeof(PassportRemoval)) is PassportRemoval removal
+        && await removal.FindAsync(Uri.UnescapeDataString(id ?? string.Empty), cancellationToken) is not null
+            ? Envelope(StatusCodes.Status410Gone, PassportRemoval.Gone)
+            : null;
 
     private ObjectResult Envelope(int statusCode, string message, object? data = null) =>
         StatusCode(statusCode, new { success = statusCode is >= 200 and < 300, code = statusCode, message, data });

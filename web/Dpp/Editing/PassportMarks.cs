@@ -68,6 +68,9 @@ public sealed class PassportMarks(DppStore store, DemoBoundary demo, Application
     }
 
     /// <summary>The team puts an invalid or marked-for-deletion passport back to active (J-8).</summary>
+    /// <summary>Why "Undo" is refused on a battery whose removal has started (finding R08, round three).</summary>
+    public const string BeingRemoved = "the battery's passport is being removed, so it can't be made active again";
+
     public async Task<string?> UndoAsync(ChangeSender sender, string packId, CancellationToken cancellationToken = default) =>
         (await UndoWithOutcomeAsync(sender, packId, cancellationToken)).Problem;
 
@@ -96,6 +99,12 @@ public sealed class PassportMarks(DppStore store, DemoBoundary demo, Application
         if (sender.Kind != SenderKind.Team || !await demo.ReachesAsync(sender, pack, cancellationToken)) // finding R03
         {
             return OnlyTheTeamUndoes;
+        }
+
+        // A battery whose removal has started stays removed (finding R08, round three): its addresses already answer 410.
+        if (await store.GetAsync<RemovedPassport>(pack.Id, cancellationToken) is not null)
+        {
+            return BeingRemoved;
         }
 
         var latest = await store.GetLatestVersionAsync(packId, cancellationToken);

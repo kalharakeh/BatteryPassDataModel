@@ -1,0 +1,32 @@
+@using BatteryPassWeb.Dpp.Pages
+@model RegistryCardView
+@* Finding R02: the battery's registration in the EU's DPP Registry, as the team recorded it. The app's own data: not part
+   of the passport, never published, never shown outside the team. *@
+<section class="bp-card bp-console-form-card bp-battery-card mt-4" id="registry">
+    <span class="bp-summary-title">EU registry <em class="bp-field-marker">Not passport data</em></span>
+    @if (Model.Record is { } record)
+    {
+        <h2>Registered on @ValueWords.Day(record.RegisteredOn)</h2>
+        <p class="mb-0">Registration ID <strong>@record.RegistrationId</strong>. Recorded by @record.RecordedBy on @ValueWords.Time(record.RecordedAtUtc).</p>
+    }
+    else
+    {
+        <h2>Not recorded yet</h2>
+        <p class="mb-0">Register the battery in the EU's DPP Registry, then record the day and the registration ID here. Only your team sees this.</p>
+    }
+    @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "registry")
+    <form method="post" action="@Model.Action" class="bp-dialog-form mt-3">
+        @Html.AntiForgeryToken()
+        <label>
+            <span>Registered on</span>
+            <input type="date" name="registeredOn" value="@(Model.Record?.RegisteredOn ?? Model.Today)" max="@Model.Today" required />
+        </label>
+        <label>
+            <span>Registration ID</span>
+            <input type="text" name="registrationId" value="@Model.Record?.RegistrationId" maxlength="200" required />
+        </label>
+        <div class="bp-dialog-actions">
+            <button type="submit" class="bp-primary-button">@(Model.Record is null ? "Record" : "Save the correction")</button>
+        </div>
+    </form>
+</section>

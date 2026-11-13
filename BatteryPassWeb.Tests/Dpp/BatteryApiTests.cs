@@ -68,7 +68,7 @@ public sealed class BatteryApiTests(MongoFixture mongo)
     [Fact]
     public async Task LiveValues_ShouldBeSavedInPlaceWithTheirMeasurementTime()
     {
-        var rig = await PublicationTesting.PublishedRigAsync(mongo);
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         var measured = rig.Clock.Now.UtcDateTime.AddMinutes(-10);
         rig.Clock.Now = rig.Clock.Now.AddMinutes(1);
         var pack = (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!;
@@ -106,7 +106,7 @@ public sealed class BatteryApiTests(MongoFixture mongo)
     [Fact]
     public async Task APreview_ShouldReportWithoutSaving()
     {
-        var rig = await PublicationTesting.PublishedRigAsync(mongo);
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         var pack = (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!;
 
         var result = await Api(rig).WriteLiveValuesAsync(NorthFeed, pack, Values(("stateOfChargeSoC", 10), ("temperatureInformation", "")), null, preview: true);
@@ -119,7 +119,7 @@ public sealed class BatteryApiTests(MongoFixture mongo)
     [Fact]
     public async Task TheChangeLog_ShouldKeepEachSavedValuesMeasurementTime()
     {
-        var rig = await PublicationTesting.PublishedRigAsync(mongo);
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         var measured = new DateTime(2026, 10, 28, 8, 15, 0, DateTimeKind.Utc);
         var pack = (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!;
 
@@ -135,7 +135,7 @@ public sealed class BatteryApiTests(MongoFixture mongo)
     [Fact]
     public async Task TheHistory_ShouldListEachSavedLiveValueNewestFirstForThoseWhoMaySeeIt()
     {
-        var rig = await PublicationTesting.PublishedRigAsync(mongo);
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         var api = Api(rig);
         var now = rig.Clock.Now.UtcDateTime;
         var pack = (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!;
