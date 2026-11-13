@@ -33,6 +33,15 @@ public static class BatteryPassHealthCheck
     /// </summary>
     public const string RawForwardedHeadersKey = "BatteryPass.RawForwardedHeaders";
 
+    /// <summary>
+    /// Why the app can't start, or null (finding W20): the anonymous /health page must not show proxy headers and addresses
+    /// in Production, so HEALTH_DIAGNOSTICS=true stops it there, as the fallback admin does.
+    /// </summary>
+    public static string? ProductionRefusal(bool isProduction, string? configuredValue) =>
+        isProduction && DiagnosticsEnabled(configuredValue)
+            ? "HEALTH_DIAGNOSTICS is on. In Production the anonymous /health page never shows proxy headers and addresses. Set HEALTH_DIAGNOSTICS=false (or remove it) and start again."
+            : null;
+
     public static bool DiagnosticsEnabled(string? configuredValue) =>
         string.Equals(configuredValue?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
 
