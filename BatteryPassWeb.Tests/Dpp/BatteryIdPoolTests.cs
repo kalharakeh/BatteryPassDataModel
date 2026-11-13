@@ -114,7 +114,7 @@ public sealed class BatteryIdPoolTests(MongoFixture mongo)
         await rig.Services.GetRequiredService<PackCreationService>().CreateAsync(ChangeSender.Team(Who), NewBattery(c7, "LEGACY-0001") with { FromPool = false });
 
         var result = await pool.ReleaseAsync(Who, new ReleaseRequest("PO 4514", null, [new IdRange("VPC-12228", "VPC-12240", "12")],
-            "VPC-12401\nVPC-12401\nVPC12301\nTEST-9\n---\nDEMO-C7M-0001\nLEGACY0001\nVPC12402\nVPC-12402\nvpc-12403\nVPC 12404"));
+            "VPC-12401\nVPC-12401\nVPC12301\nTEST-9\n---\nDEMO-C7M-0001\nLEGACY0001\nVPC12402\nVPC-12402\nvpc_12403\nVPC 12404"));
 
         Assert.Equal(0, result.Released);
         Assert.Null(result.ReleaseId);
@@ -127,7 +127,7 @@ public sealed class BatteryIdPoolTests(MongoFixture mongo)
         Assert.Equal("already released (Published, Demo)", reasons["DEMO-C7M-0001"]); // one reason per serial number
         Assert.Equal("battery LEGACY-0001 already has this serial number or battery ID", reasons["LEGACY0001"]);
         Assert.Equal("it is in this release twice, also as VPC12402", reasons["VPC-12402"]);
-        Assert.Equal(IdentifierForms.SerialRule, reasons["vpc-12403"]); // never upper-cased silently
+        Assert.Equal(IdentifierForms.SerialRule, reasons["vpc_12403"]); // never cleaned silently
         Assert.Equal(IdentifierForms.SerialRule, reasons["VPC 12404"]);
         Assert.DoesNotContain(await pool.ReleasesAsync(), release => release.Reference == "PO 4514");
     }
@@ -137,10 +137,10 @@ public sealed class BatteryIdPoolTests(MongoFixture mongo)
     {
         var pool = new BatteryIdPool(new DppStore(mongo.NewContext()), new TestIdentifierScheme(), new ApplicationAuditService(mongo.NewContext()), TimeProvider.System);
 
-        var result = await pool.ReleaseAsync(Who, List("PO rule", "VBC-92921", "vbc-92922", "VBC-92923-"));
+        var result = await pool.ReleaseAsync(Who, List("PO rule", "VBC-92921", "vbc 92922", "VBC-92923-"));
 
         Assert.False(result.Done);
-        Assert.Equal(["vbc-92922", "VBC-92923-"], result.Problems.Select(problem => problem.What));
+        Assert.Equal(["vbc 92922", "VBC-92923-"], result.Problems.Select(problem => problem.What));
         Assert.All(result.Problems, problem => Assert.Equal(IdentifierForms.SerialRule, problem.Reason));
     }
 

@@ -142,10 +142,11 @@ public sealed partial class BatteryIdPool(
                 continue;
             }
 
-            var key = IdentifierForms.Clean(serial); // without its dashes: VBC-92921 and VBC92921 are one (6d-5)
+            // The key: VBC-92921 and VBC92921 are one (6d-5), and so are VPC8C05s-00001 and VPC8C05S-00001 (decision 80).
+            var key = IdentifierForms.Clean(serial);
             if (seen.TryGetValue(key, out var first))
             {
-                problems.Add(new IdProblem(serial, first == serial ? "it is in this release twice" : $"it is in this release twice, also as {first}"));
+                problems.Add(new IdProblem(serial, first == serial ? "it is in this release twice" : $"it is in this release twice, also as {first}{SameSerialWords(first, serial)}"));
                 continue;
             }
 
@@ -164,7 +165,10 @@ public sealed partial class BatteryIdPool(
         var pooled = await store.ReleasedIds.Find(Builders<ReleasedBatteryId>.Filter.In(item => item.Id, keys)).ToListAsync(cancellationToken);
         foreach (var item in pooled)
         {
-            problems.Add(new IdProblem(seen[item.Id], $"already released ({ReleasedIdStatuses.Words(item.Status)}, {item.Reference})"));
+            // Released in other letters: it is the same serial number, and the refusal says so (decision 80).
+            var asked = seen[item.Id];
+            var same = SameSerialWords(item.SerialNumber, asked).Length == 0 ? string.Empty : $" as {item.SerialNumber}, which is the same serial number";
+            problems.Add(new IdProblem(asked, $"already released{same} ({ReleasedIdStatuses.Words(item.Status)}, {item.Reference})"));
         }
 
         var released = pooled.Select(item => item.Id).ToHashSet(StringComparer.Ordinal);
@@ -311,12 +315,13 @@ public sealed partial class BatteryIdPool(
             return null;
         }
 
+        // By the serial number's key, or by the ID whichever way its letters are typed (decision 80).
         var item = IdentifierForms.Short(wanted);
         var where = Builders<ReleasedBatteryId>.Filter.Eq(released => released.Id, IdentifierForms.Clean(wanted))
-            | Builders<ReleasedBatteryId>.Filter.Eq(released => released.Identifier, wanted);
+            | Builders<ReleasedBatteryId>.Filter.Regex(released => released.Identifier, new BsonRegularExpression($"^{Regex.Escape(wanted)}$", "i"));
         if (IdentifierForms.IsItem(item))
         {
-            where |= Builders<ReleasedBatteryId>.Filter.Regex(released => released.Identifier, new BsonRegularExpression($"/{IdentifierForms.DataIdentifier}/{Regex.Escape(item)}$", string.Empty));
+            where |= Builders<ReleasedBatteryId>.Filter.Regex(released => released.Identifier, new BsonRegularExpression($"/{IdentifierForms.DataIdentifier}/{Regex.Escape(item)}$", "i"));
         }
 
         var found = await store.ReleasedIds.Find(where).FirstOrDefaultAsync(cancellationToken);
@@ -608,6 +613,10 @@ public sealed partial class BatteryIdPool(
 
     private static string? Text(BatteryPack pack, string key) =>
         pack.Values.GetValueOrDefault(key)?.Value is System.Text.Json.Nodes.JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+
+    /// <summary>", which is the same serial number" when the two differ in their letters' case; nothing when only in their dashes, as before.</summary>
+    private static string SameSerialWords(string one, string other) =>
+        string.Equals(one.Replace("-", string.Empty, StringComparison.Ordinal), other.Replace("-", string.Empty, StringComparison.Ordinal), StringComparison.Ordinal) ? string.Empty : ", which is the same serial number";
 
     private static string? Reason(string? reason) => reason?.Trim() is { Length: > 0 and <= MaxReason } why ? why : null;
 

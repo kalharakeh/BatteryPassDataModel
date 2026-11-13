@@ -8,7 +8,8 @@ namespace BatteryPassWeb.Dpp.Identifiers;
 /// <summary>
 /// The battery ID chosen by the product owner (O-1 and 6d, 5 Nov 2026; the dash, 6d-5, 9 Nov 2026): an ISO/IEC 15459
 /// unique item ID under issuing agency code <c>UN</c> (Dun &amp; Bradstreet), the company's DUNS, one dash and the
-/// battery's serial number (#11) exactly as written (capital letters, digits and single dashes), as a web address per
+/// battery's serial number (#11) with its letters in capitals (letters, digits and single dashes; a small letter is
+/// kept in the serial number and written as a capital in the ID, decision 80), as a web address per
 /// ISO/IEC 18975 with the MH10.8.2 data identifier <c>25S</c>: serial <c>VBC-92921</c> gives
 /// <c>https://www.sib-scania-eubp.eu/25S/UN778474481-VBC-92921</c>. The dash is unambiguous: <c>UN778474481-</c> is always
 /// the first 12 characters. A battery gets it when it is created; a new passport of the same battery (a successor) adds
@@ -39,7 +40,7 @@ public sealed class DunsIdentifierScheme(IOptions<BatteryPassOptions> options, D
     public static string TooLong(int characters) => $"the serial number is too long to make a battery ID: at most {characters} characters, dashes included";
 
     public static string Taken(string item, string serial) =>
-        $"the battery ID {item} is already used by battery {serial}. Serial numbers that differ only in their dashes can't both have one";
+        $"the battery ID {item} is already used by battery {serial}. Serial numbers that differ only in their dashes or in capital and small letters are the same serial number, so they can't both have one";
 
     /// <summary>The fixed start of every battery ID: agency, company and one dash (<c>UN778474481-</c>).</summary>
     private string Prefix => $"{options.Value.IdAgency}{options.Value.IdCompany}-";
@@ -73,13 +74,14 @@ public sealed class DunsIdentifierScheme(IOptions<BatteryPassOptions> options, D
 
     public NewIdentifier ItemFor(string serialNumber, bool demo)
     {
-        var serial = serialNumber ?? string.Empty; // as written: never upper-cased or cleaned (6d-5)
+        var serial = serialNumber ?? string.Empty; // kept as written; only the ID has it in capitals (decision 80)
         if (!IdentifierForms.IsSerial(serial))
         {
             return NewIdentifier.Refused(IdentifierForms.SerialRule);
         }
 
-        if (!demo && serial.StartsWith(IdentifierForms.TestMarker, StringComparison.Ordinal))
+        // In any case: "test-1" would make an ID marked TEST (decision 80).
+        if (!demo && serial.StartsWith(IdentifierForms.TestMarker, StringComparison.OrdinalIgnoreCase))
         {
             return NewIdentifier.Refused(StartsWithTest);
         }
@@ -87,7 +89,7 @@ public sealed class DunsIdentifierScheme(IOptions<BatteryPassOptions> options, D
         var head = demo ? $"{Prefix}{IdentifierForms.TestMarker}-" : Prefix;
         return head.Length + serial.Length > MaxItemLength - SuccessorRoom
             ? NewIdentifier.Refused(TooLong(MaxItemLength - SuccessorRoom - head.Length))
-            : new NewIdentifier(IdentifierForms.ItemAddress(options.Value.IdBaseUrl, head + serial), null);
+            : new NewIdentifier(IdentifierForms.ItemAddress(options.Value.IdBaseUrl, head + IdentifierForms.SerialInId(serial)), null);
     }
 
     public string NewPassportIdentifier(string packIdentifier, int version) =>
@@ -145,11 +147,12 @@ public static partial class IdentifierForms
     public const string TestMarker = "TEST";
 
     /// <summary>
-    /// What a serial number may hold to make a battery ID (the owner, 6d-5): <c>^[A-Z0-9]+(-[A-Z0-9]+)*$</c>. Anything else
-    /// is refused at release, never upper-cased or cleaned silently.
+    /// What a serial number may hold to make a battery ID (the owner, 6d-5; small letters since decision 80):
+    /// <c>^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$</c>. Anything else is refused at release, never cleaned silently. A serial number
+    /// is kept and shown as it was released; capital and small letters are the same serial number (<see cref="SameSerial"/>).
     /// </summary>
     public const string SerialRule =
-        "a serial number may hold only capital letters A–Z, digits 0–9 and single dashes between them, such as VBC-92921: no lower case, spaces or other characters, and no dash at the start, at the end or next to another";
+        "a serial number may hold only letters A–Z or a–z, digits 0–9 and single dashes between them, such as VBC-92921 or VPC8C05s-00001: no spaces or other characters, and no dash at the start, at the end or next to another. Capital and small letters count as the same";
 
     /// <summary>
     /// The ID settings that aren't set or aren't valid (6d-2b): DPP_ID_AGENCY (two or three capital letters),
@@ -240,18 +243,33 @@ public static partial class IdentifierForms
     public static bool IsAppId(string? text) =>
         text is not null && (IsItem(text) || IsWebAddress(text) || OldTestUrn().IsMatch(text));
 
-    /// <summary>True for a serial number that may make a battery ID: capital letters, digits and single dashes (<see cref="SerialRule"/>).</summary>
+    /// <summary>True for a serial number that may make a battery ID: letters, digits and single dashes (<see cref="SerialRule"/>).</summary>
     public static bool IsSerial(string? serialNumber) => serialNumber is not null && Serial().IsMatch(serialNumber);
 
     /// <summary>True for an item ID in the 6d-5 form, with a dash after the company; false for one made before.</summary>
     public static bool IsDashed(string item) => Dashed().IsMatch(item ?? string.Empty);
 
     /// <summary>
-    /// A serial number's key, only its letters A–Z and digits 0–9, upper-cased ("VBC-92921" → "VBC92921"): the released
-    /// IDs' key, so that serial numbers which differ only in their dashes are one (6d-5), and what searches compare.
+    /// A serial number's key, only its letters A–Z and digits 0–9, upper-cased ("VBC-92921" → "VBC92921",
+    /// "VPC8C05s-00001" → "VPC8C05S00001"): the released IDs' key, so that serial numbers which differ only in their dashes
+    /// (6d-5) or in capital and small letters (decision 80) are one, and what searches compare.
     /// </summary>
     public static string Clean(string? serialNumber) =>
         new((serialNumber ?? string.Empty).ToUpperInvariant().Where(letter => letter is >= 'A' and <= 'Z' or >= '0' and <= '9').ToArray());
+
+    /// <summary>
+    /// The one rule (decision 80): two serial numbers are the same when their keys (<see cref="Clean"/>) are the same.
+    /// Every lookup and uniqueness check by serial number compares this way, never by the text as typed.
+    /// </summary>
+    public static bool SameSerial(string? one, string? other) => Clean(one) is { Length: > 0 } key && key == Clean(other);
+
+    /// <summary>
+    /// A serial number as an ID carries it: in capitals (decision 80; ISO/IEC 15459 allows capitals only, and the ID is what
+    /// the QR code carries). The one place that decides the case of an ID's letters: to keep a small letter in the ID,
+    /// return <paramref name="serialNumber"/> as it is here. Every lookup by ID compares without regard to case, so nothing
+    /// else changes; an ID that exists keeps the letters it was made with.
+    /// </summary>
+    public static string SerialInId(string serialNumber) => serialNumber.ToUpperInvariant();
 
     /// <summary>Test IDs: the old TEST- URNs, and items marked TEST after the company (demo batteries and their passports).</summary>
     public static bool IsTest(string? identifier) =>
@@ -282,29 +300,31 @@ public static partial class IdentifierForms
     [GeneratedRegex("^[0-9]{9}$")]
     private static partial Regex CompanyCode();
 
-    // ISO/IEC 15459: agency + company, a dash (6d-5; none before) and the serial: capital letters and digits in groups
-    // joined by single dashes. At most 50 characters (checked in IsItem, and by the look-aheads in an address).
-    private const string Item = "[A-Z]{2,3}[0-9]{9}-?[A-Z0-9]+(?:-[A-Z0-9]+)*";
+    // ISO/IEC 15459: agency + company, a dash (6d-5; none before) and the serial: letters and digits in groups joined by
+    // single dashes. At most 50 characters (checked in IsItem, and by the look-aheads in an address). An ID is made in
+    // capitals (SerialInId) and read whichever way its letters are typed (decision 80): a to z only, never by a culture's
+    // case rules.
+    private const string Item = "[A-Za-z]{2,3}[0-9]{9}-?[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*";
 
     [GeneratedRegex("^" + Item + "$")]
     private static partial Regex ItemId();
 
-    [GeneratedRegex("^https://[^/]+/25S/(?<item>(?=[A-Z0-9-]{1,50}$)" + Item + ")$")]
+    [GeneratedRegex("^https://[^/]+/25S/(?<item>(?=[A-Za-z0-9-]{1,50}$)" + Item + ")$")]
     private static partial Regex ItemInAddress();
 
-    [GeneratedRegex("^https://[^/]+/dpp/(?<item>(?=[A-Z0-9-]{1,50}/)" + Item + ")/v(?<version>[0-9]+)$")]
+    [GeneratedRegex("^https://[^/]+/dpp/(?<item>(?=[A-Za-z0-9-]{1,50}/)" + Item + ")/v(?<version>[0-9]+)$")]
     private static partial Regex VersionInAddress();
 
     [GeneratedRegex("^urn:x-battery-pass:TEST-[A-Za-z0-9-]+$")]
     private static partial Regex OldTestUrn();
 
     // A demo ID's mark, right after the company: -TEST- (6d-5) or TEST (before).
-    [GeneratedRegex("(?:^|/)[A-Z]{2,3}[0-9]{9}-?TEST[A-Z0-9-]*(?:/v[0-9]+)?$")]
+    [GeneratedRegex("(?:^|/)[A-Za-z]{2,3}[0-9]{9}-?[Tt][Ee][Ss][Tt][A-Za-z0-9-]*(?:/v[0-9]+)?$")]
     private static partial Regex TestItem();
 
-    [GeneratedRegex("^[A-Z0-9]+(?:-[A-Z0-9]+)*$")]
+    [GeneratedRegex("^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$")]
     private static partial Regex Serial();
 
-    [GeneratedRegex("^[A-Z]{2,3}[0-9]{9}-")]
+    [GeneratedRegex("^[A-Za-z]{2,3}[0-9]{9}-")]
     private static partial Regex Dashed();
 }

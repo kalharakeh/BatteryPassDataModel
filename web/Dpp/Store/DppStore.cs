@@ -319,12 +319,33 @@ public sealed class DppStore
             return [];
         }
 
-        return await Collection<BatteryPack>().Find(Builders<BatteryPack>.Filter.Eq(SerialNumberField, serialNumber)).ToListAsync(cancellationToken);
+        // As stored first (indexed, and all a battery released before decision 80 ever needed); otherwise by the rule:
+        // capital and small letters, and dashes, don't tell two serial numbers apart.
+        var packs = Collection<BatteryPack>();
+        var asStored = await packs.Find(Builders<BatteryPack>.Filter.Eq(SerialNumberField, serialNumber)).ToListAsync(cancellationToken);
+        return asStored.Count > 0 || SameSerial(serialNumber) is not { } same
+            ? asStored
+            : await packs.Find(Builders<BatteryPack>.Filter.Regex(SerialNumberField, same)).ToListAsync(cancellationToken);
     }
 
     /// <summary>
-    /// True when another pack already has this serial number (#11), ignoring case and surrounding spaces, as the old
-    /// battery pages judged it. <paramref name="exceptPackId"/> is the pack being corrected, which may keep its own.
+    /// Matches a stored serial number that is the same as <paramref name="serialNumber"/> by the one rule (decision 80,
+    /// <see cref="Identifiers.IdentifierForms.SameSerial"/>): the same letters and digits in the same order, whatever the
+    /// case of the letters and whatever else stands between them. Null for a text with no letter or digit.
+    /// </summary>
+    private static BsonRegularExpression? SameSerial(string? serialNumber)
+    {
+        const string Other = "[^A-Za-z0-9]*";
+        var key = Identifiers.IdentifierForms.Clean(serialNumber); // only A–Z and 0–9: nothing to escape
+        return key.Length == 0 ? null : new BsonRegularExpression($"^{Other}{string.Join(Other, key.Select(letter => letter.ToString()))}{Other}$", "i");
+    }
+
+    /// <summary>Matches a stored ID that is <paramref name="text"/> whichever way its letters are typed (decision 80).</summary>
+    private static BsonRegularExpression SameLetters(string text) => new($"^{Regex.Escape(text)}$", "i");
+
+    /// <summary>
+    /// True when another pack already has this serial number (#11) by the one rule (decision 80): the same letters and
+    /// digits, whatever their case and their dashes. <paramref name="exceptPackId"/> is the pack being corrected, which may keep its own.
     /// </summary>
     public Task<bool> SerialNumberTakenAsync(string serialNumber, string? exceptPackId = null, CancellationToken cancellationToken = default) =>
         SerialNumberTakenAsync(serialNumber, exceptPackId is null ? [] : [exceptPackId], cancellationToken);
@@ -341,7 +362,8 @@ public sealed class DppStore
             return false;
         }
 
-        var sameSerial = Builders<BatteryPack>.Filter.Regex(SerialNumberField, new BsonRegularExpression($@"^\s*{Regex.Escape(wanted)}\s*$", "i"));
+        // A text with no letter or digit has no key: it is compared as typed, as before.
+        var sameSerial = Builders<BatteryPack>.Filter.Regex(SerialNumberField, SameSerial(wanted) ?? new BsonRegularExpression($@"^\s*{Regex.Escape(wanted)}\s*$", "i"));
         var filter = exceptPackIds.Count == 0 ? sameSerial : sameSerial & Builders<BatteryPack>.Filter.Nin("_id", exceptPackIds);
         return await Collection<BatteryPack>().Find(filter).Limit(1).AnyAsync(cancellationToken);
     }
@@ -365,7 +387,8 @@ public sealed class DppStore
 
     /// <summary>
     /// The marker of the removed passport that answered to this ID: a battery ID in either form, a passport ID or the pack
-    /// ID, as an address may carry it (encoded once). Null when no removed passport had it (finding R08).
+    /// ID, as an address may carry it (encoded once), whichever way its letters are typed (decision 80). Null when no
+    /// removed passport had it (finding R08).
     /// </summary>
     public async Task<RemovedPassport?> FindRemovedAsync(string? id, CancellationToken cancellationToken = default)
     {
@@ -376,7 +399,9 @@ public sealed class DppStore
         }
 
         var forms = new[] { text, Identifiers.IdentifierForms.Short(text) }.Distinct(StringComparer.Ordinal).ToArray();
-        return await Collection<RemovedPassport>().Find(Builders<RemovedPassport>.Filter.AnyIn(removed => removed.Ids, forms)).FirstOrDefaultAsync(cancellationToken);
+        var named = Builders<RemovedPassport>.Filter.AnyIn(removed => removed.Ids, forms)
+            | Builders<RemovedPassport>.Filter.Or(forms.Select(form => Builders<RemovedPassport>.Filter.Regex("Ids", SameLetters(form))));
+        return await Collection<RemovedPassport>().Find(named).FirstOrDefaultAsync(cancellationToken);
     }
 
     /// <summary>Whether anything of a removed pack is left: the pack itself or a version (finding R08).</summary>
@@ -622,7 +647,8 @@ public sealed class DppStore
 
     /// <summary>
     /// The pack with this unique product identifier (#6), if any: as stored, or by its short item ID
-    /// ("UN778474481-VBC-92921", or "UN778474481VPC12221" before 6d-5) for a battery ID written as a web address (step 6d).
+    /// ("UN778474481-VBC-92921", or "UN778474481VPC12221" before 6d-5) for a battery ID written as a web address (step 6d),
+    /// whichever way its letters are typed (decision 80).
     /// </summary>
     public async Task<BatteryPack?> FindPackByUniqueProductIdentifierAsync(string identifier, CancellationToken cancellationToken = default)
     {
@@ -634,7 +660,11 @@ public sealed class DppStore
         var filter = Builders<BatteryPack>.Filter.Eq(UniqueProductIdentifierField, identifier);
         if (Identifiers.IdentifierForms.IsItem(identifier))
         {
-            filter |= Builders<BatteryPack>.Filter.Regex(UniqueProductIdentifierField, new BsonRegularExpression($"/{Identifiers.IdentifierForms.DataIdentifier}/{Regex.Escape(identifier)}$", string.Empty));
+            filter |= Builders<BatteryPack>.Filter.Regex(UniqueProductIdentifierField, new BsonRegularExpression($"/{Identifiers.IdentifierForms.DataIdentifier}/{Regex.Escape(identifier)}$", "i"));
+        }
+        else if (identifier.Contains($"/{Identifiers.IdentifierForms.DataIdentifier}/", StringComparison.OrdinalIgnoreCase) || identifier.StartsWith("urn:", StringComparison.OrdinalIgnoreCase))
+        {
+            filter |= Builders<BatteryPack>.Filter.Regex(UniqueProductIdentifierField, SameLetters(identifier)); // a full ID typed in other letters
         }
 
         return await Collection<BatteryPack>().Find(filter).FirstOrDefaultAsync(cancellationToken);
@@ -642,7 +672,8 @@ public sealed class DppStore
 
     /// <summary>
     /// The pack whose web-form battery ID is <paramref name="item"/> but for its dashes, if any (6d-5): serial numbers
-    /// that differ only in their dashes can't both have one, and an ID made before 6d-5 (no dashes) counts too.
+    /// that differ only in their dashes can't both have one, and an ID made before 6d-5 (no dashes) counts too. Nor
+    /// can serial numbers that differ only in capital and small letters (decision 80).
     /// </summary>
     public async Task<BatteryPack?> FindPackByItemIgnoringDashesAsync(string item, CancellationToken cancellationToken = default)
     {
@@ -653,7 +684,7 @@ public sealed class DppStore
         }
 
         var pattern = $"/{Identifiers.IdentifierForms.DataIdentifier}/{string.Join("-?", key.Select(letter => letter.ToString()))}$";
-        return await Collection<BatteryPack>().Find(Builders<BatteryPack>.Filter.Regex(UniqueProductIdentifierField, new BsonRegularExpression(pattern, string.Empty))).FirstOrDefaultAsync(cancellationToken);
+        return await Collection<BatteryPack>().Find(Builders<BatteryPack>.Filter.Regex(UniqueProductIdentifierField, new BsonRegularExpression(pattern, "i"))).FirstOrDefaultAsync(cancellationToken);
     }
 
     /// <summary>
@@ -662,9 +693,9 @@ public sealed class DppStore
     /// </summary>
     public async Task<IReadOnlySet<string>> FindPackIdentifiersWithSuffixesAsync(string address, CancellationToken cancellationToken = default)
     {
-        var filter = Builders<BatteryPack>.Filter.Regex(UniqueProductIdentifierField, new BsonRegularExpression($"^{Regex.Escape(address)}(-?R[0-9]+)?$", string.Empty));
+        var filter = Builders<BatteryPack>.Filter.Regex(UniqueProductIdentifierField, new BsonRegularExpression($"^{Regex.Escape(address)}(-?R[0-9]+)?$", "i"));
         var packs = await Collection<BatteryPack>().Find(filter).ToListAsync(cancellationToken);
-        return packs.Select(pack => pack.Values["uniqueProductIdentifier"].Value!.GetValue<string>()).ToHashSet(StringComparer.Ordinal);
+        return packs.Select(pack => pack.Values["uniqueProductIdentifier"].Value!.GetValue<string>()).ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>Everything one pack's passport is built from; null if the pack or a record it links to is missing.</summary>
@@ -841,7 +872,13 @@ public sealed class DppStore
             return null;
         }
 
-        var version = await Collection<PassportVersion>().Find(version => version.DigitalProductPassportId == passportId).FirstOrDefaultAsync(cancellationToken);
+        // As stored first (indexed); a passport ID typed in other letters is found without regard to their case (decision 80).
+        var versions = Collection<PassportVersion>();
+        var version = await versions.Find(version => version.DigitalProductPassportId == passportId).FirstOrDefaultAsync(cancellationToken);
+        if (version is null && (passportId.Contains("/dpp/", StringComparison.OrdinalIgnoreCase) || passportId.StartsWith("urn:", StringComparison.OrdinalIgnoreCase)))
+        {
+            version = await versions.Find(Builders<PassportVersion>.Filter.Regex(version => version.DigitalProductPassportId, SameLetters(passportId))).FirstOrDefaultAsync(cancellationToken);
+        }
 
         // Only the battery's highest active version is served as active (round six, 2).
         return version is { DppStatus: DppStatuses.Active } && (await GetActiveVersionAsync(version.PackId, cancellationToken))?.Number > version.Number
