@@ -62,6 +62,7 @@ public static class ResetCollections
         ["passportFiles.chunks"] = CollectionFate.OldData,
         ["passwordResetRequests"] = CollectionFate.Cleared,
         ["signInAttempts"] = CollectionFate.Cleared, // finding W4: the count of wrong passwords and the locks
+        ["restrictedReads"] = CollectionFate.Cleared, // finding R11: the keys that keep one log entry per reader and day
         ["users"] = CollectionFate.Reviewed,
         ["clusterMemberships"] = CollectionFate.Reviewed,
         ["clusters"] = CollectionFate.Reviewed,

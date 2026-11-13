@@ -52,12 +52,14 @@
         @if (live is not null)
         {
             <div class="tab-pane fade@(buttons[0].Key == "live" ? " show active" : string.Empty)" id="tab-live" role="tabpanel">
+                <partial name="_RestrictedNotice" />
                 <partial name="_LiveHistory" model="live" />
             </div>
         }
         @if (modules is not null)
         {
             <div class="tab-pane fade@(buttons[0].Key == "modules" ? " show active" : string.Empty)" id="tab-modules" role="tabpanel">
+                <partial name="_RestrictedNotice" />
                 <h2 class="h5 mb-2">@Words.Count(modules.Count, "module")</h2>
                 <p class="bp-help-text">Seen only by the battery's cluster, market surveillance and the manufacturer's team.</p>
                 <div class="bp-table-scroll">
@@ -79,8 +81,12 @@
         }
         @for (var index = 0; index < tabs.Length; index++)
         {
-            var (tab, _) = tabs[index];
+            var (tab, restrictedTab) = tabs[index];
             <div class="tab-pane fade@(buttons[0].Key == tab.Key ? " show active" : string.Empty)" id="tab-@tab.Key" role="tabpanel">
+                @if (restrictedTab)
+                {
+                    <partial name="_RestrictedNotice" />
+                }
                 @if (tab.Key == "purchaser" && Model.Marking is not null)
                 {
                     @* Market surveillance has no admin pages, so its button sits in the card (mock-up S6, U11). *@

@@ -73,6 +73,7 @@ public static class DppServiceCollectionExtensions
         services.AddSingleton<PassportPages>();
         services.AddSingleton<AuditLines>();
         services.AddSingleton<ClusterHistory>();
+        services.AddSingleton<RestrictedReads>(); // the use notice and the log for restricted data (finding R11)
         return services;
     }
 }
