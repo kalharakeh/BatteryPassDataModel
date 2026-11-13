@@ -77,7 +77,7 @@ public sealed class BatteryIdsHelpTests
         var accounts = Read("docs", "sample-cluster-test-accounts.md");
 
         Assert.Contains("<code>UN778474481-VPC-12221</code>", part, StringComparison.Ordinal);
-        Assert.Contains("capital letters, digits and single dashes", part, StringComparison.Ordinal);
+        Assert.Contains("letters, digits and single dashes", part, StringComparison.Ordinal); // small letters too, since decision 80
         Assert.Contains("adds -R1, -R2, …", part, StringComparison.Ordinal);
         Assert.Contains("`UN778474481-TEST-DEMO-C7M-0001`", pack, StringComparison.Ordinal);
         Assert.Contains("`UN778474481-TEST-DEMO-C7M-0001`", accounts, StringComparison.Ordinal);
