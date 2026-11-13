@@ -52,7 +52,7 @@
                             <optgroup label="@family.Key">
                                 @foreach (var choice in family)
                                 {
-                                    <option value="@choice.BatchId" data-model="@choice.ModelId" selected="@(choice.BatchId == Model.BatchId)">@choice.Label</option>
+                                    <option value="@choice.BatchId" data-model="@choice.ModelId" data-format="@Model.ModelFormats.GetValueOrDefault(choice.ModelId)" selected="@(choice.BatchId == Model.BatchId)">@choice.Label</option>
                                 }
                             </optgroup>
                         }
@@ -125,7 +125,7 @@
                             }
                             @if (demoIds.Length > 0)
                             {
-                                <optgroup label="Demo IDs (marked TEST, cleared with the demo data)" data-model="">
+                                <optgroup label="Demo IDs (marked TEST, cleared with the demo data)" data-model="" data-test-ids>
                                     @foreach (var item in demoIds)
                                     {
                                         <option value="@item.SerialNumber" selected="@(item.SerialNumber == Model.PickedSerial)">@Option(item)</option>

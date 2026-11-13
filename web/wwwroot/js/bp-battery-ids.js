@@ -47,7 +47,8 @@
     });
 })();
 
-// The create page's picker (6d): once a batch is chosen, only the IDs its model may use are offered, its model's first.
+// The create page's picker (6d): once a batch is chosen, only the IDs its model may use are offered, its model's first,
+// and of those only the serial numbers that fit the model's serial number format (decision 81). Test IDs are free of it.
 (function () {
     const batch = document.querySelector('[data-batch-select]');
     const picker = document.querySelector('[data-id-picker]');
@@ -58,25 +59,58 @@
     const note = document.querySelector('[data-id-picker-note]');
     const groups = Array.from(picker.querySelectorAll('optgroup'));
     const words = (count) => `${count} ${count === 1 ? 'ID' : 'IDs'}`;
+    // As the app checks it: a digit for each #, every other character as it is, letters whatever their case.
+    const fits = (format, serial) => {
+        if (!format) {
+            return true;
+        }
+
+        if (serial.length !== format.length) {
+            return false;
+        }
+
+        for (let index = 0; index < format.length; index += 1) {
+            const wanted = format[index];
+            const given = serial[index];
+            if (wanted === '#' ? !(given >= '0' && given <= '9') : wanted.toUpperCase() !== given.toUpperCase()) {
+                return false;
+            }
+        }
+
+        return true;
+    };
     const filter = () => {
-        const model = batch.value ? (batch.selectedOptions[0]?.dataset.model ?? null) : null;
+        const chosen = batch.value ? batch.selectedOptions[0] : null;
+        const model = chosen ? (chosen.dataset.model ?? null) : null;
+        const format = chosen ? (chosen.dataset.format ?? '') : '';
         let offered = 0;
+        let left = 0;
         groups.forEach((group) => {
             const usable = model === null || group.dataset.model === '' || group.dataset.model === model;
             group.hidden = !usable;
             group.disabled = !usable;
-            offered += usable ? group.children.length : 0;
+            Array.from(group.children).forEach((option) => {
+                const fitting = !usable || group.dataset.testIds !== undefined || fits(format, option.value);
+                option.hidden = !fitting;
+                option.disabled = !fitting;
+                offered += usable && fitting ? 1 : 0;
+                left += usable && !fitting ? 1 : 0;
+            });
         });
-        if (picker.selectedOptions[0]?.parentElement?.disabled) {
+        const picked = picker.selectedOptions[0];
+        if (picked && (picked.disabled || picked.parentElement?.disabled)) {
             picker.value = '';
         }
 
         if (note) {
+            const leftOut = left === 0 ? '' : ` ${words(left)} left out: ${left === 1 ? 'its serial number doesn’t' : 'their serial numbers don’t'} fit ${format}.`;
             note.textContent = model === null
                 ? `${words(offered)} available. Choose the batch first to see only those its model may use.`
                 : offered === 0
-                    ? 'No released ID may be used for this batch’s model. Release some on the Battery IDs page.'
-                    : `${words(offered)} available for this batch’s model, its own first.`;
+                    ? (left === 0
+                        ? 'No released ID may be used for this batch’s model. Release some on the Battery IDs page.'
+                        : `No released ID fits its model’s serial number format, ${format}. Release some on the Battery IDs page.`)
+                    : `${words(offered)} available for this batch’s model, its own first.${leftOut}`;
         }
     };
     batch.addEventListener('change', filter);

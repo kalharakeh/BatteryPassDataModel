@@ -118,6 +118,7 @@ public sealed partial class ProductDataPages
                 Name = source.Name,
                 Values = CopyValues(source.Values, documentIds, who, now),
                 ModuleDescription = source.ModuleDescription,
+                SerialFormat = source.SerialFormat, // the model's serial number format comes with it (decision 81); the demo's models have none
                 PictureContentType = source.PictureContentType,
                 ExampleDocumentIds = [.. documentIds.Values],
                 // The model's three answers come with the copy (R01): they are the demo model's, so the team checks them

@@ -1,5 +1,6 @@
 @using BatteryPassWeb.Dpp.Catalog
 @using BatteryPassWeb.Dpp.Editing
+@using BatteryPassWeb.Dpp.Identifiers
 @using BatteryPassWeb.Dpp.Pages
 @inject Microsoft.Extensions.Options.IOptions<BatteryPassWeb.Configuration.BatteryPassOptions> AppOptions
 @model FamilyPage
@@ -200,6 +201,51 @@
                     <button type="submit" class="bp-secondary-button bp-button-compact text-nowrap">Save description</button>
                 </div>
             </form>
+            @{
+                // Decision 81: the form this model's serial numbers have. App data, not published.
+                var pendingFormat = (TempData[BatteryPassWeb.Controllers.ProductDataController.PendingSerialFormatKey] as string)?.Split('|', 2);
+                var pendingFormatHere = pendingFormat is { Length: 2 } && pendingFormat[0] == selected.Id;
+                var pendingMisfits = TempData[BatteryPassWeb.Controllers.ProductDataController.PendingSerialFormatMisfitsKey] as int? ?? 0;
+                var pendingExamples = TempData[BatteryPassWeb.Controllers.ProductDataController.PendingSerialFormatExamplesKey] as string ?? string.Empty;
+                var typedFormat = pendingFormatHere ? pendingFormat![1] : TempData[BatteryPassWeb.Controllers.ProductDataController.TypedSerialFormatKey] as string ?? selected.SerialFormat;
+            }
+            <div class="bp-module-description" id="serial-format">
+                @if (pendingFormatHere)
+                {
+                    <form method="post" action="/admin/models/@Uri.EscapeDataString(selected.Id)/serial-format" class="bp-warning" role="alert">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="format" value="@pendingFormat![1]" />
+                        <input type="hidden" name="confirmed" value="true" />
+                        <p class="mb-2">@Words.Count(pendingMisfits, "battery", "batteries") of this model @(pendingMisfits == 1 ? "doesn't" : "don't") fit the format @pendingFormat[1]: @pendingExamples@(pendingMisfits > pendingExamples.Split(", ").Length ? " and more" : string.Empty). They stay as they are. Nothing is saved yet.</p>
+                        <button type="submit" class="bp-secondary-button bp-button-compact">Save the format anyway</button>
+                        <a href="@here#serial-format" class="ms-2">Cancel</a>
+                    </form>
+                }
+                <form method="post" action="/admin/models/@Uri.EscapeDataString(selected.Id)/serial-format" class="bp-module-description">
+                    @Html.AntiForgeryToken()
+                    <label for="serial-format-field">Serial number format of @selected.Name <em class="bp-field-marker">Not passport data</em></label>
+                    <input type="text" id="serial-format-field" name="format" value="@typedFormat" maxlength="60" placeholder="e.g. VPC8C05s-#####" autocomplete="off" autocapitalize="off" spellcheck="false" />
+                    <div class="bp-live-save">
+                        <small class="bp-field-help">
+                            @SerialFormats.Hint
+                            @if (selected.SerialFormat is { Length: > 0 } format)
+                            {
+                                <span>A serial number that fits: @SerialFormats.Example(format).</span>
+                            }
+                            else
+                            {
+                                <span>Without a format, this model takes any serial number.</span>
+                            }
+                            Releasing IDs for this model, creating a battery of it and swapping a battery's ID refuse a serial number that doesn't fit. Test IDs aren't checked.
+                            @if (Model.SerialFormatSharedWith.Count > 0)
+                            {
+                                <span>@(Model.SerialFormatSharedWith.Count == 1 ? "Model" : "Models") @string.Join(", ", Model.SerialFormatSharedWith) @(Model.SerialFormatSharedWith.Count == 1 ? "has" : "have") the same format.</span>
+                            }
+                        </small>
+                        <button type="submit" class="bp-secondary-button bp-button-compact text-nowrap">Save format</button>
+                    </div>
+                </form>
+            </div>
         </section>
     }
 

@@ -295,6 +295,59 @@ public sealed class ProductDataController(ProductDataPages pages, RecordEditor e
         return Redirect($"{ProductDataPages.FamilyHref(model.FamilyId, modelId)}#modules");
     }
 
+    /// <summary>A serial number format that waits for the team's yes (decision 81): "modelId|format", how many batteries don't fit, and the first of them.</summary>
+    public const string PendingSerialFormatKey = "PendingSerialFormat";
+    public const string PendingSerialFormatMisfitsKey = "PendingSerialFormatMisfits";
+    public const string PendingSerialFormatExamplesKey = "PendingSerialFormatExamples";
+
+    /// <summary>A format that was refused, as typed, so the field still shows it.</summary>
+    public const string TypedSerialFormatKey = "TypedSerialFormat";
+
+    /// <summary>
+    /// Sets or clears a model's serial number format (decision 81): app data, the team's only. A format that some of the
+    /// model's batteries don't fit is saved only on the team's yes; the page says how many first.
+    /// </summary>
+    [HttpPost("models/{modelId}/serial-format")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetSerialFormat(string modelId, [FromForm] string? format, [FromForm] bool confirmed, [FromServices] BatteryPassWeb.Dpp.Identifiers.IIdentifierScheme identifiers, CancellationToken cancellationToken)
+    {
+        var model = await store.GetAsync<BatteryModel>(modelId, cancellationToken);
+        if (model is null)
+        {
+            return NotFound();
+        }
+
+        var save = await pages.SetSerialFormatAsync(Who, model, format, confirmed, identifiers, cancellationToken);
+        if (save.Problem is { } problem)
+        {
+            TempData[ErrorKey] = $"The serial number format wasn't saved: {problem}.";
+            TempData[TypedSerialFormatKey] = format;
+        }
+        else if (save.NeedsConfirmation)
+        {
+            TempData[PendingSerialFormatKey] = $"{modelId}|{save.Format}";
+            TempData[PendingSerialFormatMisfitsKey] = save.Misfits;
+            TempData[PendingSerialFormatExamplesKey] = string.Join(", ", save.Examples);
+        }
+        else if (!save.Changed)
+        {
+            TempData[InfoKey] = "Nothing changed.";
+        }
+        else if (save.Format is null)
+        {
+            TempData[StatusKey] = "Serial number format removed. This model takes any serial number again.";
+        }
+        else
+        {
+            var shared = save.SharedWith.Count == 0
+                ? string.Empty
+                : $" {(save.SharedWith.Count == 1 ? "Model" : "Models")} {string.Join(", ", save.SharedWith)} {(save.SharedWith.Count == 1 ? "has" : "have")} the same format.";
+            TempData[StatusKey] = $"Serial number format saved. A serial number that fits: {BatteryPassWeb.Dpp.Identifiers.SerialFormats.Example(save.Format)}.{shared} The passport didn't change: it isn't passport data.";
+        }
+
+        return Redirect($"{ProductDataPages.FamilyHref(model.FamilyId, modelId)}#serial-format");
+    }
+
     /// <summary>A save of a model's answers that waits for the team's yes: "modelId|warranty=yes|cycling=no|…" and the count.</summary>
     public const string PendingAnswersKey = "PendingAnswers";
     public const string PendingAffectedKey = "PendingAnswersAffected";
