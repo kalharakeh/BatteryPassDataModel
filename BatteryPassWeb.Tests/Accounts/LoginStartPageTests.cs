@@ -8,15 +8,23 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace BatteryPassWeb.Tests.Accounts;
 
-/// <summary>Finding U31: a signed-in reader who opens the login address goes where signing in would have taken them.</summary>
+/// <summary>
+/// Finding U31: a signed-in reader who opens the login address goes where signing in would have taken them. Findings U01
+/// and U05: the team lands on "To do", everyone else signed in on the Registry; a visitor's home stays the search.
+/// </summary>
 [Collection(MongoCollection.Name)]
 public sealed class LoginStartPageTests(MongoFixture mongo)
 {
     [Theory]
-    [InlineData(AccessControlService.RoleNormalUser, "/")]
-    [InlineData(AccessControlService.RoleMarketSurveillanceAuthority, "/")]
-    [InlineData(AccessControlService.RoleClusterAdmin, "/")]
-    [InlineData(AccessControlService.RoleAdmin, "/admin")]
+    [InlineData(AccessControlService.RoleNormalUser, "/registry")]
+    [InlineData(AccessControlService.RoleMarketSurveillanceAuthority, "/registry")]
+    [InlineData(AccessControlService.RoleNotifiedBody, "/registry")]
+    [InlineData(AccessControlService.RoleCommission, "/registry")]
+    [InlineData(AccessControlService.RoleLiRepair, "/registry")]
+    [InlineData(AccessControlService.RoleLiRecycling, "/registry")]
+    [InlineData(AccessControlService.RoleLiTreatment, "/registry")]
+    [InlineData(AccessControlService.RoleClusterAdmin, "/registry")]
+    [InlineData(AccessControlService.RoleAdmin, "/admin/start")]
     public async Task TheLoginAddress_ShouldLeadASignedInReaderToTheirStartPage(string role, string start)
     {
         using var rig = await AccountRig.StartAsync(mongo);
@@ -42,13 +50,14 @@ public sealed class LoginStartPageTests(MongoFixture mongo)
 
         var result = await api.Login(AccountRig.Msa, AccountRig.Password, null, CancellationToken.None);
 
-        Assert.Equal("/", Assert.IsType<RedirectResult>(result).Url);
+        Assert.Equal("/registry", Assert.IsType<RedirectResult>(result).Url);
     }
 
     [Fact]
     public void TheStartPage_ShouldBeTheTeamsAreaOnlyForTheTeam()
     {
-        Assert.Equal("/admin", LoginController.StartPage(AccountRig.Person("team@example.test", AccessControlService.RoleAdmin)));
-        Assert.Equal("/", LoginController.StartPage(AccountRig.Person("reader@example.test", AccessControlService.RoleNormalUser)));
+        Assert.Equal("/admin/start", LoginController.StartPage(AccountRig.Person("team@example.test", AccessControlService.RoleAdmin)));
+        Assert.Equal("/registry", LoginController.StartPage(AccountRig.Person("reader@example.test", AccessControlService.RoleNormalUser)));
+        Assert.Equal("/", LoginController.StartPage(new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity())));
     }
 }
