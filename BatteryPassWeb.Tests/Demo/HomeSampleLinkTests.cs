@@ -9,14 +9,15 @@ namespace BatteryPassWeb.Tests.Demo;
 /// <summary>
 /// Redesign R6, the owner's choice 7 (3 Nov 2026): the old home page had a "Search sample battery" link; the home page
 /// links a published demo battery again, "Open a sample battery passport", only while demo data exists, never a real one.
+/// Finding U06: the sample is DEMO-C7M-0001, the easiest passport to read, and there is none while the demo is switched off.
 /// </summary>
 [Collection(MongoCollection.Name)]
 public sealed class HomeSampleLinkTests(MongoFixture mongo)
 {
-    private static async Task<object?> SampleAsync(DemoRig rig)
+    private static async Task<object?> SampleAsync(DemoRig rig, bool demoOn = true)
     {
         var controller = new HomeController(rig.Services.GetRequiredService<PassportPages>());
-        var view = Assert.IsType<ViewResult>(await controller.Index(null, null, rig.Services.GetRequiredService<BatteryPages>(), CancellationToken.None));
+        var view = Assert.IsType<ViewResult>(await controller.Index(null, null, rig.Services.GetRequiredService<BatteryPages>(), CancellationToken.None, new BatteryPassWeb.Dpp.Demo.DemoDataSwitch(demoOn)));
         return view.ViewData[HomeController.SampleKey];
     }
 
@@ -30,7 +31,9 @@ public sealed class HomeSampleLinkTests(MongoFixture mongo)
 
         Assert.Equal(string.Empty, before);
         Assert.StartsWith("urn:", Assert.IsType<string>(after), StringComparison.Ordinal); // a demo battery's ID
-        Assert.Equal(await rig.Services.GetRequiredService<BatteryPages>().ExampleBatteryIdAsync(), after); // the API help's sample
+        var c7m = (await rig.Services.GetRequiredService<BatteryPages>().TeamListAsync(null)).Rows.Single(row => row.SerialNumber == "DEMO-C7M-0001");
+        Assert.Equal(c7m.Identifier, after); // the easiest passport to read (U06)
+        Assert.Equal(string.Empty, await SampleAsync(rig, demoOn: false)); // none while the demo is switched off
     }
 
     [Fact]

@@ -28,7 +28,7 @@ public class HomeController(PassportPages pages) : Controller
     public const int NearMatchLimit = 3;
 
     [HttpGet("")]
-    public async Task<IActionResult> Index([FromQuery] string? q, [FromQuery] string? notFound, [FromServices] BatteryPages batteries, CancellationToken cancellationToken)
+    public async Task<IActionResult> Index([FromQuery] string? q, [FromQuery] string? notFound, [FromServices] BatteryPages batteries, CancellationToken cancellationToken, [FromServices] BatteryPassWeb.Dpp.Demo.DemoDataSwitch? demo = null)
     {
         ViewData["SearchQuery"] = q?.Trim() ?? string.Empty;
         ViewData["SearchNotFound"] = string.Equals(notFound, "1", StringComparison.OrdinalIgnoreCase);
@@ -40,9 +40,21 @@ public class HomeController(PassportPages pages) : Controller
             ViewData[NearMatchesMoreKey] = total > matches.Count;
         }
 
-        // A sample to open, as the old app had: a published demo battery, never a real one (as the API help, 30 Oct 2026).
-        ViewData[SampleKey] = await batteries.ExampleBatteryIdAsync(cancellationToken);
+        // A sample to open, as the old app had: a published demo battery, never a real one (as the API help, 30 Oct 2026);
+        // DEMO-C7M-0001, the easiest to read, and none while the demo is switched off (finding U06).
+        ViewData[SampleKey] = demo is { Enabled: false } ? string.Empty : await SampleBatteryIdAsync(batteries, cancellationToken);
         return View();
+    }
+
+    /// <summary>The home page's sample (finding U06): the demo's simplest passport, one model and one version.</summary>
+    public const string SampleSerialNumber = "DEMO-C7M-0001";
+
+    /// <summary>The sample's battery ID: DEMO-C7M-0001 while it is a published demo battery, else the API help's example.</summary>
+    private static async Task<string> SampleBatteryIdAsync(BatteryPages batteries, CancellationToken cancellationToken)
+    {
+        var sample = (await batteries.ListOnePerBatteryAsync(SampleSerialNumber, row => row.IsDemo && row.Active is not null, matchClusters: false, cancellationToken)).Rows
+            .FirstOrDefault(row => row.SerialNumber == SampleSerialNumber && row.Identifier.Length > 0);
+        return sample?.Identifier ?? await batteries.ExampleBatteryIdAsync(cancellationToken);
     }
 
     /// <summary>
