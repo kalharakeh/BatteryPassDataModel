@@ -521,6 +521,167 @@ a:hover {
   }
 }
 
+/* The team's "To do" page (finding U05, the owner's picture B). The approved sizes: 12, 14, 16, 20 and 28 px. */
+.bp-start-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 24px;
+}
+
+.bp-start-head h1 {
+  margin: 4px 0 4px;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.bp-start-head p {
+  margin: 0;
+  color: var(--bp-muted);
+  font-size: 16px;
+}
+
+.bp-start-kicker {
+  color: var(--bp-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.bp-start-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bp-start-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.bp-todo {
+  display: flex;
+  flex-direction: column;
+  min-height: 236px;
+  padding: 20px;
+  border: 1px solid var(--bp-border);
+  border-radius: 10px;
+  background: var(--bp-surface);
+  font-size: 14px;
+}
+
+.bp-todo-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.bp-todo-head .bp-i {
+  flex: 0 0 auto;
+  color: var(--bp-primary);
+}
+
+.bp-todo-head h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.bp-todo-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 16px;
+  background: #fdf0d8;
+  color: #8a4b00;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.bp-todo-count.is-clear {
+  background: #e3f4ea;
+  color: #1c6b3c;
+}
+
+.bp-todo-clear {
+  margin: 0;
+  color: var(--bp-muted);
+}
+
+.bp-todo-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bp-todo-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--bp-border);
+}
+
+.bp-todo-list li:last-child {
+  border-bottom: 0;
+}
+
+.bp-todo-list a {
+  font-weight: 600;
+}
+
+.bp-todo-list span {
+  color: var(--bp-muted);
+}
+
+.bp-todo-more {
+  margin: auto 0 0;
+  padding-top: 12px;
+}
+
+.bp-todo-more a {
+  font-weight: 600;
+}
+
+[data-theme="dark"] .bp-todo-count {
+  background: #3a2a0c;
+  color: #ffd79a;
+}
+
+[data-theme="dark"] .bp-todo-count.is-clear {
+  background: #0d2d1d;
+  color: #b9f6cf;
+}
+
+@media (max-width: 1023px) {
+  .bp-start-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .bp-start-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bp-todo {
+    min-height: 0;
+  }
+
+  .bp-start-actions {
+    width: 100%;
+  }
+}
+
 .bp-main {
   flex: 1;
   width: 100%;

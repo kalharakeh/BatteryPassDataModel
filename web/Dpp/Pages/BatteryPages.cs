@@ -1033,6 +1033,13 @@ public sealed class BatteryPages(
         };
     }
 
+    /// <summary>How many values a publication check finds missing, as the battery page counts them (the "To do" page, U05).</summary>
+    public static int MissingCount(PublicationReport report)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+        return report.Blocking.Count(item => item != PassportNeeds.QuestionsNotAnswered && Numbered(item) is not null);
+    }
+
     /// <summary>The attribute a report line such as "#21 Battery mass is missing" is about.</summary>
     private static AttributeDefinition? Numbered(string item) =>
         Regex.Match(item, @"^(#\d+|E\d+) ") is { Success: true } match

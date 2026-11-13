@@ -135,6 +135,44 @@ public sealed class PublicationService(
     }
 
     /// <summary>
+    /// The publication checks of many drafts at once, as <see cref="CheckAsync(string, CancellationToken)"/> makes them for one
+    /// (the team's "To do" page, finding U05): the records are read once per collection, not once per battery. A draft
+    /// whose batch, model, site or operator is missing is left out, as the single check returns nothing for it.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<string, PublicationReport>> CheckDraftsAsync(IReadOnlyCollection<string> packIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(packIds);
+        var reports = new Dictionary<string, PublicationReport>(StringComparer.Ordinal);
+        if (packIds.Count == 0)
+        {
+            return reports;
+        }
+
+        var wanted = packIds.ToHashSet(StringComparer.Ordinal);
+        var packs = (await store.ListAsync<BatteryPack>(cancellationToken)).Where(pack => wanted.Contains(pack.Id)).ToArray();
+        var batches = (await store.ListAsync<ProductionBatch>(cancellationToken)).ToDictionary(batch => batch.Id, StringComparer.Ordinal);
+        var models = (await store.ListAsync<BatteryModel>(cancellationToken)).ToDictionary(model => model.Id, StringComparer.Ordinal);
+        var sites = (await store.ListAsync<ManufacturingSite>(cancellationToken)).ToDictionary(site => site.Id, StringComparer.Ordinal);
+        var operators = (await store.ListAsync<EconomicOperator>(cancellationToken)).ToDictionary(item => item.Id, StringComparer.Ordinal);
+        foreach (var pack in packs)
+        {
+            if (batches.GetValueOrDefault(pack.BatchId) is not { } batch
+                || models.GetValueOrDefault(batch.ModelId) is not { } model
+                || sites.GetValueOrDefault(batch.SiteId) is not { } site
+                || operators.GetValueOrDefault(pack.OperatorId) is not { } economicOperator)
+            {
+                continue;
+            }
+
+            var sources = new PassportSources(pack, batch, model, site, economicOperator);
+            var header = new PassportHeader(identifiers.NewPassportIdentifier(PackIdentifier(pack), 1), DppStatuses.Active, clock.GetUtcNow().UtcDateTime);
+            reports[pack.Id] = WithDemoRule(sources, checks.Check(PassportAssembler.Assemble(sources, header), model.Answers()), 1);
+        }
+
+        return reports;
+    }
+
+    /// <summary>
     /// Whether a published passport's saved data differs from its active version: a change that was saved but held back
     /// because the passport couldn't publish (round two, A). Null when it has no active version or nothing differs.
     /// </summary>
