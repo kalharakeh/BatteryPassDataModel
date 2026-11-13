@@ -464,6 +464,13 @@ public class AdminController : Controller
             return Redirect("/admin/clusters?tab=users");
         }
 
+        // ... and to a cluster that exists (finding W7).
+        if (!await _clusterRepository.ClusterExistsAsync(clusterId, cancellationToken))
+        {
+            TempData["ErrorMessage"] = ClusterRepository.NoSuchCluster;
+            return Redirect("/admin/clusters?tab=users");
+        }
+
         await _clusterRepository.UpsertClusterMembershipAsync(email, clusterId, role, cancellationToken);
         await AppendAdminAuditAsync(
             "cluster.user.assigned",
@@ -512,6 +519,14 @@ public class AdminController : Controller
         if (existingUser == null && EmailAddressRule.Problem(typedEmail) is { } newAddressProblem)
         {
             TempData["ErrorMessage"] = newAddressProblem;
+            return Redirect("/admin/clusters?tab=users");
+        }
+
+        // A membership is for a cluster that exists (finding W7): refused before the account is touched.
+        if (!string.IsNullOrWhiteSpace(Text(Request.Form, "clusterId"))
+            && !await _clusterRepository.ClusterExistsAsync(Text(Request.Form, "clusterId"), cancellationToken))
+        {
+            TempData["ErrorMessage"] = ClusterRepository.NoSuchCluster;
             return Redirect("/admin/clusters?tab=users");
         }
 

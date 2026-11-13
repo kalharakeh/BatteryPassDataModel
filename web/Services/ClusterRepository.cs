@@ -559,6 +559,13 @@ public sealed class ClusterRepository
     public static string NormalizeClusterId(string clusterId) =>
         clusterId.Trim().ToLowerInvariant();
 
+    /// <summary>What a form says when a membership names a cluster that doesn't exist (finding W7).</summary>
+    public const string NoSuchCluster = "No cluster has this ID.";
+
+    /// <summary>Whether a cluster with this ID exists, whatever its capitals.</summary>
+    public async Task<bool> ClusterExistsAsync(string? clusterId, CancellationToken cancellationToken = default) =>
+        !string.IsNullOrWhiteSpace(clusterId) && await GetClusterByIdAsync(clusterId, cancellationToken) is not null;
+
     public const string OnlyTwoClusterRoles = "A person is a user or a cluster admin in a cluster.";
 
     /// <summary>Whether a form's membership role is one of the two a cluster has (finding S08).</summary>

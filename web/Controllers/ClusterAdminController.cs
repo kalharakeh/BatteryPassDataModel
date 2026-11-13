@@ -371,6 +371,13 @@ public class ClusterAdminController : Controller
             return NotFound();
         }
 
+        // The team may administer any ID, so the cluster must exist (finding W7).
+        if (!await _clusterRepository.ClusterExistsAsync(clusterId, cancellationToken))
+        {
+            TempData["ErrorMessage"] = ClusterRepository.NoSuchCluster;
+            return Redirect(back);
+        }
+
         if (rights.Exists)
         {
             // An existing account only joins the cluster: whatever was typed, its name and password stay (finding R19).

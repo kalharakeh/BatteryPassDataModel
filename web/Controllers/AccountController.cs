@@ -127,8 +127,9 @@ public sealed class AccountController : Controller
 
         if (emailChanges)
         {
+            // An address that still has a membership from before (no account) isn't free either: the memberships would come with it (finding W7).
             var existing = await _clusterRepository.GetUserByEmailAsync(newEmail, cancellationToken);
-            if (existing != null)
+            if (existing != null || (await _clusterRepository.GetClusterMembershipsForUserAsync(newEmail, cancellationToken)).Count > 0)
             {
                 var model = await BuildModelAsync(cancellationToken);
                 return View("Index", new AccountProfileViewModel
