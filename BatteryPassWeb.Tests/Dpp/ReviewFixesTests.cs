@@ -51,7 +51,7 @@ public sealed class ReviewFixesTests
             Assert.Contains("_HelpContents", page);
         }
 
-        Assert.Contains("href=\"/help/api\">Developer help</a>", Read("web", "Views", "Shared", "_Layout.cshtml"));
+        Assert.Contains("href=\"/help/api\">Open the API reference</a>", Read("web", "Views", "Help", "Guide.cshtml")); // the footer's second menu is gone (L05)
     }
 
     [Fact]
