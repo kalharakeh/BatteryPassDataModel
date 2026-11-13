@@ -369,10 +369,11 @@ public class AdminController : Controller
         }
 
         await _clusterRepository.DeleteClusterAsync(clusterId, cancellationToken);
+        var gone = await RevokeClusterAccessAsync(clusterId, cancellationToken);
         await AppendAdminAuditAsync(
             "cluster.deleted",
-            "Cluster deleted.",
-            new BsonDocument { ["clusterId"] = clusterId },
+            $"Cluster deleted. {gone.Words}",
+            new BsonDocument { ["clusterId"] = clusterId }.AddRange(gone.Metadata),
             "cluster",
             clusterId,
             cancellationToken);
@@ -393,19 +394,48 @@ public class AdminController : Controller
 
         var batteriesCleared = await _dppStore.ClearClusterAsync(clusterId, cancellationToken);
         await _clusterRepository.DeleteClusterAsync(clusterId, cancellationToken);
+        var gone = await RevokeClusterAccessAsync(clusterId, cancellationToken);
         await AppendAdminAuditAsync(
             "cluster.deleted",
-            "Cluster force-deleted after linked data was cleared.",
+            $"Cluster force-deleted after linked data was cleared. {gone.Words}",
             new BsonDocument
             {
                 ["clusterId"] = clusterId,
                 ["forceDelete"] = true,
                 ["batteriesCleared"] = batteriesCleared
-            },
+            }.AddRange(gone.Metadata),
             "cluster",
             clusterId,
             cancellationToken);
         return Redirect("/admin/clusters?tab=clusters");
+    }
+
+    /// <summary>What deleting a cluster ended besides the cluster (finding W8), for the audit entry.</summary>
+    private sealed record ClusterAccessGone(int TokensRevoked, int TokensNarrowed, int HandOversCancelled)
+    {
+        public BsonDocument Metadata => new()
+        {
+            ["tokensRevoked"] = TokensRevoked,
+            ["tokensNarrowed"] = TokensNarrowed,
+            ["handOversCancelled"] = HandOversCancelled,
+        };
+
+        public string Words =>
+            $"{Count(TokensRevoked, "token")} revoked, {Count(TokensNarrowed, "token")} narrowed and {Count(HandOversCancelled, "waiting hand-over")} cancelled.";
+
+        private static string Count(int number, string noun) => $"{number} {noun}{(number == 1 ? string.Empty : "s")}";
+    }
+
+    /// <summary>
+    /// A deleted cluster's tokens stop at once and its waiting hand-overs end, in the same action (finding W8): otherwise a
+    /// new cluster made with the same ID would find them working.
+    /// </summary>
+    private async Task<ClusterAccessGone> RevokeClusterAccessAsync(string clusterId, CancellationToken cancellationToken)
+    {
+        var actor = AccessControlService.CurrentEmail(User);
+        var (revoked, narrowed) = await _externalApiRepository.RevokeClusterAsync(clusterId, string.IsNullOrWhiteSpace(actor) ? "admin" : actor, cancellationToken);
+        var handOvers = await _dppStore.CancelWaitingHandOversOfClusterAsync(clusterId, string.IsNullOrWhiteSpace(actor) ? "admin" : actor, DateTime.UtcNow, cancellationToken);
+        return new ClusterAccessGone(revoked, narrowed, handOvers);
     }
 
     [HttpPost("clusters/assign-user")]

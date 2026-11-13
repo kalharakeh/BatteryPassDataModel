@@ -254,6 +254,54 @@ public sealed class ExternalApiRepository
         return result.DeletedCount > 0;
     }
 
+    /// <summary>
+    /// A cluster is deleted (finding W8): its tokens stop at once. A token for this cluster alone is deleted (switching it
+    /// off would let it come back if the ID is used again); one that has other clusters too only loses this one. A token for
+    /// all batteries has no cluster list and is left. Returns how many of each.
+    /// </summary>
+    public async Task<(int Revoked, int Narrowed)> RevokeClusterAsync(string clusterId, string actor, CancellationToken cancellationToken = default)
+    {
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(clusterId))
+        {
+            return (0, 0);
+        }
+
+        var key = ClusterRepository.NormalizeClusterId(clusterId);
+        var tokens = _mongoContext.Database.GetCollection<BsonDocument>("apiTokens");
+        var revoked = 0;
+        var narrowed = 0;
+        foreach (var token in await tokens.Find(Builders<BsonDocument>.Filter.Empty).ToListAsync(cancellationToken))
+        {
+            if (token.GetValue("globalAccess", false).ToBoolean()
+                || token.GetValue("clusterIds", new BsonArray()) is not BsonArray listed
+                || !listed.Any(entry => string.Equals(ClusterRepository.NormalizeClusterId(entry.ToString() ?? string.Empty), key, StringComparison.Ordinal)))
+            {
+                continue;
+            }
+
+            var remaining = listed
+                .Select(entry => entry.ToString() ?? string.Empty)
+                .Where(entry => !string.IsNullOrWhiteSpace(entry) && !string.Equals(ClusterRepository.NormalizeClusterId(entry), key, StringComparison.Ordinal))
+                .ToList();
+            if (remaining.Count == 0)
+            {
+                revoked += (await tokens.DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("_id", token["_id"]), cancellationToken)).DeletedCount > 0 ? 1 : 0;
+                continue;
+            }
+
+            await tokens.UpdateOneAsync(
+                Builders<BsonDocument>.Filter.Eq("_id", token["_id"]),
+                Builders<BsonDocument>.Update
+                    .Set("clusterIds", new BsonArray(remaining))
+                    .Set("updatedBy", actor)
+                    .Set("updatedAt", DateTime.UtcNow.ToString("O")),
+                cancellationToken: cancellationToken);
+            narrowed++;
+        }
+
+        return (revoked, narrowed);
+    }
+
     public async Task<long> DeleteTokensAsync(IEnumerable<string> tokenIds, CancellationToken cancellationToken = default)
     {
         if (_mongoContext.Database == null)

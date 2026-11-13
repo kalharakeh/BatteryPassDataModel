@@ -737,6 +737,36 @@ public sealed class DppStore
         return await Collection<HandOver>().Find(handOver => handOver.PackId == packId && handOver.State == HandOverStates.Waiting).FirstOrDefaultAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Cancels every hand-over still waiting for this cluster or from it (finding W8: the cluster is deleted); returns how
+    /// many. The ID is matched whatever its capitals.
+    /// </summary>
+    public async Task<int> CancelWaitingHandOversOfClusterAsync(string clusterId, string by, DateTime atUtc, CancellationToken cancellationToken = default)
+    {
+        if (_database is null || string.IsNullOrWhiteSpace(clusterId))
+        {
+            return 0;
+        }
+
+        var key = ClusterRepository.NormalizeClusterId(clusterId);
+        var waiting = await Collection<HandOver>()
+            .Find(
+                Builders<HandOver>.Filter.Eq(handOver => handOver.State, HandOverStates.Waiting)
+                & (Builders<HandOver>.Filter.Eq(handOver => handOver.ToClusterId, key) | Builders<HandOver>.Filter.Eq(handOver => handOver.FromClusterId, key)),
+                new FindOptions { Collation = ClusterRepository.IgnoreCase })
+            .ToListAsync(cancellationToken);
+        var cancelled = 0;
+        foreach (var handOver in waiting)
+        {
+            if (await SetHandOverStateAsync(handOver.Id, HandOverStates.Cancelled, by, atUtc, cancellationToken))
+            {
+                cancelled++;
+            }
+        }
+
+        return cancelled;
+    }
+
     /// <summary>The hand-overs waiting for an answer from these receiving clusters, oldest first.</summary>
     public async Task<IReadOnlyList<HandOver>> ListWaitingHandOversToAsync(IEnumerable<string> clusterIds, CancellationToken cancellationToken = default)
     {

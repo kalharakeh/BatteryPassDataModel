@@ -224,7 +224,7 @@
                                 <form method="post" action="/admin/clusters/delete">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
-                                    <button type="submit" class="bp-danger-button bp-button-compact" data-confirm-action data-confirm-title="Delete cluster" data-confirm-message="Delete @cluster.Name? This only works when no batteries or users belong to it." data-confirm-submit="Delete">Delete cluster</button>
+                                    <button type="submit" class="bp-danger-button bp-button-compact" data-confirm-action data-confirm-title="Delete cluster" data-confirm-message="Delete @cluster.Name? This only works when no batteries or users belong to it. Its API tokens stop working at once and the hand-overs waiting for it or from it are cancelled." data-confirm-submit="Delete">Delete cluster</button>
                                 </form>
                                 <button type="button" class="bp-quiet-button" data-open-dialog="@forceDialogId">Force delete…</button>
                             </div>
@@ -237,7 +237,7 @@
                         <input type="hidden" name="clusterId" value="@cluster.ClusterId" />
                         <div>
                             <h2 id="@(forceDialogId)-title">Force delete @cluster.Name?</h2>
-                            <p class="bp-help-text mb-0">This removes the cluster from its batteries and memberships. It can't be undone.</p>
+                            <p class="bp-help-text mb-0">This removes the cluster from its batteries and memberships. Its API tokens stop working at once and the hand-overs waiting for it or from it are cancelled. It can't be undone.</p>
                         </div>
                         <label>
                             <span>Type <em>I understand this deletes linked cluster data</em></span>
