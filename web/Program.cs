@@ -265,6 +265,9 @@ builder.Services.AddSingleton<BatteryPassWeb.Dpp.Demo.DemoDataService>();
 var app = builder.Build();
 var batteryPassOptions = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<BatteryPassOptions>>().Value;
 
+// The security headers go on every response, so they come first (finding R24).
+app.UseSecurityHeaders();
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/error");
