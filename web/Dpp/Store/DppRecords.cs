@@ -66,6 +66,13 @@ public sealed class BatteryModel : IDppRecord
 
     /// <summary>Is its cadmium or lead above the limit for the symbols? (R01, decides #24.) Null: not answered yet. App data.</summary>
     public bool? CadmiumOrLeadAboveLimit { get; set; }
+
+    /// <summary>
+    /// The form its batteries' serial numbers have (decision 81): letters, digits and dashes as they must appear and # for
+    /// a digit, such as "VPC8C05s-#####" (<see cref="Identifiers.SerialFormats"/>). Null: any serial number, as every model
+    /// before decision 81. App data, not passport data, not published.
+    /// </summary>
+    public string? SerialFormat { get; set; }
 }
 
 /// <summary>Manufacturer identifier and information, and the manufacturing place (#12, #15, #16).</summary>

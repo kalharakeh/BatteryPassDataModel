@@ -606,6 +606,16 @@ public sealed class DppStore
         return result.MatchedCount == 1;
     }
 
+    /// <summary>Sets or clears a model's serial number format (decision 81). False when the model doesn't exist.</summary>
+    public async Task<bool> SetModelSerialFormatAsync(string modelId, string? format, CancellationToken cancellationToken = default)
+    {
+        var result = await Collection<BatteryModel>().UpdateOneAsync(
+            model => model.Id == modelId,
+            Builders<BatteryModel>.Update.Set(model => model.SerialFormat, format),
+            cancellationToken: cancellationToken);
+        return result.MatchedCount == 1;
+    }
+
     /// <summary>Sets a model's answers to its three questions (R01); null clears one. False when the model doesn't exist.</summary>
     public async Task<bool> SetModelAnswersAsync(string modelId, bool? commercialWarranty, bool? cyclingUse, bool? cadmiumOrLeadAboveLimit, CancellationToken cancellationToken = default)
     {

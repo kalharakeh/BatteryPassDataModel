@@ -76,6 +76,9 @@ public sealed partial class BatteryIdPool(
 
     public const int MaxReason = 200;
 
+    /// <summary>How many serial numbers that don't fit a model's format a refused release names; the rest are counted (decision 81).</summary>
+    public const int MisfitsNamed = 5;
+
     /// <summary>Why a release was refused when another took some of its serial numbers at the same moment.</summary>
     public const string RaceLost = "another release took some of these serial numbers at the same moment; nothing was released, try again";
 
@@ -101,11 +104,15 @@ public sealed partial class BatteryIdPool(
             return Refused(IdentifierForms.SettingsMissing(missing));
         }
 
-        if (request.ModelId is { Length: > 0 } modelId && await store.GetAsync<BatteryModel>(modelId, cancellationToken) is null)
+        BatteryModel? forModel = null;
+        if (request.ModelId is { Length: > 0 } modelId && (forModel = await store.GetAsync<BatteryModel>(modelId, cancellationToken)) is null)
         {
             return Refused("that model doesn't exist");
         }
 
+        // Released for a model, every serial number fits the model's format (decision 81); test IDs are free of it.
+        var format = request.IsDemo ? null : forModel?.SerialFormat;
+        var misfits = 0;
         var problems = new List<IdProblem>();
         var serials = new List<string>();
         foreach (var range in request.Ranges.Where(range => !range.IsEmpty))
@@ -132,6 +139,16 @@ public sealed partial class BatteryIdPool(
             if (!IdentifierForms.IsSerial(serial)) // whatever the ID scheme (6d-5)
             {
                 problems.Add(new IdProblem(serial, IdentifierForms.SerialRule));
+                continue;
+            }
+
+            if (!SerialFormats.Fits(format, serial))
+            {
+                if (++misfits <= MisfitsNamed) // the first ones by name, the rest counted below
+                {
+                    problems.Add(new IdProblem(serial, $"it doesn't fit the serial number format of model {forModel!.Name}, {format}"));
+                }
+
                 continue;
             }
 
@@ -181,9 +198,16 @@ public sealed partial class BatteryIdPool(
             }
         }
 
+        var uncounted = Math.Max(0, misfits - MisfitsNamed);
+        if (uncounted > 0)
+        {
+            problems.Add(new IdProblem(Words(uncounted, "more serial number", "more serial numbers"), $"{(uncounted == 1 ? "it doesn't" : "they don't")} fit the format {format} either"));
+        }
+
         if (problems.Count > 0)
         {
-            return new ReleaseResult(0, null, problems, $"{Words(problems.Count, "serial number or range", "serial numbers or ranges")} can't be released");
+            var refused = problems.Count + uncounted - (uncounted > 0 ? 1 : 0); // the "more" line stands for those it counts
+            return new ReleaseResult(0, null, problems, $"{Words(refused, "serial number or range", "serial numbers or ranges")} can't be released");
         }
 
         var releaseId = $"release-{Guid.NewGuid():N}";
@@ -388,6 +412,16 @@ public sealed partial class BatteryIdPool(
         }
 
         var model = (await store.GetAsync<ProductionBatch>(pack.BatchId, cancellationToken))?.ModelId;
+
+        // The new serial number fits the format of the battery's model (decision 81), asked before anything is taken;
+        // test IDs are free of it.
+        if (model is not null && await GetAsync(serialNumber, cancellationToken) is { IsDemo: false } real
+            && await store.GetAsync<BatteryModel>(model, cancellationToken) is { SerialFormat: { Length: > 0 } format } ofModel
+            && !SerialFormats.Fits(format, real.SerialNumber))
+        {
+            return SerialFormats.Misfit(real.SerialNumber, ofModel.Name, format);
+        }
+
         if (await PickAsync(serialNumber, packId, model, cancellationToken) is not { } picked)
         {
             return "that battery ID isn't available for this battery's model any more; pick another";

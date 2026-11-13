@@ -42,15 +42,22 @@ internal static class SmallLetterSerialTesting
         var rig = await DemoRig.StartAsync(mongo, dunsIds: true);
         await rig.Demo.SeedAsync(Who);
         var c7 = (await rig.Store.FindPacksBySerialNumberAsync("DEMO-C7M-0001")).Single();
-        var batch = (await rig.Store.GetAsync<ProductionBatch>(c7.BatchId))!;
-        foreach (var (collection, id) in new[] { (DppStore.Batches, batch.Id), (DppStore.Models, batch.ModelId), (DppStore.Operators, c7.OperatorId) })
+        await MakeRealAsync(rig, c7);
+        return (rig, rig.Services.GetRequiredService<BatteryIdPool>(), c7);
+    }
+
+    /// <summary>Makes a demo battery's batch, model and operator real product data, so that real IDs may be used on them; the model's ID.</summary>
+    public static async Task<string> MakeRealAsync(DemoRig rig, BatteryPack pack)
+    {
+        var batch = (await rig.Store.GetAsync<ProductionBatch>(pack.BatchId))!;
+        foreach (var (collection, id) in new[] { (DppStore.Batches, batch.Id), (DppStore.Models, batch.ModelId), (DppStore.Operators, pack.OperatorId) })
         {
             await rig.Database.GetCollection<BsonDocument>(collection).UpdateOneAsync(
                 Builders<BsonDocument>.Filter.Eq("_id", id),
                 Builders<BsonDocument>.Update.Set("IsDemo", false));
         }
 
-        return (rig, rig.Services.GetRequiredService<BatteryIdPool>(), c7);
+        return batch.ModelId;
     }
 
     public static ReleaseRequest List(string reference, params string[] serials) => new(reference, null, [], string.Join('\n', serials));
