@@ -56,6 +56,8 @@ Demo accounts work only on demo batteries and demo clusters: on a battery that i
 | DEMO-CORE-0002 | Core, Core | demo-fleet | Draft, 1 value missing | "Not ready to publish yet" and what the passport still needs |
 | DEMO-CORE-0003 | Core, Core | demo-fleet | Waste, marked for deletion | The marked-for-deletion notice |
 
+The demo models are answered (cycling use and cadmium or lead: yes for all three; the commercial warranty: yes for Compact 7M, no for Compact 13M and Core), so DEMO-C13M-0002 and DEMO-CORE-0002 each miss only #17. The three demo clusters carry the team's written authorisation, ticked by the reset ("demo-data"); if the team takes one away, the reset keeps it away. The notified body's account sees the shared values (materials, dismantling manuals, part numbers, spare parts, safety measures) as well as the authorities' values.
+
 Drafts are seen by the team only. The batteries come from the "Demo" release on the Battery IDs tab, which also holds four spare IDs, DEMO-SPARE-0001 to DEMO-SPARE-0004. With the three ID settings their IDs are marked TEST after the DUNS (`UN778474481-TEST-DEMO-C7M-0001`); without them they start with `urn:x-battery-pass:TEST-`. The pages show a "Test passport" tag either way.
 
 ## Sample files
