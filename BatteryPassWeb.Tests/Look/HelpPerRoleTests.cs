@@ -43,7 +43,7 @@ public sealed class HelpPerRoleTests
     [Fact]
     public void TheOtherRoles_ShouldBeToldExactlyWhatTheyAdd()
     {
-        Assert.Contains("Sees: \"the authorities' values: the economic operator's and manufacturer's IDs, the service provider and the test reports\"", Guide, StringComparison.Ordinal);
+        Assert.Contains("Sees: \"the shared values (materials, dismantling manuals, part numbers, spare parts, safety measures) and the authorities' values: the economic operator's and manufacturer's IDs, the service provider and the test reports; not the purchaser's values\"", Guide, StringComparison.Ordinal);
         Assert.Contains("and the authorities' values; not the purchaser's values\"", Guide, StringComparison.Ordinal);
         Assert.Contains("Sees: \"the materials, the dismantling manuals, the part numbers, the spare parts sources and the safety measures\"", Guide, StringComparison.Ordinal);
         Assert.Contains("Sees: \"the materials, the dismantling manuals and the safety measures\"", Guide, StringComparison.Ordinal);

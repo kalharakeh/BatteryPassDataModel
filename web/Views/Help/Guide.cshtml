@@ -11,7 +11,7 @@
     var isMsa = User.IsInRole(AccessControlService.RoleMarketSurveillanceAuthority);
     var authorityOrInterest = new[]
     {
-        (Role: AccessControlService.RoleNotifiedBody, Who: "Notified body", Sees: "the authorities' values: the economic operator's and manufacturer's IDs, the service provider and the test reports"),
+        (Role: AccessControlService.RoleNotifiedBody, Who: "Notified body", Sees: "the shared values (materials, dismantling manuals, part numbers, spare parts, safety measures) and the authorities' values: the economic operator's and manufacturer's IDs, the service provider and the test reports; not the purchaser's values"),
         (Role: AccessControlService.RoleCommission, Who: "Commission", Sees: "the shared values (materials, dismantling manuals, part numbers, spare parts, safety measures) and the authorities' values; not the purchaser's values"),
         (Role: AccessControlService.RoleLiRepair, Who: "Repair, repurposing and remanufacturing", Sees: "the materials, the dismantling manuals, the part numbers, the spare parts sources and the safety measures"),
         (Role: AccessControlService.RoleLiRecycling, Who: "Recycling and battery treatment", Sees: "the materials, the dismantling manuals and the safety measures"),
@@ -40,12 +40,15 @@
                     <dd>The public page: the public values, the document links and the family's picture.</dd>
                     <dt>The battery's cluster, market surveillance</dt>
                     <dd>Also the purchaser values, such as state of charge, temperature, battery status and accident reports.</dd>
-                    <dt>Repair, recycling, treatment, Commission</dt>
+                    <dt>Repair, recycling, treatment, notified bodies, Commission</dt>
                     <dd>Also the shared values meant for them.</dd>
                     <dt>Notified bodies, market surveillance, Commission</dt>
                     <dd>Also the authorities' values, such as test reports.</dd>
                 </dl>
-                <p class="mt-3 mb-0">Signed in, the passport's detail page shows one section per group you belong to. Each value says when it was measured or entered, and how.</p>
+                <p class="mt-3">Signed in, the passport's detail page shows one section per group you belong to. Each value says when it was measured or entered, and how.</p>
+                <p><strong>Verified.</strong> Each passport is signed when it is published. "Verified" means two things: the data still matches what was signed, and the signature was made with a key this site knows. "Not verified" says why: <em>the data doesn't match its signature</em>, or <em>it was signed with a key this site doesn't know</em>. Less often the passport has no signature ("Not signed") or its signature can't be read.</p>
+                <p><strong>The public part as data.</strong> Anyone can read a published passport's public part as data, without an account: ask its public address for JSON (<code>Accept: application/json</code>), or add <code>.json</code> to the address. It holds what the public page shows, with the site's signature over it, which an outsider can check against the site's key at <code>/.well-known/did.json</code>. The <a href="/help/api">API reference</a> says how to check it.</p>
+                <p class="mb-0"><strong>A removed passport.</strong> When the team removes the passport of a recycled or exported battery, every address of it says "This battery's passport no longer exists. It was removed after the battery was recycled or exported."</p>
             </section>
 
             <section class="bp-card bp-help-part" id="statuses">
@@ -132,13 +135,14 @@
                 <section class="bp-card bp-help-part" id="look-after">
                     <h2>Look after a battery <span class="bp-soft-tag">Cluster admins</span></h2>
                     <p>In the <a href="/registry">Registry</a>, a battery's icon opens its page; its side menu has one section at a time.</p>
+                    <p>Your cluster changes passport data (status, live values, accident reports, hand-overs, uploads) once the Scania team has recorded its written authorisation. Until then you can read everything, and the battery page says so. Declining or cancelling a hand-over works without it; accepting needs both clusters' authorisation.</p>
                     <dl class="bp-word-list">
                         <dt>Live values</dt>
-                        <dd>Correct the state of charge, cycles, temperature and the extreme-temperature times. The battery system usually sends them.</dd>
+                        <dd>Correct the state of charge, cycles, temperature and the extreme-temperature times. The battery system usually sends them. When saved changes can't be published yet, the battery's overview says "Saved changes are waiting: the public passport still shows version N" and lists what is missing; once it is added, the passport gets its new version.</dd>
                         <dt>Accident reports</dt>
                         <dd>"Add a report" uploads one; the passport's accident page lists them for its readers. A report added by mistake is withdrawn by the team.</dd>
                         <dt>Change status</dt>
-                        <dd>"What happened?": Repaired, Prepared for re-use and placed on the market again, Remanufactured, Repurposed or Waste. The window asks for the re-stated fades and lifetime, filled in with the current ones. A repair keeps the passport and adds to its repair history. The three that place the battery on the market again lead to a new linked passport, from Scania or another operator. Waste asks a second question ("Is it waste?" with "Yes, it is waste" or "No, go back") before it is saved, and it is final for you: only the team can undo it.</dd>
+                        <dd>"What happened?": Repaired, Prepared for re-use and placed on the market again, Remanufactured, Repurposed or Waste. The window asks for the re-stated fades and lifetime, filled in with the current ones. A repair keeps the passport and adds to its repair history. The three that place the battery on the market again lead to a new linked passport, from Scania or another operator. Waste asks a second question ("Is it waste?" with "Yes, it is waste" or "No, go back") before it is saved, and it is final for you: only the team can undo it. A status change makes a new version, so when the passport can't get one yet (a value it needs is missing, or its model's three questions aren't answered), the Status section says "No status change can be made now", names what is missing and who adds it, and doesn't offer "Change status". Notes, live values, accident reports and hand-overs are not affected.</dd>
                         <dt>Add a note</dt>
                         <dd>A correction to the repair history; nothing in the history is changed or removed.</dd>
                         <dt>Hand over…</dt>
@@ -172,11 +176,11 @@
                 <section class="bp-card bp-help-part" id="workflow">
                     <h2>From product data to a published passport <span class="bp-soft-tag">Team</span></h2>
                     <ol class="bp-steps">
-                        <li><strong><a href="/admin/families">Set up product data</a></strong><p>Families, models and batches, and <a href="/admin/sites-and-operators">sites and operators</a>. Most values are entered once and shared by every battery made from them; the V3 attribute list decides which are required, and by when. To start from the demo data, "Copy as real product data" on a demo family's page makes a real copy of its models, batches and documents (and of the sites they use); "Copy as real" does the same for a demo site or operator. The demo data stays as it is. The copy keeps the demo's example values and files until you replace them; the pages list them, and a battery with a real ID isn't published for the first time while its passport holds one (a test ID is).</p></li>
+                        <li><strong><a href="/admin/families">Set up product data</a></strong><p>Families, models and batches, and <a href="/admin/sites-and-operators">sites and operators</a>. Most values are entered once and shared by every battery made from them; the V3 attribute list decides which are required, and by when. Each model also answers three questions on its page: does this battery come with a commercial warranty, is it made for cycling use, and is its cadmium or lead above the limit for the symbols. A "yes" makes the matching values needed before publishing; the answers are not shown in the passport. Until all three are answered ("Not answered yet"), the model's batteries can't be published and its published batteries get no new version. Saving a "yes" that a published battery lacks the values for asks first. To start from the demo data, "Copy as real product data" on a demo family's page makes a real copy of its models, batches and documents (and of the sites they use); "Copy as real" does the same for a demo site or operator. The demo data stays as it is. A copy keeps the model's three answers. The copy keeps the demo's example values and files until you replace them; the pages list them, and a battery with a real ID isn't published for the first time while its passport holds one (a test ID is).</p></li>
                         <li><strong><a href="/admin/battery-ids">Release battery IDs</a></strong><p>Reserve the serial numbers before the batteries are made, so their labels can be printed. Each gets its battery ID at once, fixed for life.</p></li>
-                        <li><strong><a href="/admin/batteries/new">Create the battery</a></strong><p>Choose its batch, economic operator and cluster, and pick its serial number from the released IDs; then its manufacturing date and warranty. A real battery ID can't be used with demo product data (batch, model or operator): use a test ID, or make real product data with "Copy as real product data". It starts as a draft only the team sees, with its battery ID and QR code.</p></li>
-                        <li><strong><a href="/admin/batteries">Fill in what is missing</a></strong><p>Every field says whether it is required by Feb 2027, required later or conditional. Only "required by Feb 2027" blocks publishing, the first state of charge and temperature included.</p></li>
-                        <li><strong>Publish</strong><p>On the battery page, one step checks the passport against the official schema, signs it and publishes it. Later changes ask first, then publish a new version; live values and accident reports change it in place.</p></li>
+                        <li><strong><a href="/admin/batteries/new">Create the battery</a></strong><p>Choose its batch, economic operator and cluster, and pick its serial number from the released IDs; then its manufacturing date and warranty (a whole number of years, 1 to 100, or of months, 1 to 1200). It can take the battery system's export too: its state of charge and cycles become the first values, and the module list is set. The export has no temperature yet, so type it on the battery's page ("#87 Temperature information"); the export's production date counts only when it can be true. A real battery ID can't be used with demo product data (batch, model or operator): use a test ID, or make real product data with "Copy as real product data". It starts as a draft only the team sees, with its battery ID and QR code.</p></li>
+                        <li><strong><a href="/admin/batteries">Fill in what is missing</a></strong><p>Every field says whether it is required by Feb 2027, required later or conditional. A conditional field says whether this model needs it, from the model's three questions. Required values block publishing, the first state of charge and temperature included, and so does a model whose questions aren't answered. The rated capacity (#57) is needed before publishing too, although the official list says "not by February 2027".</p></li>
+                        <li><strong>Publish</strong><p>On the battery page, one step checks the passport against the official schema, signs it and publishes it. Later changes ask first, then publish a new version, and the message says which passports got one and which kept their version and why; live values and accident reports change it in place.</p></li>
                     </ol>
                     <p class="mt-3 mb-0">Other systems get <a href="/admin/clusters?tab=api-token-management">API tokens</a>: a cluster token reads that cluster's batteries and, with "Read + write", sends their live values; only a token for all batteries creates and publishes them.</p>
                 </section>
@@ -211,12 +215,22 @@
                     <dl class="bp-word-list">
                         <dt>Everything a cluster admin does</dt>
                         <dd>Live values, accident reports, status changes, notes and uploads, on any battery. Only the team gets "Correct the values" in the status window: the status stays, and a new version is published. Only the team gets "Undo the waste" there: give a reason, and the battery goes back to the status it had before.</dd>
+                        <dt>Saved changes are waiting</dt>
+                        <dd>A published battery whose saved data differs from its public passport, because a missing value or an unanswered model question holds back the new version. The battery's overview says so and lists what is missing; the battery list names these batteries. Once nothing is in the way, "Publish the waiting changes" on the battery's page publishes it (most ways of saving do it by themselves).</dd>
+                        <dt>Check all passports now</dt>
+                        <dd>On the battery list (team only). The app also does this shortly after it starts and every hour: it compares every published battery's saved data with its public passport, puts the waiting marks right and archives all but the newest active version. It never publishes anything itself. The line it gives says how many batteries it checked and what it put right.</dd>
                         <dt>Withdraw…</dt>
                         <dd>On the Accident reports section, beside a report added by mistake (team only): give a reason and confirm. The report disappears from the accident page and its file is deleted. The audit log keeps who, when, why and the file's name; the cluster's history shows one line.</dd>
                         <dt>A new passport</dt>
                         <dd>After "placed on the market again", "Remanufactured" or "Repurposed", the battery page asks who places it on the market. Scania's new passport starts from the old battery as a draft; publishing it makes the old one inactive. Another operator's passport is linked by its ID or web address. Until then, the team can cancel the new passport.</dd>
                         <dt>More: Mark as invalid or for deletion…</dt>
                         <dd>Invalid, with a reason, for an active passport; for deletion, for a waste battery after recycling. The header then shows the reason and the one Undo.</dd>
+                        <dt>Remove the passport…</dt>
+                        <dd>On the marked-for-deletion line, next to Undo: once the battery is recycled or exported, the team can remove the passport, with its earlier passports. Everything the app holds about it is deleted, except a marker for its IDs and one audit entry, and its addresses then say "This battery's passport no longer exists. It was removed after the battery was recycled or exported." The window lists the earlier passports that go with it and asks for the battery's ID; it can't be undone, and the IDs are never used again. If a removal is interrupted, the battery's page offers "Finish removing"; the hourly check finishes it too. Undo isn't offered once a removal has started.</dd>
+                        <dt>EU registry</dt>
+                        <dd>A published real battery's page has an "EU registry" section. Once you have registered the battery in the EU's DPP Registry, record the day and the registration ID there; it is not part of the passport. The battery list says how many published batteries aren't recorded yet and gives them as a CSV to type into the Registry. Only your team sees this.</dd>
+                        <dt><a href="/admin/clusters?tab=clusters">Written authorisation</a></dt>
+                        <dd>Open a cluster on the Clusters tab to record its written authorisation to update passport data, with the date it was given, or to take it away. New clusters start without it, and so does every cluster from before this was added. Without it the cluster's admins and tokens read but change nothing (a token gets 403). A hand-over is accepted only when both clusters are authorised.</dd>
                         <dt>Cluster: Change</dt>
                         <dd>Moves a battery to another cluster at once, logged; or cancel a waiting hand-over.</dd>
                         <dt><a href="/admin/clusters?tab=clusters">Demo data</a></dt>
@@ -227,7 +241,7 @@
                 <section class="bp-card bp-help-part" id="ready">
                     <h2>Before you call a battery ready <span class="bp-soft-tag">Team</span></h2>
                     <ul class="mb-0">
-                        <li>The model, batch, site and operator are complete.</li>
+                        <li>The model, batch, site and operator are complete, and the model's three questions are answered.</li>
                         <li>The battery's own values and first live values are in.</li>
                         <li>Nothing blocks publication, and the battery says "Published" with the latest version.</li>
                         <li>The QR code opens the public page.</li>
