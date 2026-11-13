@@ -1,6 +1,6 @@
 @model BatteryPassWeb.Models.ViewModels.AdminClusterViewModel
 @{
-    ViewData["Title"] = "Cluster API tokens";
+    ViewData["Title"] = "API tokens";
     ViewData["ClusterAdminScope"] = Model.Clusters.Count == 1 ? Model.Clusters[0].Name : null;
     var activeTokenCount = Model.ApiTokens.Count(token => token.IsActive);
     string Count(int count, string one, string many) => $"{count} {(count == 1 ? one : many)}";

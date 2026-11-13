@@ -59,12 +59,12 @@ public sealed class MobileThemeSessionLayoutTests
         var localNavIndex = clusterTabs.IndexOf("<nav class=\"bp-local-admin-nav\"", StringComparison.Ordinal);
 
         Assert.Contains("bp-admin-mobile-tab-form", clusterTabs);
-        Assert.Contains("Cluster admin section", clusterTabs);
+        Assert.Contains("Admin section", clusterTabs); // one name (W03)
         Assert.Contains("data-admin-mobile-tab-select", clusterTabs);
         Assert.DoesNotContain("/cluster-admin/passports", clusterTabs);
         Assert.Contains("value=\"/cluster-admin/users\"", clusterTabs);
         Assert.Contains("value=\"/cluster-admin/api-tokens\"", clusterTabs);
-        Assert.Contains("aria-label=\"Local admin tabs\"", clusterTabs);
+        Assert.Contains("aria-label=\"Admin tabs\"", clusterTabs);
         Assert.Contains("bp-tab-row", clusterTabs);
         Assert.Contains(">API tokens</a>", clusterTabs);
         Assert.True(mobileFormIndex >= 0);

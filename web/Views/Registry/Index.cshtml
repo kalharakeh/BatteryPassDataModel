@@ -9,6 +9,8 @@
         <div>
             <h1>Registry</h1>
             <p class="text-secondary mb-0">@Model.Scope</p>
+            @* A customer's admin's own ID, which a hand-over to them asks for (finding U30). *@
+            @await Html.PartialAsync("_CustomerId", Model.ManagedClusterIds.Order(StringComparer.OrdinalIgnoreCase).ToArray())
         </div>
     </header>
 

@@ -1,6 +1,6 @@
 @model BatteryPassWeb.Models.ViewModels.AdminClusterViewModel
 @{
-    ViewData["Title"] = "Cluster users";
+    ViewData["Title"] = "Users";
     ViewData["ClusterAdminScope"] = Model.Clusters.Count == 1 ? Model.Clusters[0].Name : null;
     var errorMessage = ViewData["ErrorMessage"] as string ?? string.Empty;
     var statusMessage = ViewData["StatusMessage"] as string ?? string.Empty;

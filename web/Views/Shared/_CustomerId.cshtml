@@ -1,0 +1,12 @@
+@model IReadOnlyCollection<string>
+@* A customer admin's own customer ID (finding U30): a hand-over asks the receiving customer for it. *@
+@if (Model.Count > 0)
+{
+    <p class="bp-customer-id" data-customer-id>
+        @(Model.Count == 1 ? "Your customer ID:" : "Your customer IDs:")
+        @foreach (var id in Model)
+        {
+            <span class="bp-customer-id-value"><code>@id</code>@await Html.PartialAsync("_CopyIdButton", id)</span>
+        }
+    </p>
+}

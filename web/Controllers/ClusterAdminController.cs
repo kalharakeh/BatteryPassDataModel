@@ -36,8 +36,33 @@ public class ClusterAdminController : Controller
         _externalApiRepository = externalApiRepository;
     }
 
+    /// <summary>The area opens on its batteries (finding U14).</summary>
     [HttpGet("")]
-    public IActionResult Index() => Redirect("/cluster-admin/users");
+    public IActionResult Index() => Redirect("/cluster-admin/batteries");
+
+    /// <summary>
+    /// The area's Batteries tab (finding U14): the published batteries of the customers this admin runs, as their Registry
+    /// lists them, inside the area's tabs. The team sees every published battery, as on its Registry.
+    /// </summary>
+    [HttpGet("batteries")]
+    public async Task<IActionResult> Batteries([FromQuery] string? q, [FromServices] BatteryPassWeb.Dpp.Access.DppReaders readers, [FromServices] BatteryPassWeb.Dpp.Pages.BatteryPages batteries, CancellationToken cancellationToken)
+    {
+        var reader = await readers.ForAsync(User, cancellationToken);
+        var editor = await readers.EditorForAsync(User, cancellationToken);
+        var managed = await ManagedClusterIdsAsync(cancellationToken);
+        var list = await batteries.ListOnePerBatteryAsync(
+            q,
+            row => BatteryPassWeb.Dpp.Pages.RegistryList.MayList(reader, row) && (AccessControlService.IsAdmin(User) || (row.ClusterId is { } cluster && managed.Contains(cluster))),
+            BatteryPassWeb.Dpp.Pages.RegistryList.ShowsClusters(reader),
+            cancellationToken);
+        var clusters = await _clusterRepository.ListClustersAsync(cancellationToken);
+        var names = clusters
+            .Where(cluster => managed.Contains(BsonHelpers.GetString(cluster, "clusterId")))
+            .Select(cluster => BsonHelpers.GetString(cluster, "name"))
+            .ToArray();
+        ViewData["ClusterAdminScope"] = names.Length == 1 ? names[0] : null;
+        return View(BatteryPassWeb.Dpp.Pages.RegistryList.Build(reader, list, editor));
+    }
 
     /// <summary>The old "Managed passports" address leads to the Registry, which replaces it (decision 30).</summary>
     [HttpGet("passports")]

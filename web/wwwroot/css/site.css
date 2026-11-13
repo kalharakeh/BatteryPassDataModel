@@ -682,6 +682,27 @@ a:hover {
   }
 }
 
+/* A customer admin's own customer ID with its copy button (finding U30). */
+.bp-customer-id {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin: 8px 0 0;
+  font-size: 14px;
+}
+
+.bp-customer-id-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.bp-customer-id code {
+  font-size: 14px;
+  font-weight: 600;
+}
+
 .bp-main {
   flex: 1;
   width: 100%;

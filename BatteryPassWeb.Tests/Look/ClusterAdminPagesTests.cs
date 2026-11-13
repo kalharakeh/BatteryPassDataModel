@@ -16,8 +16,8 @@ public sealed class ClusterAdminPagesTests
     [Fact]
     public void Heading_ShouldNameTheClustersAndTheTabs()
     {
-        Assert.Contains("<h1>Cluster admin</h1>", Tabs, StringComparison.Ordinal);
-        Assert.Contains("<p>Batteries, users and API tokens for @(string.IsNullOrWhiteSpace(scope) ? \"the clusters you run\" : scope).</p>", Tabs, StringComparison.Ordinal); // a Batteries tab since R6
+        Assert.Contains("<h1>Admin</h1>", Tabs, StringComparison.Ordinal); // one name (W03), "customer" for customers (W07)
+        Assert.Contains("<p>Batteries, users and API tokens for @(string.IsNullOrWhiteSpace(scope) ? \"the customers you run\" : scope).</p>", Tabs, StringComparison.Ordinal); // a Batteries tab since R6
         Assert.Contains("href=\"/cluster-admin/users\">Users</a>", Tabs, StringComparison.Ordinal);
         Assert.Contains("href=\"/cluster-admin/api-tokens\">API tokens</a>", Tabs, StringComparison.Ordinal);
         foreach (var page in new[] { Users, Tokens })
