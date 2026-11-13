@@ -85,9 +85,12 @@ public sealed class FirstTeamAccount(MongoContext mongoContext, ApplicationAudit
             return new(FirstTeamAccountOutcome.TeamAccountExists, email);
         }
 
-        if (await ClusterRepository.FindUserAsync(database, email, cancellationToken) is not null)
+        if (await ClusterRepository.FindUserAsync(database, email, cancellationToken) is { } existing)
         {
-            return new(FirstTeamAccountOutcome.AddressInUse, email);
+            // An instance that started a moment earlier may have made the team account since the look above.
+            var onTheTeam = existing.TryGetValue("roles", out var roles) && roles is BsonArray list
+                && list.Any(role => string.Equals(role.ToString(), AccessControlService.RoleAdmin, StringComparison.OrdinalIgnoreCase));
+            return new(onTheTeam ? FirstTeamAccountOutcome.TeamAccountExists : FirstTeamAccountOutcome.AddressInUse, email);
         }
 
         var now = DateTime.UtcNow.ToString("O");
