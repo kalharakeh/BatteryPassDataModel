@@ -22,10 +22,10 @@ public sealed record Reader(IReadOnlySet<ReaderRole> Roles, IReadOnlySet<string>
     /// <summary>A demo account or demo token: its roles count only on demo batteries (finding R03, <see cref="DemoScope"/>).</summary>
     public bool DemoOnly { get; init; }
 
-    public static Reader Anonymous { get; } = new(new HashSet<ReaderRole>(), new HashSet<string>(StringComparer.Ordinal), "anonymous");
+    public static Reader Anonymous { get; } = new(new HashSet<ReaderRole>(), new HashSet<string>(StringComparer.OrdinalIgnoreCase), "anonymous");
 
     public static Reader With(string who, ReaderRole role, params string[] clusterIds) =>
-        new(new HashSet<ReaderRole> { role }, clusterIds.ToHashSet(StringComparer.Ordinal), who);
+        new(new HashSet<ReaderRole> { role }, clusterIds.ToHashSet(StringComparer.OrdinalIgnoreCase), who);
 }
 
 /// <summary>Who may see an attribute (design 5.1 and 5.2): the one rule behind pages, the API, exports and documents.</summary>

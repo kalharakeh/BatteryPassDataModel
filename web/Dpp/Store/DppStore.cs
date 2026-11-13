@@ -351,7 +351,7 @@ public sealed class DppStore
     {
         var result = await Collection<BatteryPack>().UpdateOneAsync(
             pack => pack.Id == packId,
-            Builders<BatteryPack>.Update.Set(pack => pack.ClusterId, clusterId),
+            Builders<BatteryPack>.Update.Set(pack => pack.ClusterId, string.IsNullOrWhiteSpace(clusterId) ? null : ClusterRepository.NormalizeClusterId(clusterId)), // finding W13
             cancellationToken: cancellationToken);
         return result.MatchedCount == 1;
     }
@@ -602,7 +602,11 @@ public sealed class DppStore
             return 0;
         }
 
-        return await Collection<BatteryPack>().CountDocumentsAsync(pack => pack.ClusterId == clusterId, cancellationToken: cancellationToken);
+        // Whatever capitals an older version stored it with (finding W13).
+        return await Collection<BatteryPack>().CountDocumentsAsync(
+            Builders<BatteryPack>.Filter.Eq(pack => pack.ClusterId, ClusterRepository.NormalizeClusterId(clusterId)),
+            new CountOptions { Collation = ClusterRepository.IgnoreCase },
+            cancellationToken);
     }
 
     /// <summary>Takes every pack of this cluster out of it (they then have no cluster); returns how many.</summary>
@@ -614,9 +618,10 @@ public sealed class DppStore
         }
 
         var result = await Collection<BatteryPack>().UpdateManyAsync(
-            pack => pack.ClusterId == clusterId,
+            Builders<BatteryPack>.Filter.Eq(pack => pack.ClusterId, ClusterRepository.NormalizeClusterId(clusterId)),
             Builders<BatteryPack>.Update.Set(pack => pack.ClusterId, null),
-            cancellationToken: cancellationToken);
+            new UpdateOptions { Collation = ClusterRepository.IgnoreCase },
+            cancellationToken);
         return result.ModifiedCount;
     }
 

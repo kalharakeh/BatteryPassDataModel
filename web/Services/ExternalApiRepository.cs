@@ -136,7 +136,7 @@ public sealed class ExternalApiRepository
         var tokenId = string.IsNullOrWhiteSpace(fixedTokenId) ? Guid.NewGuid().ToString("N") : fixedTokenId.Trim();
         var normalizedClusters = clusterIds
             .Where(clusterId => !string.IsNullOrWhiteSpace(clusterId))
-            .Select(clusterId => clusterId.Trim())
+            .Select(ClusterRepository.NormalizeClusterId) // finding W13: written in one form
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -196,7 +196,7 @@ public sealed class ExternalApiRepository
         var normalizedToken = token.Trim();
         var normalizedClusters = clusterIds
             .Where(clusterId => !string.IsNullOrWhiteSpace(clusterId))
-            .Select(clusterId => clusterId.Trim())
+            .Select(ClusterRepository.NormalizeClusterId) // finding W13: written in one form
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
