@@ -52,6 +52,8 @@ DNS, HTTPS and the www redirect need no change.
 8. **Demo data on the live site** (the owner's choice):
    - The demo accounts sign in with `DEMO_USERS_PASSWORD`. On a public site, that must be a strong value of its own, never the PC's.
    - Leave it out to have no demo accounts.
+9. **A rehearsal first** (decision 79): a second Beanstalk environment with the same bundle and the same settings, on a copy of the database (`MONGODB_DB` set to the copy's name), under its own address. Run the checks of section 6 there, and scan a QR code with a phone. Its `APP_BASE_URL` and `DPP_ID_BASE_URL` are the rehearsal's own address, so nothing it signs is mistaken for the live site's. Delete the environment and the copy afterwards.
+10. **A back-up of `battery_pass_v3`** just before the switch (an Atlas snapshot or a `mongodump`): the earlier version can't open the database once the new one has written to it (decision 62).
 
 ## 3. The settings (environment properties)
 
@@ -113,7 +115,7 @@ Leave out the `DEMO_USERS_PASSWORD` line if no demo accounts are wanted.
 ## 5. The day (the owner, in a quiet hour)
 
 1. **Save the old configuration:** Beanstalk, `battery-pass-env`, Actions, Save configuration, name `old-app-final`.
-2. **The PC:** close the PC's app. From now on the live site writes to `battery_pass_v3`, and only one app should write there.
+2. **The PC:** close the PC's app. From now on the live site writes to `battery_pass_v3`, and only one app should write there. To keep trying things on the PC afterwards, give the launcher a database of its own (a copy of `battery_pass_v3` under another name, in `MONGODB_DB`); don't start the PC's app against `battery_pass_v3` again: it runs in development mode, with the demo data switched on.
 3. **The switch** (AWS CLI, signed in to the account that holds the environment):
 
    ```powershell
