@@ -790,6 +790,13 @@ public class AdminController : Controller
             .Where(value => !string.IsNullOrWhiteSpace(value))
             .ToList();
 
+        // A token for clusters reads, or also sends live values; signing is for all batteries (finding W9, decisions 29 and 33).
+        if (ClusterTokenRules.HasMoreThanAClusterToken(AccessModeValueOf(accessMode), globalAccess))
+        {
+            TempData["ErrorMessage"] = ClusterTokenRules.OnlyForAllBatteries;
+            return Redirect("/admin/clusters?tab=api-tokens");
+        }
+
         var actor = AccessControlService.CurrentEmail(User);
         var (tokenDocument, tokenValue) = await _externalApiRepository.CreateTokenAsync(
             name,
@@ -841,6 +848,65 @@ public class AdminController : Controller
             : $"Token {tokenId} was not found.";
         return Redirect("/admin/clusters?tab=api-token-management");
     }
+
+    /// <summary>
+    /// Finding W9: the team replaces a cluster token that has more access written on it than a cluster token may have: a new
+    /// token for the same clusters with what the old one could really do, and the old one switched off (not deleted).
+    /// </summary>
+    [HttpPost("api/tokens/replace")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReplaceApiToken(CancellationToken cancellationToken)
+    {
+        var tokenId = Text(Request.Form, "tokenId");
+        var old = await _externalApiRepository.GetTokenByIdAsync(tokenId, cancellationToken);
+        var accessMode = old is null ? string.Empty : BsonHelpers.GetString(old, "accessMode");
+        if (old is null || !ClusterTokenRules.HasMoreThanAClusterToken(accessMode, old.GetValue("globalAccess", false).ToBoolean()))
+        {
+            TempData["ErrorMessage"] = old is null ? $"Token {tokenId} was not found." : "This token has no more access than a cluster token may have.";
+            return Redirect("/admin/clusters?tab=api-tokens");
+        }
+
+        var actor = AccessControlService.CurrentEmail(User);
+        var who = string.IsNullOrWhiteSpace(actor) ? "admin" : actor;
+        var clusterIds = (old.GetValue("clusterIds", new BsonArray()) as BsonArray ?? new BsonArray()).Select(id => id.ToString() ?? string.Empty).ToList();
+        var mode = ClusterTokenRules.ReplacementMode(accessMode);
+        var autoClusterId = BsonHelpers.GetString(old, "autoClusterId");
+        var (replacement, value) = await _externalApiRepository.CreateTokenAsync(
+            ClusterTokenRules.ReplacementName(BsonHelpers.GetString(old, "name")),
+            mode,
+            clusterIds,
+            allowUnassigned: old.GetValue("allowUnassigned", false).ToBoolean(),
+            globalAccess: false,
+            actor: who,
+            autoClusterId: string.IsNullOrWhiteSpace(autoClusterId) ? null : autoClusterId,
+            isDemo: ClusterRepository.IsDemo(old),
+            cancellationToken: cancellationToken);
+        await _externalApiRepository.SetTokenActiveAsync(tokenId, false, who, cancellationToken);
+        await AppendAdminAuditAsync(
+            "apiToken.replaced",
+            "API token with more access than a cluster token replaced.",
+            new BsonDocument
+            {
+                ["tokenId"] = BsonHelpers.GetString(old, "tokenId"),
+                ["newTokenId"] = BsonHelpers.GetString(replacement, "tokenId"),
+                ["oldAccessMode"] = accessMode,
+                ["newAccessMode"] = mode.ToString(),
+            },
+            "apiToken",
+            BsonHelpers.GetString(old, "tokenId"),
+            cancellationToken);
+        TempData["StatusMessage"] = $"Replaced. The old token is switched off; the new one is shown once.";
+        TempData["GeneratedCredential"] = value;
+        return Redirect("/admin/clusters?tab=api-tokens");
+    }
+
+    private static string AccessModeValueOf(ExternalTokenAccessMode mode) => mode switch
+    {
+        ExternalTokenAccessMode.Lifecycle => "readWriteSign",
+        ExternalTokenAccessMode.Sign => "sign",
+        ExternalTokenAccessMode.ReadWrite => "readWrite",
+        _ => "read",
+    };
 
     [HttpPost("api/tokens/cleanup-generated")]
     [ValidateAntiForgeryToken]
@@ -989,23 +1055,7 @@ public class AdminController : Controller
                 generatedCount++;
             }
 
-            if (ExistingGeneratedClusterTokenExists(existingTokens, clusterId, clusterName, "readWriteSign"))
-            {
-                skippedCount++;
-            }
-            else
-            {
-                await _externalApiRepository.CreateTokenAsync(
-                    $"{clusterName} - readwritesign",
-                    ExternalTokenAccessMode.Lifecycle,
-                    [clusterId],
-                    allowUnassigned: false,
-                    globalAccess: false,
-                    actor: actorValue,
-                    autoClusterId: clusterId,
-                    cancellationToken: cancellationToken);
-                generatedCount++;
-            }
+            // No "read, write and sign" token for a cluster any more (finding W9, decisions 29 and 33); older ones stay as they are.
         }
 
         TempData["StatusMessage"] = generatedCount == 0
