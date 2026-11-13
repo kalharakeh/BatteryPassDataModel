@@ -172,7 +172,7 @@ public sealed class FirstTeamAccountTests(MongoFixture mongo)
         Assert.Equal("FIRST_TEAM_ACCOUNT_EMAIL is ignored: a team account exists.", ignored);
         Assert.Null(new FirstTeamAccountResult(FirstTeamAccountOutcome.NotSet, string.Empty).LogLine);
         Assert.NotNull(new FirstTeamAccountResult(FirstTeamAccountOutcome.NotAnAddress, string.Empty).LogLine);
-        Assert.NotNull(new FirstTeamAccountResult(FirstTeamAccountOutcome.AddressInUse, Address).LogLine);
+        Assert.Contains("Use another address, or have that account deleted first.", new FirstTeamAccountResult(FirstTeamAccountOutcome.AddressInUse, Address).LogLine, StringComparison.Ordinal);
     }
 
     [Fact]

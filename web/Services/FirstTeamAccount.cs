@@ -38,7 +38,7 @@ public sealed record FirstTeamAccountResult(FirstTeamAccountOutcome Outcome, str
         FirstTeamAccountOutcome.TeamAccountExists => $"{FirstTeamAccount.Setting} is ignored: a team account exists.",
         FirstTeamAccountOutcome.NotAnAddress => $"{FirstTeamAccount.Setting} is ignored: it is not one e-mail address.",
         FirstTeamAccountOutcome.AddressInUse =>
-            $"{FirstTeamAccount.Setting} is ignored: an account with {Email} exists that is not on the team.",
+            $"{FirstTeamAccount.Setting} is ignored: an account with {Email} exists that is not on the team, and a setting never changes an account's role. Use another address, or have that account deleted first.",
         _ => null,
     };
 }
