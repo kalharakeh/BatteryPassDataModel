@@ -434,7 +434,7 @@ public sealed partial class BatteryIdPool(
         // The one rule (S1 round two): no other battery has the same ID apart from capitals and dashes.
         if (await GetAsync(serialNumber, cancellationToken) is { } target && await SameIdTakenAsync(target.Identifier, packId, cancellationToken) is { } taken)
         {
-            return $"{taken}. {VoidTheTakenId}";
+            return target.Status == ReleasedIdStatuses.Available ? $"{taken}. {VoidTheTakenId}" : taken; // only an available ID can be voided
         }
 
         var model = (await store.GetAsync<ProductionBatch>(pack.BatchId, cancellationToken))?.ModelId;

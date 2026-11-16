@@ -157,7 +157,7 @@ public sealed class PackCreationService(
             // the ID is picked, so it stays available.
             if (await pool.GetAsync(asked, cancellationToken) is { } releasedId && await pool.SameIdTakenAsync(releasedId.Identifier, null, cancellationToken) is { } taken)
             {
-                return Failed($"{taken}. {BatteryIdPool.VoidTheTakenId}");
+                return Failed(releasedId.Status == ReleasedIdStatuses.Available ? $"{taken}. {BatteryIdPool.VoidTheTakenId}" : taken); // only an available ID can be voided
             }
 
             // The serial number fits its model's format (decision 81): asked before the ID is picked, so it stays
