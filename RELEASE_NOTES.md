@@ -1,6 +1,48 @@
 # Changelog
 All notable changes to the battery passport data model will be documented in this file.
 
+## new-app-v3.5, the go-live version: first account, no demo, Excel load, serial numbers, hardening (16 Nov 2026)
+
+Tag `new-app-v3.5`, on top of `new-app-v3.4`: the platform, hardening, serial number and product data loading packages. Read "Before you update" first.
+
+### Before you update
+
+- **Back up the database.** Same as for `new-app-v3.4`: the earlier version can't open a database this version has written to [decision 62]. Note which back-up it is.
+- **Nothing to do by hand for the battery ID key.** The start gives old batteries their key itself. If the log names two batteries with the same ID apart from capitals and dashes, the team decides which is right.
+- **Everybody is signed out once** after the update: the sign-in keys now live in the database [decision 84].
+- **What v3.4 asked still applies:** the three answers of each model and the tick of each customer's written authorisation (until then its admins and tokens only read).
+- **New settings:** `FIRST_TEAM_ACCOUNT_EMAIL` (only for an empty database), and `ENABLE_DEMO_DATA=false` on the live site and on the owner's PC. `HEALTH_DIAGNOSTICS=true` now stops the start in Production. A proxy in front of the app must allow 100 MB for `/admin/product-data-load`. The cut-over runbook has them all.
+- **A copy of the database now carries the live sign-in keys** (collection `dataProtectionKeys`, not encrypted). Keep back-ups as safe as the signing key.
+
+### For the team
+
+- **Load product data from Excel.** On Battery families, "Load product data from Excel" takes the filled workbook and its files, checks them (every problem by sheet, row and column, nothing saved), then loads all or nothing. A second load updates; a document you don't have yet is listed under "Documents still to come" [decision 83, 87].
+- **Small letters in serial numbers.** `VPC8C05s-00001` and `VPC8C05S-00001` are the same serial number; it is kept as released, and the battery ID, the passport ID and the QR code carry the small letter. An address typed in other capitals opens the same passport [decision 80].
+- **A serial number format per model** (for example `VPC8C05-#####`), set on the model's page. Releasing IDs, creating a battery and swapping an ID refuse a serial that doesn't fit and name the format [decision 81]. The Excel load carries the format too: the check shows the old and the new format and how many batteries don't fit; `none` removes it; a later model never takes the first model's format [decision 83].
+- **One rule for battery IDs:** two batteries never have IDs that differ only in capitals or dashes, at release, creation, swap and new passports; the database enforces it. A draft's serial number is checked whenever its text changes [decision 86].
+- **No demo families on the live site.** The demo is switched off, "Reset demo data" is gone there, and trial batteries are made with test IDs on the real families. "Clear demo data" stays and says what else goes (test IDs, test batteries) [decision 82].
+- **The first team account** of an empty database is made from `FIRST_TEAM_ACCOUNT_EMAIL`; the person sets a password with "Forgot password" [decision 78, 84].
+- **Sign-in lock:** ten wrong passwords in 15 minutes lock the address for 15 minutes; a new password unlocks it. Addresses with a line break or other odd characters are refused when set [decision 85].
+- **Cluster tokens** are "Read" or "Read + write" only. Older tokens with more rights stay and are listed with what they can still do; "Replace" gives a new token and switches the old one off. "Read + write" saves republish a published battery, as the team's own save does. Deleting a cluster deletes its tokens, narrows tokens that had others and cancels waiting hand-overs [decision 85].
+- **The audit log** has a filter "Restricted data opened" [decision 85].
+- A "measured at" time more than five minutes ahead is refused everywhere.
+
+### For cluster admins
+
+- Cluster tokens: see above. A cluster must exist before people are added to it.
+
+### For readers
+
+- **A use notice** sits next to restricted data (shared with you for your role; don't pass it on or keep it longer than you need it). Your first opening of a battery's restricted data each day is logged by the team's audit log, without the values. The battery's own team and cluster admins see no notice [decision 85].
+- A control character in an address is never a passport (it was an error page).
+
+### Under the hood
+
+- **Security headers** on every response (content security policy, nosniff, referrer policy, frame options); Bootstrap is served from the app, so no page loads a script or style from another site [decision 84].
+- **Sign-in cookies and open forms survive a restart** (keys in the database).
+- Health diagnostics can't be switched on in Production.
+- New collections: `dataProtectionKeys`, `signInAttempts`, `restrictedReads`; a unique index `item_key` on the batteries.
+
 ## Wave 2: the values a passport must have, the signature, public data, authorisation and removal (11 to 13 Nov 2026)
 
 Fixes from the review of the app on tag `new-app-v3.2`, on top of `new-app-v3.3.1`. The finding IDs are in brackets. Read "Before you update" first.

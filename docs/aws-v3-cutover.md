@@ -2,13 +2,15 @@
 
 **What this does:** the one Elastic Beanstalk environment behind `https://www.sib-scania-eubp.eu/` (`battery-pass-env`, `eu-north-1`) changes from the old app to the new one.
 - **Old app:** branch `security/demo-api-hardening`, database `battery_pass_demo`.
-- **New app:** branch `feature/dpp-v3-step2d-team-pages`, database `battery_pass_v3`.
+- **New app:** the tag `new-app-v3.5` (the go-live version, on top of `new-app-v3.4`), database `battery_pass_v3`.
 
 The old app stays restorable (section 7). Nothing runs side by side.
 
 **Who:** the product owner runs every step in AWS, Atlas and the registrar. The app's sessions write and check this runbook; they never touch AWS, Beanstalk, Atlas or `battery_pass_demo`.
 
 **Cost:** none added. It is the same environment, load balancer, NAT gateway, instance, certificate and domain (design, "Where it runs": the no-extra-cost path, confirmed by the owner on 4 Nov 2026, "Kept is enough"). The one possible cost is a larger instance, if the new app needs more memory (section 6, check 8). That would be the owner's choice, and nothing here changes it.
+
+**This runbook is for the go-live version** (wave 2, the platform package, the hardening package, the serial number package and the Excel loader on top of `new-app-v3.4`). Where it says "the live database", that is `battery_pass_v3`, the database the owner enters real data into. It holds real product data and no demo data (decision 82).
 
 **Old addresses stop working, by choice.** The old app's pages and links (its `/dpp/…` passports, QR codes and API) go away at the cut-over. No old QR code or link was ever shared (the owner: "No, demo only"), so there are no redirects.
 
@@ -43,17 +45,24 @@ DNS, HTTPS and the www redirect need no change.
    - Never put it in Git, a chat or a file in the repository.
 4. **The restore points** (section 7):
    - the tag `old-app-final` at 8c8bfe7 (the old app; the tag `app-v1.2-before-dpp-v3` already marks the same commit);
-   - the tag `new-app-v3` on the new branch's last commit, pushed to `origin`. The managing session does this after step 6.
-5. **The bundle:** check out `new-app-v3` and run `powershell -ExecutionPolicy Bypass -File .\scripts\publish-elastic-beanstalk.ps1`. Keep the zip it prints (`artifacts\releases\BatteryPassWeb-elastic-beanstalk-<time>.zip`). The script leaves out `.env*` files.
+   - the tag `new-app-v3.5` on the go-live commit, pushed to `origin`.
+5. **The bundle:** check out `new-app-v3.5` and run `powershell -ExecutionPolicy Bypass -File .\scripts\publish-elastic-beanstalk.ps1`. Keep the zip it prints (`artifacts\releases\BatteryPassWeb-elastic-beanstalk-<time>.zip`). The script leaves out `.env*` files.
 6. **Upload it as a new application version, without deploying:**
-   - Beanstalk, Application `battery-pass`, Application versions, Upload, label `new-app-v3`.
+   - Beanstalk, Application `battery-pass`, Application versions, Upload, label `new-app-v3.5`.
    - Check that the application's version lifecycle setting won't delete the old app's version. Note the old version's label (Environment, Running version).
 7. **The settings file** for the switch: `cutover-settings.json` (section 4). Keep it outside the repository, and delete it after the switch.
-8. **Demo data on the live site** (the owner's choice):
-   - The demo accounts sign in with `DEMO_USERS_PASSWORD`. On a public site, that must be a strong value of its own, never the PC's.
-   - Leave it out to have no demo accounts.
+8. **No demo data on the live site** (decision 82):
+   - `ENABLE_DEMO_DATA=false` goes into the settings (section 4), and `DEMO_USERS_PASSWORD` is left out. There are no demo accounts and no "Reset demo data".
+   - The live database holds no demo data. If a demo battery or demo family is still in it, press "Clear demo data" (Clusters tab, end) once after the switch (check 6).
+   - Trial batteries are made on the real product families with test IDs (check 10).
 9. **A rehearsal first** (decision 79): a second Beanstalk environment with the same bundle and the same settings, on a copy of the database (`MONGODB_DB` set to the copy's name), under its own address. Run the checks of section 6 there, and scan a QR code with a phone. Its `APP_BASE_URL` and `DPP_ID_BASE_URL` are the rehearsal's own address, so nothing it signs is mistaken for the live site's. Delete the environment and the copy afterwards.
 10. **A back-up of `battery_pass_v3`** just before the switch (an Atlas snapshot or a `mongodump`): the earlier version can't open the database once the new one has written to it (decision 62).
+11. **The first team account**, only if the database has no team account (a new, empty database):
+    - Put `FIRST_TEAM_ACCOUNT_EMAIL` (one address, the person who will run the team pages) into the settings before the first start.
+    - The person then opens the sign-in page, presses "Forgot password", types that address and signs in with the temporary password that arrives by e-mail. That needs the reset mail to work (`POWER_AUTOMATE_RESET_WEBHOOK_URL` and its secret, section 3; see `power-automate-password-reset.md`). Without the mail, nobody can sign in.
+    - There is no fallback admin in Production and no password is ever printed in the log.
+    - If `battery_pass_v3` already holds a team account (the owner's own), the setting does nothing and the log says so. It can stay set.
+12. **The proxy's body limit.** The Excel load (section 6.14) sends up to 100 MB in one post. A proxy in front of the app (nginx on Elastic Beanstalk) must let through bodies of **100 MB for `/admin/product-data-load`** (the page and its `/check`). Everywhere else it may keep the upload limit. For example: `location /admin/product-data-load { client_max_body_size 100m; }`. The app answers 413 over its own limit; a proxy that stops it earlier shows the reader a plain proxy error.
 
 ## 3. The settings (environment properties)
 
@@ -73,9 +82,11 @@ The new app reads these. "Same" means the live environment's current value stays
 | `BATTERY_PASS_SIGNING_TRUSTED_PUBLIC_KEYS` | not set (optional) | Earlier public keys the site still vouches for: base64 SubjectPublicKeyInfo, separated by commas. **Before changing the signing key**, copy the current public key from the start-up log line "After a key change, add this public key to …" and put it here, or every earlier passport shows "Not verified: signed with a key this site doesn't know" and its public data says `"proof": null`. An entry that isn't a P-256 public key stops the app in Production. |
 | `BATTERY_PASS_SIGNING_ISSUER`, `BATTERY_PASS_SIGNING_VERIFICATION_METHOD` | not used any more | Both settings are gone. The issuer is `did:web:` plus the host of `DPP_ID_BASE_URL` (`did:web:www.sib-scania-eubp.eu`); the key's ID is its fingerprint. |
 | `DPP_PASSPORT_CHECK` | not set (on) | The check of all published passports, shortly after start and every hour (it puts the "changes are waiting" marks right and never publishes). `off` turns it off; leave it on in Production. |
-| `DEMO_USERS_PASSWORD` | the owner's choice (section 2.8) | Demo accounts sign in only while `ENABLE_DEMO_DATA` is on (see below). |
-| `ENABLE_DEMO_DATA` | not set (off in Production) | Switches the demo data, demo accounts and demo tokens on. Off: there is no "Reset demo data", demo accounts can't sign in and demo tokens are refused; "Clear demo data" stays. Set it to `true` only on a test site, or for the days the demo is wanted. |
-| `ENABLE_DEMO_ADMIN_FALLBACK` | `false` or not set | never a fallback admin on a public site. **In Production the app refuses to start if it is on.** |
+| `DEMO_USERS_PASSWORD` | not set (decision 82) | Demo accounts sign in only while `ENABLE_DEMO_DATA` is on. The live site has none. |
+| `ENABLE_DEMO_DATA` | `false` (new; decision 82) | Switches the demo data, demo accounts and demo tokens on. Off: there is no "Reset demo data", demo accounts can't sign in and demo tokens are refused; "Clear demo data" stays. Set it to `false` on the live site and on the owner's PC, so that "Reset demo data" can't bring the demo families back. It is off in Production when not set; say it anyway, so the PC's launcher and the site read alike. |
+| `FIRST_TEAM_ACCOUNT_EMAIL` | the owner's choice, only for an empty database (new) | The address of the first team account. Optional and not secret. Used only when the database has no team account; otherwise the log says it is ignored. Nothing happens when it is empty or isn't one plain address. See section 2.11. |
+| `HEALTH_DIAGNOSTICS` | not set | **`true` stops the start in Production**. Leave it out. |
+| `ENABLE_DEMO_ADMIN_FALLBACK` | `false` or not set | Never a fallback admin on a public site. **In Production the app refuses to start if it is on.** The first team account comes from `FIRST_TEAM_ACCOUNT_EMAIL`. |
 | `DEMO_ADMIN_EMAIL`, `DEMO_ADMIN_PASSWORD` | not set | There is no default password. The fallback admin works only outside Production, and only when a password is set here. Don't set them on the live site. |
 | `ENABLE_RATE_LIMITING` | not set (on) | |
 | `FILE_UPLOAD_RATE_LIMIT_PER_WINDOW` | not set (10 per rate-limit window) | Limits file uploads. It now also limits the team's and cluster admins' file actions (accident reports, "Check the file"). With `ENABLE_RATE_LIMITING=false` nothing is limited. |
@@ -85,6 +96,20 @@ The new app reads these. "Same" means the live environment's current value stays
 | `DPP_ID_AGENCY` | `UN` (new) | The battery IDs' issuing agency: DUNS (decision 38). |
 | `DPP_ID_COMPANY` | `778474481` (new) | Scania Industrial Batteries AB's DUNS. |
 | `DPP_ID_BASE_URL` | `https://www.sib-scania-eubp.eu` (new) | The start of every battery ID and passport ID, e.g. `https://www.sib-scania-eubp.eu/25S/UN778474481-…`, and the site the passports' signatures name. In Production it must be a whole `http://` or `https://` address and the same site as `APP_BASE_URL`. If it is later moved to another host, every earlier passport's public data says `"proof": null` until that passport gets a new version (listing the earlier key doesn't bring it back). Without all three, the Battery IDs page shows a red notice naming the missing ones, and every real release and create is refused (check 9). |
+
+### What the app keeps in the database, and what a back-up, a reset and "Clear demo data" do with it
+
+New collections in the go-live version. The app makes them (and their indexes) at the first start; nothing to do by hand.
+
+| Collection | What it holds | Back-up | Reset tool (`tools/V3Reset`) | "Clear demo data" / "Reset demo data" |
+|---|---|---|---|---|
+| `dataProtectionKeys` | The keys that protect sign-in cookies and open forms, so that a restart, a new deployment and several instances share them. **Stored unencrypted.** | **A copy of the database carries live sign-in keys:** anyone who holds a copy and the app could make a valid sign-in cookie. Treat database back-ups like the signing key. | Kept | Left alone |
+| `signInAttempts` | Wrong passwords per typed address, for the sign-in lock (ten wrong in 15 minutes lock the address for 15 minutes). | Included; nothing in it matters after a day. | Emptied | Left alone |
+| `restrictedReads` | One key per reader, battery and day (and per document), so that a reader's first opening of restricted data each day is logged once. Entries expire after 3 days. | Included; nothing in it matters after a few days. | Emptied | Left alone |
+
+- Deleting `dataProtectionKeys` signs everybody out once; new keys are made at the next start. The first start of the go-live version makes the first key, so everybody is signed out that one time.
+- **The unique index `item_key` on the batteries** (S1): at every start the app gives each old battery its key (its battery ID without dashes and capitals), oldest first, then makes the index. A battery whose key another battery already has is left without one, and the log says: "Battery … has the same battery ID as battery …, apart from capitals and dashes … it was left without its key. Decide which of the two is right." The start never fails. Nothing to do by hand; if the log names a pair, the team decides which battery is right.
+- Old tokens made with "Read, write and sign" for a cluster stay and are listed with what they can still do. The team can replace them. Old memberships without an account stay.
 
 ## 4. Why the switch is one command, and the command
 
@@ -106,23 +131,24 @@ The new app reads these. "Same" means the live environment's current value stays
   { "Namespace": "aws:elasticbeanstalk:application:environment", "OptionName": "DPP_ID_COMPANY", "Value": "778474481" },
   { "Namespace": "aws:elasticbeanstalk:application:environment", "OptionName": "DPP_ID_BASE_URL", "Value": "https://www.sib-scania-eubp.eu" },
   { "Namespace": "aws:elasticbeanstalk:application:environment", "OptionName": "ENABLE_DEMO_ADMIN_FALLBACK", "Value": "false" },
-  { "Namespace": "aws:elasticbeanstalk:application:environment", "OptionName": "DEMO_USERS_PASSWORD", "Value": "<only if demo accounts are wanted>" }
+  { "Namespace": "aws:elasticbeanstalk:application:environment", "OptionName": "ENABLE_DEMO_DATA", "Value": "false" },
+  { "Namespace": "aws:elasticbeanstalk:application:environment", "OptionName": "FIRST_TEAM_ACCOUNT_EMAIL", "Value": "<only for an empty database: the first team member's address>" }
 ]
 ```
 
-Leave out the `DEMO_USERS_PASSWORD` line if no demo accounts are wanted.
+Leave out the `FIRST_TEAM_ACCOUNT_EMAIL` line when `battery_pass_v3` already has a team account.
 
 ## 5. The day (the owner, in a quiet hour)
 
 1. **Save the old configuration:** Beanstalk, `battery-pass-env`, Actions, Save configuration, name `old-app-final`.
-2. **The PC:** close the PC's app. From now on the live site writes to `battery_pass_v3`, and only one app should write there. To keep trying things on the PC afterwards, give the launcher a database of its own (a copy of `battery_pass_v3` under another name, in `MONGODB_DB`); don't start the PC's app against `battery_pass_v3` again: it runs in development mode, with the demo data switched on.
+2. **The PC:** close the PC's app. From now on the live site writes to `battery_pass_v3`, and only one app should write there. To keep trying things on the PC afterwards, give the launcher a database of its own (a copy of `battery_pass_v3` under another name, in `MONGODB_DB`); don't start the PC's app against `battery_pass_v3` again. If it ever has to run against it, the launcher must set `ENABLE_DEMO_DATA=false` (decision 82), so that "Reset demo data" can't bring the demo families back into the real database.
 3. **The switch** (AWS CLI, signed in to the account that holds the environment):
 
    ```powershell
-   aws elasticbeanstalk update-environment --region eu-north-1 --environment-name battery-pass-env --version-label new-app-v3 --option-settings file://cutover-settings.json
+   aws elasticbeanstalk update-environment --region eu-north-1 --environment-name battery-pass-env --version-label new-app-v3.5 --option-settings file://cutover-settings.json
    ```
 
-4. Wait until the environment's health is Green and its running version is `new-app-v3` (a few minutes; the site is down meanwhile).
+4. Wait until the environment's health is Green and its running version is `new-app-v3.5` (a few minutes; the site is down meanwhile).
 5. **Delete `cutover-settings.json`.**
 6. Run the checks (section 6).
 
@@ -130,28 +156,31 @@ Leave out the `DEMO_USERS_PASSWORD` line if no demo accounts are wanted.
 
 1. `https://www.sib-scania-eubp.eu/health` answers 200.
 2. `https://www.sib-scania-eubp.eu/` shows the new home page. `http://www…` and the address without www lead to it.
-3. Sign in with the team's account (accounts in `battery_pass_v3` keep their passwords).
+3. Sign in with the team's account (accounts in `battery_pass_v3` keep their passwords). On a new database, use the first team account (section 2.11): "Forgot password", the temporary password, then a password of your own (at least 12 characters).
 4. **Signatures:**
    - Open a published passport's detail page (Registry, then a battery, "View more about this passport"). The hero card's "Signature" says **Verified**.
    - That shows the passport wasn't changed since it was signed and that it was signed with a key this site knows: the PC's key, which is the site's key now. A passport whose key the site doesn't know says "Not verified: signed with a key this site doesn't know".
    - **That the live site signs with the PC's key**, check in Atlas (read-only):
      - Before the switch, in Data Explorer, `battery_pass_v3`, `dpp_passport_versions`, note the field `Proof.PublicKeyX` of one version published on the PC.
-     - After the switch, publish one change on the live site (e.g. a draft demo battery, or "Reset demo data" in check 6).
+     - After the switch, publish one change on the live site (check 10's test battery).
      - The newest version's `Proof.PublicKeyX` must be the same value. If it differs, `BATTERY_PASS_SIGNING_PRIVATE_KEY_BASE64` isn't the PC's key.
    - The pages don't show the key itself; their "Key" line is its name.
    - **The key's address:** `https://www.sib-scania-eubp.eu/.well-known/did.json` must reach the app (no sign-in). It lists the site's public keys, and anyone checks a passport's public data against it. If the load balancer or a rule in front of the site sends `/.well-known/` elsewhere, fix that.
 5. **QR code:** scanning a passport's QR code opens `https://www.sib-scania-eubp.eu/dpp/…`.
 6. **Links made on the PC:**
    - A battery's accident page link (#92) and its restricted documents' links were saved with the PC's address (`http://localhost:5186/…`) when they were made. Batteries made on the live site get the live address.
-   - `battery_pass_v3` holds demo data only (the owner, 4 Nov 2026). The live site runs without demo data (the owner, 11 Nov 2026): leave `ENABLE_DEMO_DATA` unset and press "Clear demo data" (Clusters tab, end) once after the switch, so the old demo batteries and accounts are gone. To show the demo for a few days, set `ENABLE_DEMO_DATA` to `true`, press "Reset demo data", and clear it again afterwards. It stops and changes nothing if a real account, battery or API token uses one of the demo's clusters (it names the cluster); demo accounts a demo admin added never stop it: every demo battery is made again with the live address. The demo tokens are new, and shown once.
-   - Before that, a battery's signature check (check 4) can still use a version published on the PC. After it, every demo version is published on the live site.
+   - The live site runs without demo data (the owner, 11 and 13 Nov 2026; decision 82). `ENABLE_DEMO_DATA` is `false`. If the database still holds demo batteries or demo accounts, press "Clear demo data" (Clusters tab, end) once. The card then says "Demo data is switched off on this site" and has no "Reset demo data" button; "Clear demo data" stays. Its question also counts the test IDs and test batteries that go with it, so read it before you confirm.
+   - Do not press "Reset demo data" anywhere on the live site.
 7. **API:** a cluster token reads its batteries at `https://www.sib-scania-eubp.eu/api/external/v1/…` (the API help page's examples).
 8. **Load:** after a day, check the instance's CPU and memory in Beanstalk's Monitoring. If the instance is short of memory, a larger instance type is a cost question for the owner.
 9. **The ID settings** (on the day): signed in as the team, open the Battery IDs tab (`/admin/battery-ids`). The page shows **no red notice**. A red notice names the missing `DPP_ID_*` settings: add them in Beanstalk (Configuration, Environment properties) and check again.
-10. **A demo battery's ID** (after check 6's "Reset demo data", if the demo is on): on Battery IDs, All IDs, tick "Show test IDs". A demo ID reads `UN778474481-TEST-…`, and `https://www.sib-scania-eubp.eu/25S/<that ID>` opens its battery's public summary once it is published, or "Not published yet" while it isn't.
+10. **A test battery's ID** (on the real family, decision 67 and 82): sign in as the team. On Battery IDs, release a test ID (it contains `TEST`; it is never a real ID and isn't counted), make a battery with it on a real model, upload its readings and publish it. Its ID reads `UN778474481-TEST-…`, and `https://www.sib-scania-eubp.eu/25S/<that ID>` opens its public summary with a "Test passport" tag, or "Not published yet" while it isn't published. On Battery IDs, All IDs, tick "Show test IDs" to see it. "Clear demo data" removes test IDs and test batteries, so use it only when you want them gone. On a test site with the demo on, A demo ID reads `UN778474481-TEST-…` too.
 11. **The first passport check:** a minute after the app starts, it compares every published battery with its passport (the audit log gets an entry `dpp.passports-checked` if it changed anything). The team can press "Check all passports now" on the battery list.
 12. **Before real use** (the team, once): open each model's page and answer its three questions (commercial warranty, cycling use, cadmium or lead above the limit): until then nothing of that model can be published and its published batteries get no status change. Open Clusters and tick each customer's written authorisation (with its date): until then its admins and tokens only read.
 13. **The removed-passport collection:** `dpp_removed_passports` is made with its index when the app starts; nothing to do. It is empty until the team removes a recycled battery's passport.
+14. **Security headers.** Every response carries a content security policy, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` and `X-Frame-Options: SAMEORIGIN`: error pages, static files, the health check and redirects too. The policy lets the page load scripts and styles from the app itself only (no CDN: Bootstrap is served from `/lib/bootstrap/`), images from the app, `data:` and `blob:` (the home page's "scan a QR code from a picture"), and nothing from another site; each inline script carries a one-time nonce. After the switch: open the home page, the sign-in page, a public passport and a team page; the pages must show their styles and work (menus open, windows open). In the browser's developer tools (Network) no request goes to another host and the Console shows no policy message. A page that looks unstyled or has dead buttons means a proxy or rule in front of the site is changing headers or blocking `/lib/`: fix that first. (Ten `style=` attributes are still allowed inline; a later update removes them.)
+15. **The sign-in survives a restart:** sign in, restart the environment (or deploy the same version again), reload: you are still signed in. If you are signed out each time, the collection `dataProtectionKeys` isn't being written: check the `MONGODB_URI` user has `readWrite` and look in the log for the one warning "No XML encryptor configured. Key … may be persisted to storage in unencrypted form." (expected, once, when the first key is made).
+16. **Loading product data from the Excel** (section 8, step 4) is the first real test of the proxy's body limit (section 2.12): load the workbook with all its files. A plain proxy error page (413) means the limit isn't 100 MB for `/admin/product-data-load`.
 
 ## 7. Restore points, and rolling back to the old app
 
@@ -161,7 +190,7 @@ Leave out the `DEMO_USERS_PASSWORD` line if no demo accounts are wanted.
 - the saved configuration `old-app-final`;
 - the database `battery_pass_demo`, untouched;
 - **a back-up of `battery_pass_v3`**: take one before every later update of the new app. An earlier version of the app can't open a database a later one has written to once a model is answered, a passport is published or a copy of product data is made (it answers 500). Only the back-up goes back;
-- the new app: the branch `feature/dpp-v3-step2d-team-pages` on `origin`, its tag `new-app-v3`, its application version and the database `battery_pass_v3`.
+- the new app: the tag `new-app-v3.5` on `origin` (and the tag `new-app-v3.4` before it), its application version and the database `battery_pass_v3`.
 
 **Roll back** (one command again, for the same reason as section 4):
 
@@ -172,6 +201,22 @@ aws elasticbeanstalk update-environment --region eu-north-1 --environment-name b
 - The old app comes back with its old settings and `battery_pass_demo`, as before.
 - `battery_pass_v3` keeps everything the new app wrote.
 - Going forward again is section 5, step 3.
+
+## 8. The first day on the live site, in order
+
+After the switch and the checks of section 6. The team does these, signed in as a team admin.
+
+1. **Back-up** of `battery_pass_v3` just before the update (section 2.10): an Atlas snapshot or a `mongodump`. Note which one it is.
+2. **Deploy** (section 5). Wait for Green; delete `cutover-settings.json`.
+3. **The first team account**, if the database was empty (section 2.11): "Forgot password" with the address set in `FIRST_TEAM_ACCOUNT_EMAIL`, then sign in. Run checks 1 to 4 of section 6.
+4. **Load the product data from the Excel.** Battery families, "Load product data from Excel". Choose the filled workbook and the documents and pictures it names, then press **Check**. Fix what it lists by sheet, row and column and check again; replace the demo's example values it names. A document you don't have yet is listed under "Documents still to come": it can follow in a later load. When the check shows no problem, press **Load**. It saves all of it or nothing, and says how many passports get a new version. A second load of the same workbook says "Nothing to load".
+5. **Answer nothing by hand that the Excel carries.** The family's and each model's values, the three questions of each model, the sites, the operators, the hazardous substances and the documents come from the workbook. The workbook carries each model's serial number format too (`VPC8C05-#####` for Core800, `VPC8C05s-#####` for Core800s, `VPC7C05-#####` for Core700): the check shows the old and the new format and how many batteries don't fit it. Open each model's page and look; the format can also be set there. A value that is wrong is corrected in the workbook and loaded again.
+6. **Tick each customer's written authorisation** (Clusters tab, each cluster's row, with the date), if there are customers yet: until then their admins and tokens only read.
+7. **Release IDs** (Battery IDs): a serial number may hold small letters (`VPC8C05s-00001`) and must fit the model's format. The same serial in other capitals is the same serial.
+8. **One test battery** (check 10 of section 6): a test ID on a real family, readings uploaded, published, opened as a visitor. This is the dress rehearsal; "Clear demo data" removes it afterwards.
+9. **One real battery:** a real ID, a real battery of a real model, its values typed by the team or loaded from the battery system's export; #13 (third party service provider) is typed for each battery, and without it the battery can't publish. Publish it, scan its QR code with a phone, and check the detail page's signature says Verified.
+
+If something goes wrong after the first real battery, section 7 says what can be rolled back: only the back-up of step 1 undoes what the new version has written.
 
 ## Not in this runbook
 

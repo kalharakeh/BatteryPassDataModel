@@ -11,6 +11,8 @@ Keep these open while testing:
 
 ## Quick start
 
+**Two kinds of site.** A *test site* (a developer's machine or a rehearsal site) has the demo switched on: the demo accounts, clusters and batteries below exist, and this quick start applies. The *live site* and the owner's own PC have the demo switched off (`ENABLE_DEMO_DATA=false`, decision 82): their database holds real product data only, there is no "Reset demo data" and there are no demo accounts. Test those with the team's own account and the part "The go-live version: live site, no demo data" below. Never press "Reset demo data" on a site that has real data.
+
 1. Open the app link provided by the project owner in a browser.
 2. **The known start:** a team member signs in, opens Clusters, and at the end of the Clusters tab presses **Reset demo data**.
    - This makes the demo clusters, accounts, batteries and API tokens again.
@@ -136,7 +138,7 @@ The rated capacity (#57) is needed before publishing. The warranty is a whole nu
 
 **The EU registry** (team only, a published real battery, outside the demo): an "EU registry" section says "Not recorded yet" until a day (not in the future) and a registration ID are recorded; the battery list says "N published batteries are not yet in the EU registry" with a link that narrows the list and "Download them as CSV". It is not passport data: not on the public page, the data, or any other role's pages.
 
-**Product data from the demo** (team): on a demo family "Copy as real product data" (one copy at a time; after the confirm the button reads "Working…"; a copy that fails is undone) makes a real family with its models (with their three answers), batches, documents and sites; a demo site or operator has "Copy as real". The demo stays as it is. A real battery ID on the copy can be created but its first publication is blocked while the passport holds the demo's example values or files (the family, batch, site and operator pages list them; a test ID isn't blocked). "Release new IDs" has a "Test IDs" tick: IDs with TEST in them, for any model (the model is ignored), not counted, usable on demo or real product data, gone when the demo data is reset or cleared. A real battery can't belong to a demo customer; the pickers say "(demo customer: test IDs only)".
+**Product data from the demo** (team, on a test site with the demo on; the live site has no demo family, decision 82): on a demo family "Copy as real product data" (one copy at a time; after the confirm the button reads "Working…"; a copy that fails is undone) makes a real family with its models (with their three answers), batches, documents and sites; a demo site or operator has "Copy as real". The demo stays as it is. A real battery ID on the copy can be created but its first publication is blocked while the passport holds the demo's example values or files (the family, batch, site and operator pages list them; a test ID isn't blocked). "Release new IDs" has a "Test IDs" tick: IDs with TEST in them, for any model (the model is ignored), not counted, usable on demo or real product data, gone when the demo data is reset or cleared. A real battery can't belong to a demo customer; the pickers say "(demo customer: test IDs only)".
 
 **Whole addresses.** The passport ID and the battery ID are shown as their whole address, website included, on the public and detailed pages, the team's and cluster admin's battery pages and the versions list (lists keep the short form). Selecting the text and copying it gives the address whole, with no line break. Check at 1280 and 375 px: no sideways scroll, nothing cut.
 
@@ -156,9 +158,34 @@ The battery, versions and passports answers carry `signatureVerified` and `signa
 
 `/api/passports` (the list of all passports) is for the team only.
 
+## The go-live version: live site, no demo data
+
+For the live site and the owner's PC (no demo). Sign in with the team's own account; the tester notes which account and which test IDs were used. Trial batteries are **test IDs on the real product families** (decision 82), never demo batteries.
+
+| # | Scenario | Expected |
+|---|---|---|
+| G1 | A new, empty database with `FIRST_TEAM_ACCOUNT_EMAIL` set: start the app, press "Forgot password" on the sign-in page with that address | The text says a temporary password was sent if an account exists; it arrives by e-mail, signs in to the "set a new password" step; after choosing 12 or more characters the person opens the team pages. No password or reset link is in the app's log. A wrong guess before that is refused. |
+| G2 | Start again with the setting still set | One team account; the log says the setting is ignored because a team account exists. |
+| G3 | Ten wrong passwords for one address within 15 minutes, then the right one | The right one is refused with "Invalid email or password. Try again later."; another account still signs in; "Forgot password" or a password set by the team unlocks it at once; after 15 minutes it unlocks by itself. |
+| G4 | Battery families, "Load product data from Excel", **Download the empty workbook**; fill it (or use the owner's Core workbook), choose it with its files, **Check** | The check lists the family, models, batches, sites and operators with their values and units; any problem is named by sheet, row and column; nothing is saved (the product data pages show the same counts). |
+| G5 | A workbook with a number typed as "4,7", an "about 220", a "yes" in small letters in a yes-or-no cell, and a model named on the documents sheet that the Models sheet lacks | Four problem lines, each naming sheet, column and model, in words. Load is switched off. |
+| G6 | Fix them, **Load**; open the family, a model, a batch, the site and the operator | Everything of the workbook is there; the family shows its state; no value is the demo's example. One `dpp.product-data-loaded` line is in the audit log. |
+| G6a | After the load of G6, open each model's page; then check a workbook with a different format for one model | The model page shows the format from the workbook (for example `VPC8C05s-#####`) and a later model did not take the first model's format. The check of the changed workbook shows the old and the new format and how many batteries of the model don't fit; `none` in the cell removes the format. |
+| G7 | Load the same workbook again; then change one cell and check again | "Nothing to load" with Load switched off; then exactly that one change is shown ("Battery mass 470 → 455") and loading says "1 record changed". |
+| G8 | A workbook naming a document file you don't send | The check lists it under "Documents still to come"; the load saves everything else; a later load with the file adds it. |
+| G9 | Release `VPC8C05s-00001` for the model with serial number format `VPC8C05s-#####`; then `VPC8C05S-00001`, `VPC7C05-00001` and `VPC8C05-00001` | The first is released and shown with its small letter; the second is refused as the same serial number; the third and fourth are refused naming the format. Nothing is released by a refused call. |
+| G10 | Create a battery from a released small-letter serial and publish it; open its address typed in capitals, in small letters and as typed | The same passport every time. The page and the QR code show `…/25S/UN778474481-VPC8C05s-00001`; the data's signature checks ("Verified"). |
+| G11 | Release a serial that, ignoring dashes and capitals, is the item of another battery's ID (for example `VBC-1-R1` next to `VBC-1R1`) | Refused, naming the other battery. |
+| G12 | Release test IDs ("Test IDs", marked TEST), make a battery of a real model with one, upload its readings, publish; open it as a visitor | It publishes; the page carries the "Test passport" tag and no word "demo"; it isn't counted among the real IDs. "Clear demo data" would remove it: don't press it unless you want that. |
+| G13 | As market surveillance or another reader of restricted data (on a test site: `demo.msa@example.test`): open a battery's detail page, then open it again | The use notice shows next to the restricted data. The team's audit log has one "Restricted data opened" line for that reader, battery and day; the second opening adds none. The team and the battery's own cluster admin see no notice and leave no line. |
+| G14 | A cluster admin or a team member creates a cluster token | Only "Read" and "Read + write" are offered for a cluster. An older token with more rights is listed with what it can still do, and the team can replace it. A "Read + write" call that changes a published battery gives it a new version by itself. |
+| G15 | Open the home page, a public passport, the sign-in page and a team page; look at the network and console in the browser | Pages are styled and work; every request goes to the site's own address (Bootstrap comes from `/lib/bootstrap/`); the console shows no policy message; every response carries a content security policy, `X-Content-Type-Options: nosniff`, a referrer policy and `X-Frame-Options`. |
+| G16 | Sign in, restart the app, reload a page | Still signed in; a form opened before the restart still saves. |
+
 ## Acceptance checklist
 
-- [ ] "Reset demo data" finishes and shows the tokens once.
+- [ ] On a test site: "Reset demo data" finishes and shows the tokens once. On the live site and the owner's PC the card says the demo is switched off and has no Reset button.
+- [ ] Go-live version, live site: scenarios G1 to G16 hold, with test IDs on the real families.
 - [ ] Every row of the scenario matrix holds, for every reader.
 - [ ] The two badges show on every passport page with the right status. The Battery badge never shows to the public.
 - [ ] Battery IDs: a range releases and opens the release's page with every ID Available; its "Export to Excel" opens with that release's IDs, one row per ID and its QR address.
@@ -203,8 +230,10 @@ The battery, versions and passports answers carry `signatureVerified` and `signa
 - **Real IDs need the settings:** without `DPP_ID_AGENCY`, `DPP_ID_COMPANY` and `DPP_ID_BASE_URL`, the Battery IDs page shows a red notice naming the missing ones, and nothing is released or created from a released ID. The demo data still works, with test IDs (`urn:x-battery-pass:TEST-…`), as on a developer's PC.
 - **Pack temperature:** the battery system's export has no pack temperature yet; each export's notes say so, and it is typed on the battery. The export team has also been asked for the modules' serial numbers and the cycle definition.
 - **After an update:** every model is "not answered" until the team answers its three questions, and no cluster is authorised until the team ticks it. Neither is a fault. The first passport check runs a minute after the app starts.
+- **Sign-in keys:** the first start of this version makes new sign-in keys, so everyone is signed out once. The keys are kept in the database unencrypted; a copy of the database carries them.
+- **A model's serial number format comes with the Excel load** (the check shows old and new format and how many batteries don't fit; `none` removes it; a later model never takes the first model's). It can also be set on the model's page.
 - **No way back:** a database written by this version (a model answered, a passport published, a copy made) can't be opened by the earlier version.
-- **Removing a passport can't be undone.** Test it on a demo battery only; the reset brings that one back.
+- **Removing a passport can't be undone.** Test it on a demo battery on a test site only; the reset brings that one back. On the live site never remove a real battery's passport to try it; use a test battery.
 - **Hand-overs:** no e-mail; the receiver sees them on their Registry. A waiting hand-over isn't cancelled by itself when the passport stops being active; accepting is then refused with a reason.
 - **Signatures:** each version is signed when published; live values and accident reports change it in place without a new signature, by design.
 
