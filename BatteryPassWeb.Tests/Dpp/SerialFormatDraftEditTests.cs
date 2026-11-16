@@ -84,14 +84,16 @@ public sealed class SerialFormatDraftEditTests(MongoFixture mongo)
         var old = (await rig.Services.GetRequiredService<PackCreationService>().CreateAsync(ChangeSender.Team(Who), NewBattery(like, "OLD-0001"))).Pack!;
         await rig.Store.SetModelSerialFormatAsync(model.Id, Core800); // a format the battery doesn't fit, set afterwards
 
-        // The battery's page saves every field it shows: its own serial number again, in any letters, is no change.
-        foreach (var same in new[] { "OLD-0001", "old-0001" })
+        // Its own serial number sent again, the very same text, is no change (S1 round two: other letters are a change).
+        foreach (var same in new[] { "OLD-0001" })
         {
             var again = await rig.Services.GetRequiredService<SavePipeline>().SaveAsync(
                 ChangeSender.Team(Who),
                 new ChangeSet(TargetKind.Pack, old.Id, new Dictionary<string, JsonNode?> { ["batterySerialNumber"] = same }, "form"));
             Assert.DoesNotContain(again.Keys, key => key.Outcome == KeyOutcome.Rejected);
         }
+
+        Assert.Equal(SerialFormats.Misfit("old-0001", model.Name, Core800), Assert.Single((await SetSerialAsync(rig, old.Id, "old-0001")).Keys).Message);
 
         // A change to another serial number is held to the format from now on.
         var changed = await SetSerialAsync(rig, old.Id, "OLD-0002");

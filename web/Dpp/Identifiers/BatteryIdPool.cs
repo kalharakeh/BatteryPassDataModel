@@ -190,11 +190,22 @@ public sealed partial class BatteryIdPool(
 
         var released = pooled.Select(item => item.Id).ToHashSet(StringComparer.Ordinal);
         var batteries = await BatteriesByKeyAsync(cancellationToken);
-        foreach (var (serial, key, _) in wanted)
+        foreach (var (serial, key, identifier) in wanted)
         {
-            if (!released.Contains(key) && batteries.TryGetValue(key, out var battery)) // one reason per serial number
+            if (released.Contains(key))
+            {
+                continue; // one reason per serial number
+            }
+
+            if (batteries.TryGetValue(key, out var battery))
             {
                 problems.Add(new IdProblem(serial, $"battery {battery} already has this serial number or battery ID"));
+            }
+            else if (batteries.TryGetValue(IdentifierForms.ItemKey(identifier), out var holder))
+            {
+                // The one rule (S1 round two): another battery's ID, a new passport's -R1 included, is the same apart
+                // from capitals and dashes.
+                problems.Add(new IdProblem(serial, DunsIdentifierScheme.SameIdTaken(IdentifierForms.Short(identifier), holder)));
             }
         }
 
@@ -334,7 +345,7 @@ public sealed partial class BatteryIdPool(
     public async Task<ReleasedBatteryId?> FindUnpublishedAsync(string text, CancellationToken cancellationToken = default)
     {
         var wanted = text?.Trim() ?? string.Empty;
-        if (wanted.Length == 0)
+        if (wanted.Length == 0 || !IdentifierForms.IsLookup(wanted) || wanted.Any(letter => letter > '~'))
         {
             return null;
         }
@@ -411,6 +422,12 @@ public sealed partial class BatteryIdPool(
             return SwapNeedsSameKind;
         }
 
+        // The one rule (S1 round two): no other battery has the same ID apart from capitals and dashes.
+        if (await GetAsync(serialNumber, cancellationToken) is { } target && await SameIdTakenAsync(target.Identifier, packId, cancellationToken) is { } taken)
+        {
+            return taken;
+        }
+
         var model = (await store.GetAsync<ProductionBatch>(pack.BatchId, cancellationToken))?.ModelId;
 
         // The new serial number fits the format of the battery's model (decision 81), asked before anything is taken;
@@ -428,11 +445,24 @@ public sealed partial class BatteryIdPool(
         }
 
         var now = clock.GetUtcNow().UtcDateTime;
-        await store.SetValuesAsync<BatteryPack>(packId, new Dictionary<string, Values.AttributeValue>(StringComparer.Ordinal)
+        try
         {
-            ["batterySerialNumber"] = new() { Value = System.Text.Json.Nodes.JsonValue.Create(picked.SerialNumber), GeneratedAtUtc = now, Source = "form", Who = who },
-            ["uniqueProductIdentifier"] = new() { Value = System.Text.Json.Nodes.JsonValue.Create(picked.Identifier), GeneratedAtUtc = now, Source = "system", Who = who },
-        }, cancellationToken);
+            await store.SetValuesAsync<BatteryPack>(packId, new Dictionary<string, Values.AttributeValue>(StringComparer.Ordinal)
+            {
+                ["batterySerialNumber"] = new() { Value = System.Text.Json.Nodes.JsonValue.Create(picked.SerialNumber), GeneratedAtUtc = now, Source = "form", Who = who },
+                ["uniqueProductIdentifier"] = new() { Value = System.Text.Json.Nodes.JsonValue.Create(picked.Identifier), GeneratedAtUtc = now, Source = "system", Who = who },
+            }, cancellationToken);
+        }
+        catch (MongoWriteException exception) when (DppStore.IsDuplicateItem(exception))
+        {
+            // Another battery took the same ID at the same moment: the database refused it, so nothing changed; the picked
+            // ID is available again and the draft keeps its own.
+            await store.ReleasedIds.UpdateOneAsync(
+                item => item.Id == picked.Id && item.PackId == packId,
+                Builders<ReleasedBatteryId>.Update.Set(item => item.Status, ReleasedIdStatuses.Available).Set(item => item.PackId, null),
+                cancellationToken: CancellationToken.None);
+            return await SameIdTakenAsync(picked.Identifier, packId, CancellationToken.None) ?? DunsIdentifierScheme.SameIdTaken(IdentifierForms.Short(picked.Identifier), "another battery");
+        }
 
         // A draft can be published while it swaps: if it has a version by now, its new IDs wait (round six, 3).
         if (await store.GetLatestVersionNumberAsync(packId, CancellationToken.None) > 0)
@@ -455,6 +485,15 @@ public sealed partial class BatteryIdPool(
             cancellationToken: cancellationToken);
         return null;
     }
+
+    /// <summary>
+    /// The one rule (S1 round two): the refusal when a battery other than <paramref name="exceptPackId"/> has an ID whose
+    /// item part is the same as <paramref name="identifier"/>'s once capitals and dashes are ignored; null otherwise.
+    /// </summary>
+    public async Task<string?> SameIdTakenAsync(string identifier, string? exceptPackId, CancellationToken cancellationToken = default) =>
+        await store.FindPackByItemIgnoringDashesAsync(IdentifierForms.Short(identifier), cancellationToken) is { } holder && holder.Id != exceptPackId
+            ? DunsIdentifierScheme.SameIdTaken(IdentifierForms.Short(identifier), Text(holder, "batterySerialNumber") ?? holder.Id)
+            : null;
 
     /// <summary>A draft gives its ID back (swapped, or the draft removed): it is available again.</summary>
     public Task GiveBackAsync(string packId, CancellationToken cancellationToken = default) =>

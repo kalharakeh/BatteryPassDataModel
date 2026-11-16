@@ -26,6 +26,7 @@ public sealed class PassportCheckLeftoversTests(MongoFixture mongo)
         var packs = rig.Context.Database!.GetCollection<BsonDocument>(DppStore.Packs);
         var versions = rig.Context.Database!.GetCollection<BsonDocument>(DppStore.Versions);
         var copy = (await packs.Find(Builders<BsonDocument>.Filter.Eq("_id", rig.PackId)).SingleAsync()).DeepClone().AsBsonDocument;
+        copy.Remove("ItemKey"); // a copy has no key of its own yet, as a pack from before S1 round two
         copy["_id"] = "pack-late";
         copy["Values"]["batterySerialNumber"]["Value"] = "LATE";
         copy["Values"]["uniqueProductIdentifier"]["Value"] = "urn:test:late-battery";

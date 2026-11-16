@@ -30,6 +30,7 @@ public sealed class MarkerBeforeTheWorkTests(MongoFixture mongo)
             copy["_id"] = id;
             copy["Values"]["batterySerialNumber"]["Value"] = id.ToUpperInvariant();
             copy["Values"]["uniqueProductIdentifier"]["Value"] = $"urn:test:{id}";
+            copy["ItemKey"] = BatteryPassWeb.Dpp.Identifiers.IdentifierForms.ItemKey($"urn:test:{id}"); // its own ID's key (S1 round two)
             await packs.InsertOneAsync(copy);
             var versionCopy = version.DeepClone().AsBsonDocument;
             versionCopy["_id"] = $"version-{id}";

@@ -30,6 +30,7 @@ public sealed class WaitingMarkerCostTests(MongoFixture mongo)
         {
             var id = $"pack-load-{i:D5}";
             var copy = pack.DeepClone().AsBsonDocument;
+            copy.Remove("ItemKey"); // a copy has no key of its own yet, as a pack from before S1 round two
             copy["_id"] = id;
             copy["Values"]["batterySerialNumber"]["Value"] = $"LOAD-{i:D5}";
             copy["Values"]["uniqueProductIdentifier"]["Value"] = $"urn:test:load:{i:D5}";

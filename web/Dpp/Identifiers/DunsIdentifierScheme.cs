@@ -37,6 +37,13 @@ public sealed class DunsIdentifierScheme(IOptions<BatteryPassOptions> options, D
 
     public const string TooManySuccessors = "this battery already has 99 new passports, so it can't get another battery ID";
 
+    /// <summary>
+    /// The refusal of the one rule (S1 round two): another battery already has an ID whose item part is the same once
+    /// capitals and dashes are ignored, so this one can't be used.
+    /// </summary>
+    public static string SameIdTaken(string item, string otherSerial) =>
+        $"the battery ID {item} is the same, apart from capitals and dashes, as the battery ID of battery {otherSerial}, so it can't be used";
+
     public static string TooLong(int characters) => $"the serial number is too long to make a battery ID: at most {characters} characters, dashes included";
 
     public static string Taken(string item, string serial) =>
@@ -128,7 +135,13 @@ public sealed class DunsIdentifierScheme(IOptions<BatteryPassOptions> options, D
         for (var number = 1; number <= MaxSuccessors; number++)
         {
             var next = $"{first}{dash}R{number}";
-            if (!used.Contains(next))
+
+            // The one rule (S1 round two): skip a number whose ID another battery, a released ID (its label may be
+            // printed) or a removed passport already has, apart from capitals and dashes.
+            if (!used.Contains(next)
+                && await store.FindPackByItemIgnoringDashesAsync(IdentifierForms.Short(next), cancellationToken) is null
+                && await store.FindReleasedByItemKeyAsync(IdentifierForms.ItemKey(next), cancellationToken) is null
+                && await store.FindRemovedAsync(next, cancellationToken) is null)
             {
                 return new NewIdentifier(next, null);
             }
@@ -254,8 +267,31 @@ public static partial class IdentifierForms
     /// "VPC8C05s-00001" → "VPC8C05S00001"): the released IDs' key, so that serial numbers which differ only in their dashes
     /// (6d-5) or in capital and small letters (decision 80) are one, and what searches compare.
     /// </summary>
-    public static string Clean(string? serialNumber) =>
-        new((serialNumber ?? string.Empty).ToUpperInvariant().Where(letter => letter is >= 'A' and <= 'Z' or >= '0' and <= '9').ToArray());
+    /// <remarks>
+    /// Only the letters a–z and A–Z count, compared without a culture's case rules: a text holding any other letter or
+    /// digit (<c>ſ</c> and <c>ı</c> upper-case to S and I in .NET) has no key at all, so it is never the same as anything.
+    /// </remarks>
+    public static string Clean(string? serialNumber)
+    {
+        var text = serialNumber ?? string.Empty;
+        return text.Any(letter => char.IsLetterOrDigit(letter) && !char.IsAscii(letter))
+            ? string.Empty
+            : new string(text.Where(char.IsAsciiLetterOrDigit).Select(char.ToUpperInvariant).ToArray());
+    }
+
+    /// <summary>
+    /// A battery ID's key for the one rule (S1 round two): the item part ("UN778474481-VBC-1-R1", from the web form or
+    /// as typed) with only its letters and digits, in capitals ("UN778474481VBC1R1"). Two batteries never share one.
+    /// Empty for no ID.
+    /// </summary>
+    public static string ItemKey(string? identifier) => Clean(Short(identifier ?? string.Empty));
+
+    /// <summary>
+    /// True for text that may be looked up as an ID or a serial number: no control character (S1 round two: a NUL
+    /// reached a regular expression and gave a 500). Every look-up by ID or serial asks this first and finds nothing
+    /// otherwise, so every route answers "not found".
+    /// </summary>
+    public static bool IsLookup(string? text) => text is not null && !text.Any(char.IsControl);
 
     /// <summary>
     /// The one rule (decision 80): two serial numbers are the same when their keys (<see cref="Clean"/>) are the same.

@@ -96,6 +96,7 @@ public sealed class PassportCheckTests(MongoFixture mongo)
         for (var i = 0; i < 5000; i++)
         {
             var copy = pack.DeepClone().AsBsonDocument;
+            copy.Remove("ItemKey"); // a copy has no key of its own yet, as a pack from before S1 round two
             copy["_id"] = $"pack-check-{i:D5}";
             copy["Values"]["batterySerialNumber"]["Value"] = $"CHECK-{i:D5}";
             copy["Values"]["uniqueProductIdentifier"]["Value"] = $"urn:test:check-battery:{i:D5}";

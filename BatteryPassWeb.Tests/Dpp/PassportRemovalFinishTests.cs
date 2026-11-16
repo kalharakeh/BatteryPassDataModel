@@ -119,6 +119,7 @@ public sealed class PassportRemovalFinishTests(MongoFixture mongo)
         var earlier = (await packs.Find(Builders<BsonDocument>.Filter.Eq("_id", rig.PackId)).SingleAsync()).DeepClone().AsBsonDocument;
         earlier["_id"] = "pack-earlier";
         earlier["Values"]["uniqueProductIdentifier"]["Value"] = "urn:test:earlier-battery";
+        earlier["ItemKey"] = "URNTESTEARLIERBATTERY"; // its own ID's key, not the copied one (S1 round two)
         await packs.InsertOneAsync(earlier);
         var version = (await versions.Find(Builders<BsonDocument>.Filter.Eq("PackId", rig.PackId)).SingleAsync()).DeepClone().AsBsonDocument;
         version["_id"] = "version-earlier";

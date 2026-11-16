@@ -3,9 +3,17 @@ using BatteryPassWeb.Dpp.Assembly;
 using BatteryPassWeb.Dpp.Values;
 using BatteryPassWeb.Services;
 using MongoDB.Bson;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 
 namespace BatteryPassWeb.Dpp.Store;
+
+/// <summary>
+/// A pack from before S1 round two whose battery ID has the same item key as another's (<paramref name="HeldBy"/>, which
+/// keeps it): it is left without a stored key, so the unique index can be made and the app starts; the rule's look-ups
+/// still find it. Someone must decide which of the two is right.
+/// </summary>
+public sealed record ItemKeyCollision(string PackId, string ItemKey, string HeldBy);
 
 /// <summary>
 /// Reads and writes the passport source records in MongoDB (design 4.1). Without a configured database, reads
@@ -50,12 +58,25 @@ public sealed class DppStore
     };
 
     private readonly IMongoDatabase? _database;
+    private readonly Microsoft.Extensions.Logging.ILogger<DppStore>? _logger;
 
-    public DppStore(MongoContext mongoContext)
+    public DppStore(MongoContext mongoContext, Microsoft.Extensions.Logging.ILogger<DppStore>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(mongoContext);
         _database = mongoContext.Database;
+        _logger = logger;
     }
+
+    /// <summary>The unique index on <see cref="BatteryPack.ItemKey"/> (S1 round two).</summary>
+    public const string ItemKeyIndex = "item_key";
+
+    /// <summary>
+    /// True when a write was refused because another pack has the same battery ID or the same item key (the one rule, S1
+    /// round two): whichever of the two unique indexes the database names.
+    /// </summary>
+    public static bool IsDuplicateItem(MongoWriteException exception) =>
+        exception?.WriteError?.Category == ServerErrorCategory.DuplicateKey
+        && (exception.WriteError.Message.Contains(ItemKeyIndex, StringComparison.Ordinal) || exception.WriteError.Message.Contains("unique_product_identifier", StringComparison.Ordinal));
 
     public bool IsAvailable => _database is not null;
 
@@ -114,14 +135,23 @@ public sealed class DppStore
 
     /// <summary>
     /// #6 is unique; serial numbers are not (design 8.2), so they are indexed for lookup only.
-    /// A batch is unique per model, site and year (decision 3). Safe to run at every start.
+    /// A batch is unique per model, site and year (decision 3). Safe to run at every start. Before the unique index on the
+    /// item key (S1 round two), every pack without a key gets one; a pack whose key another already has is left without
+    /// it, named in the log and returned, so that a start never fails on old data.
     /// </summary>
-    public async Task EnsureIndexesAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ItemKeyCollision>> EnsureIndexesAsync(CancellationToken cancellationToken = default)
     {
         if (_database is null)
         {
-            return;
+            return [];
         }
+
+        var collisions = await FillItemKeysAsync(cancellationToken);
+        await Collection<BatteryPack>().Indexes.CreateOneAsync(
+            new CreateIndexModel<BatteryPack>(
+                Builders<BatteryPack>.IndexKeys.Ascending(pack => pack.ItemKey),
+                new CreateIndexOptions { Unique = true, Sparse = true, Name = ItemKeyIndex }),
+            cancellationToken: cancellationToken);
 
         await Collection<BatteryPack>().Indexes.CreateManyAsync(
         [
@@ -188,6 +218,40 @@ public sealed class DppStore
             new CreateIndexModel<Identifiers.ReleasedBatteryId>(Builders<Identifiers.ReleasedBatteryId>.IndexKeys.Ascending(item => item.PackId), new CreateIndexOptions { Name = "pack", Sparse = true }),
             new CreateIndexModel<Identifiers.ReleasedBatteryId>(Builders<Identifiers.ReleasedBatteryId>.IndexKeys.Ascending(item => item.Status).Ascending(item => item.ModelId), new CreateIndexOptions { Name = "status_model" }),
         ], cancellationToken);
+        return collisions;
+    }
+
+    /// <summary>
+    /// Gives every pack that has a battery ID but no item key its key (the packs made before S1 round two), oldest first
+    /// by _id, so the first of two old colliding packs keeps it. The others are left without a key and named.
+    /// </summary>
+    private async Task<IReadOnlyList<ItemKeyCollision>> FillItemKeysAsync(CancellationToken cancellationToken)
+    {
+        var packs = Collection<BatteryPack>();
+        var missing = await packs
+            .Find(Builders<BatteryPack>.Filter.Exists(pack => pack.ItemKey, false) & Builders<BatteryPack>.Filter.Exists(UniqueProductIdentifierField))
+            .SortBy(pack => pack.Id)
+            .ToListAsync(cancellationToken);
+        var collisions = new List<ItemKeyCollision>();
+        foreach (var pack in missing)
+        {
+            var key = Identifiers.IdentifierForms.ItemKey(pack.Values.GetValueOrDefault("uniqueProductIdentifier")?.Value is System.Text.Json.Nodes.JsonValue value && value.TryGetValue<string>(out var id) ? id : null);
+            if (key.Length == 0)
+            {
+                continue;
+            }
+
+            if (await packs.Find(other => other.ItemKey == key).Project(other => other.Id).FirstOrDefaultAsync(cancellationToken) is { } holder)
+            {
+                collisions.Add(new ItemKeyCollision(pack.Id, key, holder));
+                _logger?.LogWarning("Battery {PackId} has the same battery ID as battery {HeldBy}, apart from capitals and dashes ({ItemKey}); it was left without its key. Decide which of the two is right.", pack.Id, holder, key);
+                continue;
+            }
+
+            await packs.UpdateOneAsync(other => other.Id == pack.Id, Builders<BatteryPack>.Update.Set(other => other.ItemKey, key), cancellationToken: cancellationToken);
+        }
+
+        return collisions;
     }
 
     /// <summary>Logs an upload (step 5a).</summary>
@@ -246,6 +310,12 @@ public sealed class DppStore
     {
         ArgumentNullException.ThrowIfNull(record);
         RequireDatabase();
+        if (record is BatteryPack pack)
+        {
+            // The one rule's key goes with the ID (S1 round two); the unique index refuses a second pack with it.
+            pack.ItemKey = Identifiers.IdentifierForms.ItemKey(pack.Values.GetValueOrDefault("uniqueProductIdentifier")?.Value is System.Text.Json.Nodes.JsonValue value && value.TryGetValue<string>(out var id) ? id : null) is { Length: > 0 } key ? key : null;
+        }
+
         return Collection<T>().InsertOneAsync(record, cancellationToken: cancellationToken);
     }
 
@@ -269,10 +339,17 @@ public sealed class DppStore
             throw new ArgumentException("There are no values to set.", nameof(values));
         }
 
-        var update = Builders<T>.Update.Combine(
-            values.Select(entry => Builders<T>.Update.Set($"Values.{entry.Key}", entry.Value))
-                .Concat(removals.Select(key => Builders<T>.Update.Unset($"Values.{key}"))));
-        var result = await Collection<T>().UpdateOneAsync(Builders<T>.Filter.Eq("_id", id), update, cancellationToken: cancellationToken);
+        var updates = values.Select(entry => Builders<T>.Update.Set($"Values.{entry.Key}", entry.Value))
+            .Concat(removals.Select(key => Builders<T>.Update.Unset($"Values.{key}")))
+            .ToList();
+        if (typeof(T) == typeof(BatteryPack) && values.TryGetValue("uniqueProductIdentifier", out var identifier))
+        {
+            // A battery's ID changes only by a swap: its key changes with it, in this one update (S1 round two).
+            var key = Identifiers.IdentifierForms.ItemKey(identifier.Value is System.Text.Json.Nodes.JsonValue text && text.TryGetValue<string>(out var given) ? given : null);
+            updates.Add(key.Length > 0 ? Builders<T>.Update.Set(nameof(BatteryPack.ItemKey), key) : Builders<T>.Update.Unset(nameof(BatteryPack.ItemKey)));
+        }
+
+        var result = await Collection<T>().UpdateOneAsync(Builders<T>.Filter.Eq("_id", id), Builders<T>.Update.Combine(updates), cancellationToken: cancellationToken);
         return result.MatchedCount == 1;
     }
 
@@ -314,7 +391,7 @@ public sealed class DppStore
 
     public async Task<IReadOnlyList<BatteryPack>> FindPacksBySerialNumberAsync(string serialNumber, CancellationToken cancellationToken = default)
     {
-        if (_database is null || string.IsNullOrWhiteSpace(serialNumber))
+        if (_database is null || string.IsNullOrWhiteSpace(serialNumber) || !Identifiers.IdentifierForms.IsLookup(serialNumber))
         {
             return [];
         }
@@ -344,6 +421,12 @@ public sealed class DppStore
     private static BsonRegularExpression SameLetters(string text) => new($"^{Regex.Escape(text)}$", "i");
 
     /// <summary>
+    /// True for text a case-blind look-up may take: printable ASCII only. The database's case rules would fold ſ and ı
+    /// into s and i (S1 round two); an ID or a serial number holds a to z only, so other text is compared as it is.
+    /// </summary>
+    private static bool CaseBlind(string text) => text.All(letter => letter is >= ' ' and <= '~');
+
+    /// <summary>
     /// True when another pack already has this serial number (#11) by the one rule (decision 80): the same letters and
     /// digits, whatever their case and their dashes. <paramref name="exceptPackId"/> is the pack being corrected, which may keep its own.
     /// </summary>
@@ -357,13 +440,17 @@ public sealed class DppStore
     public async Task<bool> SerialNumberTakenAsync(string serialNumber, IReadOnlyCollection<string> exceptPackIds, CancellationToken cancellationToken = default)
     {
         var wanted = serialNumber?.Trim();
-        if (_database is null || string.IsNullOrEmpty(wanted))
+        if (_database is null || string.IsNullOrEmpty(wanted) || !Identifiers.IdentifierForms.IsLookup(wanted))
         {
-            return false;
+            return false; // a serial number with a control character is refused by the serial rule before this
         }
 
         // A text with no letter or digit has no key: it is compared as typed, as before.
-        var sameSerial = Builders<BatteryPack>.Filter.Regex(SerialNumberField, SameSerial(wanted) ?? new BsonRegularExpression($@"^\s*{Regex.Escape(wanted)}\s*$", "i"));
+        var sameSerial = SameSerial(wanted) is { } byKey
+            ? Builders<BatteryPack>.Filter.Regex(SerialNumberField, byKey)
+            : CaseBlind(wanted)
+                ? Builders<BatteryPack>.Filter.Regex(SerialNumberField, new BsonRegularExpression($@"^\s*{Regex.Escape(wanted)}\s*$", "i"))
+                : Builders<BatteryPack>.Filter.Eq(SerialNumberField, wanted);
         var filter = exceptPackIds.Count == 0 ? sameSerial : sameSerial & Builders<BatteryPack>.Filter.Nin("_id", exceptPackIds);
         return await Collection<BatteryPack>().Find(filter).Limit(1).AnyAsync(cancellationToken);
     }
@@ -393,14 +480,25 @@ public sealed class DppStore
     public async Task<RemovedPassport?> FindRemovedAsync(string? id, CancellationToken cancellationToken = default)
     {
         var text = Uri.UnescapeDataString(id?.Trim() ?? string.Empty);
-        if (_database is null || text.Length == 0)
+        if (_database is null || text.Length == 0 || !Identifiers.IdentifierForms.IsLookup(text))
         {
             return null;
         }
 
         var forms = new[] { text, Identifiers.IdentifierForms.Short(text) }.Distinct(StringComparer.Ordinal).ToArray();
-        var named = Builders<RemovedPassport>.Filter.AnyIn(removed => removed.Ids, forms)
-            | Builders<RemovedPassport>.Filter.Or(forms.Select(form => Builders<RemovedPassport>.Filter.Regex("Ids", SameLetters(form))));
+        var named = Builders<RemovedPassport>.Filter.AnyIn(removed => removed.Ids, forms);
+        if (CaseBlind(text))
+        {
+            named |= Builders<RemovedPassport>.Filter.Or(forms.Select(form => Builders<RemovedPassport>.Filter.Regex("Ids", SameLetters(form))));
+        }
+
+
+        // A battery ID never comes back in other capitals or dashes either (the one rule, S1 round two).
+        if (Identifiers.IdentifierForms.Short(text) is var item && Identifiers.IdentifierForms.IsItem(item))
+        {
+            named |= Builders<RemovedPassport>.Filter.Regex("Ids", SameItem(Identifiers.IdentifierForms.ItemKey(item), anchored: true));
+        }
+
         return await Collection<RemovedPassport>().Find(named).FirstOrDefaultAsync(cancellationToken);
     }
 
@@ -695,7 +793,7 @@ public sealed class DppStore
     /// </summary>
     public async Task<BatteryPack?> FindPackByUniqueProductIdentifierAsync(string identifier, CancellationToken cancellationToken = default)
     {
-        if (_database is null || string.IsNullOrWhiteSpace(identifier))
+        if (_database is null || string.IsNullOrWhiteSpace(identifier) || !Identifiers.IdentifierForms.IsLookup(identifier))
         {
             return null;
         }
@@ -705,7 +803,7 @@ public sealed class DppStore
         {
             filter |= Builders<BatteryPack>.Filter.Regex(UniqueProductIdentifierField, new BsonRegularExpression($"/{Identifiers.IdentifierForms.DataIdentifier}/{Regex.Escape(identifier)}$", "i"));
         }
-        else if (identifier.Contains($"/{Identifiers.IdentifierForms.DataIdentifier}/", StringComparison.OrdinalIgnoreCase) || identifier.StartsWith("urn:", StringComparison.OrdinalIgnoreCase))
+        else if (CaseBlind(identifier) && (identifier.Contains($"/{Identifiers.IdentifierForms.DataIdentifier}/", StringComparison.OrdinalIgnoreCase) || identifier.StartsWith("urn:", StringComparison.OrdinalIgnoreCase)))
         {
             filter |= Builders<BatteryPack>.Filter.Regex(UniqueProductIdentifierField, SameLetters(identifier)); // a full ID typed in other letters
         }
@@ -726,8 +824,29 @@ public sealed class DppStore
             return null;
         }
 
-        var pattern = $"/{Identifiers.IdentifierForms.DataIdentifier}/{string.Join("-?", key.Select(letter => letter.ToString()))}$";
-        return await Collection<BatteryPack>().Find(Builders<BatteryPack>.Filter.Regex(UniqueProductIdentifierField, new BsonRegularExpression(pattern, "i"))).FirstOrDefaultAsync(cancellationToken);
+        return await Collection<BatteryPack>().Find(
+            Builders<BatteryPack>.Filter.Eq(pack => pack.ItemKey, key) | Builders<BatteryPack>.Filter.Regex(UniqueProductIdentifierField, SameItem(key, anchored: false)))
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// A released ID whose battery ID has this item key (the one rule, S1 round two), whatever its status: a new
+    /// passport's R-number skips it, so a label that may be printed stays usable. Null when none.
+    /// </summary>
+    public async Task<Identifiers.ReleasedBatteryId?> FindReleasedByItemKeyAsync(string key, CancellationToken cancellationToken = default) =>
+        _database is null || key.Length == 0
+            ? null
+            : await ReleasedIds.Find(Builders<Identifiers.ReleasedBatteryId>.Filter.Regex(item => item.Identifier, SameItem(key, anchored: false))).FirstOrDefaultAsync(cancellationToken);
+
+    /// <summary>
+    /// Matches a battery ID whose item part has this key (only A–Z and 0–9: nothing to escape): its letters and digits
+    /// in order, a dash or none between them, any capitals. As a web-form address's end, or, <paramref name="anchored"/>,
+    /// the whole text (a removal marker holds both forms).
+    /// </summary>
+    private static BsonRegularExpression SameItem(string key, bool anchored)
+    {
+        var item = string.Join("-?", key.Select(letter => letter.ToString()));
+        return new BsonRegularExpression(anchored ? $"^(?:https?://[^/]+/{Identifiers.IdentifierForms.DataIdentifier}/)?{item}$" : $"/{Identifiers.IdentifierForms.DataIdentifier}/{item}$", "i");
     }
 
     /// <summary>
@@ -940,7 +1059,7 @@ public sealed class DppStore
     /// <summary>A version by its passport ID (#5), whatever its status.</summary>
     public async Task<PassportVersion?> GetVersionByPassportIdAsync(string passportId, CancellationToken cancellationToken = default)
     {
-        if (_database is null || string.IsNullOrWhiteSpace(passportId))
+        if (_database is null || string.IsNullOrWhiteSpace(passportId) || !Identifiers.IdentifierForms.IsLookup(passportId))
         {
             return null;
         }
@@ -948,7 +1067,7 @@ public sealed class DppStore
         // As stored first (indexed); a passport ID typed in other letters is found without regard to their case (decision 80).
         var versions = Collection<PassportVersion>();
         var version = await versions.Find(version => version.DigitalProductPassportId == passportId).FirstOrDefaultAsync(cancellationToken);
-        if (version is null && (passportId.Contains("/dpp/", StringComparison.OrdinalIgnoreCase) || passportId.StartsWith("urn:", StringComparison.OrdinalIgnoreCase)))
+        if (version is null && CaseBlind(passportId) && (passportId.Contains("/dpp/", StringComparison.OrdinalIgnoreCase) || passportId.StartsWith("urn:", StringComparison.OrdinalIgnoreCase)))
         {
             version = await versions.Find(Builders<PassportVersion>.Filter.Regex(version => version.DigitalProductPassportId, SameLetters(passportId))).FirstOrDefaultAsync(cancellationToken);
         }

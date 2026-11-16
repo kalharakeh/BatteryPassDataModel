@@ -153,6 +153,13 @@ public sealed class PackCreationService(
                 return Failed(RemovedId);
             }
 
+            // The one rule (S1 round two): no other battery has the same ID apart from capitals and dashes. Asked before
+            // the ID is picked, so it stays available.
+            if (await pool.GetAsync(asked, cancellationToken) is { } releasedId && await pool.SameIdTakenAsync(releasedId.Identifier, null, cancellationToken) is { } taken)
+            {
+                return Failed(taken);
+            }
+
             // The serial number fits its model's format (decision 81): asked before the ID is picked, so it stays
             // available. Test IDs are free of the format, and so is a battery's new passport (the branch below).
             if (model?.SerialFormat is { Length: > 0 } format && await pool.GetAsync(asked, cancellationToken) is { IsDemo: false } wanted
@@ -227,6 +234,20 @@ public sealed class PackCreationService(
         try
         {
             await store.InsertAsync(pack, cancellationToken);
+        }
+        catch (MongoDB.Driver.MongoWriteException exception) when (DppStore.IsDuplicateItem(exception))
+        {
+            // Another battery took the same ID, apart from capitals and dashes, at the same moment: the database refused
+            // this one (S1 round two). The picked ID is available again; nothing was stored.
+            if (pool is not null && request.FromPool)
+            {
+                await pool.GiveBackAsync(pack.Id, CancellationToken.None);
+            }
+
+            var identifier = pack.Values["uniqueProductIdentifier"].Value!.GetValue<string>();
+            return Failed(pool is not null && await pool.SameIdTakenAsync(identifier, pack.Id, CancellationToken.None) is { } taken
+                ? taken
+                : DunsIdentifierScheme.SameIdTaken(IdentifierForms.Short(identifier), "another battery"));
         }
         catch when (pool is not null && request.FromPool)
         {
