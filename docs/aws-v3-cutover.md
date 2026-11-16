@@ -2,7 +2,7 @@
 
 **What this does:** the one Elastic Beanstalk environment behind `https://www.sib-scania-eubp.eu/` (`battery-pass-env`, `eu-north-1`) changes from the old app to the new one.
 - **Old app:** branch `security/demo-api-hardening`, database `battery_pass_demo`.
-- **New app:** branch `feature/dpp-v3-step2d-team-pages`, database `battery_pass_v3`.
+- **New app:** the tag `new-app-v3.5` (the go-live version, on top of `new-app-v3.4`), database `battery_pass_v3`.
 
 The old app stays restorable (section 7). Nothing runs side by side.
 
@@ -45,10 +45,10 @@ DNS, HTTPS and the www redirect need no change.
    - Never put it in Git, a chat or a file in the repository.
 4. **The restore points** (section 7):
    - the tag `old-app-final` at 8c8bfe7 (the old app; the tag `app-v1.2-before-dpp-v3` already marks the same commit);
-   - the tag `new-app-v3` on the new branch's last commit, pushed to `origin`. The managing session does this after step 6.
-5. **The bundle:** check out `new-app-v3` and run `powershell -ExecutionPolicy Bypass -File .\scripts\publish-elastic-beanstalk.ps1`. Keep the zip it prints (`artifacts\releases\BatteryPassWeb-elastic-beanstalk-<time>.zip`). The script leaves out `.env*` files.
+   - the tag `new-app-v3.5` on the go-live commit, pushed to `origin`.
+5. **The bundle:** check out `new-app-v3.5` and run `powershell -ExecutionPolicy Bypass -File .\scripts\publish-elastic-beanstalk.ps1`. Keep the zip it prints (`artifacts\releases\BatteryPassWeb-elastic-beanstalk-<time>.zip`). The script leaves out `.env*` files.
 6. **Upload it as a new application version, without deploying:**
-   - Beanstalk, Application `battery-pass`, Application versions, Upload, label `new-app-v3`.
+   - Beanstalk, Application `battery-pass`, Application versions, Upload, label `new-app-v3.5`.
    - Check that the application's version lifecycle setting won't delete the old app's version. Note the old version's label (Environment, Running version).
 7. **The settings file** for the switch: `cutover-settings.json` (section 4). Keep it outside the repository, and delete it after the switch.
 8. **No demo data on the live site** (decision 82):
@@ -145,10 +145,10 @@ Leave out the `FIRST_TEAM_ACCOUNT_EMAIL` line when `battery_pass_v3` already has
 3. **The switch** (AWS CLI, signed in to the account that holds the environment):
 
    ```powershell
-   aws elasticbeanstalk update-environment --region eu-north-1 --environment-name battery-pass-env --version-label new-app-v3 --option-settings file://cutover-settings.json
+   aws elasticbeanstalk update-environment --region eu-north-1 --environment-name battery-pass-env --version-label new-app-v3.5 --option-settings file://cutover-settings.json
    ```
 
-4. Wait until the environment's health is Green and its running version is `new-app-v3` (a few minutes; the site is down meanwhile).
+4. Wait until the environment's health is Green and its running version is `new-app-v3.5` (a few minutes; the site is down meanwhile).
 5. **Delete `cutover-settings.json`.**
 6. Run the checks (section 6).
 
@@ -190,7 +190,7 @@ Leave out the `FIRST_TEAM_ACCOUNT_EMAIL` line when `battery_pass_v3` already has
 - the saved configuration `old-app-final`;
 - the database `battery_pass_demo`, untouched;
 - **a back-up of `battery_pass_v3`**: take one before every later update of the new app. An earlier version of the app can't open a database a later one has written to once a model is answered, a passport is published or a copy of product data is made (it answers 500). Only the back-up goes back;
-- the new app: the branch `feature/dpp-v3-step2d-team-pages` on `origin`, its tag `new-app-v3`, its application version and the database `battery_pass_v3`.
+- the new app: the tag `new-app-v3.5` on `origin` (and the tag `new-app-v3.4` before it), its application version and the database `battery_pass_v3`.
 
 **Roll back** (one command again, for the same reason as section 4):
 
@@ -210,7 +210,7 @@ After the switch and the checks of section 6. The team does these, signed in as 
 2. **Deploy** (section 5). Wait for Green; delete `cutover-settings.json`.
 3. **The first team account**, if the database was empty (section 2.11): "Forgot password" with the address set in `FIRST_TEAM_ACCOUNT_EMAIL`, then sign in. Run checks 1 to 4 of section 6.
 4. **Load the product data from the Excel.** Battery families, "Load product data from Excel". Choose the filled workbook and the documents and pictures it names, then press **Check**. Fix what it lists by sheet, row and column and check again; replace the demo's example values it names. A document you don't have yet is listed under "Documents still to come": it can follow in a later load. When the check shows no problem, press **Load**. It saves all of it or nothing, and says how many passports get a new version. A second load of the same workbook says "Nothing to load".
-5. **Answer nothing by hand that the Excel carries.** The family's and each model's values, the three questions of each model, the sites, the operators, the hazardous substances and the documents come from the workbook. Open each model's page and look: the workbook doesn't load a model's serial number format yet, so set it on the model's page (`VPC8C05-#####` for Core800, `VPC8C05s-#####` for Core800s, `VPC7C05-#####` for Core700). A value that is wrong is corrected in the workbook and loaded again.
+5. **Answer nothing by hand that the Excel carries.** The family's and each model's values, the three questions of each model, the sites, the operators, the hazardous substances and the documents come from the workbook. The workbook carries each model's serial number format too (`VPC8C05-#####` for Core800, `VPC8C05s-#####` for Core800s, `VPC7C05-#####` for Core700): the check shows the old and the new format and how many batteries don't fit it. Open each model's page and look; the format can also be set there. A value that is wrong is corrected in the workbook and loaded again.
 6. **Tick each customer's written authorisation** (Clusters tab, each cluster's row, with the date), if there are customers yet: until then their admins and tokens only read.
 7. **Release IDs** (Battery IDs): a serial number may hold small letters (`VPC8C05s-00001`) and must fit the model's format. The same serial in other capitals is the same serial.
 8. **One test battery** (check 10 of section 6): a test ID on a real family, readings uploaded, published, opened as a visitor. This is the dress rehearsal; "Clear demo data" removes it afterwards.

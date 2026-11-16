@@ -1,9 +1,9 @@
 # Changelog
 All notable changes to the battery passport data model will be documented in this file.
 
-## The go-live version: first account, no demo, Excel load, serial numbers, hardening (16 Nov 2026)
+## new-app-v3.5, the go-live version: first account, no demo, Excel load, serial numbers, hardening (16 Nov 2026)
 
-On top of `new-app-v3.4`: the platform, hardening, serial number and product data loading packages. Read "Before you update" first.
+Tag `new-app-v3.5`, on top of `new-app-v3.4`: the platform, hardening, serial number and product data loading packages. Read "Before you update" first.
 
 ### Before you update
 
@@ -18,7 +18,7 @@ On top of `new-app-v3.4`: the platform, hardening, serial number and product dat
 
 - **Load product data from Excel.** On Battery families, "Load product data from Excel" takes the filled workbook and its files, checks them (every problem by sheet, row and column, nothing saved), then loads all or nothing. A second load updates; a document you don't have yet is listed under "Documents still to come" [decision 83, 87].
 - **Small letters in serial numbers.** `VPC8C05s-00001` and `VPC8C05S-00001` are the same serial number; it is kept as released, and the battery ID, the passport ID and the QR code carry the small letter. An address typed in other capitals opens the same passport [decision 80].
-- **A serial number format per model** (for example `VPC8C05-#####`), set on the model's page. Releasing IDs, creating a battery and swapping an ID refuse a serial that doesn't fit and name the format [decision 81]. The workbook doesn't load the format yet.
+- **A serial number format per model** (for example `VPC8C05-#####`), set on the model's page. Releasing IDs, creating a battery and swapping an ID refuse a serial that doesn't fit and name the format [decision 81]. The Excel load carries the format too: the check shows the old and the new format and how many batteries don't fit; `none` removes it; a later model never takes the first model's format [decision 83].
 - **One rule for battery IDs:** two batteries never have IDs that differ only in capitals or dashes, at release, creation, swap and new passports; the database enforces it. A draft's serial number is checked whenever its text changes [decision 86].
 - **No demo families on the live site.** The demo is switched off, "Reset demo data" is gone there, and trial batteries are made with test IDs on the real families. "Clear demo data" stays and says what else goes (test IDs, test batteries) [decision 82].
 - **The first team account** of an empty database is made from `FIRST_TEAM_ACCOUNT_EMAIL`; the person sets a password with "Forgot password" [decision 78, 84].
