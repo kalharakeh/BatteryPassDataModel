@@ -203,7 +203,7 @@ public sealed class SmallLetterSerialReleaseTests(MongoFixture mongo)
         Assert.Equal("VPC8C05s-00002", Text(swapped, "batterySerialNumber"));
         Assert.Equal($"{Base}/25S/UN778474481-VPC8C05s-00002", Text(swapped, "uniqueProductIdentifier"));
         Assert.Equal(ReleasedIdStatuses.Available, (await pool.GetAsync("VPC8C05S-00001"))!.Status);
-        Assert.Equal("that battery ID isn't available for this battery's model any more; pick another", await pool.SwapAsync(Who, draft.Id, "VPC8C05S-00003")); // the other battery's, in capitals
+        Assert.Equal(DunsIdentifierScheme.SameIdTaken("UN778474481-VPC8C05s-00003", "VPC8C05s-00003"), await pool.SwapAsync(Who, draft.Id, "VPC8C05S-00003")); // the other battery's, in capitals
         Assert.Equal("VPC8C05s-00003", Text((await rig.Store.GetAsync<BatteryPack>(other.Id))!, "batterySerialNumber"));
         var line = (await rig.All("applicationAuditEvents", Builders<MongoDB.Bson.BsonDocument>.Filter.Eq("eventType", BatteryIdPool.SwappedEvent))).Single()["message"].AsString;
         Assert.Equal("Draft battery VPC8C05s-00001 now has battery ID VPC8C05s-00002; VPC8C05s-00001 is available again", line);

@@ -317,17 +317,9 @@ public sealed class SavePipeline(
             }
             else if (attribute.Number == 11
                 && accepted[result.Key] is JsonValue serial
-                && serial.TryGetValue<string>(out var text)
-                && await store.SerialNumberTakenAsync(text, await LinkedPacksAsync(packId, cancellationToken), cancellationToken))
+                && serial.TryGetValue<string>(out var text))
             {
-                refusal = SerialNumberTaken;
-            }
-            else if (attribute.Number == 11
-                && accepted[result.Key] is JsonValue changed
-                && changed.TryGetValue<string>(out var typed)
-                && await SerialFormatMisfitAsync(packId, typed, cancellationToken) is { } misfit)
-            {
-                refusal = misfit;
+                refusal = await SerialRefusalAsync(packId, text, cancellationToken);
             }
 
             if (refusal is not null)
@@ -341,27 +333,40 @@ public sealed class SavePipeline(
     }
 
     /// <summary>
-    /// Why a draft's serial number (#11) can't be changed to <paramref name="serialNumber"/>: it doesn't fit the format of
-    /// the battery's model (decision 81), as at creation and at a swap. Null when it fits, when the model has no format,
-    /// for a test battery (test IDs are free of the format), and when the serial number doesn't change: a battery from
-    /// before a format was set keeps the one it has and can still be saved.
+    /// Why a draft's serial number (#11) can't be changed to <paramref name="serialNumber"/>, as at creation and at a swap:
+    /// it breaks the serial rule (decision 80), another battery has the same serial number, or it doesn't fit the format
+    /// of the battery's model (decision 81; a test battery is free of the format). Null when it may. "Unchanged" means the
+    /// very same text (S1 round two: a change of dashes or separators alone is a change): a battery from before the rule
+    /// or a format keeps the serial number it has and can still be saved.
     /// </summary>
-    private async Task<string?> SerialFormatMisfitAsync(string packId, string serialNumber, CancellationToken cancellationToken)
+    private async Task<string?> SerialRefusalAsync(string packId, string serialNumber, CancellationToken cancellationToken)
     {
-        if (await store.LoadSourcesAsync(packId, cancellationToken) is not { Model.SerialFormat: { Length: > 0 } format } sources)
+        static string? Text(BatteryPack pack, string property) =>
+            pack.Values.GetValueOrDefault(property)?.Value is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+
+        var pack = await store.GetAsync<BatteryPack>(packId, cancellationToken);
+        if (pack is not null && string.Equals(Text(pack, "batterySerialNumber"), serialNumber, StringComparison.Ordinal))
         {
             return null;
         }
 
-        static string? Text(BatteryPack pack, string property) =>
-            pack.Values.GetValueOrDefault(property)?.Value is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+        if (!Identifiers.IdentifierForms.IsSerial(serialNumber))
+        {
+            return Identifiers.IdentifierForms.SerialRule;
+        }
 
-        return sources.Pack.IsDemo
-            || Identifiers.IdentifierForms.IsTest(Text(sources.Pack, "uniqueProductIdentifier"))
-            || Identifiers.IdentifierForms.SameSerial(Text(sources.Pack, "batterySerialNumber"), serialNumber)
-            || Identifiers.SerialFormats.Fits(format, serialNumber)
-            ? null
-            : Identifiers.SerialFormats.Misfit(serialNumber, sources.Model.Name, format);
+        if (await store.SerialNumberTakenAsync(serialNumber, await LinkedPacksAsync(packId, cancellationToken), cancellationToken))
+        {
+            return SerialNumberTaken;
+        }
+
+        return pack is not null
+            && !pack.IsDemo
+            && !Identifiers.IdentifierForms.IsTest(Text(pack, "uniqueProductIdentifier"))
+            && await store.LoadSourcesAsync(packId, cancellationToken) is { Model.SerialFormat: { Length: > 0 } format } sources
+            && !Identifiers.SerialFormats.Fits(format, serialNumber)
+            ? Identifiers.SerialFormats.Misfit(serialNumber, sources.Model.Name, format)
+            : null;
     }
 
     /// <summary>The pack and every earlier and later passport of the same battery, which share its serial number (R6).</summary>

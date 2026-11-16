@@ -137,6 +137,15 @@ public sealed class BatteryPack : IDppRecord
 
     public required string OperatorId { get; set; }
 
+    /// <summary>
+    /// Its battery ID's item part with only its letters and digits, in capitals (<see cref="Identifiers.IdentifierForms.ItemKey"/>,
+    /// "UN778474481VBC1R1"): two batteries never share one (S1 round two), and a unique index makes the database refuse
+    /// the second even when two requests arrive together. Written with the ID, wherever it is set; a pack from before
+    /// gets it when the app starts (<see cref="DppStore.EnsureIndexesAsync"/>). Not passport data.
+    /// </summary>
+    [BsonIgnoreIfNull]
+    public string? ItemKey { get; set; }
+
     /// <summary>The cluster the pack belongs to (the purchaser); null until assigned.</summary>
     public string? ClusterId { get; set; }
 

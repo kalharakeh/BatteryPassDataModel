@@ -69,7 +69,8 @@ public static partial class SerialFormats
         {
             var wanted = format[index];
             var given = serialNumber[index];
-            if (wanted == DigitSign ? !char.IsAsciiDigit(given) : char.ToUpperInvariant(wanted) != char.ToUpperInvariant(given))
+            // a to z only, never by a culture's case rules (ſ and ı would upper-case to S and I)
+            if (wanted == DigitSign ? !char.IsAsciiDigit(given) : !(char.IsAscii(given) && char.ToUpperInvariant(wanted) == char.ToUpperInvariant(given)))
             {
                 return false;
             }
