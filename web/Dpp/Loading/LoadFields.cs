@@ -36,6 +36,9 @@ public enum OwnFieldKind
     /// <summary>The batch's manufacturing site, by name.</summary>
     Site,
 
+    /// <summary>A model's serial number format (decision 81): its own, never the first model's.</summary>
+    SerialFormat,
+
     /// <summary>A field the workbook has and the app doesn't load yet; the check says so when the cell is filled.</summary>
     NotLoadedYet,
 }
@@ -91,7 +94,7 @@ public sealed class LoadFields
         new("family|Name", LoadRecord.Family, "Family name", OwnFieldKind.Name),
         new("family|Picture", LoadRecord.Family, "Picture of the family", OwnFieldKind.Picture),
         new("model|Name", LoadRecord.Model, "Model name", OwnFieldKind.Name),
-        new("model|SerialFormat", LoadRecord.Model, "Serial number format", OwnFieldKind.NotLoadedYet, Note: "Serial number format: not loaded yet (it arrives with the serial number update)"),
+        new("model|SerialFormat", LoadRecord.Model, "Serial number format", OwnFieldKind.SerialFormat),
         new("model|ModuleDescription", LoadRecord.Model, "Modules: short description", OwnFieldKind.ModuleDescription),
         new("model|Picture", LoadRecord.Model, "Picture of the model", OwnFieldKind.Picture),
         new("model|HasCommercialWarranty", LoadRecord.Model, ModelQuestions.Text(ModelQuestion.CommercialWarranty), OwnFieldKind.Answer, ModelQuestion.CommercialWarranty),

@@ -39,7 +39,8 @@ public sealed partial class ProductDataLoader(
     DocumentStore documents,
     DppLinks links,
     AttributeForms forms,
-    ApplicationAuditService audit)
+    ApplicationAuditService audit,
+    BatteryPassWeb.Dpp.Identifiers.IIdentifierScheme identifiers)
 {
     /// <summary>The check judges values as the team's: who presses "Load" makes no difference to what is accepted.</summary>
     private static readonly ChangeSender Checker = ChangeSender.Team("product-data-load");
@@ -279,6 +280,15 @@ public sealed partial class ProductDataLoader(
             PlanValues(model, sheet, cells, plan);
         }
 
+        foreach (var model in plan.Models.Where(model => model.SerialFormat is not null))
+        {
+            var same = plan.Models.Where(other => other != model && BatteryPassWeb.Dpp.Identifiers.SerialFormats.Same(other.SerialFormat, model.SerialFormat)).Select(other => other.Name).ToArray();
+            if (same.Length > 0)
+            {
+                model.Notes.Add($"{string.Join(", ", same)} in this workbook {(same.Length == 1 ? "has" : "have")} the very same serial number format.");
+            }
+        }
+
         // The hazardous substances and the documents name their model: a line goes to the model it names.
         foreach (var column in columns.Where(column => column.Plan is not null && plan.Models.Contains(column.Plan)))
         {
@@ -305,6 +315,9 @@ public sealed partial class ProductDataLoader(
             {
                 case OwnFieldKind.NotLoadedYet:
                     model.Notes.Add(field.Note!);
+                    break;
+                case OwnFieldKind.SerialFormat:
+                    await PlanSerialFormatAsync(model, sheet.RowName(field.Key), cell, current, plan, cancellationToken);
                     break;
                 case OwnFieldKind.Answer:
                     // Yes or No as the cell's list offers them; an answer is changed, never taken back.
@@ -355,6 +368,43 @@ public sealed partial class ProductDataLoader(
         }
     }
 
+    /// <summary>
+    /// A model's serial number format, through S1's own rule (<see cref="ProductDataPages.PreviewSerialFormatAsync"/>):
+    /// a format the rule refuses is a problem line in its words; batteries of the model that wouldn't fit are counted and
+    /// the first few named (the model's page asks before it saves; pressing Load is that yes); another model with the
+    /// very same format is a note. <c>none</c> removes the format.
+    /// </summary>
+    private async Task PlanSerialFormatAsync(RecordPlan model, string rowName, FilledCell cell, BatteryModel? current, LoadPlan plan, CancellationToken cancellationToken)
+    {
+        var typed = cell.IsNone ? null : cell.Text;
+        var preview = await pages.PreviewSerialFormatAsync(current?.Id, typed, identifiers, cancellationToken);
+        if (preview.Problem is { } problem)
+        {
+            plan.Problems.Add(cell.Place.Problem($"{cell.Text}: {problem}"));
+            return;
+        }
+
+        if (preview.Format == current?.SerialFormat)
+        {
+            return;
+        }
+
+        model.SetSerialFormat = true;
+        model.SerialFormat = preview.Format;
+        model.Lines.Add(new LoadChangeLine(rowName, current?.SerialFormat ?? string.Empty, preview.Format ?? Gone));
+        if (preview.Misfits > 0)
+        {
+            var named = string.Join(", ", preview.Examples.Take(ProductDataPages.SerialFormatExamples));
+            var more = preview.Misfits > ProductDataPages.SerialFormatExamples ? $" and {preview.Misfits - ProductDataPages.SerialFormatExamples} more" : string.Empty;
+            model.Notes.Add($"{Words.Count(preview.Misfits, "battery", "batteries")} of {model.Name} {(preview.Misfits == 1 ? "doesn't" : "don't")} fit the format {preview.Format}: {named}{more}. {(preview.Misfits == 1 ? "It stays" : "They stay")} as {(preview.Misfits == 1 ? "it is" : "they are")}; new IDs, new batteries and ID swaps must fit it. Loading saves the format all the same.");
+        }
+
+        if (preview.SharedWith.Count > 0)
+        {
+            model.Notes.Add($"{string.Join(", ", preview.SharedWith)} {(preview.SharedWith.Count == 1 ? "has" : "have")} the very same serial number format.");
+        }
+    }
+
     /// <summary>What a later model's or batch's column says: its own cells, and where one is empty, the first column's.</summary>
     private static Dictionary<string, FilledCell> Effective(ValueColumn? first, ValueColumn own) => Effective(first, own, null, null);
 
@@ -368,7 +418,7 @@ public sealed partial class ProductDataLoader(
             foreach (var (key, cell) in first.Cells)
             {
                 // A model's name and its serial number format are its own: they are never "the same as the first model's".
-                if (!cells.ContainsKey(key) && LoadFields.OwnField(key) is not { Kind: OwnFieldKind.Name or OwnFieldKind.NotLoadedYet })
+                if (!cells.ContainsKey(key) && LoadFields.OwnField(key) is not { Kind: OwnFieldKind.Name or OwnFieldKind.SerialFormat or OwnFieldKind.NotLoadedYet })
                 {
                     cells[key] = cell;
                     taken++;

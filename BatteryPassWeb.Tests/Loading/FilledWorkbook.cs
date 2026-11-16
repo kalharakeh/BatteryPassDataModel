@@ -142,8 +142,8 @@ internal sealed class FilledWorkbook
         SetCell(sheet, RowOf(sheet, key), ColumnOf(sheet, LoadWorkbook.KeyHeader), newKey, number: false);
 
     /// <summary>
-    /// Copies the example column into an input column, as the manager's check does: every example except the record's
-    /// name, which the workbook already holds.
+    /// Copies the example column into the empty cells of an input column, as the manager's check does: what the workbook
+    /// was sent with filled (the record's name, a serial number format) stays.
     /// </summary>
     public FilledWorkbook ExampleInto(string sheet, string column)
     {
@@ -159,9 +159,9 @@ internal sealed class FilledWorkbook
             }
 
             var cell = Cell(row, example, number);
-            if (cell is null || CellText(row, example, number) is not { Length: > 0 } text)
+            if (cell is null || CellText(row, example, number) is not { Length: > 0 } text || CellText(row, target, number) is { Length: > 0 })
             {
-                continue;
+                continue; // nothing to copy, or a cell the workbook was sent with filled (a serial number format, the DUNS)
             }
 
             SetCell(sheet, number, target, text, number: (string?)cell.Attribute("t") is null or "n");

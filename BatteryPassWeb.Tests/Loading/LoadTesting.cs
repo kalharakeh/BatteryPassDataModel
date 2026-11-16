@@ -70,7 +70,8 @@ internal static class LoadTesting
         new DocumentStore(rig.Context),
         DocumentTesting.Links,
         AttributeFormsTests.Forms,
-        new ApplicationAuditService(rig.Context)));
+        new ApplicationAuditService(rig.Context),
+        new BatteryPassWeb.Dpp.Identifiers.TestIdentifierScheme()));
 
     public const string ModelSheet = LoadFields.ModelsSheet;
     public const string BatchSheet = LoadFields.BatchesSheet;
