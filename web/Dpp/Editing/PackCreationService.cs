@@ -148,7 +148,7 @@ public sealed class PackCreationService(
             // A removed passport's ID never comes back (finding R08): asked before the ID is picked, so nothing is left "used".
             var asked = evaluation.Accepted["batterySerialNumber"].GetValue<string>();
             if (await store.FindRemovedAsync(asked, cancellationToken) is not null
-                || (await pool.GetAsync(asked, cancellationToken) is { } released && await store.IsItemKeyRemovedAsync(IdentifierForms.ItemKey(released.Identifier), cancellationToken)))
+                || (await pool.GetAsync(asked, cancellationToken) is { } released && await store.IsIdRemovedAsync(released.Identifier, cancellationToken)))
             {
                 return Failed(RemovedId);
             }
@@ -203,7 +203,7 @@ public sealed class PackCreationService(
 
         // A removed passport's battery ID is never used again (finding R08). A picked released ID stays used: it was the
         // removed battery's.
-        if (await store.IsItemKeyRemovedAsync(IdentifierForms.ItemKey(pack.Values["uniqueProductIdentifier"].Value?.GetValue<string>()), cancellationToken))
+        if (await store.IsIdRemovedAsync(pack.Values["uniqueProductIdentifier"].Value?.GetValue<string>(), cancellationToken))
         {
             return Failed(RemovedId);
         }

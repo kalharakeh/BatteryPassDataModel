@@ -606,6 +606,14 @@ public sealed class DppStore
         && await Collection<RemovedPassport>().Find(Builders<RemovedPassport>.Filter.Regex("Ids", SameItem(key, anchored: true))).AnyAsync(cancellationToken);
 
     /// <summary>
+    /// "Is this ID taken?" for a removed passport, for any ID: a marker holds it ignoring capitals (any form, a test URN
+    /// too), or holds a battery ID with the same item key, dashes ignored too (S1 round three).
+    /// </summary>
+    public async Task<bool> IsIdRemovedAsync(string? identifier, CancellationToken cancellationToken = default) =>
+        await FindRemovedAsync(identifier, cancellationToken) is not null
+        || await IsItemKeyRemovedAsync(Identifiers.IdentifierForms.ItemKey(identifier), cancellationToken);
+
+    /// <summary>
     /// Every name the removal markers hold (without regard to capitals) and the item keys of their battery IDs, in one
     /// query, for a release's check of all its serial numbers at once (S1 round three).
     /// </summary>

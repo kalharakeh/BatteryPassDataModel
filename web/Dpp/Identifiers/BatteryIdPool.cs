@@ -420,7 +420,7 @@ public sealed partial class BatteryIdPool(
 
         // A removed passport's ID never comes back (finding R08), in no other capitals or dashes either (the one rule).
         if (await store.FindRemovedAsync(serialNumber, cancellationToken) is not null
-            || (await GetAsync(serialNumber, cancellationToken) is { } named && await store.IsItemKeyRemovedAsync(IdentifierForms.ItemKey(named.Identifier), cancellationToken)))
+            || (await GetAsync(serialNumber, cancellationToken) is { } named && await store.IsIdRemovedAsync(named.Identifier, cancellationToken)))
         {
             return RemovedId;
         }
