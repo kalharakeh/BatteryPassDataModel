@@ -43,6 +43,9 @@ public sealed class TestIdWordsTests
             Assert.DoesNotContain("Reset demo data", text, StringComparison.Ordinal); // not there when the demo is off
         }
 
+        // The demo customers' rule is said only where there are demo customers (the demo-off walk-through, decision 82).
+        Assert.Contains("@if (Model.Clusters.Any(cluster => cluster.IsDemo)) { <text> A battery with a real ID can't go to a demo customer.</text> }", newBattery, StringComparison.Ordinal);
+
         Assert.DoesNotContain("Show demo IDs", guide, StringComparison.Ordinal);
         Assert.DoesNotContain("when the demo data is reset or cleared", guide, StringComparison.Ordinal);
     }

@@ -85,7 +85,7 @@
                             <option value="@cluster.Id" selected="@(string.Equals(cluster.Id, Model.ClusterId, StringComparison.OrdinalIgnoreCase))">@(cluster.IsDemo ? $"{cluster.Name} (demo customer: test IDs only)" : cluster.Name)</option>
                         }
                     </select>
-                    <small class="bp-field-help">The customer it belongs to. Not passport data; it can be set later. A battery with a real ID can't go to a demo customer.</small>
+                    <small class="bp-field-help">The customer it belongs to. Not passport data; it can be set later.@if (Model.Clusters.Any(cluster => cluster.IsDemo)) { <text> A battery with a real ID can't go to a demo customer.</text> }</small>
                 </label>
             </div>
         </section>
