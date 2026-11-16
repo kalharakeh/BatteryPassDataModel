@@ -15,6 +15,30 @@ namespace BatteryPassWeb.Dpp.Store;
 /// </summary>
 public sealed record ItemKeyCollision(string PackId, string ItemKey, string HeldBy);
 
+/// <summary>What giving one pack its item key did (S1 round three).</summary>
+public enum ItemKeyFill
+{
+    /// <summary>The key was written.</summary>
+    Written,
+
+    /// <summary>The pack changed since it was read (a key by now, or another ID after a swap): nothing written.</summary>
+    Changed,
+
+    /// <summary>Another pack holds the key: this one is left without it (see <see cref="ItemKeyFillResult.Collision"/>).</summary>
+    Held,
+
+    /// <summary>The ID gives no key (no letters or digits).</summary>
+    NoKey,
+}
+
+public sealed record ItemKeyFillResult(ItemKeyFill Outcome, ItemKeyCollision? Collision = null);
+
+/// <summary>A battery's names for the release check (S1 round three): only the fields it needs.</summary>
+public sealed record BatteryNames(string PackId, string? SerialNumber, string? Identifier, string? ItemKey);
+
+/// <summary>Every name a removal marker holds, without regard to capitals, and the item keys of its battery IDs.</summary>
+public sealed record RemovedNames(IReadOnlySet<string> Names, IReadOnlySet<string> ItemKeys);
+
 /// <summary>
 /// Reads and writes the passport source records in MongoDB (design 4.1). Without a configured database, reads
 /// return nothing and writes throw, like the app's other repositories.
@@ -69,6 +93,12 @@ public sealed class DppStore
 
     /// <summary>The unique index on <see cref="BatteryPack.ItemKey"/> (S1 round two).</summary>
     public const string ItemKeyIndex = "item_key";
+
+    /// <summary>
+    /// An index on the key that also holds the packs without one (not sparse), so that "which packs have no key yet" is
+    /// answered by the index at every start (S1 round three).
+    /// </summary>
+    public const string ItemKeyFindIndex = "item_key_find";
 
     /// <summary>
     /// True when a write was refused because another pack has the same battery ID or the same item key (the one rule, S1
@@ -146,12 +176,26 @@ public sealed class DppStore
             return [];
         }
 
+        // The indexes first (S1 round three): nothing has a key yet on an old database, so the unique one builds; every
+        // key written after it is held to it, by this start and by any other instance.
+        try
+        {
+            await Collection<BatteryPack>().Indexes.CreateManyAsync(
+            [
+                new CreateIndexModel<BatteryPack>(
+                    Builders<BatteryPack>.IndexKeys.Ascending(pack => pack.ItemKey),
+                    new CreateIndexOptions { Unique = true, Sparse = true, Name = ItemKeyIndex }),
+                new CreateIndexModel<BatteryPack>(
+                    Builders<BatteryPack>.IndexKeys.Ascending(pack => pack.ItemKey).Ascending(pack => pack.Id),
+                    new CreateIndexOptions { Name = ItemKeyFindIndex }),
+            ], cancellationToken);
+        }
+        catch (MongoException exception)
+        {
+            _logger?.LogError(exception, "The battery ID key indexes couldn't be made; the app starts without them, and two batteries with the same ID apart from capitals and dashes are then refused by the app's checks only.");
+        }
+
         var collisions = await FillItemKeysAsync(cancellationToken);
-        await Collection<BatteryPack>().Indexes.CreateOneAsync(
-            new CreateIndexModel<BatteryPack>(
-                Builders<BatteryPack>.IndexKeys.Ascending(pack => pack.ItemKey),
-                new CreateIndexOptions { Unique = true, Sparse = true, Name = ItemKeyIndex }),
-            cancellationToken: cancellationToken);
 
         await Collection<BatteryPack>().Indexes.CreateManyAsync(
         [
@@ -221,37 +265,91 @@ public sealed class DppStore
         return collisions;
     }
 
+    /// <summary>The packs that have a battery ID and no item key yet: the index answers it (<see cref="ItemKeyFindIndex"/>).</summary>
+    private static FilterDefinition<BsonDocument> Keyless =>
+        Builders<BsonDocument>.Filter.Eq(nameof(BatteryPack.ItemKey), BsonNull.Value) & Builders<BsonDocument>.Filter.Exists(UniqueProductIdentifierField);
+
     /// <summary>
-    /// Gives every pack that has a battery ID but no item key its key (the packs made before S1 round two), oldest first
-    /// by _id, so the first of two old colliding packs keeps it. The others are left without a key and named.
+    /// Gives every pack that has a battery ID and no item key its key (the packs made before S1 round two), oldest _id
+    /// first, one guarded update each (<see cref="FillItemKeyAsync"/>), reading only the _id and the ID. A pack whose key
+    /// another holds is left without it and named. Never fails the start: a database error is logged and the start goes on.
+    /// A later start reads only what the index finds without a key (the pairs named before).
     /// </summary>
     private async Task<IReadOnlyList<ItemKeyCollision>> FillItemKeysAsync(CancellationToken cancellationToken)
     {
-        var packs = Collection<BatteryPack>();
-        var missing = await packs
-            .Find(Builders<BatteryPack>.Filter.Exists(pack => pack.ItemKey, false) & Builders<BatteryPack>.Filter.Exists(UniqueProductIdentifierField))
-            .SortBy(pack => pack.Id)
-            .ToListAsync(cancellationToken);
         var collisions = new List<ItemKeyCollision>();
-        foreach (var pack in missing)
+        try
         {
-            var key = Identifiers.IdentifierForms.ItemKey(pack.Values.GetValueOrDefault("uniqueProductIdentifier")?.Value is System.Text.Json.Nodes.JsonValue value && value.TryGetValue<string>(out var id) ? id : null);
-            if (key.Length == 0)
+            var packs = RequireDatabase().GetCollection<BsonDocument>(Packs);
+            var keyless = await packs.Find(Keyless)
+                .Project(Builders<BsonDocument>.Projection.Include("_id").Include(UniqueProductIdentifierField))
+                .Sort(Builders<BsonDocument>.Sort.Ascending("_id"))
+                .ToListAsync(cancellationToken);
+            foreach (var pack in keyless)
             {
-                continue;
-            }
+                var id = pack["_id"].AsString;
+                var read = pack.GetValue("Values", new BsonDocument()).AsBsonDocument.GetValue("uniqueProductIdentifier", new BsonDocument()).AsBsonDocument.GetValue("Value", BsonNull.Value);
+                if (!read.IsString)
+                {
+                    continue;
+                }
 
-            if (await packs.Find(other => other.ItemKey == key).Project(other => other.Id).FirstOrDefaultAsync(cancellationToken) is { } holder)
-            {
-                collisions.Add(new ItemKeyCollision(pack.Id, key, holder));
-                _logger?.LogWarning("Battery {PackId} has the same battery ID as battery {HeldBy}, apart from capitals and dashes ({ItemKey}); it was left without its key. Decide which of the two is right.", pack.Id, holder, key);
-                continue;
+                if ((await FillItemKeyAsync(id, read.AsString, cancellationToken)).Collision is { } collision)
+                {
+                    collisions.Add(collision);
+                }
             }
-
-            await packs.UpdateOneAsync(other => other.Id == pack.Id, Builders<BatteryPack>.Update.Set(other => other.ItemKey, key), cancellationToken: cancellationToken);
+        }
+        catch (MongoException exception)
+        {
+            _logger?.LogError(exception, "Giving the batteries made before this version their battery ID key stopped; the next start goes on with the rest.");
         }
 
         return collisions;
+    }
+
+    /// <summary>
+    /// Gives one pack the item key of <paramref name="identifierRead"/>, in one update that holds only while the pack has no
+    /// key yet and its ID is still the one read (S1 round three): a swap in between keeps the key it wrote, and two
+    /// instances never write a key twice. A duplicate the database reports names the pack holding the key (never this one).
+    /// </summary>
+    public async Task<ItemKeyFillResult> FillItemKeyAsync(string packId, string identifierRead, CancellationToken cancellationToken = default)
+    {
+        var key = Identifiers.IdentifierForms.ItemKey(identifierRead);
+        if (key.Length == 0)
+        {
+            return new ItemKeyFillResult(ItemKeyFill.NoKey);
+        }
+
+        var packs = RequireDatabase().GetCollection<BsonDocument>(Packs);
+        var guarded = Builders<BsonDocument>.Filter.Eq("_id", packId)
+            & Builders<BsonDocument>.Filter.Eq(nameof(BatteryPack.ItemKey), BsonNull.Value)
+            & Builders<BsonDocument>.Filter.Eq(UniqueProductIdentifierField, identifierRead);
+        try
+        {
+            var result = await packs.UpdateOneAsync(guarded, Builders<BsonDocument>.Update.Set(nameof(BatteryPack.ItemKey), key), cancellationToken: cancellationToken);
+            return new ItemKeyFillResult(result.ModifiedCount == 1 ? ItemKeyFill.Written : ItemKeyFill.Changed);
+        }
+        catch (MongoWriteException exception) when (IsDuplicateItem(exception))
+        {
+            var holder = await packs.Find(Builders<BsonDocument>.Filter.Eq(nameof(BatteryPack.ItemKey), key) & Builders<BsonDocument>.Filter.Ne("_id", packId))
+                .Project(Builders<BsonDocument>.Projection.Include("_id"))
+                .FirstOrDefaultAsync(cancellationToken);
+            var heldBy = holder?["_id"].AsString ?? "another battery";
+            _logger?.LogWarning("Battery {PackId} has the same battery ID as battery {HeldBy}, apart from capitals and dashes ({ItemKey}); it was left without its key. Decide which of the two is right.", packId, heldBy, key);
+            return new ItemKeyFillResult(ItemKeyFill.Held, new ItemKeyCollision(packId, key, heldBy));
+        }
+    }
+
+    /// <summary>The query plan of "which packs have no key yet", for the test that shows a later start reads the index only.</summary>
+    public async Task<string> ExplainKeylessQueryAsync(CancellationToken cancellationToken = default)
+    {
+        var command = new BsonDocument
+        {
+            ["explain"] = new BsonDocument { ["find"] = Packs, ["filter"] = Keyless.Render(new RenderArgs<BsonDocument>(MongoDB.Bson.Serialization.BsonSerializer.LookupSerializer<BsonDocument>(), MongoDB.Bson.Serialization.BsonSerializer.SerializerRegistry)) },
+            ["verbosity"] = "queryPlanner",
+        };
+        return (await RequireDatabase().RunCommandAsync<BsonDocument>(command, cancellationToken: cancellationToken)).ToJson();
     }
 
     /// <summary>Logs an upload (step 5a).</summary>
@@ -493,13 +591,108 @@ public sealed class DppStore
         }
 
 
-        // A battery ID never comes back in other capitals or dashes either (the one rule, S1 round two).
-        if (Identifiers.IdentifierForms.Short(text) is var item && Identifiers.IdentifierForms.IsItem(item))
+        // Without regard to capitals only (S1 round three): an address answers "removed" for the removed passport's own
+        // IDs. Whether an ID is taken, dashes ignored too, is IsItemKeyRemovedAsync's question.
+        return await Collection<RemovedPassport>().Find(named).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// "Is this ID taken?" for a removed passport (the one rule, S1 round two): true when a removal marker holds a battery
+    /// ID with this item key, capitals and dashes ignored. Asked by release, creation, swap and a new passport's R-number;
+    /// never by the serving routes, which ask <see cref="FindRemovedAsync"/>.
+    /// </summary>
+    public async Task<bool> IsItemKeyRemovedAsync(string key, CancellationToken cancellationToken = default) =>
+        _database is not null && key.Length > 0
+        && await Collection<RemovedPassport>().Find(Builders<RemovedPassport>.Filter.Regex("Ids", SameItem(key, anchored: true))).AnyAsync(cancellationToken);
+
+    /// <summary>
+    /// Every name the removal markers hold (without regard to capitals) and the item keys of their battery IDs, in one
+    /// query, for a release's check of all its serial numbers at once (S1 round three).
+    /// </summary>
+    public async Task<RemovedNames> RemovedNamesAsync(CancellationToken cancellationToken = default)
+    {
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+        if (_database is not null)
         {
-            named |= Builders<RemovedPassport>.Filter.Regex("Ids", SameItem(Identifiers.IdentifierForms.ItemKey(item), anchored: true));
+            foreach (var ids in await Collection<RemovedPassport>().Find(FilterDefinition<RemovedPassport>.Empty).Project(removed => removed.Ids).ToListAsync(cancellationToken))
+            {
+                foreach (var id in ids)
+                {
+                    names.Add(id);
+                    if (Identifiers.IdentifierForms.Short(id) is var item && Identifiers.IdentifierForms.IsItem(item))
+                    {
+                        keys.Add(Identifiers.IdentifierForms.ItemKey(item));
+                    }
+                }
+            }
         }
 
-        return await Collection<RemovedPassport>().Find(named).FirstOrDefaultAsync(cancellationToken);
+        return new RemovedNames(names, keys);
+    }
+
+    /// <summary>Every battery's serial number, battery ID and item key, and nothing else, in one query (S1 round three).</summary>
+    public async Task<IReadOnlyList<BatteryNames>> ListBatteryNamesAsync(CancellationToken cancellationToken = default)
+    {
+        if (_database is null)
+        {
+            return [];
+        }
+
+        static string? Text(BsonDocument pack, string property) =>
+            pack.GetValue("Values", new BsonDocument()).AsBsonDocument.GetValue(property, new BsonDocument()).AsBsonDocument.GetValue("Value", BsonNull.Value) is { IsString: true } value ? value.AsString : null;
+
+        var packs = await RequireDatabase().GetCollection<BsonDocument>(Packs).Find(FilterDefinition<BsonDocument>.Empty)
+            .Project(Builders<BsonDocument>.Projection.Include("_id").Include(SerialNumberField).Include(UniqueProductIdentifierField).Include(nameof(BatteryPack.ItemKey)))
+            .ToListAsync(cancellationToken);
+        return packs.Select(pack => new BatteryNames(
+            pack["_id"].AsString,
+            Text(pack, "batterySerialNumber"),
+            Text(pack, "uniqueProductIdentifier"),
+            pack.GetValue(nameof(BatteryPack.ItemKey), BsonNull.Value) is { IsString: true } key ? key.AsString : null)).ToArray();
+    }
+
+    /// <summary>
+    /// The item keys taken by <paramref name="firstItem"/> and its R-numbers, apart from capitals and dashes: by a pack, a
+    /// released ID or a removal marker. Read once, in three queries, when a new passport's R-number is chosen (S1 round three).
+    /// </summary>
+    public async Task<IReadOnlySet<string>> TakenItemKeysAsync(string firstItem, CancellationToken cancellationToken = default)
+    {
+        var taken = new HashSet<string>(StringComparer.Ordinal);
+        var key = Identifiers.IdentifierForms.ItemKey(firstItem);
+        if (_database is null || key.Length == 0)
+        {
+            return taken;
+        }
+
+        var variants = new BsonRegularExpression($"/{Identifiers.IdentifierForms.DataIdentifier}/{string.Join("-?", key.Select(letter => letter.ToString()))}(-?R[0-9]+)?$", "i");
+        var packs = RequireDatabase().GetCollection<BsonDocument>(Packs);
+        foreach (var pack in await packs
+                     .Find(Builders<BsonDocument>.Filter.Regex(nameof(BatteryPack.ItemKey), new BsonRegularExpression($"^{key}R?[0-9]*$")) | Builders<BsonDocument>.Filter.Regex(UniqueProductIdentifierField, variants))
+                     .Project(Builders<BsonDocument>.Projection.Include(UniqueProductIdentifierField))
+                     .ToListAsync(cancellationToken))
+        {
+            if (pack.GetValue("Values", new BsonDocument()).AsBsonDocument.GetValue("uniqueProductIdentifier", new BsonDocument()).AsBsonDocument.GetValue("Value", BsonNull.Value) is { IsString: true } id)
+            {
+                taken.Add(Identifiers.IdentifierForms.ItemKey(id.AsString));
+            }
+        }
+
+        foreach (var released in await ReleasedIds.Find(Builders<Identifiers.ReleasedBatteryId>.Filter.Regex(item => item.Identifier, variants)).Project(item => item.Identifier).ToListAsync(cancellationToken))
+        {
+            taken.Add(Identifiers.IdentifierForms.ItemKey(released));
+        }
+
+        var anchored = new BsonRegularExpression($"^(?:https?://[^/]+/{Identifiers.IdentifierForms.DataIdentifier}/)?{string.Join("-?", key.Select(letter => letter.ToString()))}(-?R[0-9]+)?$", "i");
+        foreach (var ids in await Collection<RemovedPassport>().Find(Builders<RemovedPassport>.Filter.Regex("Ids", anchored)).Project(removed => removed.Ids).ToListAsync(cancellationToken))
+        {
+            foreach (var id in ids.Where(id => Identifiers.IdentifierForms.IsItem(Identifiers.IdentifierForms.Short(id))))
+            {
+                taken.Add(Identifiers.IdentifierForms.ItemKey(id));
+            }
+        }
+
+        return taken;
     }
 
     /// <summary>Whether anything of a removed pack is left: the pack itself or a version (finding R08).</summary>
