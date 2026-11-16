@@ -78,7 +78,7 @@ public sealed class SmallLetterSerialFormsTests(MongoFixture mongo)
         // Nothing in the ID code changes a letter's case but the key (Clean), which is never shown.
         var scheme = File.ReadAllText(DppTestFiles.RepoFile("web", "Dpp", "Identifiers", "DunsIdentifierScheme.cs"));
         var pool = File.ReadAllText(DppTestFiles.RepoFile("web", "Dpp", "Identifiers", "BatteryIdPool.cs"));
-        Assert.Equal(1, System.Text.RegularExpressions.Regex.Matches(scheme, @"\.ToUpperInvariant\(\)").Count);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(scheme, @"\.ToUpperInvariant\(\)"));
         Assert.DoesNotContain(".ToUpperInvariant()", pool, StringComparison.Ordinal);
         Assert.Contains("head + IdentifierForms.SerialInId(serial)", scheme, StringComparison.Ordinal); // the only place an ID gets its serial
     }
