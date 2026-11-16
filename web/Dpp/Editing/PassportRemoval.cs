@@ -212,7 +212,8 @@ public sealed class PassportRemoval(DppStore store, DemoBoundary demo, DocumentS
 
         // What only records point at: the documents (owned now, or withdrawn earlier), the upload records that name the
         // battery (found by pack or by an ID as typed), and the drafts a cancelled successor left in the audit log.
-        var names = members.SelectMany(member => member.Ids).Concat(serial is null ? [] : [serial]).Distinct(StringComparer.Ordinal).ToList();
+        // The serial only when no other battery has it (round four): otherwise lines and entries under it are the other's too.
+        var names = members.SelectMany(member => member.Ids).Concat(serialIsTheirs ? [serial!] : []).Distinct(StringComparer.Ordinal).ToList();
         var documentIds = new List<string>();
         foreach (var item in plan.Chain)
         {
@@ -254,9 +255,11 @@ public sealed class PassportRemoval(DppStore store, DemoBoundary demo, DocumentS
             OtherEntityIds = [.. others],
             Audit = entry,
         }).ToList();
+        // Only where no marker is yet: two removals started at once (a double submit) keep the first one's plan, and both
+        // finish from what is stored (round four).
         await store.AddRemovalMarkersAsync(markers, none);
         Step(plan.Newest.Id, "markers");
-        return markers;
+        return [(await store.GetAsync<RemovedPassport>(plan.Newest.Id, none))!];
     }
 
     /// <summary>
@@ -277,7 +280,9 @@ public sealed class PassportRemoval(DppStore store, DemoBoundary demo, DocumentS
         // 2. The one audit entry, owed until it is written (decision 72).
         if (marker.Audit is { } entry && !await store.RemovalEntryExistsAsync(newest, none))
         {
-            await audit.AppendApplicationAuditEventAsync(
+            // A fixed id (round four): two finishes at once insert it once; the second meets the duplicate key and counts it
+            // as written.
+            var row = audit.BuildApplicationAuditEventDocument(
                 RemovedEvent,
                 entry.Who,
                 nameof(SenderKind.Team),
@@ -293,8 +298,10 @@ public sealed class PassportRemoval(DppStore store, DemoBoundary demo, DocumentS
                 },
                 entityType: "dpp-removal",
                 entityId: newest,
-                batteryId: entry.BatteryId,
-                cancellationToken: none);
+                batteryId: entry.BatteryId);
+            row["_id"] = RemovalEntryId(newest);
+            row["eventId"] = RemovalEntryId(newest);
+            await store.InsertRemovalEntryAsync(row, none);
         }
 
         await store.SetRemovalAuditWrittenAsync(packIds, none);
@@ -315,14 +322,15 @@ public sealed class PassportRemoval(DppStore store, DemoBoundary demo, DocumentS
 
         await documents.DeleteManyAsync(marker.DocumentIds, none); // anything written down that is still there
         Step(newest, "documents");
-        await store.RemoveUploadLinesAsync(marker.UploadIds, packIds, marker.Names, none); // only the records this removal named
+        var touchedUploads = await store.RemoveUploadLinesAsync(marker.UploadIds, packIds, marker.Names, none); // only the records with its lines
         Step(newest, "uploads");
         foreach (var packId in packIds)
         {
             await store.DeleteHandOversAndChecksAsync(packId, none);
         }
 
-        var goneUploads = marker.UploadIds.Except(await store.ExistingUploadIdsAsync(marker.UploadIds, none), StringComparer.Ordinal);
+        var allUploads = marker.UploadIds.Concat(touchedUploads).Distinct(StringComparer.Ordinal).ToArray();
+        var goneUploads = allUploads.Except(await store.ExistingUploadIdsAsync(allUploads, none), StringComparer.Ordinal);
         await store.DeleteAuditRowsAsync(
             [.. packIds, .. marker.DocumentIds, .. goneUploads, .. marker.OtherEntityIds],
             [.. members.SelectMany(member => member.Ids), .. marker.Names],
@@ -359,6 +367,9 @@ public sealed class PassportRemoval(DppStore store, DemoBoundary demo, DocumentS
         Audit = from.Audit,
         AuditWritten = from.AuditWritten,
     };
+
+    /// <summary>The removal's one audit entry's id (round four): one per removal, whoever writes it.</summary>
+    public static string RemovalEntryId(string newestPackId) => $"dpp-removal:{newestPackId}";
 
     private void Step(string packId, string step) => logger?.LogDebug("Removal of {PackId}: {Step} done.", packId, step);
 }

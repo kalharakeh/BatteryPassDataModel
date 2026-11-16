@@ -201,7 +201,7 @@ public sealed class PassportRemovalTests(MongoFixture mongo)
         Assert.Null(await rig.Publication.PublishWaitingAsync(Team, rig.PackId)); // "Publish the waiting changes"
         Assert.NotNull((await rig.Publication.PublishAsync(Team, rig.PackId)).Problem);
         Assert.False((await rig.Pipeline.SaveAsync(Team, new ChangeSet(TargetKind.Pack, rig.PackId, new Dictionary<string, JsonNode?> { ["stateOfChargeSoC"] = JsonValue.Create(40) }, "form"))).Found);
-        Assert.Equal(WriteRefusal.NotFound, (await BatteryApiTests.Api(rig).FindAsync(ChangeSender.Feed("feed", BatteryTesting.North), Identifier(rig))).Refusal); // a live value from the feed
+        Assert.Equal(WriteRefusal.Gone, (await BatteryApiTests.Api(rig).FindAsync(ChangeSender.Feed("feed", BatteryTesting.North), Identifier(rig))).Refusal); // a live value from the feed: gone (410), round four
         Assert.Equal(0, await rig.Context.Database!.GetCollection<BsonDocument>(DppStore.Versions).CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq("PackId", rig.PackId)));
 
         var creation = new PackCreationService(rig.Store, TestDemo.For(rig), rig.Pipeline, new SameIdScheme(Identifier(rig)), DocumentTesting.Links, new ApplicationAuditService(rig.Context), rig.Clock);

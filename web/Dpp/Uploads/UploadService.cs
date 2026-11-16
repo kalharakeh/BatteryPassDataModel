@@ -62,6 +62,9 @@ public sealed class UploadService(
     IEnumerable<IUploadAdapter> adapters,
     PublicationService? publication = null)
 {
+    /// <summary>A battery whose passport was removed, or is being removed (finding R08): the 410 sentence as a refusal.</summary>
+    public const string GoneRefusal = "this battery's passport no longer exists; it was removed after the battery was recycled or exported";
+
     /// <summary>Why an API upload's battery with a status change is refused (decision 35, Q7 and Q23).</summary>
     public const string StatusOnThePage = "status changes are made on the battery's page";
 
@@ -274,7 +277,11 @@ public sealed class UploadService(
         if (problem is null)
         {
             var named = await batteries.FindAsync(sender, document.Entries[0].NamedAs, cancellationToken);
-            if (named.Pack?.Id != packId)
+            if (named.Refusal == WriteRefusal.Gone)
+            {
+                problem = GoneRefusal; // finding R08
+            }
+            else if (named.Pack?.Id != packId)
             {
                 problem = NotThisBattery(document.Entries[0].NamedAs);
             }
@@ -517,6 +524,7 @@ public sealed class UploadService(
             WriteRefusal.NotYours => (entry, null, NotYours),
             WriteRefusal.Ambiguous => (entry, null, Ambiguous),
             WriteRefusal.NotAuthorised => (entry, target, WrittenAuthorisation.Refusal), // finding R20
+            WriteRefusal.Gone => (entry, null, GoneRefusal), // finding R08: no pack, no values in the log
             _ => (entry, null, NotFound),
         };
     }
