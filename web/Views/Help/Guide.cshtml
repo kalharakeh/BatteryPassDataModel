@@ -202,12 +202,14 @@
                         <dd>A document the workbook names but you haven't got yet doesn't stop the load. It is listed under "Documents still to come", everything else is saved, and the document can follow in a later load.</dd>
                         <dt>A second load</dt>
                         <dd>Loading the same workbook again updates: it changes only what differs ("Core800s, Battery mass, 470 → 455"), matches names without regard to capitals, and says "Nothing to load" when nothing differs. A document is uploaded again only when its file, title or language changed. An uploaded document can't be removed with <code>none</code>; the forms can't either.</dd>
+                        <dt>Serial number format</dt>
+                        <dd>The workbook can give each model its serial number format (such as VPC8C05s-#####). The check shows the old and the new format and how many batteries of the model don't fit it, and the load applies the model page's own rule. <code>none</code> removes the format. A model never takes the first model's format: an empty cell leaves it as it is. It can also be set on the model's page.</dd>
                         <dt>New versions</dt>
                         <dd>The check says how many published passports a load gives a new version, as the forms would. Pressing Load is the yes the forms ask for.</dd>
                         <dt>What stops a load</dt>
                         <dd>Any problem line in the check. Also a file that isn't a real .xlsx or is damaged, more than 40 files or 100 MB, a date or a formula without a value where a number belongs, and a sheet that lacks a column of the empty workbook.</dd>
                         <dt>Not in the workbook</dt>
-                        <dd>The values of each battery (for example #13, the third party service provider) are typed on the battery's page. A model's serial number format isn't loaded yet: set it on the model's page.</dd>
+                        <dd>The values of each battery (for example #13, the third party service provider) are typed on the battery's page.</dd>
                     </dl>
                 </section>
 
