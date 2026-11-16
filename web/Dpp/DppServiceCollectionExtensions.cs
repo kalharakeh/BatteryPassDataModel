@@ -57,6 +57,7 @@ public static class DppServiceCollectionExtensions
         services.AddSingleton<AttributeForms>();
         services.AddSingleton<RecordEditor>();
         services.AddSingleton<ProductDataPages>();
+        services.AddSingleton<Loading.ProductDataLoader>(); // product data from the owner's Excel workbook (decision 83)
         services.AddSingleton<StatusPages>();
         services.AddSingleton<LiveTrends>();
         services.AddSingleton<BatteryPages>();

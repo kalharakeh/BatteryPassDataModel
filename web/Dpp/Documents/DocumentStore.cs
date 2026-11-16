@@ -187,6 +187,18 @@ public sealed class DocumentStore
     public Task<byte[]> DownloadFileAsync(string fileId, CancellationToken cancellationToken = default) =>
         Files().DownloadAsBytesAsync(ObjectId.Parse(fileId), cancellationToken: cancellationToken);
 
+    /// <summary>The name a stored file was given when it was uploaded (a picture has no record of its own); null when it is gone.</summary>
+    public async Task<string?> FileNameAsync(string fileId, CancellationToken cancellationToken = default)
+    {
+        if (_database is null || !ObjectId.TryParse(fileId, out var id))
+        {
+            return null;
+        }
+
+        using var found = await Files().FindAsync(Builders<GridFSFileInfo>.Filter.Eq("_id", id), cancellationToken: cancellationToken);
+        return (await found.FirstOrDefaultAsync(cancellationToken))?.Filename;
+    }
+
     private IMongoCollection<DppDocument> Collection() => RequireDatabase().GetCollection<DppDocument>(Records);
 
     private GridFSBucket Files() => new(RequireDatabase(), new GridFSBucketOptions { BucketName = Bucket });

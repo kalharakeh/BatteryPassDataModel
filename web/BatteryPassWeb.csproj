@@ -24,6 +24,7 @@
     <EmbeddedResource Include="Dpp\Schemas\v2.0.1\*.json" LogicalName="Dpp.Schemas.%(Filename)%(Extension)" />
     <Content Remove="Dpp\Demo\**" />
     <EmbeddedResource Include="Dpp\Demo\demo-catalogue.json;Dpp\Demo\Pictures\*.png" LogicalName="Dpp.Demo.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Dpp\Loading\Workbooks\*.xlsx" LogicalName="Dpp.Loading.%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

@@ -381,7 +381,7 @@ app.Use(async (context, next) =>
         await WriteRequestLimitErrorAsync(
             context,
             StatusCodes.Status413PayloadTooLarge,
-            $"Request body is too large. Maximum allowed size is {maxBodyBytes} bytes.");
+            BatteryPassWeb.Dpp.Loading.LoadLimits.AppliesTo(context.Request) ? BatteryPassWeb.Dpp.Loading.LoadLimits.TooLarge : $"Request body is too large. Maximum allowed size is {maxBodyBytes} bytes.");
         return;
     }
 
@@ -539,6 +539,12 @@ static void ApplyConfiguredMaxRequestBodySize(HttpContext context, BatteryPassOp
 
 static long ConfiguredBodyLimitFor(HttpRequest request, BatteryPassOptions options)
 {
+    // A product data load sends the workbook with all its files at once (decision 83); each file still passes the upload limit.
+    if (BatteryPassWeb.Dpp.Loading.LoadLimits.AppliesTo(request))
+    {
+        return BatteryPassWeb.Dpp.Loading.LoadLimits.MaxRequestBytes;
+    }
+
     if (request.HasJsonContentType())
     {
         return options.MaxJsonBodyBytes;

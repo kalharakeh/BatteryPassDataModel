@@ -484,9 +484,9 @@ public sealed partial class ProductDataPages(
             return (null, "choose a manufacturing site; add it under Sites and operators first if it's missing");
         }
 
-        if (year is < 2000 or > 2100)
+        if (BatchYearProblem(year) is { } yearProblem)
         {
-            return (null, "the year must be a calendar year such as 2026");
+            return (null, yearProblem);
         }
 
         var batch = new ProductionBatch { Id = NewId("batch"), ModelId = modelId, SiteId = siteId, Year = year, Values = OneWayValues(TargetKind.Batch, who) };
@@ -502,6 +502,10 @@ public sealed partial class ProductDataPages(
         await AuditAsync(CreatedEvent, who, $"Batch {year} of model {modelId} created", "dpp-batch", batch.Id, cancellationToken);
         return (batch.Id, null);
     }
+
+    /// <summary>Why a batch can't have this year; null when it can.</summary>
+    public static string? BatchYearProblem(int year) =>
+        year is < 2000 or > 2100 ? "the year must be a calendar year such as 2026" : null;
 
     public async Task<string> CreateSiteAsync(string who, string name, CancellationToken cancellationToken = default)
     {
@@ -664,15 +668,7 @@ public sealed partial class ProductDataPages(
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(posted);
         var before = model.Answers();
-        var after = before;
-        foreach (var question in ModelQuestions.All)
-        {
-            if (posted.Of(question) is { } answer)
-            {
-                after = after.With(question, answer);
-            }
-        }
-
+        var after = AnswersAfter(before, posted);
         if (after == before)
         {
             return new AnswersSave(false, 0);
@@ -705,6 +701,34 @@ public sealed partial class ProductDataPages(
         }
 
         return new AnswersSave(true, affected) { Outcomes = outcomes };
+    }
+
+    /// <summary>The answers once these are saved: a question left without an answer keeps the one it has.</summary>
+    private static ModelAnswers AnswersAfter(ModelAnswers before, ModelAnswers posted)
+    {
+        var after = before;
+        foreach (var question in ModelQuestions.All)
+        {
+            if (posted.Of(question) is { } answer)
+            {
+                after = after.With(question, answer);
+            }
+        }
+
+        return after;
+    }
+
+    /// <summary>
+    /// What <see cref="SetModelAnswersAsync"/> would do with these answers, without saving anything: whether an answer
+    /// changes, and how many published batteries would then lack a value the new answers ask for.
+    /// </summary>
+    public async Task<(bool Changes, int Affected)> PreviewModelAnswersAsync(BatteryModel model, ModelAnswers posted, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        ArgumentNullException.ThrowIfNull(posted);
+        var before = model.Answers();
+        var after = AnswersAfter(before, posted);
+        return after == before ? (false, 0) : (true, await BatteriesLackingAsync(model, before, after, cancellationToken));
     }
 
     /// <summary>An answer in words, as the audit log and the page say it.</summary>
@@ -787,8 +811,9 @@ public sealed partial class ProductDataPages(
     }
 
     /// <summary>Why a picture isn't accepted (not a PNG or JPEG, or over the upload limit); null when it is.</summary>
-    private string? PictureProblem(byte[] content)
+    public string? PictureProblem(byte[] content)
     {
+        ArgumentNullException.ThrowIfNull(content);
         var limit = options.Value.MaxUploadBytes;
         if ((content.Length == 0 ? null : FileTypes.Detect(content)) is not (FileTypes.Png or FileTypes.Jpeg))
         {
@@ -808,6 +833,10 @@ public sealed partial class ProductDataPages(
 
         return (await documents.DownloadFileAsync(family.PictureFileId, cancellationToken), family.PictureContentType);
     }
+
+    /// <summary>The file name a family's or a model's picture was uploaded under; null when it has no picture.</summary>
+    public Task<string?> PictureFileNameAsync(string? pictureFileId, CancellationToken cancellationToken = default) =>
+        pictureFileId is null ? Task.FromResult<string?>(null) : documents.FileNameAsync(pictureFileId, cancellationToken);
 
     public static string FamilyHref(string familyId, string? modelId = null) =>
         modelId is null
