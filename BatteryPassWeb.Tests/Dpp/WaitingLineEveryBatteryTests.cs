@@ -17,6 +17,7 @@ public sealed class WaitingLineEveryBatteryTests(MongoFixture mongo)
         var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
         var packs = rig.Context.Database!.GetCollection<BsonDocument>(DppStore.Packs);
         var successor = (await packs.Find(Builders<BsonDocument>.Filter.Eq("_id", rig.PackId)).SingleAsync()).DeepClone().AsBsonDocument;
+        successor.Remove("ItemKey"); // a copy has no key of its own yet, as a pack from before S1 round two
         successor["_id"] = "pack-successor";
         successor["SuccessorOf"] = rig.PackId;
         successor["Values"]["uniqueProductIdentifier"]["Value"] = "urn:test:successor";

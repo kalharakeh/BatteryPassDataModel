@@ -350,14 +350,14 @@ public sealed class SavePipeline(
             return null;
         }
 
+        if (await store.SerialNumberTakenAsync(serialNumber, await LinkedPacksAsync(packId, cancellationToken), cancellationToken))
+        {
+            return SerialNumberTaken; // the more useful words, when another battery has it
+        }
+
         if (!Identifiers.IdentifierForms.IsSerial(serialNumber))
         {
             return Identifiers.IdentifierForms.SerialRule;
-        }
-
-        if (await store.SerialNumberTakenAsync(serialNumber, await LinkedPacksAsync(packId, cancellationToken), cancellationToken))
-        {
-            return SerialNumberTaken;
         }
 
         return pack is not null
