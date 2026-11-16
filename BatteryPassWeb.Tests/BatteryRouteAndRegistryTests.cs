@@ -53,7 +53,7 @@ public sealed class BatteryRouteAndRegistryTests
         Assert.Contains("Model.ReaderSeesMore", hero);
         Assert.Contains("href=\"@detailHref\">View more about this passport", hero);
         Assert.Contains("bp-report-hero-cta bp-report-hero-cta-warning", hero);
-        Assert.Contains("&switchAccount=true", hero);
+        Assert.DoesNotContain("&switchAccount=true", hero); // another customer's battery says whose it is, nothing to switch (W10)
         Assert.Contains("/login?next=", hero);
     }
 
