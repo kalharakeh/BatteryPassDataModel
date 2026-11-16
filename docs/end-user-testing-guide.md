@@ -268,7 +268,7 @@ The team's own account, on a site with `ENABLE_DEMO_DATA=false`. Trial batteries
    **Expected:** "Nothing to load". Change one cell: the check shows that one change.
 6. **A missing document.** Leave one named file out.
    **Expected:** it is listed under "Documents still to come" and doesn't stop the load.
-7. **The model's serial number format.** Open a model's page and set its format (for example `VPC8C05s-#####`). Then, on Battery IDs, release `VPC8C05s-00001`, then `VPC8C05S-00001`, then a serial of another model.
+7. **The model's serial number format.** It comes with the workbook's load; open a model's page and see it (or set it there, for example `VPC8C05s-#####`). In the workbook, change one model's format and check: the check shows the old and the new format and how many batteries don't fit. Then, on Battery IDs, release `VPC8C05s-00001`, then `VPC8C05S-00001`, then a serial of another model.
    **Expected:** the first is released with its small letter; the second is refused as the same serial number; the third is refused and the format is named.
 8. **A test battery.** Release a test ID ("Test IDs"), make a battery of a real model with it, upload its readings, publish it. Open its address as a visitor, typed three ways.
    **Expected:** the same public page every time, with the "Test passport" tag; the ID keeps the small letter of the serial.
