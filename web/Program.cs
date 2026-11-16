@@ -245,6 +245,8 @@ builder.Services.AddSingleton(new BatteryPassWeb.Dpp.Demo.DemoDataSwitch(Battery
     EnvironmentOrConfig(builder.Configuration, "ENABLE_DEMO_DATA", "DemoDataEnabled"),
     builder.Environment.IsProduction())));
 builder.Services.AddSingleton<MongoContext>();
+// The sign-in and form keys live in the database, so a restart signs nobody out (finding S09).
+builder.Services.AddBatteryPassDataProtection();
 builder.Services.AddSingleton<ClusterRepository>();
 // The issuer is the battery IDs' site (finding R23); without DPP_ID_BASE_URL, the app's own address.
 builder.Services.AddSingleton(_ => new DemoSigningKeyService(idBaseUrlSetting, appBaseUrlSetting, trustedSigningKeysSetting));
@@ -254,6 +256,7 @@ builder.Services.AddSingleton<AuthenticationSessionService>();
 builder.Services.AddSingleton<AccessControlService>();
 builder.Services.AddSingleton<PassportQrCodeService>();
 builder.Services.AddSingleton<AuthService>();
+builder.Services.AddSingleton<FirstTeamAccount>();
 builder.Services.AddHttpClient<IEmailSender, PowerAutomateEmailSender>();
 builder.Services.AddSingleton<ExternalApiSecurityService>();
 builder.Services.AddSingleton<ExternalApiRepository>();
@@ -263,6 +266,9 @@ builder.Services.AddSingleton<BatteryPassWeb.Dpp.Demo.DemoDataService>();
 
 var app = builder.Build();
 var batteryPassOptions = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<BatteryPassOptions>>().Value;
+
+// The security headers go on every response, so they come first (finding R24).
+app.UseSecurityHeaders();
 
 if (!app.Environment.IsDevelopment())
 {
@@ -391,6 +397,13 @@ using (var scope = app.Services.CreateScope())
 {
     await scope.ServiceProvider.GetRequiredService<DppStore>().EnsureIndexesAsync();
     await scope.ServiceProvider.GetRequiredService<DocumentStore>().EnsureIndexesAsync();
+    // The first team account on a database that has none (decision 78); the log says only whether it was made or ignored.
+    var firstTeamAccount = await scope.ServiceProvider.GetRequiredService<FirstTeamAccount>()
+        .RunAsync(EnvironmentOrConfig(builder.Configuration, FirstTeamAccount.Setting, "FirstTeamAccountEmail"));
+    if (firstTeamAccount.LogLine is { } firstTeamAccountLine)
+    {
+        app.Logger.LogInformation("{FirstTeamAccount}", firstTeamAccountLine);
+    }
     var fallbackOptions = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<BatteryPassOptions>>().Value;
     if (fallbackOptions.EnableDemoAdminFallback && string.IsNullOrWhiteSpace(fallbackOptions.DemoAdminPassword))
     {
