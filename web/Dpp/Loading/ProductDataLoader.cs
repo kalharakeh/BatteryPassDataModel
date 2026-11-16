@@ -273,7 +273,8 @@ public sealed partial class ProductDataLoader(
                 }
             }
 
-            var cells = Effective(first!, column);
+            var firstName = first!.Cell("model|Name") is { IsNone: false } firstCell ? firstCell.Text : first.Header;
+            var cells = Effective(first, column, model, $"{firstName}, the first model on the sheet {LoadFields.ModelsSheet}");
             await PlanOwnModelFieldsAsync(model, sheet, cells, current, plan, sent, cancellationToken);
             PlanValues(model, sheet, cells, plan);
         }
@@ -355,10 +356,14 @@ public sealed partial class ProductDataLoader(
     }
 
     /// <summary>What a later model's or batch's column says: its own cells, and where one is empty, the first column's.</summary>
-    private static Dictionary<string, FilledCell> Effective(ValueColumn first, ValueColumn own)
+    private static Dictionary<string, FilledCell> Effective(ValueColumn? first, ValueColumn own) => Effective(first, own, null, null);
+
+    /// <param name="record">When given, notes on it which column its empty cells were taken from.</param>
+    private static Dictionary<string, FilledCell> Effective(ValueColumn? first, ValueColumn own, RecordPlan? record, string? firstWords)
     {
         var cells = new Dictionary<string, FilledCell>(own.Cells, StringComparer.Ordinal);
-        if (!ReferenceEquals(first, own))
+        var taken = 0;
+        if (first is not null && !ReferenceEquals(first, own))
         {
             foreach (var (key, cell) in first.Cells)
             {
@@ -366,12 +371,22 @@ public sealed partial class ProductDataLoader(
                 if (!cells.ContainsKey(key) && LoadFields.OwnField(key) is not { Kind: OwnFieldKind.Name or OwnFieldKind.NotLoadedYet })
                 {
                     cells[key] = cell;
+                    taken++;
                 }
             }
         }
 
+        if (record is not null && taken > 0)
+        {
+            record.Notes.Add($"{Words.Count(taken, "cell")} left empty {(taken == 1 ? "takes its value" : "take their values")} from {firstWords}.");
+        }
+
         return cells;
     }
+
+    /// <summary>The batch column of a model column: the one headed "Batch of" and the model column's heading.</summary>
+    public static bool IsBatchOf(string batchHeading, string modelHeading) =>
+        SameName(batchHeading, $"Batch of {modelHeading}");
 
     private static bool IsAll(string text) => string.Equals(text.Trim(), "all", StringComparison.OrdinalIgnoreCase);
 
@@ -422,15 +437,31 @@ public sealed partial class ProductDataLoader(
     private async Task PlanBatchesAsync(LoadWorkbook content, LoadPlan plan, IReadOnlyList<ModelColumn> models, SentFiles sent, CancellationToken cancellationToken)
     {
         var sheet = content.Batches;
-        var first = sheet.Columns.FirstOrDefault();
+        var firstModel = models.FirstOrDefault();
+        var first = firstModel is null ? null : sheet.Columns.FirstOrDefault(column => IsBatchOf(column.Header, firstModel.Column.Header));
         var realSites = (await ExistingAsync(LoadRecord.Site, cancellationToken)).Where(site => !site.IsDemo).ToArray();
         foreach (var column in sheet.Columns)
         {
-            var model = models.FirstOrDefault(item => item.Column.Number == column.Number);
-            var documentsOfBatch = model is null ? [] : DocumentLinesOf(content, models, model, LoadRecord.Batch).Where(line => line.Link is not null || line.Title is not null || line.Language is not null).ToArray();
-            if (model?.Plan is null || !plan.Models.Contains(model.Plan))
+            if (!models.Any(item => IsBatchOf(column.Header, item.Column.Header)))
             {
-                if (column.Cells.Count > 0 && model?.Plan is null)
+                if (HasTyped(sheet, column))
+                {
+                    plan.Problems.Add(new LoadProblem(sheet.Name, string.Empty, column.Header, $"the sheet {LoadFields.ModelsSheet} has no column for this batch's model. A batch column is headed \"Batch of\" and its model's heading on the sheet {LoadFields.ModelsSheet}"));
+                }
+                else
+                {
+                    plan.Notes.Add($"No batch is loaded from the column {column.Header}: the sheet {LoadFields.ModelsSheet} has no column for its model, and it is empty.");
+                }
+            }
+        }
+
+        foreach (var model in models)
+        {
+            var column = sheet.Columns.FirstOrDefault(item => IsBatchOf(item.Header, model.Column.Header));
+            var documentsOfBatch = DocumentLinesOf(content, models, model, LoadRecord.Batch).Where(line => line.Link is not null || line.Title is not null || line.Language is not null).ToArray();
+            if (model.Plan is null || !plan.Models.Contains(model.Plan))
+            {
+                if (column is not null && HasTyped(sheet, column))
                 {
                     plan.Problems.Add(new LoadProblem(sheet.Name, string.Empty, column.Header, $"this batch has values, but its model has no name on the sheet {LoadFields.ModelsSheet}. Give the model its name, or empty the column"));
                 }
@@ -438,7 +469,14 @@ public sealed partial class ProductDataLoader(
                 continue;
             }
 
-            var cells = Effective(first!, column);
+            if (column is null)
+            {
+                plan.Notes.Add($"No batch for {model.Plan.Name}: the sheet {LoadFields.BatchesSheet} has no column headed \"Batch of {model.Column.Header}\".");
+                continue;
+            }
+
+            var batchWords = first is null ? null : $"the batch of {(firstModel!.Plan?.Name ?? firstModel.Column.Header)}";
+            var cells = Effective(first, column);
             if (cells.Count == 0)
             {
                 foreach (var line in documentsOfBatch)
@@ -446,7 +484,8 @@ public sealed partial class ProductDataLoader(
                     plan.Problems.Add(line.Place(LoadWorkbook.LinkHeader).Problem($"this document belongs to the batch, and the sheet {LoadFields.BatchesSheet} gives no production year and site for it"));
                 }
 
-                continue; // no batch for this model in this workbook
+                plan.Notes.Add($"No batch for {model.Plan.Name}: its column on the sheet {LoadFields.BatchesSheet} is empty.");
+                continue;
             }
 
             var year = BatchYear(sheet, column, cells, plan);
@@ -474,6 +513,7 @@ public sealed partial class ProductDataLoader(
             }
 
             plan.Batches.Add(batch);
+            Effective(first, column, batch, batchWords); // notes where its empty cells were taken from
             PlanValues(batch, sheet, cells, plan);
             await PlanDocumentsAsync(batch, LoadRecord.Batch, content, models, model, plan, sent, current?.ExampleDocumentIds, cancellationToken);
         }
@@ -719,10 +759,12 @@ public sealed partial class ProductDataLoader(
             : [];
         foreach (var field in _fields.Documents.Values.Where(field => field.Record == of).OrderBy(field => field.Attribute.Number))
         {
-            // An empty cell of a later model's line means the same as the first model's.
+            // Only a later model's line with all three cells empty means the same document as the first model's: a line
+            // with anything of its own takes its own file or link, title and language, empty or not.
             var mine = own.GetValueOrDefault(field.Attribute.Property);
             var theirs = first.GetValueOrDefault(field.Attribute.Property);
-            var (link, title, language) = (mine?.Link ?? theirs?.Link, mine?.Title ?? theirs?.Title, mine?.Language ?? theirs?.Language);
+            var source = mine is not null && (mine.Link ?? mine.Title ?? mine.Language) is not null ? mine : theirs;
+            var (link, title, language) = (source?.Link, source?.Title, source?.Language);
             if (link is null && title is null && language is null)
             {
                 continue;

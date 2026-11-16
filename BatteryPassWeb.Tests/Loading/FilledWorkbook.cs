@@ -77,6 +77,30 @@ internal sealed class FilledWorkbook
         return this;
     }
 
+    /// <summary>Deletes a whole column of a sheet as Excel does: the columns to its right move one to the left.</summary>
+    public FilledWorkbook DeleteColumn(string sheet, string heading)
+    {
+        var gone = ColumnOf(sheet, heading);
+        foreach (var row in Sheet(sheet).Descendants(Main + "row"))
+        {
+            var number = (int)row.Attribute("r")!;
+            foreach (var cell in row.Elements(Main + "c").ToArray())
+            {
+                var column = ColumnNumber((string)cell.Attribute("r")!);
+                if (column == gone)
+                {
+                    cell.Remove();
+                }
+                else if (column > gone)
+                {
+                    cell.SetAttributeValue("r", $"{XlsxWriter.Column(column - 2)}{number.ToString(CultureInfo.InvariantCulture)}");
+                }
+            }
+        }
+
+        return this;
+    }
+
     /// <summary>Puts a cell with this reference into the first row with a key, as a crafted file might.</summary>
     public FilledWorkbook CellAt(string sheet, string reference, string text)
     {

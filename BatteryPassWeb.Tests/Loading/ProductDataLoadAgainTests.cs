@@ -142,7 +142,7 @@ public sealed class ProductDataLoadAgainTests(MongoFixture mongo)
         var rig = await LoadedAsync();
         var model = await ModelAsync(rig, "Core800s");
         var files = CoreFiles().Select(file => file.FileName == "part-numbers.pdf" ? file with { Content = DocumentTesting.Pdf("parts, second edition") } : file).ToArray();
-        var workbook = Core().Document("Core800s", "model", "safetyMeasures", null, "Safety measures for the short pack");
+        var workbook = Core().Document("Core800s", "model", "safetyMeasures", "safety-measures.pdf", "Safety measures for the short pack", "sv-SE"); // a line of its own names its file
 
         var check = await rig.CheckAsync(workbook, files);
         var result = await rig.LoadAsync(workbook, files);

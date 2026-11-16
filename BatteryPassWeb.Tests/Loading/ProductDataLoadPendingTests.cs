@@ -64,7 +64,7 @@ public sealed class ProductDataLoadPendingTests(MongoFixture mongo)
         await rig.LoadAsync(Core());
         var before = await rig.CountsAsync();
 
-        var check = await rig.CheckAsync(Core().Document("Core800s", "model", "safetyMeasures", null, "Another title"), []);
+        var check = await rig.CheckAsync(Core().Document("Core800s", "model", "safetyMeasures", "safety-measures.pdf", "Another title", "sv-SE"), []);
 
         Assert.Empty(check.Texts());
         var pending = Assert.Single(check.Pending);
