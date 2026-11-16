@@ -67,7 +67,7 @@ public sealed class BatteryFamilyAccessApiRevisedTests
         Assert.Contains("RightsOverAccountAsync", clusterAdminController); // refuses your own account, among others (finding R19)
         Assert.Contains("You can't change your own account here.", File.ReadAllText(RepoFile("web", "Services", "AccessControlService.cs")));
         Assert.Contains("href=\"/account\"", layout);
-        Assert.Contains("@customerName / @customerRole", layout);
+        Assert.Contains("<span>@account.Role</span>", layout); // the account menu names the person and their role (L04)
     }
 
     [Fact]

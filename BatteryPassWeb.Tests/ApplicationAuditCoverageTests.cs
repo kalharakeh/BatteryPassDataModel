@@ -58,7 +58,7 @@ public sealed class ApplicationAuditCoverageTests
         Assert.True(File.Exists(adminTabsPath), "_AdminTabs.cshtml should provide the shared Admin workspace tab row.");
 
         var tabs = File.ReadAllText(adminTabsPath);
-        Assert.Contains("Administration tabs", tabs);
+        Assert.Contains("Admin tabs", tabs); // one name per thing (W03)
         Assert.Contains("href=\"/admin/audit\"", tabs);
         Assert.Contains(">Audit log<", tabs);
         Assert.Contains("bp-tab-active", tabs);

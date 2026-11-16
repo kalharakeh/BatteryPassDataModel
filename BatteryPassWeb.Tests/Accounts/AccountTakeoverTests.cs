@@ -12,7 +12,7 @@ namespace BatteryPassWeb.Tests.Accounts;
 [Collection(MongoCollection.Name)]
 public sealed class AccountTakeoverTests(MongoFixture mongo)
 {
-    private const string AlreadyHasAnAccount = "This person already has an account. They were added to your cluster; their name and password stay as they are.";
+    private const string AlreadyHasAnAccount = "This person already has an account. They were added to your customer; their name and password stay as they are."; // W07
     private const string OnlyTheTeam = AccessControlService.CantChangeThisAccount;
 
     // (a) "Add user" with an existing outside account and a typed password.

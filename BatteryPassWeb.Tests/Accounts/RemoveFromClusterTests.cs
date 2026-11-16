@@ -20,7 +20,8 @@ public sealed class RemoveFromClusterTests(MongoFixture mongo)
         var form = page[page.IndexOf($"action=\"{action}\"", StringComparison.Ordinal)..];
         var button = form[form.IndexOf("<button", StringComparison.Ordinal)..form.IndexOf("</button>", StringComparison.Ordinal)];
 
-        Assert.Contains("data-confirm-action data-confirm-title=\"Remove from cluster\"", button, StringComparison.Ordinal);
+        // "customer" on a customer admin's page, "cluster" on the team's (decision 55, W07).
+        Assert.Contains($"data-confirm-action data-confirm-title=\"Remove from {(folder == "ClusterAdmin" ? "customer" : "cluster")}\"", button, StringComparison.Ordinal);
         Assert.Contains("data-confirm-message=\"Remove @displayName from @ClusterName(membership.ClusterId)?", button, StringComparison.Ordinal);
         Assert.Contains("data-confirm-submit=\"Remove\"", button, StringComparison.Ordinal);
         Assert.Contains("@await Html.PartialAsync(\"_ConfirmModal\")", page, StringComparison.Ordinal);

@@ -44,7 +44,7 @@ public sealed class ClusterBatteriesControllerTests(MongoFixture mongo)
             Assert.Contains($"~/Views/Batteries/{card}.cshtml\", Model.Cards", clusterAdmin, StringComparison.Ordinal);
             Assert.Contains($"~/Views/Batteries/{card}.cshtml\", Model.Cards", team, StringComparison.Ordinal);
         });
-        foreach (var teamOnly in new[] { "_RecordEditor", "/publish", "/cluster", "/remove", "/audit" })
+        foreach (var teamOnly in new[] { "_RecordEditor", "/publish", "@href/cluster\"", "/remove", "/audit" }) // the team's "Cluster: Change" form; the breadcrumb leads to /cluster-admin/batteries (U14)
         {
             Assert.DoesNotContain(teamOnly, clusterAdmin, StringComparison.Ordinal);
         }
