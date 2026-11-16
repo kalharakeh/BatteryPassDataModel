@@ -3,7 +3,7 @@
 A step-by-step script for each kind of reader, on the demo data. Start with `docs/qa-test-pack.md` (accounts, the matrix of who sees what, the checklist). `docs/sample-cluster-test-accounts.md` lists the accounts and batteries.
 
 Before each round:
-- A team member presses **Reset demo data** (Clusters tab, at the end) and copies the tokens shown once.
+- On a test site with the demo on: a team member presses **Reset demo data** (Clusters tab, at the end) and copies the tokens shown once. On the live site and the owner's PC there is no demo (decision 82): skip this, and do part 8 with the team's own account.
 - Use one browser. Sign out before signing in as the next account.
 - On every page and in every window, check each element is fully visible: scroll it into view, and nothing covers it.
 - Check at a desktop width, at a phone's width (375 px) and at 150 % Windows scaling.
@@ -251,6 +251,33 @@ Use the tokens copied after the reset, on `/help/api`'s workbench or with any HT
    **Expected:** each battery has `passport: { outcome, version, blocking }`: "new version", "nothing changed" or "held back". With demo-north's authorisation taken away, a cluster token's POST of a live value is 403 with the line.
 10. Any call for a removed battery.
    **Expected:** 410 with "This battery's passport no longer exists. It was removed after the battery was recycled or exported."
+
+## 8. The live site: no demo data
+
+The team's own account, on a site with `ENABLE_DEMO_DATA=false`. Trial batteries are test IDs on the real product families. Don't press "Clear demo data" while real test batteries are there that you want to keep: it removes test IDs and test batteries too.
+
+1. **The first sign-in on a new database.** With `FIRST_TEAM_ACCOUNT_EMAIL` set to your address, open the sign-in page, press "Forgot password", type the address.
+   **Expected:** "If an account exists, a temporary password has been sent." The e-mail arrives; its temporary password signs in to the "set a new password" step; after you choose a password of at least 12 characters you are on the team's pages.
+2. **The lock.** Type a wrong password for an account you may lock, 11 times.
+   **Expected:** the right password is then refused with "Invalid email or password. Try again later."; "Forgot password" unlocks the account at once.
+3. **Load the product data.** Battery families, "Load product data from Excel". Choose the filled workbook and its files, press **Check**.
+   **Expected:** a list of what would be saved, and every problem by sheet, row and column. Nothing is saved yet.
+4. **Fix and load.** Correct the workbook until the check says "No problems", then press **Load**.
+   **Expected:** the family, its models, batches, site, operator, hazardous substances and documents are on their pages, with the workbook's values and no demo example.
+5. **Again.** Press Check with the same workbook.
+   **Expected:** "Nothing to load". Change one cell: the check shows that one change.
+6. **A missing document.** Leave one named file out.
+   **Expected:** it is listed under "Documents still to come" and doesn't stop the load.
+7. **The model's serial number format.** Open a model's page and set its format (for example `VPC8C05s-#####`). Then, on Battery IDs, release `VPC8C05s-00001`, then `VPC8C05S-00001`, then a serial of another model.
+   **Expected:** the first is released with its small letter; the second is refused as the same serial number; the third is refused and the format is named.
+8. **A test battery.** Release a test ID ("Test IDs"), make a battery of a real model with it, upload its readings, publish it. Open its address as a visitor, typed three ways.
+   **Expected:** the same public page every time, with the "Test passport" tag; the ID keeps the small letter of the serial.
+9. **The use notice.** Sign in as a reader who sees restricted data (market surveillance, notified body) and open a published battery's detail page twice.
+   **Expected:** the notice is next to the restricted data; the team's audit log, filter "Restricted data opened", has one line for the day.
+10. **Tokens.** Clusters tab, API tokens, create a token for one cluster.
+    **Expected:** only "Read" and "Read + write".
+11. **The look.** In the browser's developer tools, open the Network and Console tabs and move through the home page, a passport and a team page.
+    **Expected:** every request goes to the site itself; no policy message.
 
 ## Report
 
