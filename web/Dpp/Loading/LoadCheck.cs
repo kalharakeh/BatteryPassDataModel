@@ -154,6 +154,11 @@ internal sealed class RecordPlan(LoadRecord record, string name, string header)
 
     public bool SetDescription { get; set; }
 
+    /// <summary>The model's serial number format changes to <see cref="SerialFormat"/> (null: removed).</summary>
+    public bool SetSerialFormat { get; set; }
+
+    public string? SerialFormat { get; set; }
+
     public string? Description { get; set; }
 
     /// <summary>A batch's model and site: a record of this workbook, or a site that is already in the app.</summary>
@@ -174,7 +179,7 @@ internal sealed class RecordPlan(LoadRecord record, string name, string header)
     /// <summary>True when the load writes passport values or documents of this record: its published passports get a new version.</summary>
     public bool ChangesPassportData => Changed.Count > 0 || Removals.Count > 0 || Uploads.Count > 0;
 
-    public bool HasWork => IsNew || RenameFrom is not null || ChangesPassportData || Picture is not null || RemovePicture || Answers is not null || SetDescription;
+    public bool HasWork => IsNew || RenameFrom is not null || ChangesPassportData || Picture is not null || RemovePicture || Answers is not null || SetDescription || SetSerialFormat;
 
     public string State => IsNew ? LoadStates.New : HasWork ? LoadStates.Changed : LoadStates.Same;
 

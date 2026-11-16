@@ -628,6 +628,24 @@ public sealed partial class ProductDataPages(
         return new SerialFormatSave(null, true, true, wanted, 0, [], sharedWith);
     }
 
+    /// <summary>
+    /// What <see cref="SetSerialFormatAsync"/> would say about this format for this model, saving nothing: the rule's
+    /// problem, the batteries that wouldn't fit it (all of them, oldest serial first) and the other models with the very
+    /// same format. <paramref name="modelId"/> is null for a model that isn't made yet, which has no batteries.
+    /// </summary>
+    public async Task<SerialFormatSave> PreviewSerialFormatAsync(string? modelId, string? typed, Identifiers.IIdentifierScheme identifiers, CancellationToken cancellationToken = default)
+    {
+        var wanted = Identifiers.SerialFormats.Read(typed);
+        if (wanted is not null && Identifiers.SerialFormats.Problem(wanted, identifiers) is { } problem)
+        {
+            return new SerialFormatSave(problem, false, false, wanted, 0, [], []);
+        }
+
+        var sharedWith = await SerialFormatSharedWithAsync(modelId ?? string.Empty, wanted, cancellationToken);
+        var misfits = wanted is null || modelId is null ? [] : await SerialFormatMisfitsAsync(modelId, wanted, cancellationToken);
+        return new SerialFormatSave(null, false, false, wanted, misfits.Count, misfits, sharedWith);
+    }
+
     /// <summary>The names of the other models whose format is the very same (letters without regard to case).</summary>
     private async Task<IReadOnlyList<string>> SerialFormatSharedWithAsync(string modelId, string? format, CancellationToken cancellationToken) =>
         string.IsNullOrEmpty(format)

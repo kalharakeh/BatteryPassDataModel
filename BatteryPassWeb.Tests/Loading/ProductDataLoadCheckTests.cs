@@ -52,7 +52,7 @@ public sealed class ProductDataLoadCheckTests(MongoFixture mongo)
         Assert.Contains(new LoadChangeLine("Nominal voltage: valid from this temperature", string.Empty, "-20 °C"), model.Changes);
         Assert.Contains(new LoadChangeLine("Does this battery come with a commercial warranty?", string.Empty, "Yes"), model.Changes);
         Assert.Contains(new LoadChangeLine("Hazardous substances and their impact", string.Empty, "Lithium hexafluorophosphate (CAS No 21324-40-3, 1.2)"), model.Changes);
-        Assert.Contains("Serial number format: not loaded yet (it arrives with the serial number update)", model.Notes);
+        Assert.Contains(new LoadChangeLine("Serial number format", string.Empty, "VPC8C05-#####"), model.Changes);
         var site = check.Records.Single(record => record.Record == LoadRecord.Site);
         Assert.Contains(new LoadChangeLine("Manufacturer: name", string.Empty, "Scania Industrial Batteries AB"), site.Changes);
     }

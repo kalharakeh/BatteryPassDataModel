@@ -226,6 +226,12 @@ public sealed partial class ProductDataLoader
                 await pages.SetModelAnswersAsync(who, unanswered, answers, confirmed: true, none);
             }
 
+            if (model.SetSerialFormat && await store.GetAsync<BatteryModel>(model.Id!, none) is { } formatted)
+            {
+                // Pressing Load is the yes the model's page asks for when batteries don't fit the new format.
+                Unless((await pages.SetSerialFormatAsync(who, formatted, model.SerialFormat, confirmed: true, identifiers, none)).Problem, model, "its serial number format wasn't saved");
+            }
+
             if (model.SetDescription && await store.GetAsync<BatteryModel>(model.Id!, none) is { } described)
             {
                 Unless(await pages.SetModuleDescriptionAsync(who, described, model.Description, none), model, "its module description wasn't saved");
