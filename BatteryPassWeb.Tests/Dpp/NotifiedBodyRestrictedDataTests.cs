@@ -112,7 +112,7 @@ public sealed class NotifiedBodyRestrictedDataTests(MongoFixture mongo)
             File.WriteAllText(Snapshot, text.ToString()); // written once, with the rule as it was before R05
         }
 
-        Assert.Equal(File.ReadAllText(Snapshot), text.ToString());
+        Assert.Equal(File.ReadAllText(Snapshot).ReplaceLineEndings("\n"), text.ToString()); // the snapshot, whatever the checkout's line endings
     }
 
     /// <summary>The seed's moments in time (timestamps and days) as placeholders, so the bytes compare across runs.</summary>

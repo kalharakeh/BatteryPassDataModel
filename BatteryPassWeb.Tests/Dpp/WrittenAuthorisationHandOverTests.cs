@@ -103,7 +103,7 @@ public sealed class WrittenAuthorisationHandOverTests(MongoFixture mongo)
     [Fact]
     public void TheClusterAdminsPage_ShouldHoldNoWorkingFormWhenLocked()
     {
-        var view = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "ClusterAdmin", "Battery.cshtml"));
+        var view = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "ClusterAdmin", "Battery.cshtml")).ReplaceLineEndings("\n"); // whatever the checkout's line endings
 
         Assert.Contains("@if (Model.Changes && Model.Status is { } statusWindows)", view, StringComparison.Ordinal);
         Assert.Contains("@if (Model.Changes && Model.HandOver.Waiting is null)\n    {", view, StringComparison.Ordinal);
