@@ -107,7 +107,7 @@ public sealed class PassportRemovalFinishTests(MongoFixture mongo)
 
         Assert.Equal(PassportMarks.BeingRemoved, await PassportMarkTests.Service(rig).UndoAsync(PublicationTesting.Team, rig.PackId));
         Assert.Equal(DppStatuses.MarkedForDeletion, (await rig.Store.GetLatestVersionAsync(rig.PackId))!.DppStatus);
-        Assert.Contains("@if (!Model.RemovalStarted)\n                {\n                    <button type=\"submit\" class=\"bp-secondary-button bp-button-compact\">Undo: make it active again</button>", File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Batteries", "Battery.cshtml")), StringComparison.Ordinal);
+        Assert.Contains("@if (!Model.RemovalStarted)\n                {\n                    <button type=\"submit\" class=\"bp-secondary-button bp-button-compact\">Undo: make it active again</button>", File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Batteries", "Battery.cshtml")).ReplaceLineEndings("\n"), StringComparison.Ordinal); // whatever the checkout's line endings
     }
 
     [Fact]
