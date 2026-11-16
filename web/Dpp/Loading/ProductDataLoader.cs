@@ -1105,13 +1105,62 @@ public sealed partial class ProductDataLoader(
         else
         {
             var preview = await pipeline.SaveAsync(Checker, new ChangeSet(kind, record.ExistingId, values, "form", null, record.Removals.ToArray()), preview: true, cancellationToken);
-            results = preview.Keys;
+            results = record.Record == LoadRecord.Model ? await WithAnswersAfterAsync(record, preview.Keys, cancellationToken) : preview.Keys;
         }
 
         foreach (var result in results.Where(result => result.Outcome is not (KeyOutcome.Saved or KeyOutcome.Removed)))
         {
             Refused(record, result, plan);
         }
+    }
+
+    /// <summary>The sentence the save pipeline refuses a removal with when a published passport needs the value.</summary>
+    private const string PublishedNeedIt = "The published passports need this value";
+
+    /// <summary>
+    /// A model's removals judged as the load will meet them: the load saves the model's answers before its values, so a
+    /// removal is judged by the answers the workbook gives, not those stored now (the pipeline's preview reads those).
+    /// A value the new answers ask for that the workbook also removes, on a model with published passports, is a problem
+    /// line; one the new answers no longer ask for may go.
+    /// </summary>
+    private async Task<IReadOnlyList<KeyResult>> WithAnswersAfterAsync(RecordPlan model, IReadOnlyList<KeyResult> results, CancellationToken cancellationToken)
+    {
+        if (model.Removals.Count == 0)
+        {
+            return results;
+        }
+
+        bool? published = null;
+        var judged = new List<KeyResult>();
+        foreach (var result in results)
+        {
+            var attribute = AttributeCatalog.FindByProperty(result.Key);
+            var removal = model.Removals.Contains(result.Key) && attribute is not null
+                && (result.Outcome == KeyOutcome.Removed || (result.Outcome == KeyOutcome.Rejected && result.Message.StartsWith(PublishedNeedIt, StringComparison.Ordinal)));
+            if (!removal)
+            {
+                judged.Add(result);
+                continue;
+            }
+
+            var needed = PassportNeeds.NeedOf(attribute!, model.AnswersAfter) is Need.Required or Need.Unanswered;
+            if (needed && (published ??= (await editor.AffectedAsync(TargetKind.Model, model.ExistingId!, cancellationToken)).Count > 0))
+            {
+                judged.Add(result with
+                {
+                    Outcome = KeyOutcome.Rejected,
+                    Message = result.Outcome == KeyOutcome.Rejected
+                        ? result.Message
+                        : $"{PublishedNeedIt} with the answers in this workbook, so it can't be removed. Change it instead, or answer the question as before",
+                });
+            }
+            else
+            {
+                judged.Add(result with { Outcome = KeyOutcome.Removed, Message = string.Empty });
+            }
+        }
+
+        return judged;
     }
 
     /// <summary>A refused value as problem lines, each at the cell it is about.</summary>
