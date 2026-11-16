@@ -30,18 +30,18 @@ public sealed class HandOverService(DppStore store, ClusterRepository clusters, 
     public const string CancelledEvent = "dpp.handover-cancelled";
 
     public const string NoBattery = "the battery was not found";
-    public const string NotYours = "only the battery's cluster admins hand it over";
+    public const string NotYours = "only the battery's customer admins hand it over";
     public const string TeamMovesDirectly = "the team moves a battery directly on its battery page";
     public const string OnlyActive = "only a battery with an active passport is handed over";
-    public const string NoSuchCluster = "no cluster has this ID; ask the receiving customer for theirs";
-    public const string SameCluster = "the battery is already in this cluster";
+    public const string NoSuchCluster = "no customer has this ID; ask the receiving customer for theirs";
+    public const string SameCluster = "the battery is already with this customer";
     public const string AlreadyWaiting = "a hand-over of this battery is already waiting";
     public const string NothingWaiting = "no hand-over of this battery is waiting";
-    public const string NotTheReceiver = "only the receiving cluster's admins answer a hand-over";
+    public const string NotTheReceiver = "only the receiving customer's admins answer a hand-over";
     public const string NotWaiting = "this hand-over isn't waiting any more";
 
     /// <summary>Why an accept is refused once the passport stopped being active while it waited, for the receiver.</summary>
-    public const string NoLongerActive = "the battery's passport is no longer active (it was replaced by a new passport or marked invalid), so it can't move to your cluster. Decline it, or ask the sending cluster to cancel";
+    public const string NoLongerActive = "the battery's passport is no longer active (it was replaced by a new passport or marked invalid), so it can't move to you. Decline it, or ask the sending customer to cancel";
 
     /// <summary>Names (and with <paramref name="confirm"/>, asks for) the hand-over of a battery to the cluster with this ID.</summary>
     public async Task<HandOverAsk> AskAsync(ChangeSender sender, string packId, string? toClusterId, bool confirm, CancellationToken cancellationToken = default)

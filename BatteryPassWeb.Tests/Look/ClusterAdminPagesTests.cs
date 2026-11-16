@@ -39,7 +39,7 @@ public sealed class ClusterAdminPagesTests
         Assert.Contains("<select name=\"clusterId\" required>", window, StringComparison.Ordinal);
         Assert.Contains("<select name=\"role\">", window, StringComparison.Ordinal);
         Assert.Contains("[\"member\"] = \"User\"", Users, StringComparison.Ordinal);
-        Assert.Contains("[\"clusterAdmin\"] = \"Cluster admin\"", Users, StringComparison.Ordinal);
+        Assert.Contains("[\"clusterAdmin\"] = \"Customer admin\"", Users, StringComparison.Ordinal); // "customer" for customers (decision 55, W07)
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public sealed class ClusterAdminPagesTests
         var window = Tokens[Tokens.IndexOf("<dialog id=\"create-token-dialog\"", StringComparison.Ordinal)..Tokens.IndexOf("</dialog>", StringComparison.Ordinal)];
 
         Assert.Contains("action=\"/cluster-admin/api-tokens/create\"", window, StringComparison.Ordinal);
-        Assert.Contains("<strong>Read</strong><small>Reads the passports of your cluster's batteries.</small>", window, StringComparison.Ordinal);
+        Assert.Contains("<strong>Read</strong><small>Reads the passports of your batteries.</small>", window, StringComparison.Ordinal); // W07
         Assert.Contains("<strong>Read + write</strong><small>Also sends their live values.</small>", window, StringComparison.Ordinal);
         Assert.DoesNotContain("globalAccess", window, StringComparison.Ordinal);
         Assert.Contains("checked=\"@(Model.Clusters.Count == 1)\"", window, StringComparison.Ordinal);

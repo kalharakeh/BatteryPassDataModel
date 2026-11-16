@@ -23,10 +23,10 @@
                 <span class="bp-wait-bell"><svg class="bp-i" aria-hidden="true"><use href="#i-bell" /></svg></span>
                 <div>
                     <span class="bp-summary-title">Waiting for you</span>
-                    <h2 class="h5 mb-0">@Words.Count(Model.Waiting.Count, "battery", "batteries") handed over to your cluster</h2>
+                    <h2 class="h5 mb-0">@Words.Count(Model.Waiting.Count, "battery", "batteries") handed over to you</h2>
                 </div>
             </div>
-            <p class="bp-help-text mt-2 mb-2">Accept it to see its purchaser data and manage it. Until then it stays with the sending cluster.</p>
+            <p class="bp-help-text mt-2 mb-2">Accept it to see its purchaser data and manage it. Until then it stays with the sending customer.</p>
             @foreach (var waiting in Model.Waiting)
             {
                 <div class="bp-handover-row">
@@ -64,5 +64,6 @@
         Model.OpenHref, Model.Actions, row => Model.BatteryStatusShown.Contains(row.PackId))
     {
         Empty = Model.Scope,
+        ClusterWord = Model.Team ? "Cluster" : "Customer",
     })
 </main>

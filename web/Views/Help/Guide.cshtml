@@ -38,7 +38,7 @@
                 <dl class="bp-word-list">
                     <dt>Everyone</dt>
                     <dd>The public page: the public values, the document links and the family's picture.</dd>
-                    <dt>The battery's cluster, market surveillance</dt>
+                    <dt>The battery's customer, market surveillance</dt>
                     <dd>Also the purchaser values, such as state of charge, temperature, battery status and accident reports.</dd>
                     <dt>Repair, recycling and training, treatment, Commission</dt>
                     <dd>Also the shared values meant for them.</dd>
@@ -84,11 +84,11 @@
             @if (inACluster)
             {
                 <section class="bp-card bp-help-part" id="your-batteries">
-                    <h2>Your cluster's batteries <span class="bp-soft-tag">Cluster users</span></h2>
+                    <h2>Your batteries <span class="bp-soft-tag">Customer users</span></h2>
                     <ol class="bp-steps">
-                        <li><strong><a href="/registry">The Registry</a></strong><p>Lists your cluster's batteries, each with its two badges. Its icons open the battery's public page and detail page.</p></li>
+                        <li><strong><a href="/registry">The Registry</a></strong><p>Lists your batteries, each with its two badges. Its icons open the battery's public page and detail page.</p></li>
                         <li><strong>The detail page</strong><p>The purchaser values, the repair history and the shared values. "Live values" shows the last week's readings as small charts; "Modules" lists the battery's modules.</p></li>
-                        <li><strong>Changes</strong><p>Your cluster admins correct live values, add accident reports, record repairs and hand batteries over. Ask them, or the manufacturer's team.</p></li>
+                        <li><strong>Changes</strong><p>Your customer admins correct live values, add accident reports, record repairs and hand batteries over. Ask them, or the manufacturer's team.</p></li>
                     </ol>
                 </section>
             }
@@ -123,23 +123,23 @@
             {
                 <section class="bp-card bp-help-part" id="access">
                     <h2>Need more access?</h2>
-                    <p class="mb-0">If you should see more than you do, ask your cluster admin or the manufacturer's team.</p>
+                    <p class="mb-0">If you should see more than you do, ask your customer admin or the manufacturer's team.</p>
                 </section>
             }
 
             @if (runsACluster)
             {
                 <section class="bp-card bp-help-part" id="cluster">
-                    <h2>Your cluster <span class="bp-soft-tag">Cluster admins</span></h2>
+                    <h2>Your accounts and tokens <span class="bp-soft-tag">Customer admins</span></h2>
                     <ol class="bp-steps">
-                        <li><strong><a href="/cluster-admin/users">Add your people</a></strong><p>Under Admin, Users: "Add user" makes an account for a new address, as a user (sees your cluster's batteries) or as a cluster admin (also looks after its users and tokens). If the person already has an account, they are only added to your cluster: their name and password stay as they are. You can change the name and password only of people who are in your clusters alone and have no role across the app; for anyone else, ask the team. The x beside a cluster asks first, then removes the person from that cluster.</p></li>
+                        <li><strong><a href="/cluster-admin/users">Add your people</a></strong><p>Under Admin, Users: "Add user" makes an account for a new address, as a user (sees your batteries) or as a customer admin (also looks after users and tokens). If the person already has an account, they are only added to your customer: their name and password stay as they are. You can change the name and password only of people who are with your customers alone and have no role across the app; for anyone else, ask the team. The x beside a customer asks first, then removes the person from that customer.</p></li>
                         <li><strong><a href="/cluster-admin/api-tokens">Give your systems a token</a></strong><p>Under Admin, API tokens: "Read" reads your batteries' passports; "Read + write" also sends their live values. Copy the value when it is shown: it is shown once.</p></li>
-                        <li><strong><a href="/registry">Check what they see</a></strong><p>Your users find your cluster's batteries in the Registry, with the purchaser values on the detail page.</p></li>
+                        <li><strong><a href="/registry">Check what they see</a></strong><p>Your users find your batteries in the Registry, with the purchaser values on the detail page.</p></li>
                     </ol>
                 </section>
 
                 <section class="bp-card bp-help-part" id="look-after">
-                    <h2>Look after a battery <span class="bp-soft-tag">Cluster admins</span></h2>
+                    <h2>Look after a battery <span class="bp-soft-tag">Customer admins</span></h2>
                     <p>In the <a href="/registry">Registry</a>, a battery's icon opens its page; its side menu has one section at a time.</p>
                     <dl class="bp-word-list">
                         <dt>Live values</dt>
@@ -151,15 +151,15 @@
                         <dt>Add a note</dt>
                         <dd>A correction to the repair history; nothing in the history is changed or removed.</dd>
                         <dt>Hand over…</dt>
-                        <dd>Type the receiving cluster's ID; the app shows its name to confirm. Until its admins accept on their Registry's "Waiting for you" card, the battery stays yours. Afterwards your cluster no longer sees its purchaser values.</dd>
+                        <dd>Type the receiving customer's ID (their admins find it at the top of their Admin page); the app shows its name to confirm. Until its admins accept on their Registry's "Waiting for you" card, the battery stays yours. Afterwards you no longer see its purchaser values.</dd>
                         <dt>Waiting for you</dt>
-                        <dd>A battery another cluster hands to you: Accept or Decline.</dd>
+                        <dd>A battery another customer hands to you: Accept or Decline.</dd>
                     </dl>
                     <p class="mt-3 mb-0">A passport that is invalid, marked for deletion or replaced by a new passport is read only.</p>
                 </section>
 
                 <section class="bp-card bp-help-part" id="upload">
-                    <h2>Upload a file <span class="bp-soft-tag">Team and cluster admins</span></h2>
+                    <h2>Upload a file <span class="bp-soft-tag">Team and customer admins</span></h2>
                     <p>On a battery's page, "Upload a file" takes one JSON file for that battery: the app's upload format, or the battery system's export as it is. You see what would change before anything is saved. A marked or earlier passport takes no file.</p>
                     <ul>
                         <li><a href="/help/samples/@BatteryPassWeb.Dpp.Uploads.UploadSamples.UploadFileName" download>An upload file</a>: live values and a repair, with one re-stated value, for the demo battery @BatteryPassWeb.Dpp.Uploads.UploadSamples.Serial. A status change goes in the same way: <code>"batteryStatus": "waste"</code> (or re-used, remanufactured, repurposed) among the values.</li>
@@ -248,7 +248,7 @@
             {
                 <section class="bp-card bp-help-part" id="api">
                     <h2>API reference</h2>
-                    <p class="mb-2">Every call, with examples for the demo clusters (<code>demo-north</code>, <code>demo-south</code>, <code>demo-fleet</code>), and a workbench to try a call with a token.</p>
+                    <p class="mb-2">Every call, with examples for the demo customers (<code>demo-north</code>, <code>demo-south</code>, <code>demo-fleet</code>), and a workbench to try a call with a token.</p>
                     <a class="bp-secondary-button bp-button-compact" href="/help/api">Open the API reference</a>
                 </section>
             }

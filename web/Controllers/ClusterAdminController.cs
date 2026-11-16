@@ -16,6 +16,9 @@ namespace BatteryPassWeb.Controllers;
 [Route("cluster-admin")]
 public class ClusterAdminController : Controller
 {
+    /// <summary>The two roles in a customer, in a customer admin's words (<see cref="ClusterRepository.OnlyTwoClusterRoles"/>, W07).</summary>
+    public const string OnlyTwoCustomerRoles = "A person is a user or a customer admin.";
+
     /// <summary>The users whose name and password this cluster admin may change (finding R19).</summary>
     public const string MayChangeAccountKey = "MayChangeAccount";
 
@@ -196,7 +199,7 @@ public class ClusterAdminController : Controller
             .ToList();
         if (clusterIds.Count == 0 || !await CanAdministerAllClustersAsync(clusterIds, cancellationToken))
         {
-            TempData["ErrorMessage"] = "Choose at least one cluster you administer.";
+            TempData["ErrorMessage"] = "Choose at least one of your customers.";
             return Redirect("/cluster-admin/api-tokens");
         }
 
@@ -289,7 +292,7 @@ public class ClusterAdminController : Controller
     }
 
     /// <summary>What "Add user" says when the address already has an account (finding R19).</summary>
-    public const string AlreadyHasAnAccount = "This person already has an account. They were added to your cluster; their name and password stay as they are.";
+    public const string AlreadyHasAnAccount = "This person already has an account. They were added to your customer; their name and password stay as they are.";
 
     /// <summary>
     /// "Add user" (no <c>change</c>), and a row's "Name", "New password" and "Clusters" (<c>change</c> = name, password,
@@ -373,7 +376,7 @@ public class ClusterAdminController : Controller
 
         if (!ClusterRepository.IsClusterMembershipRole(role))
         {
-            TempData["ErrorMessage"] = ClusterRepository.OnlyTwoClusterRoles;
+            TempData["ErrorMessage"] = OnlyTwoCustomerRoles;
             return Redirect(back);
         }
 
@@ -532,7 +535,7 @@ public class ClusterAdminController : Controller
             AllowUnassigned = token.GetValue("allowUnassigned", false).ToBoolean(),
             IsActive = token.GetValue("isActive", false).ToBoolean(),
             IsSample = token.GetValue("isSample", false).ToBoolean(),
-            ClusterIdsLabel = clusterNames.Count == 0 ? "No clusters" : string.Join(", ", clusterNames),
+            ClusterIdsLabel = clusterNames.Count == 0 ? "No customers" : string.Join(", ", clusterNames), // a customer admin's page (W07)
             ClusterScopeNames = clusterNames,
             CreatedAt = BsonHelpers.GetString(token, "createdAt"),
             UpdatedAt = BsonHelpers.GetString(token, "updatedAt"),

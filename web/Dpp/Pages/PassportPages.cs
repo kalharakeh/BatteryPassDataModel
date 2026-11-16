@@ -159,8 +159,8 @@ public sealed class PassportPages(DppStore store, DemoBoundary demo, PassportRea
     /// <summary>The detail page's audience sections (design 5.1), with who sees each.</summary>
     private static readonly (Audience Audience, string Key, string Title, string Note)[] AudienceTexts =
     [
-        (Audience.Purchaser, "purchaser", "Purchaser", "Seen by the battery's cluster and market surveillance."),
-        (Audience.Shared, "shared", "Shared", "Seen by the battery's cluster, notified bodies, market surveillance, the Commission and, per value, repairers, recyclers and treatment facilities with a legitimate interest."),
+        (Audience.Purchaser, "purchaser", "Purchaser", "Seen by the battery's customer and market surveillance."),
+        (Audience.Shared, "shared", "Shared", "Seen by the battery's customer, notified bodies, market surveillance, the Commission and, per value, repairers, recyclers and treatment facilities with a legitimate interest."),
         (Audience.Authorities, "authorities", "Authorities", "Seen by notified bodies, market surveillance and the Commission."),
     ];
 

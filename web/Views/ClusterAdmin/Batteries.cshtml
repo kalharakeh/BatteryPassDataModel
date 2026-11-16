@@ -14,5 +14,6 @@
         Model.OpenHref, Model.Actions, row => Model.BatteryStatusShown.Contains(row.PackId))
     {
         Empty = Model.Scope,
+        ClusterWord = Model.Team ? "Cluster" : "Customer",
     })
 </main>

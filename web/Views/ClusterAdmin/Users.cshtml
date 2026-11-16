@@ -10,12 +10,12 @@
     var clusterMembershipRoleOptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         ["member"] = "User",
-        ["clusterAdmin"] = "Cluster admin"
+        ["clusterAdmin"] = "Customer admin"
     };
     // A cluster has two roles (finding S08): a stored odd value reads as a plain user.
     string MembershipRoleLabel(string role) => role switch
     {
-        "clusterAdmin" => "Cluster admin",
+        "clusterAdmin" => "Customer admin",
         _ => "User"
     };
     string ClusterName(string clusterId) => clustersById.TryGetValue(clusterId, out var cluster) ? cluster.Name : clusterId;
@@ -38,7 +38,7 @@
     <section class="bp-card bp-console-form-card bp-tab-intro mt-4">
         <div>
             <h2>Users</h2>
-            <p>The people in your clusters. Users see your cluster's batteries; cluster admins also look after its users and tokens.</p>
+            <p>Your people. Users see your batteries; customer admins also look after users and tokens.</p>
         </div>
         <div class="bp-tab-intro-actions">
             <span class="bp-counts">@Count(Model.Users.Count, "user", "users")</span>
@@ -51,7 +51,7 @@
             @Html.AntiForgeryToken()
             <div>
                 <h2 id="add-user-title">Add a user</h2>
-                <p class="bp-help-text mb-0">They join one of your clusters straight away. If the person already has an account, they are only added to your cluster: their name and password stay as they are.</p>
+                <p class="bp-help-text mb-0">They join one of your customers straight away. If the person already has an account, they are only added to your customer: their name and password stay as they are.</p>
             </div>
             <div class="bp-field-pairs">
                 <label>
@@ -78,7 +78,7 @@
                     </span>
                 </label>
                 <label>
-                    Cluster
+                    Customer
                     <span class="bp-select-shell">
                         <select name="clusterId" required>
                             @foreach (var cluster in Model.Clusters)
@@ -112,16 +112,16 @@
             <h2>Your users</h2>
             <label class="bp-list-search">
                 <span class="visually-hidden">Search users</span>
-                <input type="search" placeholder="Search name, email or cluster" data-list-search />
+                <input type="search" placeholder="Search name, email or customer" data-list-search />
             </label>
         </div>
         @if (Model.Users.Count == 0)
         {
-            <p class="bp-list-empty">No users in your clusters yet.</p>
+            <p class="bp-list-empty">No users yet.</p>
         }
         else
         {
-            <div class="bp-list-head" aria-hidden="true"><span>User</span><span>Role in your clusters</span><span>Clusters</span><span></span></div>
+            <div class="bp-list-head" aria-hidden="true"><span>User</span><span>Role</span><span>Customers</span><span></span></div>
             <p class="bp-list-empty" data-list-no-results hidden>No users match the search.</p>
         }
         @foreach (var user in Model.Users.OrderBy(user => user.Email, StringComparer.OrdinalIgnoreCase))
@@ -147,7 +147,7 @@
                             <span class="bp-soft-tag">Global admin</span>
                         }
                     </span>
-                    <span><span class="bp-row-label">Clusters</span>@string.Join(", ", memberships.Select(membership => ClusterName(membership.ClusterId)))</span>
+                    <span><span class="bp-row-label">Customers</span>@string.Join(", ", memberships.Select(membership => ClusterName(membership.ClusterId)))</span>
                     <span class="bp-row-open"><span class="is-open">Open</span><span class="is-close">Close</span></span>
                 </summary>
                 <div class="bp-row-panel bp-console-form-card">
@@ -178,7 +178,7 @@
                         <p class="text-secondary mb-0">You can't change this person's account here. Ask the Scania team.</p>
                         }
                         <section class="bp-subcard">
-                            <h3>Clusters</h3>
+                            <h3>Customers</h3>
                             <ul class="bp-member-list">
                                 @foreach (var membership in memberships)
                                 {
@@ -189,7 +189,7 @@
                                             <input type="hidden" name="email" value="@membership.Email" />
                                             <input type="hidden" name="clusterId" value="@membership.ClusterId" />
                                             <span class="bp-soft-tag">@MembershipRoleLabel(membership.Role)</span>
-                                            <button type="submit" class="bp-icon-button is-danger" aria-label="Remove from @ClusterName(membership.ClusterId)" title="Remove from this cluster" data-confirm-action data-confirm-title="Remove from cluster" data-confirm-message="Remove @displayName from @ClusterName(membership.ClusterId)? They no longer see its batteries." data-confirm-submit="Remove">
+                                            <button type="submit" class="bp-icon-button is-danger" aria-label="Remove from @ClusterName(membership.ClusterId)" title="Remove from this customer" data-confirm-action data-confirm-title="Remove from customer" data-confirm-message="Remove @displayName from @ClusterName(membership.ClusterId)? They no longer see its batteries." data-confirm-submit="Remove">
                                                 <svg class="bp-action-icon" viewBox="0 0 24 24" aria-hidden="true">
                                                     <path d="M18 6 6 18" />
                                                     <path d="m6 6 12 12" />

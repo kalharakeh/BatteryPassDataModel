@@ -1,3 +1,4 @@
+using BatteryPassWeb.Controllers;
 using BatteryPassWeb.Services;
 using BatteryPassWeb.Tests.Dpp;
 
@@ -21,7 +22,7 @@ public sealed class MembershipRoleTests(MongoFixture mongo)
 
         await northAdmin.SaveUser(CancellationToken.None);
 
-        Assert.Equal(ClusterRepository.OnlyTwoClusterRoles, northAdmin.TempData["ErrorMessage"]);
+        Assert.Equal(ClusterAdminController.OnlyTwoCustomerRoles, northAdmin.TempData["ErrorMessage"]); // in customer words on their page (W07)
         Assert.Equal(AccessControlService.RoleNormalUser, await RoleInAsync(rig, AccountRig.NorthUser, "north"));
     }
 

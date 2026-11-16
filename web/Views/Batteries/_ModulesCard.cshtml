@@ -15,7 +15,7 @@
         {
             <text>The battery system's export sets this list, through "Upload a file" or the API; the team corrects it.</text>
         }
-        The module IDs are seen only by the battery's cluster, market surveillance and @Model.Team.
+        The module IDs are seen only by the battery's @(Model.ForTeam ? "cluster" : "customer"), market surveillance and @Model.Team.
     </p>
     @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "modules")
     @if (Model.Pack.Modules.Count > 0)

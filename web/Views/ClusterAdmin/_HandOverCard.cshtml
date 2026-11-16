@@ -7,7 +7,7 @@
     {
         <span class="bp-summary-title">Hand over <em class="bp-field-marker">Not passport data</em></span>
         <h2>Waiting for @Model.ReceiverName</h2>
-        <p class="mb-2">Asked @ValueWords.Time(waiting.AskedAtUtc). The battery stays with your cluster until they accept.</p>
+        <p class="mb-2">Asked @ValueWords.Time(waiting.AskedAtUtc). The battery stays with you until they accept.</p>
         <p class="bp-help-text mb-0">To cancel it, use <strong>Cancel the hand-over</strong> on the line at the top of the page.</p>
         @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "handover")
     }
@@ -17,7 +17,7 @@
             <div>
                 <span class="bp-summary-title">Hand over <em class="bp-field-marker">Not passport data</em></span>
                 <h2>Sold or moved to another customer?</h2>
-                <p class="mb-0">Hand the battery over to their cluster. It moves once their cluster admin accepts; your cluster then no longer sees its purchaser data. The passport doesn't change.</p>
+                <p class="mb-0">Hand the battery over to another customer. It moves once their admin accepts; you then no longer see its purchaser data. The passport doesn't change.</p>
                 <p class="bp-help-text mt-2 mb-0">@if (Model.CannotChange is { } cannotChange)
                     {
                         @cannotChange

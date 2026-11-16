@@ -69,7 +69,7 @@ public sealed class StatusChangeService(
 {
     public const string ChangedEvent = "dpp.status-changed";
 
-    public const string NotYours = "only the team and the battery's cluster admins change its status";
+    public const string NotYours = "only the team and the battery's customer admins change its status";
     public const string OnlyPublished = "only a published, active passport changes status";
     public const string WasteIsFinal = "the battery is waste, which is final";
     public const string ValuesRefused = "a re-stated value was refused or missing, so nothing was saved";

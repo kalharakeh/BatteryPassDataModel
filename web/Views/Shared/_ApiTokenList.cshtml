@@ -23,9 +23,11 @@
         "readwrite" => "Read + write",
         _ => "Read"
     };
+    // "Customer" on a customer admin's page, "cluster" on the team's (decision 55, W07).
+    var word = Model.ActionBase.StartsWith("/cluster-admin", StringComparison.OrdinalIgnoreCase) ? "customer" : "cluster";
     string Batteries(ApiTokenViewModel token) => token.GlobalAccess
         ? "All batteries"
-        : token.ClusterScopeNames.Count == 0 ? "No clusters" : string.Join(", ", token.ClusterScopeNames);
+        : token.ClusterScopeNames.Count == 0 ? $"No {word}s" : string.Join(", ", token.ClusterScopeNames);
 }
 
 <section class="bp-card bp-list-card mt-4" data-list aria-label="API tokens" style="--bp-row-columns: minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr) 96px">
@@ -33,7 +35,7 @@
         <h2>Tokens</h2>
         <label class="bp-list-search">
             <span class="visually-hidden">Search tokens</span>
-            <input type="search" placeholder="Search name, ID, permission or cluster" data-list-search />
+            <input type="search" placeholder="Search name, ID, permission or @word" data-list-search />
         </label>
     </div>
     @if (Model.Tokens.Count == 0)

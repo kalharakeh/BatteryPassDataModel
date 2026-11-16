@@ -27,7 +27,7 @@
         <p>For you</p>
         @if (inACluster)
         {
-            <a href="@Part("your-batteries")">Your cluster's batteries</a>
+            <a href="@Part("your-batteries")">Your batteries</a>
         }
         @if (isMsa)
         {
@@ -44,8 +44,8 @@
     }
     @if (runsACluster)
     {
-        <p>For cluster admins</p>
-        <a href="@Part("cluster")">Your cluster</a>
+        <p>For customer admins</p>
+        <a href="@Part("cluster")">Your accounts and tokens</a>
         <a href="@Part("look-after")">Look after a battery</a>
         <a href="@Part("upload")">Upload a file</a>
     }

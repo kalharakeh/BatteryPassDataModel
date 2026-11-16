@@ -71,7 +71,7 @@ public sealed class ApiTokensTabTests(MongoFixture mongo)
         Assert.True(row.IndexOf("<div class=\"bp-danger-zone\">", StringComparison.Ordinal) > row.IndexOf("set-active", StringComparison.Ordinal));
         Assert.Contains("action=\"@Model.ActionBase/delete\"", row, StringComparison.Ordinal);
         Assert.Contains("data-confirm-title=\"Delete API token\"", row, StringComparison.Ordinal);
-        Assert.Contains("placeholder=\"Search name, ID, permission or cluster\" data-list-search", list, StringComparison.Ordinal);
+        Assert.Contains("placeholder=\"Search name, ID, permission or @word\" data-list-search", list, StringComparison.Ordinal); // "cluster" for the team, "customer" for a customer (W07)
         Assert.Contains("\"sign\" => \"Passport lifecycle\"", list, StringComparison.Ordinal);
         Assert.DoesNotContain("Passport Lifecycle", list, StringComparison.Ordinal);
     }
