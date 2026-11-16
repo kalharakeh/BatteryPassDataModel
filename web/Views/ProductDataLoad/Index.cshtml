@@ -1,0 +1,74 @@
+@using BatteryPassWeb.Controllers
+@model ProductDataLoadPage
+@{
+    ViewData["Title"] = "Load product data from Excel";
+    var megabytes = Math.Max(1, Model.MaxUploadBytes / (1024 * 1024));
+}
+
+<main class="bp-page bp-admin-page">
+    <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
+    <nav class="bp-breadcrumb" aria-label="Breadcrumb">
+        <a href="/admin/families">Battery families</a>
+        <span aria-current="page">Load product data from Excel</span>
+    </nav>
+
+    <section class="bp-card bp-console-form-card bp-product-editor-hero">
+        <span class="bp-summary-title">Product data</span>
+        <h1>Load product data from Excel</h1>
+        <p>
+            Fill the workbook for a battery family: its models, their batches, the manufacturing site and the economic
+            operator. Then choose it here with the documents and pictures it names. The check shows what would be
+            saved and every problem, and saves nothing. Load saves all of it, or nothing.
+        </p>
+        <p class="mb-0">
+            <a href="@ProductDataLoadController.Path/workbook" class="bp-secondary-button" data-load-workbook>Download the empty workbook</a>
+        </p>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(Model.Error))
+    {
+        <p class="alert alert-danger bp-status-line is-problem mt-3" role="alert" data-load-error>
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4.5v4.5M8 11.5v.5" /></svg>
+            <span>@Model.Error</span>
+        </p>
+    }
+
+    <section class="bp-card bp-console-form-card mt-4">
+        <h2>The workbook and its files</h2>
+        <form method="post" action="@ProductDataLoadController.Path" enctype="multipart/form-data" class="d-grid gap-3" data-load-form>
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="stamp" value="@(Model.Check is { CanLoad: true } ready ? ready.Stamp : string.Empty)" data-load-stamp />
+            <div>
+                <label for="load-workbook" class="form-label">The filled workbook (.xlsx)</label>
+                <input id="load-workbook" type="file" name="workbook" class="form-control" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required data-load-file />
+            </div>
+            <div>
+                <label for="load-files" class="form-label">The documents and pictures it names</label>
+                <input id="load-files" type="file" name="files" class="form-control" multiple accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg" data-load-file />
+                <p class="bp-help-text mt-1 mb-0">
+                    Choose all of them at once: PDF, PNG or JPEG, up to @megabytes MB each, up to @Model.MaxFiles files.
+                    A file's name must be the name written in the workbook. A file that is already in the app needn't be sent again.
+                </p>
+            </div>
+            <p class="bp-help-text mb-0" data-load-again hidden>
+                Choose the workbook and its files again, then press Load: the browser doesn't keep them after a check.
+            </p>
+            <div class="bp-dialog-actions">
+                <button type="submit" class="bp-secondary-button" formaction="@ProductDataLoadController.Path/check" data-load-check-button>Check</button>
+                <button type="submit" class="bp-primary-button" data-load-button>Load</button>
+            </div>
+            <p class="bp-help-text mb-0" role="status" aria-live="polite" data-load-busy hidden></p>
+        </form>
+    </section>
+
+    <div data-load-result>
+        @if (Model.Check is not null)
+        {
+            @await Html.PartialAsync("_Check", Model)
+        }
+    </div>
+</main>
+
+@section Scripts {
+    <script src="~/js/bp-product-data-load.js" asp-append-version="true"></script>
+}
