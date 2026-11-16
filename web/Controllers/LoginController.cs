@@ -56,7 +56,7 @@ public class LoginController : Controller
 
         if (loginResult.Status != LoginAuthenticationStatus.Authenticated || loginResult.Principal == null)
         {
-            model.ErrorMessage = "Invalid email or password.";
+            model.ErrorMessage = loginResult.Status == LoginAuthenticationStatus.Locked ? SignInAttempts.LockedWords : SignInAttempts.WrongWords;
             return View(model);
         }
 
@@ -72,11 +72,20 @@ public class LoginController : Controller
         return Redirect(StartPage(principal));
     }
 
+    private const string ForgotPasswordAnswer = "If an account exists, a temporary password has been sent.";
+
     [HttpPost("forgot-password")]
     [EnableRateLimiting(SecurityRateLimitPolicyNames.Login)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ForgotPassword([FromForm] string email, CancellationToken cancellationToken)
     {
+        // Finding W6: an address that isn't one is stored, logged and mailed nowhere; the answer is the same as always.
+        if (EmailAddressRule.Problem(email) is not null)
+        {
+            TempData["ForgotPasswordMessage"] = ForgotPasswordAnswer;
+            return Redirect("/login");
+        }
+
         var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
         await _authService.CreatePasswordResetAsync(
             email,
@@ -97,7 +106,7 @@ public class LoginController : Controller
             "account",
             string.IsNullOrWhiteSpace(email) ? "anonymous" : email.Trim().ToLowerInvariant(),
             cancellationToken: cancellationToken);
-        TempData["ForgotPasswordMessage"] = "If an account exists, a temporary password has been sent.";
+        TempData["ForgotPasswordMessage"] = ForgotPasswordAnswer;
         return Redirect("/login");
     }
 

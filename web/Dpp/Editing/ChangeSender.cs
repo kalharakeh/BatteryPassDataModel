@@ -22,15 +22,15 @@ public sealed record ChangeSender(SenderKind Kind, string Who, IReadOnlySet<stri
     /// <summary>A demo account or demo token: it changes only demo batteries (finding R03, <c>DemoScope</c>).</summary>
     public bool DemoOnly { get; init; }
 
-    public static ChangeSender Team(string who) => new(SenderKind.Team, who, new HashSet<string>(StringComparer.Ordinal));
+    public static ChangeSender Team(string who) => new(SenderKind.Team, who, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
 
     public static ChangeSender ClusterAdmin(string who, params string[] clusterIds) =>
-        new(SenderKind.ClusterAdmin, who, clusterIds.ToHashSet(StringComparer.Ordinal));
+        new(SenderKind.ClusterAdmin, who, clusterIds.ToHashSet(StringComparer.OrdinalIgnoreCase));
 
     public static ChangeSender Feed(string who, params string[] clusterIds) =>
-        new(SenderKind.BatterySystemFeed, who, clusterIds.ToHashSet(StringComparer.Ordinal));
+        new(SenderKind.BatterySystemFeed, who, clusterIds.ToHashSet(StringComparer.OrdinalIgnoreCase));
 
-    public static ChangeSender MarketSurveillance(string who) => new(SenderKind.MarketSurveillance, who, new HashSet<string>(StringComparer.Ordinal));
+    public static ChangeSender MarketSurveillance(string who) => new(SenderKind.MarketSurveillance, who, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
 }
 
 /// <summary>"May this sender change this attribute?" (design 6.1, decisions 9 and 10, J-10).</summary>

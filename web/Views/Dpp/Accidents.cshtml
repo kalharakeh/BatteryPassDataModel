@@ -26,6 +26,7 @@
 
     <section class="bp-card bp-report-wide-section">
         <span class="bp-summary-title">Accident reports</span>
+        <partial name="_RestrictedNotice" />
         @if (Model.Reports.Count == 0)
         {
             <h2 class="h5 mt-2 mb-1">No accidents reported</h2>

@@ -142,15 +142,19 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
         [FromServices] Microsoft.Extensions.Options.IOptions<BatteryPassWeb.Configuration.BatteryPassOptions> options,
         CancellationToken cancellationToken,
         [FromServices] BatteryApi? liveHistory = null,
-        [FromServices] ClusterBatteryPages? manage = null) =>
-        Detail(BatteryPassWeb.Dpp.Identifiers.IdentifierForms.PassportAddress(options.Value.IdBaseUrl, Uri.UnescapeDataString(id), version), cancellationToken, liveHistory, manage);
+        [FromServices] ClusterBatteryPages? manage = null,
+        [FromServices] RestrictedReads? restricted = null,
+        [FromServices] BatteryPassWeb.Dpp.Store.DppStore? store = null) =>
+        Detail(BatteryPassWeb.Dpp.Identifiers.IdentifierForms.PassportAddress(options.Value.IdBaseUrl, Uri.UnescapeDataString(id), version), cancellationToken, liveHistory, manage, restricted, store);
 
     [HttpGet("{id}/detail")]
     public async Task<IActionResult> Detail(
         string id,
         CancellationToken cancellationToken,
         [FromServices] BatteryApi? liveHistory = null,
-        [FromServices] ClusterBatteryPages? manage = null)
+        [FromServices] ClusterBatteryPages? manage = null,
+        [FromServices] RestrictedReads? restricted = null,
+        [FromServices] BatteryPassWeb.Dpp.Store.DppStore? store = null)
     {
         if (User.Identity?.IsAuthenticated != true)
         {
@@ -167,6 +171,17 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
         if (page is null)
         {
             return NotFoundPage();
+        }
+
+        // Finding R11: a reader who sees restricted sections is told how the data may be used, and the first opening of the
+        // battery's restricted data today is logged (the team's own reads and a cluster admin's own batteries are not).
+        var restrictedSections = page.Audiences.Where(section => section.Values.Count > 0).Select(section => section.Key)
+            .Concat(page.Modules is { Count: > 0 } ? ["modules"] : []).ToArray();
+        if (restricted is not null && store is not null && restrictedSections.Length > 0
+            && await RestrictedReads.RoleForAsync(readers, User, (await store.GetAsync<BatteryPassWeb.Dpp.Store.BatteryPack>(page.Version.PackId, cancellationToken))?.ClusterId, cancellationToken) is { } role)
+        {
+            ViewData[RestrictedReads.RoleKey] = role;
+            await restricted.NoteBatteryAsync(ClusterRepositoryEmail(), role, page.Version.PackId, page.Identifier, restrictedSections, cancellationToken);
         }
 
         // The current version's live values over the last week, for those who may see them (decision 30), from the same
@@ -192,6 +207,8 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
         Response.Headers[HeaderNames.CacheControl] = "private, no-store";
         return View(nameof(Detail), page);
     }
+
+    private string ClusterRepositoryEmail() => BatteryPassWeb.Services.ClusterRepository.NormalizeEmail(BatteryPassWeb.Services.AccessControlService.CurrentEmail(User));
 
     /// <summary>
     /// Finding R08: an address of a passport the team removed after recycling answers 410 with the plain sentence, as a

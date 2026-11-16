@@ -46,7 +46,7 @@ public sealed class DppReaders(ClusterRepository clusters)
             .Select(claim => AppRoles.TryGetValue(claim.Value, out var role) ? role : (ReaderRole?)null)
             .OfType<ReaderRole>()
             .ToHashSet();
-        var clusterIds = new HashSet<string>(StringComparer.Ordinal);
+        var clusterIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase); // finding W13
         foreach (var membership in await clusters.GetClusterMembershipsForUserAsync(email, cancellationToken))
         {
             var clusterId = BsonHelpers.GetString(membership, "clusterId");
@@ -131,7 +131,7 @@ public sealed class DppReaders(ClusterRepository clusters)
             ? Reader.With(who, ReaderRole.Team)
             : new Reader(
                 new HashSet<ReaderRole> { ReaderRole.ClusterUser },
-                token.ClusterIds.Where(id => !string.IsNullOrWhiteSpace(id)).Select(ClusterRepository.NormalizeClusterId).ToHashSet(StringComparer.Ordinal),
+                token.ClusterIds.Where(id => !string.IsNullOrWhiteSpace(id)).Select(ClusterRepository.NormalizeClusterId).ToHashSet(StringComparer.OrdinalIgnoreCase),
                 who);
         return reader with { DemoOnly = token.IsDemo }; // a demo token reaches only demo batteries (finding R03)
     }

@@ -351,7 +351,7 @@ public sealed class DppStore
     {
         var result = await Collection<BatteryPack>().UpdateOneAsync(
             pack => pack.Id == packId,
-            Builders<BatteryPack>.Update.Set(pack => pack.ClusterId, clusterId),
+            Builders<BatteryPack>.Update.Set(pack => pack.ClusterId, string.IsNullOrWhiteSpace(clusterId) ? null : ClusterRepository.NormalizeClusterId(clusterId)), // finding W13
             cancellationToken: cancellationToken);
         return result.MatchedCount == 1;
     }
@@ -630,7 +630,11 @@ public sealed class DppStore
             return 0;
         }
 
-        return await Collection<BatteryPack>().CountDocumentsAsync(pack => pack.ClusterId == clusterId, cancellationToken: cancellationToken);
+        // Whatever capitals an older version stored it with (finding W13).
+        return await Collection<BatteryPack>().CountDocumentsAsync(
+            Builders<BatteryPack>.Filter.Eq(pack => pack.ClusterId, ClusterRepository.NormalizeClusterId(clusterId)),
+            new CountOptions { Collation = ClusterRepository.IgnoreCase },
+            cancellationToken);
     }
 
     /// <summary>Takes every pack of this cluster out of it (they then have no cluster); returns how many.</summary>
@@ -642,9 +646,10 @@ public sealed class DppStore
         }
 
         var result = await Collection<BatteryPack>().UpdateManyAsync(
-            pack => pack.ClusterId == clusterId,
+            Builders<BatteryPack>.Filter.Eq(pack => pack.ClusterId, ClusterRepository.NormalizeClusterId(clusterId)),
             Builders<BatteryPack>.Update.Set(pack => pack.ClusterId, null),
-            cancellationToken: cancellationToken);
+            new UpdateOptions { Collation = ClusterRepository.IgnoreCase },
+            cancellationToken);
         return result.ModifiedCount;
     }
 
@@ -758,6 +763,36 @@ public sealed class DppStore
         }
 
         return await Collection<HandOver>().Find(handOver => handOver.PackId == packId && handOver.State == HandOverStates.Waiting).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Cancels every hand-over still waiting for this cluster or from it (finding W8: the cluster is deleted); returns how
+    /// many. The ID is matched whatever its capitals.
+    /// </summary>
+    public async Task<int> CancelWaitingHandOversOfClusterAsync(string clusterId, string by, DateTime atUtc, CancellationToken cancellationToken = default)
+    {
+        if (_database is null || string.IsNullOrWhiteSpace(clusterId))
+        {
+            return 0;
+        }
+
+        var key = ClusterRepository.NormalizeClusterId(clusterId);
+        var waiting = await Collection<HandOver>()
+            .Find(
+                Builders<HandOver>.Filter.Eq(handOver => handOver.State, HandOverStates.Waiting)
+                & (Builders<HandOver>.Filter.Eq(handOver => handOver.ToClusterId, key) | Builders<HandOver>.Filter.Eq(handOver => handOver.FromClusterId, key)),
+                new FindOptions { Collation = ClusterRepository.IgnoreCase })
+            .ToListAsync(cancellationToken);
+        var cancelled = 0;
+        foreach (var handOver in waiting)
+        {
+            if (await SetHandOverStateAsync(handOver.Id, HandOverStates.Cancelled, by, atUtc, cancellationToken))
+            {
+                cancelled++;
+            }
+        }
+
+        return cancelled;
     }
 
     /// <summary>The hand-overs waiting for an answer from these receiving clusters, oldest first.</summary>

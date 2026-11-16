@@ -118,7 +118,7 @@ public sealed class PackCreationService(
             Id = $"pack-{Guid.NewGuid():N}",
             BatchId = request.BatchId,
             OperatorId = request.OperatorId,
-            ClusterId = request.ClusterId,
+            ClusterId = string.IsNullOrWhiteSpace(request.ClusterId) ? null : ClusterRepository.NormalizeClusterId(request.ClusterId), // finding W13
             SuccessorOf = request.PredecessorPackId,
             IsDemo = request.IsDemo, // a demo battery's ID is marked TEST
         };

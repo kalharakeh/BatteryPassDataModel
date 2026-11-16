@@ -9,7 +9,7 @@ the live app's database, by name.
 |---|---|
 | `dpp_families`, `dpp_models`, `dpp_sites`, `dpp_batches`, `dpp_operators`, `dpp_packs`, `dpp_passport_versions`, `dpp_documents`, `dpp_files` | emptied: the new model's test data |
 | `passports`, `batteries`, `passportRevisions`, the product templates and policies, `batteryTelemetry`, `passportFiles` | removed: the old app's data |
-| `passwordResetRequests` | emptied |
+| `passwordResetRequests`, `signInAttempts`, `restrictedReads` | emptied |
 | `users`, `clusterMemberships`, `clusters`, `apiTokens` | kept, except what the decisions file marks delete; the sample tokens always go |
 | `applicationSettings`, `applicationAuditEvents`, `auditEvents`, `batteryAuditEvents` | kept; the audit log gets one "data.reset" entry with the counts |
 | anything else | left alone and listed |

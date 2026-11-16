@@ -44,7 +44,7 @@ internal sealed class AccountRig(ServiceProvider services, IMongoDatabase databa
     public AccessControlService Access => Services.GetRequiredService<AccessControlService>();
     public CapturingEmailSender Mail => Services.GetRequiredService<CapturingEmailSender>();
 
-    public static async Task<AccountRig> StartAsync(MongoFixture mongo, Action<BatteryPassOptions>? configure = null)
+    public static async Task<AccountRig> StartAsync(MongoFixture mongo, Action<BatteryPassOptions>? configure = null, TimeProvider? clock = null)
     {
         var options = new BatteryPassOptions
         {
@@ -54,7 +54,13 @@ internal sealed class AccountRig(ServiceProvider services, IMongoDatabase databa
         };
         configure?.Invoke(options);
         var context = mongo.NewContext();
-        var services = new ServiceCollection()
+        var collection = new ServiceCollection();
+        if (clock is not null)
+        {
+            collection.AddSingleton(clock); // before AddDpp, which only adds the system clock when there is none
+        }
+
+        var services = collection
             .AddSingleton(Options.Create(options))
             .AddSingleton(context)
             .AddSingleton(DemoDataSwitch.On)

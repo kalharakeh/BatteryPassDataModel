@@ -32,6 +32,11 @@ if (DemoAdminFallbackConfiguration.ProductionRefusal(
     throw new InvalidOperationException(fallbackInProduction);
 }
 
+if (BatteryPassHealthCheck.ProductionRefusal(builder.Environment.IsProduction(), builder.Configuration[BatteryPassHealthCheck.DiagnosticsEnvironmentVariable]) is { } diagnosticsInProduction)
+{
+    throw new InvalidOperationException(diagnosticsInProduction);
+}
+
 // The QR code's address and the battery IDs' address must be one site (finding D18); outside Production a warning.
 // A setting that is there but empty counts as not set (C3 round three, point 1).
 var appBaseUrlSetting = SiteAddressSettings.AppBaseUrl(Environment.GetEnvironmentVariable, builder.Configuration);

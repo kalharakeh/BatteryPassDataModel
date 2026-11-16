@@ -1,4 +1,5 @@
 @using BatteryPassWeb.Models.ViewModels
+@using BatteryPassWeb.Services
 @model ApiTokenListViewModel
 @{
     // One row per token: its name, permission, batteries and last use. A row opens to its ID, regenerating it,
@@ -67,6 +68,10 @@
                     {
                         <span class="bp-soft-tag is-off">Inactive</span>
                     }
+                    @if (ClusterTokenRules.HasMoreThanAClusterToken(token.AccessMode, token.GlobalAccess))
+                    {
+                        <small class="d-block text-secondary" data-more-than-cluster-token>@ClusterTokenRules.StillDoes(token.AccessMode)</small>
+                    }
                 </span>
                 <span>
                     <span class="bp-row-label">Batteries</span>@Batteries(token)
@@ -96,6 +101,18 @@
                         <button type="submit" class="bp-secondary-button bp-button-compact" data-confirm-action data-confirm-title="Regenerate token" data-confirm-message="Make a new value for @name? Systems using the old value stop working until they get the new one." data-confirm-submit="Regenerate">Regenerate value</button>
                     </form>
                 </section>
+                @if (Model.CanSetActive && token.IsActive && ClusterTokenRules.HasMoreThanAClusterToken(token.AccessMode, token.GlobalAccess))
+                {
+                    <section class="bp-subcard" data-replace-token>
+                        <h3>Replace</h3>
+                        <p class="text-secondary small">Makes a new token for the same clusters that @(string.Equals(token.AccessMode, "readWriteSign", StringComparison.OrdinalIgnoreCase) ? "reads and sends live values" : "reads"), shows its value once, and switches this one off.</p>
+                        <form method="post" action="@Model.ActionBase/replace">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="tokenId" value="@token.TokenId" />
+                            <button type="submit" class="bp-secondary-button bp-button-compact" data-confirm-action data-confirm-title="Replace token" data-confirm-message="Replace @name with a token that @(string.Equals(token.AccessMode, "readWriteSign", StringComparison.OrdinalIgnoreCase) ? "reads and sends live values" : "reads")? The old one is switched off, so systems using it stop until they get the new value." data-confirm-submit="Replace">Replace with a cluster token</button>
+                        </form>
+                    </section>
+                }
                 @if (Model.CanSetActive)
                 {
                     <section class="bp-subcard">

@@ -369,10 +369,11 @@ public class AdminController : Controller
         }
 
         await _clusterRepository.DeleteClusterAsync(clusterId, cancellationToken);
+        var gone = await RevokeClusterAccessAsync(clusterId, cancellationToken);
         await AppendAdminAuditAsync(
             "cluster.deleted",
-            "Cluster deleted.",
-            new BsonDocument { ["clusterId"] = clusterId },
+            $"Cluster deleted. {gone.Words}",
+            new BsonDocument { ["clusterId"] = clusterId }.AddRange(gone.Metadata),
             "cluster",
             clusterId,
             cancellationToken);
@@ -393,19 +394,48 @@ public class AdminController : Controller
 
         var batteriesCleared = await _dppStore.ClearClusterAsync(clusterId, cancellationToken);
         await _clusterRepository.DeleteClusterAsync(clusterId, cancellationToken);
+        var gone = await RevokeClusterAccessAsync(clusterId, cancellationToken);
         await AppendAdminAuditAsync(
             "cluster.deleted",
-            "Cluster force-deleted after linked data was cleared.",
+            $"Cluster force-deleted after linked data was cleared. {gone.Words}",
             new BsonDocument
             {
                 ["clusterId"] = clusterId,
                 ["forceDelete"] = true,
                 ["batteriesCleared"] = batteriesCleared
-            },
+            }.AddRange(gone.Metadata),
             "cluster",
             clusterId,
             cancellationToken);
         return Redirect("/admin/clusters?tab=clusters");
+    }
+
+    /// <summary>What deleting a cluster ended besides the cluster (finding W8), for the audit entry.</summary>
+    private sealed record ClusterAccessGone(int TokensRevoked, int TokensNarrowed, int HandOversCancelled)
+    {
+        public BsonDocument Metadata => new()
+        {
+            ["tokensRevoked"] = TokensRevoked,
+            ["tokensNarrowed"] = TokensNarrowed,
+            ["handOversCancelled"] = HandOversCancelled,
+        };
+
+        public string Words =>
+            $"{Count(TokensRevoked, "token")} revoked, {Count(TokensNarrowed, "token")} narrowed and {Count(HandOversCancelled, "waiting hand-over")} cancelled.";
+
+        private static string Count(int number, string noun) => $"{number} {noun}{(number == 1 ? string.Empty : "s")}";
+    }
+
+    /// <summary>
+    /// A deleted cluster's tokens stop at once and its waiting hand-overs end, in the same action (finding W8): otherwise a
+    /// new cluster made with the same ID would find them working.
+    /// </summary>
+    private async Task<ClusterAccessGone> RevokeClusterAccessAsync(string clusterId, CancellationToken cancellationToken)
+    {
+        var actor = AccessControlService.CurrentEmail(User);
+        var (revoked, narrowed) = await _externalApiRepository.RevokeClusterAsync(clusterId, string.IsNullOrWhiteSpace(actor) ? "admin" : actor, cancellationToken);
+        var handOvers = await _dppStore.CancelWaitingHandOversOfClusterAsync(clusterId, string.IsNullOrWhiteSpace(actor) ? "admin" : actor, DateTime.UtcNow, cancellationToken);
+        return new ClusterAccessGone(revoked, narrowed, handOvers);
     }
 
     [HttpPost("clusters/assign-user")]
@@ -415,6 +445,12 @@ public class AdminController : Controller
         var email = Text(Request.Form, "email");
         var clusterId = Text(Request.Form, "clusterId");
         var role = Text(Request.Form, "role", "member");
+        if (!EmailAddressRule.IsClean(Request.Form["email"].FirstOrDefault()))
+        {
+            TempData["ErrorMessage"] = EmailAddressRule.Words;
+            return Redirect("/admin/clusters?tab=users");
+        }
+
         if (!ClusterRepository.IsClusterMembershipRole(role))
         {
             TempData["ErrorMessage"] = ClusterRepository.OnlyTwoClusterRoles;
@@ -425,6 +461,13 @@ public class AdminController : Controller
         if (await _clusterRepository.GetUserByEmailAsync(email, cancellationToken) is null)
         {
             TempData["ErrorMessage"] = NoSuchAccount;
+            return Redirect("/admin/clusters?tab=users");
+        }
+
+        // ... and to a cluster that exists (finding W7).
+        if (!await _clusterRepository.ClusterExistsAsync(clusterId, cancellationToken))
+        {
+            TempData["ErrorMessage"] = ClusterRepository.NoSuchCluster;
             return Redirect("/admin/clusters?tab=users");
         }
 
@@ -460,11 +503,32 @@ public class AdminController : Controller
             return Redirect("/admin/clusters?tab=users");
         }
 
+        // One rule for every typed address (finding W6): the whole rule for a new account, the look-up part for an account that exists.
+        var typedEmail = Request.Form["email"].FirstOrDefault();
+        if (!EmailAddressRule.IsClean(typedEmail))
+        {
+            TempData["ErrorMessage"] = EmailAddressRule.Words;
+            return Redirect("/admin/clusters?tab=users");
+        }
+
         var displayName = Text(Request.Form, "name", email);
         var password = Text(Request.Form, "password");
         var passwordConfirmation = Text(Request.Form, "passwordConfirmation");
         var requestedSystemRole = Text(Request.Form, "systemRole", "member");
         var existingUser = await _clusterRepository.GetUserByEmailAsync(email, cancellationToken);
+        if (existingUser == null && EmailAddressRule.Problem(typedEmail) is { } newAddressProblem)
+        {
+            TempData["ErrorMessage"] = newAddressProblem;
+            return Redirect("/admin/clusters?tab=users");
+        }
+
+        // A membership is for a cluster that exists (finding W7): refused before the account is touched.
+        if (!string.IsNullOrWhiteSpace(Text(Request.Form, "clusterId"))
+            && !await _clusterRepository.ClusterExistsAsync(Text(Request.Form, "clusterId"), cancellationToken))
+        {
+            TempData["ErrorMessage"] = ClusterRepository.NoSuchCluster;
+            return Redirect("/admin/clusters?tab=users");
+        }
 
         var roles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -632,6 +696,12 @@ public class AdminController : Controller
     {
         var email = Text(Request.Form, "email");
         var clusterId = Text(Request.Form, "clusterId");
+        if (!EmailAddressRule.IsClean(Request.Form["email"].FirstOrDefault()))
+        {
+            TempData["ErrorMessage"] = EmailAddressRule.Words;
+            return Redirect("/admin/clusters?tab=users");
+        }
+
         await _clusterRepository.DeleteClusterMembershipAsync(email, clusterId, cancellationToken);
         TempData["StatusMessage"] = await _clusterRepository.MembershipRemovedMessageAsync(email, clusterId, cancellationToken);
         await AppendAdminAuditAsync(
@@ -658,7 +728,7 @@ public class AdminController : Controller
     {
         var email = Text(Request.Form, "email").Trim().ToLowerInvariant();
         var back = $"/admin/clusters?tab=users&openUser={Uri.EscapeDataString(email)}";
-        if (email.Length == 0)
+        if (email.Length == 0 || !EmailAddressRule.IsClean(Request.Form["email"].FirstOrDefault()))
         {
             return Redirect("/admin/clusters?tab=users");
         }
@@ -720,6 +790,13 @@ public class AdminController : Controller
             .Where(value => !string.IsNullOrWhiteSpace(value))
             .ToList();
 
+        // A token for clusters reads, or also sends live values; signing is for all batteries (finding W9, decisions 29 and 33).
+        if (ClusterTokenRules.HasMoreThanAClusterToken(AccessModeValueOf(accessMode), globalAccess))
+        {
+            TempData["ErrorMessage"] = ClusterTokenRules.OnlyForAllBatteries;
+            return Redirect("/admin/clusters?tab=api-tokens");
+        }
+
         var actor = AccessControlService.CurrentEmail(User);
         var (tokenDocument, tokenValue) = await _externalApiRepository.CreateTokenAsync(
             name,
@@ -771,6 +848,65 @@ public class AdminController : Controller
             : $"Token {tokenId} was not found.";
         return Redirect("/admin/clusters?tab=api-token-management");
     }
+
+    /// <summary>
+    /// Finding W9: the team replaces a cluster token that has more access written on it than a cluster token may have: a new
+    /// token for the same clusters with what the old one could really do, and the old one switched off (not deleted).
+    /// </summary>
+    [HttpPost("api/tokens/replace")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReplaceApiToken(CancellationToken cancellationToken)
+    {
+        var tokenId = Text(Request.Form, "tokenId");
+        var old = await _externalApiRepository.GetTokenByIdAsync(tokenId, cancellationToken);
+        var accessMode = old is null ? string.Empty : BsonHelpers.GetString(old, "accessMode");
+        if (old is null || !ClusterTokenRules.HasMoreThanAClusterToken(accessMode, old.GetValue("globalAccess", false).ToBoolean()))
+        {
+            TempData["ErrorMessage"] = old is null ? $"Token {tokenId} was not found." : "This token has no more access than a cluster token may have.";
+            return Redirect("/admin/clusters?tab=api-tokens");
+        }
+
+        var actor = AccessControlService.CurrentEmail(User);
+        var who = string.IsNullOrWhiteSpace(actor) ? "admin" : actor;
+        var clusterIds = (old.GetValue("clusterIds", new BsonArray()) as BsonArray ?? new BsonArray()).Select(id => id.ToString() ?? string.Empty).ToList();
+        var mode = ClusterTokenRules.ReplacementMode(accessMode);
+        var autoClusterId = BsonHelpers.GetString(old, "autoClusterId");
+        var (replacement, value) = await _externalApiRepository.CreateTokenAsync(
+            ClusterTokenRules.ReplacementName(BsonHelpers.GetString(old, "name")),
+            mode,
+            clusterIds,
+            allowUnassigned: old.GetValue("allowUnassigned", false).ToBoolean(),
+            globalAccess: false,
+            actor: who,
+            autoClusterId: string.IsNullOrWhiteSpace(autoClusterId) ? null : autoClusterId,
+            isDemo: ClusterRepository.IsDemo(old),
+            cancellationToken: cancellationToken);
+        await _externalApiRepository.SetTokenActiveAsync(tokenId, false, who, cancellationToken);
+        await AppendAdminAuditAsync(
+            "apiToken.replaced",
+            "API token with more access than a cluster token replaced.",
+            new BsonDocument
+            {
+                ["tokenId"] = BsonHelpers.GetString(old, "tokenId"),
+                ["newTokenId"] = BsonHelpers.GetString(replacement, "tokenId"),
+                ["oldAccessMode"] = accessMode,
+                ["newAccessMode"] = mode.ToString(),
+            },
+            "apiToken",
+            BsonHelpers.GetString(old, "tokenId"),
+            cancellationToken);
+        TempData["StatusMessage"] = $"Replaced. The old token is switched off; the new one is shown once.";
+        TempData["GeneratedCredential"] = value;
+        return Redirect("/admin/clusters?tab=api-tokens");
+    }
+
+    private static string AccessModeValueOf(ExternalTokenAccessMode mode) => mode switch
+    {
+        ExternalTokenAccessMode.Lifecycle => "readWriteSign",
+        ExternalTokenAccessMode.Sign => "sign",
+        ExternalTokenAccessMode.ReadWrite => "readWrite",
+        _ => "read",
+    };
 
     [HttpPost("api/tokens/cleanup-generated")]
     [ValidateAntiForgeryToken]
@@ -919,23 +1055,7 @@ public class AdminController : Controller
                 generatedCount++;
             }
 
-            if (ExistingGeneratedClusterTokenExists(existingTokens, clusterId, clusterName, "readWriteSign"))
-            {
-                skippedCount++;
-            }
-            else
-            {
-                await _externalApiRepository.CreateTokenAsync(
-                    $"{clusterName} - readwritesign",
-                    ExternalTokenAccessMode.Lifecycle,
-                    [clusterId],
-                    allowUnassigned: false,
-                    globalAccess: false,
-                    actor: actorValue,
-                    autoClusterId: clusterId,
-                    cancellationToken: cancellationToken);
-                generatedCount++;
-            }
+            // No "read, write and sign" token for a cluster any more (finding W9, decisions 29 and 33); older ones stay as they are.
         }
 
         TempData["StatusMessage"] = generatedCount == 0

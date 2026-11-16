@@ -11,7 +11,10 @@ public enum LoginAuthenticationStatus
 {
     Invalid,
     Authenticated,
-    RequiresTemporaryPasswordChange
+    RequiresTemporaryPasswordChange,
+
+    /// <summary>The address is locked after too many wrong passwords (finding W4); said as a wrong password plus "try again later".</summary>
+    Locked
 }
 
 public sealed class LoginAuthenticationResult
@@ -23,6 +26,11 @@ public sealed class LoginAuthenticationResult
     public static LoginAuthenticationResult Invalid() => new()
     {
         Status = LoginAuthenticationStatus.Invalid
+    };
+
+    public static LoginAuthenticationResult Locked() => new()
+    {
+        Status = LoginAuthenticationStatus.Locked
     };
 
     public static LoginAuthenticationResult Authenticated(ClaimsPrincipal principal) => new()
@@ -73,14 +81,19 @@ public sealed class AuthService
     private readonly IEmailSender _emailSender;
 
     private readonly BatteryPassWeb.Dpp.Demo.DemoDataSwitch _demoData;
+    private readonly TimeProvider _clock;
 
-    public AuthService(MongoContext mongoContext, IOptions<BatteryPassOptions> options, IEmailSender emailSender, BatteryPassWeb.Dpp.Demo.DemoDataSwitch? demoData = null)
+    public AuthService(MongoContext mongoContext, IOptions<BatteryPassOptions> options, IEmailSender emailSender, BatteryPassWeb.Dpp.Demo.DemoDataSwitch? demoData = null, TimeProvider? clock = null)
     {
         _mongoContext = mongoContext;
         _options = options.Value;
         _emailSender = emailSender;
         _demoData = demoData ?? BatteryPassWeb.Dpp.Demo.DemoDataSwitch.On;
+        _clock = clock ?? TimeProvider.System;
     }
+
+    /// <summary>A hash nobody has the password of: an address with no account costs the same time as one with an account (finding W4).</summary>
+    private static readonly string NoAccountHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N"));
 
     /// <summary>A demo account (marked by the demo data) when this site's demo data is switched off: it can't sign in (finding R03).</summary>
     private bool IsSwitchedOffDemoAccount(BsonDocument user) =>
@@ -99,6 +112,67 @@ public sealed class AuthService
             return LoginAuthenticationResult.Invalid();
         }
 
+        // Finding W6: an address that is too long or holds a line break or other control character is no sign-in.
+        if (!EmailAddressRule.IsClean(email))
+        {
+            return LoginAuthenticationResult.Invalid();
+        }
+
+        // Finding W4: a locked address is refused before the password is looked at, so the right one gets in no more than a wrong one.
+        if (await IsLockedAsync(email, cancellationToken))
+        {
+            return LoginAuthenticationResult.Locked();
+        }
+
+        var result = await CheckPasswordAsync(email, password, cancellationToken);
+        if (result.Status == LoginAuthenticationStatus.Authenticated)
+        {
+            await ChangeCountAsync(() => SignInAttempts.ClearAsync(_mongoContext.Database!, email, cancellationToken));
+        }
+        else if (result.Status == LoginAuthenticationStatus.Invalid)
+        {
+            await ChangeCountAsync(() => SignInAttempts.RecordWrongAsync(_mongoContext.Database!, email, _clock.GetUtcNow().UtcDateTime, cancellationToken));
+        }
+
+        return result;
+    }
+
+    private async Task<bool> IsLockedAsync(string email, CancellationToken cancellationToken)
+    {
+        if (_mongoContext.Database == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            return await SignInAttempts.IsLockedAsync(_mongoContext.Database, email, _clock.GetUtcNow().UtcDateTime, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return false; // the database is out of reach: the sign-in goes the way it always did
+        }
+    }
+
+    /// <summary>Writes the count; a database error here never changes the answer of the sign-in.</summary>
+    private async Task ChangeCountAsync(Func<Task> change)
+    {
+        if (_mongoContext.Database == null)
+        {
+            return;
+        }
+
+        try
+        {
+            await change();
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task<LoginAuthenticationResult> CheckPasswordAsync(string email, string password, CancellationToken cancellationToken)
+    {
         // The same address whatever its capitals and outer spaces (finding U28).
         var normalizedEmail = ClusterRepository.NormalizeEmail(email);
 
@@ -128,6 +202,8 @@ public sealed class AuthService
 
                     return LoginAuthenticationResult.Invalid();
                 }
+
+                _ = BCrypt.Net.BCrypt.Verify(password, NoAccountHash);
             }
         }
         catch
@@ -308,7 +384,7 @@ public sealed class AuthService
         string requestBaseUrl,
         CancellationToken cancellationToken = default)
     {
-        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email))
+        if (_mongoContext.Database == null || string.IsNullOrWhiteSpace(email) || !EmailAddressRule.IsClean(email))
         {
             return;
         }
@@ -379,6 +455,7 @@ public sealed class AuthService
     {
         if (_mongoContext.Database == null
             || string.IsNullOrWhiteSpace(email)
+            || !EmailAddressRule.IsClean(email)
             || string.IsNullOrWhiteSpace(temporaryPassword)
             || NewPasswordProblem(newPassword) is not null)
         {
@@ -418,6 +495,8 @@ public sealed class AuthService
                 .Set("usedAt", now)
                 .Set("status", "used"),
             cancellationToken: cancellationToken);
+        // A reset clears the count and the lock (finding W4).
+        await ChangeCountAsync(() => SignInAttempts.ClearAsync(_mongoContext.Database!, normalizedEmail, cancellationToken));
         return true;
     }
 

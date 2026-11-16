@@ -37,7 +37,7 @@ public sealed class ApiTokensTabTests(MongoFixture mongo)
         Assert.Contains("data-open-dialog=\"create-token-dialog\">Create token</button>", tab, StringComparison.Ordinal);
         Assert.Contains("action=\"/admin/api/tokens/create\"", window, StringComparison.Ordinal);
         Assert.Contains("name=\"accessMode\" value=\"read\" checked /><strong>Read</strong><small>Reads the passports of its batteries.</small>", window, StringComparison.Ordinal);
-        Assert.Contains("name=\"accessMode\" value=\"readWrite\" /><strong>Read + write</strong><small>Also sends live values. For all batteries, it also creates batteries.</small>", window, StringComparison.Ordinal);
+        Assert.Contains("name=\"accessMode\" value=\"readWrite\" /><strong>Read + write</strong><small>Also sends live values. For all batteries, it also creates batteries and sends other values; a published battery then gets a new version by itself, as when the team saves.</small>", window, StringComparison.Ordinal);
         Assert.Contains("name=\"accessMode\" value=\"sign\" /><strong>Passport lifecycle</strong><small>Reads, and for all batteries publishes passports.</small>", window, StringComparison.Ordinal);
         Assert.Contains("name=\"accessMode\" value=\"readWriteSign\" /><strong>Full access</strong><small>All of the above.</small>", window, StringComparison.Ordinal);
         Assert.Contains("name=\"globalAccess\" value=\"off\"", window, StringComparison.Ordinal);

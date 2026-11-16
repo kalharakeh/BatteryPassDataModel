@@ -284,12 +284,26 @@ public class ClusterAdminController : Controller
             return Redirect("/cluster-admin/users");
         }
 
+        // One rule for every typed address (finding W6): the whole rule for a new account, the look-up part for an account that exists.
+        var typedEmail = Request.Form["email"].FirstOrDefault();
+        if (!EmailAddressRule.IsClean(typedEmail))
+        {
+            TempData["ErrorMessage"] = EmailAddressRule.Words;
+            return Redirect("/cluster-admin/users");
+        }
+
         var back = $"/cluster-admin/users?openUser={Uri.EscapeDataString(email)}";
         var rights = await _accessControlService.RightsOverAccountAsync(User, email, cancellationToken);
         if (rights.Refusal is { } refusal)
         {
             TempData["ErrorMessage"] = refusal;
             return Redirect(back);
+        }
+
+        if (!rights.Exists && EmailAddressRule.Problem(typedEmail) is { } newAddressProblem)
+        {
+            TempData["ErrorMessage"] = newAddressProblem;
+            return Redirect("/cluster-admin/users");
         }
 
         var password = Text(Request.Form, "password");
@@ -357,6 +371,13 @@ public class ClusterAdminController : Controller
             return NotFound();
         }
 
+        // The team may administer any ID, so the cluster must exist (finding W7).
+        if (!await _clusterRepository.ClusterExistsAsync(clusterId, cancellationToken))
+        {
+            TempData["ErrorMessage"] = ClusterRepository.NoSuchCluster;
+            return Redirect(back);
+        }
+
         if (rights.Exists)
         {
             // An existing account only joins the cluster: whatever was typed, its name and password stay (finding R19).
@@ -410,7 +431,7 @@ public class ClusterAdminController : Controller
     {
         var email = Text(Request.Form, "email");
         var clusterId = Text(Request.Form, "clusterId");
-        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(clusterId))
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(clusterId) || !EmailAddressRule.IsClean(Request.Form["email"].FirstOrDefault()))
         {
             return Redirect($"/cluster-admin/users{(string.IsNullOrWhiteSpace(email) ? string.Empty : $"?openUser={Uri.EscapeDataString(email)}")}");
         }

@@ -89,13 +89,13 @@ public sealed class BatteriesControllerTests(MongoFixture mongo)
         var form = BatteryTesting.ShownForm(RecordEditor.LiveAttributes, stored);
         form[BatteryTesting.Field("temperatureInformation")] = "18";
         form[ProductDataController.StampField] = PageTesting.Editor(rig).Stamp(RecordEditor.LiveAttributes, stored, null);
-        form[BatteriesController.MeasuredAtField] = "2026-10-29T09:15";
+        form[BatteriesController.MeasuredAtField] = "2026-10-28T09:15";
 
         var result = await Controller(rig, [.. form]).SaveLiveValues(rig.PackId, CancellationToken.None);
 
         Assert.Equal($"{BatteryPages.BatteryHref(rig.PackId)}#live", Assert.IsType<RedirectResult>(result).Url);
         var temperature = (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!.Values["temperatureInformation"];
-        Assert.Equal(BatteriesController.MeasuredAt("2026-10-29T09:15"), temperature.GeneratedAtUtc);
+        Assert.Equal(BatteriesController.MeasuredAt("2026-10-28T09:15"), temperature.GeneratedAtUtc);
         Assert.Equal(1, await rig.Store.GetLatestVersionNumberAsync(rig.PackId));
     }
 
