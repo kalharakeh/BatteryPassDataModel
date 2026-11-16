@@ -9,14 +9,14 @@ namespace BatteryPassWeb.Tests.Dpp;
 
 /// <summary>
 /// Decision 80 at release, creation and swap: a serial number with a small letter is released and kept as typed, its ID
-/// is in capitals, and the same serial number in other letters can't be released, created or swapped to. The database
+/// carries it the same way, and the same serial number in other letters can't be released, created or swapped to. The database
 /// itself keeps two releases at once from sharing one.
 /// </summary>
 [Collection(MongoCollection.Name)]
 public sealed class SmallLetterSerialReleaseTests(MongoFixture mongo)
 {
     [Fact]
-    public async Task ARangeWithASmallLetter_ShouldBeReleasedAndListedAsTyped_WithItsIdsInCapitals()
+    public async Task ARangeWithASmallLetter_ShouldBeReleasedAndListedAsTyped_WithTheSmallLetterInItsIds()
     {
         var (rig, pool, _) = await SeededAsync(mongo);
         using var __ = rig;
@@ -27,7 +27,7 @@ public sealed class SmallLetterSerialReleaseTests(MongoFixture mongo)
         var items = await pool.ListAsync(new ReleasedIdFilter(Reference: result.ReleaseId));
         Assert.Equal(["VPC8C05s-00001", "VPC8C05s-00002", "VPC8C05s-00003"], items.Select(item => item.SerialNumber));
         Assert.Equal($"{Base}/25S/{Item}", items[0].Identifier);
-        Assert.All(items, item => Assert.Matches("/25S/UN778474481-VPC8C05S-0000[1-3]$", item.Identifier));
+        Assert.All(items, item => Assert.Matches("/25S/UN778474481-VPC8C05s-0000[1-3]$", item.Identifier));
         Assert.Equal("VPC8C05S00001", items[0].Id); // the key: letters and digits, in capitals
         var logged = (await rig.All("applicationAuditEvents", Builders<MongoDB.Bson.BsonDocument>.Filter.Eq("entityId", result.ReleaseId))).Single()["message"].AsString;
         Assert.Contains("VPC8C05s-00001 … VPC8C05s-00003", logged, StringComparison.Ordinal); // the audit log names them as released
@@ -99,7 +99,7 @@ public sealed class SmallLetterSerialReleaseTests(MongoFixture mongo)
         {
             Id = IdentifierForms.Clean(serial),
             SerialNumber = serial,
-            Identifier = $"{Base}/25S/UN778474481-{IdentifierForms.SerialInId(serial)}",
+            Identifier = $"{Base}/25S/UN778474481-{serial}",
             ReleaseId = release,
             Reference = release,
             Status = ReleasedIdStatuses.Available,
@@ -147,7 +147,7 @@ public sealed class SmallLetterSerialReleaseTests(MongoFixture mongo)
         using var __ = rig;
         var creation = rig.Services.GetRequiredService<PackCreationService>();
         var first = await creation.CreateAsync(ChangeSender.Team(Who), NewBattery(c7, "VPC8C05s-00050") with { FromPool = false });
-        Assert.Equal($"{Base}/25S/UN778474481-VPC8C05S-00050", Text(first.Pack!, "uniqueProductIdentifier"));
+        Assert.Equal($"{Base}/25S/UN778474481-VPC8C05s-00050", Text(first.Pack!, "uniqueProductIdentifier"));
 
         foreach (var again in new[] { "VPC8C05S-00050", "vpc8c05s-00050", "VPC8C05S00050" })
         {
@@ -156,10 +156,35 @@ public sealed class SmallLetterSerialReleaseTests(MongoFixture mongo)
             Assert.Contains(second.Keys, key => key.Key == "batterySerialNumber" && key.Message == SavePipeline.SerialNumberTaken);
         }
 
-        // The database's own guard: the battery ID is unique, and both spellings make the same one (in capitals).
-        var copy = new BatteryPack { Id = "pack-copy", BatchId = first.Pack!.BatchId, OperatorId = first.Pack.OperatorId };
-        copy.Values["uniqueProductIdentifier"] = first.Pack.Values["uniqueProductIdentifier"];
-        await Assert.ThrowsAsync<MongoWriteException>(() => rig.Store.InsertAsync(copy));
+        // The ID scheme's own check, should the serial check ever be passed: an ID that differs only in capitals is taken.
+        var scheme = rig.Services.GetRequiredService<IIdentifierScheme>();
+        var other = new BatteryPack { Id = "pack-other", BatchId = first.Pack!.BatchId, OperatorId = first.Pack.OperatorId };
+        other.Values["batterySerialNumber"] = new BatteryPassWeb.Dpp.Values.AttributeValue { Value = System.Text.Json.Nodes.JsonValue.Create("VPC8C05S-00050"), GeneratedAtUtc = DateTime.UtcNow, Source = "form" };
+        var made = await scheme.NewPackIdentifierAsync(other);
+        Assert.Equal((null, DunsIdentifierScheme.Taken("UN778474481-VPC8C05s-00050", "VPC8C05s-00050")), (made.Identifier, made.Problem));
+    }
+
+    [Fact]
+    public async Task TwoBatteriesMadeAtOnceWithTheTwoSpellings_ShouldLeaveOneBattery_BecauseTheIdIsPickedInOneStep()
+    {
+        var (rig, pool, c7) = await SeededAsync(mongo);
+        using var __ = rig;
+        var creation = rig.Services.GetRequiredService<PackCreationService>();
+
+        for (var round = 0; round < 8; round++)
+        {
+            var small = $"VPC8C05s-3{round:0000}";
+            await pool.ReleaseAsync(Who, List($"PO {round}", small));
+            var both = await Task.WhenAll(
+                Task.Run(() => creation.CreateAsync(ChangeSender.Team(Who), NewBattery(c7, small))),
+                Task.Run(() => creation.CreateAsync(ChangeSender.Team(Who), NewBattery(c7, small.ToUpperInvariant()))));
+
+            // In the app every battery takes its ID from the released ones, whose key (letters and digits) is unique in
+            // the database and is picked in one step: whichever comes second finds it taken.
+            Assert.Single(both, result => result.Pack is not null);
+            Assert.Single(await rig.Store.FindPacksBySerialNumberAsync(small));
+            Assert.Equal($"{Base}/25S/UN778474481-{small}", Text((await rig.Store.FindPacksBySerialNumberAsync(small.ToUpperInvariant())).Single(), "uniqueProductIdentifier"));
+        }
     }
 
     [Fact]
@@ -176,7 +201,7 @@ public sealed class SmallLetterSerialReleaseTests(MongoFixture mongo)
 
         var swapped = (await rig.Store.GetAsync<BatteryPack>(draft.Id))!;
         Assert.Equal("VPC8C05s-00002", Text(swapped, "batterySerialNumber"));
-        Assert.Equal($"{Base}/25S/UN778474481-VPC8C05S-00002", Text(swapped, "uniqueProductIdentifier"));
+        Assert.Equal($"{Base}/25S/UN778474481-VPC8C05s-00002", Text(swapped, "uniqueProductIdentifier"));
         Assert.Equal(ReleasedIdStatuses.Available, (await pool.GetAsync("VPC8C05S-00001"))!.Status);
         Assert.Equal("that battery ID isn't available for this battery's model any more; pick another", await pool.SwapAsync(Who, draft.Id, "VPC8C05S-00003")); // the other battery's, in capitals
         Assert.Equal("VPC8C05s-00003", Text((await rig.Store.GetAsync<BatteryPack>(other.Id))!, "batterySerialNumber"));
@@ -199,7 +224,7 @@ public sealed class SmallLetterSerialReleaseTests(MongoFixture mongo)
     }
 
     [Fact]
-    public async Task ATestId_ShouldKeepTheSerialAsTyped_AndItsTestMarkInCapitals()
+    public async Task ATestId_ShouldKeepTheSerialAsTyped_InItsIdToo_AndItsTestMarkInCapitals()
     {
         var (rig, pool, _) = await SeededAsync(mongo);
         using var __ = rig;
@@ -207,7 +232,7 @@ public sealed class SmallLetterSerialReleaseTests(MongoFixture mongo)
         var result = await pool.ReleaseAsync(Who, new ReleaseRequest("Trial", null, [], "vpc8c05s-90001", IsDemo: true));
 
         var item = Assert.Single(await pool.ListAsync(new ReleasedIdFilter(Reference: result.ReleaseId)));
-        Assert.Equal(("vpc8c05s-90001", $"{Base}/25S/UN778474481-TEST-VPC8C05S-90001"), (item.SerialNumber, item.Identifier));
+        Assert.Equal(("vpc8c05s-90001", $"{Base}/25S/UN778474481-TEST-vpc8c05s-90001"), (item.SerialNumber, item.Identifier));
         Assert.Equal(DunsIdentifierScheme.StartsWithTest, Assert.Single((await pool.ReleaseAsync(Who, List("PO real", "test-90002"))).Problems).Reason);
     }
 

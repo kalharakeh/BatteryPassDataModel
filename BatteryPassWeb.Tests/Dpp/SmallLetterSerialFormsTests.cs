@@ -12,8 +12,9 @@ namespace BatteryPassWeb.Tests.Dpp;
 
 /// <summary>
 /// Decision 80 (the owner, 13 Nov 2026): a serial number may hold small letters (Core800s: <c>VPC8C05s-00001</c>);
-/// capital and small letters are the same serial number; the battery ID and the passport ID are built from it in
-/// capitals, in one function; and an ID is read whichever way its letters are typed.
+/// capital and small letters are the same serial number; the battery ID and the passport ID are built from it as
+/// released, small letters included, in one function; two IDs that differ only in capitals are the same ID, and an ID is
+/// read whichever way its letters are typed.
 /// </summary>
 [Collection(MongoCollection.Name)]
 public sealed class SmallLetterSerialFormsTests(MongoFixture mongo)
@@ -66,33 +67,47 @@ public sealed class SmallLetterSerialFormsTests(MongoFixture mongo)
         Assert.Equal(same, IdentifierForms.SameSerial(one, other));
 
     [Fact]
-    public void TheCaseOfAnIdsLetters_ShouldBeDecidedInOneFunction_Capitals()
+    public void TheCaseOfAnIdsLetters_ShouldBeDecidedInOneFunction_AsReleased()
     {
-        // The owner may still choose to keep the small letter in the ID: that is this one function, and the expected
-        // values of the tests named "…InCapitals" in the SmallLetterSerial test files.
-        Assert.Equal("VPC8C05S-00001", IdentifierForms.SerialInId("VPC8C05s-00001"));
+        // The owner chose the small letter in the ID (13 Nov 2026). It is this one function; SmallLetterSerialTesting.Item
+        // is what the other tests expect of it.
+        Assert.Equal("VPC8C05s-00001", IdentifierForms.SerialInId("VPC8C05s-00001"));
+        Assert.Equal("VPC8C05S-00001", IdentifierForms.SerialInId("VPC8C05S-00001")); // released in capitals, kept in capitals
         Assert.Equal("VPC7C05-00001", IdentifierForms.SerialInId("VPC7C05-00001")); // nothing changes for a serial without a small letter
 
-        // Nothing else in the ID code changes a letter's case: the scheme's file has this function's and the key's (Clean).
+        // Nothing in the ID code changes a letter's case but the key (Clean), which is never shown.
         var scheme = File.ReadAllText(DppTestFiles.RepoFile("web", "Dpp", "Identifiers", "DunsIdentifierScheme.cs"));
         var pool = File.ReadAllText(DppTestFiles.RepoFile("web", "Dpp", "Identifiers", "BatteryIdPool.cs"));
-        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(scheme, @"\.ToUpperInvariant\(\)").Count);
+        Assert.Equal(1, System.Text.RegularExpressions.Regex.Matches(scheme, @"\.ToUpperInvariant\(\)").Count);
         Assert.DoesNotContain(".ToUpperInvariant()", pool, StringComparison.Ordinal);
+        Assert.Contains("head + IdentifierForms.SerialInId(serial)", scheme, StringComparison.Ordinal); // the only place an ID gets its serial
     }
 
+    [Theory]
+    [InlineData("https://www.sib-scania-eubp.eu/25S/UN778474481-VPC8C05s-00001", "https://www.sib-scania-eubp.eu/25S/UN778474481-VPC8C05S-00001", true)]
+    [InlineData("UN778474481-VPC8C05s-00001", "un778474481-vpc8c05s-00001", true)]
+    [InlineData("https://www.sib-scania-eubp.eu/dpp/UN778474481-VPC8C05s-00001/v1", "https://www.sib-scania-eubp.eu/dpp/un778474481-VPC8C05S-00001/V1", true)]
+    [InlineData("UN778474481-VPC8C05s-00001", "UN778474481-VPC8C05-00001", false)] // one more letter: another ID
+    [InlineData("UN778474481-VPC8C05s-00001", "UN778474481VPC8C05s00001", false)] // an ID's dashes are part of it
+    [InlineData("", "", false)]
+    public void TwoIds_ShouldBeTheSame_WhenTheyDifferOnlyInCapitals(string one, string other, bool same) =>
+        Assert.Equal(same, IdentifierForms.SameId(one, other));
+
     [Fact]
-    public async Task TheBatteryIdAndThePassportId_ShouldBeBuiltFromTheSerialInCapitals()
+    public async Task TheBatteryIdAndThePassportId_ShouldBeBuiltFromTheSerialAsReleased_SmallLettersIncluded()
     {
         var scheme = Scheme(new DppStore(mongo.NewContext()));
 
         var made = await scheme.NewPackIdentifierAsync(Pack("VPC8C05s-00001"));
 
         Assert.Null(made.Problem);
-        Assert.Equal($"{Base}/25S/UN778474481-VPC8C05S-00001", made.Identifier);
-        Assert.Equal($"{Base}/dpp/UN778474481-VPC8C05S-00001/v1", scheme.NewPassportIdentifier(made.Identifier!, 1));
-        Assert.Matches("^[A-Z0-9-]{1,50}$", IdentifierForms.Short(made.Identifier!)); // ISO/IEC 15459: capitals, digits and the dash
-        Assert.Equal(made.Identifier, scheme.ItemFor("VPC8C05S-00001", demo: false).Identifier); // capital and small: one ID
-        Assert.Equal(made.Identifier, scheme.ItemFor("vpc8c05s-00001", demo: false).Identifier);
+        Assert.Equal($"{Base}/25S/UN778474481-VPC8C05s-00001", made.Identifier);
+        Assert.Equal($"{Base}/dpp/UN778474481-VPC8C05s-00001/v1", scheme.NewPassportIdentifier(made.Identifier!, 1));
+        Assert.Matches("^UN[0-9]{9}-[A-Za-z0-9-]{1,38}$", IdentifierForms.Short(made.Identifier!)); // agency and DUNS in capitals; letters, digits and the dash; at most 50
+        Assert.Empty(new BatteryPassWeb.Dpp.Values.AttributeValueValidator(DppStoreTesting.Schemas).Validate(BatteryPassWeb.Dpp.Catalog.AttributeCatalog.ByNumber(6), JsonValue.Create(made.Identifier))); // the official schema takes it: a URI, no pattern
+        Assert.True(IdentifierForms.SameId(made.Identifier, scheme.ItemFor("VPC8C05S-00001", demo: false).Identifier)); // capital and small: the same ID
+        Assert.True(IdentifierForms.SameId(made.Identifier, scheme.ItemFor("vpc8c05s-00001", demo: false).Identifier));
+        Assert.Equal($"{Base}/25S/UN778474481-VPC7C05-00001", scheme.ItemFor("VPC7C05-00001", demo: false).Identifier); // without a small letter: as before
     }
 
     [Fact]
@@ -102,10 +117,10 @@ public sealed class SmallLetterSerialFormsTests(MongoFixture mongo)
 
         var test = scheme.ItemFor("vpc8c05s-00009", demo: true).Identifier!;
 
-        Assert.Equal($"{Base}/25S/UN778474481-TEST-VPC8C05S-00009", test);
+        Assert.Equal($"{Base}/25S/UN778474481-TEST-vpc8c05s-00009", test); // the mark in capitals, the serial as typed
         Assert.True(scheme.IsTestIdentifier(test));
         Assert.True(IdentifierForms.IsTest("un778474481-test-vpc8c05s-00009")); // read as a test ID however it is typed
-        Assert.False(IdentifierForms.IsTest($"{Base}/25S/UN778474481-VPC8C05S-00001"));
+        Assert.False(IdentifierForms.IsTest($"{Base}/25S/UN778474481-VPC8C05s-00001"));
     }
 
     [Theory]
@@ -114,7 +129,7 @@ public sealed class SmallLetterSerialFormsTests(MongoFixture mongo)
     [InlineData("tEST0001")]
     public void ARealSerialNumber_ShouldNotStartWithTest_InAnyCase(string serial)
     {
-        // In capitals it would make an ID marked TEST, which says "a test battery".
+        // IDs that differ only in capitals are one ID, so it would make an ID marked TEST, which says "a test battery".
         var made = Scheme(new DppStore(mongo.NewContext())).ItemFor(serial, demo: false);
 
         Assert.Null(made.Identifier);

@@ -10,24 +10,24 @@ namespace BatteryPassWeb.Tests.Dpp;
 
 /// <summary>
 /// Decision 80, what people read: the serial number is kept and shown as it was released, small s included, in the
-/// passport (#11), the lists, the Excel export and the registry's CSV; only the IDs carry it in capitals.
+/// passport (#11), the lists, the Excel export and the registry's CSV, and the IDs carry it the same way.
 /// </summary>
 [Collection(MongoCollection.Name)]
 public sealed class SmallLetterSerialShownTests(MongoFixture mongo)
 {
     [Fact]
-    public async Task ThePassportTheListsAndTheFiles_ShouldShowTheSerialAsReleased_AndTheIdsInCapitals()
+    public async Task ThePassportTheListsAndTheFiles_ShouldShowTheSerialAsReleased_InTheIdsToo()
     {
         var (rig, pool, c7) = await SeededAsync(mongo);
         using var __ = rig;
         var battery = await PublishedAsync(rig, c7);
 
-        // The signed passport: #11 as released, #6 and #5 in capitals.
+        // The signed passport: #11 as released, and #6 and #5 with the small s too.
         var published = (await rig.Services.GetRequiredService<PassportReader>().CurrentAsync(battery.Id))!.Passport.ToJsonString();
         Assert.Contains($"\"batterySerialNumber\":\"{Serial}\"", published, StringComparison.Ordinal);
         Assert.Contains($"\"uniqueProductIdentifier\":\"{Base}/25S/{Item}\"", published, StringComparison.Ordinal);
         Assert.Contains($"\"digitalProductPassportId\":\"{Base}/dpp/{Item}/v1\"", published, StringComparison.Ordinal);
-        Assert.DoesNotContain("VPC8C05S-00001\"", published.Replace(Item, string.Empty, StringComparison.Ordinal), StringComparison.Ordinal); // never the serial in capitals on its own
+        Assert.DoesNotContain("VPC8C05S", published, StringComparison.Ordinal); // nowhere in capitals: one form
 
         // The team's list and its row.
         var row = Assert.Single((await rig.Services.GetRequiredService<BatteryPages>().ListAsync("VPC8C05")).Rows);
@@ -43,9 +43,10 @@ public sealed class SmallLetterSerialShownTests(MongoFixture mongo)
         Assert.Contains($"{Base}/25S/{Item}", cells);
         Assert.DoesNotContain("VPC8C05S-00001", cells);
 
-        // The CSV for the EU registry names the battery by its ID, in capitals.
+        // The CSV for the EU registry names the battery by its ID, in its one form.
         var csv = BatteryPages.RegistryCsv(await rig.Services.GetRequiredService<BatteryPages>().NotInTheRegistryAsync());
         Assert.Contains($"{Base}/25S/{Item}", csv, StringComparison.Ordinal);
+        Assert.DoesNotContain("VPC8C05S", csv, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -56,7 +57,8 @@ public sealed class SmallLetterSerialShownTests(MongoFixture mongo)
 
         Assert.Contains("A serial number holds letters, digits and single dashes only, at most 34 characters.", guide, StringComparison.Ordinal);
         Assert.Contains("Capital and small letters count as the same: VPC8C05s-00001 and VPC8C05S-00001 are one serial number.", guide, StringComparison.Ordinal);
-        Assert.Contains("It is kept and shown as you typed it; the battery ID has it in capitals.", guide, StringComparison.Ordinal);
+        Assert.Contains("It is kept and shown as you typed it, in the battery ID and the passport ID too (UN778474481-VPC8C05s-00001); an address typed in other capitals opens the same passport.", guide, StringComparison.Ordinal);
+        Assert.DoesNotContain("has it in capitals", guide, StringComparison.Ordinal);
         Assert.DoesNotContain("capital letters, digits and single dashes only", guide, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Letters, digits and single dashes only. Capital and small letters count as the same.", form, StringComparison.Ordinal);
         Assert.DoesNotContain("Capital letters, digits and single dashes only.", form, StringComparison.Ordinal);

@@ -23,11 +23,11 @@ internal static class SmallLetterSerialTesting
     /// <summary>A Core800s serial number as it is released and shown.</summary>
     public const string Serial = "VPC8C05s-00001";
 
-    /// <summary>Its battery ID's item: the serial in capitals.</summary>
-    public const string Item = "UN778474481-VPC8C05S-00001";
+    /// <summary>Its battery ID's item: the serial as released, small s included (the owner, "Small s in the ID too").</summary>
+    public const string Item = "UN778474481-VPC8C05s-00001";
 
-    /// <summary>The same item typed in capitals, in small letters and mixed.</summary>
-    public static readonly string[] ItemSpellings = [Item, "un778474481-vpc8c05s-00001", "Un778474481-vPc8C05s-00001"];
+    /// <summary>The same item as stored, and typed in capitals, in small letters and mixed.</summary>
+    public static readonly string[] ItemSpellings = [Item, "UN778474481-VPC8C05S-00001", "un778474481-vpc8c05s-00001", "Un778474481-vPc8C05S-00001"];
 
     /// <summary>The same serial number typed in capitals, in small letters, mixed and as released.</summary>
     public static readonly string[] SerialSpellings = ["VPC8C05S-00001", "vpc8c05s-00001", "vPc8C05s-00001", Serial];

@@ -25,7 +25,7 @@ using static BatteryPassWeb.Tests.Dpp.SmallLetterSerialTesting;
 namespace BatteryPassWeb.Tests.Dpp;
 
 /// <summary>
-/// Decision 80 on every address: a battery released as <c>VPC8C05s-00001</c> has its ID in capitals, and each page, data
+/// Decision 80 on every address: a battery released as <c>VPC8C05s-00001</c> has the small s in its ID too, and each page, data
 /// route, API route, search and file finds it with the ID or the serial number typed in capitals, in small letters or
 /// mixed. A removed passport's 410, "not published yet" and "not found" answer the same way.
 /// </summary>
@@ -86,7 +86,8 @@ public sealed class SmallLetterSerialAddressTests(MongoFixture mongo)
         foreach (var id in ItemSpellings)
         {
             var page = Shown(await Fresh().Summary(id, CancellationToken.None, pool), "Summary");
-            Assert.Equal($"{Base}/25S/{Item}", page.Identifier); // the ID as stored, in capitals
+            Assert.Equal($"{Base}/25S/{Item}", page.Identifier); // the ID in its one form, however the address was typed
+            Assert.Equal($"/dpp/{Item}.json", page.DataHref); // and the page's own links carry that form
             Assert.Equal($"{Base}/dpp/{PassportItem}", page.Version.DigitalProductPassportId);
             Assert.Equal(Serial, page.Text(11)); // #11 as released, small s included
             Assert.Equal(battery.Id, page.Version.PackId);
@@ -104,7 +105,7 @@ public sealed class SmallLetterSerialAddressTests(MongoFixture mongo)
                 Assert.Contains(Serial, strings);
                 Assert.Contains($"{Base}/25S/{Item}", strings);
                 Assert.Contains($"{Base}/dpp/{PassportItem}", strings);
-                Assert.DoesNotContain("VPC8C05S-00001", strings); // the serial number is never shown in capitals
+                Assert.DoesNotContain(strings, text => text.Contains("VPC8C05S", StringComparison.Ordinal) || text.Contains("vpc8c05s", StringComparison.Ordinal)); // one form, never the typed one
             }
 
             // The version's own page.
@@ -178,6 +179,42 @@ public sealed class SmallLetterSerialAddressTests(MongoFixture mongo)
         }
 
         Assert.IsType<NotFoundObjectResult>(await teamApi.Verify("un778474481-vpc8c05s-00002", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task APassportSignedWithASmallLetterId_ShouldVerify_FromAnAddressTypedInCapitalsAndInSmallLetters()
+    {
+        var (rig, _, c7) = await SeededAsync(mongo);
+        using var __ = rig;
+        var battery = await PublishedAsync(rig, c7);
+        var version = (await rig.Store.GetActiveVersionAsync(battery.Id))!;
+
+        // What was signed holds the IDs in their one form, small s included.
+        var signed = version.StaticCore.ToJsonString();
+        Assert.Contains($"\"{Base}/25S/{Item}\"", signed, StringComparison.Ordinal);
+        Assert.Contains($"\"{Base}/dpp/{PassportItem}\"", signed, StringComparison.Ordinal);
+        Assert.DoesNotContain("VPC8C05S", signed, StringComparison.Ordinal);
+        Assert.True(rig.Services.GetRequiredService<PassportApi>().Signature(version).Holds);
+
+        foreach (var id in ItemSpellings.Concat([$"{Base}/dpp/{PassportItem.ToUpperInvariant().Replace("/V1", "/v1", StringComparison.Ordinal)}", $"{Base}/dpp/{PassportItem.ToLowerInvariant()}"]).Select(Uri.EscapeDataString))
+        {
+            // /verify, open to anyone: the signature holds, and the answer names the passport in its one form.
+            var verifier = On(new PassportsApiController(rig.Services.GetRequiredService<DppReaders>(), rig.Services.GetRequiredService<BatteryPages>(), rig.Services.GetRequiredService<PassportApi>(), rig.Services.GetRequiredService<PassportPages>()), rig, Visitor);
+            var verify = JsonSerializer.SerializeToElement(Assert.IsType<OkObjectResult>(await verifier.Verify(id, CancellationToken.None)).Value);
+            Assert.True(verify.GetProperty("signatureVerified").GetBoolean());
+            Assert.Equal(JsonValueKind.Null, verify.GetProperty("signatureReason").ValueKind);
+            Assert.Equal($"{Base}/dpp/{PassportItem}", verify.GetProperty("passportId").GetString());
+
+            // The public data's proof: served only when it matches the data being served, and its hash is the data's own.
+            var data = Json(await Pages(rig, Visitor).SummaryJson(id, CancellationToken.None)).AsObject();
+            var proof = Assert.IsType<JsonObject>(data[BatteryPassWeb.Dpp.Assembly.PublicPassport.ProofProperty]);
+            Assert.Equal(proof["hash"]!.GetValue<string>(), BatteryPassWeb.Dpp.Signing.CanonicalJson.Hash(BatteryPassWeb.Dpp.Assembly.PublicPassport.SignedPart(data)));
+            Assert.Contains($"{Base}/25S/{Item}", AllStrings(data));
+
+            // The proof is over that one form: the same data with the ID in capitals is not what was signed.
+            var inCapitals = JsonNode.Parse(data.ToJsonString().Replace("VPC8C05s", "VPC8C05S", StringComparison.Ordinal))!.AsObject();
+            Assert.NotEqual(proof["hash"]!.GetValue<string>(), BatteryPassWeb.Dpp.Signing.CanonicalJson.Hash(BatteryPassWeb.Dpp.Assembly.PublicPassport.SignedPart(inCapitals)));
+        }
     }
 
     [Fact]
@@ -310,7 +347,7 @@ public sealed class SmallLetterSerialAddressTests(MongoFixture mongo)
             Assert.IsType<NotFoundObjectResult>(await Fresh().SummaryJson(Uri.EscapeDataString(id), CancellationToken.None));
         }
 
-        foreach (var id in new[] { "UN778474481-VPC8C05S-00002", "un778474481-vpc8c05s-00002", "UN778474481-VPC8C05S-00009", "un778474481-vpc8c05s-00009", "Un778474481-Vpc8c05-00001" })
+        foreach (var id in new[] { "UN778474481-VPC8C05s-00002", "UN778474481-VPC8C05S-00002", "un778474481-vpc8c05s-00002", "UN778474481-VPC8C05s-00009", "un778474481-vpc8c05s-00009", "Un778474481-Vpc8c05-00001" })
         {
             var missing = Assert.IsType<ViewResult>(await Fresh().Summary(id, CancellationToken.None, pool)); // voided, or never released
             Assert.Equal(("~/Views/Dpp/NotAvailable.cshtml", StatusCodes.Status404NotFound), (missing.ViewName, missing.StatusCode));
@@ -328,12 +365,13 @@ public sealed class SmallLetterSerialAddressTests(MongoFixture mongo)
         await PublishedAsync(rig, c7);
         var qr = On(new QrController(rig.Services.GetRequiredService<PassportPages>(), rig.Services.GetRequiredService<DppLinks>(), new PassportQrCodeService(), rig.Store), rig, Team(rig));
 
-        foreach (var item in new[] { Item, "UN778474481-VPC8C05S-00002" }) // published, and a draft's for the team
+        foreach (var item in new[] { Item, "UN778474481-VPC8C05s-00002" }) // published, and a draft's for the team
         {
             var stored = Assert.IsType<ContentResult>(await qr.QrCode(item, CancellationToken.None)).Content;
             Assert.Contains("<svg", stored, StringComparison.Ordinal);
-            Assert.Equal(stored, Assert.IsType<ContentResult>(await qr.QrCode(item.ToLowerInvariant(), CancellationToken.None)).Content); // the same code: the ID in capitals
-            Assert.Equal(stored, Assert.IsType<ContentResult>(await qr.QrCode("Un" + item[2..].ToLowerInvariant(), CancellationToken.None)).Content);
+            Assert.Equal(new PassportQrCodeService().GenerateSvg($"{DocumentTesting.BaseUrl.TrimEnd('/')}/25S/{item}"), stored); // what the code carries: the one form, small s included
+            Assert.Equal(stored, Assert.IsType<ContentResult>(await qr.QrCode(item.ToLowerInvariant(), CancellationToken.None)).Content); // the same code, however its own address is typed
+            Assert.Equal(stored, Assert.IsType<ContentResult>(await qr.QrCode(item.ToUpperInvariant(), CancellationToken.None)).Content);
         }
 
         var file = Assert.IsType<FileContentResult>(await qr.Download(Item.ToLowerInvariant(), CancellationToken.None));

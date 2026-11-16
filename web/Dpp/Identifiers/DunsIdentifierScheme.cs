@@ -8,8 +8,8 @@ namespace BatteryPassWeb.Dpp.Identifiers;
 /// <summary>
 /// The battery ID chosen by the product owner (O-1 and 6d, 5 Nov 2026; the dash, 6d-5, 9 Nov 2026): an ISO/IEC 15459
 /// unique item ID under issuing agency code <c>UN</c> (Dun &amp; Bradstreet), the company's DUNS, one dash and the
-/// battery's serial number (#11) with its letters in capitals (letters, digits and single dashes; a small letter is
-/// kept in the serial number and written as a capital in the ID, decision 80), as a web address per
+/// battery's serial number (#11) exactly as released (letters, digits and single dashes; a small letter is kept in the
+/// ID too, the owner, decision 80, and two IDs that differ only in capitals are the same ID), as a web address per
 /// ISO/IEC 18975 with the MH10.8.2 data identifier <c>25S</c>: serial <c>VBC-92921</c> gives
 /// <c>https://www.sib-scania-eubp.eu/25S/UN778474481-VBC-92921</c>. The dash is unambiguous: <c>UN778474481-</c> is always
 /// the first 12 characters. A battery gets it when it is created; a new passport of the same battery (a successor) adds
@@ -74,13 +74,13 @@ public sealed class DunsIdentifierScheme(IOptions<BatteryPassOptions> options, D
 
     public NewIdentifier ItemFor(string serialNumber, bool demo)
     {
-        var serial = serialNumber ?? string.Empty; // kept as written; only the ID has it in capitals (decision 80)
+        var serial = serialNumber ?? string.Empty; // kept as written, in the ID too (decision 80)
         if (!IdentifierForms.IsSerial(serial))
         {
             return NewIdentifier.Refused(IdentifierForms.SerialRule);
         }
 
-        // In any case: "test-1" would make an ID marked TEST (decision 80).
+        // In any case: IDs that differ only in capitals are one ID, so "test-1" would make an ID marked TEST (decision 80).
         if (!demo && serial.StartsWith(IdentifierForms.TestMarker, StringComparison.OrdinalIgnoreCase))
         {
             return NewIdentifier.Refused(StartsWithTest);
@@ -264,12 +264,20 @@ public static partial class IdentifierForms
     public static bool SameSerial(string? one, string? other) => Clean(one) is { Length: > 0 } key && key == Clean(other);
 
     /// <summary>
-    /// A serial number as an ID carries it: in capitals (decision 80; ISO/IEC 15459 allows capitals only, and the ID is what
-    /// the QR code carries). The one place that decides the case of an ID's letters: to keep a small letter in the ID,
-    /// return <paramref name="serialNumber"/> as it is here. Every lookup by ID compares without regard to case, so nothing
-    /// else changes; an ID that exists keeps the letters it was made with.
+    /// A serial number as an ID carries it: as it was released, small letters included (the owner, 13 Nov 2026, "Small s in
+    /// the ID too", decision 80). The one place that decides the case of an ID's letters: the QR code, the pages, the
+    /// signed data, the public data, the registry record and the CSV all carry what this returns. The agency, the DUNS,
+    /// the TEST mark and a successor's -R1 are added in capitals around it. Every lookup by ID compares without regard to
+    /// case (<see cref="SameId"/>), so writing capitals here instead would change nothing else; an ID that exists keeps the
+    /// letters it was made with.
     /// </summary>
-    public static string SerialInId(string serialNumber) => serialNumber.ToUpperInvariant();
+    public static string SerialInId(string serialNumber) => serialNumber;
+
+    /// <summary>
+    /// The one rule for IDs (decision 80): two IDs are the same when they are the same without regard to capitals. Every
+    /// lookup by a battery ID or a passport ID compares this way, and answers with the ID in its one stored form.
+    /// </summary>
+    public static bool SameId(string? one, string? other) => !string.IsNullOrEmpty(one) && string.Equals(one, other, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Test IDs: the old TEST- URNs, and items marked TEST after the company (demo batteries and their passports).</summary>
     public static bool IsTest(string? identifier) =>
@@ -301,9 +309,9 @@ public static partial class IdentifierForms
     private static partial Regex CompanyCode();
 
     // ISO/IEC 15459: agency + company, a dash (6d-5; none before) and the serial: letters and digits in groups joined by
-    // single dashes. At most 50 characters (checked in IsItem, and by the look-aheads in an address). An ID is made in
-    // capitals (SerialInId) and read whichever way its letters are typed (decision 80): a to z only, never by a culture's
-    // case rules.
+    // single dashes. At most 50 characters (checked in IsItem, and by the look-aheads in an address). An ID carries its
+    // serial number as released (SerialInId) and is read whichever way its letters are typed (decision 80): a to z only,
+    // never by a culture's case rules.
     private const string Item = "[A-Za-z]{2,3}[0-9]{9}-?[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*";
 
     [GeneratedRegex("^" + Item + "$")]
