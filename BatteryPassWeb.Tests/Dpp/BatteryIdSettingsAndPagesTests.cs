@@ -171,7 +171,7 @@ public sealed class BatteryIdSettingsAndPagesTests(MongoFixture mongo)
 
         Assert.Contains("data-id-settings-missing", index, StringComparison.Ordinal);
         Assert.Contains("<fieldset disabled=\"@blocked\" class=\"bp-release-fields\">", index, StringComparison.Ordinal); // no release while blocked
-        Assert.Contains("Show demo IDs", index, StringComparison.Ordinal);
+        Assert.Contains("Show test IDs", index, StringComparison.Ordinal);
         Assert.Contains("Release new IDs", index, StringComparison.Ordinal);
         Assert.Contains("<details class=\"bp-row-menu\">", rows, StringComparison.Ordinal); // Void… in a small menu,
         Assert.DoesNotContain("is-danger", rows, StringComparison.Ordinal); // not a red link on every row

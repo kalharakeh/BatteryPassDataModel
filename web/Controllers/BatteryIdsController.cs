@@ -107,7 +107,7 @@ public sealed class BatteryIdsController(BatteryIdPool pool, DppStore store) : C
         var result = await pool.ReleaseAsync(Who, new ReleaseRequest(reference, isTest ? null : modelId, ranges, list, IsDemo: isTest), cancellationToken); // test IDs are for any model (round two E)
         if (result.Done && isTest)
         {
-            TempData[ProductDataController.StatusKey] = $"Released {result.Released.ToString(CultureInfo.InvariantCulture)} test battery {(result.Released == 1 ? "ID" : "IDs")}. They contain TEST, aren't counted, and go when the demo data is reset or cleared.";
+            TempData[ProductDataController.StatusKey] = $"Released {result.Released.ToString(CultureInfo.InvariantCulture)} test battery {(result.Released == 1 ? "ID" : "IDs")}. They contain TEST and aren't counted. \"Clear demo data\" on the Clusters tab removes them, with the test batteries made from them.";
             return Redirect($"/admin/battery-ids/releases/{Uri.EscapeDataString(result.ReleaseId!)}?released=true");
         }
 

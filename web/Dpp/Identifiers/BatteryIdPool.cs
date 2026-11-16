@@ -370,7 +370,7 @@ public sealed partial class BatteryIdPool(
         store.ReleasedIds.Find(item => item.PackId == packId).FirstOrDefaultAsync(cancellationToken)!;
 
     /// <summary>Why a swap to an ID of the other kind is refused.</summary>
-    public const string SwapNeedsSameKind = "a demo battery takes a demo ID and a real battery a real ID; pick one of the same kind";
+    public const string SwapNeedsSameKind = "a test battery takes a test ID and a real battery a real ID; pick one of the same kind";
 
     /// <summary>
     /// A draft takes another available ID (the owner's "swap while draft"): it gets that serial number and battery ID, and

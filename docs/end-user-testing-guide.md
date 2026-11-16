@@ -145,18 +145,18 @@ Each step says what to do, then **Expected:** what should happen.
    **Expected:** it moves at once, and the move is in the audit log.
 11. Battery IDs tab: release VPC-12221 to VPC-12230 with "Release new IDs": quantity 10, reference "PO 4512, line 2", model Compact 7M.
    **Expected:** the release's page opens with "Released 10 battery IDs. Export them to Excel for the labels.", and its ten IDs Available, each with its battery ID (`UN778474481-VPC-12221` …).
-12. The same, with VPC-12228 to VPC-12240 and quantity 12, and VPC-12401 twice and vpc-12402 in the list.
-   **Expected:** nothing is released; the Release new IDs tab lists the reasons ("that is 13 IDs, not 12", "already released", "in this release twice", "only capital letters A–Z, digits 0–9 and single dashes") and keeps what you typed.
+12. The same, with VPC-12228 to VPC-12240 and quantity 12, and VPC-12401 twice and "VPC 12402" (with a space) in the list.
+   **Expected:** nothing is released; the Release new IDs tab lists the reasons ("that is 13 IDs, not 12", "already released", "in this release twice", "only letters A–Z or a–z, digits 0–9 and single dashes") and keeps what you typed. A serial number with a small letter is allowed: VPC8C05s-00001 is released and shown as typed, its battery ID reads `UN778474481-VPC8C05s-00001`, VPC8C05S-00001 is then refused as the same serial number, and its pages open with the ID typed in capitals, in small letters or mixed. With "Serial number format" VPC8C05s-##### on a model's page, a release for that model, a new battery of it, "Change its battery ID…" and a corrected serial number on a draft refuse a serial number that doesn't fit, naming the format.
 13. The Releases tab, then Open on PO 4512, line 2, and Export to Excel.
    **Expected:**
-   - Releases lists PO 4512, line 2 and the demo data's release, tagged Demo; the counts at the top are the real IDs only;
+   - Releases lists PO 4512, line 2 and the demo data's release, tagged Test; the counts at the top are the real IDs only;
    - an Excel file with that release's ten IDs, one row per ID: serial number, battery ID, QR code address, model, reference, released by and when, status.
 14. Create battery: a Compact 7M batch, pick VPC-12221.
-   **Expected:** the picker offers Compact 7M's IDs first, then any model's, then the demo spares; the draft shows `UN778474481-VPC-12221` and its QR code; the ID is Used.
+   **Expected:** the picker offers Compact 7M's IDs first, then any model's, then the test IDs (the demo's spares); the draft shows `UN778474481-VPC-12221` and its QR code; the ID is Used.
 15. On that draft, More: Change its battery ID…, VPC-12222.
    **Expected:** the draft now has VPC-12222 and its ID; VPC-12221 is Available again.
-16. All IDs: search VPC-12230; in its row's ⋯ menu, Void…, with a reason. Then tick "Show voided", and then "Show demo IDs".
-   **Expected:** it leaves the list until "Show voided" is ticked, then shows as Voided with the reason; the create picker no longer offers it; the demo IDs show only once ticked.
+16. All IDs: search VPC-12230; in its row's ⋯ menu, Void…, with a reason. Then tick "Show voided", and then "Show test IDs".
+   **Expected:** it leaves the list until "Show voided" is ticked, then shows as Voided with the reason; the create picker no longer offers it; the test IDs show only once ticked.
 17. Signed out, open `/25S/UN778474481-VPC-12223`, then `/25S/UN778474481-VPC-12230`.
    **Expected:** "Not published yet", then "Not available".
 18. Clusters tab: Demo data, Clear demo data.
@@ -164,7 +164,7 @@ Each step says what to do, then **Expected:** what should happen.
    - the demo records go, the "Demo" release with them, and real data stays (PO 4512's IDs included);
    - Reset demo data brings them back.
 19. Create battery with a real released serial number, on a demo batch, model or operator.
-   **Expected:** refused with a plain sentence: a real battery ID can't be used with demo product data. The same battery on real product data is made. "Change its battery ID…" on a demo draft offers demo IDs only.
+   **Expected:** refused with a plain sentence: a real battery ID can't be used with demo product data. The same battery on real product data is made. "Change its battery ID…" on a demo draft offers test IDs only.
 20. Users tab: "Add user" with an address that already has an account.
    **Expected:** "This address already has an account. Change it from its row in the list." Giving an account that has no role across the app one, without a new password, is refused; with a new password it is saved. Your own account and the last team account can't be lowered.
 21. Families, a model, "Three questions about model …" (a new copy of Compact 7M is unanswered).

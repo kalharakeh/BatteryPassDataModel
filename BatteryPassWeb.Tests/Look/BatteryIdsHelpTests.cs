@@ -27,7 +27,7 @@ public sealed class BatteryIdsHelpTests
 
         Assert.True(Guide.IndexOf("@if (isTeam)", StringComparison.Ordinal) < Guide.IndexOf("id=\"battery-ids\"", StringComparison.Ordinal)); // the team's only
         Assert.Contains("<a href=\"@Part(\"battery-ids\")\">Battery IDs</a>", Read("web", "Views", "Shared", "_HelpContents.cshtml"), StringComparison.Ordinal);
-        foreach (var words in new[] { "href=\"/admin/battery-ids\"", "all or nothing", "the app opens the release's page", "Releases", "All IDs", "Show demo IDs", "A release whose IDs are all voided shows only with \"Show voided\" ticked", "voided IDs only with \"Show voided\" ticked or the status Voided chosen", "⋯ menu", "Export to Excel", "Available, Used", "Voided", "Void unused…", "Change its battery ID…", "Removing a draft gives its ID back", "-R1, -R2", "The battery ID settings aren't set", "DPP_ID_BASE_URL", "The demo data works without them" })
+        foreach (var words in new[] { "href=\"/admin/battery-ids\"", "all or nothing", "the app opens the release's page", "Releases", "All IDs", "Show test IDs", "A release whose IDs are all voided shows only with \"Show voided\" ticked", "voided IDs only with \"Show voided\" ticked or the status Voided chosen", "⋯ menu", "Export to Excel", "Available, Used", "Voided", "Void unused…", "Change its battery ID…", "Removing a draft gives its ID back", "-R1, -R2", "The battery ID settings aren't set", "DPP_ID_BASE_URL", "The demo data works without them" })
         {
             Assert.Contains(words, part, StringComparison.Ordinal);
         }
@@ -52,7 +52,7 @@ public sealed class BatteryIdsHelpTests
 
         Assert.Contains("| Mark as invalid | Battery IDs tab |", pack, StringComparison.Ordinal); // a column for every reader
         Assert.Equal(11, pack.Split('\n').Count(line => line.StartsWith('|') && (line.EndsWith("| – (Not allowed) |", StringComparison.Ordinal) || line.EndsWith("| – (sign-in) |", StringComparison.Ordinal) || line.EndsWith("| ✓ (and undo) | ✓ |", StringComparison.Ordinal))));
-        foreach (var check in new[] { "Battery IDs: a range releases", "lists every reason and releases nothing", "Create battery picks a released serial number", "opens the release's page", "The Battery IDs page opens on Releases", "\"Show demo IDs\" ticked", "voided IDs only with \"Show voided\" ticked", "a release whose IDs are all voided only with it ticked", "red notice naming it", "\"Change its battery ID…\" on a draft", "\"Not published yet\"" })
+        foreach (var check in new[] { "Battery IDs: a range releases", "lists every reason and releases nothing", "Create battery picks a released serial number", "opens the release's page", "The Battery IDs page opens on Releases", "\"Show test IDs\" ticked", "voided IDs only with \"Show voided\" ticked", "a release whose IDs are all voided only with it ticked", "red notice naming it", "\"Change its battery ID…\" on a draft", "\"Not published yet\"" })
         {
             Assert.Contains(check, pack, StringComparison.Ordinal);
         }

@@ -37,7 +37,7 @@
     <section class="bp-card bp-console-form-card bp-ids-summary mt-4">
         <div>
             <h2>Battery IDs</h2>
-            <p class="bp-help-text mb-0">Serial numbers released before the batteries are made, each with its battery ID, so labels can be printed. Demo IDs aren't counted.</p>
+            <p class="bp-help-text mb-0">Serial numbers released before the batteries are made, each with its battery ID, so labels can be printed. Test IDs aren't counted.</p>
         </div>
         <dl class="bp-ids-counts">
             @foreach (var status in ReleasedIdStatuses.All)
@@ -83,7 +83,7 @@
                             {
                                 var open = $"/admin/battery-ids/releases/{Uri.EscapeDataString(release.ReleaseId)}";
                                 <tr>
-                                    <td data-label="Reference"><a href="@open" class="bp-release-name">@release.Reference</a>@if (release.IsDemo) {<span class="bp-id-demo">Demo</span>}</td>
+                                    <td data-label="Reference"><a href="@open" class="bp-release-name">@release.Reference</a>@if (release.IsDemo) {<span class="bp-id-demo">Test</span>}</td>
                                     <td data-label="Model">@Model.ModelName(release.ModelId)</td>
                                     <td data-label="Released">@ValueWords.Time(release.ReleasedAtUtc)<small class="bp-batteries-muted d-block">by @release.ReleasedBy</small></td>
                                     <td data-label="IDs">
@@ -145,7 +145,7 @@
                         }
                     </select>
                 </label>
-                <label class="bp-release-demo"><input type="checkbox" name="demo" value="true" checked="@filter.Demo" /><span>Show demo IDs</span></label>
+                <label class="bp-release-demo"><input type="checkbox" name="demo" value="true" checked="@filter.Demo" /><span>Show test IDs</span></label>
                 <label class="bp-release-demo"><input type="checkbox" name="voided" value="true" checked="@filter.Voided" /><span>Show voided</span></label>
                 <div class="bp-release-filter-actions">
                     <button type="submit" class="bp-secondary-button bp-button-compact">Show</button>
@@ -246,7 +246,7 @@
                         <input type="checkbox" name="isTest" value="true" checked="@Model.Form.IsTest" />
                         <span>Test IDs (for trying things out; they contain TEST and are never real battery IDs)</span>
                     </label>
-                    <small class="bp-field-help d-block">A test ID makes a test battery, on demo or real product data. Test IDs are for any model, so the model above is ignored. They aren't counted in the numbers above, and Reset demo data and Clear demo data remove them with their batteries.</small>
+                    <small class="bp-field-help d-block">A test ID makes a test battery for trying things out, on real product data too. Test IDs are for any model, so the model above is ignored. A model's serial number format isn't checked for them. They aren't counted in the numbers above, and "Clear demo data" on the Clusters tab removes them with their batteries.</small>
 
                     <div class="bp-release-actions">
                         <small class="bp-field-help">All or nothing: if any serial number can't be released, none is, and each reason is listed.</small>
