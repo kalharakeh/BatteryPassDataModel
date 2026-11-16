@@ -68,7 +68,7 @@ public sealed class DocumentService(
         }
 
         var documentId = $"doc-{Guid.NewGuid():N}";
-        var title = string.IsNullOrWhiteSpace(upload.Title) ? SafeFileName(upload.FileName) : upload.Title.Trim();
+        var title = TitleOf(upload);
         return await StoreAndLinkAsync(sender, owner, ownerId, property, documentId, title, upload, contentType => DocumentLink(contentType, documentId, title, upload.Language), cancellationToken);
     }
 
@@ -281,6 +281,23 @@ public sealed class DocumentService(
 
         var clusters = await store.FindPublishedClusterIdsUsingAsync(modelId, batchId, packId, cancellationToken);
         return AudienceRules.MaySee(reader, attribute, clusters);
+    }
+
+    /// <summary>
+    /// What an upload would say about this file, without storing anything: its type by content, or why it is refused.
+    /// For a caller that checks first and uploads later (the product data load).
+    /// </summary>
+    public (string? ContentType, string? Problem) Check(DocumentUpload upload)
+    {
+        ArgumentNullException.ThrowIfNull(upload);
+        return Inspect(upload);
+    }
+
+    /// <summary>The title an upload gets: the one given, or the file's name.</summary>
+    public static string TitleOf(DocumentUpload upload)
+    {
+        ArgumentNullException.ThrowIfNull(upload);
+        return string.IsNullOrWhiteSpace(upload.Title) ? SafeFileName(upload.FileName) : upload.Title.Trim();
     }
 
     /// <summary>Only PDF, PNG and JPEG, recognised by their first bytes; empty and oversized files are refused.</summary>

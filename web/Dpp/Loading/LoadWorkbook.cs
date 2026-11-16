@@ -64,7 +64,9 @@ public sealed record HazardLine(string RowName, FilledCell? Model, IReadOnlyDict
 }
 
 /// <summary>One line of the documents sheet: a document of one model (or of its batch).</summary>
-public sealed record DocumentLine(string Model, DocumentField Field, string RowName, FilledCell? Link, FilledCell? Title, FilledCell? Language)
+/// <param name="DocumentName">The document's name as the sheet shows it ("Safety measures").</param>
+/// <param name="RowName">The line's name for a problem: the document and the model ("Safety measures (Core800s)").</param>
+public sealed record DocumentLine(string Model, DocumentField Field, string DocumentName, string RowName, FilledCell? Link, FilledCell? Title, FilledCell? Language)
 {
     public CellPlace Place(string column) => new(LoadFields.DocumentSheet, RowName, column);
 }
@@ -291,7 +293,8 @@ public sealed class LoadWorkbook
 
             // The Model cell says which model the line is for; a copied line keeps its key and gets another model there.
             var model = modelColumn > 0 && sheet.Text(row, modelColumn) is { Length: > 0 } typedModel ? typedModel : parts[1];
-            var rowName = $"{(document.Length > 0 ? document : field.Attribute.Name)} ({model})";
+            var documentName = document.Length > 0 ? document : field.Attribute.Name;
+            var rowName = $"{documentName} ({model})";
             if (!seen.Add($"{model}|{parts[2]}|{parts[3]}"))
             {
                 if (typed)
@@ -305,6 +308,7 @@ public sealed class LoadWorkbook
             Documents.Add(new DocumentLine(
                 model,
                 field,
+                documentName,
                 rowName,
                 Filled(sheet, row, linkColumn, new CellPlace(name, rowName, LinkHeader)),
                 Filled(sheet, row, titleColumn, new CellPlace(name, rowName, TitleHeader)),
