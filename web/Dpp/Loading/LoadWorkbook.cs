@@ -20,6 +20,9 @@ public sealed record CellPlace(string Sheet, string Row, string Column)
 /// <summary>A filled cell of the workbook.</summary>
 public sealed record FilledCell(string Text, bool IsNumber, CellPlace Place)
 {
+    /// <summary>Formatted as a per-cent in Excel: <see cref="Text"/> is the number shown (16 for 16 %).</summary>
+    public bool IsPercent { get; init; }
+
     /// <summary>The word that takes a value away.</summary>
     public const string None = "none";
 
@@ -145,7 +148,7 @@ public sealed class LoadWorkbook
         var inputs = headers.Where(header => !FixedHeaders.Contains(header.Value)).OrderBy(header => header.Key).ToArray();
         var columns = inputs.Select((header, index) => (Sheet: header.Key, Column: new ValueColumn(header.Value, index + 1))).ToArray();
         result.Columns.AddRange(columns.Select(column => column.Column));
-        for (var row = headerRow + 1; row <= sheet.LastRow; row++)
+        foreach (var row in sheet.Rows.Where(row => row > headerRow))
         {
             var key = sheet.Text(row, keyColumn);
             var rowName = nameColumn > 0 ? FirstLine(sheet.Text(row, nameColumn)) : string.Empty;
@@ -211,7 +214,7 @@ public sealed class LoadWorkbook
         }
 
         var keyed = false; // the rows above the first row with a key are the heading and its help line
-        for (var row = headerRow + 1; row <= sheet.LastRow; row++)
+        foreach (var row in sheet.Rows.Where(row => row > headerRow))
         {
             var key = sheet.Text(row, keyColumn);
             if (key.Length > 0)
@@ -242,7 +245,11 @@ public sealed class LoadWorkbook
                 }
             }
 
-            if (model is not null || cells.Count > 0)
+            if (model is not null && cells.Values.All(cell => cell.IsNone))
+            {
+                Problems.Add(new CellPlace(name, rowName, ModelHeader).Problem("this line names a model and nothing else, so it is incomplete. Fill in the substance, or empty its Model cell"));
+            }
+            else if (model is not null || cells.Count > 0)
             {
                 Hazards.Add(new HazardLine(rowName, model, cells));
             }
@@ -268,7 +275,7 @@ public sealed class LoadWorkbook
         }
 
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        for (var row = headerRow + 1; row <= sheet.LastRow; row++)
+        foreach (var row in sheet.Rows.Where(row => row > headerRow))
         {
             var key = sheet.Text(row, keyColumn);
             var document = documentColumn > 0 ? FirstLine(sheet.Text(row, documentColumn)) : string.Empty;
@@ -351,18 +358,26 @@ public sealed class LoadWorkbook
 
     private FilledCell? Filled(XlsxSheet sheet, int row, int column, CellPlace place)
     {
-        if (sheet.Cell(row, column) is not { } cell || cell.Text.Trim().Length == 0)
+        if (sheet.Cell(row, column) is not { } cell)
         {
             return null;
         }
 
-        if (cell.IsError)
+        var problem = cell.Note switch
         {
-            Problems.Add(place.Problem($"the cell shows an Excel error ({cell.Text.Trim()}). Type the value itself"));
+            CellNote.FormulaWithoutValue => "this cell holds a formula without a value; type the value",
+            CellNote.Date => "this cell is formatted as a date or a time in Excel, so it doesn't hold what it shows. Format it as text or as a number and type the value again",
+            CellNote.TooLarge => $"{cell.Text} is far too large to be a value of the passport; type the value itself",
+            _ when cell.IsError => $"the cell shows an Excel error ({cell.Text.Trim()}). Type the value itself",
+            _ => null,
+        };
+        if (problem is not null)
+        {
+            Problems.Add(place.Problem(problem));
             return null;
         }
 
-        return new FilledCell(cell.Text.Trim(), cell.IsNumber, place);
+        return cell.Text.Trim().Length == 0 ? null : new FilledCell(cell.Text.Trim(), cell.IsNumber, place) { IsPercent = cell.Note == CellNote.Percent };
     }
 
     private static bool Same(string? text, string other) => string.Equals(text?.Trim(), other, StringComparison.OrdinalIgnoreCase);

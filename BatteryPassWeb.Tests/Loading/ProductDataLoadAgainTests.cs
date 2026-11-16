@@ -60,7 +60,7 @@ public sealed class ProductDataLoadAgainTests(MongoFixture mongo)
         var result = await rig.LoadAsync(workbook);
 
         SameLines(["Core800s: Changed"], Changed(check));
-        Assert.Equal([new LoadChangeLine("Battery mass", "470", "455")], check.Records.Single(record => record.Name == "Core800s").Changes);
+        Assert.Equal([new LoadChangeLine("Battery mass", "470 kg", "455 kg")], check.Records.Single(record => record.Name == "Core800s").Changes);
         Assert.True(result.Loaded, result.Message);
         Assert.Equal("Product data loaded: 1 record changed, of 1 battery family, 3 battery models, 3 batches, 1 manufacturing site and 1 economic operator.", result.Message);
         Assert.Equal("455", (await ModelAsync(rig, "Core800s")).Values["batteryMass"].Value!["gramKilogramValue"]!.ToJsonString());
@@ -77,7 +77,7 @@ public sealed class ProductDataLoadAgainTests(MongoFixture mongo)
         var check = await rig.CheckAsync(Core().SetNumber(ModelSheet, "model|maximumVoltage|voltValue", "Core800", 740));
 
         SameLines(["Core800: Changed", "Core800s: Changed", "Core700: Changed"], Changed(check));
-        Assert.All(check.Records.Where(record => record.State == LoadStates.Changed), record => Assert.Equal([new LoadChangeLine("Maximum voltage", "736", "740")], record.Changes));
+        Assert.All(check.Records.Where(record => record.State == LoadStates.Changed), record => Assert.Equal([new LoadChangeLine("Maximum voltage", "736 V", "740 V")], record.Changes));
     }
 
     [Fact]

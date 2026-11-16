@@ -22,6 +22,7 @@ internal sealed class FilledWorkbook
     private readonly List<string> _order = [];
     private readonly Dictionary<string, string> _sheetPaths = new(StringComparer.Ordinal);
     private readonly Dictionary<string, XDocument> _sheets = new(StringComparer.Ordinal);
+    private XDocument? _styles;
 
     private FilledWorkbook(byte[] template)
     {
@@ -56,6 +57,57 @@ internal sealed class FilledWorkbook
     /// <summary>Types a number into a cell: Excel keeps it as a number, here in the long form it writes (4.7000000000000002).</summary>
     public FilledWorkbook SetNumber(string sheet, string key, string column, double number) =>
         SetCell(sheet, RowOf(sheet, key), ColumnOf(sheet, column), number.ToString("G17", CultureInfo.InvariantCulture), number: true);
+
+    /// <summary>
+    /// Types a number into a cell formatted as Excel formats it: <paramref name="format"/> is a built-in format's number
+    /// (9 is 0 %, 10 is 0.00 %, 14 a date) or, with <paramref name="code"/>, the workbook's own format. Excel keeps the
+    /// number as stored, so 16 % is 0.16: <paramref name="stored"/> is that number.
+    /// </summary>
+    public FilledWorkbook SetFormatted(string sheet, string key, string column, double stored, int format, string? code = null)
+    {
+        SetNumber(sheet, key, column, stored);
+        return Style(sheet, RowOf(sheet, key), ColumnOf(sheet, column), format, code);
+    }
+
+    /// <summary>A formula saved without its value, as a file written by a script or a program other than Excel may hold.</summary>
+    public FilledWorkbook SetFormulaWithoutValue(string sheet, string key, string column)
+    {
+        SetCell(sheet, RowOf(sheet, key), ColumnOf(sheet, column), null, number: false);
+        Cell(RowElement(sheet, RowOf(sheet, key)), ColumnOf(sheet, column), RowOf(sheet, key))!.Add(new XElement(Main + "f", "SUM(B2:B3)"));
+        return this;
+    }
+
+    /// <summary>Puts a cell with this reference into the first row with a key, as a crafted file might.</summary>
+    public FilledWorkbook CellAt(string sheet, string reference, string text)
+    {
+        var row = Sheet(sheet).Descendants(Main + "row").First();
+        row.Add(new XElement(Main + "c", new XAttribute("r", reference), new XAttribute("t", "inlineStr"), new XElement(Main + "is", new XElement(Main + "t", text))));
+        return this;
+    }
+
+    private FilledWorkbook Style(string sheet, int row, int column, int format, string? code)
+    {
+        _styles ??= XDocument.Parse(Text("xl/styles.xml"), LoadOptions.PreserveWhitespace);
+        var root = _styles.Root!;
+        if (code is not null)
+        {
+            var formats = root.Element(Main + "numFmts") ?? new XElement(Main + "numFmts");
+            if (formats.Parent is null)
+            {
+                root.AddFirst(formats);
+            }
+
+            formats.Add(new XElement(Main + "numFmt", new XAttribute("numFmtId", format), new XAttribute("formatCode", code)));
+            formats.SetAttributeValue("count", formats.Elements(Main + "numFmt").Count());
+        }
+
+        var styles = root.Element(Main + "cellXfs")!;
+        styles.Add(new XElement(Main + "xf", new XAttribute("numFmtId", format), new XAttribute("fontId", 0), new XAttribute("fillId", 0), new XAttribute("borderId", 0), new XAttribute("applyNumberFormat", 1)));
+        var index = styles.Elements(Main + "xf").Count() - 1;
+        styles.SetAttributeValue("count", index + 1);
+        Cell(RowElement(sheet, row), column, row)!.SetAttributeValue("s", index);
+        return this;
+    }
 
     /// <summary>Empties a cell.</summary>
     public FilledWorkbook Clear(string sheet, string key, string column) =>
@@ -111,8 +163,7 @@ internal sealed class FilledWorkbook
     public FilledWorkbook Hazard(int line, string? model, string? chemical, string? identifierType = "CAS No", string? identifier = "21324-40-3", object? concentration = null, string? hazards = "H301; H314", string? precautions = "P260; P280", string? where = null)
     {
         const string sheet = LoadFields.HazardSheet;
-        var keys = ColumnOf(sheet, LoadWorkbook.KeyHeader);
-        var row = Sheet(sheet).Descendants(Main + "row").Where(item => CellText(item, keys, (int)item.Attribute("r")!) == LoadFields.HazardLineKey).Select(item => (int)item.Attribute("r")!).ElementAt(line - 1);
+        var row = HazardRow(line);
         void Put(string column, object? value)
         {
             if (value is double or int or decimal)
@@ -136,12 +187,32 @@ internal sealed class FilledWorkbook
         return this;
     }
 
+    /// <summary>Formats one cell of the n-th line to fill of the hazardous substances sheet, as Excel formats it.</summary>
+    public FilledWorkbook FormatHazard(int line, string column, int format, string? code = null) =>
+        Style(LoadFields.HazardSheet, HazardRow(line), ColumnOf(LoadFields.HazardSheet, column), format, code);
+
+    /// <summary>Empties one cell of the n-th line to fill of the hazardous substances sheet.</summary>
+    public FilledWorkbook ClearHazard(int line, string column) =>
+        SetCell(LoadFields.HazardSheet, HazardRow(line), ColumnOf(LoadFields.HazardSheet, column), null, number: false);
+
+    private int HazardRow(int line)
+    {
+        const string sheet = LoadFields.HazardSheet;
+        var keys = ColumnOf(sheet, LoadWorkbook.KeyHeader);
+        return Sheet(sheet).Descendants(Main + "row").Where(item => CellText(item, keys, (int)item.Attribute("r")!) == LoadFields.HazardLineKey).Select(item => (int)item.Attribute("r")!).ElementAt(line - 1);
+    }
+
     /// <summary>The workbook's bytes, as the script wrote it: inline texts, links from the file's root.</summary>
     public byte[] Bytes()
     {
         foreach (var (name, document) in _sheets)
         {
             _parts[_sheetPaths[name]] = Encoding.UTF8.GetBytes(document.ToString(SaveOptions.DisableFormatting));
+        }
+
+        if (_styles is not null)
+        {
+            _parts["xl/styles.xml"] = Encoding.UTF8.GetBytes(_styles.ToString(SaveOptions.DisableFormatting));
         }
 
         return Zip(_order.Select(path => (path, _parts[path])));

@@ -47,11 +47,11 @@ public sealed class ProductDataLoadCheckTests(MongoFixture mongo)
         var check = await rig.CheckAsync(Core());
 
         var model = check.Records.Single(record => record.Name == "Core800");
-        Assert.Contains(new LoadChangeLine("Battery mass", string.Empty, "470"), model.Changes);
+        Assert.Contains(new LoadChangeLine("Battery mass", string.Empty, "470 kg"), model.Changes);
         Assert.Contains(new LoadChangeLine("Critical raw materials", string.Empty, "Cobalt; Lithium; Natural graphite; Nickel"), model.Changes);
-        Assert.Contains(new LoadChangeLine("Nominal voltage: valid from this temperature", string.Empty, "-20"), model.Changes);
+        Assert.Contains(new LoadChangeLine("Nominal voltage: valid from this temperature", string.Empty, "-20 °C"), model.Changes);
         Assert.Contains(new LoadChangeLine("Does this battery come with a commercial warranty?", string.Empty, "Yes"), model.Changes);
-        Assert.Contains(new LoadChangeLine("Hazardous substances and their impact", string.Empty, "Lithium hexafluorophosphate"), model.Changes);
+        Assert.Contains(new LoadChangeLine("Hazardous substances and their impact", string.Empty, "Lithium hexafluorophosphate (CAS No 21324-40-3, 1.2)"), model.Changes);
         Assert.Contains("Serial number format: not loaded yet (it arrives with the serial number update)", model.Notes);
         var site = check.Records.Single(record => record.Record == LoadRecord.Site);
         Assert.Contains(new LoadChangeLine("Manufacturer: name", string.Empty, "Scania Industrial Batteries AB"), site.Changes);

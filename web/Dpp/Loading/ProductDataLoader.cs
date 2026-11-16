@@ -608,7 +608,9 @@ public sealed partial class ProductDataLoader(
             var now = OneLine(after.GetValueOrDefault(name) ?? string.Empty);
             if (old != now)
             {
-                record.Lines.Add(new LoadChangeLine(sheet.RowName(field.Key), old, now.Length == 0 ? Gone : now));
+                // As it will be stored, with the unit the app writes beside it.
+                string WithUnit(string text) => text.Length > 0 && field.Input.Unit is { Length: > 0 } unit ? $"{text} {unit}" : text;
+                record.Lines.Add(new LoadChangeLine(sheet.RowName(field.Key), WithUnit(old), now.Length == 0 ? Gone : WithUnit(now)));
             }
         }
     }
@@ -692,8 +694,15 @@ public sealed partial class ProductDataLoader(
         model.Lines.Add(new LoadChangeLine(form.Attribute.Name, Substances(stored), Substances(value)));
     }
 
+    /// <summary>The substances as they will be stored: "Cobalt sulphate (CAS No 7646-79-9, 0.5)".</summary>
     private static string Substances(JsonNode? value) => value is JsonArray rows
-        ? string.Join("; ", rows.Select(row => row?["chemicalName"]?.GetValueKind() == JsonValueKind.String ? row["chemicalName"]!.GetValue<string>() : "(no name)"))
+        ? string.Join("; ", rows.Select(row =>
+        {
+            string Part(string name) => row?[name] is JsonValue part ? (part.GetValueKind() == JsonValueKind.String ? part.GetValue<string>() : part.ToJsonString()) : string.Empty;
+            var name = Part("chemicalName") is { Length: > 0 } chemical ? chemical : "(no name)";
+            var details = string.Join(", ", new[] { $"{Part("identifierType")} {Part("identifier")}".Trim(), Part("concentration") }.Where(text => text.Length > 0));
+            return details.Length > 0 ? $"{name} ({details})" : name;
+        }))
         : string.Empty;
 
     // ---------- documents and pictures ----------

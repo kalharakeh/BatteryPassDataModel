@@ -63,7 +63,7 @@ public sealed class XlsxReaderTests
         var sheet = book!.Sheets[0];
         Assert.Equal(new XlsxCell("2", true), sheet.Cell(1, 1));
         Assert.Equal(new XlsxCell("ab", false), sheet.Cell(1, 2));
-        Assert.Null(sheet.Cell(1, 3)); // a formula without a saved value is an empty cell
+        Assert.Equal(CellNote.FormulaWithoutValue, sheet.Cell(1, 3)!.Note); // a formula without a saved value: the loader says so at its cell
         Assert.Equal("TRUE", sheet.Text(1, 4));
         Assert.True(sheet.Cell(1, 5)!.IsError);
     }
