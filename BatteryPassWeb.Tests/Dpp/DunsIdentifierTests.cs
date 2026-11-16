@@ -74,7 +74,6 @@ public sealed class DunsIdentifierTests(MongoFixture mongo)
     }
 
     [Theory]
-    [InlineData("vbc-92921", false, IdentifierForms.SerialRule)] // never upper-cased silently
     [InlineData("VBC 92921", false, IdentifierForms.SerialRule)]
     [InlineData("-VBC-92921", false, IdentifierForms.SerialRule)]
     [InlineData("VBC-92921-", false, IdentifierForms.SerialRule)]
@@ -294,7 +293,9 @@ public sealed class DunsIdentifierTests(MongoFixture mongo)
             c7.BatchId, c7.OperatorId, c7.ClusterId, new Dictionary<string, JsonNode?> { ["batterySerialNumber"] = "DEMOC7M0001" }, IsDemo: true));
 
         Assert.Null(result.Pack);
-        Assert.Equal($"{PackCreationService.CantGetId}: {DunsIdentifierScheme.Taken("UN778474481-TEST-DEMO-C7M-0001", "DEMO-C7M-0001")}", result.Problem);
+        // Since decision 80 the serial number itself is compared by its letters and digits, so it is refused as taken
+        // before an ID is asked for; the scheme's own refusal is tested above.
+        Assert.Contains(result.Keys, key => key.Key == "batterySerialNumber" && key.Message == SavePipeline.SerialNumberTaken);
         Assert.Equal(before, await rig.Count(DppStore.Packs));
     }
 
@@ -360,7 +361,8 @@ public sealed class DunsIdentifierTests(MongoFixture mongo)
     [InlineData("UN778474481--VBC", false)]
     [InlineData("UN778474481-VBC--92921", false)]
     [InlineData("UN778474481-VBC-92921-", false)]
-    [InlineData("UN778474481-vbc-92921", false)]
+    [InlineData("UN778474481-vbc-92921", true)] // read whichever way its letters are typed (decision 80)
+    [InlineData("UN778474481-vbc_92921", false)]
     [InlineData("UN778474481-VBC_92921", false)]
     public void AnItemId_ShouldBeRead_InTheNewFormAndTheOldOne(string item, bool valid)
     {
@@ -371,15 +373,15 @@ public sealed class DunsIdentifierTests(MongoFixture mongo)
     }
 
     [Fact]
-    public void TheSerialRule_ShouldBeCapitalsDigitsAndSingleDashes()
+    public void TheSerialRule_ShouldBeLettersDigitsAndSingleDashes()
     {
         Assert.True(IdentifierForms.IsSerial("VBC-92921"));
         Assert.True(IdentifierForms.IsSerial("DEMO-C7M-0001"));
         Assert.True(IdentifierForms.IsSerial("000123"));
         Assert.False(IdentifierForms.IsSerial("VBC--92921"));
-        Assert.False(IdentifierForms.IsSerial("vbc-92921"));
+        Assert.True(IdentifierForms.IsSerial("vbc-92921")); // small letters since decision 80
         Assert.False(IdentifierForms.IsSerial(null));
-        Assert.Contains("capital letters A–Z, digits 0–9 and single dashes", IdentifierForms.SerialRule, StringComparison.Ordinal);
+        Assert.Contains("letters A–Z or a–z, digits 0–9 and single dashes", IdentifierForms.SerialRule, StringComparison.Ordinal);
         Assert.Equal(34, DunsIdentifierScheme.MaxItemLength - "UN778474481-".Length - "-R99".Length); // the cap: a real serial at most 34 characters
     }
 

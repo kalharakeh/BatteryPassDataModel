@@ -10,7 +10,7 @@
             @foreach (var item in Model.Items)
             {
                 <tr>
-                    <td data-label="Serial number"><strong>@item.SerialNumber</strong>@if (item.IsDemo) {<span class="bp-id-demo">Demo</span>}</td>
+                    <td data-label="Serial number"><strong>@item.SerialNumber</strong>@if (item.IsDemo) {<span class="bp-id-demo">Test</span>}</td>
                     <td data-label="Battery ID">@await Html.PartialAsync("_IdValue", item.Identifier)</td>
                     <td data-label="Model">@Model.ModelName(item.ModelId)</td>
                     <td data-label="@(Model.ShowReference ? "Reference" : "Released")">@(Model.ShowReference ? item.Reference : ValueWords.Day(item.ReleasedAtUtc.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)))</td>

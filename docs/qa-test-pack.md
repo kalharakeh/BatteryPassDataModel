@@ -162,8 +162,10 @@ The battery, versions and passports answers carry `signatureVerified` and `signa
 - [ ] Every row of the scenario matrix holds, for every reader.
 - [ ] The two badges show on every passport page with the right status. The Battery badge never shows to the public.
 - [ ] Battery IDs: a range releases and opens the release's page with every ID Available; its "Export to Excel" opens with that release's IDs, one row per ID and its QR address.
-- [ ] The Battery IDs page opens on Releases, with the real IDs' counts at the top; All IDs shows demo IDs only with "Show demo IDs" ticked, and voided IDs only with "Show voided" ticked (or the status Voided chosen); Releases shows a release whose IDs are all voided only with it ticked, and its own page lists every ID; Void… is in a row's ⋯ menu.
-- [ ] A release with a wrong count, a repeated or already released serial number, or one with lower case or a double dash lists every reason and releases nothing.
+- [ ] The Battery IDs page opens on Releases, with the real IDs' counts at the top; All IDs shows test IDs only with "Show test IDs" ticked, and voided IDs only with "Show voided" ticked (or the status Voided chosen); Releases shows a release whose IDs are all voided only with it ticked, and its own page lists every ID; Void… is in a row's ⋯ menu.
+- [ ] A release with a wrong count, a repeated or already released serial number, or one with a space or a double dash lists every reason and releases nothing.
+- [ ] A serial number with a small letter (VPC8C05s-00001) is released and shown as typed, in its battery ID and passport ID too; the same serial number in other letters (VPC8C05S-00001) is refused as the same serial number; its pages, data address, `/verify` and the API answer with the ID typed in capitals, in small letters or mixed, and always give the ID in its one form.
+- [ ] A model with a "Serial number format" (VPC8C05s-#####) refuses a serial number that doesn't fit, naming the format: at release for that model, when creating a battery of it, at "Change its battery ID…" and when a draft's serial number is corrected. A model without one takes any serial number; test IDs aren't checked.
 - [ ] Create battery picks a released serial number (no typing); the draft shows its battery ID and QR code at once; the ID turns Used.
 - [ ] "Change its battery ID…" on a draft takes another available ID and gives the old one back; a voided ID is never offered again.
 - [ ] Scanning a released, unpublished ID shows "Not published yet"; a voided one "Not available".

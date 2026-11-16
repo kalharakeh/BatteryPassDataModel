@@ -298,8 +298,9 @@ public sealed class SavePipeline(
     }
 
     /// <summary>
-    /// The rules for a pack's own values: its fixed values can't change once a version has been published, and no two
-    /// batteries share a serial number (ignoring case). A refused key doesn't block the others (J-12).
+    /// The rules for a pack's own values: its fixed values can't change once a version has been published, no two
+    /// batteries share a serial number (by the one rule: the same letters and digits, decision 80), and a serial number
+    /// that changes fits its model's format (decision 81). A refused key doesn't block the others (J-12).
     /// </summary>
     /// <param name="mayAddWarranty">True for the status change of a battery without a warranty (#19): it may add one (R01).</param>
     private async Task<Evaluation> CheckPackRulesAsync(string packId, Evaluation evaluation, bool mayAddWarranty, CancellationToken cancellationToken)
@@ -328,6 +329,13 @@ public sealed class SavePipeline(
             {
                 refusal = SerialNumberTaken;
             }
+            else if (attribute.Number == 11
+                && accepted[result.Key] is JsonValue changed
+                && changed.TryGetValue<string>(out var typed)
+                && await SerialFormatMisfitAsync(packId, typed, cancellationToken) is { } misfit)
+            {
+                refusal = misfit;
+            }
 
             if (refusal is not null)
             {
@@ -337,6 +345,30 @@ public sealed class SavePipeline(
         }
 
         return new Evaluation(results, accepted);
+    }
+
+    /// <summary>
+    /// Why a draft's serial number (#11) can't be changed to <paramref name="serialNumber"/>: it doesn't fit the format of
+    /// the battery's model (decision 81), as at creation and at a swap. Null when it fits, when the model has no format,
+    /// for a test battery (test IDs are free of the format), and when the serial number doesn't change: a battery from
+    /// before a format was set keeps the one it has and can still be saved.
+    /// </summary>
+    private async Task<string?> SerialFormatMisfitAsync(string packId, string serialNumber, CancellationToken cancellationToken)
+    {
+        if (await store.LoadSourcesAsync(packId, cancellationToken) is not { Model.SerialFormat: { Length: > 0 } format } sources)
+        {
+            return null;
+        }
+
+        static string? Text(BatteryPack pack, string property) =>
+            pack.Values.GetValueOrDefault(property)?.Value is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+
+        return sources.Pack.IsDemo
+            || Identifiers.IdentifierForms.IsTest(Text(sources.Pack, "uniqueProductIdentifier"))
+            || Identifiers.IdentifierForms.SameSerial(Text(sources.Pack, "batterySerialNumber"), serialNumber)
+            || Identifiers.SerialFormats.Fits(format, serialNumber)
+            ? null
+            : Identifiers.SerialFormats.Misfit(serialNumber, sources.Model.Name, format);
     }
 
     /// <summary>The pack and every earlier and later passport of the same battery, which share its serial number (R6).</summary>

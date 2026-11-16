@@ -69,7 +69,7 @@ public sealed class TestIdReleaseTests(MongoFixture mongo)
         Assert.True(released!.IsDemo);
         Assert.Contains("-TEST-", released.Identifier, StringComparison.Ordinal);
         Assert.Equal(counts, await pool.RealCountsAsync());
-        Assert.Equal("Released 2 test battery IDs. They contain TEST, aren't counted, and go when the demo data is reset or cleared.", controller.TempData[ProductDataController.StatusKey]);
+        Assert.Equal("Released 2 test battery IDs. They contain TEST and aren't counted. \"Clear demo data\" on the Clusters tab removes them, with the test batteries made from them.", controller.TempData[ProductDataController.StatusKey]);
     }
 
     [Fact]
@@ -184,7 +184,7 @@ public sealed class TestIdReleaseTests(MongoFixture mongo)
 
         Assert.Contains("<input type=\"checkbox\" name=\"isTest\" value=\"true\" checked=\"@Model.Form.IsTest\" />", view, StringComparison.Ordinal);
         Assert.Contains("Test IDs (for trying things out; they contain TEST and are never real battery IDs)", view, StringComparison.Ordinal);
-        Assert.Contains("They aren't counted in the numbers above, and Reset demo data and Clear demo data remove them with their batteries.", view, StringComparison.Ordinal);
+        Assert.Contains("They aren't counted in the numbers above, and \"Clear demo data\" on the Clusters tab removes them with their batteries.", view, StringComparison.Ordinal); // decision 82: said so that it reads right with the demo off
     }
 
     private sealed class NoTempDataStorage : ITempDataProvider

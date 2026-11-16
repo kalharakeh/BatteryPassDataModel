@@ -153,6 +153,14 @@ public sealed class PackCreationService(
                 return Failed(RemovedId);
             }
 
+            // The serial number fits its model's format (decision 81): asked before the ID is picked, so it stays
+            // available. Test IDs are free of the format, and so is a battery's new passport (the branch below).
+            if (model?.SerialFormat is { Length: > 0 } format && await pool.GetAsync(asked, cancellationToken) is { IsDemo: false } wanted
+                && !SerialFormats.Fits(format, wanted.SerialNumber))
+            {
+                return Failed(SerialFormats.Misfit(wanted.SerialNumber, model.Name, format));
+            }
+
             if (await pool.PickAsync(evaluation.Accepted["batterySerialNumber"].GetValue<string>(), pack.Id, batch.ModelId, cancellationToken) is not { } picked)
             {
                 return Failed(NotAvailable);
@@ -173,6 +181,14 @@ public sealed class PackCreationService(
             if (onDemoData && !pack.IsDemo && !IdentifierForms.IsTest(identifier))
             {
                 return Failed(DemoDataRule.MessageFor(batch, model, economicOperator));
+            }
+
+            // A battery made without the pool is held to its model's format too (decision 81); a test ID isn't, nor a
+            // battery's new passport, which keeps the serial number it has.
+            if (request.PredecessorPackId is null && !IdentifierForms.IsTest(identifier) && model?.SerialFormat is { Length: > 0 } format
+                && evaluation.Accepted["batterySerialNumber"].GetValue<string>() is var typed && !SerialFormats.Fits(format, typed))
+            {
+                return Failed(SerialFormats.Misfit(typed, model.Name, format));
             }
 
             pack.Values["uniqueProductIdentifier"] = Stored(JsonValue.Create(identifier), now, "system", sender.Who);

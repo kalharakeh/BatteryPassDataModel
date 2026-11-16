@@ -54,7 +54,7 @@ public sealed class QrController(PassportPages pages, DppLinks links, PassportQr
         }
 
         return User.IsInRole(AccessControlService.RoleAdmin) && await store.FindPackByUniqueProductIdentifierAsync(wanted, cancellationToken) is { } draft
-            ? (wanted, Text(draft, "batterySerialNumber") ?? draft.Id)
+            ? (Text(draft, "uniqueProductIdentifier") ?? wanted, Text(draft, "batterySerialNumber") ?? draft.Id) // the ID as stored, however the address was typed (decision 80)
             : null;
     }
 

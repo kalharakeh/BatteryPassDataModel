@@ -106,6 +106,9 @@ public sealed record NewBatteryPage(
 
     public IReadOnlyDictionary<string, string> ModelNames { get; init; } = new Dictionary<string, string>(StringComparer.Ordinal);
 
+    /// <summary>The serial number format of each model that has one (decision 81): for a batch, the form offers only the serials that fit its model's.</summary>
+    public IReadOnlyDictionary<string, string> ModelFormats { get; init; } = new Dictionary<string, string>(StringComparer.Ordinal);
+
     /// <summary>The serial number picked before a refused create, so the page keeps it.</summary>
     public string? PickedSerial { get; init; }
 }
@@ -657,6 +660,7 @@ public sealed class BatteryPages(
             Picks = pool is not null,
             AvailableIds = pool is null ? [] : await pool.AvailableAsync(cancellationToken: cancellationToken),
             ModelNames = models.ToDictionary(model => model.Key, model => model.Value.Name, StringComparer.Ordinal),
+            ModelFormats = models.Where(model => model.Value.SerialFormat is { Length: > 0 }).ToDictionary(model => model.Key, model => model.Value.SerialFormat!, StringComparer.Ordinal),
             PickedSerial = state?.Post.Texts.GetValueOrDefault("v.batterySerialNumber"),
         };
     }

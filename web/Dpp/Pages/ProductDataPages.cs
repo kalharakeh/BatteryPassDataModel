@@ -136,6 +136,19 @@ public sealed record FamilyPage(
 
     /// <summary>What is still the demo's example in this real family's models and batches (decision 70).</summary>
     public IReadOnlyList<ExampleGroup> Examples { get; init; } = [];
+
+    /// <summary>The other models with the very same serial number format as the selected one (decision 81): allowed, and named on the page.</summary>
+    public IReadOnlyList<string> SerialFormatSharedWith { get; init; } = [];
+}
+
+/// <summary>
+/// What saving a model's serial number format did (decision 81): refused (<see cref="Problem"/>), waiting for the team's
+/// yes because <see cref="Misfits"/> of the model's batteries don't fit it, or saved.
+/// </summary>
+public sealed record SerialFormatSave(string? Problem, bool Saved, bool Changed, string? Format, int Misfits, IReadOnlyList<string> Examples, IReadOnlyList<string> SharedWith)
+{
+    /// <summary>Nothing is saved yet: the page says how many batteries don't fit and asks.</summary>
+    public bool NeedsConfirmation => Problem is null && !Saved;
 }
 
 public sealed record BatchPage(ProductionBatch Batch, BatteryModel Model, BatteryFamily Family, ManufacturingSite Site, RecordEditorView Editor)
@@ -232,7 +245,13 @@ public sealed partial class ProductDataPages(
                 counts[batch.Id].Published))
             .ToArray();
         var view = await EditorAsync(TargetKind.Model, selected.Id, selected.Name, selected.Values, $"/admin/models/{Uri.EscapeDataString(selected.Id)}", FamilyHref(familyId, selected.Id), state, cancellationToken, selected.Answers());
-        return new FamilyPage(family, chips, selected, rows, sites, view) { Removal = removal, CopySources = copySources, Examples = await ExamplesOfAsync(family, models, cancellationToken) };
+        return new FamilyPage(family, chips, selected, rows, sites, view)
+        {
+            Removal = removal,
+            CopySources = copySources,
+            Examples = await ExamplesOfAsync(family, models, cancellationToken),
+            SerialFormatSharedWith = await SerialFormatSharedWithAsync(selected.Id, selected.SerialFormat, cancellationToken),
+        };
     }
 
     private async Task<IReadOnlyList<CopySource>> CopySourcesAsync(BatteryFamily family, IReadOnlyList<BatteryModel> own, CancellationToken cancellationToken)
@@ -562,6 +581,76 @@ public sealed partial class ProductDataPages(
         await store.SetModelModuleDescriptionAsync(model.Id, wanted, cancellationToken);
         await AuditAsync(ModuleDescriptionEvent, who, $"Module description of battery model {model.Name} {(wanted is null ? "cleared" : "set")}", "dpp-model", model.Id, cancellationToken);
         return null;
+    }
+
+    public const string SerialFormatEvent = "dpp.model-serial-format-set";
+
+    /// <summary>How many of the batteries that don't fit a new format the page names.</summary>
+    public const int SerialFormatExamples = 5;
+
+    /// <summary>
+    /// Sets or clears a model's serial number format (decision 81). App data, not passport data: no new version. A format
+    /// is checked first (<see cref="Identifiers.SerialFormats.Problem"/>). When some of the model's batteries don't fit a
+    /// new format, nothing is saved until <paramref name="confirmed"/>: the page says how many, and they stay as they are.
+    /// </summary>
+    public async Task<SerialFormatSave> SetSerialFormatAsync(string who, BatteryModel model, string? typed, bool confirmed, Identifiers.IIdentifierScheme identifiers, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        var wanted = Identifiers.SerialFormats.Read(typed);
+        if (wanted is not null && Identifiers.SerialFormats.Problem(wanted, identifiers) is { } problem)
+        {
+            return new SerialFormatSave(problem, false, false, wanted, 0, [], []);
+        }
+
+        var sharedWith = await SerialFormatSharedWithAsync(model.Id, wanted, cancellationToken);
+        if (wanted == model.SerialFormat)
+        {
+            return new SerialFormatSave(null, true, false, wanted, 0, [], sharedWith);
+        }
+
+        if (wanted is not null && !confirmed && await SerialFormatMisfitsAsync(model.Id, wanted, cancellationToken) is { Count: > 0 } misfits)
+        {
+            return new SerialFormatSave(null, false, false, wanted, misfits.Count, misfits.Take(SerialFormatExamples).ToArray(), sharedWith);
+        }
+
+        await store.SetModelSerialFormatAsync(model.Id, wanted, cancellationToken);
+        await AuditAsync(
+            SerialFormatEvent,
+            who,
+            wanted is null ? $"Serial number format of battery model {model.Name} removed" : $"Serial number format of battery model {model.Name} set to {wanted}",
+            "dpp-model",
+            model.Id,
+            cancellationToken);
+        return new SerialFormatSave(null, true, true, wanted, 0, [], sharedWith);
+    }
+
+    /// <summary>The names of the other models whose format is the very same (letters without regard to case).</summary>
+    private async Task<IReadOnlyList<string>> SerialFormatSharedWithAsync(string modelId, string? format, CancellationToken cancellationToken) =>
+        string.IsNullOrEmpty(format)
+            ? []
+            : (await store.ListAsync<BatteryModel>(cancellationToken))
+                .Where(other => other.Id != modelId && Identifiers.SerialFormats.Same(other.SerialFormat, format))
+                .Select(other => other.Name)
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+    /// <summary>
+    /// The serial numbers of this model's batteries that don't fit <paramref name="format"/>: each battery once (its
+    /// first passport), test batteries left out, as test IDs are free of the format.
+    /// </summary>
+    private async Task<IReadOnlyList<string>> SerialFormatMisfitsAsync(string modelId, string format, CancellationToken cancellationToken)
+    {
+        static string? Text(BatteryPack pack, string property) =>
+            pack.Values.GetValueOrDefault(property)?.Value is System.Text.Json.Nodes.JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+
+        var batches = (await store.ListBatchesAsync(modelId, cancellationToken)).Select(batch => batch.Id).ToHashSet(StringComparer.Ordinal);
+        return (await store.ListAsync<BatteryPack>(cancellationToken))
+            .Where(pack => batches.Contains(pack.BatchId) && pack.SuccessorOf is null && !pack.IsDemo && !Identifiers.IdentifierForms.IsTest(Text(pack, "uniqueProductIdentifier")))
+            .Select(pack => Text(pack, "batterySerialNumber"))
+            .Where(serial => serial is not null && !Identifiers.SerialFormats.Fits(format, serial))
+            .Select(serial => serial!)
+            .OrderBy(serial => serial, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     /// <summary>

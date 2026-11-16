@@ -22,6 +22,9 @@ public sealed record DemoToken(string Label, string Access, string Value);
 /// <summary>What a seed or a clear did, in plain lines, with notes for anything left as it was.</summary>
 public sealed record DemoResult(IReadOnlyList<string> Done, IReadOnlyList<string> Notes, IReadOnlyList<DemoToken> Tokens);
 
+/// <summary>The test IDs and the test batteries on real product data that "Clear demo data" removes with the demo (decision 82).</summary>
+public sealed record TestDataOutsideTheDemo(int TestIds, int TestBatteries);
+
 /// <summary>
 /// The demo data (decision 32). Seeding makes the catalogue's records through the app's own creation, save and
 /// publication paths, so values are checked, logged and signed as usual, and marks each record it makes as demo data.
@@ -111,6 +114,46 @@ public sealed class DemoDataService(
     public async Task<bool> HasDemoDataAsync(CancellationToken cancellationToken = default) =>
         mongo.Database is not null
         && await Collection(DppStore.Families).CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq(Mark, true), cancellationToken: cancellationToken) > 0;
+
+    /// <summary>
+    /// What "Clear demo data" removes besides the demo itself (decision 82): the test IDs the team released (any status;
+    /// the demo's own IDs aren't counted) and the test batteries on real product data (a real batch or a real model).
+    /// Clearing removes every test ID and test battery; this only counts them, for its confirmation.
+    /// </summary>
+    public async Task<TestDataOutsideTheDemo> TestDataOutsideTheDemoAsync(CancellationToken cancellationToken = default)
+    {
+        if (mongo.Database is null)
+        {
+            return new TestDataOutsideTheDemo(0, 0);
+        }
+
+        var own = DemoCatalogue.Load().Packs.Select(pack => pack.Serial).Concat(SpareSerials).Select(Identifiers.IdentifierForms.Clean).ToHashSet(StringComparer.Ordinal);
+        var testIds = (await store.ReleasedIds.Find(item => item.IsDemo).Project(item => item.Id).ToListAsync(cancellationToken)).Count(id => !own.Contains(id));
+        var batches = (await store.ListAsync<ProductionBatch>(cancellationToken)).ToDictionary(batch => batch.Id, StringComparer.Ordinal);
+        var realModels = (await store.ListAsync<BatteryModel>(cancellationToken)).Where(model => !model.IsDemo).Select(model => model.Id).ToHashSet(StringComparer.Ordinal);
+        var testBatteries = (await store.ListAsync<BatteryPack>(cancellationToken))
+            .Count(pack => pack.IsDemo && pack.SuccessorOf is null && batches.TryGetValue(pack.BatchId, out var batch) && (!batch.IsDemo || realModels.Contains(batch.ModelId)));
+        return new TestDataOutsideTheDemo(testIds, testBatteries);
+    }
+
+    /// <summary>
+    /// The question "Clear demo data" asks (decision 82): as before, and, when there are any, how many test IDs and test
+    /// batteries on real product data go with it.
+    /// </summary>
+    public static string ClearConfirmation(TestDataOutsideTheDemo testData)
+    {
+        ArgumentNullException.ThrowIfNull(testData);
+        const string question = "Remove the demo data? Real data stays as it is, and a demo record that real data uses is kept.";
+        var ids = testData.TestIds == 0 ? null : $"{testData.TestIds} test {(testData.TestIds == 1 ? "ID" : "IDs")}";
+        var batteries = testData.TestBatteries == 0 ? null : $"{testData.TestBatteries} test {(testData.TestBatteries == 1 ? "battery" : "batteries")} on real product data";
+        return (ids, batteries) switch
+        {
+            (null, null) => question,
+            (not null, null) => $"{question} Test IDs go too: {ids}.",
+            (null, not null) => $"{question} Test batteries go too, also those on real product data: {batteries}.",
+            _ => $"{question} Test IDs and test batteries go too, also those on real product data: {ids} and {batteries}.",
+        };
+    }
 
     /// <summary>Clears the demo data, then seeds it again.</summary>
     public async Task<DemoResult> ResetAsync(string who, CancellationToken cancellationToken = default)

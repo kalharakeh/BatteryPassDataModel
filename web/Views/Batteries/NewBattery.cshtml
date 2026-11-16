@@ -52,7 +52,7 @@
                             <optgroup label="@family.Key">
                                 @foreach (var choice in family)
                                 {
-                                    <option value="@choice.BatchId" data-model="@choice.ModelId" selected="@(choice.BatchId == Model.BatchId)">@choice.Label</option>
+                                    <option value="@choice.BatchId" data-model="@choice.ModelId" data-format="@Model.ModelFormats.GetValueOrDefault(choice.ModelId)" selected="@(choice.BatchId == Model.BatchId)">@choice.Label</option>
                                 }
                             </optgroup>
                         }
@@ -85,7 +85,7 @@
                             <option value="@cluster.Id" selected="@(string.Equals(cluster.Id, Model.ClusterId, StringComparison.OrdinalIgnoreCase))">@(cluster.IsDemo ? $"{cluster.Name} (demo customer: test IDs only)" : cluster.Name)</option>
                         }
                     </select>
-                    <small class="bp-field-help">The customer it belongs to. Not passport data; it can be set later. A battery with a real ID can't go to a demo customer.</small>
+                    <small class="bp-field-help">The customer it belongs to. Not passport data; it can be set later.@if (Model.Clusters.Any(cluster => cluster.IsDemo)) { <text> A battery with a real ID can't go to a demo customer.</text> }</small>
                 </label>
             </div>
         </section>
@@ -125,7 +125,7 @@
                             }
                             @if (demoIds.Length > 0)
                             {
-                                <optgroup label="Demo IDs (marked TEST, cleared with the demo data)" data-model="">
+                                <optgroup label="Test IDs (marked TEST; removed by Clear demo data)" data-model="" data-test-ids>
                                     @foreach (var item in demoIds)
                                     {
                                         <option value="@item.SerialNumber" selected="@(item.SerialNumber == Model.PickedSerial)">@Option(item)</option>
