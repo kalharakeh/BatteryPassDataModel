@@ -201,7 +201,7 @@ public sealed class ProductDataLoadTests(MongoFixture mongo)
         var result = await rig.LoadAsync(Core());
 
         Assert.False(result.Loaded);
-        Assert.Equal("The load stopped part way: an error stopped it (InvalidOperationException). The records it had made were removed again. Nothing was saved.", result.Message);
+        Assert.Equal("The load stopped part way: an error stopped it (InvalidOperationException). The records it had made were removed again. Nothing was saved. Load again when the fault is gone.", result.Message);
         var counts = await rig.CountsAsync();
         Assert.StartsWith("families 0, models 0, batches 0, sites 0, operators 0, documents 0, files 0,", counts, StringComparison.Ordinal);
         Assert.Single(await rig.AuditAsync(ProductDataLoader.StoppedEvent));

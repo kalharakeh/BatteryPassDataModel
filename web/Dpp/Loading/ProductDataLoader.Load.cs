@@ -78,71 +78,41 @@ public sealed partial class ProductDataLoader
         var none = CancellationToken.None;
         var sender = ChangeSender.Team(who);
         var made = new List<Func<Task<bool>>>(); // how to remove each record the load made, in the order they were made
-        var touched = new List<string>(); // records that were already there and that the load began to change
+        var saved = new List<string>(); // records that were already there and that the load has saved changes to
         var before = new Dictionary<string, AffectedPassport>(StringComparer.Ordinal);
+
+        // The order of saving: first every record the load makes, made and filled in full. No reader sees any of them
+        // yet (no battery uses a new record), and a stop there removes them again. Then the records that were already
+        // there, which readers may see. Every reason a step could be refused was judged by the check; a stop now can
+        // only be a fault of the database, and loading the same workbook again finishes what is left.
+        foreach (var record in plan.All.Where(record => !record.IsNew))
+        {
+            record.Id = record.ExistingId;
+        }
+
         try
         {
-            foreach (var site in plan.Sites)
+            foreach (var record in Ordered(plan).Where(record => record.IsNew))
             {
-                site.Id = site.ExistingId ?? await pages.CreateSiteAsync(who, site.Name, none);
-                Made(site, RecordKind.Site);
-                await ApplyAsync(site);
-                await StepAsync("site");
-            }
-
-            foreach (var item in plan.Operators)
-            {
-                item.Id = item.ExistingId ?? await pages.CreateOperatorAsync(who, item.Name, none);
-                Made(item, RecordKind.Operator);
-                await ApplyAsync(item);
-                await StepAsync("operator");
-            }
-
-            if (plan.Family is { } family)
-            {
-                family.Id = family.ExistingId ?? await pages.CreateFamilyAsync(who, family.Name, none);
-                Made(family, RecordKind.Family);
-                await ApplyAsync(family);
-                if (family.Picture is { } picture)
-                {
-                    Unless(await pages.SetFamilyPictureAsync(who, family.Id, picture.FileName, picture.Content, none), family, "its picture wasn't saved");
-                }
-
-                await StepAsync("family");
-            }
-
-            foreach (var model in plan.Models)
-            {
-                model.Id = model.ExistingId
-                    ?? await pages.CreateModelAsync(who, plan.Family!.Id!, model.Name, null, none)
-                    ?? throw new LoadStopped($"the battery model {model.Name} couldn't be made: its family is gone");
-                Made(model, RecordKind.Model);
-                await OwnModelFieldsAsync(model);
-                await ApplyAsync(model);
-                await StepAsync("model");
-            }
-
-            foreach (var batch in plan.Batches)
-            {
-                if (batch.ExistingId is null)
-                {
-                    var (batchId, problem) = await pages.CreateBatchAsync(who, batch.Model!.Id!, batch.Year, batch.Site?.Id ?? batch.ExistingSiteId!, none);
-                    Unless(problem, batch, "it couldn't be made");
-                    batch.Id = batchId;
-                }
-                else
-                {
-                    batch.Id = batch.ExistingId;
-                }
-
-                Made(batch, RecordKind.Batch);
-                await ApplyAsync(batch);
-                await StepAsync("batch");
+                await SaveRecordAsync(record);
             }
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
-            return await StoppedAsync(who, check, exception, made, touched);
+            return await StoppedAsync(who, check, exception, made, saved);
+        }
+
+        try
+        {
+            foreach (var record in Ordered(plan).Where(record => !record.IsNew && record.HasWork))
+            {
+                saved.Add($"{LoadFields.Words(record.Record).ToLowerInvariant()} {record.Name}");
+                await SaveRecordAsync(record);
+            }
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            return await StoppedAsync(who, check, exception, [], saved, madeKept: made.Count);
         }
 
         var outcomes = await editor.OutcomesAsync(before.Values.ToArray(), none);
@@ -177,17 +147,63 @@ public sealed partial class ProductDataLoader
         var published = outcomes.Count > 0 ? " " + PublishWords.ForMany(outcomes) : string.Empty;
         return new LoadResult(true, $"Product data loaded: {did}, of {check.Summary}.{published}", check, plan.Family?.Id);
 
-        // A record the load made is removed again if the load stops; one that was there is noted as begun.
+        // One record: made when it is new, then its name, own fields, values and documents.
+        async Task SaveRecordAsync(RecordPlan record)
+        {
+            switch (record.Record)
+            {
+                case LoadRecord.Site:
+                    record.Id ??= await pages.CreateSiteAsync(who, record.Name, none);
+                    Made(record, RecordKind.Site);
+                    await ApplyAsync(record);
+                    await StepAsync("site");
+                    break;
+                case LoadRecord.Operator:
+                    record.Id ??= await pages.CreateOperatorAsync(who, record.Name, none);
+                    Made(record, RecordKind.Operator);
+                    await ApplyAsync(record);
+                    await StepAsync("operator");
+                    break;
+                case LoadRecord.Family:
+                    record.Id ??= await pages.CreateFamilyAsync(who, record.Name, none);
+                    Made(record, RecordKind.Family);
+                    await ApplyAsync(record);
+                    if (record.Picture is { } picture)
+                    {
+                        Unless(await pages.SetFamilyPictureAsync(who, record.Id, picture.FileName, picture.Content, none), record, "its picture wasn't saved");
+                    }
+
+                    await StepAsync("family");
+                    break;
+                case LoadRecord.Model:
+                    record.Id ??= await pages.CreateModelAsync(who, plan.Family!.Id!, record.Name, null, none)
+                        ?? throw new LoadStopped($"the battery model {record.Name} couldn't be made: its family is gone");
+                    Made(record, RecordKind.Model);
+                    await OwnModelFieldsAsync(record);
+                    await ApplyAsync(record);
+                    await StepAsync("model");
+                    break;
+                default:
+                    if (record.Id is null)
+                    {
+                        var (batchId, problem) = await pages.CreateBatchAsync(who, record.Model!.Id!, record.Year, record.Site?.Id ?? record.ExistingSiteId!, none);
+                        Unless(problem, record, "it couldn't be made");
+                        record.Id = batchId;
+                    }
+
+                    Made(record, RecordKind.Batch);
+                    await ApplyAsync(record);
+                    await StepAsync("batch");
+                    break;
+            }
+        }
+
+        // A record the load made is removed again if the load stops while it makes the new records.
         void Made(RecordPlan record, RecordKind kind)
         {
             var id = record.Id!;
             if (record.ExistingId is not null)
             {
-                if (record.HasWork)
-                {
-                    touched.Add($"{LoadFields.Words(record.Record).ToLowerInvariant()} {record.Name}");
-                }
-
                 return;
             }
 
@@ -291,12 +307,18 @@ public sealed partial class ProductDataLoader
 
     private Task StepAsync(string step) => StepHook is { } hook ? hook(step) : Task.CompletedTask;
 
+    /// <summary>The records in the order they are saved: sites and operators, the family, its models, their batches.</summary>
+    private static IEnumerable<RecordPlan> Ordered(LoadPlan plan) =>
+        plan.Sites.Concat(plan.Operators).Concat(plan.Family is null ? [] : [plan.Family]).Concat(plan.Models).Concat(plan.Batches);
+
     /// <summary>
-    /// A load that stopped part way: the records it had made are removed again, newest first, so a first load leaves
-    /// nothing behind. Changes it had already saved to records that were there before stay, and the message names
-    /// those records; loading the same workbook again finishes the rest.
+    /// A load that stopped part way. While it made the new records, they are removed again, newest first, so nothing is
+    /// left. Once it changes records that were already there, everything it saved stays: the new records are whole, and
+    /// each change saved is one the check showed. Loading the same workbook again finishes the rest; nothing has to be
+    /// undone by hand.
     /// </summary>
-    private async Task<LoadResult> StoppedAsync(string who, LoadCheck check, Exception exception, List<Func<Task<bool>>> made, List<string> touched)
+    /// <param name="madeKept">In the second part: how many new records were made, and stay.</param>
+    private async Task<LoadResult> StoppedAsync(string who, LoadCheck check, Exception exception, List<Func<Task<bool>>> made, List<string> touched, int madeKept = 0)
     {
         var left = 0;
         for (var index = made.Count - 1; index >= 0; index--)
@@ -318,8 +340,9 @@ public sealed partial class ProductDataLoader
         var removed = made.Count == 0 ? string.Empty
             : left == 0 ? " The records it had made were removed again."
             : $" {left} of the {Words.Count(made.Count, "record")} it had made couldn't be removed again; look at the product data pages.";
-        var stays = touched.Count == 0 ? " Nothing was saved."
-            : $" Changes it had already saved stay, in: {string.Join(", ", touched)}. Check the workbook again to see what is left, and load it again.";
+        var kept = madeKept > 0 ? $" The {Words.Count(madeKept, "new record")} it made stay{(madeKept == 1 ? "s" : string.Empty)}, complete." : string.Empty;
+        var stays = touched.Count == 0 && madeKept == 0 ? " Nothing was saved. Load again when the fault is gone."
+            : $"{kept}{(touched.Count > 0 ? $" It had started to save changes to: {string.Join(", ", touched)}." : string.Empty)} Load again to finish; nothing has to be undone by hand.";
         try
         {
             await audit.AppendApplicationAuditEventAsync(
