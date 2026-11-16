@@ -500,6 +500,7 @@ public static class XlsxReader
         string? value = null;
         string? inline = null;
         var formula = false;
+        var saved = false; // a <v> or <is> was there, even an empty one
         var depth = reader.Depth;
         while (reader.Read() && !(reader.NodeType == XmlNodeType.EndElement && reader.Depth == depth))
         {
@@ -508,12 +509,14 @@ public static class XlsxReader
                 continue;
             }
 
-            if (reader.LocalName == "v" && !reader.IsEmptyElement)
+            if (reader.LocalName == "v")
             {
-                value = ElementText(reader);
+                saved = true;
+                value = reader.IsEmptyElement ? string.Empty : ElementText(reader);
             }
             else if (reader.LocalName == "is")
             {
+                saved = true;
                 inline = RichText(reader);
             }
             else if (reader.LocalName == "f")
@@ -522,7 +525,7 @@ public static class XlsxReader
             }
         }
 
-        if (formula && string.IsNullOrEmpty(value) && string.IsNullOrEmpty(inline))
+        if (formula && !saved)
         {
             return new XlsxCell(string.Empty, IsNumber: false) { Note = CellNote.FormulaWithoutValue };
         }

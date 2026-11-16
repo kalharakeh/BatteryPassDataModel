@@ -662,13 +662,11 @@ public sealed partial class ProductDataPages(
     /// </summary>
     private async Task<IReadOnlyList<string>> SerialFormatMisfitsAsync(string modelId, string format, CancellationToken cancellationToken)
     {
-        static string? Text(BatteryPack pack, string property) =>
-            pack.Values.GetValueOrDefault(property)?.Value is System.Text.Json.Nodes.JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
-
-        var batches = (await store.ListBatchesAsync(modelId, cancellationToken)).Select(batch => batch.Id).ToHashSet(StringComparer.Ordinal);
-        return (await store.ListAsync<BatteryPack>(cancellationToken))
-            .Where(pack => batches.Contains(pack.BatchId) && pack.SuccessorOf is null && !pack.IsDemo && !Identifiers.IdentifierForms.IsTest(Text(pack, "uniqueProductIdentifier")))
-            .Select(pack => Text(pack, "batterySerialNumber"))
+        // Only this model's batteries, and of each only its serial number, ID and marks (X1 round three).
+        var batches = (await store.ListBatchesAsync(modelId, cancellationToken)).Select(batch => batch.Id).ToArray();
+        return (await store.ListSerialsOfBatchesAsync(batches, cancellationToken))
+            .Where(pack => pack.SuccessorOf is null && !pack.IsDemo && !Identifiers.IdentifierForms.IsTest(pack.BatteryId))
+            .Select(pack => pack.SerialNumber)
             .Where(serial => serial is not null && !Identifiers.SerialFormats.Fits(format, serial))
             .Select(serial => serial!)
             .OrderBy(serial => serial, StringComparer.OrdinalIgnoreCase)

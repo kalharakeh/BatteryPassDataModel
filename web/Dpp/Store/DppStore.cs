@@ -1348,6 +1348,35 @@ public sealed class DppStore
         return result.MatchedCount == 1;
     }
 
+    /// <summary>
+    /// The serial number (#11), battery ID (#6) and marks of every battery of these batches, read alone (a model's serial
+    /// number format, decision 81): the rest of each battery isn't read.
+    /// </summary>
+    public async Task<IReadOnlyList<PackSerial>> ListSerialsOfBatchesAsync(IReadOnlyCollection<string> batchIds, CancellationToken cancellationToken = default)
+    {
+        if (_database is null || batchIds.Count == 0)
+        {
+            return [];
+        }
+
+        var projection = Builders<BatteryPack>.Projection
+            .Include("Values.batterySerialNumber.Value")
+            .Include("Values.uniqueProductIdentifier.Value")
+            .Include(pack => pack.IsDemo)
+            .Include(pack => pack.SuccessorOf);
+        var found = await Collection<BatteryPack>().Find(Builders<BatteryPack>.Filter.In(pack => pack.BatchId, batchIds)).Project(projection).ToListAsync(cancellationToken);
+        static string? Text(BsonDocument document, string property) =>
+            document.TryGetValue("Values", out var values) && values.IsBsonDocument && values.AsBsonDocument.TryGetValue(property, out var value)
+                && value.IsBsonDocument && value.AsBsonDocument.TryGetValue("Value", out var text) && text.IsString
+                ? text.AsString
+                : null;
+        return found.Select(document => new PackSerial(
+            Text(document, "batterySerialNumber"),
+            Text(document, "uniqueProductIdentifier"),
+            document.TryGetValue("IsDemo", out var demo) && demo.IsBoolean && demo.AsBoolean,
+            document.TryGetValue("SuccessorOf", out var successor) && successor.IsString ? successor.AsString : null)).ToArray();
+    }
+
     private IMongoCollection<T> Collection<T>() => RequireDatabase().GetCollection<T>(CollectionName<T>());
 
     private IMongoDatabase RequireDatabase() =>

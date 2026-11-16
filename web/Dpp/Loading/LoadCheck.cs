@@ -18,7 +18,33 @@ public static class LoadStates
 }
 
 /// <summary>One value the load would change: the row's name, what the app has now and what the workbook gives.</summary>
-public sealed record LoadChangeLine(string Name, string Old, string New);
+public sealed record LoadChangeLine(string Name, string Old, string New)
+{
+    /// <summary>The column the value was taken from when the record's own cell was empty (the first model's); null for its own.</summary>
+    public string? TakenFrom { get; init; }
+}
+
+/// <summary>
+/// What a load does to published passports, said before Load (X1 round three): each published battery built from a
+/// record that changes gets a new version for each saved part, as on the forms, one save at a time.
+/// </summary>
+/// <param name="Batteries">How many published batteries the load reaches.</param>
+/// <param name="MostVersions">The most new versions one of them gets.</param>
+/// <param name="FewestVersions">The fewest.</param>
+/// <param name="Parts">Which records and parts reach them ("Battery model Core800: its values and 2 documents").</param>
+public sealed record LoadPublication(int Batteries, int MostVersions, int FewestVersions, IReadOnlyList<string> Parts)
+{
+    public string Text
+    {
+        get
+        {
+            var versions = MostVersions == FewestVersions
+                ? $"{(Batteries == 1 ? "It gets" : "Each gets")} {Pages.Words.Count(MostVersions, "new version")}, one for each part saved"
+                : $"Each gets one new version for each part saved, {FewestVersions} to {MostVersions}";
+            return $"{Pages.Words.Count(Batteries, "published battery", "published batteries")} {(Batteries == 1 ? "is" : "are")} built from records this load changes. {versions}: {string.Join("; ", Parts)}. If the load stops part way, {(Batteries == 1 ? "it stays" : "they stay")} on a version with only some of the changes until the workbook is loaded again.";
+        }
+    }
+}
 
 /// <summary>One document or picture of a record, with what the load does with it.</summary>
 public sealed record LoadDocumentView(string Name, string Detail, string State);
@@ -58,6 +84,9 @@ public sealed record LoadCheck(
     int PublishedPassports,
     string Stamp)
 {
+    /// <summary>What the load does to published passports; null when it reaches none.</summary>
+    public LoadPublication? Publication { get; init; }
+
     /// <summary>The documents and pictures still to come: named in the workbook, not sent with it. They don't stop a load.</summary>
     public IReadOnlyList<LoadPending> Pending { get; init; } = [];
 
@@ -206,6 +235,8 @@ internal sealed class LoadPlan
     public List<LoadPending> Pending { get; } = [];
 
     public int PublishedPassports { get; set; }
+
+    public LoadPublication? Publication { get; set; }
 
     /// <summary>The records as the check lists them: the family, its models, their batches, the sites, the operators.</summary>
     public IEnumerable<RecordPlan> All =>

@@ -101,6 +101,59 @@ internal sealed class FilledWorkbook
         return this;
     }
 
+    /// <summary>
+    /// Copies a whole column of a sheet into the column right after the sheet's input columns, heading included, as an
+    /// owner does to add a model with Copy and Paste. The notes column moves one to the right.
+    /// </summary>
+    public FilledWorkbook CopyColumn(string sheet, string heading)
+    {
+        var from = ColumnOf(sheet, heading);
+        var notes = ColumnOf(sheet, "Your notes or source");
+        foreach (var row in Sheet(sheet).Descendants(Main + "row"))
+        {
+            var number = (int)row.Attribute("r")!;
+            foreach (var cell in row.Elements(Main + "c").Where(cell => ColumnNumber((string)cell.Attribute("r")!) >= notes).Reverse().ToArray())
+            {
+                cell.SetAttributeValue("r", $"{XlsxWriter.Column(ColumnNumber((string)cell.Attribute("r")!))}{number.ToString(CultureInfo.InvariantCulture)}");
+            }
+
+            if (Cell(row, from, number) is { } source)
+            {
+                var copy = new XElement(source);
+                copy.SetAttributeValue("r", $"{XlsxWriter.Column(notes - 1)}{number.ToString(CultureInfo.InvariantCulture)}");
+                var after = row.Elements(Main + "c").LastOrDefault(other => ColumnNumber((string)other.Attribute("r")!) < notes);
+                if (after is null)
+                {
+                    row.AddFirst(copy);
+                }
+                else
+                {
+                    after.AddAfterSelf(copy);
+                }
+            }
+        }
+
+        return this;
+    }
+
+    /// <summary>Types a text into the n-th column after the example column (1 is the first input column).</summary>
+    public FilledWorkbook SetAt(string sheet, string key, int input, string text) =>
+        SetCell(sheet, RowOf(sheet, key), ColumnOf(sheet, "Example (made up, from the demo)") + input, text, number: false);
+
+    /// <summary>Types a number into the n-th column after the example column.</summary>
+    public FilledWorkbook SetNumberAt(string sheet, string key, int input, double number) =>
+        SetCell(sheet, RowOf(sheet, key), ColumnOf(sheet, "Example (made up, from the demo)") + input, number.ToString("G17", CultureInfo.InvariantCulture), number: true);
+
+    /// <summary>A formula whose saved result is an empty text, as Excel saves =IF(C20="","",C20).</summary>
+    public FilledWorkbook SetFormulaWithEmptyResult(string sheet, string key, string column)
+    {
+        SetCell(sheet, RowOf(sheet, key), ColumnOf(sheet, column), null, number: false);
+        var cell = Cell(RowElement(sheet, RowOf(sheet, key)), ColumnOf(sheet, column), RowOf(sheet, key))!;
+        cell.SetAttributeValue("t", "str");
+        cell.Add(new XElement(Main + "f", "IF(C20=\"\",\"\",C20)"), new XElement(Main + "v", string.Empty));
+        return this;
+    }
+
     /// <summary>Puts a cell with this reference into the first row with a key, as a crafted file might.</summary>
     public FilledWorkbook CellAt(string sheet, string reference, string text)
     {

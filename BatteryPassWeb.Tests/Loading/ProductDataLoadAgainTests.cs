@@ -77,7 +77,8 @@ public sealed class ProductDataLoadAgainTests(MongoFixture mongo)
         var check = await rig.CheckAsync(Core().SetNumber(ModelSheet, "model|maximumVoltage|voltValue", "Core800", 740));
 
         SameLines(["Core800: Changed", "Core800s: Changed", "Core700: Changed"], Changed(check));
-        Assert.All(check.Records.Where(record => record.State == LoadStates.Changed), record => Assert.Equal([new LoadChangeLine("Maximum voltage", "736 V", "740 V")], record.Changes));
+        Assert.Equal([new LoadChangeLine("Maximum voltage", "736 V", "740 V")], check.Records.Single(record => record.Name == "Core800").Changes);
+        Assert.All(check.Records.Where(record => record.Name is "Core800s" or "Core700"), record => Assert.Equal([new LoadChangeLine("Maximum voltage", "736 V", "740 V") { TakenFrom = "Core800" }], record.Changes));
     }
 
     [Fact]
@@ -218,7 +219,7 @@ public sealed class ProductDataLoadAgainTests(MongoFixture mongo)
         Assert.Empty(check.Texts());
         SameLines(["EXB-NMC-100: Changed", "EXB-NMC-100, batch 2026 · Example plant: Changed"], Changed(check));
         Assert.Equal(1, check.PublishedPassports);
-        Assert.Equal(["Loading publishes new versions of 1 passport: the published passport built from the records that change."], check.Notes);
+        Assert.Equal("1 published battery is built from records this load changes. It gets 2 new versions, one for each part saved: Battery model EXB-NMC-100: its values; Batch EXB-NMC-100, batch 2026 · Example plant: its values. If the load stops part way, it stays on a version with only some of the changes until the workbook is loaded again.", check.Publication?.Text);
         Assert.True(result.Loaded, result.Message);
         Assert.Equal("Product data loaded: 2 records changed, of 1 battery family, 1 battery model and 1 batch. 1 passport got a new version.", result.Message);
         Assert.Equal(3, (await rig.Store.GetActiveVersionAsync(rig.Rig.PackId))?.Number); // one new version for each record's save, as by hand

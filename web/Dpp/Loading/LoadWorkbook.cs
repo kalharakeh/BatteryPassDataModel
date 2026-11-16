@@ -146,6 +146,18 @@ public sealed class LoadWorkbook
         var keyColumn = headers.First(header => Same(header.Value, KeyHeader)).Key;
         var nameColumn = headers.FirstOrDefault(header => Same(header.Value, NameHeader)).Key;
         var inputs = headers.Where(header => !FixedHeaders.Contains(header.Value)).OrderBy(header => header.Key).ToArray();
+
+        // Two input columns with one heading (a copied column whose heading wasn't changed): nothing is read from either,
+        // or a batch would get another model's figures, or a second column would be passed over without a word.
+        foreach (var twins in inputs.GroupBy(header => header.Value.Trim(), StringComparer.OrdinalIgnoreCase).Where(group => group.Count() > 1))
+        {
+            var letters = twins.Select(header => XlsxColumn(header.Key)).ToArray();
+            var also = record == LoadRecord.Batch ? " One batch per model in a workbook: add another batch on the model's page, or in a second load" : string.Empty;
+            Problems.Add(new LoadProblem(name, string.Empty, twins.Key, $"columns {string.Join(" and ", letters)} are both headed \"{twins.Key}\", so nothing is loaded from either. Give each column a heading of its own.{also}".TrimEnd('.')));
+        }
+
+        inputs = inputs.Where(header => inputs.Count(other => Same(other.Value, header.Value)) == 1).ToArray();
+        Unheaded(sheet, name, headerRow, headers, keyColumn);
         var columns = inputs.Select((header, index) => (Sheet: header.Key, Column: new ValueColumn(header.Value, index + 1))).ToArray();
         result.Columns.AddRange(columns.Select(column => column.Column));
         foreach (var row in sheet.Rows.Where(row => row > headerRow))
@@ -202,6 +214,7 @@ public sealed class LoadWorkbook
         }
 
         var keyColumn = headers.First(header => Same(header.Value, KeyHeader)).Key;
+        Unheaded(sheet, name, headerRow, headers, keyColumn);
         var modelColumn = headers.FirstOrDefault(header => Same(header.Value, ModelHeader)).Key;
         var inputColumns = fields.Hazards.Inputs
             .Select(input => (Input: input, Column: headers.FirstOrDefault(header => Same(header.Value, input.Label)).Key))
@@ -266,6 +279,7 @@ public sealed class LoadWorkbook
 
         int Column(string header) => headers.FirstOrDefault(entry => Same(entry.Value, header)).Key;
         var keyColumn = Column(KeyHeader);
+        Unheaded(sheet, name, headerRow, headers, keyColumn);
         var (modelColumn, documentColumn, linkColumn, titleColumn, languageColumn) = (Column(ModelHeader), Column(DocumentHeader), Column(LinkHeader), Column(TitleHeader), Column(LanguageHeader));
         if (linkColumn == 0 || titleColumn == 0 || languageColumn == 0)
         {
@@ -322,6 +336,27 @@ public sealed class LoadWorkbook
                 Filled(sheet, row, languageColumn, new CellPlace(name, rowName, LanguageHeader))));
         }
     }
+
+    /// <summary>
+    /// A typed cell in a keyed row, in a column that has no heading in the header row (a column added without one): a
+    /// problem line per column, never passed over without a word.
+    /// </summary>
+    private void Unheaded(XlsxSheet sheet, string name, int headerRow, IReadOnlyDictionary<int, string> headers, int keyColumn)
+    {
+        var columns = sheet.Cells
+            .Where(cell => cell.Key.Row > headerRow && !headers.ContainsKey(cell.Key.Column) && (cell.Value.Text.Trim().Length > 0 || cell.Value.Note != CellNote.None)
+                && sheet.Text(cell.Key.Row, keyColumn).Contains('|', StringComparison.Ordinal))
+            .Select(cell => cell.Key.Column)
+            .Distinct()
+            .Order();
+        foreach (var column in columns)
+        {
+            Problems.Add(new LoadProblem(name, string.Empty, string.Empty, $"column {XlsxColumn(column)} has values but no heading in row {headerRow}. Give it a heading, or empty it"));
+        }
+    }
+
+    /// <summary>A column's letters as Excel shows them: 1 is A, 28 is AB.</summary>
+    public static string XlsxColumn(int column) => BatteryPassWeb.Dpp.Identifiers.XlsxWriter.Column(column - 1);
 
     /// <summary>
     /// A sheet with its header row: the first row that has the key column's heading, and that row's headings by column.
