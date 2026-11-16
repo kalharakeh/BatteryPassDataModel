@@ -41,9 +41,6 @@ public sealed partial class ProductDataLoader(
     AttributeForms forms,
     ApplicationAuditService audit)
 {
-    /// <summary>The most files one load takes with its workbook.</summary>
-    public const int MaxFiles = 40;
-
     /// <summary>The check judges values as the team's: who presses "Load" makes no difference to what is accepted.</summary>
     private static readonly ChangeSender Checker = ChangeSender.Team("product-data-load");
 
@@ -348,6 +345,12 @@ public sealed partial class ProductDataLoader(
         if (posted != ModelAnswers.NotAnswered)
         {
             model.Answers = posted;
+        }
+
+        model.AnswersAfter = stored;
+        foreach (var question in ModelQuestions.All.Where(question => posted.Of(question) is not null))
+        {
+            model.AnswersAfter = model.AnswersAfter.With(question, posted.Of(question));
         }
     }
 
@@ -771,7 +774,7 @@ public sealed partial class ProductDataLoader(
         }
         else if (stored is null)
         {
-            plan.Problems.Add(line.Place(LoadWorkbook.LinkHeader).Problem("give the web link: a title or a language alone is no document"));
+            Pending(plan, record, field, line, "no web link is written yet", hasOne: false);
             return;
         }
 
@@ -849,7 +852,7 @@ public sealed partial class ProductDataLoader(
         var current = record.ExistingId is null ? null : await LinkedDocumentAsync(record, property, cancellationToken);
         if (link is null)
         {
-            plan.Problems.Add(line.Place(LoadWorkbook.LinkHeader).Problem("give the file's name: a title or a language alone is no document"));
+            Pending(plan, record, field, line, "no file is named yet", current is not null);
             return;
         }
 
@@ -885,9 +888,16 @@ public sealed partial class ProductDataLoader(
             }
             else
             {
-                plan.Problems.Add(link.Place.Problem(current is not null && string.Equals(current.FileName, upload.FileName, StringComparison.OrdinalIgnoreCase)
-                    ? $"the file {upload.FileName} wasn't sent, and its title or language differs from the one in the app. Send the file again with the workbook"
-                    : $"the file {upload.FileName} wasn't sent. Choose it with the other files"));
+                // Not a problem: the owner won't have every document on the first day. Everything else is loaded.
+                Pending(
+                    plan,
+                    record,
+                    field,
+                    line,
+                    current is not null && string.Equals(current.FileName, upload.FileName, StringComparison.OrdinalIgnoreCase)
+                        ? $"the file {upload.FileName} wasn't sent, so its new title or language isn't saved yet"
+                        : $"the file {upload.FileName} wasn't sent",
+                    current is not null);
             }
 
             return;
@@ -915,6 +925,19 @@ public sealed partial class ProductDataLoader(
 
         record.Uploads.Add(new UploadPlan(field, file, wantedTitle, wantedLanguage));
         record.Documents.Add(new LoadDocumentView(line.DocumentName, detail, current is null ? LoadStates.New : LoadStates.Changed));
+    }
+
+    /// <summary>Notes a document that is still to come, with what that means for a passport (<see cref="PassportNeeds"/>).</summary>
+    private static void Pending(LoadPlan plan, RecordPlan record, DocumentField field, DocumentLine line, string missing, bool hasOne)
+    {
+        var meaning = hasOne ? "The document that is in the app stays until then."
+            : PassportNeeds.NeedOf(field.Attribute, record.AnswersAfter) switch
+            {
+                Need.Required => "The passport of a real battery can't be published until it is there.",
+                Need.Unanswered => "A passport may need it: that depends on the model's three answers.",
+                _ => "No passport waits for it.",
+            };
+        plan.Pending.Add(new LoadPending(record.Words, line.DocumentName, missing, meaning));
     }
 
     /// <summary>The uploaded document a record's value links now; null when it links none.</summary>
@@ -954,7 +977,9 @@ public sealed partial class ProductDataLoader(
             }
             else
             {
-                plan.Problems.Add(cell.Place.Problem($"the picture {fileName} wasn't sent. Choose it with the other files"));
+                plan.Pending.Add(new LoadPending(record.Words, name, $"the picture {fileName} wasn't sent", storedFileId is not null
+                    ? "The picture that is in the app stays until then."
+                    : "No passport waits for a picture: the public page shows none of its own until then."));
             }
 
             return;
@@ -1146,17 +1171,18 @@ public sealed partial class ProductDataLoader(
     // ---------- the check as it is shown ----------
 
     private static LoadCheck Unread(string name, byte[] workbook, IReadOnlyList<SentFile> files, string problem) =>
-        new(name, problem, [], [], [], 0, Stamp(workbook, files, [], [], [problem]));
+        new(name, problem, [], [], [], 0, Stamp(workbook, files, [], [], [problem], []));
 
     private static LoadCheck Finish(string name, byte[] workbook, IReadOnlyList<SentFile> files, LoadPlan plan)
     {
         var records = plan.All.Select(record => record.View()).ToArray();
         var problems = plan.Problems.Distinct().ToArray();
-        return new LoadCheck(name, null, records, problems, plan.Notes.ToArray(), plan.PublishedPassports, Stamp(workbook, files, records, problems, plan.Notes));
+        var pending = plan.Pending.Distinct().ToArray();
+        return new LoadCheck(name, null, records, problems, plan.Notes.ToArray(), plan.PublishedPassports, Stamp(workbook, files, records, problems, plan.Notes, pending)) { Pending = pending };
     }
 
     /// <summary>A fingerprint of the files and of everything the check says, so that a load can tell it is the same.</summary>
-    private static string Stamp(byte[] workbook, IReadOnlyList<SentFile> files, IReadOnlyList<LoadRecordView> records, IReadOnlyList<LoadProblem> problems, IReadOnlyList<string> notes)
+    private static string Stamp(byte[] workbook, IReadOnlyList<SentFile> files, IReadOnlyList<LoadRecordView> records, IReadOnlyList<LoadProblem> problems, IReadOnlyList<string> notes, IReadOnlyList<LoadPending> pending)
     {
         var text = JsonSerializer.Serialize(new
         {
@@ -1165,6 +1191,7 @@ public sealed partial class ProductDataLoader(
             records,
             problems,
             notes,
+            pending,
         });
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..32];
     }
@@ -1188,9 +1215,9 @@ public sealed partial class ProductDataLoader(
 
         public SentFiles(IReadOnlyList<SentFile> files, List<LoadProblem> problems)
         {
-            if (files.Count > MaxFiles)
+            if (files.Count > LoadLimits.MaxFiles)
             {
-                problems.Add(new LoadProblem(string.Empty, string.Empty, string.Empty, $"{files.Count} files were sent; one load takes up to {MaxFiles}"));
+                problems.Add(new LoadProblem(string.Empty, string.Empty, string.Empty, $"{files.Count} files were sent; {LoadLimits.TooMany}"));
             }
 
             foreach (var file in files)

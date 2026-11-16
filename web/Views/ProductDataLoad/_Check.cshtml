@@ -70,6 +70,26 @@
         <p class="bp-help-text mt-2 mb-0">The app already holds everything this workbook says: there is nothing to load.</p>
     }
 
+    @if (check.Pending.Count > 0)
+    {
+        <div class="mt-3" data-load-pending>
+            <h3 class="h6 mb-1">Documents still to come</h3>
+            <p class="bp-help-text mb-1">
+                These don't stop the load: everything else is saved, and each of these stays as it is in the app. Load
+                the workbook again with the file, or add it on the record's page, when you have it.
+            </p>
+            <table class="bp-upload-values">
+                <thead><tr><th>Record</th><th>Document</th><th>What is missing</th><th>What it means</th></tr></thead>
+                <tbody>
+                    @foreach (var pending in check.Pending)
+                    {
+                        <tr data-load-pending-row><td>@pending.Record</td><td data-label="Document">@pending.Document</td><td data-label="What is missing">@pending.Missing</td><td data-label="What it means">@pending.Meaning</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
     @if (check.Notes.Count > 0)
     {
         <ul class="bp-upload-notes" data-load-notes>

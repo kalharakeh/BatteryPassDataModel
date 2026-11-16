@@ -165,18 +165,6 @@ public sealed class ProductDataLoadAgainTests(MongoFixture mongo)
     }
 
     [Fact]
-    public async Task AChangedTitleWithoutTheFile_ShouldAskForTheFile()
-    {
-        var rig = await LoadedAsync();
-
-        var check = await rig.CheckAsync(Core().Document("Core800s", "model", "safetyMeasures", null, "Another title"), []);
-
-        SameLines(
-            ["Documents and links, Safety measures (Core800), File name or web link: the file safety-measures.pdf wasn't sent, and its title or language differs from the one in the app. Send the file again with the workbook"],
-            check.Texts());
-    }
-
-    [Fact]
     public async Task ANewYear_ShouldMakeANewBatch_BesideTheOneThatIsThere()
     {
         var rig = await LoadedAsync();

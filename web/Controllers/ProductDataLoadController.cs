@@ -14,7 +14,9 @@ namespace BatteryPassWeb.Controllers;
 /// <param name="MaxUploadBytes">The largest single file the app takes, as on every upload.</param>
 public sealed record ProductDataLoadPage(LoadCheck? Check, string? Error, long MaxUploadBytes)
 {
-    public int MaxFiles => ProductDataLoader.MaxFiles;
+    public int MaxFiles => LoadLimits.MaxFiles;
+
+    public long MaxLoadBytes => LoadLimits.MaxRequestBytes;
 }
 
 /// <summary>
@@ -26,24 +28,10 @@ public sealed record ProductDataLoadPage(LoadCheck? Check, string? Error, long M
 [Route("admin/product-data-load")]
 public sealed class ProductDataLoadController(ProductDataLoader loader, AccessControlService access, IOptions<BatteryPassOptions> options) : Controller
 {
-    /// <summary>
-    /// The most one load may send: the workbook and up to twenty files of the largest size an upload may have by default.
-    /// Each file still passes the upload's own size check. The request limit in Program.cs must allow this for the page's
-    /// two posts (see <see cref="AppliesTo"/>); until it does, a load is held to the limit of a single upload.
-    /// </summary>
-    public const long MaxRequestBytes = (20 * BatteryPassOptions.DefaultMaxUploadBytes) + XlsxReader.MaxBytes + 65_536;
-
-    public const string Path = "/admin/product-data-load";
+    public const string Path = LoadLimits.Path;
 
     /// <summary>The header the page's script sends with a check, to get the check alone and show it in place.</summary>
     public const string InPlaceHeader = "X-Requested-With";
-
-    /// <summary>True for the page's two posts, which carry several files at once.</summary>
-    public static bool AppliesTo(HttpRequest request)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        return HttpMethods.IsPost(request.Method) && request.Path.StartsWithSegments(Path, StringComparison.OrdinalIgnoreCase);
-    }
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken) =>
@@ -57,8 +45,8 @@ public sealed class ProductDataLoadController(ProductDataLoader loader, AccessCo
     /// <summary>The check: what a load would do, and every problem. Saves nothing.</summary>
     [HttpPost("check")]
     [ValidateAntiForgeryToken]
-    [RequestSizeLimit(MaxRequestBytes)]
-    [RequestFormLimits(MultipartBodyLengthLimit = MaxRequestBytes)]
+    [RequestSizeLimit(LoadLimits.MaxRequestBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = LoadLimits.MaxRequestBytes)]
     public async Task<IActionResult> Check(IFormFile? workbook, List<IFormFile>? files, CancellationToken cancellationToken)
     {
         if (await access.IsDemoAccountAsync(User, cancellationToken))
@@ -75,8 +63,8 @@ public sealed class ProductDataLoadController(ProductDataLoader loader, AccessCo
     /// <summary>The load: all of what the check showed, or nothing.</summary>
     [HttpPost("")]
     [ValidateAntiForgeryToken]
-    [RequestSizeLimit(MaxRequestBytes)]
-    [RequestFormLimits(MultipartBodyLengthLimit = MaxRequestBytes)]
+    [RequestSizeLimit(LoadLimits.MaxRequestBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = LoadLimits.MaxRequestBytes)]
     public async Task<IActionResult> Load(IFormFile? workbook, List<IFormFile>? files, [FromForm] string? stamp, CancellationToken cancellationToken)
     {
         if (await access.IsDemoAccountAsync(User, cancellationToken))

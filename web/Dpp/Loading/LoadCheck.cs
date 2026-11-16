@@ -23,6 +23,16 @@ public sealed record LoadChangeLine(string Name, string Old, string New);
 /// <summary>One document or picture of a record, with what the load does with it.</summary>
 public sealed record LoadDocumentView(string Name, string Detail, string State);
 
+/// <summary>
+/// A document or picture the workbook names that wasn't sent (or has no file or link yet): it doesn't stop the load.
+/// Everything else is saved and this one stays as it is in the app, until a later load brings it or the team adds it
+/// on the record's page.
+/// </summary>
+/// <param name="Record">The record it belongs to ("Battery model Core800s").</param>
+/// <param name="Missing">What is missing ("the file safety-measures.pdf wasn't sent").</param>
+/// <param name="Meaning">What that means for a passport.</param>
+public sealed record LoadPending(string Record, string Document, string Missing, string Meaning);
+
 /// <summary>One record as the check shows it: new, changed or left as it is, with every value that would change.</summary>
 public sealed record LoadRecordView(
     LoadRecord Record,
@@ -48,6 +58,9 @@ public sealed record LoadCheck(
     int PublishedPassports,
     string Stamp)
 {
+    /// <summary>The documents and pictures still to come: named in the workbook, not sent with it. They don't stop a load.</summary>
+    public IReadOnlyList<LoadPending> Pending { get; init; } = [];
+
     public bool HasProblems => WorkbookProblem is not null || Problems.Count > 0;
 
     /// <summary>True when the load would make or change something.</summary>
@@ -134,6 +147,11 @@ internal sealed class RecordPlan(LoadRecord record, string name, string header)
     /// <summary>The model's answers the workbook gives that differ from the stored ones; null when none does.</summary>
     public ModelAnswers? Answers { get; set; }
 
+    /// <summary>A model's answers as they will be after the load: they decide which of its documents a passport needs.</summary>
+    public ModelAnswers AnswersAfter { get; set; } = ModelAnswers.NotAnswered;
+
+    public string Words => $"{LoadFields.Words(Record)} {Name}";
+
     public bool SetDescription { get; set; }
 
     public string? Description { get; set; }
@@ -179,6 +197,8 @@ internal sealed class LoadPlan
     public List<LoadProblem> Problems { get; } = [];
 
     public List<string> Notes { get; } = [];
+
+    public List<LoadPending> Pending { get; } = [];
 
     public int PublishedPassports { get; set; }
 

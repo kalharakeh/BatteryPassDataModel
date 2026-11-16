@@ -42,7 +42,6 @@ public sealed class ProductDataLoadProblemsTests(MongoFixture mongo)
         Assert.False(result.Loaded);
         SameLines(
             [
-                "Documents and links, Information on sources of spare parts (Core800), File name or web link: the file spare-parts.pdf wasn't sent. Choose it with the other files",
                 "Documents and links, Safety measures (Core900), Model: the sheet Models has no model called Core900. Write a model's name as it is on that sheet",
                 "Models, Battery mass, Core700: 4,7 is not a number; type the number only, with a point for decimals",
                 "Models, Is this battery made for cycling use?, Core800s: yes isn't one of the two answers. Choose Yes or No from the cell's list",
@@ -50,6 +49,7 @@ public sealed class ProductDataLoadProblemsTests(MongoFixture mongo)
             ],
             result.Check.Texts().Order(StringComparer.Ordinal));
         Assert.Equal(Nothing, await rig.CountsAsync());
+        Assert.Contains(result.Check.Pending, pending => pending.Missing == "the file spare-parts.pdf wasn't sent");
     }
 
     [Fact]
@@ -130,7 +130,6 @@ public sealed class ProductDataLoadProblemsTests(MongoFixture mongo)
         SameLines(
             [
                 "Documents and links, Dismantling information: manuals for removal and disassembly (Core800), File name or web link: this document is a file you send, not a web link: only the people it is for may open it. Write the file's name and send the file with the workbook",
-                "Documents and links, EU declaration of conformity (Core800), File name or web link: give the web link: a title or a language alone is no document",
                 "Documents and links, Part numbers for components (Core800), File name or web link: part-numbers.pdf: only PDF, PNG and JPEG files are accepted, recognised by their content",
                 "Documents and links, Safety measures (Core800), Language: Swedish must be one of the listed choices",
                 "Documents and links, Separate collection symbol (Core800), File name or web link: separate-collection.svg, no link yet is not a web link. The passport keeps only the address, so the document must be on a public page that starts with https://",

@@ -41,6 +41,27 @@
         loadButton.disabled = !can;
     }
 
+    // The page's own figures, said before anything is sent (the app says the same if it is sent all the same).
+    function tooMuch() {
+        const files = form.querySelector('input[name="files"]');
+        const chosen = [...files.files];
+        const maxFiles = Number(files.dataset.maxFiles);
+        const maxBytes = Number(files.dataset.maxBytes);
+        const maxLoad = Number(files.dataset.maxLoadBytes);
+        const megabytes = (bytes) => Math.round(bytes / 1048576);
+        const big = chosen.find((file) => maxBytes > 0 && file.size > maxBytes);
+        const total = chosen.reduce((sum, file) => sum + file.size, workbook.files[0]?.size ?? 0);
+        const text = chosen.length > maxFiles ? `${chosen.length} files are chosen; one load takes up to ${maxFiles}. Send fewer files this time: a document that isn't sent is listed as still to come, and a later load adds it.`
+            : big ? `${big.name} is larger than ${megabytes(maxBytes)} MB, the most a single file may be.`
+            : total > maxLoad ? `The workbook and its files are more than ${megabytes(maxLoad)} MB together, and one load takes up to ${megabytes(maxLoad)} MB. Send fewer files this time: a document that isn't sent is listed as still to come, and a later load adds it.`
+            : null;
+        if (text) {
+            problem(text);
+        }
+
+        return text !== null;
+    }
+
     function forget() {
         result.replaceChildren();
         say('');
@@ -66,6 +87,10 @@
             return;
         }
 
+        if (tooMuch()) {
+            return;
+        }
+
         checkButton.disabled = true;
         loadButton.disabled = true;
         say('Checking the workbook and its files…');
@@ -77,7 +102,7 @@
         })
             .then((response) => {
                 if (response.status === 413) {
-                    throw new Error('The workbook and its files are too large together for one load. Leave out the files that are already in the app, or load the models one after the other.');
+                    return response.json().then((body) => { throw new Error(body.error || 'The workbook and its files are too large together for one load.'); }, () => { throw new Error('The workbook and its files are too large together for one load.'); });
                 }
 
                 if (!response.ok || response.redirected) {
@@ -112,7 +137,7 @@
             return;
         }
 
-        if (loadButton.disabled) {
+        if (loadButton.disabled || tooMuch()) {
             event.preventDefault();
             return;
         }

@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Load product data from Excel";
     var megabytes = Math.Max(1, Model.MaxUploadBytes / (1024 * 1024));
+    var loadMegabytes = Model.MaxLoadBytes / (1024 * 1024);
 }
 
 <main class="bp-page bp-admin-page">
@@ -44,10 +45,11 @@
             </div>
             <div>
                 <label for="load-files" class="form-label">The documents and pictures it names</label>
-                <input id="load-files" type="file" name="files" class="form-control" multiple accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg" data-load-file />
-                <p class="bp-help-text mt-1 mb-0">
-                    Choose all of them at once: PDF, PNG or JPEG, up to @megabytes MB each, up to @Model.MaxFiles files.
-                    A file's name must be the name written in the workbook. A file that is already in the app needn't be sent again.
+                <input id="load-files" type="file" name="files" class="form-control" multiple accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg" data-load-file data-max-files="@Model.MaxFiles" data-max-bytes="@Model.MaxUploadBytes" data-max-load-bytes="@Model.MaxLoadBytes" />
+                <p class="bp-help-text mt-1 mb-0" data-load-limits>
+                    Choose all of them at once: PDF, PNG or JPEG, up to @megabytes MB each, up to @Model.MaxFiles files,
+                    and up to @loadMegabytes MB with the workbook. A file's name must be the name written in the workbook.
+                    A document you don't have yet can follow in a later load; one that is already in the app needn't be sent again.
                 </p>
             </div>
             <p class="bp-help-text mb-0" data-load-again hidden>
