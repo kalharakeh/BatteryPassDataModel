@@ -29,6 +29,7 @@ public sealed class PassportRemovalSharedSerialTests(MongoFixture mongo)
         var twin = (await packs.Find(Builders<BsonDocument>.Filter.Eq("_id", rig.PackId)).SingleAsync()).DeepClone().AsBsonDocument;
         twin["_id"] = "pack-twin";
         twin["Values"]["uniqueProductIdentifier"]["Value"] = "urn:test:twin-battery";
+        twin["ItemKey"] = BatteryPassWeb.Dpp.Identifiers.IdentifierForms.ItemKey("urn:test:twin-battery"); // its own ID's key (the unique index of S1 round two)
         twin.Remove("Mark");
         await packs.InsertOneAsync(twin); // a live battery with the same serial number
         var uploads = database.GetCollection<BsonDocument>(DppStore.Uploads);
