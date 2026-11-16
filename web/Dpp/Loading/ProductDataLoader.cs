@@ -179,7 +179,7 @@ public sealed partial class ProductDataLoader(
             LoadRecord.Batch => sent?.Batches,
             LoadRecord.Site => sent?.Sites,
             _ => sent?.Operators,
-        })?.Columns.FirstOrDefault(other => other.Number == column.Number);
+        })?.Columns.FirstOrDefault(other => SameName(other.Header, column.Header));
         return column.Cells.Any(cell => came?.Cell(cell.Key)?.Text != cell.Value.Text);
     }
 
@@ -377,17 +377,19 @@ public sealed partial class ProductDataLoader(
     private async Task PlanSerialFormatAsync(RecordPlan model, string rowName, FilledCell cell, BatteryModel? current, LoadPlan plan, CancellationToken cancellationToken)
     {
         var typed = cell.IsNone ? null : cell.Text;
-        var preview = await pages.PreviewSerialFormatAsync(current?.Id, typed, identifiers, cancellationToken);
-        if (preview.Problem is { } problem)
+        var wanted = BatteryPassWeb.Dpp.Identifiers.SerialFormats.Read(typed);
+        if (wanted is not null && BatteryPassWeb.Dpp.Identifiers.SerialFormats.Problem(wanted, identifiers) is { } problem)
         {
             plan.Problems.Add(cell.Place.Problem($"{cell.Text}: {problem}"));
             return;
         }
 
-        if (preview.Format == current?.SerialFormat)
+        if (wanted == current?.SerialFormat)
         {
-            return;
+            return; // unchanged: nothing is read
         }
+
+        var preview = await pages.PreviewSerialFormatAsync(current?.Id, typed, identifiers, cancellationToken);
 
         model.SetSerialFormat = true;
         model.SerialFormat = preview.Format;
@@ -563,7 +565,14 @@ public sealed partial class ProductDataLoader(
             }
 
             plan.Batches.Add(batch);
-            Effective(first, column, batch, batchWords); // notes where its empty cells were taken from
+            if (column.Cells.Count == 0 && first is not null && !ReferenceEquals(first, column))
+            {
+                batch.Notes.Add($"Its column on the sheet {LoadFields.BatchesSheet} is empty, so every value, the year and the site included, is taken from {batchWords}.");
+            }
+            else
+            {
+                Effective(first, column, batch, batchWords); // notes where its empty cells were taken from
+            }
             PlanValues(batch, sheet, cells, plan);
             await PlanDocumentsAsync(batch, LoadRecord.Batch, content, models, model, plan, sent, current?.ExampleDocumentIds, cancellationToken);
         }
@@ -673,7 +682,7 @@ public sealed partial class ProductDataLoader(
                 if (stored is not null)
                 {
                     record.Removals.Add(group.Key);
-                    AddLines(record, sheet, form, group.Select(entry => entry.Field), FormValues.Show(form, stored), new Dictionary<string, string>());
+                    AddLines(record, sheet, form, group.Select(entry => entry.Field), FormValues.Show(form, stored), new Dictionary<string, string>(), group.ToDictionary(entry => entry.Field.Key, entry => entry.Cell, StringComparer.Ordinal));
                 }
 
                 continue;
@@ -685,11 +694,12 @@ public sealed partial class ProductDataLoader(
             }
 
             record.Changed[group.Key] = value;
-            AddLines(record, sheet, form, group.Select(entry => entry.Field), FormValues.Show(form, stored), FormValues.Show(form, value));
+            AddLines(record, sheet, form, group.Select(entry => entry.Field), FormValues.Show(form, stored), FormValues.Show(form, value), group.ToDictionary(entry => entry.Field.Key, entry => entry.Cell, StringComparer.Ordinal));
         }
     }
 
-    private static void AddLines(RecordPlan record, ValueSheet sheet, AttributeForm form, IEnumerable<ValueField> given, IReadOnlyDictionary<string, string> before, IReadOnlyDictionary<string, string> after)
+    /// <param name="cells">The cell behind each field: one in another column than the record's is a value taken over from the first model's.</param>
+    private static void AddLines(RecordPlan record, ValueSheet sheet, AttributeForm form, IEnumerable<ValueField> given, IReadOnlyDictionary<string, string> before, IReadOnlyDictionary<string, string> after, IReadOnlyDictionary<string, FilledCell> cells)
     {
         foreach (var field in given)
         {
@@ -700,7 +710,8 @@ public sealed partial class ProductDataLoader(
             {
                 // As it will be stored, with the unit the app writes beside it.
                 string WithUnit(string text) => text.Length > 0 && field.Input.Unit is { Length: > 0 } unit ? $"{text} {unit}" : text;
-                record.Lines.Add(new LoadChangeLine(sheet.RowName(field.Key), WithUnit(old), now.Length == 0 ? Gone : WithUnit(now)));
+                var from = cells.GetValueOrDefault(field.Key)?.Place.Column is { } column && !SameName(column, record.Header) ? column : null;
+                record.Lines.Add(new LoadChangeLine(sheet.RowName(field.Key), WithUnit(old), now.Length == 0 ? Gone : WithUnit(now)) { TakenFrom = from });
             }
         }
     }
@@ -1294,11 +1305,16 @@ public sealed partial class ProductDataLoader(
     private async Task PublishedAsync(LoadPlan plan, CancellationToken cancellationToken)
     {
         var reached = new HashSet<string>(StringComparer.Ordinal);
+        var parts = new Dictionary<string, int>(StringComparer.Ordinal); // published battery -> the saved parts that reach it
         foreach (var record in plan.All.Where(record => record.ExistingId is not null && record.Record != LoadRecord.Family))
         {
             if (record.ChangesPassportData)
             {
-                reached.UnionWith((await editor.AffectedAsync(LoadFields.KindOf(record.Record), record.ExistingId!, cancellationToken)).Select(passport => passport.PackId));
+                foreach (var passport in await editor.AffectedAsync(LoadFields.KindOf(record.Record), record.ExistingId!, cancellationToken))
+                {
+                    reached.Add(passport.PackId);
+                    parts[passport.PackId] = parts.GetValueOrDefault(passport.PackId) + Parts(record);
+                }
             }
 
             if (record.Answers is { } answers && await store.GetAsync<BatteryModel>(record.ExistingId!, cancellationToken) is { } model)
@@ -1314,9 +1330,35 @@ public sealed partial class ProductDataLoader(
         plan.PublishedPassports = reached.Count;
         if (reached.Count > 0)
         {
-            plan.Notes.Insert(0, $"Loading publishes new versions of {Words.Count(reached.Count, "passport")}: the published {(reached.Count == 1 ? "passport" : "passports")} built from the records that change.");
+            plan.Publication = new LoadPublication(reached.Count, parts.Values.Max(), parts.Values.Min(), PartWords(plan));
         }
     }
+
+    /// <summary>
+    /// How many saves of a record each give its published batteries a new version, as on the forms: one for its values
+    /// (changed or removed together) and one for each uploaded document.
+    /// </summary>
+    private static int Parts(RecordPlan record) => (record.Changed.Count > 0 || record.Removals.Count > 0 ? 1 : 0) + record.Uploads.Count;
+
+    /// <summary>The saved parts that reach published batteries, in words: "Core800: its values and 2 documents".</summary>
+    private static IReadOnlyList<string> PartWords(LoadPlan plan) => plan.All
+        .Where(record => record.ExistingId is not null && record.Record != LoadRecord.Family && record.ChangesPassportData)
+        .Select(record =>
+        {
+            var what = new List<string>();
+            if (record.Changed.Count > 0 || record.Removals.Count > 0)
+            {
+                what.Add("its values");
+            }
+
+            if (record.Uploads.Count > 0)
+            {
+                what.Add(Words.Count(record.Uploads.Count, "document"));
+            }
+
+            return $"{record.Words}: {string.Join(" and ", what)}";
+        })
+        .ToArray();
 
     // ---------- the check as it is shown ----------
 
@@ -1328,7 +1370,7 @@ public sealed partial class ProductDataLoader(
         var records = plan.All.Select(record => record.View()).ToArray();
         var problems = plan.Problems.Distinct().ToArray();
         var pending = plan.Pending.Distinct().ToArray();
-        return new LoadCheck(name, null, records, problems, plan.Notes.ToArray(), plan.PublishedPassports, Stamp(workbook, files, records, problems, plan.Notes, pending)) { Pending = pending };
+        return new LoadCheck(name, null, records, problems, plan.Notes.ToArray(), plan.PublishedPassports, Stamp(workbook, files, records, problems, plan.Notes, pending)) { Pending = pending, Publication = plan.Publication };
     }
 
     /// <summary>A fingerprint of the files and of everything the check says, so that a load can tell it is the same.</summary>

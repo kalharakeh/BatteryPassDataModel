@@ -6,6 +6,9 @@ namespace BatteryPassWeb.Dpp.Store;
 // The records of design section 4.1 that a passport is built from. Values are keyed by v2.0.1 property name
 // and kept in the schema's own form. Passport versions and documents come in plan 2b and 2c.
 
+/// <summary>A battery's serial number, battery ID and marks, read alone (<c>DppStore.ListSerialsOfBatchesAsync</c>).</summary>
+public sealed record PackSerial(string? SerialNumber, string? BatteryId, bool IsDemo, string? SuccessorOf);
+
 /// <summary>A stored record; <see cref="Id"/> is its MongoDB _id.</summary>
 public interface IDppRecord
 {
