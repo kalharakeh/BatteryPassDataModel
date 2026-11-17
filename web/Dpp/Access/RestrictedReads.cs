@@ -56,84 +56,119 @@ public sealed class RestrictedReads(MongoContext context, ApplicationAuditServic
         _indexed = 1;
     }
 
-    /// <summary>Logs a reader's first opening of a battery's restricted sections today; false when it was logged already.</summary>
-    public async Task<bool> NoteBatteryAsync(string who, string roleLabel, string packId, string batteryName, IReadOnlyList<string> sections, CancellationToken cancellationToken = default)
-    {
-        if (!await FirstTodayAsync($"{Key(who)}|battery|{packId}", cancellationToken))
-        {
-            return false;
-        }
+    /// <summary>The kinds of page, each with its own key per reader and day (H1 round two).</summary>
+    public const string DetailPage = "detail";
+    public const string AccidentsPage = "accidents";
+    public const string RegistryPage = "registry";
 
-        await audit.AppendApplicationAuditEventAsync(
-            EventType,
+    /// <summary>A claimed key that never got its entry (the app stopped in between) is taken again after this long.</summary>
+    public static readonly TimeSpan StaleClaim = TimeSpan.FromMinutes(2);
+
+    /// <summary>Logs a reader's first opening today of a battery's restricted data on this kind of page; false when it was logged already.</summary>
+    public Task<bool> NoteBatteryAsync(string who, string roleLabel, string page, string packId, string batteryName, IReadOnlyList<string> sections, CancellationToken cancellationToken = default) =>
+        NoteAsync(
+            $"{Key(who)}|{page}|{packId}",
             who,
             roleLabel,
-            "restricted-read",
             $"opened the restricted data of battery {batteryName}: {string.Join(", ", sections)}",
             new BsonDocument
             {
+                ["page"] = page,
                 ["battery"] = batteryName,
                 ["sections"] = new BsonArray(sections.Select(section => (BsonValue)section)),
             },
-            entityType: "dpp-pack",
-            entityId: packId,
-            cancellationToken: cancellationToken);
-        return true;
-    }
+            "dpp-pack",
+            packId,
+            cancellationToken);
+
+    /// <summary>Logs a reader's first look today at the registry list with battery statuses that aren't theirs; false when it was logged already.</summary>
+    public Task<bool> NoteListAsync(string who, string roleLabel, IReadOnlyCollection<string> packIds, CancellationToken cancellationToken = default) =>
+        NoteAsync(
+            $"{Key(who)}|{RegistryPage}|list",
+            who,
+            roleLabel,
+            $"opened the registry list with the battery statuses of {packIds.Count} {(packIds.Count == 1 ? "battery" : "batteries")}",
+            new BsonDocument
+            {
+                ["page"] = RegistryPage,
+                ["batteries"] = packIds.Count,
+                ["packIds"] = new BsonArray(packIds.Take(200).Select(id => (BsonValue)id)),
+            },
+            "dpp-registry",
+            "list",
+            cancellationToken);
 
     /// <summary>Logs a reader's first download of a restricted document today; false when it was logged already.</summary>
-    public async Task<bool> NoteDocumentAsync(string who, string roleLabel, string documentId, string documentName, string? packId, CancellationToken cancellationToken = default)
+    public Task<bool> NoteDocumentAsync(string who, string roleLabel, string documentId, string documentName, string? packId, CancellationToken cancellationToken = default)
     {
-        if (!await FirstTodayAsync($"{Key(who)}|document|{documentId}", cancellationToken))
-        {
-            return false;
-        }
-
         var metadata = new BsonDocument { ["document"] = documentName };
         if (packId is not null)
         {
             metadata["packId"] = packId;
         }
 
-        await audit.AppendApplicationAuditEventAsync(
-            EventType,
-            who,
-            roleLabel,
-            "restricted-read",
-            $"opened the restricted document {documentName}",
-            metadata,
-            entityType: "dpp-document",
-            entityId: documentId,
-            cancellationToken: cancellationToken);
-        return true;
+        return NoteAsync($"{Key(who)}|document|{documentId}", who, roleLabel, $"opened the restricted document {documentName}", metadata, "dpp-document", documentId, cancellationToken);
     }
 
     private static string Key(string who) => ClusterRepository.NormalizeEmail(who);
 
-    /// <summary>Takes today's place for this key; false when it was taken. One write decides, so it is the same for every app instance.</summary>
-    private async Task<bool> FirstTodayAsync(string key, CancellationToken cancellationToken)
+    /// <summary>
+    /// One entry per key and UTC day, never lost (H1 round two): the key is claimed (two openings at once make one entry),
+    /// the entry is written, then the claim is confirmed, none of it on the request's cancellation. A failed entry gives
+    /// the claim back, so the next opening is logged; a claim left by an app that stopped in between is taken again after
+    /// <see cref="StaleClaim"/>.
+    /// </summary>
+    private async Task<bool> NoteAsync(string key, string who, string roleLabel, string message, BsonDocument metadata, string entityType, string entityId, CancellationToken cancellationToken)
     {
         if (context.Database is null)
         {
             return false;
         }
 
+        _ = cancellationToken; // the read itself has happened: nothing here stops on the request's cancellation
+        var none = CancellationToken.None;
         var now = clock.GetUtcNow().UtcDateTime;
+        var keys = context.Database.GetCollection<BsonDocument>(Collection);
+        var id = $"{key}|{now:yyyy-MM-dd}";
+        if (_indexed == 0)
+        {
+            await EnsureIndexesAsync(none); // once per app start; the index only cleans up old keys
+        }
+
+        if (!await ClaimAsync(keys, id, now))
+        {
+            return false;
+        }
+
         try
         {
-            if (_indexed == 0)
-            {
-                await EnsureIndexesAsync(cancellationToken); // once per app start; the index only cleans up old keys
-            }
+            await audit.AppendApplicationAuditEventAsync(EventType, who, roleLabel, "restricted-read", message, metadata, entityType: entityType, entityId: entityId, cancellationToken: none);
+        }
+        catch
+        {
+            await keys.DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("_id", id) & Builders<BsonDocument>.Filter.Eq("at", now), none);
+            throw;
+        }
 
-            await context.Database.GetCollection<BsonDocument>(Collection).InsertOneAsync(
-                new BsonDocument { ["_id"] = $"{key}|{now:yyyy-MM-dd}", ["at"] = now },
-                cancellationToken: cancellationToken);
+        await keys.UpdateOneAsync(Builders<BsonDocument>.Filter.Eq("_id", id), Builders<BsonDocument>.Update.Set("done", true), cancellationToken: none);
+        return true;
+    }
+
+    /// <summary>Takes today's key: a new one, or one claimed long ago that never got its entry. One write decides.</summary>
+    private static async Task<bool> ClaimAsync(IMongoCollection<BsonDocument> keys, string id, DateTime now)
+    {
+        try
+        {
+            await keys.InsertOneAsync(new BsonDocument { ["_id"] = id, ["at"] = now, ["done"] = false }, cancellationToken: CancellationToken.None);
             return true;
         }
         catch (MongoWriteException exception) when (exception.WriteError?.Category == ServerErrorCategory.DuplicateKey)
         {
-            return false;
+            var retaken = await keys.UpdateOneAsync(
+                Builders<BsonDocument>.Filter.Eq("_id", id) & Builders<BsonDocument>.Filter.Eq("done", false) & Builders<BsonDocument>.Filter.Lt("at", now - StaleClaim),
+                Builders<BsonDocument>.Update.Set("at", now),
+                cancellationToken: CancellationToken.None);
+            return retaken.ModifiedCount == 1;
         }
     }
 }

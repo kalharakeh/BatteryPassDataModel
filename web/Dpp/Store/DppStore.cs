@@ -1020,11 +1020,8 @@ public sealed class DppStore
             return 0;
         }
 
-        // Whatever capitals an older version stored it with (finding W13).
-        return await Collection<BatteryPack>().CountDocumentsAsync(
-            Builders<BatteryPack>.Filter.Eq(pack => pack.ClusterId, ClusterRepository.NormalizeClusterId(clusterId)),
-            new CountOptions { Collation = ClusterRepository.IgnoreCase },
-            cancellationToken);
+        // Whatever capitals an older version stored it with (finding W13), and nothing more (H1 round two).
+        return (await PackIdsInClusterAsync(clusterId, cancellationToken)).Count;
     }
 
     /// <summary>Takes every pack of this cluster out of it (they then have no cluster); returns how many.</summary>
@@ -1035,12 +1032,32 @@ public sealed class DppStore
             return 0;
         }
 
+        var ids = await PackIdsInClusterAsync(clusterId, cancellationToken);
+        if (ids.Count == 0)
+        {
+            return 0;
+        }
+
         var result = await Collection<BatteryPack>().UpdateManyAsync(
-            Builders<BatteryPack>.Filter.Eq(pack => pack.ClusterId, ClusterRepository.NormalizeClusterId(clusterId)),
+            Builders<BatteryPack>.Filter.In(pack => pack.Id, ids),
             Builders<BatteryPack>.Update.Set(pack => pack.ClusterId, null),
-            new UpdateOptions { Collation = ClusterRepository.IgnoreCase },
-            cancellationToken);
+            cancellationToken: cancellationToken);
         return result.ModifiedCount;
+    }
+
+    /// <summary>
+    /// The packs of this cluster: the stored ID in lower case equals the cluster's (H1 round two). The database's collation
+    /// finds them, whatever their capitals, but also calls more IDs equal (full-width letters, invisible characters), so
+    /// each one found is compared again as the rights check does.
+    /// </summary>
+    private async Task<IReadOnlyList<string>> PackIdsInClusterAsync(string clusterId, CancellationToken cancellationToken)
+    {
+        var key = ClusterRepository.NormalizeClusterId(clusterId);
+        var found = await Collection<BatteryPack>()
+            .Find(Builders<BatteryPack>.Filter.Eq(pack => pack.ClusterId, key), new FindOptions { Collation = ClusterRepository.IgnoreCase })
+            .Project(pack => new { pack.Id, pack.ClusterId })
+            .ToListAsync(cancellationToken);
+        return found.Where(pack => pack.ClusterId is { } stored && ClusterRepository.NormalizeClusterId(stored) == key).Select(pack => pack.Id).ToArray();
     }
 
     /// <summary>
@@ -1201,7 +1218,7 @@ public sealed class DppStore
                 new FindOptions { Collation = ClusterRepository.IgnoreCase })
             .ToListAsync(cancellationToken);
         var cancelled = 0;
-        foreach (var handOver in waiting)
+        foreach (var handOver in waiting.Where(handOver => ClusterRepository.NormalizeClusterId(handOver.ToClusterId) == key || ClusterRepository.NormalizeClusterId(handOver.FromClusterId) == key))
         {
             if (await SetHandOverStateAsync(handOver.Id, HandOverStates.Cancelled, by, atUtc, cancellationToken))
             {

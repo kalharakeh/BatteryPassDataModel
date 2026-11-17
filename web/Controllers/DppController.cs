@@ -83,7 +83,7 @@ public sealed class DppController(DppReaders readers, DocumentService documents,
             ViewData[RestrictedReads.RoleKey] = role;
             await restricted.NoteBatteryAsync(
                 BatteryPassWeb.Services.ClusterRepository.NormalizeEmail(BatteryPassWeb.Services.AccessControlService.CurrentEmail(User)),
-                role, packId, page.SerialNumber, ["accident reports"], cancellationToken);
+                role, RestrictedReads.AccidentsPage, packId, page.SerialNumber, ["accident reports"], cancellationToken);
         }
 
         Response.Headers[HeaderNames.CacheControl] = "private, no-store";

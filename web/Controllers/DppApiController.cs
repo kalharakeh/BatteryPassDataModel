@@ -312,13 +312,14 @@ public sealed class DppApiController(ExternalApiRepository tokens, ClusterReposi
         DateTime? measuredAt = null;
         if (body.TryGetProperty("measuredAt", out var measuredElement) && measuredElement.ValueKind != JsonValueKind.Null)
         {
+            // Without an offset the time is UTC, on every server (H1 round two).
             if (measuredElement.ValueKind != JsonValueKind.String
-                || !DateTimeOffset.TryParse(measuredElement.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out var moment))
+                || !MeasuredAtRule.TryReadSent(measuredElement.GetString(), out var moment))
             {
                 return Envelope(StatusCodes.Status400BadRequest, LiveValuesBody);
             }
 
-            measuredAt = moment.UtcDateTime;
+            measuredAt = moment;
             if (writing.InTheFuture(measuredAt.Value))
             {
                 return Envelope(StatusCodes.Status400BadRequest, "measuredAt lies in the future.");

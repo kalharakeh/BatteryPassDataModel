@@ -76,4 +76,29 @@
 
     window.addEventListener('hashchange', follow);
     follow();
+
+    // "Measured at" (H1 round two): the typed time is the browser's, so the form sends its offset from UTC for that very
+    // time (summer or winter); without this script the server reads the time as UTC, as the hint says.
+    const offsetText = (minutes) => 'UTC' + (minutes < 0 ? '-' : '+')
+        + String(Math.floor(Math.abs(minutes) / 60)).padStart(2, '0') + ':' + String(Math.abs(minutes) % 60).padStart(2, '0');
+    document.querySelectorAll('input[name="measuredAtOffset"]').forEach((hidden) => {
+        const form = hidden.form;
+        const typed = form ? form.querySelector('input[name="measuredAt"]') : null;
+        const hint = form ? form.querySelector('[data-measured-zone]') : null;
+        if (!form || !typed) {
+            return;
+        }
+
+        const fill = () => {
+            const when = typed.value ? new Date(typed.value) : new Date();
+            const minutes = Number.isNaN(when.getTime()) ? -new Date().getTimezoneOffset() : -when.getTimezoneOffset();
+            hidden.value = String(minutes);
+            if (hint) {
+                hint.textContent = 'Read in your time zone (' + offsetText(minutes) + ').';
+            }
+        };
+        fill();
+        typed.addEventListener('change', fill);
+        form.addEventListener('submit', fill);
+    });
 })();

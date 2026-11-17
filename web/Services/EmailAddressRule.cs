@@ -54,6 +54,14 @@ public static class EmailAddressRule
         }
 
         var address = typed.Trim();
+
+        // No invisible or direction-changing character (Unicode category Cf), so a new address can't look exactly like
+        // another (H1 round two). Only here, for an address that is set or changed: an old account still signs in.
+        if (address.Any(character => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(character) == System.Globalization.UnicodeCategory.Format))
+        {
+            return Words;
+        }
+
         var at = address.IndexOf('@');
         if (at <= 0
             || at != address.LastIndexOf('@')

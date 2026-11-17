@@ -52,12 +52,13 @@ public sealed partial class BmsExportFormat : IUploadAdapter
         DateTime? measuredAt = null;
         if (metadata["exportedAt"] is { } exported)
         {
-            if (Text(exported) is not { } stamp || !DateTimeOffset.TryParse(stamp, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
+            // Without an offset the time is UTC, on every server (H1 round two).
+            if (Text(exported) is not { } stamp || !BatteryPassWeb.Services.MeasuredAtRule.TryReadSent(stamp, out var parsed))
             {
                 return new UploadDocument(format, [new UploadEntry(1, serial, null, new Dictionary<string, JsonNode?>(), "the export's exportedAt isn't a time")]);
             }
 
-            measuredAt = parsed.UtcDateTime;
+            measuredAt = parsed;
         }
 
         var notes = new List<string>();

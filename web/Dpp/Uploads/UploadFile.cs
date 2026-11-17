@@ -103,13 +103,13 @@ public sealed class NativeUploadFormat : IUploadAdapter
         DateTime? measuredAt = null;
         if (entry["measuredAt"] is { } moment)
         {
-            if (Text(moment) is not { } stamp
-                || !DateTimeOffset.TryParse(stamp, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
+            // Without an offset the time is UTC, on every server (H1 round two).
+            if (Text(moment) is not { } stamp || !BatteryPassWeb.Services.MeasuredAtRule.TryReadSent(stamp, out var parsed))
             {
                 return Broken(number, namedAs, "measuredAt isn't a time, such as 2026-10-27T10:02:59Z");
             }
 
-            measuredAt = parsed.UtcDateTime;
+            measuredAt = parsed;
         }
 
         var repair = Text(entry["reason"]) is { } reason

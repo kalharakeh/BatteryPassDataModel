@@ -181,7 +181,7 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
             && await RestrictedReads.RoleForAsync(readers, User, (await store.GetAsync<BatteryPassWeb.Dpp.Store.BatteryPack>(page.Version.PackId, cancellationToken))?.ClusterId, cancellationToken) is { } role)
         {
             ViewData[RestrictedReads.RoleKey] = role;
-            await restricted.NoteBatteryAsync(ClusterRepositoryEmail(), role, page.Version.PackId, page.Identifier, restrictedSections, cancellationToken);
+            await restricted.NoteBatteryAsync(ClusterRepositoryEmail(), role, RestrictedReads.DetailPage, page.Version.PackId, page.Identifier, restrictedSections, cancellationToken);
         }
 
         // The current version's live values over the last week, for those who may see them (decision 30), from the same

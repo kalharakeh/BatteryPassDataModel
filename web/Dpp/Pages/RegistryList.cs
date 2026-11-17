@@ -98,7 +98,8 @@ public static class RegistryList
             Scope(reader))
         {
             Team = reader.Roles.Contains(ReaderRole.Team),
-            ManagedClusterIds = editor is { Kind: SenderKind.ClusterAdmin } ? editor.ClusterIds.ToHashSet(StringComparer.Ordinal) : new HashSet<string>(StringComparer.Ordinal),
+            // Case-blind, as the rights check (H1 round two): an old battery stored with capitals keeps its "Manage" link.
+            ManagedClusterIds = editor is { Kind: SenderKind.ClusterAdmin } ? editor.ClusterIds.ToHashSet(StringComparer.OrdinalIgnoreCase) : new HashSet<string>(StringComparer.OrdinalIgnoreCase),
             BatteryStatusShown = batteries.Rows
                 .Where(row => AudienceRules.MaySeePurchaserData(reader, row.ClusterId is { } cluster ? [cluster] : []))
                 .Select(row => row.PackId)

@@ -107,9 +107,9 @@ public sealed class BatteriesControllerTests(MongoFixture mongo)
         Assert.Null(BatteriesController.MeasuredAt(typed));
 
     [Fact]
-    public void AMeasurementTime_ShouldBeReadInThePagesTimeZone() =>
+    public void AMeasurementTimeWithoutTheBrowsersOffset_ShouldBeReadAsUtc_NotInTheServersZone() => // H1 round two
         Assert.Equal(
-            TimeZoneInfo.ConvertTimeToUtc(new DateTime(2026, 10, 29, 9, 15, 0, DateTimeKind.Unspecified), TimeZoneInfo.Local),
+            new DateTime(2026, 10, 29, 9, 15, 0, DateTimeKind.Utc),
             BatteriesController.MeasuredAt("2026-10-29T09:15"));
 
     [Fact]

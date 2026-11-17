@@ -62,6 +62,8 @@
             <label>
                 <span>Measured at <span class="bp-attr-optional">(optional; now if empty)</span></span>
                 <input type="datetime-local" name="@BatteriesController.MeasuredAtField" />
+                <input type="hidden" name="@BatteriesController.MeasuredAtOffsetField" data-measured-offset />
+                <small class="bp-field-help" data-measured-zone>Read as UTC.</small>
             </label>
             <button type="submit" class="bp-primary-button">Save live values</button>
         </div>

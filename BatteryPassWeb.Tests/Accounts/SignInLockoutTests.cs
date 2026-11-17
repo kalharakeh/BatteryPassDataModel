@@ -121,7 +121,7 @@ public sealed class SignInLockoutTests(MongoFixture mongo)
         var locked = await SaysAsync(AccountRig.NorthUser, AccountRig.Password);
         Assert.Equal("Invalid email or password. Try again later.", locked);
         Assert.Equal(locked, await SaysAsync("nobody@example.test", "x"));
-        Assert.Equal("Invalid email or password.", await SaysAsync(AccountRig.SouthUser, "wrong"));
+        Assert.Equal(locked, await SaysAsync(AccountRig.SouthUser, "wrong")); // one sentence for every refusal (H1 round two)
     }
 
     [Fact]
