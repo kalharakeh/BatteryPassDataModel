@@ -104,6 +104,24 @@ public static class DataProtectionSetup
     /// </summary>
     public static string ApplicationName(string environment) => $"BatteryPass-{environment}";
 
+    /// <summary>
+    /// The environment's name as the keys are filed under it: the host treats "production" and "Production" as one
+    /// environment, so they must share one name here too, or a change of capitals would sign everyone out.
+    /// </summary>
+    public static string CanonicalEnvironment(string environmentName)
+    {
+        var trimmed = (environmentName ?? string.Empty).Trim();
+        foreach (var known in new[] { "Production", "Development", "Staging" })
+        {
+            if (trimmed.Equals(known, StringComparison.OrdinalIgnoreCase))
+            {
+                return known;
+            }
+        }
+
+        return trimmed;
+    }
+
     /// <summary>A short, one-way name of the secret: which signing key a stored sign-in key belongs to. Not the secret.</summary>
     public static string CipherId(byte[] secret) =>
         Convert.ToHexString(SHA256.HashData([.. "BatteryPass sign-in key ring id "u8, .. secret]))[..16].ToLowerInvariant();
@@ -113,9 +131,10 @@ public static class DataProtectionSetup
     /// the secret. The application name is fixed per environment, so that every instance and every deployment folder shares
     /// one set of keys.
     /// </summary>
-    public static IServiceCollection AddBatteryPassDataProtection(this IServiceCollection services, string environment, byte[]? secret)
+    public static IServiceCollection AddBatteryPassDataProtection(this IServiceCollection services, string environmentName, byte[]? secret)
     {
-        var production = string.Equals(environment, "Production", StringComparison.OrdinalIgnoreCase);
+        var environment = CanonicalEnvironment(environmentName);
+        var production = environment == "Production";
         if (production && secret is null)
         {
             throw new InvalidOperationException(

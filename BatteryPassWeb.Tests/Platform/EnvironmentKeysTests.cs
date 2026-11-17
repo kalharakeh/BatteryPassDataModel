@@ -49,6 +49,22 @@ public sealed class EnvironmentKeysTests(MongoFixture mongo)
         Assert.Equal(["Development", "Production"], keys.Select(key => key["environment"].AsString).Order());
     }
 
+    [Theory]
+    [InlineData("production")]
+    [InlineData("PRODUCTION")]
+    [InlineData(" Production ")]
+    public void TheEnvironmentsName_ShouldNotDependOnItsCapitals(string written)
+    {
+        var context = mongo.NewContext();
+        using var site = KeyRingTesting.Instance(context, "Production");
+        var ticket = KeyRingTesting.Protector(site).Protect("still signed in");
+
+        using var sameSite = KeyRingTesting.Instance(context, written);
+
+        Assert.Equal("still signed in", KeyRingTesting.Protector(sameSite).Unprotect(ticket));
+        Assert.Throws<InvalidOperationException>(() => new Microsoft.Extensions.DependencyInjection.ServiceCollection().AddBatteryPassDataProtection(written, null));
+    }
+
     [Fact]
     public void TheApplicationName_ShouldNameTheEnvironment()
     {
