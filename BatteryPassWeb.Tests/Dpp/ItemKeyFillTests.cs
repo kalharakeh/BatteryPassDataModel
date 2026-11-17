@@ -57,7 +57,7 @@ public sealed class ItemKeyFillTests(MongoFixture mongo, ITestOutputHelper outpu
             Assert.Equal($"UN778474481OLD{n:000}", await KeyOf(packs, $"pack-old-{n:000}"));
         }
 
-        Assert.Equal("UN778474481VBC6R1", await KeyOf(packs, "pack-old-pair-a")); // oldest _id first
+        Assert.Equal("UN778474481VBC6R1", await KeyOf(packs, "pack-old-pair-a")); // the first in _id order
         Assert.Null(await KeyOf(packs, "pack-old-pair-b"));
         var named = both.SelectMany(collisions => collisions).ToArray();
         Assert.NotEmpty(named);

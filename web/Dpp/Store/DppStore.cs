@@ -270,8 +270,9 @@ public sealed class DppStore
         Builders<BsonDocument>.Filter.Eq(nameof(BatteryPack.ItemKey), BsonNull.Value) & Builders<BsonDocument>.Filter.Exists(UniqueProductIdentifierField);
 
     /// <summary>
-    /// Gives every pack that has a battery ID and no item key its key (the packs made before S1 round two), oldest _id
-    /// first, one guarded update each (<see cref="FillItemKeyAsync"/>), reading only the _id and the ID. A pack whose key
+    /// Gives every pack that has a battery ID and no item key its key (the packs made before S1 round two), in _id order
+    /// (a pack's _id is a random GUID, so of an old colliding pair the one first in that order keeps it, not the older
+    /// one), one guarded update each (<see cref="FillItemKeyAsync"/>), reading only the _id and the ID. A pack whose key
     /// another holds is left without it and named. Never fails the start: a database error is logged and the start goes on.
     /// A later start reads only what the index finds without a key (the pairs named before).
     /// </summary>
