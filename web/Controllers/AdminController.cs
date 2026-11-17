@@ -249,6 +249,8 @@ public class AdminController : Controller
             return Redirect("/admin/clusters?tab=clusters");
         }
 
+        // Tokens left over from a cluster deleted before W8 with this ID would reach the new customer: they go first (H1 round two).
+        var leftover = await RevokeClusterAccessAsync(clusterId, cancellationToken);
         try
         {
             await _clusterRepository.UpsertClusterAsync(clusterId, name, cancellationToken);
@@ -267,7 +269,7 @@ public class AdminController : Controller
             {
                 ["clusterId"] = clusterId,
                 ["name"] = name
-            },
+            }.AddRange(leftover.Metadata),
             "cluster",
             clusterId,
             cancellationToken);

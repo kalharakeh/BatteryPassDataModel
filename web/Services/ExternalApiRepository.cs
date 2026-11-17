@@ -386,9 +386,30 @@ public sealed class ExternalApiRepository
             }
 
             var context = ToTokenContext(document);
-            if (!context.IsDemo && await AllDemoClustersAsync(context.ClusterIds, cancellationToken))
+
+            // H1 round two: a token reaches only clusters that exist. One look-up of the token's clusters per request (by the
+            // unique cluster ID index), the same one that tells whether they are all demo clusters. A token whose every
+            // cluster is gone answers as an unknown token; a token for all batteries has no list and isn't looked at.
+            var clusters = await ExistingClustersAsync(context.ClusterIds, cancellationToken);
+            if (context.ClusterIds.Count > 0)
             {
-                context = ToTokenContext(document, forDemoClustersOnly: true);
+                var existing = context.ClusterIds.Where(clusterId => clusters.ContainsKey(ClusterRepository.NormalizeClusterId(clusterId))).ToList();
+                if (existing.Count == 0)
+                {
+                    return new ExternalApiTokenValidationResult
+                    {
+                        Success = false,
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                        Message = "Token is invalid."
+                    };
+                }
+
+                context = ToTokenContext(document, clusterIds: existing);
+            }
+
+            if (!context.IsDemo && context.ClusterIds.Count > 0 && context.ClusterIds.All(clusterId => clusters.GetValueOrDefault(ClusterRepository.NormalizeClusterId(clusterId))))
+            {
+                context = ToTokenContext(document, forDemoClustersOnly: true, clusterIds: context.ClusterIds);
             }
 
             if (context.IsDemo && !_demoData.Enabled)
@@ -442,26 +463,30 @@ public sealed class ExternalApiRepository
         };
     }
 
-    /// <summary>
-    /// A token counts as demo when it is marked or when every cluster it is for is a demo cluster (finding R03, point 5):
-    /// so a token the team or the start-up made for a demo cluster, or one regenerated from it, stays inside the demo.
-    /// </summary>
-    private async Task<bool> AllDemoClustersAsync(IReadOnlyCollection<string> clusterIds, CancellationToken cancellationToken)
+    // A token counts as demo when it is marked or when every cluster it is for is a demo cluster (finding R03, point 5):
+    // so a token the team or the start-up made for a demo cluster, or one regenerated from it, stays inside the demo.
+
+    /// <summary>The token's clusters that exist, by their lower-case ID, each with whether it is a demo cluster.</summary>
+    private async Task<IReadOnlyDictionary<string, bool>> ExistingClustersAsync(IReadOnlyCollection<string> clusterIds, CancellationToken cancellationToken)
     {
         if (clusterIds.Count == 0 || _mongoContext.Database == null)
         {
-            return false;
+            return new Dictionary<string, bool>(StringComparer.Ordinal);
         }
 
-        var demoClusters = await new ClusterRepository(_mongoContext).DemoClusterIdsAsync(cancellationToken);
-        return clusterIds.All(clusterId => demoClusters.Contains(ClusterRepository.NormalizeClusterId(clusterId)));
+        var keys = clusterIds.Select(ClusterRepository.NormalizeClusterId).Distinct(StringComparer.Ordinal).ToArray();
+        return (await _mongoContext.Database.GetCollection<BsonDocument>("clusters")
+                .Find(Builders<BsonDocument>.Filter.In("clusterId", keys))
+                .ToListAsync(cancellationToken))
+            .GroupBy(cluster => ClusterRepository.NormalizeClusterId(BsonHelpers.GetString(cluster, "clusterId")), StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Any(ClusterRepository.IsDemo), StringComparer.Ordinal);
     }
 
-    private static ExternalApiTokenContext ToTokenContext(BsonDocument tokenDocument, bool forDemoClustersOnly = false)
+    private static ExternalApiTokenContext ToTokenContext(BsonDocument tokenDocument, bool forDemoClustersOnly = false, IReadOnlyList<string>? clusterIds = null)
     {
         var accessMode = AccessModeFromValue(BsonHelpers.GetString(tokenDocument, "accessMode"));
 
-        var clusters = tokenDocument.GetValue("clusterIds", new BsonArray()) is BsonArray clusterArray
+        var clusters = clusterIds is not null ? clusterIds.ToList() : tokenDocument.GetValue("clusterIds", new BsonArray()) is BsonArray clusterArray
             ? clusterArray
                 .Select(item => item.ToString())
                 .Where(clusterId => !string.IsNullOrWhiteSpace(clusterId))
