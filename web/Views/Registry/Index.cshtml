@@ -58,6 +58,7 @@
 
     @* The shared list (redesign R7, the owner's choice "One shared list"): the same search, columns and icons as the
        team's Batteries page; each reader's rows, clusters and battery statuses as before. *@
+    <partial name="_RestrictedNotice" />
     @await Html.PartialAsync("_BatteryList", new BatteryListView("/registry", Model.Query, Model.Rows, Model.ShowClusters,
         Model.OpenHref, Model.Actions, row => Model.BatteryStatusShown.Contains(row.PackId))
     {

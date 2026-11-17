@@ -1,6 +1,7 @@
 using BatteryPassWeb.Dpp.Access;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Pages;
+using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,17 +17,32 @@ namespace BatteryPassWeb.Controllers;
 public sealed class RegistryController(DppReaders readers, BatteryPages batteries) : Controller
 {
     [HttpGet("")]
-    public async Task<IActionResult> Index([FromQuery] string? q, [FromServices] HandOverService handOvers, CancellationToken cancellationToken)
+    public async Task<IActionResult> Index([FromQuery] string? q, [FromServices] HandOverService handOvers, CancellationToken cancellationToken, [FromServices] RestrictedReads? restricted = null)
     {
         var reader = await readers.ForAsync(User, cancellationToken);
         var editor = await readers.EditorForAsync(User, cancellationToken);
         // One row per battery, the newest passport this reader may see (redesign R5, owner's item 3).
         // A cluster is the team's and its members' business: only they find batteries by it (redesign R6).
         var list = await batteries.ListOnePerBatteryAsync(q, row => RegistryList.MayList(reader, row), RegistryList.ShowsClusters(reader), cancellationToken);
-        return View(RegistryList.Build(reader, list, editor) with
+        var page = RegistryList.Build(reader, list, editor) with
         {
             Waiting = editor is null ? [] : await handOvers.WaitingForAsync(editor, cancellationToken),
-        });
+        };
+
+        // H1 round two: the list shows battery statuses (purchaser data) to restricted readers: the use notice, and one log
+        // entry per reader and day. The team's own and a cluster admin's own batteries don't count.
+        var othersStatuses = page.Rows
+            .Where(row => page.BatteryStatusShown.Contains(row.PackId) && !RestrictedReads.IsOwnData(editor, row.ClusterId))
+            .Select(row => row.PackId)
+            .ToArray();
+        if (restricted is not null && othersStatuses.Length > 0 && User.Identity?.IsAuthenticated == true)
+        {
+            var role = AccessControlService.DisplayRoleLabel(User);
+            ViewData[RestrictedReads.RoleKey] = role;
+            await restricted.NoteListAsync(ClusterRepository.NormalizeEmail(AccessControlService.CurrentEmail(User)), role, othersStatuses, cancellationToken);
+        }
+
+        return View(page);
     }
 
     /// <summary>The receiving cluster's admin accepts or declines a hand-over (step 4d).</summary>

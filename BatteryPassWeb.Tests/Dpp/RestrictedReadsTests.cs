@@ -33,7 +33,7 @@ public sealed class RestrictedReadsTests(MongoFixture mongo)
     {
         var (reads, _, database) = await StartAsync(mongo);
 
-        Assert.True(await reads.NoteBatteryAsync("msa@example.test", "Market Surveillance Authorities", "pack-1", "SN-0001", Sections));
+        Assert.True(await reads.NoteBatteryAsync("msa@example.test", "Market Surveillance Authorities", RestrictedReads.DetailPage, "pack-1", "SN-0001", Sections));
 
         var entry = Assert.Single(await EntriesAsync(database));
         Assert.Equal("msa@example.test", entry["actor"].AsString);
@@ -51,15 +51,15 @@ public sealed class RestrictedReadsTests(MongoFixture mongo)
     public async Task OpeningItAgainTheSameDay_ShouldAddNothing_AndTheNextDayAddsOne()
     {
         var (reads, clock, database) = await StartAsync(mongo);
-        await reads.NoteBatteryAsync("msa@example.test", "Market Surveillance Authorities", "pack-1", "SN-0001", Sections);
+        await reads.NoteBatteryAsync("msa@example.test", "Market Surveillance Authorities", RestrictedReads.DetailPage, "pack-1", "SN-0001", Sections);
 
-        Assert.False(await reads.NoteBatteryAsync("MSA@example.test", "Market Surveillance Authorities", "pack-1", "SN-0001", Sections));
+        Assert.False(await reads.NoteBatteryAsync("MSA@example.test", "Market Surveillance Authorities", RestrictedReads.DetailPage, "pack-1", "SN-0001", Sections));
         clock.Now = clock.Now.AddHours(10); // still the same UTC day
-        Assert.False(await reads.NoteBatteryAsync("msa@example.test", "Market Surveillance Authorities", "pack-1", "SN-0001", Sections));
+        Assert.False(await reads.NoteBatteryAsync("msa@example.test", "Market Surveillance Authorities", RestrictedReads.DetailPage, "pack-1", "SN-0001", Sections));
         Assert.Single(await EntriesAsync(database));
 
         clock.Now = clock.Now.AddHours(10); // the next day
-        Assert.True(await reads.NoteBatteryAsync("msa@example.test", "Market Surveillance Authorities", "pack-1", "SN-0001", Sections));
+        Assert.True(await reads.NoteBatteryAsync("msa@example.test", "Market Surveillance Authorities", RestrictedReads.DetailPage, "pack-1", "SN-0001", Sections));
         Assert.Equal(2, (await EntriesAsync(database)).Count);
     }
 
@@ -68,9 +68,9 @@ public sealed class RestrictedReadsTests(MongoFixture mongo)
     {
         var (reads, _, database) = await StartAsync(mongo);
 
-        Assert.True(await reads.NoteBatteryAsync("msa@example.test", "Market Surveillance Authorities", "pack-1", "SN-0001", Sections));
-        Assert.True(await reads.NoteBatteryAsync("nb@example.test", "Notified Body", "pack-1", "SN-0001", Sections));
-        Assert.True(await reads.NoteBatteryAsync("msa@example.test", "Market Surveillance Authorities", "pack-2", "SN-0002", Sections));
+        Assert.True(await reads.NoteBatteryAsync("msa@example.test", "Market Surveillance Authorities", RestrictedReads.DetailPage, "pack-1", "SN-0001", Sections));
+        Assert.True(await reads.NoteBatteryAsync("nb@example.test", "Notified Body", RestrictedReads.DetailPage, "pack-1", "SN-0001", Sections));
+        Assert.True(await reads.NoteBatteryAsync("msa@example.test", "Market Surveillance Authorities", RestrictedReads.DetailPage, "pack-2", "SN-0002", Sections));
 
         Assert.Equal(3, (await EntriesAsync(database)).Count);
     }
@@ -81,7 +81,7 @@ public sealed class RestrictedReadsTests(MongoFixture mongo)
         var (reads, _, database) = await StartAsync(mongo);
 
         var results = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ =>
-            reads.NoteBatteryAsync("msa@example.test", "Market Surveillance Authorities", "pack-1", "SN-0001", Sections)));
+            reads.NoteBatteryAsync("msa@example.test", "Market Surveillance Authorities", RestrictedReads.DetailPage, "pack-1", "SN-0001", Sections)));
 
         Assert.Single(results, true);
         Assert.Single(await EntriesAsync(database));
