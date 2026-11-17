@@ -109,7 +109,7 @@ public sealed class AccountController : Controller
             var currentPassword = Request.Form["currentPassword"].FirstOrDefault() ?? string.Empty;
             var problem = string.IsNullOrEmpty(currentPassword)
                 ? AuthService.CurrentPasswordNeeded
-                : !await _authService.IsCurrentPasswordAsync(currentEmail, currentPassword, cancellationToken)
+                : !await _authService.IsCurrentPasswordAsync(currentEmail, currentPassword, LoginController.Sender(HttpContext), cancellationToken)
                     ? AuthService.CurrentPasswordWrong
                     : string.IsNullOrWhiteSpace(password) ? null : AuthService.NewPasswordProblem(password);
             if (problem is not null)

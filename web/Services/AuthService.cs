@@ -72,9 +72,16 @@ public sealed class AuthService
     public static string? NewPasswordProblem(string? password) =>
         string.IsNullOrEmpty(password) || password.Length < MinimumPasswordLength ? PasswordTooShort : null;
 
-    /// <summary>Whether <paramref name="password"/> is this account's current password (the fallback admin's included).</summary>
-    public async Task<bool> IsCurrentPasswordAsync(string email, string password, CancellationToken cancellationToken = default) =>
-        (await AuthenticateLoginAsync(email, password, cancellationToken)).Status == LoginAuthenticationStatus.Authenticated;
+    /// <summary>
+    /// Whether <paramref name="password"/> is this account's current password (the fallback admin's included). The Account
+    /// page's check counts and is limited for its own session's sender only (H1 round two): what other senders did never
+    /// blocks it.
+    /// </summary>
+    public async Task<bool> IsCurrentPasswordAsync(string email, string password, string? sender, CancellationToken cancellationToken = default) =>
+        (await AuthenticateCoreAsync(email, password, sender, accountPage: true, cancellationToken)).Status == LoginAuthenticationStatus.Authenticated;
+
+    public Task<bool> IsCurrentPasswordAsync(string email, string password, CancellationToken cancellationToken = default) =>
+        IsCurrentPasswordAsync(email, password, sender: null, cancellationToken);
 
     private readonly MongoContext _mongoContext;
     private readonly BatteryPassOptions _options;
@@ -99,13 +106,30 @@ public sealed class AuthService
     private bool IsSwitchedOffDemoAccount(BsonDocument user) =>
         !_demoData.Enabled && user.GetValue(BatteryPassWeb.Dpp.Demo.DemoDataService.AccountMark, false) is { IsBoolean: true, AsBoolean: true };
 
-    public async Task<ClaimsPrincipal?> AuthenticateAsync(string email, string password, CancellationToken cancellationToken = default)
+    public Task<ClaimsPrincipal?> AuthenticateAsync(string email, string password, CancellationToken cancellationToken = default) =>
+        AuthenticateAsync(email, password, sender: null, cancellationToken);
+
+    /// <param name="sender">The client address, as the rate limiter sees it (H1 round two): the lock counts per account and sender.</param>
+    public async Task<ClaimsPrincipal?> AuthenticateAsync(string email, string password, string? sender, CancellationToken cancellationToken = default)
     {
-        var result = await AuthenticateLoginAsync(email, password, cancellationToken);
+        var result = await AuthenticateLoginAsync(email, password, sender, cancellationToken);
         return result.Status == LoginAuthenticationStatus.Authenticated ? result.Principal : null;
     }
 
-    public async Task<LoginAuthenticationResult> AuthenticateLoginAsync(string email, string password, CancellationToken cancellationToken = default)
+    public Task<LoginAuthenticationResult> AuthenticateLoginAsync(string email, string password, CancellationToken cancellationToken = default) =>
+        AuthenticateLoginAsync(email, password, sender: null, cancellationToken);
+
+    /// <param name="sender">The client address, as the rate limiter sees it (H1 round two): the lock counts per account and sender.</param>
+    public Task<LoginAuthenticationResult> AuthenticateLoginAsync(string email, string password, string? sender, CancellationToken cancellationToken = default) =>
+        AuthenticateCoreAsync(email, password, sender, accountPage: false, cancellationToken);
+
+    /// <summary>
+    /// The one password check: the sign-in page, the sign-in API and the Account page's current password. H1 round two: a
+    /// temporary password is looked at before any lock and is never refused by one; then this sender's own lock; then,
+    /// except for the Account page (an open session) and a sender that signed in to the account before, the lock of the
+    /// account as a whole; then the password. A refusal costs one password check, as a wrong password does.
+    /// </summary>
+    private async Task<LoginAuthenticationResult> AuthenticateCoreAsync(string email, string password, string? sender, bool accountPage, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
@@ -118,46 +142,75 @@ public sealed class AuthService
             return LoginAuthenticationResult.Invalid();
         }
 
-        // Finding W4: a locked address is refused before the password is looked at, so the right one gets in no more than a wrong one.
-        if (await IsLockedAsync(email, cancellationToken))
+        var normalizedEmail = ClusterRepository.NormalizeEmail(email);
+        BsonDocument? user = null;
+        var database = _mongoContext.Database;
+        try
         {
+            if (database != null)
+            {
+                user = await ClusterRepository.FindUserAsync(database, email, cancellationToken);
+            }
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            database = null; // the database is out of reach: only the fallback admin can sign in, as before
+        }
+
+        if (user != null && IsSwitchedOffDemoAccount(user))
+        {
+            _ = BCrypt.Net.BCrypt.Verify(password, NoAccountHash);
+            return LoginAuthenticationResult.Invalid();
+        }
+
+        // "Forgot password": the temporary password is the owner's way back, so no lock ever stands in front of it.
+        if (user != null && await IsActiveTemporaryPasswordAsync(normalizedEmail, password, cancellationToken))
+        {
+            return LoginAuthenticationResult.RequiresTemporaryPasswordChange(normalizedEmail);
+        }
+
+        var account = SignInAttempts.AccountKey(user, email);
+        var from = SignInAttempts.SenderKey(sender);
+        var now = _clock.GetUtcNow().UtcDateTime;
+        if (database != null && await LockedAsync(database, account, from, now, accountPage, cancellationToken))
+        {
+            _ = BCrypt.Net.BCrypt.Verify(password, NoAccountHash); // as long as a password check
             return LoginAuthenticationResult.Locked();
         }
 
-        var result = await CheckPasswordAsync(email, password, cancellationToken);
+        var result = CheckPassword(user, normalizedEmail, password, database != null);
         if (result.Status == LoginAuthenticationStatus.Authenticated)
         {
-            await ChangeCountAsync(() => SignInAttempts.ClearAsync(_mongoContext.Database!, email, cancellationToken));
+            result = user is null ? result : LoginAuthenticationResult.Authenticated(await PrincipalForAsync(user, cancellationToken));
+            await ChangeCountAsync(() => SignInAttempts.SignedInAsync(database!, account, from, now, cancellationToken), database);
         }
-        else if (result.Status == LoginAuthenticationStatus.Invalid)
+        else
         {
-            await ChangeCountAsync(() => SignInAttempts.RecordWrongAsync(_mongoContext.Database!, email, _clock.GetUtcNow().UtcDateTime, cancellationToken));
+            await ChangeCountAsync(() => SignInAttempts.RecordWrongAsync(database!, account, from, now, cancellationToken), database);
         }
 
         return result;
     }
 
-    private async Task<bool> IsLockedAsync(string email, CancellationToken cancellationToken)
+    private static async Task<bool> LockedAsync(IMongoDatabase database, string account, string sender, DateTime now, bool accountPage, CancellationToken cancellationToken)
     {
-        if (_mongoContext.Database == null)
-        {
-            return false;
-        }
-
         try
         {
-            return await SignInAttempts.IsLockedAsync(_mongoContext.Database, email, _clock.GetUtcNow().UtcDateTime, cancellationToken);
+            return await SignInAttempts.IsSenderLockedAsync(database, account, sender, now, cancellationToken)
+                || (!accountPage
+                    && await SignInAttempts.IsAccountLockedAsync(database, account, now, cancellationToken)
+                    && !await SignInAttempts.IsKnownSenderAsync(database, account, sender, cancellationToken));
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            return false; // the database is out of reach: the sign-in goes the way it always did
+            return false; // a database error never keeps anyone out
         }
     }
 
     /// <summary>Writes the count; a database error here never changes the answer of the sign-in.</summary>
-    private async Task ChangeCountAsync(Func<Task> change)
+    private static async Task ChangeCountAsync(Func<Task> change, IMongoDatabase? database)
     {
-        if (_mongoContext.Database == null)
+        if (database == null)
         {
             return;
         }
@@ -171,54 +224,40 @@ public sealed class AuthService
         }
     }
 
-    private async Task<LoginAuthenticationResult> CheckPasswordAsync(string email, string password, CancellationToken cancellationToken)
+    /// <summary>The account's own password, or the fallback admin's; one password check whether the account exists or not.</summary>
+    private LoginAuthenticationResult CheckPassword(BsonDocument? user, string normalizedEmail, string password, bool databaseReached)
     {
-        // The same address whatever its capitals and outer spaces (finding U28).
-        var normalizedEmail = ClusterRepository.NormalizeEmail(email);
+        if (user != null)
+        {
+            var passwordHash = BsonHelpers.GetString(user, "passwordHash");
+            return !string.IsNullOrWhiteSpace(passwordHash) && BCrypt.Net.BCrypt.Verify(password, passwordHash)
+                ? LoginAuthenticationResult.Authenticated(new ClaimsPrincipal())
+                : LoginAuthenticationResult.Invalid();
+        }
 
+        if (databaseReached)
+        {
+            _ = BCrypt.Net.BCrypt.Verify(password, NoAccountHash);
+        }
+
+        return CanUseDemoAdminFallback()
+            && normalizedEmail.Equals(_options.DemoAdminEmail, StringComparison.OrdinalIgnoreCase)
+            && password == _options.DemoAdminPassword
+                ? LoginAuthenticationResult.Authenticated(FallbackPrincipal())
+                : LoginAuthenticationResult.Invalid();
+    }
+
+    /// <summary>Clears every count and lock of the account with this address (a new password was set); its known senders stay.</summary>
+    public static async Task ClearSignInCountsAsync(IMongoDatabase database, string email, CancellationToken cancellationToken = default)
+    {
         try
         {
-            if (_mongoContext.Database != null)
-            {
-                var user = await ClusterRepository.FindUserAsync(_mongoContext.Database, email, cancellationToken);
-
-                if (user != null)
-                {
-                    if (IsSwitchedOffDemoAccount(user))
-                    {
-                        return LoginAuthenticationResult.Invalid();
-                    }
-
-                    var passwordHash = BsonHelpers.GetString(user, "passwordHash");
-                    if (!string.IsNullOrWhiteSpace(passwordHash) && BCrypt.Net.BCrypt.Verify(password, passwordHash))
-                    {
-                        return LoginAuthenticationResult.Authenticated(await PrincipalForAsync(user, cancellationToken));
-                    }
-
-                    if (await IsActiveTemporaryPasswordAsync(normalizedEmail, password, cancellationToken))
-                    {
-                        return LoginAuthenticationResult.RequiresTemporaryPasswordChange(normalizedEmail);
-                    }
-
-                    return LoginAuthenticationResult.Invalid();
-                }
-
-                _ = BCrypt.Net.BCrypt.Verify(password, NoAccountHash);
-            }
+            var user = await ClusterRepository.FindUserAsync(database, email, cancellationToken);
+            await SignInAttempts.ClearAccountAsync(database, SignInAttempts.AccountKey(user, email), cancellationToken);
         }
-        catch
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            // Mongo unavailable fallback handled below.
         }
-
-        if (CanUseDemoAdminFallback()
-            && normalizedEmail.Equals(_options.DemoAdminEmail, StringComparison.OrdinalIgnoreCase)
-            && password == _options.DemoAdminPassword)
-        {
-            return LoginAuthenticationResult.Authenticated(FallbackPrincipal());
-        }
-
-        return LoginAuthenticationResult.Invalid();
     }
 
     public async Task<ClaimsPrincipal?> CreatePrincipalForUserAsync(string email, CancellationToken cancellationToken = default)
@@ -495,8 +534,8 @@ public sealed class AuthService
                 .Set("usedAt", now)
                 .Set("status", "used"),
             cancellationToken: cancellationToken);
-        // A reset clears the count and the lock (finding W4).
-        await ChangeCountAsync(() => SignInAttempts.ClearAsync(_mongoContext.Database!, normalizedEmail, cancellationToken));
+        // A reset clears every count and lock of the account (finding W4, H1 round two).
+        await ChangeCountAsync(() => SignInAttempts.ClearAccountAsync(_mongoContext.Database!, SignInAttempts.AccountKey(account, normalizedEmail), CancellationToken.None), _mongoContext.Database);
         return true;
     }
 

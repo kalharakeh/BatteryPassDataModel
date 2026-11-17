@@ -232,7 +232,7 @@ public sealed class ClusterRepository
     {
         if (_mongoContext.Database != null)
         {
-            await SignInAttempts.ClearAsync(_mongoContext.Database, email, cancellationToken);
+            await AuthService.ClearSignInCountsAsync(_mongoContext.Database, email, cancellationToken);
         }
     }
 

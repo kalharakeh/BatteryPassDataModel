@@ -44,7 +44,7 @@ public class LoginController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Index(LoginViewModel model, CancellationToken cancellationToken)
     {
-        var loginResult = await _authService.AuthenticateLoginAsync(model.Email, model.Password, cancellationToken);
+        var loginResult = await _authService.AuthenticateLoginAsync(model.Email, model.Password, Sender(HttpContext), cancellationToken);
         if (loginResult.Status == LoginAuthenticationStatus.RequiresTemporaryPasswordChange)
         {
             return View("ChangeTemporaryPassword", new TemporaryPasswordChangeViewModel
@@ -56,7 +56,7 @@ public class LoginController : Controller
 
         if (loginResult.Status != LoginAuthenticationStatus.Authenticated || loginResult.Principal == null)
         {
-            model.ErrorMessage = loginResult.Status == LoginAuthenticationStatus.Locked ? SignInAttempts.LockedWords : SignInAttempts.WrongWords;
+            model.ErrorMessage = SignInAttempts.Words; // the same words for every refusal (H1 round two)
             return View(model);
         }
 
@@ -175,6 +175,9 @@ public class LoginController : Controller
 
     /// <summary>Where signing in leads when no page was asked for (finding U31): the team's area for the team, else the start page.</summary>
     public static string StartPage(ClaimsPrincipal user) => AccessControlService.IsAdmin(user) ? "/admin" : "/";
+
+    /// <summary>The sender a sign-in counts against: the client address exactly as the sign-in rate limiter takes it (H1 round two).</summary>
+    public static string Sender(HttpContext context) => context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
     private string RequestBaseUrl() => $"{Request.Scheme}://{Request.Host}";
 
