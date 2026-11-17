@@ -55,10 +55,16 @@ public sealed class MongoXmlRepository(MongoContext mongoContext, string environ
         Keys.Find(Builders<BsonDocument>.Filter.Empty).ToList()
             .Count(document => document.TryGetValue("xml", out var xml) && xml.IsString && IsUnencryptedKey(XElement.Parse(xml.AsString)));
 
+    /// <summary>
+    /// The keys of this environment encrypted for this signing key (PL round two, points 1 and 2): the owner's PC in
+    /// Development and the live site on one database never share keys.
+    /// </summary>
     private FilterDefinition<BsonDocument> ForThisApp() =>
-        cipherId is null
-            ? Builders<BsonDocument>.Filter.Exists("cipher", false)
-            : Builders<BsonDocument>.Filter.Eq("cipher", cipherId);
+        Builders<BsonDocument>.Filter.And(
+            Builders<BsonDocument>.Filter.Eq("environment", environment),
+            cipherId is null
+                ? Builders<BsonDocument>.Filter.Exists("cipher", false)
+                : Builders<BsonDocument>.Filter.Eq("cipher", cipherId));
 
     /// <summary>A key whose secret part is not wrapped by <see cref="SigningKeyXmlEncryptor"/>. A revocation holds no secret.</summary>
     private static bool IsUnencryptedKey(XElement element) =>
@@ -72,8 +78,11 @@ public static class DataProtectionSetup
         "The sign-in keys are stored in the database unencrypted, because " + DemoSigningKeyService.PrivateKeySetting
         + " isn't set. This is only allowed outside Production.";
 
-    /// <summary>The name that separates this app's cookies and form tokens from any other app's on the same keys.</summary>
-    public static string ApplicationName(string environment) => "BatteryPass";
+    /// <summary>
+    /// The name every cookie and form token is protected under, with the environment in it (PL round two, point 2): a cookie
+    /// made on a developer's PC is not a cookie on the live site, even with the same keys.
+    /// </summary>
+    public static string ApplicationName(string environment) => $"BatteryPass-{environment}";
 
     /// <summary>A short, one-way name of the secret: which signing key a stored sign-in key belongs to. Not the secret.</summary>
     public static string CipherId(byte[] secret) =>
