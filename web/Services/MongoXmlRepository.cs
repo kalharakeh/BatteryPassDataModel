@@ -30,7 +30,8 @@ public sealed class MongoXmlRepository(MongoContext mongoContext, string environ
 
     public IReadOnlyCollection<XElement> GetAllElements() =>
         Keys.Find(ForThisApp()).ToList()
-            .Select(document => XElement.Parse(document["xml"].AsString))
+            .Select(Element)
+            .OfType<XElement>()
             .Where(element => !production || !IsUnencryptedKey(element))
             .ToList();
 
@@ -53,7 +54,26 @@ public sealed class MongoXmlRepository(MongoContext mongoContext, string environ
     /// <summary>How many stored documents hold a key that is not encrypted: an earlier version's, or a developer's PC's.</summary>
     public int UnencryptedKeyCount() =>
         Keys.Find(Builders<BsonDocument>.Filter.Empty).ToList()
-            .Count(document => document.TryGetValue("xml", out var xml) && xml.IsString && IsUnencryptedKey(XElement.Parse(xml.AsString)));
+            .Select(Element)
+            .Count(element => element is not null && IsUnencryptedKey(element));
+
+    /// <summary>A stored document's key, or null when the document is damaged: one bad document must not stop the site.</summary>
+    private static XElement? Element(BsonDocument document)
+    {
+        if (!document.TryGetValue("xml", out var xml) || !xml.IsString)
+        {
+            return null;
+        }
+
+        try
+        {
+            return XElement.Parse(xml.AsString);
+        }
+        catch (System.Xml.XmlException)
+        {
+            return null;
+        }
+    }
 
     /// <summary>
     /// The keys of this environment encrypted for this signing key (PL round two, points 1 and 2): the owner's PC in

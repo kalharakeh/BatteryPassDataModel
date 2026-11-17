@@ -133,6 +133,28 @@ public sealed class KeyEncryptionTests(MongoFixture mongo)
     }
 
     [Fact]
+    public async Task ADamagedDocument_ShouldBeLeftOut_NotStopTheSite()
+    {
+        var context = mongo.NewContext();
+        using var site = KeyRingTesting.Instance(context);
+        var ticket = KeyRingTesting.Protector(site).Protect("still here");
+        var cipher = DataProtectionSetup.CipherId(DemoSigningKeyService.DataProtectionSecret(KeyRingTesting.SigningKey)!);
+        await Keys(context).InsertManyAsync(
+        [
+            new BsonDocument { ["_id"] = "damaged-1", ["xml"] = "<key id=\"\">", ["environment"] = "Production", ["cipher"] = cipher },
+            new BsonDocument { ["_id"] = "damaged-2", ["environment"] = "Production", ["cipher"] = cipher },
+            new BsonDocument { ["_id"] = "damaged-3", ["xml"] = 42, ["environment"] = "Production", ["cipher"] = cipher },
+        ]);
+
+        using var restarted = KeyRingTesting.Instance(context);
+        var store = new MongoXmlRepository(context, "Production", cipher, production: true);
+
+        Assert.Equal("still here", KeyRingTesting.Protector(restarted).Unprotect(ticket));
+        Assert.Single(store.GetAllElements());
+        Assert.Equal(0, store.UnencryptedKeyCount());
+    }
+
+    [Fact]
     public async Task Development_WithoutASigningKey_ShouldKeepItsKeysAsBefore()
     {
         var context = mongo.NewContext();
