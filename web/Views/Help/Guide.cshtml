@@ -198,6 +198,8 @@
                     <dl class="bp-word-list">
                         <dt>Empty and "none"</dt>
                         <dd>An empty cell changes nothing. For a model after the first, an empty cell means the first model's value; its name is always its own. The word <code>none</code> removes a value, unless a published passport needs it: the check says so.</dd>
+                        <dt>Taken from the first model</dt>
+                        <dd>A value a later model takes over from the first model's column is marked on its line in the check ("taken from Core800"). That includes the four recycled-content shares: an empty share of a later model takes the first model's, so write <code>none</code> when that model has none. An empty batch column is a full copy of the first model's batch, its year and site included, and the check says so. A workbook has one batch per model: add another on the model's page, or in a second load.</dd>
                         <dt>Documents still to come</dt>
                         <dd>A document the workbook names but you haven't got yet doesn't stop the load. It is listed under "Documents still to come", everything else is saved, and the document can follow in a later load.</dd>
                         <dt>A second load</dt>
@@ -206,8 +208,10 @@
                         <dd>The workbook can give each model its serial number format (such as VPC8C05s-#####). The check shows the old and the new format and how many batteries of the model don't fit it, and the load applies the model page's own rule. <code>none</code> removes the format. A model never takes the first model's format: an empty cell leaves it as it is. It can also be set on the model's page.</dd>
                         <dt>New versions</dt>
                         <dd>The check says how many published passports a load gives a new version, as the forms would. Pressing Load is the yes the forms ask for.</dd>
+                        <dt>Published passports change</dt>
+                        <dd>Before Load, the check says how many published batteries the load reaches, how many new versions each gets and which parts of the workbook reach them (a battery gets one version per saved part: a record's values, each uploaded document). If a load stops part way, those batteries stay on a version with only some of the changes until the workbook is loaded again.</dd>
                         <dt>What stops a load</dt>
-                        <dd>Any problem line in the check. Also a file that isn't a real .xlsx or is damaged, more than 40 files or 100 MB, a date or a formula without a value where a number belongs, and a sheet that lacks a column of the empty workbook.</dd>
+                        <dd>Any problem line in the check. Also two columns with the same heading (the check names both columns' letters) and a filled column without a heading, a file that isn't a real .xlsx or is damaged, more than 40 files or 100 MB, a date or a formula without a value where a number belongs, and a sheet that lacks a column of the empty workbook.</dd>
                         <dt>Not in the workbook</dt>
                         <dd>The values of each battery (for example #13, the third party service provider) are typed on the battery's page.</dd>
                     </dl>
@@ -231,6 +235,8 @@
                         <dd>Only an available ID, with a reason such as a damaged label: in its row's ⋯ menu. "Void unused…" voids a release's available IDs at once.</dd>
                         <dt>A red notice</dt>
                         <dd>"The battery ID settings aren't set": the app isn't given its DUNS and web address (<code>DPP_ID_AGENCY</code>, <code>DPP_ID_COMPANY</code>, <code>DPP_ID_BASE_URL</code>), so nothing can be released and no battery can be created from a released ID, as they would get test IDs. Whoever runs the app sets them and restarts it. The demo data works without them.</dd>
+                        <dt>A released ID the app says another battery has</dt>
+                        <dd>If a released ID is the same, apart from capitals and dashes, as the ID of another battery, the app refuses to use it and names that battery. Void the released ID on this page, with a reason, and use another.</dd>
                         <dt>Change its battery ID…</dt>
                         <dd>On a draft's page, under More: it takes another available ID, and its old one is available again. Removing a draft gives its ID back too.</dd>
                         <dt>A new passport</dt>
