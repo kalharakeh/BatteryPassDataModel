@@ -258,8 +258,8 @@ The team's own account, on a site with `ENABLE_DEMO_DATA=false`. Trial batteries
 
 1. **The first sign-in on a new database.** With `FIRST_TEAM_ACCOUNT_EMAIL` set to your address, open the sign-in page, press "Forgot password", type the address.
    **Expected:** "If an account exists, a temporary password has been sent." The e-mail arrives; its temporary password signs in to the "set a new password" step; after you choose a password of at least 12 characters you are on the team's pages.
-2. **The lock.** Type a wrong password for an account you may lock, 11 times.
-   **Expected:** the right password is then refused with "Invalid email or password. Try again later."; "Forgot password" unlocks the account at once.
+2. **The lock.** Type a wrong password for a test account, 11 times, from one network.
+   **Expected:** the right password is then refused from that network with "Invalid email or password. Try again later.", but signs in from another network (a phone on mobile data). "Forgot password" works while the lock is on: its temporary password signs in, and choosing a new password unlocks the account at once.
 3. **Load the product data.** Battery families, "Load product data from Excel". Choose the filled workbook and its files, press **Check**.
    **Expected:** a list of what would be saved, and every problem by sheet, row and column. Nothing is saved yet.
 4. **Fix and load.** Correct the workbook until the check says "No problems", then press **Load**.
