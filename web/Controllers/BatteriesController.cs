@@ -34,6 +34,9 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     /// <summary>The live-values form's field with the time the values were measured, in the page's time zone.</summary>
     public const string MeasuredAtField = "measuredAt";
 
+    /// <summary>The browser's offset from UTC, in minutes east, for the typed "measured at" (H1 round two); the page's script fills it.</summary>
+    public const string MeasuredAtOffsetField = "measuredAtOffset";
+
     /// <param name="registry">"missing": only the published real batteries not recorded in the EU registry yet (finding R02).</param>
     [HttpGet("")]
     public async Task<IActionResult> Batteries([FromQuery] string? q, CancellationToken cancellationToken, [FromQuery] string? registry = null) =>
@@ -454,7 +457,7 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
     private async Task<IActionResult> SaveAsync(string packId, bool liveValues, bool confirmed, CancellationToken cancellationToken)
     {
         var form = Request.Form;
-        var measured = liveValues ? MeasuredAt(form[MeasuredAtField].ToString()) : null;
+        var measured = liveValues ? MeasuredAt(form[MeasuredAtField].ToString(), form[MeasuredAtOffsetField].ToString()) : null;
         var saved = await pages.SaveAsync(
             Who,
             packId,
@@ -525,8 +528,16 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
         }
     }
 
-    /// <summary>A measurement time typed in the page's time zone (a datetime-local input), as UTC; null when blank or unreadable.</summary>
-    public static DateTime? MeasuredAt(string? typed)
+    /// <summary>A measurement time typed in a datetime-local input, read as UTC (no offset sent); null when blank or unreadable.</summary>
+    public static DateTime? MeasuredAt(string? typed) => MeasuredAt(typed, null);
+
+    /// <summary>
+    /// A measurement time typed in the browser's time zone (a datetime-local input), as UTC (H1 round two): the page's script
+    /// sends the browser's offset for that time in minutes east of UTC (<see cref="MeasuredAtOffsetField"/>). Without a
+    /// readable offset the time is read as UTC, as the form says; the server's own zone is never used. Null when blank or
+    /// unreadable.
+    /// </summary>
+    public static DateTime? MeasuredAt(string? typed, string? offsetMinutes)
     {
         if (string.IsNullOrWhiteSpace(typed)
             || !DateTime.TryParse(typed, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out var local))
@@ -534,6 +545,10 @@ public sealed class BatteriesController(BatteryPages pages, DocumentService docu
             return null;
         }
 
-        return TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(local, DateTimeKind.Unspecified), TimeZoneInfo.Local);
+        var offset = int.TryParse(offsetMinutes, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var minutes)
+            && Math.Abs(minutes) <= MeasuredAtRule.MaxOffsetMinutes
+                ? minutes
+                : 0;
+        return DateTime.SpecifyKind(DateTime.SpecifyKind(local, DateTimeKind.Unspecified).AddMinutes(-offset), DateTimeKind.Utc);
     }
 }

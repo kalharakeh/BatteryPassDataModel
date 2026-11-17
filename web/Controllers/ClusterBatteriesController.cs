@@ -67,7 +67,7 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
             packId,
             name => form.TryGetValue(name, out var value) ? value.ToString() : null,
             form[ProductDataController.StampField].ToString(),
-            BatteriesController.MeasuredAt(form[BatteriesController.MeasuredAtField].ToString()),
+            BatteriesController.MeasuredAt(form[BatteriesController.MeasuredAtField].ToString(), form[BatteriesController.MeasuredAtOffsetField].ToString()),
             cancellationToken);
         if (saved is not { } result)
         {
