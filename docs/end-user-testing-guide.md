@@ -270,6 +270,7 @@ The team's own account, on a site with `ENABLE_DEMO_DATA=false`. Trial batteries
    **Expected:** it is listed under "Documents still to come" and doesn't stop the load.
 7. **The model's serial number format.** It comes with the workbook's load; open a model's page and see it (or set it there, for example `VPC8C05s-#####`). In the workbook, change one model's format and check: the check shows the old and the new format and how many batteries don't fit. Then, on Battery IDs, release `VPC8C05s-00001`, then `VPC8C05S-00001`, then a serial of another model.
    **Expected:** the first is released with its small letter; the second is refused as the same serial number; the third is refused and the format is named.
+   In the same check: two columns with one heading, or a filled column without a heading, are each a problem line; a later model's empty recycled-content share is marked "taken from Core800" (write `none` if it has none); with a published battery on the family, a block "Published passports change" says how many new versions the load gives.
 8. **A test battery.** Release a test ID ("Test IDs"), make a battery of a real model with it, upload its readings, publish it. Open its address as a visitor, typed three ways.
    **Expected:** the same public page every time, with the "Test passport" tag; the ID keeps the small letter of the serial.
 9. **The use notice.** Sign in as a reader who sees restricted data (market surveillance, notified body) and open a published battery's detail page twice.
