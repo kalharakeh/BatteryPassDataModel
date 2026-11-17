@@ -192,10 +192,26 @@ public sealed class DppStore
         }
         catch (MongoException exception)
         {
-            _logger?.LogError(exception, "The battery ID key indexes couldn't be made; the app starts without them, and two batteries with the same ID apart from capitals and dashes are then refused by the app's checks only.");
+            _logger?.LogWarning(exception, "Making the battery ID key indexes failed; see the next message.");
         }
 
-        var collisions = await FillItemKeysAsync(cancellationToken);
+        // Without the unique index, a key written now could give both batteries of a colliding pair the same key, and the
+        // index could never be made afterwards (S1 round four): no key is given on this start. The app's checks in code
+        // still refuse a battery whose ID is taken; only the database's own refusal of a race is missing until then.
+        IReadOnlyList<ItemKeyCollision> collisions;
+        if (await HasUniqueItemKeyIndexAsync(cancellationToken))
+        {
+            collisions = await FillItemKeysAsync(cancellationToken);
+        }
+        else
+        {
+            collisions = await StoredKeyCollisionsAsync(cancellationToken);
+            _logger?.LogError(
+                collisions.Count > 0
+                    ? "The battery ID key index can't be made because these batteries already have the same key: {Pairs}. Decide which battery of each pair is right, correct or remove the other, then start the app again. Until then no battery gets its key and two requests at the same moment aren't refused by the database."
+                    : "The battery ID key index couldn't be made{Pairs}. Start the app again; if this message comes back, look at the database's indexes on dpp_packs. Until then no battery gets its key and two requests at the same moment aren't refused by the database.",
+                collisions.Count > 0 ? string.Join("; ", collisions.Select(collision => $"{collision.HeldBy} and {collision.PackId} ({collision.ItemKey})")) : string.Empty);
+        }
 
         await Collection<BatteryPack>().Indexes.CreateManyAsync(
         [
@@ -263,6 +279,42 @@ public sealed class DppStore
             new CreateIndexModel<Identifiers.ReleasedBatteryId>(Builders<Identifiers.ReleasedBatteryId>.IndexKeys.Ascending(item => item.Status).Ascending(item => item.ModelId), new CreateIndexOptions { Name = "status_model" }),
         ], cancellationToken);
         return collisions;
+    }
+
+    /// <summary>True when the unique index on the item key exists (S1 round four): only then are keys given.</summary>
+    private async Task<bool> HasUniqueItemKeyIndexAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var indexes = await (await Collection<BatteryPack>().Indexes.ListAsync(cancellationToken)).ToListAsync(cancellationToken);
+            return indexes.Any(index => index.GetValue("name", BsonNull.Value) == ItemKeyIndex && index.GetValue("unique", false).ToBoolean());
+        }
+        catch (MongoException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>The pairs of packs whose stored keys are already equal, which keep the unique index from being made.</summary>
+    private async Task<IReadOnlyList<ItemKeyCollision>> StoredKeyCollisionsAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var groups = await RequireDatabase().GetCollection<BsonDocument>(Packs).Aggregate()
+                .Match(Builders<BsonDocument>.Filter.Type(nameof(BatteryPack.ItemKey), BsonType.String))
+                .Group(new BsonDocument { ["_id"] = "$" + nameof(BatteryPack.ItemKey), ["packs"] = new BsonDocument("$push", "$_id") })
+                .Match(Builders<BsonDocument>.Filter.SizeGt("packs", 1))
+                .ToListAsync(cancellationToken);
+            return groups.SelectMany(group =>
+            {
+                var ids = group["packs"].AsBsonArray.Select(id => id.AsString).Order(StringComparer.Ordinal).ToArray();
+                return ids.Skip(1).Select(id => new ItemKeyCollision(id, group["_id"].AsString, ids[0]));
+            }).ToArray();
+        }
+        catch (MongoException)
+        {
+            return [];
+        }
     }
 
     /// <summary>The packs that have a battery ID and no item key yet: the index answers it (<see cref="ItemKeyFindIndex"/>).</summary>
@@ -674,7 +726,10 @@ public sealed class DppStore
             return taken;
         }
 
-        var variants = new BsonRegularExpression($"/{Identifiers.IdentifierForms.DataIdentifier}/{string.Join("-?", key.Select(letter => letter.ToString()))}(-?R[0-9]+)?$", "i");
+        // The battery ID or any R-number of it, by key (S1 round four): capitals ignored and a dash allowed between any two
+        // characters, also after the R and inside the number ("…-R-1", "…-R1-0" is R10), as SameItem matches.
+        var chain = $"{string.Join("-?", key.Select(letter => letter.ToString()))}(?:-?R(?:-?[0-9])+)?";
+        var variants = new BsonRegularExpression($"/{Identifiers.IdentifierForms.DataIdentifier}/{chain}$", "i");
         var packs = RequireDatabase().GetCollection<BsonDocument>(Packs);
         foreach (var pack in await packs
                      .Find(Builders<BsonDocument>.Filter.Regex(nameof(BatteryPack.ItemKey), new BsonRegularExpression($"^{key}R?[0-9]*$")) | Builders<BsonDocument>.Filter.Regex(UniqueProductIdentifierField, variants))
@@ -692,7 +747,7 @@ public sealed class DppStore
             taken.Add(Identifiers.IdentifierForms.ItemKey(released));
         }
 
-        var anchored = new BsonRegularExpression($"^(?:https?://[^/]+/{Identifiers.IdentifierForms.DataIdentifier}/)?{string.Join("-?", key.Select(letter => letter.ToString()))}(-?R[0-9]+)?$", "i");
+        var anchored = new BsonRegularExpression($"^(?:https?://[^/]+/{Identifiers.IdentifierForms.DataIdentifier}/)?{chain}$", "i");
         foreach (var ids in await Collection<RemovedPassport>().Find(Builders<RemovedPassport>.Filter.Regex("Ids", anchored)).Project(removed => removed.Ids).ToListAsync(cancellationToken))
         {
             foreach (var id in ids.Where(id => Identifiers.IdentifierForms.IsItem(Identifiers.IdentifierForms.Short(id))))
