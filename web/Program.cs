@@ -251,7 +251,8 @@ builder.Services.AddSingleton(new BatteryPassWeb.Dpp.Demo.DemoDataSwitch(Battery
     builder.Environment.IsProduction())));
 builder.Services.AddSingleton<MongoContext>();
 // The sign-in and form keys live in the database, so a restart signs nobody out (finding S09).
-builder.Services.AddBatteryPassDataProtection();
+// Encrypted with a secret made from the signing key, which is not in the database (PL round two).
+builder.Services.AddBatteryPassDataProtection(builder.Environment.EnvironmentName, DemoSigningKeyService.DataProtectionSecret(Environment.GetEnvironmentVariable(DemoSigningKeyService.PrivateKeySetting)));
 builder.Services.AddSingleton<ClusterRepository>();
 // The issuer is the battery IDs' site (finding R23); without DPP_ID_BASE_URL, the app's own address.
 builder.Services.AddSingleton(_ => new DemoSigningKeyService(idBaseUrlSetting, appBaseUrlSetting, trustedSigningKeysSetting));
@@ -408,6 +409,18 @@ using (var scope = app.Services.CreateScope())
     if (firstTeamAccount.LogLine is { } firstTeamAccountLine)
     {
         app.Logger.LogInformation("{FirstTeamAccount}", firstTeamAccountLine);
+    }
+    if (DemoSigningKeyService.DataProtectionSecret(Environment.GetEnvironmentVariable(DemoSigningKeyService.PrivateKeySetting)) is null)
+    {
+        app.Logger.LogWarning(DataProtectionSetup.NotEncryptedWarning);
+    }
+    else if (app.Environment.IsProduction()
+        && new MongoXmlRepository(scope.ServiceProvider.GetRequiredService<MongoContext>(), app.Environment.EnvironmentName, null, production: true).UnencryptedKeyCount() is > 0 and var unencryptedKeys)
+    {
+        app.Logger.LogWarning(
+            "{Count} sign-in keys in the database are not encrypted (from an earlier version, or from a developer's PC without a signing key). This site never uses them; they can be deleted from {Collection}.",
+            unencryptedKeys,
+            MongoXmlRepository.CollectionName);
     }
     var fallbackOptions = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<BatteryPassOptions>>().Value;
     if (fallbackOptions.EnableDemoAdminFallback && string.IsNullOrWhiteSpace(fallbackOptions.DemoAdminPassword))

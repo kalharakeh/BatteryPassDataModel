@@ -18,19 +18,9 @@ namespace BatteryPassWeb.Tests.Platform;
 [Collection(MongoCollection.Name)]
 public sealed class KeyStoreTests(MongoFixture mongo)
 {
-    private const string Purpose = "Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationHandler";
+    private static ServiceProvider Instance(MongoContext context) => KeyRingTesting.Instance(context);
 
-    private static ServiceProvider Instance(MongoContext context)
-    {
-        var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddSingleton(context);
-        services.AddBatteryPassDataProtection();
-        return services.BuildServiceProvider();
-    }
-
-    private static IDataProtector Protector(ServiceProvider instance) =>
-        instance.GetRequiredService<IDataProtectionProvider>().CreateProtector(Purpose);
+    private static IDataProtector Protector(ServiceProvider instance) => KeyRingTesting.Protector(instance);
 
     [Fact]
     public async Task ASignIn_ShouldStillWork_AfterTheAppRestarts()
@@ -82,7 +72,7 @@ public sealed class KeyStoreTests(MongoFixture mongo)
     public async Task TheStore_ShouldKeepAnElementOnceWhateverTimesItIsWritten()
     {
         var context = mongo.NewContext();
-        var store = new MongoXmlRepository(context);
+        var store = new MongoXmlRepository(context, "Production", "test-cipher", production: false);
         var element = System.Xml.Linq.XElement.Parse("<key id=\"k1\"><value>v</value></key>");
 
         store.StoreElement(element, "key-k1");
@@ -119,7 +109,7 @@ public sealed class KeyStoreTests(MongoFixture mongo)
     {
         var program = File.ReadAllText(DppTestFiles.RepoFile("web", "Program.cs"));
 
-        Assert.Contains("AddBatteryPassDataProtection()", program, StringComparison.Ordinal);
+        Assert.Contains("AddBatteryPassDataProtection(", program, StringComparison.Ordinal);
     }
 
     [Fact]

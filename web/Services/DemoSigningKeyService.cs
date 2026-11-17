@@ -158,6 +158,43 @@ public sealed class DemoSigningKeyService : IDisposable
         return $"{PrivateKeySetting} can't be read as a P-256 private key. Set it to the site's private key as base64 PKCS#8.";
     }
 
+    /// <summary>
+    /// The secret that encrypts the sign-in keys in the database (PL round two, point 1): 32 bytes made with HKDF from the
+    /// private key's own number, never the key itself, so the same key gives the same secret however it was exported. Null
+    /// when the setting is empty or can't be read; a developer's PC without the setting then keeps its sign-in keys
+    /// unencrypted, and Production doesn't start without the setting.
+    /// </summary>
+    public static byte[]? DataProtectionSecret(string? setting)
+    {
+        if (string.IsNullOrWhiteSpace(setting))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var key = ImportPrivateKey(Convert.FromBase64String(setting.Trim()));
+            var privateNumber = key.ExportParameters(includePrivateParameters: true).D!;
+            try
+            {
+                return HKDF.DeriveKey(
+                    HashAlgorithmName.SHA256,
+                    privateNumber,
+                    32,
+                    "BatteryPass sign-in keys v1"u8.ToArray(),
+                    "encrypts dataProtectionKeys"u8.ToArray());
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(privateNumber);
+            }
+        }
+        catch (Exception exception) when (exception is FormatException or CryptographicException)
+        {
+            return null;
+        }
+    }
+
     public byte[] SignData(byte[] data)
     {
         return _key.SignData(data, HashAlgorithmName.SHA256, DSASignatureFormat.IeeeP1363FixedFieldConcatenation);

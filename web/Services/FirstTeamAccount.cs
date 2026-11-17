@@ -1,4 +1,3 @@
-using System.Net.Mail;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
@@ -9,7 +8,7 @@ public enum FirstTeamAccountOutcome
     /// <summary>The setting is empty: nothing to do.</summary>
     NotSet,
 
-    /// <summary>The setting holds something that is not one e-mail address.</summary>
+    /// <summary>The setting holds something that "Forgot password" would not take as one e-mail address.</summary>
     NotAnAddress,
 
     /// <summary>The database has a team account already: the setting does nothing.</summary>
@@ -23,22 +22,32 @@ public enum FirstTeamAccountOutcome
 
     /// <summary>The app has no database connection.</summary>
     NoDatabase,
+
+    /// <summary>
+    /// The account this setting made earlier is still there but no longer on the team, and no team account is left: it is
+    /// left as it is (a setting never gives team access back), and the log says what to do.
+    /// </summary>
+    FirstAccountNoLongerOnTheTeam,
 }
 
 public sealed record FirstTeamAccountResult(FirstTeamAccountOutcome Outcome, string Email)
 {
     /// <summary>
     /// The one line the start-up log says about the step, or null when there is nothing to say. Only the address, never a
-    /// password, a token or a link.
+    /// password, a token or a link; for a refused setting not even the setting, which may hold anything.
     /// </summary>
     public string? LogLine => Outcome switch
     {
         FirstTeamAccountOutcome.Created =>
             $"The first team account was created for {Email}. It has no password: the person uses \"Forgot password\" on the sign-in page.",
         FirstTeamAccountOutcome.TeamAccountExists => $"{FirstTeamAccount.Setting} is ignored: a team account exists.",
-        FirstTeamAccountOutcome.NotAnAddress => $"{FirstTeamAccount.Setting} is ignored: it is not one e-mail address.",
+        FirstTeamAccountOutcome.NotAnAddress =>
+            $"{FirstTeamAccount.Setting} is ignored: it is not one e-mail address that \"Forgot password\" on the sign-in page takes. {EmailAddressRule.Words}",
         FirstTeamAccountOutcome.AddressInUse =>
             $"{FirstTeamAccount.Setting} is ignored: an account with {Email} exists that is not on the team, and a setting never changes an account's role. Use another address, or have that account deleted first.",
+        FirstTeamAccountOutcome.FirstAccountNoLongerOnTheTeam =>
+            $"{FirstTeamAccount.Setting} is ignored: the account it made earlier, {Email}, is no longer on the team and no team account is left. "
+            + $"A setting never gives team access back. Delete that account in the database (collection users, _id \"{FirstTeamAccount.AccountId}\") and start the app again: the account is then made anew, with no password, for the address in the setting.",
         _ => null,
     };
 }
@@ -59,6 +68,15 @@ public sealed class FirstTeamAccount(MongoContext mongoContext, ApplicationAudit
     /// </summary>
     public const string AccountId = "first-team-account";
 
+    /// <summary>
+    /// A team account exactly as the app treats one (PL round two, point 3): not a demo account, and "admin" in its list of
+    /// roles, written just so. Sign-in gives such an account the team's rights and no other (see the team pages' own count of
+    /// team accounts); a role in other capitals, a demo account or roles that are not a list never act as the team.
+    /// </summary>
+    public static bool IsTeamAccount(BsonDocument user) =>
+        !ClusterRepository.IsDemo(user)
+        && AccessControlService.RolesOf(user).Contains(AccessControlService.RoleAdmin, StringComparer.Ordinal);
+
     public async Task<FirstTeamAccountResult> RunAsync(string? setting, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(setting))
@@ -66,31 +84,36 @@ public sealed class FirstTeamAccount(MongoContext mongoContext, ApplicationAudit
             return new(FirstTeamAccountOutcome.NotSet, string.Empty);
         }
 
-        var email = AddressOrNull(setting);
-        if (email is null)
+        // The same rule as "Forgot password": an address it would refuse makes an account nobody could claim.
+        if (EmailAddressRule.Problem(setting) is not null)
         {
             return new(FirstTeamAccountOutcome.NotAnAddress, string.Empty);
         }
 
+        var email = ClusterRepository.NormalizeEmail(setting);
         if (mongoContext.Database is not { } database)
         {
             return new(FirstTeamAccountOutcome.NoDatabase, email);
         }
 
         var users = database.GetCollection<BsonDocument>("users");
-        var teamAccounts = Builders<BsonDocument>.Filter.AnyEq("roles", AccessControlService.RoleAdmin);
-        var ignoreCase = new CountOptions { Collation = ClusterRepository.IgnoreCase, Limit = 1 };
-        if (await users.CountDocumentsAsync(teamAccounts, ignoreCase, cancellationToken) > 0)
+        var candidates = await users
+            .Find(Builders<BsonDocument>.Filter.AnyEq("roles", AccessControlService.RoleAdmin))
+            .ToListAsync(cancellationToken);
+        if (candidates.Any(IsTeamAccount))
         {
             return new(FirstTeamAccountOutcome.TeamAccountExists, email);
+        }
+
+        if (await FirstAccountAsync(users, cancellationToken) is { } earlier)
+        {
+            return earlier;
         }
 
         if (await ClusterRepository.FindUserAsync(database, email, cancellationToken) is { } existing)
         {
             // An instance that started a moment earlier may have made the team account since the look above.
-            var onTheTeam = existing.TryGetValue("roles", out var roles) && roles is BsonArray list
-                && list.Any(role => string.Equals(role.ToString(), AccessControlService.RoleAdmin, StringComparison.OrdinalIgnoreCase));
-            return new(onTheTeam ? FirstTeamAccountOutcome.TeamAccountExists : FirstTeamAccountOutcome.AddressInUse, email);
+            return new(IsTeamAccount(existing) ? FirstTeamAccountOutcome.TeamAccountExists : FirstTeamAccountOutcome.AddressInUse, email);
         }
 
         var now = DateTime.UtcNow.ToString("O");
@@ -108,13 +131,12 @@ public sealed class FirstTeamAccount(MongoContext mongoContext, ApplicationAudit
                 cancellationToken);
             if (made.UpsertedId is null)
             {
-                // Another instance made it between the look above and this write.
-                return new(FirstTeamAccountOutcome.TeamAccountExists, email);
+                return await FirstAccountAsync(users, cancellationToken) ?? new(FirstTeamAccountOutcome.TeamAccountExists, email);
             }
         }
         catch (MongoWriteException exception) when (exception.WriteError.Category == ServerErrorCategory.DuplicateKey)
         {
-            return new(FirstTeamAccountOutcome.TeamAccountExists, email);
+            return await FirstAccountAsync(users, cancellationToken) ?? new(FirstTeamAccountOutcome.TeamAccountExists, email);
         }
 
         await audit.AppendApplicationAuditEventAsync(
@@ -130,17 +152,21 @@ public sealed class FirstTeamAccount(MongoContext mongoContext, ApplicationAudit
         return new(FirstTeamAccountOutcome.Created, email);
     }
 
-    /// <summary>The setting as one plain address in the app's form (outer spaces and capitals removed), or null.</summary>
-    private static string? AddressOrNull(string setting)
+    /// <summary>
+    /// What the account this setting made earlier says, if it is still there: on the team (another instance made it a moment
+    /// ago), or no longer on the team. Null when there is no such account.
+    /// </summary>
+    private static async Task<FirstTeamAccountResult?> FirstAccountAsync(IMongoCollection<BsonDocument> users, CancellationToken cancellationToken)
     {
-        var typed = setting.Trim();
-        if (typed.Length == 0 || typed.Any(char.IsWhiteSpace) || typed.Contains(',') || typed.Contains(';'))
+        var record = await users.Find(Builders<BsonDocument>.Filter.Eq("_id", AccountId)).FirstOrDefaultAsync(cancellationToken);
+        if (record is null)
         {
             return null;
         }
 
-        return MailAddress.TryCreate(typed, out var parsed) && parsed.Address.Equals(typed, StringComparison.Ordinal) && parsed.Host.Contains('.')
-            ? ClusterRepository.NormalizeEmail(typed)
-            : null;
+        var address = record.GetValue("email", string.Empty).ToString() ?? string.Empty;
+        return IsTeamAccount(record)
+            ? new(FirstTeamAccountOutcome.TeamAccountExists, address)
+            : new(FirstTeamAccountOutcome.FirstAccountNoLongerOnTheTeam, address);
     }
 }
