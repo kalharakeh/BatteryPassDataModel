@@ -351,13 +351,18 @@ internal sealed class FilledWorkbook
         {
             foreach (var (path, content) in parts)
             {
-                using var stream = zip.CreateEntry(path, CompressionLevel.Optimal).Open();
+                var entry = zip.CreateEntry(path, CompressionLevel.Optimal);
+                entry.LastWriteTime = WrittenAt; // the same bytes every time: a check and its Load see one workbook
+                using var stream = entry.Open();
                 stream.Write(content);
             }
         }
 
         return buffer.ToArray();
     }
+
+    /// <summary>The time every part is written with, as a file saved once has one.</summary>
+    private static readonly DateTimeOffset WrittenAt = new(2026, 11, 16, 9, 0, 0, TimeSpan.Zero);
 
     private string Text(string path) => Encoding.UTF8.GetString(_parts[path]);
 

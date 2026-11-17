@@ -1363,26 +1363,32 @@ public sealed partial class ProductDataLoader(
     // ---------- the check as it is shown ----------
 
     private static LoadCheck Unread(string name, byte[] workbook, IReadOnlyList<SentFile> files, string problem) =>
-        new(name, problem, [], [], [], 0, Stamp(workbook, files, [], [], [problem], []));
+        new(name, problem, [], [], [], 0, Stamp(workbook, files, [], [new LoadProblem(string.Empty, string.Empty, string.Empty, problem)], []));
 
     private static LoadCheck Finish(string name, byte[] workbook, IReadOnlyList<SentFile> files, LoadPlan plan)
     {
         var records = plan.All.Select(record => record.View()).ToArray();
         var problems = plan.Problems.Distinct().ToArray();
         var pending = plan.Pending.Distinct().ToArray();
-        return new LoadCheck(name, null, records, problems, plan.Notes.ToArray(), plan.PublishedPassports, Stamp(workbook, files, records, problems, plan.Notes, pending)) { Pending = pending, Publication = plan.Publication };
+        return new LoadCheck(name, null, records, problems, plan.Notes.ToArray(), plan.PublishedPassports, Stamp(workbook, files, records, problems, pending)) { Pending = pending, Publication = plan.Publication };
     }
 
-    /// <summary>A fingerprint of the files and of everything the check says, so that a load can tell it is the same.</summary>
-    private static string Stamp(byte[] workbook, IReadOnlyList<SentFile> files, IReadOnlyList<LoadRecordView> records, IReadOnlyList<LoadProblem> problems, IReadOnlyList<string> notes, IReadOnlyList<LoadPending> pending)
+    /// <summary>
+    /// A fingerprint of what a load reads and would change, so that Load does what the check showed or nothing: the
+    /// workbook and the files, and of each record its name, its state, every value with what the app holds now, and its
+    /// documents; the problems and the documents still to come. The notes are left out on purpose: they count and name
+    /// batteries (those that don't fit a format, published ones), which move on a live site by themselves (live values,
+    /// new passport versions, new batteries) and never change what the load saves. What Load says about published
+    /// passports is worked out again at Load.
+    /// </summary>
+    private static string Stamp(byte[] workbook, IReadOnlyList<SentFile> files, IReadOnlyList<LoadRecordView> records, IReadOnlyList<LoadProblem> problems, IReadOnlyList<LoadPending> pending)
     {
         var text = JsonSerializer.Serialize(new
         {
             workbook = Sha256(workbook),
             files = files.Select(file => $"{Path.GetFileName(file.FileName).ToUpperInvariant()}:{Sha256(file.Content)}").Order(StringComparer.Ordinal).ToArray(),
-            records,
+            records = records.Select(record => new { record.Record, record.Kind, record.Name, record.State, record.Changes, record.Documents }).ToArray(),
             problems,
-            notes,
             pending,
         });
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..32];
