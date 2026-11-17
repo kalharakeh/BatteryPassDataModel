@@ -72,17 +72,130 @@ public sealed class FirstTeamAccountTests(MongoFixture mongo)
 
     [Theory]
     [InlineData("admin")]
-    [InlineData("Admin")]
-    public async Task ATeamAccount_ShouldMakeTheSettingDoNothing(string role)
+    [InlineData("normalUser", "admin")]
+    public async Task ATeamAccount_ShouldMakeTheSettingDoNothing(params string[] roles)
     {
         var context = mongo.NewContext();
-        await Users(context).InsertOneAsync(new BsonDocument { ["email"] = "team@example.test", ["name"] = "Team", ["roles"] = new BsonArray { role } });
+        await Users(context).InsertOneAsync(new BsonDocument { ["email"] = "team@example.test", ["name"] = "Team", ["roles"] = new BsonArray(roles) });
 
         var result = await StartUp(context).RunAsync(Address);
 
         Assert.Equal(FirstTeamAccountOutcome.TeamAccountExists, result.Outcome);
         Assert.Equal(1, await UserCount(context));
         Assert.Empty(await Audit(context));
+    }
+
+    /// <summary>Records that look like the team but that the app never lets act as the team (round two, point 3).</summary>
+    private static BsonDocument Record(string what) => what switch
+    {
+        "role in other capitals" => new BsonDocument { ["roles"] = new BsonArray { "Admin" } },
+        "role in capitals" => new BsonDocument { ["roles"] = new BsonArray { "ADMIN" } },
+        "a demo account" => new BsonDocument { ["roles"] = new BsonArray { "admin" }, ["isDemo"] = true },
+        "roles not a list" => new BsonDocument { ["roles"] = "admin" },
+        "no roles" => new BsonDocument(),
+        "the team" => new BsonDocument { ["roles"] = new BsonArray { "admin" } },
+        "the team, with another role" => new BsonDocument { ["roles"] = new BsonArray { "normalUser", "admin" } },
+        _ => throw new ArgumentOutOfRangeException(nameof(what)),
+    };
+
+    [Theory]
+    [InlineData("role in other capitals")]
+    [InlineData("role in capitals")]
+    [InlineData("a demo account")]
+    [InlineData("roles not a list")]
+    [InlineData("no roles")]
+    public async Task ARecordTheAppDoesNotTreatAsTheTeam_ShouldNotStopTheFirstAccount(string what)
+    {
+        var context = mongo.NewContext();
+        var record = Record(what);
+        record["email"] = "lookalike@example.test";
+        record["name"] = what;
+        await Users(context).InsertOneAsync(record);
+
+        var result = await StartUp(context).RunAsync(Address);
+
+        Assert.Equal(FirstTeamAccountOutcome.Created, result.Outcome);
+        Assert.Equal(2, await UserCount(context));
+    }
+
+    [Theory]
+    [InlineData("role in other capitals")]
+    [InlineData("role in capitals")]
+    [InlineData("a demo account")]
+    [InlineData("roles not a list")]
+    [InlineData("no roles")]
+    [InlineData("the team")]
+    [InlineData("the team, with another role")]
+    public async Task WhatCountsAsTheTeam_ShouldBeWhatSignInGives(string what)
+    {
+        var context = mongo.NewContext();
+        var record = Record(what);
+        record["email"] = "someone@example.test";
+        record["name"] = what;
+        record["passwordHash"] = BCrypt.Net.BCrypt.HashPassword("the-password-of-1");
+        await Users(context).InsertOneAsync(record);
+
+        var signIn = await AuthOn(context, new AccountRig.CapturingEmailSender()).AuthenticateLoginAsync("someone@example.test", "the-password-of-1");
+
+        Assert.Equal(LoginAuthenticationStatus.Authenticated, signIn.Status);
+        Assert.Equal(signIn.Principal!.IsInRole(AccessControlService.RoleAdmin), FirstTeamAccount.IsTeamAccount(record));
+        Assert.Equal(what.StartsWith("the team", StringComparison.Ordinal), FirstTeamAccount.IsTeamAccount(record));
+    }
+
+    [Theory]
+    [InlineData("someone@[127.0.0.1]")]
+    [InlineData("some(comment)one@example.test")]
+    [InlineData("a@b@example.test")]
+    [InlineData("someone@")]
+    public async Task AnAddressForgotPasswordRefuses_ShouldMakeNoAccount_AndTheLogShouldSayWhy(string setting)
+    {
+        var context = mongo.NewContext();
+
+        var result = await StartUp(context).RunAsync(setting);
+
+        Assert.Equal(FirstTeamAccountOutcome.NotAnAddress, result.Outcome);
+        Assert.Equal(0, await UserCount(context));
+        Assert.Contains("\"Forgot password\"", result.LogLine, StringComparison.Ordinal);
+        Assert.DoesNotContain(setting, result.LogLine, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("first.person@example.test")]
+    [InlineData("First.Person@Example.Test")]
+    [InlineData("someone@[127.0.0.1]")]
+    [InlineData("a@b")]
+    [InlineData("o'brien@example.test")]
+    [InlineData("x@y@z")]
+    [InlineData("name <x@y.z>")]
+    public async Task TheSettingsAddress_ShouldBeTakenExactlyWhenForgotPasswordTakesIt(string setting)
+    {
+        var context = mongo.NewContext();
+
+        var result = await StartUp(context).RunAsync(setting);
+
+        Assert.Equal(EmailAddressRule.Problem(setting) is null, result.Outcome == FirstTeamAccountOutcome.Created);
+    }
+
+    [Theory]
+    [InlineData(Address)]
+    [InlineData("someone.new@example.test")]
+    public async Task TheFirstAccount_NoLongerOnTheTeam_ShouldBeSaidAsItIs_AndNotGivenTheTeamBack(string setting)
+    {
+        var context = mongo.NewContext();
+        await StartUp(context).RunAsync(Address);
+        await Users(context).UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("_id", FirstTeamAccount.AccountId),
+            Builders<BsonDocument>.Update.Set("roles", new BsonArray { AccessControlService.RoleNormalUser }));
+
+        var result = await StartUp(context).RunAsync(setting);
+
+        Assert.Equal(FirstTeamAccountOutcome.FirstAccountNoLongerOnTheTeam, result.Outcome);
+        Assert.Equal(Address, result.Email);
+        Assert.Contains("no longer on the team", result.LogLine, StringComparison.Ordinal);
+        Assert.Contains(FirstTeamAccount.AccountId, result.LogLine, StringComparison.Ordinal);
+        var user = Assert.Single(await Users(context).Find(Builders<BsonDocument>.Filter.Empty).ToListAsync());
+        Assert.Equal([AccessControlService.RoleNormalUser], user["roles"].AsBsonArray.Select(role => role.AsString));
+        Assert.Single(await Audit(context));
     }
 
     [Theory]
