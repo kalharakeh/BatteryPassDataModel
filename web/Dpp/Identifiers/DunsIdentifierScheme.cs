@@ -131,17 +131,13 @@ public sealed class DunsIdentifierScheme(IOptions<BatteryPassOptions> options, D
     /// <summary>The first ID with a free R-number after <paramref name="first"/>: <c>…-R1</c>, <c>…-R2</c>, … (<c>…R1</c> before 6d-5).</summary>
     private async Task<NewIdentifier> NextSuccessorAsync(string first, string dash, CancellationToken cancellationToken)
     {
-        var used = await store.FindPackIdentifiersWithSuffixesAsync(first, cancellationToken);
+        // The one rule (S1 round two): skip a number whose ID another battery, a released ID (its label may be printed)
+        // or a removed passport already has, apart from capitals and dashes. Read once (S1 round three).
+        var taken = await store.TakenItemKeysAsync(IdentifierForms.Short(first), cancellationToken);
         for (var number = 1; number <= MaxSuccessors; number++)
         {
             var next = $"{first}{dash}R{number}";
-
-            // The one rule (S1 round two): skip a number whose ID another battery, a released ID (its label may be
-            // printed) or a removed passport already has, apart from capitals and dashes.
-            if (!used.Contains(next)
-                && await store.FindPackByItemIgnoringDashesAsync(IdentifierForms.Short(next), cancellationToken) is null
-                && await store.FindReleasedByItemKeyAsync(IdentifierForms.ItemKey(next), cancellationToken) is null
-                && await store.FindRemovedAsync(next, cancellationToken) is null)
+            if (!taken.Contains(IdentifierForms.ItemKey(next)))
             {
                 return new NewIdentifier(next, null);
             }

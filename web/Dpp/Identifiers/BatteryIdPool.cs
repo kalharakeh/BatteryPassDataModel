@@ -131,7 +131,9 @@ public sealed partial class BatteryIdPool(
             return Refused($"a release holds at most {MaxPerRelease} IDs; this one has {serials.Count}");
         }
 
-        // Each serial number on its own, then against each other, then against the pool and the batteries.
+        // Each serial number on its own, then against each other, then against the pool and the batteries. The markers
+        // and the batteries are read once for the whole release (S1 round three).
+        var removed = await store.RemovedNamesAsync(cancellationToken);
         var wanted = new List<(string Serial, string Key, string Identifier)>();
         var seen = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var serial in serials)
@@ -167,8 +169,9 @@ public sealed partial class BatteryIdPool(
                 continue;
             }
 
-            // A removed passport's serial number or battery ID never comes back (finding R08).
-            if (await store.FindRemovedAsync(serial, cancellationToken) is not null || await store.FindRemovedAsync(identifier, cancellationToken) is not null)
+            // A removed passport's serial number or battery ID never comes back (finding R08), its ID in no other capitals or
+            // dashes either (the one rule).
+            if (removed.Names.Contains(serial) || removed.Names.Contains(identifier) || removed.ItemKeys.Contains(IdentifierForms.ItemKey(identifier)))
             {
                 problems.Add(new IdProblem(serial, RemovedId));
                 continue;
@@ -380,6 +383,12 @@ public sealed partial class BatteryIdPool(
     public Task<ReleasedBatteryId?> OfAsync(string packId, CancellationToken cancellationToken = default) =>
         store.ReleasedIds.Find(item => item.PackId == packId).FirstOrDefaultAsync(cancellationToken)!;
 
+    /// <summary>
+    /// What to do with a released ID that another battery's ID already matches apart from capitals and dashes (released
+    /// before S1 round two, or in a race with a new passport): it can never be used, so it is voided.
+    /// </summary>
+    public const string VoidTheTakenId = "Void this released ID on the Battery IDs page, with a reason, and use another";
+
     /// <summary>Why a swap to an ID of the other kind is refused.</summary>
     public const string SwapNeedsSameKind = "a test battery takes a test ID and a real battery a real ID; pick one of the same kind";
 
@@ -409,9 +418,9 @@ public sealed partial class BatteryIdPool(
             return "its battery ID wasn't picked from the released IDs";
         }
 
-        // A removed passport's ID never comes back (finding R08).
+        // A removed passport's ID never comes back (finding R08), in no other capitals or dashes either (the one rule).
         if (await store.FindRemovedAsync(serialNumber, cancellationToken) is not null
-            || (await GetAsync(serialNumber, cancellationToken) is { } named && await store.FindRemovedAsync(named.Identifier, cancellationToken) is not null))
+            || (await GetAsync(serialNumber, cancellationToken) is { } named && await store.IsIdRemovedAsync(named.Identifier, cancellationToken)))
         {
             return RemovedId;
         }
@@ -425,7 +434,7 @@ public sealed partial class BatteryIdPool(
         // The one rule (S1 round two): no other battery has the same ID apart from capitals and dashes.
         if (await GetAsync(serialNumber, cancellationToken) is { } target && await SameIdTakenAsync(target.Identifier, packId, cancellationToken) is { } taken)
         {
-            return taken;
+            return target.Status == ReleasedIdStatuses.Available ? $"{taken}. {VoidTheTakenId}" : taken; // only an available ID can be voided
         }
 
         var model = (await store.GetAsync<ProductionBatch>(pack.BatchId, cancellationToken))?.ModelId;
@@ -662,22 +671,25 @@ public sealed partial class BatteryIdPool(
             entityId: releaseId,
             cancellationToken: cancellationToken);
 
-    /// <summary>Every battery's serial number and battery ID, by their letters and digits, naming the battery.</summary>
+    /// <summary>
+    /// Every battery's serial number and battery ID, by their letters and digits, naming the battery: one query, only the
+    /// fields needed (S1 round three).
+    /// </summary>
     private async Task<Dictionary<string, string>> BatteriesByKeyAsync(CancellationToken cancellationToken)
     {
         var byKey = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var pack in await store.ListAsync<BatteryPack>(cancellationToken))
+        foreach (var pack in await store.ListBatteryNamesAsync(cancellationToken))
         {
-            var serial = Text(pack, "batterySerialNumber");
-            var name = serial ?? pack.Id;
-            if (serial is not null)
+            var name = pack.SerialNumber ?? pack.PackId;
+            if (pack.SerialNumber is { } serial && IdentifierForms.Clean(serial) is { Length: > 0 } serialKey)
             {
-                byKey.TryAdd(IdentifierForms.Clean(serial), name);
+                byKey.TryAdd(serialKey, name);
             }
 
-            if (Text(pack, "uniqueProductIdentifier") is { } identifier && IdentifierForms.Short(identifier) is var item && item != identifier)
+            var itemKey = pack.ItemKey ?? (pack.Identifier is { } identifier && IdentifierForms.Short(identifier) != identifier ? IdentifierForms.ItemKey(identifier) : null);
+            if (itemKey is { Length: > 0 })
             {
-                byKey.TryAdd(IdentifierForms.Clean(item), name); // by its letters and digits too, as the keys are
+                byKey.TryAdd(itemKey, name); // by its letters and digits too, as the keys are
             }
         }
 

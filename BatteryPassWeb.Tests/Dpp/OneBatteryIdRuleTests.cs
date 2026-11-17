@@ -98,7 +98,7 @@ public sealed class OneBatteryIdRuleTests(MongoFixture mongo)
         var created = await Creation(rig).CreateAsync(ChangeSender.Team(Who), NewBattery(c7, serial));
         var swapped = await pool.SwapAsync(Who, draft.Id, serial);
 
-        var refusal = DunsIdentifierScheme.SameIdTaken($"UN778474481-{serial}", "VBC-1");
+        var refusal = $"{DunsIdentifierScheme.SameIdTaken($"UN778474481-{serial}", "VBC-1")}. {BatteryIdPool.VoidTheTakenId}"; // what to do with it (S1 round three)
         Assert.Null(created.Pack);
         Assert.Equal(refusal, created.Problem);
         Assert.Equal(refusal, swapped);
@@ -230,9 +230,9 @@ public sealed class OneBatteryIdRuleTests(MongoFixture mongo)
         foreach (var serial in new[] { "VBC-8-r1", "VBC8R1", "vbc-8r1" })
         {
             Assert.Equal(BatteryIdPool.RemovedId, Assert.Single((await pool.ReleaseAsync(Who, List("PO", serial))).Problems).Reason);
-            Assert.NotNull(await rig.Store.FindRemovedAsync($"UN778474481-{serial}"));
+            Assert.True(await rig.Store.IsItemKeyRemovedAsync(IdentifierForms.ItemKey($"UN778474481-{serial}"))); // taken; an address of it is served (round three)
         }
 
-        Assert.Null(await rig.Store.FindRemovedAsync("UN778474481-VBC-8-R2"));
+        Assert.False(await rig.Store.IsItemKeyRemovedAsync("UN778474481VBC8R2"));
     }
 }
