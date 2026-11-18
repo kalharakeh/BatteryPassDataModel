@@ -11,10 +11,11 @@ Tag `new-app-v3.5`, on top of `new-app-v3.4`: the platform, hardening, serial nu
 - **If the database has a family copied from the demo:** the first Excel load updates the family, the site and the operator by name, makes the models and batches of the workbook and leaves the copied model and its batch as they were. Remove that model on its page afterwards.
 - **Back up the database.** Same as for `new-app-v3.4`: the earlier version can't open a database this version has written to [decision 62]. Note which back-up it is.
 - **Nothing to do by hand for the battery ID key.** The start gives old batteries their key itself. If the log names two batteries with the same ID apart from capitals and dashes, the team decides which is right.
-- **Everybody is signed out once** after the update: the sign-in keys now live in the database [decision 84].
+- **Everybody is signed out once** after the update: the sign-in keys now live in the database [decision 84]. Changing the signing key later does it again, and breaks forms that are open at that moment.
 - **What v3.4 asked still applies:** the three answers of each model and the tick of each customer's written authorisation (until then its admins and tokens only read).
 - **New settings:** `FIRST_TEAM_ACCOUNT_EMAIL` (only for an empty database), and `ENABLE_DEMO_DATA=false` on the live site and on the owner's PC. `HEALTH_DIAGNOSTICS=true` now stops the start in Production. A proxy in front of the app must allow 100 MB for `/admin/product-data-load`. The cut-over runbook has them all.
-- **A copy of the database now carries the live sign-in keys** (collection `dataProtectionKeys`, not encrypted). Keep back-ups as safe as the signing key.
+- **The sign-in keys are in the database, encrypted** with a secret made from the signing key (collection `dataProtectionKeys`). A copy of the database without the signing key carries no usable sign-in keys; keep the signing key out of back-ups. Each environment (the live site, the owner's PC) has its own keys, so the PC's sign-ins don't work on the live site and the other way round, even on one database. Keys an earlier version stored unencrypted are never used in Production; the start log counts them and they can be deleted [decision 84].
+- **The proxy must pass the client's address on** (`X-Forwarded-For`, with `TRUSTED_PROXY_NETWORKS` and `TRUSTED_PROXY_HOP_LIMIT` right): the sign-in lock counts per client address. The cut-over runbook, check 17, tests it. On a new database start one instance before adding a second.
 
 ### For the team
 
@@ -25,11 +26,11 @@ Tag `new-app-v3.5`, on top of `new-app-v3.4`: the platform, hardening, serial nu
 - **A released ID that another battery's ID matches** (apart from capitals and dashes) stays Available but can't be used; the app says so and names the battery: void it with a reason and use another [decision 86].
 - **One rule for battery IDs:** two batteries never have IDs that differ only in capitals or dashes, at release, creation, swap and new passports; the database enforces it. A draft's serial number is checked whenever its text changes [decision 86].
 - **No demo families on the live site.** The demo is switched off, "Reset demo data" is gone there, and trial batteries are made with test IDs on the real families. "Clear demo data" stays and says what else goes (test IDs, test batteries) [decision 82].
-- **The first team account** of an empty database is made from `FIRST_TEAM_ACCOUNT_EMAIL`; the person sets a password with "Forgot password" [decision 78, 84].
-- **Sign-in lock:** ten wrong passwords in 15 minutes lock the address for 15 minutes; a new password unlocks it. Addresses with a line break or other odd characters are refused when set [decision 85].
-- **Cluster tokens** are "Read" or "Read + write" only. Older tokens with more rights stay and are listed with what they can still do; "Replace" gives a new token and switches the old one off. "Read + write" saves republish a published battery, as the team's own save does. Deleting a cluster deletes its tokens, narrows tokens that had others and cancels waiting hand-overs [decision 85].
-- **The audit log** has a filter "Restricted data opened" [decision 85].
-- A "measured at" time more than five minutes ahead is refused everywhere.
+- **The first team account** of an empty database is made from `FIRST_TEAM_ACCOUNT_EMAIL`; the person sets a password with "Forgot password", so the address must be one that takes (the same e-mail rule); an address it refuses makes no account and the log says why. It counts the team the way the team pages do [decision 78, 84].
+- **Sign-in lock:** ten wrong passwords in 15 minutes from one network lock that network out of that account for 15 minutes; the account's owner still signs in from anywhere else. After 50 wrong from all networks together, the account takes a password only from a network that signed in to it before, for 15 minutes. "Forgot password" always works, and its temporary password is never refused by a lock; a new password unlocks the account at once. Every refusal says the same words. Look-alike spellings of an address count against the real account. Addresses with a line break, an invisible or direction-changing character or other odd characters are refused when set [decision 85].
+- **Cluster tokens** are "Read" or "Read + write" only. Older tokens with more rights stay and are listed with what they can still do; "Replace" gives a new token and switches the old one off. "Read + write" saves republish a published battery, as the team's own save does. Deleting a cluster deletes its tokens, narrows tokens that had others and cancels waiting hand-overs. A token for a cluster that no longer exists is refused [decision 85].
+- **The audit log** has a filter "Restricted data opened". The registry list now logs one line per reader and day too, and the detail page and the accident reports each get their own line [decision 85].
+- A "measured at" time more than five minutes ahead is refused everywhere. The team's and the cluster admin's form sends the time with your browser's offset; the API, an upload file and a battery-system export read a time without an offset as UTC and one with an offset as written. The server's own time zone is never used [decision 85].
 
 ### For cluster admins
 
@@ -39,6 +40,7 @@ Tag `new-app-v3.5`, on top of `new-app-v3.4`: the platform, hardening, serial nu
 
 - **A use notice** sits next to restricted data (shared with you for your role; don't pass it on or keep it longer than you need it). Your first opening of a battery's restricted data each day is logged by the team's audit log, without the values. The battery's own team and cluster admins see no notice [decision 85].
 - A control character in an address is never a passport (it was an error page).
+- **The registry list** shows the use notice to readers who see battery statuses that aren't their own data [decision 85].
 
 ### Under the hood
 
