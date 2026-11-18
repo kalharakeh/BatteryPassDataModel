@@ -1,6 +1,6 @@
 @model BatteryPassWeb.Models.ViewModels.AdminClusterViewModel
 @{
-    ViewData["Title"] = "Cluster API tokens";
+    ViewData["Title"] = "API tokens";
     ViewData["ClusterAdminScope"] = Model.Clusters.Count == 1 ? Model.Clusters[0].Name : null;
     var activeTokenCount = Model.ApiTokens.Count(token => token.IsActive);
     string Count(int count, string one, string many) => $"{count} {(count == 1 ? one : many)}";
@@ -42,11 +42,11 @@
             </label>
             <fieldset class="bp-choice-list">
                 <legend>What it may do</legend>
-                <label class="bp-choice"><input type="radio" name="accessMode" value="read" checked /><strong>Read</strong><small>Reads the passports of your cluster's batteries.</small></label>
+                <label class="bp-choice"><input type="radio" name="accessMode" value="read" checked /><strong>Read</strong><small>Reads the passports of your batteries.</small></label>
                 <label class="bp-choice"><input type="radio" name="accessMode" value="readWrite" /><strong>Read + write</strong><small>Also sends their live values.</small></label>
             </fieldset>
             <fieldset class="bp-choice-list">
-                <legend>Which clusters</legend>
+                <legend>Which customers</legend>
                 <span class="bp-tags">
                     @foreach (var cluster in Model.Clusters)
                     {

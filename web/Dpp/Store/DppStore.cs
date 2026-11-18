@@ -430,6 +430,17 @@ public sealed class DppStore
         return await Collection<UploadRecord>().Find(Builders<UploadRecord>.Filter.Empty).SortByDescending(upload => upload.AtUtc).Limit(limit).ToListAsync(cancellationToken);
     }
 
+    /// <summary>The uploads since <paramref name="sinceUtc"/>, newest first: the team's "To do" page (finding U05), one query.</summary>
+    public async Task<IReadOnlyList<UploadRecord>> ListUploadsSinceAsync(DateTime sinceUtc, CancellationToken cancellationToken = default)
+    {
+        if (_database is null)
+        {
+            return [];
+        }
+
+        return await Collection<UploadRecord>().Find(upload => upload.AtUtc >= sinceUtc).SortByDescending(upload => upload.AtUtc).ToListAsync(cancellationToken);
+    }
+
     /// <summary>The latest uploads that named this battery, newest first (step 5c).</summary>
     public async Task<IReadOnlyList<UploadRecord>> ListUploadsForPackAsync(string packId, int limit, CancellationToken cancellationToken = default)
     {
@@ -1187,6 +1198,17 @@ public sealed class DppStore
             version => version.Id == versionId,
             Builders<PassportVersion>.Update.Set(version => version.DppStatus, status).Set(version => version.LastUpdatedUtc, lastUpdatedUtc),
             cancellationToken: cancellationToken);
+
+    /// <summary>Every hand-over still waiting for its answer, oldest first: the team's "To do" page (finding U05), one query.</summary>
+    public async Task<IReadOnlyList<HandOver>> ListWaitingHandOversAsync(CancellationToken cancellationToken = default)
+    {
+        if (_database is null)
+        {
+            return [];
+        }
+
+        return await Collection<HandOver>().Find(handOver => handOver.State == HandOverStates.Waiting).SortBy(handOver => handOver.AskedAtUtc).ToListAsync(cancellationToken);
+    }
 
     /// <summary>The battery's hand-over waiting for an answer (step 4d); null when none is.</summary>
     public async Task<HandOver?> FindWaitingHandOverAsync(string packId, CancellationToken cancellationToken = default)

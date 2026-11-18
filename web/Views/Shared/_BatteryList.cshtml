@@ -42,7 +42,7 @@
                         <th>Batch</th>
                         @if (Model.ShowClusters)
                         {
-                            <th>Cluster</th>
+                            <th>@Model.ClusterWord</th>
                         }
                         <th>Status @await Html.PartialAsync("_StatusHelp")</th>
                         <th>Updated</th>
@@ -60,10 +60,10 @@
                             <td data-label="Batch"><span class="bp-one-line-clip" title="@row.BatchLabel">@row.BatchLabel</span></td>
                             @if (Model.ShowClusters)
                             {
-                                <td data-label="Cluster">
+                                <td data-label="@Model.ClusterWord">
                                     @if (row.ClusterId is null)
                                     {
-                                        <span class="bp-batteries-muted">No cluster yet</span>
+                                        <span class="bp-batteries-muted">No @Model.ClusterWord.ToLowerInvariant() yet</span>
                                     }
                                     else
                                     {

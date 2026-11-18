@@ -20,7 +20,7 @@
 <main class="bp-page bp-admin-page bp-battery-page">
     <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
     <nav class="bp-breadcrumb" aria-label="Breadcrumb">
-        <a href="/registry">Registry</a>
+        <a href="/cluster-admin/batteries">Batteries</a>
         <span aria-current="page">@Model.SerialNumber</span>
     </nav>
 
@@ -63,7 +63,7 @@
                     <summary>More details</summary>
                     <dl class="bp-bh-facts">
                         <div><dt>Batch</dt><dd class="text-wrap" title="@Model.BatchLabel">@Model.BatchLabel</dd></div>
-                        <div><dt>Cluster</dt><dd class="text-wrap" title="@Model.ClusterLabel">@Model.ClusterLabel</dd></div>
+                        <div><dt>Customer</dt><dd class="text-wrap" title="@Model.ClusterLabel">@Model.ClusterLabel</dd></div>
                     </dl>
                 </details>
             </div>
@@ -129,7 +129,7 @@
             }
             <nav class="bp-bh-open" aria-label="This battery elsewhere">
                 <a class="bp-ilink" href="@PassportPages.SummaryHref(Model.Identifier)" title="The public page, as anyone sees it"><svg class="bp-i" aria-hidden="true"><use href="#i-globe" /></svg>Public page</a>
-                <a class="bp-ilink" href="@PassportPages.DetailHref(Model.Identifier)" title="Everything your cluster sees"><svg class="bp-i" aria-hidden="true"><use href="#i-doc" /></svg>Detail page</a>
+                <a class="bp-ilink" href="@PassportPages.DetailHref(Model.Identifier)" title="Everything you see"><svg class="bp-i" aria-hidden="true"><use href="#i-doc" /></svg>Detail page</a>
                 <a class="bp-ilink" href="@ReaderPages.AccidentsHref(Model.Pack.Id)" title="The battery's accident reports, as readers see them"><svg class="bp-i" aria-hidden="true"><use href="#i-accident" /></svg>Accident page</a>
             </nav>
         </div>
@@ -146,14 +146,14 @@
                     @if (Model.FrozenAs is { } frozenAs && shown is not null)
                     {
                         <h2>@BatteryPassWeb.Dpp.Store.DppStatuses.Words(frozenAs) · version @shown.Number</h2>
-                        <p class="mb-0">Your cluster's battery, to read only: its passport is @BatteryPassWeb.Dpp.Store.DppStatuses.Words(frozenAs).ToLowerInvariant(), so nothing on it changes until the team undoes the mark. Its status, live values, modules, versions and history stay here; its accident reports are on the Accident page.</p>
+                        <p class="mb-0">Your battery, to read only: its passport is @BatteryPassWeb.Dpp.Store.DppStatuses.Words(frozenAs).ToLowerInvariant(), so nothing on it changes until the team undoes the mark. Its status, live values, modules, versions and history stay here; its accident reports are on the Accident page.</p>
                     }
                     else
                     {
                         <h2>@(active is null ? "Not published" : $"Published · version {active.Number}")</h2>
                         <p class="mb-0">@(Model.CannotChange is null
-                            ? "Your cluster's battery. Change its status after a repair or when it's used again, keep its live values and accident reports, or hand it over to another customer. The team keeps its passport values."
-                            : "Your cluster's battery, to read: its status, live values, accident reports, modules, versions and history.")</p>
+                            ? "Your battery. Change its status after a repair or when it's used again, keep its live values and accident reports, or hand it over to another customer. The team keeps its passport values."
+                            : "Your battery, to read: its status, live values, accident reports, modules, versions and history.")</p>
                     }
                     @await Html.PartialAsync("~/Views/Batteries/_LiveTiles.cshtml", Model.Tiles)
                 </section>

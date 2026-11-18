@@ -276,10 +276,8 @@ var batteryPassOptions = app.Services.GetRequiredService<Microsoft.Extensions.Op
 // The security headers go on every response, so they come first (finding R24).
 app.UseSecurityHeaders();
 
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/error");
-}
+// The error page outside Development, and the "not found" page after the routes (finding U04).
+app.UseErrorPages();
 
 var healthDiagnosticsEnabled = BatteryPassHealthCheck.DiagnosticsEnabled(
     builder.Configuration[BatteryPassHealthCheck.DiagnosticsEnvironmentVariable]);
@@ -398,6 +396,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapNotFoundPage();
 
 using (var scope = app.Services.CreateScope())
 {

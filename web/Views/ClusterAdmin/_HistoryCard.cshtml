@@ -23,7 +23,7 @@
 <section class="bp-card bp-console-form-card bp-battery-card" id="history">
     <span class="bp-summary-title">History <em class="bp-field-marker">Read only</em></span>
     <h2>@(Model.Count == 0 ? "Nothing yet" : Model.Count >= ClusterHistory.Shown ? $"The latest {ClusterHistory.Shown} events" : Words.Count(Model.Count, "event"))</h2>
-    <p class="mb-0">What happened to this battery while it was in your cluster, and when it moved in or out. Others are named by their role: the manufacturer's team, market surveillance, another cluster.</p>
+    <p class="mb-0">What happened to this battery while it was yours, and when it moved in or out. Others are named by their role: the manufacturer's team, market surveillance, another customer.</p>
     @if (Model.Count > 0)
     {
         <ol class="bp-cluster-history">

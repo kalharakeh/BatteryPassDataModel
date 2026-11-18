@@ -37,7 +37,7 @@ public sealed class HandOverPagesTests(MongoFixture mongo)
         Assert.Null(await rig.Store.FindWaitingHandOverAsync(rig.PackId));
         await sender.HandOver(rig.PackId, BatteryTesting.South, BatteryTesting.South, HandOverTests.Service(rig), CancellationToken.None);
 
-        Assert.Equal("Asked. The battery stays with your cluster until Customer South accepts.", sender.TempData[BatteriesController.CardStatusKey]);
+        Assert.Equal("Asked. The battery stays with you until Customer South accepts.", sender.TempData[BatteriesController.CardStatusKey]);
         var card = (await ClusterBatteryPagesTests.Pages(rig).BatteryAsync(ChangeSender.ClusterAdmin(NorthAdmin, BatteryTesting.North), rig.PackId))!.HandOver;
         Assert.Equal((BatteryTesting.South, "Customer South"), (card.Waiting!.ToClusterId, card.ReceiverName));
         Assert.Equal($"{ClusterBatteryPages.BatteryHref(rig.PackId)}/handover", card.Action);
@@ -65,7 +65,7 @@ public sealed class HandOverPagesTests(MongoFixture mongo)
 
         await sender.CancelHandOver(rig.PackId, HandOverTests.Service(rig), CancellationToken.None);
 
-        Assert.Equal("Hand-over cancelled. The battery stays with your cluster.", sender.TempData[BatteriesController.CardStatusKey]);
+        Assert.Equal("Hand-over cancelled. The battery stays with you.", sender.TempData[BatteriesController.CardStatusKey]);
         Assert.Null((await ClusterBatteryPagesTests.Pages(rig).BatteryAsync(ChangeSender.ClusterAdmin(NorthAdmin, BatteryTesting.North), rig.PackId))!.HandOver.Waiting);
     }
 
@@ -85,7 +85,7 @@ public sealed class HandOverPagesTests(MongoFixture mongo)
         var accepted = Assert.IsType<RedirectResult>(await receiver.Answer(asked.HandOver!.Id, accept: true, HandOverTests.Service(rig), CancellationToken.None));
 
         Assert.Equal("/registry", accepted.Url);
-        Assert.Equal("Accepted. The battery is now your cluster's; open its battery page from its row below.", receiver.TempData[ProductDataController.StatusKey]);
+        Assert.Equal("Accepted. The battery is now yours; open its battery page from its row below.", receiver.TempData[ProductDataController.StatusKey]);
         var after = (RegistryPage)((ViewResult)await receiver.Index(null, HandOverTests.Service(rig), CancellationToken.None)).Model!;
         Assert.Empty(after.Waiting);
         Assert.NotNull(after.ManageHref(Assert.Single(after.Rows)));
@@ -103,7 +103,7 @@ public sealed class HandOverPagesTests(MongoFixture mongo)
         await receiver.Answer(asked.HandOver.Id, accept: false, HandOverTests.Service(rig), CancellationToken.None);
 
         Assert.Equal($"Not accepted: {HandOverService.NotTheReceiver}.", outsider.TempData[ProductDataController.ErrorKey]);
-        Assert.Equal("Declined. The battery stays with the sending cluster.", receiver.TempData[ProductDataController.StatusKey]);
+        Assert.Equal("Declined. The battery stays with the sending customer.", receiver.TempData[ProductDataController.StatusKey]);
         Assert.Equal(BatteryTesting.North, (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!.ClusterId);
     }
 
@@ -118,7 +118,7 @@ public sealed class HandOverPagesTests(MongoFixture mongo)
         await receiver.Answer(asked.HandOver!.Id, accept: true, HandOverTests.Service(rig), CancellationToken.None);
 
         Assert.Equal(
-            "Not accepted: the battery's passport is no longer active (it was replaced by a new passport or marked invalid), so it can't move to your cluster. Decline it, or ask the sending cluster to cancel.",
+            "Not accepted: the battery's passport is no longer active (it was replaced by a new passport or marked invalid), so it can't move to you. Decline it, or ask the sending customer to cancel.",
             receiver.TempData[ProductDataController.ErrorKey]);
         Assert.Single(((RegistryPage)((ViewResult)await receiver.Index(null, HandOverTests.Service(rig), CancellationToken.None)).Model!).Waiting); // still there to decline
     }

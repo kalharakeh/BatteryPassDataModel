@@ -25,23 +25,26 @@ public sealed class AccountWordsTests
     }
 
     [Fact]
-    public void AClusterUser_ShouldBeNamedAsTheUserListsDo()
+    public void AClusterUser_ShouldBeACustomerUserOnTheirOwnPages_AndAClusterMemberOnTheTeams()
     {
         var member = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, AccessControlService.RoleNormalUser)], "test"));
 
-        Assert.Equal("Cluster member", AccessControlService.DisplayRoleLabel(member));
-        Assert.Equal("Cluster member", AccessControlService.DisplayRoleLabel(AccessControlService.RoleNormalUser));
+        // Decision 55 (W07): "customer" on the pages customers see; "cluster" stays on the team's pages.
+        Assert.Equal("Customer user", AccessControlService.DisplayRoleLabel(member));
+        Assert.Equal("Customer user", AccessControlService.DisplayRoleLabel(AccessControlService.RoleNormalUser));
         Assert.Contains("_ => \"Cluster member\"", Read("web", "Views", "Admin", "Clusters.cshtml"), StringComparison.Ordinal); // the team's list
     }
 
     [Fact]
     public void TheTopBar_ShouldLeaveNoClusterOut_ForReadersWhoNeverHaveOne()
     {
+        // Since the one bar (L04) the account menu's customer line comes from TopBar: none for the app-wide roles.
         var layout = Read("web", "Views", "Shared", "_Layout.cshtml");
+        var bar = Read("web", "Services", "TopBar.cs");
 
-        Assert.DoesNotContain(": \"No cluster\")", layout, StringComparison.Ordinal);
-        Assert.Contains("var clusterLine = clusterNames.Count > 0", layout, StringComparison.Ordinal);
-        Assert.Contains("AccessControlService.HasAppWideRole", layout, StringComparison.Ordinal);
-        Assert.Equal(2, layout.Split("@if (!string.IsNullOrEmpty(clusterLine))").Length - 1);
+        Assert.DoesNotContain("No cluster", layout, StringComparison.Ordinal);
+        Assert.Contains("if (!AccessControlService.HasAppWideRole(", bar, StringComparison.Ordinal);
+        Assert.Contains("customer = customers.Length > 0 ? string.Join(\", \", customers) : \"none yet\";", bar, StringComparison.Ordinal);
+        Assert.Equal(1, layout.Split("@if (account.Customer is { } customer)").Length - 1);
     }
 }

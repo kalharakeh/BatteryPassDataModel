@@ -1,19 +1,39 @@
 @{
-    ViewData["Title"] = "Scania Battery Passport Viewer";
+    ViewData["Title"] = BatteryPassWeb.Services.TopBar.AppName; // the tab says the app's name once (W03)
     var searchQuery = ViewData["SearchQuery"] as string ?? string.Empty;
     var searchWasNotFound = ViewData["SearchNotFound"] is true;
 }
 <main class="bp-landing">
     <div class="bp-landing-content">
         <div>
-            <h1>Scania Battery Passport Viewer</h1>
+            <h1>Find a battery passport</h1>
             <p>Enter a battery's serial number, battery ID or passport ID, or scan its QR code, to open its battery passport.</p>
         </div>
         @if (searchWasNotFound && !string.IsNullOrWhiteSpace(searchQuery))
         {
-            <p class="bp-warning">
-                <span>No published battery passport was found for <span class="fw-semibold">@searchQuery</span>. Check the serial number or ID; a battery's passport is found here once it is published.</span>
-            </p>
+            @if (ViewData[BatteryPassWeb.Controllers.HomeController.NearMatchesKey] is IReadOnlyList<BatteryPassWeb.Controllers.HomeController.NearMatch> { Count: > 0 } near)
+            {
+                @* Near matches (finding U02), as the Registry finds them. *@
+                <div class="bp-near-matches" data-near-matches>
+                    <p class="mb-1">No passport is exactly <span class="fw-semibold">@searchQuery</span>. Did you mean:</p>
+                    <ul>
+                        @foreach (var match in near)
+                        {
+                            <li><a class="bp-near-match" href="@match.Href">@match.SerialNumber</a> <span>@match.ModelName</span></li>
+                        }
+                    </ul>
+                    @if (ViewData[BatteryPassWeb.Controllers.HomeController.NearMatchesMoreKey] is true)
+                    {
+                        <p class="mb-0">Type more of the number to see the rest.</p>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="bp-warning">
+                    <span>No published battery passport was found for <span class="fw-semibold">@searchQuery</span>. Check the serial number or ID; a battery's passport is found here once it is published.</span>
+                </p>
+            }
         }
         <form action="/search" class="bp-search-form bp-landing-search" data-search-form>
             <div class="bp-search-main-row">

@@ -1,13 +1,7 @@
 @inject BatteryPassWeb.Services.ClusterRepository ClusterRepository
 @{
-    var title = ViewData["Title"] as string ?? "Scania Battery Passport Viewer";
+    var title = ViewData["Title"] as string ?? BatteryPassWeb.Services.TopBar.AppName;
     var isAuthenticated = User.Identity?.IsAuthenticated == true;
-    var showAdminLink = User.IsInRole("admin");
-    var showClusterAdminLink = User.IsInRole("clusterAdmin") && !showAdminLink;
-    var identityLabel = string.Empty;
-    var customerName = string.Empty;
-    var customerRole = string.Empty;
-    var clusterNames = new List<string>();
     var requestPath = Context.Request.Path;
     var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
     var theme = BatteryPassWeb.Controllers.ThemeController.NormalizeTheme(
@@ -20,52 +14,16 @@
             ? "bp-main-wide"
             : string.Empty;
 
-    if (isAuthenticated)
-    {
-        identityLabel = BatteryPassWeb.Services.AccessControlService.CurrentEmail(User);
-        customerRole = BatteryPassWeb.Services.AccessControlService.DisplayRoleLabel(User);
-        var userDocument = await ClusterRepository.GetUserByEmailAsync(identityLabel);
-        customerName = userDocument == null
-            ? User.Identity?.Name ?? identityLabel
-            : BatteryPassWeb.Services.BsonHelpers.GetString(userDocument, "name");
-        if (string.IsNullOrWhiteSpace(customerName))
-        {
-            customerName = identityLabel;
-        }
-
-        var memberships = await ClusterRepository.GetClusterMembershipsForUserAsync(identityLabel);
-        var clusters = await ClusterRepository.ListClustersAsync();
-        var clusterNameById = clusters
-            .Select(cluster => new
-            {
-                ClusterId = BatteryPassWeb.Services.BsonHelpers.GetString(cluster, "clusterId"),
-                Name = BatteryPassWeb.Services.BsonHelpers.GetString(cluster, "name")
-            })
-            .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
-            .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
-
-        clusterNames = memberships
-            .Select(membership => BatteryPassWeb.Services.BsonHelpers.GetString(membership, "clusterId"))
-            .Where(clusterId => !string.IsNullOrWhiteSpace(clusterId))
-            .Select(clusterId => clusterNameById.TryGetValue(clusterId, out var name) ? name : clusterId)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-    }
-
-    // The reader's clusters; "No cluster" only for a cluster member who has none yet, never for the team, the authorities
-    // and the legitimate-interest readers, who never have one (finding W04).
-    var neverHasCluster = BatteryPassWeb.Services.AccessControlService.HasAppWideRole(
-        User.Claims.Where(claim => claim.Type == System.Security.Claims.ClaimTypes.Role).Select(claim => claim.Value));
-    var clusterLine = clusterNames.Count > 0
-        ? string.Join(", ", clusterNames)
-        : !isAuthenticated || neverHasCluster ? string.Empty : "No cluster";
+    // The one top bar (finding L04): the main links by who is signed in, and the account as initials and a name.
+    var topLinks = BatteryPassWeb.Services.TopBar.Links(User, requestPath.Value);
+    var account = await BatteryPassWeb.Services.TopBar.AccountAsync(User, ClusterRepository);
 }
 <!DOCTYPE html>
 <html lang="en" data-theme="@theme">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@title - Scania Battery Passport Viewer</title>
+    <title>@(title == BatteryPassWeb.Services.TopBar.AppName ? title : $"{title} - {BatteryPassWeb.Services.TopBar.AppName}")</title>
     <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/bp-status.css" asp-append-version="true" />
@@ -73,168 +31,100 @@
 <body>
     @await Html.PartialAsync("_Icons")
     <div class="bp-shell">
-        <header class="bp-header bp-scania-header">
-            <div class="bp-header-top-row">
-                <div class="bp-header-title-group">
-                    <a class="bp-header-wordmark" href="/" aria-label="Scania">
-                        <img src="~/images/scania_wordmark_blue_rgb.svg" alt="Scania" class="bp-header-wordmark-image bp-mark-white" />
-                    </a>
-                    <span class="bp-header-divider" aria-hidden="true"></span>
-                    <span class="bp-market-label">Battery Passport</span>
-                </div>
-                <a class="bp-header-symbol-link" href="/" aria-label="Scania Battery Passport home">
-                    <img src="~/images/scania_symbol_L_rgb.svg" alt="Scania symbol" class="bp-header-symbol-logo" />
-                </a>
-            </div>
-            <div class="bp-header-nav-row">
-                <nav class="bp-nav bp-header-actions" aria-label="Main navigation">
-                    <div class="bp-header-right-group">
-                        @if (isAuthenticated)
-                        {
-                            <details class="bp-header-mobile-menu">
-                                <summary>Menu</summary>
-                                <div class="bp-header-mobile-menu-panel">
-                                    <div class="bp-mobile-identity">
-                                        <p>@identityLabel</p>
-                                        <p>@customerName / @customerRole</p>
-                                        @if (!string.IsNullOrEmpty(clusterLine))
-                                        {
-                                            <p>@clusterLine</p>
-                                        }
-                                    </div>
-                                    <a href="/registry">Open Registry<partial name="_WaitingCount" /></a>
-                                    @if (showAdminLink)
-                                    {
-                                        <a href="/admin">Admin</a>
-                                    }
-                                    else if (showClusterAdminLink)
-                                    {
-                                        <a href="/cluster-admin">Cluster admin</a>
-                                    }
-                                    <a href="/help">Help</a>
-                                    <a href="/account">Account</a>
-                                </div>
-                            </details>
-                        }
-                        <div class="bp-header-primary-links">
-                        @if (isAuthenticated)
-                        {
-                            <a href="/registry">Open Registry<partial name="_WaitingCount" /></a>
-                        }
-
-                        @if (showAdminLink)
-                        {
-                            <a href="/admin">Admin</a>
-                        }
-                        else if (showClusterAdminLink)
-                        {
-                            <a href="/cluster-admin">Cluster admin</a>
-                        }
-
-                        @if (isAuthenticated)
-                        {
-                            <a href="/help">Help</a>
-                            <a href="/account">Account</a>
-                        }
+        @* The one top bar (finding L04, the owner's picture of 13 Nov 2026): the name, the main links, the account menu. On a
+           phone the links move into the account menu; a visitor keeps Help, the theme and Log in in the bar. *@
+        <header class="bp-topbar@(account is null ? " is-visitor" : string.Empty)">
+            <a class="bp-topbar-brand" href="/" aria-label="Battery Passport, home">
+                <img src="~/images/scania_wordmark_blue_rgb.svg" alt="Scania" class="bp-topbar-wordmark bp-mark-white" />
+                <span class="bp-topbar-divider" aria-hidden="true"></span>
+                <span class="bp-topbar-product">Battery Passport</span>
+            </a>
+            <nav class="bp-topbar-nav" aria-label="Main">
+                @foreach (var link in topLinks)
+                {
+                    <a href="@link.Href" class="@(link.Current ? "is-current" : null)" aria-current="@(link.Current ? "page" : null)">@link.Text@if (link.CountsWaiting){<partial name="_WaitingCount" />}</a>
+                }
+            </nav>
+            @if (account is not null)
+            {
+                <details class="bp-account" data-account-menu>
+                    <summary class="bp-account-button" aria-label="Account menu, @account.Name">
+                        <span class="bp-account-initials" aria-hidden="true">@account.Initials</span>
+                        <span class="bp-account-name" aria-hidden="true">@account.Name</span>
+                        <svg class="bp-account-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" /></svg>
+                    </summary>
+                    <div class="bp-account-panel">
+                        <div class="bp-account-who">
+                            <strong>@account.Name</strong>
+                            <span>@account.Email</span>
+                            <span>@account.Role</span>
+                            @if (account.Customer is { } customer)
+                            {
+                                <span>Customer: @customer</span>
+                            }
                         </div>
-                        @if (isAuthenticated)
-                        {
-                            <div class="bp-identity">
-                                <p>@identityLabel</p>
-                                <p>@customerName / @customerRole</p>
-                                @if (!string.IsNullOrEmpty(clusterLine))
-                                {
-                                    <p>@clusterLine</p>
-                                }
-                            </div>
-                        }
-                        <div class="bp-header-account-links">
-                            <form method="post" action="/theme" class="bp-theme-toggle-form">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="theme" value="@nextTheme" />
-                                <input type="hidden" name="returnUrl" value="@returnUrl" />
-                                <button type="submit" class="bp-theme-toggle" aria-label="@themeLabel" title="@themeLabel" data-tooltip="@themeLabel">
-                                    @if (theme.Equals("dark", StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        <svg class="bp-theme-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                            <circle cx="12" cy="12" r="4" />
-                                            <path d="M12 2v2" />
-                                            <path d="M12 20v2" />
-                                            <path d="m4.93 4.93 1.41 1.41" />
-                                            <path d="m17.66 17.66 1.41 1.41" />
-                                            <path d="M2 12h2" />
-                                            <path d="M20 12h2" />
-                                            <path d="m6.34 17.66-1.41 1.41" />
-                                            <path d="m19.07 4.93-1.41 1.41" />
-                                        </svg>
-                                    }
-                                    else
-                                    {
-                                        <svg class="bp-theme-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                            <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z" />
-                                        </svg>
-                                    }
-                                </button>
-                            </form>
-                        @if (isAuthenticated)
-                        {
-                            <form method="post" action="/login/logout" class="bp-header-logout-form">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="bp-link-button">Logout</button>
-                            </form>
-                        }
-                        else
-                        {
-                            @* Visitors get the small public Help too, beside Login so it shows on a phone as well (step 6b-1, the owner's Q1). *@
-                            <a href="/help">Help</a>
-                            <a href="/login">Login</a>
-                        }
-                        </div>
+                        <nav class="bp-account-links" aria-label="Main, in the account menu">
+                            @foreach (var link in topLinks)
+                            {
+                                <a href="@link.Href" aria-current="@(link.Current ? "page" : null)">@link.Text@if (link.CountsWaiting){<partial name="_WaitingCount" />}</a>
+                            }
+                        </nav>
+                        <a class="bp-account-item" href="/account">Your account</a>
+                        <form method="post" action="/theme" class="bp-account-form">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="theme" value="@nextTheme" />
+                            <input type="hidden" name="returnUrl" value="@returnUrl" />
+                            <button type="submit" class="bp-account-item">@(nextTheme == "dark" ? "Dark mode" : "Light mode")</button>
+                        </form>
+                        <form method="post" action="/login/logout" class="bp-account-form">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="bp-account-item">Log out</button>
+                        </form>
                     </div>
-                </nav>
-            </div>
+                </details>
+            }
+            else
+            {
+                <div class="bp-topbar-visitor">
+                    <form method="post" action="/theme" class="bp-theme-toggle-form">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="theme" value="@nextTheme" />
+                        <input type="hidden" name="returnUrl" value="@returnUrl" />
+                        <button type="submit" class="bp-theme-toggle" aria-label="@themeLabel" title="@themeLabel">
+                            @if (theme.Equals("dark", StringComparison.OrdinalIgnoreCase))
+                            {
+                                <svg class="bp-theme-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <circle cx="12" cy="12" r="4" />
+                                    <path d="M12 2v2" />
+                                    <path d="M12 20v2" />
+                                    <path d="m4.93 4.93 1.41 1.41" />
+                                    <path d="m17.66 17.66 1.41 1.41" />
+                                    <path d="M2 12h2" />
+                                    <path d="M20 12h2" />
+                                    <path d="m6.34 17.66-1.41 1.41" />
+                                    <path d="m19.07 4.93-1.41 1.41" />
+                                </svg>
+                            }
+                            else
+                            {
+                                <svg class="bp-theme-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z" />
+                                </svg>
+                            }
+                        </button>
+                    </form>
+                    <a class="bp-topbar-login" href="/login">Log in</a>
+                </div>
+            }
+            <script src="~/js/bp-topbar.js" asp-append-version="true" defer></script>
         </header>
 
         <main class="bp-main @mainClass">
             @RenderBody()
         </main>
 
+        @* One footer for everyone (finding L05): the bar holds the menu; the Help links the API reference. *@
         <footer class="bp-footer">
-            <div class="bp-footer-extended">
-                <div class="bp-footer-columns">
-                    <section class="bp-footer-column" aria-labelledby="bp-footer-passport">
-                        <h2 id="bp-footer-passport">BATTERY PASSPORT</h2>
-                        <ul>
-                            <li><a href="/">Search passport</a></li>
-                            @if (isAuthenticated)
-                            {
-                                <li><a href="/registry">Open registry</a></li>
-                            }
-                        </ul>
-                    </section>
-                    <section class="bp-footer-column" aria-labelledby="bp-footer-tools">
-                        <h2 id="bp-footer-tools">TOOLS</h2>
-                        <ul>
-                            @if (showAdminLink)
-                            {
-                                <li><a href="/admin">Admin workspace</a></li>
-                            }
-                            else if (showClusterAdminLink)
-                            {
-                                <li><a href="/cluster-admin">Cluster workspace</a></li>
-                            }
-                            @if (isAuthenticated)
-                            {
-                                <li><a href="/help/api">Developer help</a></li>
-                            }
-                            @if (!isAuthenticated)
-                            {
-                                <li><a href="/login">Account access</a></li>
-                            }
-                        </ul>
-                    </section>
-                </div>
-            </div>
             <div class="bp-footer-legal">
                 <div class="bp-footer-legal-inner">
                     <div class="bp-footer-link-row" aria-label="Footer links">

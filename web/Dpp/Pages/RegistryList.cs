@@ -83,8 +83,8 @@ public static class RegistryList
     {
         ArgumentNullException.ThrowIfNull(reader);
         return EveryPublishedBattery.Any(reader.Roles.Contains) ? "Every published battery passport."
-            : reader.ClusterIds.Count > 0 ? "The published batteries of your clusters."
-            : "No batteries are shared with your account yet. Ask your cluster admin or the manufacturer's team.";
+            : reader.ClusterIds.Count > 0 ? "Your published batteries."
+            : "No batteries are shared with your account yet. Ask your customer admin or the manufacturer's team.";
     }
 
     /// <param name="editor">The signed-in user as the sender of a change; a cluster admin's rows get a "Manage" link (step 4a).</param>

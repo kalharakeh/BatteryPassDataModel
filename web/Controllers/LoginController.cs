@@ -173,8 +173,14 @@ public class LoginController : Controller
         return Redirect("/");
     }
 
-    /// <summary>Where signing in leads when no page was asked for (finding U31): the team's area for the team, else the start page.</summary>
-    public static string StartPage(ClaimsPrincipal user) => AccessControlService.IsAdmin(user) ? "/admin" : "/";
+    /// <summary>
+    /// Where signing in leads when no page was asked for (finding U31): the team's "To do" page (U05), the Registry for
+    /// everyone else signed in (U01), the home page's search for a visitor.
+    /// </summary>
+    public static string StartPage(ClaimsPrincipal user) =>
+        user.Identity?.IsAuthenticated != true ? "/"
+        : AccessControlService.IsAdmin(user) ? "/admin/start"
+        : "/registry";
 
     /// <summary>The sender a sign-in counts against: the client address exactly as the sign-in rate limiter takes it (H1 round two).</summary>
     public static string Sender(HttpContext context) => context.Connection.RemoteIpAddress?.ToString() ?? "unknown";

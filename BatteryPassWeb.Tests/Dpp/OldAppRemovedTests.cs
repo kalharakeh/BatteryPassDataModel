@@ -115,7 +115,7 @@ public sealed class OldAppRemovedTests(MongoFixture mongo)
     }
 
     [Theory]
-    [InlineData("Index", "/cluster-admin/users")]
+    [InlineData("Index", "/cluster-admin/batteries")] // the area opens on its batteries (U14)
     [InlineData("Passports", "/registry")]
     [InlineData("Secrets", "/cluster-admin/api-tokens")]
     public void TheClusterAdminsOldAddresses_ShouldLeadToTheirNewPages(string action, string expected)

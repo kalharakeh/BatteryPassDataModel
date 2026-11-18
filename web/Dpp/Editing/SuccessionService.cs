@@ -36,7 +36,7 @@ public sealed class SuccessionService(
     public const string NotAwaited = "the battery isn't waiting for a new passport";
     public const string TeamMakesIt = "the team makes Scania's new passport";
     public const string TeamCancels = "only the team cancels the new passport";
-    public const string NotYours = "only the team and the battery's cluster admins name the operator";
+    public const string NotYours = "only the team and the battery's customer admins name the operator";
     public const string NoOperator = "choose an economic operator";
     public const string AlreadyMade = "the new passport is already made";
     public const string PassportNotAnAddress = "the new passport's ID must be a battery or passport ID, or a web address that starts with http:// or https://";

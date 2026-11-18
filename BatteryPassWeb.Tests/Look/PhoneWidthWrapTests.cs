@@ -21,7 +21,7 @@ public sealed class PhoneWidthWrapTests
         Assert.Contains("<div><dt>Economic operator</dt><dd class=\"text-wrap\" title=\"@sources.Operator.Name\">", team, StringComparison.Ordinal);
         Assert.Contains("<dd class=\"text-wrap@(Model.Pack.ClusterId is null ? \" bp-batteries-muted\" : null)\">@Model.ClusterLabel</dd>", team, StringComparison.Ordinal);
         Assert.Contains("<div><dt>Batch</dt><dd class=\"text-wrap\" title=\"@Model.BatchLabel\">@Model.BatchLabel</dd></div>", cluster, StringComparison.Ordinal);
-        Assert.Contains("<div><dt>Cluster</dt><dd class=\"text-wrap\" title=\"@Model.ClusterLabel\">@Model.ClusterLabel</dd></div>", cluster, StringComparison.Ordinal);
+        Assert.Contains("<div><dt>Customer</dt><dd class=\"text-wrap\" title=\"@Model.ClusterLabel\">@Model.ClusterLabel</dd></div>", cluster, StringComparison.Ordinal); // W07
     }
 
     [Fact]

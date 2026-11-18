@@ -8,11 +8,11 @@
 }
 
 <div class="bp-admin-heading">
-    <h1>Administration</h1>
+    <h1>Admin</h1>
     <p>Batteries, product data, clusters, users and API tokens.</p>
 </div>
 
-<form class="bp-admin-mobile-tab-form mt-4" aria-label="Administration section">
+<form class="bp-admin-mobile-tab-form mt-4" aria-label="Admin section">
     <label for="bp-admin-mobile-tab-select">Admin section</label>
     <select id="bp-admin-mobile-tab-select" data-admin-mobile-tab-select>
         <option value="/admin/batteries" selected="@IsSelected("batteries")">Batteries</option>
@@ -26,7 +26,7 @@
     </select>
 </form>
 
-<nav class="bp-tab-row mt-4" aria-label="Administration tabs">
+<nav class="bp-tab-row mt-4" aria-label="Admin tabs">
     <a class="@TabClass("batteries")" href="/admin/batteries">Batteries</a>
     <a class="@TabClass("battery-ids")" href="/admin/battery-ids">Battery IDs</a>
     <a class="@TabClass("products")" href="/admin/families">Battery families</a>

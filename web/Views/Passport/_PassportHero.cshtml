@@ -134,11 +134,12 @@
                 }
                 else if (signedIn)
                 {
-                    <a class="bp-report-hero-cta bp-report-hero-cta-warning" href="@(signIn)&switchAccount=true">Your account sees the public data only. Sign in with another account to see more.</a>
+                    @* Another customer's battery (finding W10): most people have one account, so nothing to switch to. *@
+                    <p class="bp-report-hero-cta bp-report-hero-cta-warning mb-0">This battery belongs to another customer; you see its public data.</p>
                 }
                 else
                 {
-                    <a class="bp-report-hero-cta bp-report-hero-cta-warning" href="@signIn">Sign in to see more about this passport.</a>
+                    <a class="bp-report-hero-cta bp-report-hero-cta-warning" href="@signIn">Log in to see more about this passport.</a>
                 }
             </div>
         </article>

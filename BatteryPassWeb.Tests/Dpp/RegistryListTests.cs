@@ -43,7 +43,7 @@ public sealed class RegistryListTests
         var page = RegistryList.Build(Reader.With("x", ReaderRole.ClusterUser), Batteries);
 
         Assert.Empty(page.Rows);
-        Assert.Contains("Ask your cluster admin", page.Scope);
+        Assert.Contains("Ask your customer admin", page.Scope); // W07
     }
 
     [Fact]

@@ -98,6 +98,8 @@ public sealed class HelpPerRoleTests
 
         Assert.True(Guide.LastIndexOf("@if (signedIn)", StringComparison.Ordinal) < Guide.IndexOf("id=\"api\"", StringComparison.Ordinal));
         Assert.True(Contents.LastIndexOf("@if (signedIn)", StringComparison.Ordinal) < Contents.IndexOf("<p>For systems</p>", StringComparison.Ordinal));
-        Assert.Contains("<a href=\"/help\">Help</a>\n                            <a href=\"/login\">Login</a>", Read("web", "Views", "Shared", "_Layout.cshtml"), StringComparison.Ordinal);
+        // The one bar (L04): a visitor's link is Help, with Log in beside it, on a phone too.
+        Assert.Contains("links.Add(new TopBarLink(\"Help\", \"/help\", Under(here, \"/help\")));\n            return links;", Read("web", "Services", "TopBar.cs"), StringComparison.Ordinal);
+        Assert.Contains("<a class=\"bp-topbar-login\" href=\"/login\">Log in</a>", Read("web", "Views", "Shared", "_Layout.cshtml"), StringComparison.Ordinal);
     }
 }

@@ -235,7 +235,7 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
         }
         else
         {
-            Card(packId, "handover", $"Asked. The battery stays with your cluster until {asked.ReceiverName} accepts.", null);
+            Card(packId, "handover", $"Asked. The battery stays with you until {asked.ReceiverName} accepts.", null);
         }
 
         return Redirect($"{ClusterBatteryPages.BatteryHref(packId)}#handover");
@@ -252,7 +252,7 @@ public sealed class ClusterBatteriesController(ClusterBatteryPages pages, DppRea
         }
 
         var problem = await handOvers.CancelAsync(sender, packId, cancellationToken);
-        Card(packId, "handover", problem is null ? "Hand-over cancelled. The battery stays with your cluster." : null, problem is null ? null : $"Not cancelled: {problem}.");
+        Card(packId, "handover", problem is null ? "Hand-over cancelled. The battery stays with you." : null, problem is null ? null : $"Not cancelled: {problem}.");
         return Redirect($"{ClusterBatteryPages.BatteryHref(packId)}#handover");
     }
 

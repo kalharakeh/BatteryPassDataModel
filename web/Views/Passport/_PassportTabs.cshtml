@@ -61,7 +61,7 @@
             <div class="tab-pane fade@(buttons[0].Key == "modules" ? " show active" : string.Empty)" id="tab-modules" role="tabpanel">
                 <partial name="_RestrictedNotice" />
                 <h2 class="h5 mb-2">@Words.Count(modules.Count, "module")</h2>
-                <p class="bp-help-text">Seen only by the battery's cluster, market surveillance and the manufacturer's team.</p>
+                <p class="bp-help-text">Seen only by the battery's customer, market surveillance and the manufacturer's team.</p>
                 <div class="bp-table-scroll">
                     <table class="table align-middle bp-console-table bp-mobile-card-table mb-0">
                         <thead><tr><th>Position</th><th>Serial number</th><th>Connectivity ID</th></tr></thead>
@@ -169,7 +169,7 @@
                                     <dt><time datetime="@repair.Date">@ValueWords.Day(repair.Date)</time></dt>
                                     <dd>
                                         @(repair.IsCorrection ? $"Correction: {repair.Description}" : repair.Description)
-                                        <span class="d-block small text-secondary">@(repair.IsCorrection ? "Added" : "Recorded") by @(repair.RecordedAs == "Team" ? "the manufacturer's team" : "the battery's cluster")</span>
+                                        <span class="d-block small text-secondary">@(repair.IsCorrection ? "Added" : "Recorded") by @(repair.RecordedAs == "Team" ? "the manufacturer's team" : "the battery's customer")</span>
                                     </dd>
                                 </div>
                             }

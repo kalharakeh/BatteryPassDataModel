@@ -132,15 +132,15 @@ public sealed class AccessControlService
     public static string DisplayRoleLabel(ClaimsPrincipal user)
     {
         if (user.IsInRole(RoleAdmin)) return "Global Admin";
-        if (user.IsInRole(RoleClusterAdmin)) return "Cluster Admin";
+        if (user.IsInRole(RoleClusterAdmin)) return "Customer admin"; // "customer" on the pages customers see (decision 55)
         if (user.IsInRole(RoleCommission)) return "Commission";
         if (user.IsInRole(RoleMarketSurveillanceAuthority)) return "Market Surveillance Authorities";
         if (user.IsInRole(RoleNotifiedBody)) return "Notified Body";
         if (user.IsInRole(RoleLiRepair)) return "Legitimate interest: repair, repurposing, remanufacturing";
-        if (user.IsInRole(RoleLiRecycling)) return "Legitimate interest: recycling and battery treatment";
+        if (user.IsInRole(RoleLiRecycling)) return "Legitimate interest: recycling and training";
         if (user.IsInRole(RoleLiTreatment)) return "Legitimate interest: authorised or WEEE treatment";
-        if (user.IsInRole(RoleNormalUser)) return "Cluster member"; // as the user lists say (finding W04)
-        return "Cluster Member";
+        if (user.IsInRole(RoleNormalUser)) return "Customer user"; // decision 55
+        return "Customer user";
     }
 
     public static string DisplayRoleLabel(string role)
@@ -148,15 +148,15 @@ public sealed class AccessControlService
         return role switch
         {
             RoleAdmin => "Global Admin",
-            RoleClusterAdmin => "Cluster Admin",
+            RoleClusterAdmin => "Customer admin",
             RoleCommission => "Commission",
             RoleMarketSurveillanceAuthority => "Market Surveillance Authorities",
             RoleNotifiedBody => "Notified Body",
             RoleLiRepair => "Legitimate interest: repair, repurposing, remanufacturing",
-            RoleLiRecycling => "Legitimate interest: recycling and battery treatment",
+            RoleLiRecycling => "Legitimate interest: recycling and training",
             RoleLiTreatment => "Legitimate interest: authorised or WEEE treatment",
-            RoleNormalUser => "Cluster member",
-            _ => "Cluster Member"
+            RoleNormalUser => "Customer user",
+            _ => "Customer user"
         };
     }
 

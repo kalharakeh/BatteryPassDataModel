@@ -12,7 +12,7 @@ public sealed class MobileThemeSessionLayoutTests
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
         Assert.Contains("@media (max-width: 767px)", css);
-        Assert.Contains(".bp-header-nav-row::after", css);
+        Assert.Contains(".bp-account-links", css); // the main links in the account menu on a phone (L04)
         Assert.Contains("scroll-snap-type: x proximity;", css);
         Assert.Contains(".bp-tab-row", css);
         Assert.Contains(".bp-table-scroll::after", css);
@@ -32,8 +32,8 @@ public sealed class MobileThemeSessionLayoutTests
         var clusters = File.ReadAllText(RepoFile("web", "Views", "Admin", "Clusters.cshtml"));
         var apiHelp = File.ReadAllText(RepoFile("web", "Views", "Help", "Index.cshtml"));
 
-        Assert.Contains("bp-header-mobile-menu", layout);
-        Assert.Contains("bp-mobile-identity", layout);
+        Assert.Contains("bp-account-links", layout); // one account menu on every width (L04)
+        Assert.Contains("bp-account-who", layout);
         Assert.Contains("bp-admin-mobile-tab-form", adminTabs);
         Assert.Contains("data-admin-mobile-tab-select", adminTabs);
         Assert.Contains("<details class=\"bp-row\" data-cluster-row", clusters);
@@ -41,7 +41,7 @@ public sealed class MobileThemeSessionLayoutTests
         Assert.Contains("data-label=\"Endpoint\"", apiHelp);
         Assert.Contains(".bp-mobile-card-table td[data-label=\"Battery ID\"]", css);
         Assert.Contains(".bp-admin-mobile-tab-form", css);
-        Assert.Contains(".bp-header-mobile-menu", css);
+        Assert.Contains(".bp-account-panel", css);
         Assert.Contains(".bp-admin-page .bp-tab-row", css);
     }
 
@@ -59,12 +59,12 @@ public sealed class MobileThemeSessionLayoutTests
         var localNavIndex = clusterTabs.IndexOf("<nav class=\"bp-local-admin-nav\"", StringComparison.Ordinal);
 
         Assert.Contains("bp-admin-mobile-tab-form", clusterTabs);
-        Assert.Contains("Cluster admin section", clusterTabs);
+        Assert.Contains("Admin section", clusterTabs); // one name (W03)
         Assert.Contains("data-admin-mobile-tab-select", clusterTabs);
         Assert.DoesNotContain("/cluster-admin/passports", clusterTabs);
         Assert.Contains("value=\"/cluster-admin/users\"", clusterTabs);
         Assert.Contains("value=\"/cluster-admin/api-tokens\"", clusterTabs);
-        Assert.Contains("aria-label=\"Local admin tabs\"", clusterTabs);
+        Assert.Contains("aria-label=\"Admin tabs\"", clusterTabs);
         Assert.Contains("bp-tab-row", clusterTabs);
         Assert.Contains(">API tokens</a>", clusterTabs);
         Assert.True(mobileFormIndex >= 0);

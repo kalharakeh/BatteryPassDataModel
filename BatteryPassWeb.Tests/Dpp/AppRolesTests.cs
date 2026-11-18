@@ -72,7 +72,7 @@ public sealed class AppRolesTests
         var old = User("legitimateInterest");
 
         Assert.False(AccessControlService.HasLegitimateInterestRole(old));
-        Assert.Equal("Cluster Member", AccessControlService.DisplayRoleLabel(old));
+        Assert.Equal("Customer user", AccessControlService.DisplayRoleLabel(old)); // decision 55
         Assert.All(LiRoles, role => Assert.True(AccessControlService.HasLegitimateInterestRole(User(role))));
     }
 

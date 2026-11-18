@@ -86,12 +86,12 @@ public sealed record ClusterBatteryPage(
             if (!ReadOnly) // a marked passport takes no report and can't be handed over; its reports stay on the Accident page
             {
                 sections.Add(new("accidents", "Accident reports", "accident", Count: AccidentReports.Count));
-                sections.Add(new("handover", "Hand over", "handover", HandOver.Waiting is null ? "To another cluster" : "Waiting for their answer"));
+                sections.Add(new("handover", "Hand over", "handover", HandOver.Waiting is null ? "To another customer" : "Waiting for their answer"));
             }
 
             sections.Add(new("modules", "Modules", "modules", Count: Pack.Modules.Count));
             sections.Add(new("versions", "Versions", "versions", Count: Versions.Count));
-            sections.Add(new("history", "History", "history", "While it was your cluster's")); // redesign R6
+            sections.Add(new("history", "History", "history", "While it was yours")); // redesign R6
             return sections;
         }
     }

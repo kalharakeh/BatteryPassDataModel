@@ -46,7 +46,7 @@
     },
     {
       "email": "demo.north.admin@example.test",
-      "name": "Demo north cluster admin",
+      "name": "Demo north admin",
       "role": "member",
       "cluster": "demo-north",
       "clusterRole": "clusterAdmin"
@@ -60,7 +60,7 @@
     },
     {
       "email": "demo.south.admin@example.test",
-      "name": "Demo south cluster admin",
+      "name": "Demo south admin",
       "role": "member",
       "cluster": "demo-south",
       "clusterRole": "clusterAdmin"
@@ -74,7 +74,7 @@
     },
     {
       "email": "demo.fleet.admin@example.test",
-      "name": "Demo fleet cluster admin",
+      "name": "Demo fleet admin",
       "role": "member",
       "cluster": "demo-fleet",
       "clusterRole": "clusterAdmin"

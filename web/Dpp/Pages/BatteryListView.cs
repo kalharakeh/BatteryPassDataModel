@@ -27,7 +27,10 @@ public sealed record BatteryListView(
     public string Empty { get; init; } = "No batteries to show.";
 
     /// <summary>What the search finds by: a cluster only for readers who may see clusters (R6).</summary>
-    public string Placeholder => ShowClusters ? "Serial number, battery ID, passport ID or cluster" : "Serial number, battery ID or passport ID";
+    /// <summary>The cluster column's name: "Cluster" on the team's pages, "Customer" for a customer's people (decision 55, W07).</summary>
+    public string ClusterWord { get; init; } = "Cluster";
+
+    public string Placeholder => ShowClusters ? $"Serial number, battery ID, passport ID or {ClusterWord.ToLowerInvariant()}" : "Serial number, battery ID or passport ID";
 
     public bool Searched => !string.IsNullOrWhiteSpace(Query);
 

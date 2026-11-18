@@ -48,7 +48,7 @@ public sealed class PrintStyleTests
         var print = Print();
 
         Assert.Contains("@page {\n  size: A4;", print, StringComparison.Ordinal);
-        foreach (var hidden in new[] { "header.bp-header,", "footer.bp-footer,", ".bp-hero-ctas,", "#passport-tabs,", "[data-mark-invalid],", ".bp-copy-id-button,", ".bp-status-help-button,", ".bp-live-charts,", ".bp-live-all," })
+        foreach (var hidden in new[] { "header.bp-topbar,", "footer.bp-footer,", ".bp-hero-ctas,", "#passport-tabs,", "[data-mark-invalid],", ".bp-copy-id-button,", ".bp-status-help-button,", ".bp-live-charts,", ".bp-live-all," })
         {
             Assert.Contains(hidden, print, StringComparison.Ordinal);
         }

@@ -1,7 +1,7 @@
 @model BatteryPassWeb.Models.ViewModels.AdminClusterViewModel
 @using BatteryPassWeb.Dpp.Demo
 @{
-    ViewData["Title"] = "Administration";
+    ViewData["Title"] = "Admin";
     var selectedTab = Model.SelectedTab;
     var clustersById = Model.Clusters.ToDictionary(cluster => cluster.ClusterId, cluster => cluster, StringComparer.OrdinalIgnoreCase);
     var clusterCreateName = TempData["ClusterCreateName"]?.ToString() ?? string.Empty;
@@ -16,7 +16,7 @@
         ["marketSurveillanceAuthority"] = "Market surveillance authority",
         ["commission"] = "Commission",
         ["liRepair"] = "Legitimate interest: repair, repurposing, remanufacturing",
-        ["liRecycling"] = "Legitimate interest: recycling and battery treatment",
+        ["liRecycling"] = "Legitimate interest: recycling and training", // training centres too (R12)
         ["liTreatment"] = "Legitimate interest: authorised or WEEE treatment"
     };
     var clusterMembershipRoleOptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -47,7 +47,7 @@
         "marketSurveillanceAuthority" => "Market surveillance",
         "commission" => "Commission",
         "liRepair" => "Legitimate interest: repair",
-        "liRecycling" => "Legitimate interest: recycling",
+        "liRecycling" => "Legitimate interest: recycling and training",
         "liTreatment" => "Legitimate interest: treatment",
         _ => "Cluster member"
     };
@@ -63,7 +63,7 @@
             "Market Surveillance Authorities" => "marketSurveillanceAuthority",
             "Commission" => "commission",
             "Legitimate interest: repair, repurposing, remanufacturing" => "liRepair",
-            "Legitimate interest: recycling and battery treatment" => "liRecycling",
+            "Legitimate interest: recycling and training" => "liRecycling",
             "Legitimate interest: authorised or WEEE treatment" => "liTreatment",
             _ => "member"
         };

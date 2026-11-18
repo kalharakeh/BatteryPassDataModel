@@ -7,7 +7,7 @@
 <section class="bp-card bp-console-form-card bp-battery-card mt-4" id="accidents">
     <span class="bp-summary-title">Accident reports <span class="bp-attr-number">#92</span></span>
     <h2>@(Model.AccidentReports.Count == 0 ? "No accidents reported" : Words.Count(Model.AccidentReports.Count, "accident report"))</h2>
-    <p class="mb-0">See and add this battery's accident reports here. They're seen only by the battery's cluster, market surveillance and @Model.Team.</p>
+    <p class="mb-0">See and add this battery's accident reports here. They're seen only by the battery's @(Model.ForTeam ? "cluster" : "customer"), market surveillance and @Model.Team.</p>
     @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "accidents")
     @if (Model.AccidentReports.Count > 0)
     {

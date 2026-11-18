@@ -55,8 +55,8 @@ public sealed class RegistryController(DppReaders readers, BatteryPages batterie
         if (problem is null)
         {
             TempData[ProductDataController.StatusKey] = accept
-                ? "Accepted. The battery is now your cluster's; open its battery page from its row below."
-                : "Declined. The battery stays with the sending cluster.";
+                ? "Accepted. The battery is now yours; open its battery page from its row below."
+                : "Declined. The battery stays with the sending customer.";
         }
         else
         {

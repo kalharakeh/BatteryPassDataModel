@@ -1,5 +1,9 @@
 @{
-    ViewData["Title"] = "Error";
+    // The error page (finding U04): what happened, in plain words, and nothing about how; the log keeps the detail.
+    ViewData["Title"] = "Something went wrong";
 }
-<h1 class="h3 text-danger">Something went wrong.</h1>
-<p>Please retry or contact support if the problem persists.</p>
+<main class="bp-page bp-message-page">
+    <h1>Something went wrong</h1>
+    <p>The page couldn't be shown. Try again in a moment. If it keeps happening, tell the manufacturer's team what you were doing.</p>
+    <p class="bp-message-actions"><a class="bp-primary-button" href="/">Go to the home page</a></p>
+</main>
