@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Net;
 using BatteryPassWeb.Controllers;
 using BatteryPassWeb.Models.ViewModels;
@@ -35,29 +34,26 @@ public sealed class FirstAdminSignInTests(MongoFixture mongo)
         };
     }
 
-    private static async Task<TimeSpan> TimedAsync(AccountRig rig, string email)
-    {
-        var watch = Stopwatch.StartNew();
-        Assert.Equal(Refused, await SignInAsync(rig, "203.0.113.50", email, "some-guess-1"));
-        return watch.Elapsed;
-    }
-
     [Fact]
-    public async Task AnAccountWithNoPasswordYet_ShouldTakeAsLongToRefuseAsAnAddressWithNoAccount()
+    public async Task AnAccountWithNoPasswordYet_ShouldRunTheDummyPasswordCheckAsAnAddressWithNoAccountDoes()
     {
         using var rig = await AccountRig.StartAsync(mongo);
         await rig.AccountAsync(Unclaimed, "Unclaimed", AccessControlService.RoleAdmin);
         await rig.Database.GetCollection<BsonDocument>("users").UpdateOneAsync(
             Builders<BsonDocument>.Filter.Eq("email", Unclaimed),
             Builders<BsonDocument>.Update.Unset("passwordHash"));
-        await TimedAsync(rig, "nobody@example.test"); // warm up the code paths
 
-        var noAccount = await TimedAsync(rig, "nobody.else@example.test");
-        var noPassword = await TimedAsync(rig, Unclaimed);
+        var start = AuthService.DummyChecks;
+        Assert.Equal(Refused, await SignInAsync(rig, "203.0.113.50", "nobody@example.test", "some-guess-1"));
+        var noAccount = AuthService.DummyChecks - start;
+        Assert.Equal(Refused, await SignInAsync(rig, "203.0.113.50", Unclaimed, "some-guess-1"));
+        var noPassword = AuthService.DummyChecks - start - noAccount;
+        Assert.Equal(Refused, await SignInAsync(rig, "203.0.113.50", AccountRig.Team, "some-guess-1")); // an account with a password does its own check
+        var withPassword = AuthService.DummyChecks - start - noAccount - noPassword;
 
-        // The dummy password check dominates both answers, so they are the same length to within a fraction; without it the
-        // unclaimed account answered in a few milliseconds against about a tenth of a second.
-        Assert.True(noPassword >= noAccount * 0.5, $"no password {noPassword.TotalMilliseconds:0} ms, no account {noAccount.TotalMilliseconds:0} ms");
+        Assert.Equal(1, noAccount);
+        Assert.Equal(1, noPassword);
+        Assert.Equal(0, withPassword);
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.RateLimiting;
@@ -17,14 +18,21 @@ public static class UploadRateLimit
     public static string PartitionKey(HttpContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
-        if (context.User.Identity?.IsAuthenticated == true && !string.IsNullOrWhiteSpace(context.User.Identity.Name))
+        if (context.User.Identity?.IsAuthenticated == true && PersonOf(context.User) is { Length: > 0 } person)
         {
-            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(context.User.Identity.Name));
+            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(person));
             return $"upload-user:{WebEncoders.Base64UrlEncode(hash)}";
         }
 
         return $"upload-ip:{context.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
     }
+
+    /// <summary>
+    /// The person's e-mail address, in small letters: the sign-in's name identifier. The name claim is the display name,
+    /// which two people may share, so it is only the last resort.
+    /// </summary>
+    private static string PersonOf(ClaimsPrincipal user) =>
+        (user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst(ClaimTypes.Email)?.Value ?? user.Identity?.Name ?? string.Empty).Trim().ToLowerInvariant();
 
     /// <summary>Adds the <see cref="SecurityRateLimitPolicyNames.FileUpload"/> policy.</summary>
     public static void Add(RateLimiterOptions options, int permitLimit, int windowSeconds)

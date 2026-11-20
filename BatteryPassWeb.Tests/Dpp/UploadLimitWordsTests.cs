@@ -1,4 +1,5 @@
 using System.Text;
+using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
 
@@ -46,6 +47,17 @@ public sealed class UploadLimitWordsTests(MongoFixture mongo)
     public void TheLimitsWords_ShouldBeMegabytes(long bytes, string expected)
     {
         Assert.Equal(expected, UploadLimitWords.Size(bytes));
+    }
+
+    [Fact]
+    public void AFileUploadOverTheBodyLimit_ShouldNameTheUploadLimit_NotTheBodyCapWithItsExtraBytes()
+    {
+        var program = File.ReadAllText(BatteryPassWeb.Tests.Dpp.DppTestFiles.RepoFile("web", "Program.cs"));
+
+        Assert.Contains("RequestTooLarge(NamedBodyLimitFor(context.Request, batteryPassOptions, maxBodyBytes))", program, StringComparison.Ordinal);
+        Assert.Contains("? options.MaxUploadBytes", program, StringComparison.Ordinal);
+        Assert.Equal("Request body is too large. Maximum allowed size is 10 MB.", UploadLimitWords.RequestTooLarge(BatteryPassOptions.DefaultMaxUploadBytes));
+        Assert.Equal("Request body is too large. Maximum allowed size is 1 MB.", UploadLimitWords.RequestTooLarge(BatteryPassOptions.DefaultMaxJsonBodyBytes));
     }
 
     [Fact]

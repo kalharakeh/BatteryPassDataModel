@@ -371,7 +371,7 @@ app.Use(async (context, next) =>
         await WriteRequestLimitErrorAsync(
             context,
             StatusCodes.Status413PayloadTooLarge,
-            BatteryPassWeb.Dpp.Loading.LoadLimits.AppliesTo(context.Request) ? BatteryPassWeb.Dpp.Loading.LoadLimits.TooLarge : BatteryPassWeb.Dpp.Documents.UploadLimitWords.RequestTooLarge(maxBodyBytes));
+            BatteryPassWeb.Dpp.Loading.LoadLimits.AppliesTo(context.Request) ? BatteryPassWeb.Dpp.Loading.LoadLimits.TooLarge : BatteryPassWeb.Dpp.Documents.UploadLimitWords.RequestTooLarge(NamedBodyLimitFor(context.Request, batteryPassOptions, maxBodyBytes)));
         return;
     }
 
@@ -529,6 +529,13 @@ static void ApplyConfiguredMaxRequestBodySize(HttpContext context, BatteryPassOp
         feature.MaxRequestBodySize = maxBodyBytes;
     }
 }
+
+// The limit a person is told: a file upload's own limit (the body is allowed a little more for the form's other fields), not the body cap.
+static long NamedBodyLimitFor(HttpRequest request, BatteryPassOptions options, long bodyCap) =>
+    !BatteryPassWeb.Dpp.Loading.LoadLimits.AppliesTo(request) && !request.HasJsonContentType() && request.HasFormContentType
+        && (request.ContentType?.StartsWith("multipart/", StringComparison.OrdinalIgnoreCase) ?? false)
+        ? options.MaxUploadBytes
+        : bodyCap;
 
 static long ConfiguredBodyLimitFor(HttpRequest request, BatteryPassOptions options)
 {

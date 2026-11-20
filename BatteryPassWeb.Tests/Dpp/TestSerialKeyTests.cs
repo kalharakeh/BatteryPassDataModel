@@ -82,6 +82,19 @@ public sealed class TestSerialKeyTests(MongoFixture mongo)
     }
 
     [Fact]
+    public async Task ADemoSender_ShouldNotBeToldTheSerialNumberOfADemoIdBatteryOnRealProductData()
+    {
+        var (rig, _, c7) = await SeededAsync(mongo);
+        using var _ = rig;
+        await MakeHolderAsync(rig, c7, demoMarked: true); // real product data under a demo mark: real to a demo sender
+        var demoLike = (await rig.Store.FindPacksBySerialNumberAsync("DEMO-CORE-0001")).Single();
+
+        var result = await rig.Services.GetRequiredService<PackCreationService>().CreateAsync(DemoTeam, NewBattery(demoLike, DemoDataService.SpareSerials[0]));
+
+        Assert.DoesNotContain(RealSerial, result.Problem, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task TheTeam_ShouldKeepTodaysSentenceWithTheOtherBatterysSerialNumber()
     {
         var (rig, _, c7) = await SeededAsync(mongo);
@@ -98,7 +111,7 @@ public sealed class TestSerialKeyTests(MongoFixture mongo)
         new() { Value = JsonValue.Create(text), GeneratedAtUtc = old.GeneratedAtUtc, Source = old.Source, Who = old.Who };
 
     /// <summary>A real battery whose ID has the key of the demo spare's test ID (such a serial can no longer be released; one from before can exist).</summary>
-    private static async Task MakeHolderAsync(DemoRig rig, BatteryPack like)
+    private static async Task MakeHolderAsync(DemoRig rig, BatteryPack like, bool demoMarked = false)
     {
         var pool = rig.Services.GetRequiredService<BatteryIdPool>();
         Assert.True((await pool.ReleaseAsync(Who, List("PO real", "FU5-REAL-1"))).Done);
@@ -108,6 +121,7 @@ public sealed class TestSerialKeyTests(MongoFixture mongo)
         real.Values["batterySerialNumber"] = Same(real.Values["batterySerialNumber"], RealSerial);
         real.Values["uniqueProductIdentifier"] = Same(real.Values["uniqueProductIdentifier"], $"{Base}/25S/UN778474481-{RealSerial}");
         real.ItemKey = IdentifierForms.ItemKey($"UN778474481-{RealSerial}");
+        real.IsDemo = demoMarked;
         await rig.Database.GetCollection<BatteryPack>(DppStore.Packs).ReplaceOneAsync(pack => pack.Id == real.Id, real);
     }
 }

@@ -38,7 +38,7 @@ public sealed class UploadRateLimitTests
     }
 
     [Fact]
-    public async Task OneSignedInPerson_ShouldStillBeLimited_WhateverTheirCapitals()
+    public async Task OneSignedInPerson_ShouldStillBeLimited_WhateverTheCapitalsOfTheirAddress()
     {
         await using var site = await StartAsync();
 
@@ -66,12 +66,22 @@ public sealed class UploadRateLimitTests
     {
         var anonymous = new DefaultHttpContext();
         anonymous.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.9");
-        var ann = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, "ann@example.test")], "Test")) };
+        var ann = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "ann@example.test"), new Claim(ClaimTypes.Name, "Ann")], "Test")) };
         ann.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.9");
 
         Assert.Equal("upload-ip:203.0.113.9", UploadRateLimit.PartitionKey(anonymous));
         Assert.StartsWith("upload-user:", UploadRateLimit.PartitionKey(ann), StringComparison.Ordinal);
         Assert.DoesNotContain("ann@example.test", UploadRateLimit.PartitionKey(ann), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheKey_ShouldTellTwoPeopleWithTheSameDisplayNameApart_AndCountOnePersonOnceWhateverTheCapitals()
+    {
+        static DefaultHttpContext Person(string email, string displayName) =>
+            new() { User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, email), new Claim(ClaimTypes.Name, displayName)], "Test")) };
+
+        Assert.NotEqual(UploadRateLimit.PartitionKey(Person("ann@example.test", "Sam Smith")), UploadRateLimit.PartitionKey(Person("bob@example.test", "Sam Smith")));
+        Assert.Equal(UploadRateLimit.PartitionKey(Person("ann@example.test", "Ann")), UploadRateLimit.PartitionKey(Person("Ann@Example.Test", "Ann")));
     }
 
     [Fact]
@@ -165,7 +175,8 @@ public sealed class UploadRateLimitTests
                 return Task.FromResult(AuthenticateResult.NoResult());
             }
 
-            var identity = new ClaimsIdentity([new Claim(ClaimTypes.Name, who.ToString().ToLowerInvariant())], "Test");
+            // As the sign-in builds it: the e-mail address is the name identifier, the name is the display name two people may share.
+            var identity = new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, who.ToString()), new Claim(ClaimTypes.Name, "Sam Smith")], "Test");
             return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), "Test")));
         }
     }

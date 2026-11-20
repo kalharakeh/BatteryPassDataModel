@@ -102,6 +102,18 @@ public sealed class AuthService
     /// <summary>A hash nobody has the password of: an address with no account costs the same time as one with an account (finding W4).</summary>
     private static readonly string NoAccountHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N"));
 
+    private static long _dummyChecks;
+
+    /// <summary>How many password checks against the hash nobody has the password of have run; the tests read it (FU3).</summary>
+    public static long DummyChecks => Interlocked.Read(ref _dummyChecks);
+
+    /// <summary>One password check that can't succeed, as long as a real one.</summary>
+    private static void DummyCheck(string password)
+    {
+        _ = BCrypt.Net.BCrypt.Verify(password, NoAccountHash);
+        Interlocked.Increment(ref _dummyChecks);
+    }
+
     /// <summary>A demo account (marked by the demo data) when this site's demo data is switched off: it can't sign in (finding R03).</summary>
     private bool IsSwitchedOffDemoAccount(BsonDocument user) =>
         !_demoData.Enabled && user.GetValue(BatteryPassWeb.Dpp.Demo.DemoDataService.AccountMark, false) is { IsBoolean: true, AsBoolean: true };
@@ -159,7 +171,7 @@ public sealed class AuthService
 
         if (user != null && IsSwitchedOffDemoAccount(user))
         {
-            _ = BCrypt.Net.BCrypt.Verify(password, NoAccountHash);
+            DummyCheck(password);
             return LoginAuthenticationResult.Invalid();
         }
 
@@ -174,7 +186,7 @@ public sealed class AuthService
         var now = _clock.GetUtcNow().UtcDateTime;
         if (database != null && await LockedAsync(database, account, from, now, accountPage, cancellationToken))
         {
-            _ = BCrypt.Net.BCrypt.Verify(password, NoAccountHash); // as long as a password check
+            DummyCheck(password); // as long as a password check
             return LoginAuthenticationResult.Locked();
         }
 
@@ -232,7 +244,7 @@ public sealed class AuthService
             var passwordHash = BsonHelpers.GetString(user, "passwordHash");
             if (string.IsNullOrWhiteSpace(passwordHash))
             {
-                _ = BCrypt.Net.BCrypt.Verify(password, NoAccountHash); // an account with no password yet answers as slowly as no account (FU3)
+                DummyCheck(password); // an account with no password yet answers as slowly as no account (FU3)
                 return LoginAuthenticationResult.Invalid();
             }
 
@@ -243,7 +255,7 @@ public sealed class AuthService
 
         if (databaseReached)
         {
-            _ = BCrypt.Net.BCrypt.Verify(password, NoAccountHash);
+            DummyCheck(password);
         }
 
         return CanUseDemoAdminFallback()

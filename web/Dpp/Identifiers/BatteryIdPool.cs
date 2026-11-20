@@ -518,16 +518,33 @@ public sealed partial class BatteryIdPool(
             return null;
         }
 
-        return MaySee(sender, holder)
+        return await MaySeeAsync(sender, holder, cancellationToken)
             ? (DunsIdentifierScheme.SameIdTaken(IdentifierForms.Short(identifier), Text(holder, "batterySerialNumber") ?? holder.Id), false)
             : (DunsIdentifierScheme.TakenByAnother(IdentifierForms.Short(identifier)), true);
     }
 
-    private static bool MaySee(ChangeSender sender, BatteryPack holder) => sender.Kind switch
+    /// <summary>
+    /// Whether the sender may see this battery: the team sees every battery, a cluster admin or feed those of its own
+    /// clusters, and a demo sender only those inside the demo (<see cref="BatteryPassWeb.Dpp.Access.DemoScope.Inside"/>: a
+    /// demo-ID battery on real product data is real to it; a battery of a cluster is counted as outside, which only says less).
+    /// </summary>
+    private async Task<bool> MaySeeAsync(ChangeSender sender, BatteryPack holder, CancellationToken cancellationToken)
     {
-        SenderKind.Team => !sender.DemoOnly || holder.IsDemo,
-        _ => holder.ClusterId is not null && sender.ClusterIds.Contains(holder.ClusterId) && (!sender.DemoOnly || holder.IsDemo),
-    };
+        if (sender.Kind != SenderKind.Team && !(holder.ClusterId is not null && sender.ClusterIds.Contains(holder.ClusterId)))
+        {
+            return false;
+        }
+
+        if (!sender.DemoOnly)
+        {
+            return true;
+        }
+
+        var batch = await store.GetAsync<ProductionBatch>(holder.BatchId, cancellationToken);
+        var model = batch is null ? null : await store.GetAsync<BatteryModel>(batch.ModelId, cancellationToken);
+        var economicOperator = await store.GetAsync<EconomicOperator>(holder.OperatorId, cancellationToken);
+        return BatteryPassWeb.Dpp.Access.DemoScope.Inside(holder, batch, model, economicOperator, clusterIsDemoOrNone: holder.ClusterId is null);
+    }
 
     /// <summary>A draft gives its ID back (swapped, or the draft removed): it is available again.</summary>
     public Task GiveBackAsync(string packId, CancellationToken cancellationToken = default) =>
