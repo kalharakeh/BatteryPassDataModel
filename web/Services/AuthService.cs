@@ -102,13 +102,13 @@ public sealed class AuthService
     /// <summary>A hash nobody has the password of: an address with no account costs the same time as one with an account (finding W4).</summary>
     private static readonly string NoAccountHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N"));
 
-    private static long _dummyChecks;
+    private long _dummyChecks;
 
-    /// <summary>How many password checks against the hash nobody has the password of have run; the tests read it (FU3).</summary>
-    public static long DummyChecks => Interlocked.Read(ref _dummyChecks);
+    /// <summary>How many password checks against the hash nobody has the password of this service has run; the tests read it (FU3).</summary>
+    public long DummyChecks => Interlocked.Read(ref _dummyChecks);
 
     /// <summary>One password check that can't succeed, as long as a real one.</summary>
-    private static void DummyCheck(string password)
+    private void DummyCheck(string password)
     {
         _ = BCrypt.Net.BCrypt.Verify(password, NoAccountHash);
         Interlocked.Increment(ref _dummyChecks);

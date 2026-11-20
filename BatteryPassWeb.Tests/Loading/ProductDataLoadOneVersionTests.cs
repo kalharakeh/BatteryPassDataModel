@@ -39,6 +39,7 @@ public sealed class ProductDataLoadOneVersionTests(MongoFixture mongo)
         var rig = Around(await PublicationTesting.PublishedRigAsync(mongo));
         var workbook = ModelBatchAndDocument();
 
+        var firstCore = (await ActiveAsync(rig)).StaticCore.ToJsonString();
         var check = await rig.CheckAsync(workbook, Files());
         var result = await rig.Loader.LoadAsync(Who, WorkbookName, workbook.Bytes(), Files(), check.Stamp);
 
@@ -46,9 +47,13 @@ public sealed class ProductDataLoadOneVersionTests(MongoFixture mongo)
         var version = await ActiveAsync(rig);
         Assert.Equal(2, version.Number); // not 4: one for the model, one for the batch, one for the document
         var core = version.StaticCore.ToJsonString();
-        Assert.Contains("520", core, StringComparison.Ordinal); // the model's value
-        Assert.Contains("safety", core, StringComparison.OrdinalIgnoreCase); // the document
-        Assert.Contains("D", (await rig.Store.ListBatchesAsync("model-test")).Single().Values["carbonFootprintPerformanceClass"].Value!.ToJsonString(), StringComparison.Ordinal);
+        // All three changes are in version 2, and none of them was in version 1.
+        Assert.Contains("\"gramKilogramValue\":520", core, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"gramKilogramValue\":520", firstCore, StringComparison.Ordinal);
+        Assert.Contains("\"carbonFootprintPerformanceClass\":\"Class D\"", core, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"carbonFootprintPerformanceClass\":\"Class D\"", firstCore, StringComparison.Ordinal);
+        Assert.DoesNotContain("/documents/doc-safety-measures", core, StringComparison.Ordinal); // the document of version 1 was replaced
+        Assert.Contains("/documents/doc-safety-measures", firstCore, StringComparison.Ordinal);
         Assert.Null((await rig.Store.GetAsync<BatteryPack>(rig.Rig.PackId))!.ChangesWaitingSinceUtc);
         Assert.Equal("Product data loaded: 2 records changed, of 1 battery family, 1 battery model and 1 batch. 1 passport got a new version.", result.Message);
     }

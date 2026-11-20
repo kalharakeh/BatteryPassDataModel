@@ -43,13 +43,13 @@ public sealed class FirstAdminSignInTests(MongoFixture mongo)
             Builders<BsonDocument>.Filter.Eq("email", Unclaimed),
             Builders<BsonDocument>.Update.Unset("passwordHash"));
 
-        var start = AuthService.DummyChecks;
+        var start = rig.Auth.DummyChecks;
         Assert.Equal(Refused, await SignInAsync(rig, "203.0.113.50", "nobody@example.test", "some-guess-1"));
-        var noAccount = AuthService.DummyChecks - start;
+        var noAccount = rig.Auth.DummyChecks - start;
         Assert.Equal(Refused, await SignInAsync(rig, "203.0.113.50", Unclaimed, "some-guess-1"));
-        var noPassword = AuthService.DummyChecks - start - noAccount;
+        var noPassword = rig.Auth.DummyChecks - start - noAccount;
         Assert.Equal(Refused, await SignInAsync(rig, "203.0.113.50", AccountRig.Team, "some-guess-1")); // an account with a password does its own check
-        var withPassword = AuthService.DummyChecks - start - noAccount - noPassword;
+        var withPassword = rig.Auth.DummyChecks - start - noAccount - noPassword;
 
         Assert.Equal(1, noAccount);
         Assert.Equal(1, noPassword);
