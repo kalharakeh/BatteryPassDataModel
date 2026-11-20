@@ -373,7 +373,7 @@ app.Use(async (context, next) =>
         await WriteRequestLimitErrorAsync(
             context,
             StatusCodes.Status413PayloadTooLarge,
-            BatteryPassWeb.Dpp.Loading.LoadLimits.AppliesTo(context.Request) ? BatteryPassWeb.Dpp.Loading.LoadLimits.TooLarge : $"Request body is too large. Maximum allowed size is {maxBodyBytes} bytes.");
+            BatteryPassWeb.Dpp.Loading.LoadLimits.AppliesTo(context.Request) ? BatteryPassWeb.Dpp.Loading.LoadLimits.TooLarge : BatteryPassWeb.Dpp.Documents.UploadLimitWords.RequestTooLarge(maxBodyBytes));
         return;
     }
 
