@@ -218,4 +218,52 @@ public sealed class ToDoPageTests(MongoFixture mongo)
             Assert.All(battery.Values, value => Assert.Null(value.Value));
         }));
     }
+    /// <summary>Review 2, point 3: below the cap, the query returns exactly the refused uploads, so the filter itself is tested.</summary>
+    [Fact]
+    public async Task TheUploadsQuery_ShouldReturnOnlyRefusedUploads_BelowTheCap()
+    {
+        using var rig = await DemoRig.StartAsync(mongo);
+        var now = DateTime.UtcNow;
+        await rig.Store.AddUploadAsync(Upload(now, 2, "Saved"));
+        await rig.Store.AddUploadAsync(Upload(now, 1, "Rejected"));
+
+        var read = await rig.Store.ListRefusedUploadsSinceAsync(now.AddDays(-14));
+
+        var only = Assert.Single(read);
+        Assert.Equal("Rejected", only.Batteries.Single().Values.Single().Outcome);
+    }
+
+    /// <summary>Review 2, point 2: when the read stops at the cap, the box says its number is a minimum.</summary>
+    [Fact]
+    public async Task TheUploadsBox_ShouldSayItsNumberIsAMinimum_AtTheCap()
+    {
+        using var rig = await DemoRig.StartAsync(mongo);
+        await rig.Demo.ResetAsync(DemoRig.Who);
+        var now = DateTime.UtcNow;
+        var below = Box(await Pages(rig, now).BuildAsync(), "uploads");
+        for (var i = 0; i < DppStore.RefusedUploadsRead; i++)
+        {
+            await rig.Store.AddUploadAsync(Upload(now, i + 1, "Rejected"));
+        }
+
+        var at = Box(await Pages(rig, now).BuildAsync(), "uploads");
+
+        Assert.False(below.AtLeast);
+        Assert.True(at.AtLeast);
+        Assert.Equal(DppStore.RefusedUploadsRead, at.Count);
+        var view = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Admin", "Start.cshtml"));
+        Assert.Contains("@(box.AtLeast ? \"+\" : null)", view, StringComparison.Ordinal);
+        Assert.Contains("or more: the box reads the newest", view, StringComparison.Ordinal);
+    }
+
+    private static UploadRecord Upload(DateTime now, int minutesAgo, string valueOutcome) => new()
+    {
+        Id = Guid.NewGuid().ToString("N"),
+        AtUtc = now.AddMinutes(-minutesAgo),
+        Who = DemoRig.Who,
+        SentAs = "Team",
+        Channel = "api",
+        Format = "dpp-v3-upload/1",
+        Batteries = [new UploadedBattery { NamedAs = "SN-1", PackId = "pack-1", Outcome = "saved", Values = [new UploadedValue { Key = "stateOfCharge", Outcome = valueOutcome }] }],
+    };
 }
