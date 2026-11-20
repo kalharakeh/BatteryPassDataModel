@@ -46,7 +46,8 @@ internal sealed class ShellSite : IAsyncDisposable
 
     /// <summary>A site on <paramref name="context"/>, in Production (the error page is on) unless said otherwise.</summary>
     /// <param name="throwOn">An address that throws, to show the error page.</param>
-    public static async Task<ShellSite> StartAsync(MongoContext context, bool demoData = true, string environment = "Production", string? throwOn = null)
+    /// <param name="readLimit">The public read limit per minute, as the app sets it with rate limiting on; none when null.</param>
+    public static async Task<ShellSite> StartAsync(MongoContext context, bool demoData = true, string environment = "Production", string? throwOn = null, int? readLimit = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -79,6 +80,11 @@ internal sealed class ShellSite : IAsyncDisposable
         services.Replace(ServiceDescriptor.Singleton<IAntiforgery, NoAntiforgery>());
         services.AddAuthentication(HeaderSignIn.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, HeaderSignIn>(HeaderSignIn.SchemeName, _ => { });
+        services.AddRateLimiter(limiter =>
+        {
+            limiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            PublicDataRateLimit.Add(limiter, readLimit ?? 100000, 60);
+        });
         services.AddAuthorization(authorization =>
         {
             authorization.AddPolicy("AdminOnly", policy => policy.RequireRole("admin"));
@@ -102,6 +108,10 @@ internal sealed class ShellSite : IAsyncDisposable
 
         app.UseStaticFiles();
         app.UseRouting();
+        if (readLimit is not null)
+        {
+            app.UseRateLimiter();
+        }
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
@@ -111,10 +121,47 @@ internal sealed class ShellSite : IAsyncDisposable
         return new ShellSite(app, new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }) { BaseAddress = new Uri(address), Timeout = TimeSpan.FromSeconds(60) });
     }
 
-    /// <summary>A GET as <paramref name="email"/> (an account in the database), or as a visitor.</summary>
-    public async Task<(HttpStatusCode Status, string Body, string? Location)> GetAsync(string path, string? email = null, string? claims = null)
+    /// <summary>
+    /// A request as a browser makes it: following one redirect with the cookies the first answer set (the search hands its
+    /// near matches to the home page that way).
+    /// </summary>
+    public async Task<(HttpStatusCode Status, string Body, string? Location)> FollowAsync(string path, string? email = null)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        using var first = new HttpRequestMessage(HttpMethod.Get, path);
+        if (email is not null)
+        {
+            first.Headers.Add(UserHeader, email);
+        }
+
+        using var answer = await _http.SendAsync(first);
+        if (answer.StatusCode != HttpStatusCode.Redirect || answer.Headers.Location is null)
+        {
+            return (answer.StatusCode, await answer.Content.ReadAsStringAsync(), answer.Headers.Location?.OriginalString);
+        }
+
+        using var second = new HttpRequestMessage(HttpMethod.Get, answer.Headers.Location);
+        if (email is not null)
+        {
+            second.Headers.Add(UserHeader, email);
+        }
+
+        if (answer.Headers.TryGetValues("Set-Cookie", out var cookies))
+        {
+            second.Headers.Add("Cookie", string.Join("; ", cookies.Select(cookie => cookie.Split(';')[0])));
+        }
+
+        using var response = await _http.SendAsync(second);
+        return (response.StatusCode, await response.Content.ReadAsStringAsync(), response.Headers.Location?.OriginalString);
+    }
+
+    /// <summary>A GET as <paramref name="email"/> (an account in the database), or as a visitor.</summary>
+    public Task<(HttpStatusCode Status, string Body, string? Location)> GetAsync(string path, string? email = null, string? claims = null) =>
+        SendAsync(HttpMethod.Get, path, email, claims);
+
+    /// <summary>A request with <paramref name="method"/>, as <paramref name="email"/> or as a visitor, with no body.</summary>
+    public async Task<(HttpStatusCode Status, string Body, string? Location)> SendAsync(HttpMethod method, string path, string? email = null, string? claims = null)
+    {
+        using var request = new HttpRequestMessage(method, path);
         if (email is not null)
         {
             request.Headers.Add(UserHeader, email);
