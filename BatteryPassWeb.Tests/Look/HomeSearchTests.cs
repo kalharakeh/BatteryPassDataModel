@@ -175,6 +175,28 @@ public sealed partial class HomeSearchTests(MongoFixture mongo)
         return serial;
     }
 
+    /// <summary>Review 2, point 7 (decision 80): capitals, small letters and dashes don't tell serial numbers apart, in the prefix too.</summary>
+    [Theory]
+    [InlineData("democ7m", "DEMO-C7M-0001")]
+    [InlineData("demo-c-7-m", "DEMO-C7M-0001")]
+    [InlineData("---a", null)]
+    [InlineData("d-e", null)]
+    public async Task AVisitorsPrefix_ShouldCompareSerialNumbersByTheirLettersAndDigits(string typed, string? offered)
+    {
+        await using var site = await SiteAsync(mongo);
+
+        var (_, page, _) = await site.FollowAsync($"/search?q={Uri.EscapeDataString(typed)}");
+
+        if (offered is null)
+        {
+            Assert.Empty(OfferedSerials(page)); // fewer than three letters and digits
+        }
+        else
+        {
+            Assert.Contains(offered, OfferedSerials(page));
+        }
+    }
+
     /// <summary>Review 2, point 5: a failed search reads the passports once, not once for the exact steps and again for the near matches.</summary>
     [Theory]
     [InlineData(null)]

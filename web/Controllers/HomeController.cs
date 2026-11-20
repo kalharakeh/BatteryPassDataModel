@@ -137,8 +137,8 @@ public class HomeController(PassportPages pages) : Controller
     /// <see cref="NearMatchLimit"/> of them, and whether more match. Nobody lists through the search what their Registry
     /// doesn't list (review 2, point 1): the batteries the reader may list there (the Registry's own <see cref="DemoScope.Lists"/>
     /// and <see cref="RegistryList.MayList"/>) by the Registry's matching (finding U02), clusters aside, and only they count
-    /// for "Type more"; every other published battery by the visitor's rule, its serial number from the start (review 1,
-    /// point 1). A visitor lists nothing in the Registry, so a visitor gets the visitor's rule alone.
+    /// for "Type more"; every other published battery by the visitor's rule, its serial number from the start, by its letters
+    /// and digits (review 1, point 1; decision 80). A visitor lists nothing in the Registry, so a visitor gets the visitor's rule alone.
     /// </summary>
     private (IReadOnlyList<NearMatch> Matches, bool More) NearMatches(IReadOnlyList<SearchRow> rows, string query, Reader reader)
     {
@@ -147,7 +147,13 @@ public class HomeController(PassportPages pages) : Controller
             .Select(row => row.Row.PackId)
             .ToHashSet(StringComparer.Ordinal);
         var byRegistry = rows.Where(row => listed.Contains(row.Row.PackId) && row.Matches).Select(row => row.Row).Where(row => row.Identifier.Length > 0).ToArray();
-        var byPrefix = rows.Where(row => !listed.Contains(row.Row.PackId) && row.Row.SerialNumber.StartsWith(query, StringComparison.OrdinalIgnoreCase)).Select(row => row.Row).Where(row => row.Identifier.Length > 0);
+        // Serial numbers compared as decision 80 compares them, by their letters and digits (review 2, point 7).
+        var key = BatteryPassWeb.Dpp.Identifiers.IdentifierForms.Clean(query);
+        var byPrefix = rows
+            .Where(row => key.Length >= NearMatchMinimum && !listed.Contains(row.Row.PackId)
+                && BatteryPassWeb.Dpp.Identifiers.IdentifierForms.Clean(row.Row.SerialNumber).StartsWith(key, StringComparison.Ordinal))
+            .Select(row => row.Row)
+            .Where(row => row.Identifier.Length > 0);
         var shown = byRegistry.Concat(byPrefix).Take(NearMatchLimit).ToArray();
         var matches = shown.Select(row => new NearMatch(row.SerialNumber, row.ModelName, PageOf(row.Identifier))).ToArray();
         return (matches, byRegistry.Length > shown.Count(row => listed.Contains(row.PackId)));
