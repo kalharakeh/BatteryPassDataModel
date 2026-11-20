@@ -137,8 +137,9 @@ public class HomeController(PassportPages pages) : Controller
     /// <see cref="NearMatchLimit"/> of them, and whether more match. Nobody lists through the search what their Registry
     /// doesn't list (review 2, point 1): the batteries the reader may list there (the Registry's own <see cref="DemoScope.Lists"/>
     /// and <see cref="RegistryList.MayList"/>) by the Registry's matching (finding U02), clusters aside, and only they count
-    /// for "Type more"; every other published battery by the visitor's rule, its serial number from the start, by its letters
-    /// and digits (review 1, point 1; decision 80). A visitor lists nothing in the Registry, so a visitor gets the visitor's rule alone.
+    /// for "Type more"; any published battery also by the visitor's rule, its serial number from the start, by its letters
+    /// and digits (review 1, point 1; decision 80), so a signed-in reader gets at least what a visitor gets. A visitor lists
+    /// nothing in the Registry, so a visitor gets the visitor's rule alone.
     /// </summary>
     private (IReadOnlyList<NearMatch> Matches, bool More) NearMatches(IReadOnlyList<SearchRow> rows, string query, Reader reader)
     {
@@ -150,7 +151,7 @@ public class HomeController(PassportPages pages) : Controller
         // Serial numbers compared as decision 80 compares them, by their letters and digits (review 2, point 7).
         var key = BatteryPassWeb.Dpp.Identifiers.IdentifierForms.Clean(query);
         var byPrefix = rows
-            .Where(row => key.Length >= NearMatchMinimum && !listed.Contains(row.Row.PackId)
+            .Where(row => key.Length >= NearMatchMinimum && !(listed.Contains(row.Row.PackId) && row.Matches)
                 && BatteryPassWeb.Dpp.Identifiers.IdentifierForms.Clean(row.Row.SerialNumber).StartsWith(key, StringComparison.Ordinal))
             .Select(row => row.Row)
             .Where(row => row.Identifier.Length > 0);

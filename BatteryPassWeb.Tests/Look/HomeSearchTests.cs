@@ -197,6 +197,19 @@ public sealed partial class HomeSearchTests(MongoFixture mongo)
         }
     }
 
+    /// <summary>Review 2, point 7: a signed-in reader gets at least what a visitor gets, the cleaned serial prefix included.</summary>
+    [Theory]
+    [InlineData("demo.msa@example.test")]
+    [InlineData("demo.north.user@example.test")]
+    public async Task ASignedInReader_ShouldGetTheVisitorsPrefixToo(string email)
+    {
+        await using var site = await SiteAsync(mongo);
+
+        var (_, page, _) = await site.FollowAsync("/search?q=democ7m", email);
+
+        Assert.Contains("DEMO-C7M-0001", OfferedSerials(page));
+    }
+
     /// <summary>Review 2, point 5: a failed search reads the passports once, not once for the exact steps and again for the near matches.</summary>
     [Theory]
     [InlineData(null)]
