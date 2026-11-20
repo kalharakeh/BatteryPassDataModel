@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Services;
 using MongoDB.Bson;
@@ -503,6 +504,30 @@ public sealed partial class BatteryIdPool(
         await store.FindPackByItemIgnoringDashesAsync(IdentifierForms.Short(identifier), cancellationToken) is { } holder && holder.Id != exceptPackId
             ? DunsIdentifierScheme.SameIdTaken(IdentifierForms.Short(identifier), Text(holder, "batterySerialNumber") ?? holder.Id)
             : null;
+
+    /// <summary>
+    /// <see cref="SameIdTakenAsync(string, string?, CancellationToken)"/> for a sender: one who may not see the other
+    /// battery (a demo sender on a real battery, a cluster admin or feed outside its cluster) is told that the ID is taken
+    /// and not whose serial number it is (FU5); <c>Hidden</c> is true for that answer, which needs no more words.
+    /// </summary>
+    public async Task<(string Message, bool Hidden)?> SameIdTakenAsync(string identifier, string? exceptPackId, ChangeSender sender, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sender);
+        if (await store.FindPackByItemIgnoringDashesAsync(IdentifierForms.Short(identifier), cancellationToken) is not { } holder || holder.Id == exceptPackId)
+        {
+            return null;
+        }
+
+        return MaySee(sender, holder)
+            ? (DunsIdentifierScheme.SameIdTaken(IdentifierForms.Short(identifier), Text(holder, "batterySerialNumber") ?? holder.Id), false)
+            : (DunsIdentifierScheme.TakenByAnother(IdentifierForms.Short(identifier)), true);
+    }
+
+    private static bool MaySee(ChangeSender sender, BatteryPack holder) => sender.Kind switch
+    {
+        SenderKind.Team => !sender.DemoOnly || holder.IsDemo,
+        _ => holder.ClusterId is not null && sender.ClusterIds.Contains(holder.ClusterId) && (!sender.DemoOnly || holder.IsDemo),
+    };
 
     /// <summary>A draft gives its ID back (swapped, or the draft removed): it is available again.</summary>
     public Task GiveBackAsync(string packId, CancellationToken cancellationToken = default) =>

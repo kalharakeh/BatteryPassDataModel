@@ -155,9 +155,9 @@ public sealed class PackCreationService(
 
             // The one rule (S1 round two): no other battery has the same ID apart from capitals and dashes. Asked before
             // the ID is picked, so it stays available.
-            if (await pool.GetAsync(asked, cancellationToken) is { } releasedId && await pool.SameIdTakenAsync(releasedId.Identifier, null, cancellationToken) is { } taken)
+            if (await pool.GetAsync(asked, cancellationToken) is { } releasedId && await pool.SameIdTakenAsync(releasedId.Identifier, null, sender, cancellationToken) is { } taken)
             {
-                return Failed(releasedId.Status == ReleasedIdStatuses.Available ? $"{taken}. {BatteryIdPool.VoidTheTakenId}" : taken); // only an available ID can be voided
+                return Failed(releasedId.Status == ReleasedIdStatuses.Available && !taken.Hidden ? $"{taken.Message}. {BatteryIdPool.VoidTheTakenId}" : taken.Message); // only an available ID can be voided, and only by one who sees the other battery
             }
 
             // The serial number fits its model's format (decision 81): asked before the ID is picked, so it stays
@@ -245,8 +245,8 @@ public sealed class PackCreationService(
             }
 
             var identifier = pack.Values["uniqueProductIdentifier"].Value!.GetValue<string>();
-            return Failed(pool is not null && await pool.SameIdTakenAsync(identifier, pack.Id, CancellationToken.None) is { } taken
-                ? taken
+            return Failed(pool is not null && await pool.SameIdTakenAsync(identifier, pack.Id, sender, CancellationToken.None) is { } taken
+                ? taken.Message
                 : DunsIdentifierScheme.SameIdTaken(IdentifierForms.Short(identifier), "another battery"));
         }
         catch when (pool is not null && request.FromPool)

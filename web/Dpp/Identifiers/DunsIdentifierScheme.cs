@@ -44,6 +44,12 @@ public sealed class DunsIdentifierScheme(IOptions<BatteryPassOptions> options, D
     public static string SameIdTaken(string item, string otherSerial) =>
         $"the battery ID {item} is the same, apart from capitals and dashes, as the battery ID of battery {otherSerial}, so it can't be used";
 
+    /// <summary>
+    /// The same refusal for a sender who may not see the other battery (FU5): it says no serial number, only that the ID
+    /// is taken.
+    /// </summary>
+    public static string TakenByAnother(string item) => $"The battery ID {item} is already taken by another battery, so it can't be used";
+
     public static string TooLong(int characters) => $"the serial number is too long to make a battery ID: at most {characters} characters, dashes included";
 
     public static string Taken(string item, string serial) =>
@@ -87,8 +93,9 @@ public sealed class DunsIdentifierScheme(IOptions<BatteryPassOptions> options, D
             return NewIdentifier.Refused(IdentifierForms.SerialRule);
         }
 
-        // In any case: IDs that differ only in capitals are one ID, so "test-1" would make an ID marked TEST (decision 80).
-        if (!demo && serial.StartsWith(IdentifierForms.TestMarker, StringComparison.OrdinalIgnoreCase))
+        // In any case: IDs that differ only in capitals or dashes are one ID, so "test-1" and "T-EST-1" would make an ID with
+        // the key of a test ID (decision 80; FU5: the key, not the text).
+        if (!demo && IdentifierForms.Clean(serial).StartsWith(IdentifierForms.TestMarker, StringComparison.Ordinal))
         {
             return NewIdentifier.Refused(StartsWithTest);
         }
