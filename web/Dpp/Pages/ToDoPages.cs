@@ -105,7 +105,7 @@ public sealed class ToDoPages(BatteryPages batteries, PublicationService publica
 
     private async Task<ToDoBox> UploadsAsync(IReadOnlyDictionary<string, BatteryRow> byPack, CancellationToken cancellationToken)
     {
-        var lines = (await store.ListUploadsSinceAsync(nowUtc.AddDays(-UploadDays), cancellationToken))
+        var lines = (await store.ListRefusedUploadsSinceAsync(nowUtc.AddDays(-UploadDays), cancellationToken))
             .SelectMany(upload => upload.Batteries
                 .Where(battery => battery.Outcome == "refused" || battery.Values.Any(value => value.Outcome == "Rejected"))
                 .Select(battery => new ToDoLine(

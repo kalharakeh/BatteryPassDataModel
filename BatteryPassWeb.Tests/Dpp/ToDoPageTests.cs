@@ -172,6 +172,50 @@ public sealed class ToDoPageTests(MongoFixture mongo)
         Assert.DoesNotContain("LoadSourcesAsync(", code, StringComparison.Ordinal);
         Assert.Contains("CheckDraftsAsync(", code, StringComparison.Ordinal);
         Assert.Contains("ListWaitingHandOversAsync(", code, StringComparison.Ordinal);
-        Assert.Contains("ListUploadsSinceAsync(", code, StringComparison.Ordinal);
+        Assert.Contains("ListRefusedUploadsSinceAsync(", code, StringComparison.Ordinal); // filtered and capped in the query (review 1, point 5)
+    }
+    /// <summary>Review 1, point 5: the box's query keeps only refused uploads, reads only what the box shows, and is capped.</summary>
+    [Fact]
+    public async Task TheUploadsQuery_ShouldFilterInTheDatabase_ReadOnlyWhatTheBoxShows_AndStopAtTheCap()
+    {
+        using var rig = await DemoRig.StartAsync(mongo);
+        var now = DateTime.UtcNow;
+        UploadRecord Upload(int minutesAgo, string valueOutcome, string batteryOutcome = "saved") => new()
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            AtUtc = now.AddMinutes(-minutesAgo),
+            Who = DemoRig.Who,
+            SentAs = "Team",
+            Channel = "api",
+            Format = "dpp-v3-upload/1",
+            Batteries =
+            [
+                new UploadedBattery
+                {
+                    NamedAs = "SN-1",
+                    PackId = "pack-1",
+                    Outcome = batteryOutcome,
+                    Problem = "a problem the box doesn't show",
+                    Values = [new UploadedValue { Key = "stateOfCharge", Value = "\"secret\"", Outcome = valueOutcome, Message = "a message" }],
+                },
+            ],
+        };
+        for (var i = 0; i < DppStore.RefusedUploadsRead + 5; i++)
+        {
+            await rig.Store.AddUploadAsync(Upload(i + 1, "Rejected"));
+        }
+
+        await rig.Store.AddUploadAsync(Upload(1, "Saved")); // nothing refused
+        await rig.Store.AddUploadAsync(Upload(0, "Saved", batteryOutcome: "refused"));
+
+        var read = await rig.Store.ListRefusedUploadsSinceAsync(now.AddDays(-14));
+
+        Assert.Equal(DppStore.RefusedUploadsRead, read.Count);
+        Assert.Equal("refused", read[0].Batteries.Single().Outcome); // newest first
+        Assert.All(read, upload => Assert.All(upload.Batteries, battery =>
+        {
+            Assert.Null(battery.Problem);
+            Assert.All(battery.Values, value => Assert.Null(value.Value));
+        }));
     }
 }
