@@ -230,7 +230,13 @@ public sealed class AuthService
         if (user != null)
         {
             var passwordHash = BsonHelpers.GetString(user, "passwordHash");
-            return !string.IsNullOrWhiteSpace(passwordHash) && BCrypt.Net.BCrypt.Verify(password, passwordHash)
+            if (string.IsNullOrWhiteSpace(passwordHash))
+            {
+                _ = BCrypt.Net.BCrypt.Verify(password, NoAccountHash); // an account with no password yet answers as slowly as no account (FU3)
+                return LoginAuthenticationResult.Invalid();
+            }
+
+            return BCrypt.Net.BCrypt.Verify(password, passwordHash)
                 ? LoginAuthenticationResult.Authenticated(new ClaimsPrincipal())
                 : LoginAuthenticationResult.Invalid();
         }
