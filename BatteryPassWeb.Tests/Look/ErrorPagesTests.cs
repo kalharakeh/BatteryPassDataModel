@@ -142,6 +142,20 @@ public sealed class ErrorPagesTests(MongoFixture mongo)
         Assert.DoesNotContain("<html", body, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>Review 1, point 6: the dark-mode button on the error and "not found" pages leads to the home page, not back to the error.</summary>
+    [Theory]
+    [InlineData("/forced-error", "/")]
+    [InlineData("/no-such-page", "/")]
+    [InlineData("/help", "/help")]
+    public async Task TheThemeButton_ShouldReturnToAPageThatWorks(string path, string returnsTo)
+    {
+        await using var site = await ShellSite.StartAsync(mongo.NewContext(), throwOn: "/forced-error");
+
+        var (_, body, _) = await site.GetAsync(path);
+
+        Assert.Contains($"<input type=\"hidden\" name=\"returnUrl\" value=\"{returnsTo}\" />", body, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void TheApp_ShouldUseTheSameWiring()
     {
