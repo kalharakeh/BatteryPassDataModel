@@ -35,6 +35,42 @@ public sealed class TooManyRequestsTests(MongoFixture mongo)
         Assert.Equal("{\"error\":\"Too many requests.\"}", body);
     }
 
+    /// <summary>
+    /// Point 10 of round three: a passport's page address answers data when the request asks for JSON (PrefersJson), so
+    /// over the limit such a request gets the JSON error too.
+    /// </summary>
+    [Theory]
+    [InlineData("application/json")]
+    [InlineData("application/json, text/html;q=0.5")]
+    public async Task APassportsPageAddressAskedForJson_ShouldGetTheJsonErrorOverTheLimit(string accept)
+    {
+        await using var site = await ShellSite.StartAsync(mongo.NewContext(), readLimit: 1);
+
+        await site.GetAsync("/dpp/NO-SUCH-ID", accept: accept);
+        var (status, body, _) = await site.GetAsync("/dpp/NO-SUCH-ID", accept: accept);
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, status);
+        Assert.Equal("{\"error\":\"Too many requests.\"}", body);
+    }
+
+    /// <summary>A browser's Accept picks the passport page, which has no read limit, so it never meets the limit's answer.</summary>
+    [Fact]
+    public async Task APassportsPageAddressAskedByABrowser_ShouldStillGetThePage()
+    {
+        await using var site = await ShellSite.StartAsync(mongo.NewContext(), readLimit: 1);
+        const string browser = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
+
+        await site.GetAsync("/dpp/NO-SUCH-ID", accept: browser);
+        var (status, body, _) = await site.GetAsync("/dpp/NO-SUCH-ID", accept: browser);
+
+        Assert.NotEqual(HttpStatusCode.TooManyRequests, status);
+        Assert.Contains("<html", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void TheJsonRule_ShouldBeThePassportAddressesOwn() =>
+        Assert.Contains("PrefersJsonAttribute.PrefersJson(", File.ReadAllText(DppTestFiles.RepoFile("web", "Configuration", "TooManyRequests.cs")), StringComparison.Ordinal);
+
     [Fact]
     public void TheAppAndTheApiReference_ShouldSaySo()
     {

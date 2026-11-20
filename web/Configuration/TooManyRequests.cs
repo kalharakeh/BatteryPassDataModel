@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace BatteryPassWeb.Configuration;
 
 /// <summary>
-/// The answer over a rate limit (review 2 of N1, point 6): the API and the passports' .json addresses keep their JSON
-/// error; a person on a page (the home search, the log-in page) gets a short sentence instead of bare JSON.
+/// The answer over a rate limit (review 2 of N1, point 6): the API, the passports' .json addresses and a request that
+/// asks for JSON keep their JSON error; a person on a page (the home search, the log-in page) gets a short sentence instead of bare JSON.
 /// </summary>
 public static class TooManyRequests
 {
@@ -24,7 +24,11 @@ public static class TooManyRequests
 
         response.StatusCode = StatusCodes.Status429TooManyRequests;
         var path = http.Request.Path;
-        if (path.StartsWithSegments("/api") || (path.Value ?? string.Empty).EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+        // JSON for the API, the .json addresses, and a passport address asked for JSON by the same rule its data answer
+        // uses (PrefersJson; point 10 of round three).
+        if (path.StartsWithSegments("/api")
+            || (path.Value ?? string.Empty).EndsWith(".json", StringComparison.OrdinalIgnoreCase)
+            || BatteryPassWeb.Dpp.Api.PrefersJsonAttribute.PrefersJson(http.Request.Headers.Accept.ToString()))
         {
             await response.WriteAsJsonAsync(new { error = "Too many requests." }, cancellationToken);
             return;
