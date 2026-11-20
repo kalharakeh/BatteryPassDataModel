@@ -8,7 +8,7 @@ namespace BatteryPassWeb.Tests.Look;
 /// </summary>
 public sealed class OtherCustomerNoteTests
 {
-    private static readonly string Hero = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Passport", "_PassportHero.cshtml"));
+    private static readonly string Hero = File.ReadAllText(DppTestFiles.RepoFile("web", "Views", "Passport", "_PassportHero.cshtml")).ReplaceLineEndings("\n"); // whatever the checkout's line endings
 
     [Fact]
     public void AnotherCustomersBattery_ShouldSaySo()
