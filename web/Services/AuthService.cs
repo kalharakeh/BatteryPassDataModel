@@ -107,10 +107,22 @@ public sealed class AuthService
     /// <summary>How many password checks against the hash nobody has the password of this service has run; the tests read it (FU3).</summary>
     public long DummyChecks => Interlocked.Read(ref _dummyChecks);
 
+    private long _passwordChecks;
+
+    /// <summary>How many password checks (real or dummy) this service has run on the sign-in path; the tests read it (FU round two, 6).</summary>
+    public long PasswordChecks => Interlocked.Read(ref _passwordChecks);
+
+    /// <summary>One password check; every sign-in runs the same number of them, whether or not the account exists.</summary>
+    private bool Check(string password, string hash)
+    {
+        Interlocked.Increment(ref _passwordChecks);
+        return BCrypt.Net.BCrypt.Verify(password, hash);
+    }
+
     /// <summary>One password check that can't succeed, as long as a real one.</summary>
     private void DummyCheck(string password)
     {
-        _ = BCrypt.Net.BCrypt.Verify(password, NoAccountHash);
+        _ = Check(password, NoAccountHash);
         Interlocked.Increment(ref _dummyChecks);
     }
 
@@ -171,12 +183,15 @@ public sealed class AuthService
 
         if (user != null && IsSwitchedOffDemoAccount(user))
         {
+            DummyCheck(password); // two checks, as every other refusal costs
             DummyCheck(password);
             return LoginAuthenticationResult.Invalid();
         }
 
         // "Forgot password": the temporary password is the owner's way back, so no lock ever stands in front of it.
-        if (user != null && await IsActiveTemporaryPasswordAsync(normalizedEmail, password, cancellationToken))
+        // One password check for this step whether or not the account has an active request, so that pressing "Forgot password"
+        // for an address can't be told from the time a wrong sign-in takes (FU round two, 6).
+        if (await IsActiveTemporaryPasswordAsync(normalizedEmail, password, accountExists: user != null, cancellationToken))
         {
             return LoginAuthenticationResult.RequiresTemporaryPasswordChange(normalizedEmail);
         }
@@ -248,7 +263,7 @@ public sealed class AuthService
                 return LoginAuthenticationResult.Invalid();
             }
 
-            return BCrypt.Net.BCrypt.Verify(password, passwordHash)
+            return Check(password, passwordHash)
                 ? LoginAuthenticationResult.Authenticated(new ClaimsPrincipal())
                 : LoginAuthenticationResult.Invalid();
         }
@@ -557,11 +572,17 @@ public sealed class AuthService
         return true;
     }
 
-    private async Task<bool> IsActiveTemporaryPasswordAsync(string email, string password, CancellationToken cancellationToken)
+    private async Task<bool> IsActiveTemporaryPasswordAsync(string email, string password, bool accountExists, CancellationToken cancellationToken)
     {
-        var request = await FindActiveTemporaryPasswordRequestAsync(email.Trim().ToLowerInvariant(), cancellationToken);
-        return request != null
-            && BCrypt.Net.BCrypt.Verify(password, BsonHelpers.GetString(request, "temporaryPasswordHash"));
+        var request = accountExists ? await FindActiveTemporaryPasswordRequestAsync(email.Trim().ToLowerInvariant(), cancellationToken) : null;
+        var hash = request is null ? null : BsonHelpers.GetString(request, "temporaryPasswordHash");
+        if (string.IsNullOrWhiteSpace(hash))
+        {
+            DummyCheck(password);
+            return false;
+        }
+
+        return Check(password, hash);
     }
 
     private async Task<BsonDocument?> FindActiveTemporaryPasswordRequestAsync(string normalizedEmail, CancellationToken cancellationToken)

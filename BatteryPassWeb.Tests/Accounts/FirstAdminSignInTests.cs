@@ -51,9 +51,9 @@ public sealed class FirstAdminSignInTests(MongoFixture mongo)
         Assert.Equal(Refused, await SignInAsync(rig, "203.0.113.50", AccountRig.Team, "some-guess-1")); // an account with a password does its own check
         var withPassword = rig.Auth.DummyChecks - start - noAccount - noPassword;
 
-        Assert.Equal(1, noAccount);
-        Assert.Equal(1, noPassword);
-        Assert.Equal(0, withPassword);
+        Assert.Equal(2, noAccount); // the temporary password's step and the password's step
+        Assert.Equal(2, noPassword); // as an address with no account
+        Assert.Equal(1, withPassword); // only the temporary password's step; its password step is a real check
     }
 
     [Fact]
@@ -75,5 +75,33 @@ public sealed class FirstAdminSignInTests(MongoFixture mongo)
         Assert.Equal(Refused, await SignInAsync(rig, "203.0.113.7", AccountRig.Team, "another-wrong-guess"));
         Assert.Equal(Refused, await SignInAsync(rig, "203.0.113.7", AccountRig.Team, AccountRig.Password));
         Assert.Equal("change temporary password", await SignInAsync(rig, "203.0.113.7", AccountRig.Team, temporary));
+    }
+
+    [Fact]
+    public async Task EveryWrongSignIn_ShouldCostTheSameNumberOfPasswordChecks_WhateverTheAddress()
+    {
+        using var rig = await AccountRig.StartAsync(mongo);
+        await rig.AccountAsync(Unclaimed, "Unclaimed", AccessControlService.RoleAdmin);
+        await rig.Database.GetCollection<BsonDocument>("users").UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("email", Unclaimed),
+            Builders<BsonDocument>.Update.Unset("passwordHash"));
+        var forgot = rig.LoginPage();
+        forgot.HttpContext.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.60");
+        await forgot.ForgotPassword(AccountRig.Team2, CancellationToken.None); // an active "Forgot password" request for Team2
+
+        async Task<long> CostAsync(string email)
+        {
+            var before = rig.Auth.PasswordChecks;
+            Assert.Equal(Refused, await SignInAsync(rig, "203.0.113.50", email, "some-guess-1"));
+            return rig.Auth.PasswordChecks - before;
+        }
+
+        var unknown = await CostAsync("nobody@example.test");
+        var noPassword = await CostAsync(Unclaimed);
+        var withPassword = await CostAsync(AccountRig.Team);
+        var activeRequest = await CostAsync(AccountRig.Team2);
+
+        Assert.Equal([unknown, unknown, unknown, unknown], [unknown, noPassword, withPassword, activeRequest]);
+        Assert.Equal(2, unknown); // the temporary password's step and the password's step
     }
 }
