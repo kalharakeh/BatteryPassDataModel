@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>V3Reset</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Reuses the app's own account, cluster and audit code, so the reset deletes exactly as the app does. -->
+    <ProjectReference Include="..\..\web\BatteryPassWeb.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,87 @@
+@using System.Globalization
+@using BatteryPassWeb.Dpp.Pages
+@model KeyFigures
+@* "Key figures" (redesign R5, owner's item 4, decision 37; mock-up docs/mockups/dpp-v3-key-figures.html): the public
+   values a reader wants first, on the summary and on the detail page under the hero. The same card for every reader;
+   on the detail page each figure's title links down to its full entry, with its date and source. *@
+@if (Model.Any)
+{
+    <section class="bp-card bp-report-wide-section bp-kf-card" aria-labelledby="key-figures-title">
+        <div class="bp-kf-head">
+            <span class="bp-summary-title" id="key-figures-title">Key figures</span>
+            <p>From this battery's passport. @(ViewData["Detail"] is true ? "Each title leads to its full entry below." : "Every value is in the sections below.")</p>
+        </div>
+        @if (Model.Using.Count > 0)
+        {
+            <p class="bp-kf-group">Using it</p>
+            <div class="bp-kf-grid">
+                @foreach (var figure in Model.Using)
+                {
+                    @await Html.PartialAsync("_KeyFigure", figure)
+                }
+            </div>
+        }
+        @if (Model.Carbon is not null || Model.Recycled.Count > 0 || Model.Renewable is not null)
+        {
+            <p class="bp-kf-group">Environment</p>
+            <div class="bp-kf-grid">
+                @if (Model.Carbon is { } carbon)
+                {
+                    var total = Model.CarbonStages.Sum(stage => stage.Value);
+                    <div class="bp-kf is-wide">
+                        @await Html.PartialAsync("_KeyFigureLabel", (carbon.Icon, carbon.Label, carbon.Anchor))
+                        <div class="bp-kf-value">@carbon.Value <small>@carbon.Small</small>@if (Model.CarbonClass is { } carbonClass)
+                            {
+                                <span class="bp-kf-class">@carbonClass</span>
+                            }</div>
+                        @if (total > 0)
+                        {
+                            @* One bar split by the life-cycle stages, instead of the old pie. *@
+                            <div class="bp-kf-stack" role="img" aria-label="@string.Join(", ", Model.CarbonStages.Select(stage => $"{stage.Label} {ValueWords.Number(stage.Value)}"))">
+                                @for (var index = 0; index < Model.CarbonStages.Count; index++)
+                                {
+                                    <span style="width:@((Model.CarbonStages[index].Value / total * 100).ToString("0.##", CultureInfo.InvariantCulture))%;background:@KeyFigures.StageColours[index]"></span>
+                                }
+                            </div>
+                            <ul class="bp-kf-legend">
+                                @for (var index = 0; index < Model.CarbonStages.Count; index++)
+                                {
+                                    <li><i style="background:@KeyFigures.StageColours[index]"></i>@Model.CarbonStages[index].Label <b>@ValueWords.Number(Model.CarbonStages[index].Value)</b></li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                }
+                @if (Model.Recycled.Count > 0 || Model.Renewable is not null)
+                {
+                    <div class="bp-kf is-wide">
+                        @await Html.PartialAsync("_KeyFigureLabel", ("recycle", "Recycled content", KeyFigures.Anchor(Model.RecycledNumber)))
+                        @if (Model.Recycled.Count > 0)
+                        {
+                            <div class="bp-kf-bars">
+                                @foreach (var share in Model.Recycled)
+                                {
+                                    <span>@share.Label</span><span class="bp-kf-track"><span style="width:@(Math.Clamp(share.Value, 0, 100).ToString("0.##", CultureInfo.InvariantCulture))%"></span></span><b>@ValueWords.Number(share.Value) %</b>
+                                }
+                            </div>
+                        }
+                        @if (Model.Renewable is { } renewable)
+                        {
+                            <p class="bp-kf-sub mt-2">Renewable content <strong>@ValueWords.Number(renewable) %</strong></p>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        @if (Model.Safety.Count > 0)
+        {
+            <p class="bp-kf-group">Safety</p>
+            <div class="bp-kf-grid">
+                @foreach (var figure in Model.Safety)
+                {
+                    @await Html.PartialAsync("_KeyFigure", figure, new ViewDataDictionary(ViewData) { ["Wide"] = true })
+                }
+            </div>
+        }
+    </section>
+}

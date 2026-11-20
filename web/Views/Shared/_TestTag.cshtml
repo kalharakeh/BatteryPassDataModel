@@ -1,0 +1,13 @@
+@model string
+@* A test passport's or battery's tag (redesign R3 and R4; owner's point 7): small, amber, and explained on a tap or a
+   hover, instead of a banner across the page. The explanation is written once per page, however many tags point at it. *@
+<button type="button" class="bp-test-tag" popovertarget="test-help" title="IDs marked TEST are test identifiers">@Model<svg class="bp-i" aria-hidden="true"><use href="#i-help" /></svg></button>
+@if (!Context.Items.ContainsKey("test-help"))
+{
+    Context.Items["test-help"] = true;
+    <div id="test-help" class="bp-status-help bp-test-help" popover>
+        <h2>A test passport</h2>
+        <p>This battery's IDs are marked <strong>TEST</strong>: it isn't a real passport. Demo batteries have test IDs, and so does a copy of the app without the battery ID settings.</p>
+        <div class="d-flex justify-content-end"><button type="button" class="bp-secondary-button" popovertarget="test-help" popovertargetaction="hide">Close</button></div>
+    </div>
+}

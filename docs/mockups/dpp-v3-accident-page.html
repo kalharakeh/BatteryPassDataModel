@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DPP V3 accident page (step 3a)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<!-- The app's own stylesheet, so the screen looks exactly like the app. -->
+<link rel="stylesheet" href="../../web/wwwroot/css/site.css" data-app-css>
+<style>
+  /* Mock-up notes only (mk-*); everything else is the app's own classes. */
+  .mk-intro, .mk-caption { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+  .mk-intro { padding-top: 20px; }
+  .mk-intro h1 { font-size: 1.6rem; }
+  .mk-caption { margin-top: 44px; border-top: 3px solid #041e42; padding-top: 12px; }
+  .mk-caption h2 { font-size: 1.25rem; margin-bottom: 4px; }
+  .mk-caption p { color: #475569; margin-bottom: 0; max-width: 900px; }
+  main.bp-page { max-width: 1180px; margin-left: auto; margin-right: auto; padding-left: 16px; padding-right: 16px; }
+</style>
+</head>
+<body>
+<div class="mk-intro">
+  <h1>The accident page (#92)</h1>
+  <p class="text-secondary mb-0">Mock-up for step 3a. Every passport's #92 "Information on accidents" links here. It lists the accident reports the team or the battery's cluster admins uploaded, or says none were reported. It is seen only by the battery's cluster, market surveillance and the team, like #92 itself. It uses today's passport page cards.</p>
+</div>
+
+<!-- ============ 1. With reports ============ -->
+<div class="mk-caption"><h2>1. A battery with accident reports</h2><p>As the battery's cluster sees it. Newest first. Each title opens the file (PDF or picture) in the browser. Who uploaded it isn't shown here; the team sees that on the battery's own page.</p></div>
+<main class="bp-page">
+  <section class="bp-card bp-report-wide-section">
+    <span class="bp-summary-title">Accident information</span>
+    <h1 class="h3 mt-2 mb-2" title="Battery serial number">VPC8C05-6788</h1>
+    <dl class="bp-field-grid mb-0">
+      <div><dt>Battery ID</dt><dd class="bp-id-value">urn:x-battery-pass:TEST-4f0c2a9e81b34d7f9a1c6e2b5d8f0a37</dd></div>
+    </dl>
+    <p class="text-secondary small mt-2 mb-0">Test identifiers: this battery's IDs start with TEST-. Real ones come once the identifier scheme is chosen.</p>
+  </section>
+
+  <section class="bp-card bp-report-wide-section">
+    <span class="bp-summary-title">Accident reports</span>
+    <h2 class="h5 mt-2 mb-1">2 accident reports</h2>
+    <p class="text-secondary">Reports of accidents involving this battery, newest first.</p>
+    <div class="bp-table-scroll">
+      <table class="table align-middle mb-0 bp-console-table bp-mobile-card-table">
+        <thead><tr><th>Report</th><th>Added</th><th>File</th></tr></thead>
+        <tbody>
+          <tr>
+            <td data-label="Report"><a href="#">Collision during loading, 12 Oct 2026</a></td>
+            <td data-label="Added">14 Oct 2026</td>
+            <td data-label="File">PDF · 412 KB</td>
+          </tr>
+          <tr>
+            <td data-label="Report"><a href="#">Coolant leak found at service</a></td>
+            <td data-label="Added">3 Aug 2026</td>
+            <td data-label="File">JPEG picture · 1.8 MB</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<!-- ============ 2. None reported ============ -->
+<div class="mk-caption"><h2>2. A battery with no accidents reported</h2><p>The passport links here from the day it is published (design 9, J-14), so this is what most batteries show.</p></div>
+<main class="bp-page">
+  <section class="bp-card bp-report-wide-section">
+    <span class="bp-summary-title">Accident information</span>
+    <h1 class="h3 mt-2 mb-2" title="Battery serial number">VPC8C05-6801</h1>
+    <dl class="bp-field-grid mb-0">
+      <div><dt>Battery ID</dt><dd class="bp-id-value">urn:x-battery-pass:TEST-9b1e7d04c2a64f5e8d3a0b6c1f2e4d59</dd></div>
+    </dl>
+    <p class="text-secondary small mt-2 mb-0">Test identifiers: this battery's IDs start with TEST-. Real ones come once the identifier scheme is chosen.</p>
+  </section>
+
+  <section class="bp-card bp-report-wide-section">
+    <span class="bp-summary-title">Accident reports</span>
+    <h2 class="h5 mt-2 mb-1">No accidents reported</h2>
+    <p class="text-secondary mb-0">No accident involving this battery has been reported.</p>
+  </section>
+</main>
+
+<!-- ============ 3. Not for this reader ============ -->
+<div class="mk-caption"><h2>3. Someone who may not see it</h2><p>Not signed in: the sign-in page opens first, then comes back here. Signed in, but not of the battery's cluster (or the battery isn't published): this short page, which doesn't say whether the battery exists. The same goes for a restricted file's link.</p></div>
+<main class="bp-page">
+  <section class="bp-card bp-report-wide-section">
+    <span class="bp-summary-title">Accident information</span>
+    <h2 class="h5 mt-2 mb-1">Not available</h2>
+    <p class="text-secondary mb-0">This information is shown only to the battery's cluster, market surveillance and the manufacturer's team. If you think you should see it, ask your cluster admin.</p>
+  </section>
+</main>
+<div style="height:40px"></div>
+</body>
+</html>

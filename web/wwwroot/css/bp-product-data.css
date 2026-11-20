@@ -1,0 +1,3874 @@
+/* The team's product data pages and their record editors (decisions 23 and 27). The palette, fonts, cards, buttons
+   and inputs come from site.css; this file, loaded only on these pages, gives them a calmer finish: one card per
+   thing, quiet outlined tags, orange only for "missing", green only for "done", one heading scale and gentle motion. */
+
+/* ==== Shared on every team page ==================================================================================== */
+
+/* Where you are: Battery families › family › model › batch. */
+.bp-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+}
+
+.bp-breadcrumb > * + *::before {
+  content: "›";
+  margin-right: 6px;
+  color: var(--bp-muted);
+}
+
+.bp-breadcrumb a {
+  color: var(--bp-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.bp-breadcrumb a:hover,
+.bp-breadcrumb a:focus-visible {
+  text-decoration: underline;
+}
+
+.bp-breadcrumb [aria-current] {
+  color: var(--bp-text);
+  font-weight: 600;
+}
+
+/* One heading scale: the page title 2rem, the record being edited 1.4rem, card titles 1.25rem, card items 1.125rem. */
+.bp-product-editor-hero h1,
+.bp-page-heading h1 {
+  margin: 2px 0 6px;
+  font-size: 2rem;
+  font-weight: 650;
+}
+
+.bp-product-editor-section h2,
+.bp-product-section-heading h2,
+.bp-product-version-console-header h2,
+.bp-product-template-hero h2 {
+  margin: 0 0 4px;
+  font-size: 1.25rem;
+  font-weight: 650;
+}
+
+/* A page heading without a card (the batch page). */
+.bp-page-heading p {
+  max-width: 980px;
+  color: #52637a;
+}
+
+/* Stacked cards share one inner margin, so their text lines up. */
+.bp-admin-page :is(.bp-product-editor-hero, .bp-product-version-console, .bp-product-editor-section, .bp-product-template-hero) {
+  padding: 24px 28px;
+}
+
+/* Help text readable on white (6:1). */
+.bp-help-text,
+.bp-field-help {
+  color: #52637a;
+}
+
+/* Typed text is regular weight, placeholders grey, also where site.css makes labels bold. */
+main :is(input:not([type="checkbox"]), select, textarea) {
+  font-weight: 400;
+}
+
+main :is(input, textarea)::placeholder {
+  color: #7a8aa0;
+  font-weight: 400;
+}
+
+/* A visible focus ring on every field. Radios have their own (their option is outlined), see .bp-choice. */
+main :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea):focus {
+  border-color: var(--bp-primary);
+  box-shadow: 0 0 0 3px rgba(42, 110, 207, 0.25);
+  outline: none;
+}
+
+/* "Choose file" hides its file input: show the focus on the button instead. */
+.bp-document-smart-upload:focus-within {
+  outline: 2px solid var(--bp-primary);
+  outline-offset: 2px;
+}
+
+/* Markers ("Required later", "Conditional", "Not passport data"): small outlined tags in sentence case. */
+main .bp-field-marker {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid #d6dee8;
+  border-radius: 999px;
+  background: transparent;
+  color: #405367;
+  font-size: 0.75rem;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  vertical-align: 1px;
+}
+
+/* "Missing" is an orange dot and words; "done" a green tick. Orange and green mean nothing else here. */
+.bp-missing-note,
+.bp-done-note,
+.bp-attr-missing {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  font-weight: 600;
+}
+
+.bp-missing-note,
+.bp-attr-missing {
+  color: #c2410c;
+}
+
+.bp-missing-note::before,
+.bp-attr-missing::before,
+.bp-missing-dot {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #c2410c;
+}
+
+.bp-done-note {
+  color: #166534;
+}
+
+.bp-done-note::before {
+  content: "\2713";
+}
+
+/* A thin progress bar: how many values are filled in. */
+.bp-progress {
+  width: 200px;
+  height: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: #e6ebf1;
+  overflow: hidden;
+  appearance: none;
+}
+
+.bp-progress.is-small {
+  width: 64px;
+  height: 5px;
+}
+
+.bp-progress::-webkit-progress-bar {
+  border-radius: 999px;
+  background: #e6ebf1;
+}
+
+.bp-progress::-webkit-progress-value {
+  border-radius: 999px;
+  background: var(--bp-primary);
+}
+
+.bp-progress::-moz-progress-bar {
+  border-radius: 999px;
+  background: var(--bp-primary);
+}
+
+/* "11 of 16 filled · 4 missing for Feb 2027" in tables. */
+.bp-completeness {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #52637a;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Messages are a slim tinted line, not a block. */
+main .bp-status-line.alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+main .bp-status-line.is-done {
+  background: #ecfdf3;
+  color: #166534;
+}
+
+main .bp-status-line.is-problem {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+main .bp-status-line.is-info {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.bp-status-line svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* "Remove this …": closed until asked for, at the end of the page. */
+.bp-remove-record {
+  padding: 14px 28px;
+}
+
+.bp-remove-record summary {
+  cursor: pointer;
+  color: #52637a;
+  font-weight: 600;
+}
+
+.bp-remove-record summary:hover,
+.bp-remove-record[open] summary {
+  color: var(--bp-danger);
+}
+
+/* The dialogs. */
+.bp-modal-panel {
+  border-radius: 14px;
+}
+
+/* "Choose file" and "Choose picture" are labels styled as buttons: the same weight and colour as the buttons beside them. */
+.bp-console-form-card label.bp-secondary-button {
+  color: #334155;
+  font-size: 0.88rem;
+  font-weight: 400;
+}
+
+/* A table row that is open below: a light blue tint, not a grey band. */
+.bp-console-table tr.table-active {
+  --bs-table-bg-state: rgba(42, 110, 207, 0.08);
+}
+
+/* ==== Families list ================================================================================================= */
+
+.bp-add-family {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+/* A native dialog (e.g. naming a new family): site.css's panel, centred over a dimmed page. Taller than the screen, it
+   scrolls inside itself (the owner's step-5 test, 4 Nov 2026), whatever the browser's own default. */
+dialog.bp-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  height: fit-content;
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+dialog.bp-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.bp-dialog h2 {
+  margin: 0 0 4px;
+  font-size: 1.25rem;
+  font-weight: 650;
+}
+
+.bp-dialog .bp-product-version-selected-field {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0 18px;
+}
+
+.bp-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Whose values an editor holds, under its title. */
+.bp-editor-scope {
+  margin: 0;
+  color: #52637a;
+}
+
+/* The batch page: the model and site that hold the batteries' other values. */
+.bp-value-sources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 22px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  color: #52637a;
+}
+
+.bp-value-sources li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bp-value-sources a {
+  font-weight: 600;
+}
+
+.bp-product-template-card-media,
+.bp-product-editor-preview {
+  border-color: #e6ebf1;
+  border-radius: 14px;
+  background: #f5f7fa;
+}
+
+.bp-product-template-card-body h3 {
+  font-size: 1.125rem;
+  font-weight: 650;
+}
+
+.bp-product-template-meta div {
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: #f5f7fa;
+}
+
+.bp-product-template-meta dt {
+  color: #52637a;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.bp-product-template-meta dd {
+  font-weight: 650;
+}
+
+/* ==== Family page =================================================================================================== */
+
+/* The family's name and picture, in the page header. */
+.bp-family-identity {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px 20px;
+}
+
+.bp-family-identity-field {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.bp-family-identity-field > label,
+.bp-family-identity-field > span {
+  color: #405367;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.bp-family-identity-field input[type="text"] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* "A picture is set" is a note about the picture, not a field to type in. */
+.bp-family-identity input[data-upload-name][readonly] {
+  border-style: dashed;
+  background: transparent;
+}
+
+/* The model cards wrap onto more lines instead of scrolling, so no model is ever out of sight. */
+.bp-product-version-chip-rail {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+/* The model cards: the name, then "26 missing · 2 of 37 filled"; the open one outlined in blue. */
+.bp-product-version-tab.bp-product-version-chip {
+  flex: 1 1 220px;
+  max-width: 280px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid #e3e9f0;
+  background: var(--bp-surface);
+}
+
+.bp-product-version-tab.bp-product-version-chip:hover {
+  border-color: #b6ccde;
+}
+
+.bp-product-version-tab.bp-product-version-chip.is-active {
+  border-color: var(--bp-primary);
+  box-shadow: 0 0 0 1px var(--bp-primary), 0 6px 16px rgba(10, 40, 80, 0.08);
+}
+
+.bp-product-version-chip .bp-product-version-tab-main strong {
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.bp-chip-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+  color: #52637a;
+  font-size: 0.8rem;
+}
+
+/* ==== The record editor ============================================================================================= */
+
+.bp-editor-card {
+  padding: 24px 28px;
+}
+
+.bp-editor-top {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px 32px;
+}
+
+.bp-editor-heading {
+  display: grid;
+  flex: 1 1 420px;
+  gap: 4px;
+  min-width: 0;
+}
+
+.bp-editor-card .bp-editor-title {
+  margin: 0;
+  color: var(--bp-text);
+  font-size: 1.4rem;
+  font-weight: 650;
+}
+
+.bp-editor-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin: 2px 0 0;
+  color: #52637a;
+  font-size: 0.92rem;
+}
+
+.bp-editor-summary strong {
+  color: var(--bp-text);
+  font-weight: 650;
+}
+
+.bp-done-mark {
+  color: #15803d;
+  font-weight: 700;
+}
+
+.bp-editor-progress {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+  min-width: 200px;
+  color: #52637a;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+#editor .bp-editor-status {
+  margin-top: 16px;
+}
+
+/* The name and the filter on one line, the legend as one quiet line under them. */
+.bp-editor-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 28px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid #eef1f5;
+}
+
+.bp-editor-card .bp-editor-name {
+  display: grid;
+  flex: 0 1 340px;
+  gap: 6px;
+  margin: 0;
+}
+
+.bp-editor-name > span {
+  color: #405367;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.bp-editor-legend {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  order: 1;
+  gap: 2px 14px;
+  color: #52637a;
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.bp-editor-card .bp-editor-switch {
+  display: flex;
+  align-items: center;
+  align-self: flex-end;
+  gap: 10px;
+  margin: 0 0 0 auto;
+  padding-bottom: 10px;
+  color: var(--bp-text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bp-editor-switch input[role="switch"] {
+  position: relative;
+  flex: none;
+  width: 34px;
+  height: 20px;
+  margin: 0;
+  border-radius: 999px;
+  background: #cbd5e1;
+  cursor: pointer;
+  appearance: none;
+  transition: background-color 0.15s ease;
+}
+
+.bp-editor-switch input[role="switch"]::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.25);
+  transition: transform 0.15s ease;
+}
+
+.bp-editor-switch input[role="switch"]:checked {
+  background: var(--bp-primary);
+}
+
+.bp-editor-switch input[role="switch"]:checked::before {
+  transform: translateX(14px);
+}
+
+.bp-editor-switch input[role="switch"]:focus-visible {
+  outline: 2px solid var(--bp-primary);
+  outline-offset: 2px;
+}
+
+/* The side menu and the sections, inside the one card. */
+.bp-editor-body {
+  margin-top: 22px;
+}
+
+@media (min-width: 1024px) {
+  .bp-editor-card .bp-edit-grid {
+    grid-template-columns: 236px minmax(0, 1fr);
+    gap: 28px;
+  }
+
+  /* The menu stays in view while a long section scrolls (site.css's top assumes a sticky header). */
+  .bp-edit-nav {
+    align-self: start;
+    top: 16px;
+  }
+}
+
+.bp-editor-card .bp-edit-nav {
+  gap: 2px;
+}
+
+.bp-editor-card .bp-edit-nav .bp-edit-nav-button {
+  position: relative;
+  display: grid;
+  gap: 1px;
+  padding: 9px 12px 9px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  color: #334155;
+  text-align: left;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.bp-editor-card .bp-edit-nav .bp-edit-nav-button:hover {
+  background: #f3f6fa;
+}
+
+.bp-editor-card .bp-edit-nav .bp-edit-nav-button.is-active {
+  background: #eaf2fd;
+  color: var(--bp-scania-blue);
+  font-weight: 400;
+}
+
+/* The open section has a blue bar; a section with a refused value a red one. */
+.bp-editor-card .bp-edit-nav .bp-edit-nav-button.is-active::before,
+.bp-editor-card .bp-edit-nav .bp-edit-nav-button.has-missing-fields::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 0;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--bp-primary);
+}
+
+.bp-editor-card .bp-edit-nav .bp-edit-nav-button.has-missing-fields {
+  color: #991b1b;
+}
+
+.bp-editor-card .bp-edit-nav .bp-edit-nav-button.has-missing-fields::before {
+  background: #dc2626;
+}
+
+.bp-edit-nav-label {
+  overflow: hidden;
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bp-editor-card .bp-edit-nav .bp-edit-nav-button .bp-edit-nav-count {
+  float: none;
+  margin: 0;
+  color: #52637a;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.bp-editor-card .bp-edit-nav .bp-edit-nav-button.has-missing-values .bp-edit-nav-count::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #c2410c;
+  vertical-align: 1px;
+}
+
+/* Unsaved edits in a section: a blue dot after its name (blue is "yours", orange is "missing"). */
+.bp-editor-card .bp-edit-nav .bp-edit-nav-button.has-edits .bp-edit-nav-label::after {
+  content: " •";
+  color: var(--bp-primary);
+  font-weight: 800;
+}
+
+/* Sections are areas of the one card, not cards of their own. */
+.bp-editor-card .bp-edit-section.bp-card {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  scroll-margin-top: 16px;
+}
+
+.bp-editor-card .bp-edit-section-title {
+  margin: 0 0 2px;
+  font-size: 1.12rem;
+  font-weight: 650;
+}
+
+.bp-editor-card .bp-template-sync-note {
+  margin: 0 0 6px;
+  color: #52637a;
+  font-size: 0.88rem;
+}
+
+/* One row per attribute: what it is on the left, its inputs on the right, a hairline between rows. */
+.bp-attr-list {
+  display: grid;
+}
+
+.bp-attr-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+  gap: 8px 28px;
+  padding: 18px 0;
+  border-top: 1px solid #eef1f5;
+}
+
+.bp-attr-row:first-child {
+  padding-top: 4px;
+  border-top: 0;
+}
+
+.bp-attr-label {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
+.bp-attr-label strong {
+  color: var(--bp-text);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.bp-attr-label .bp-field-marker {
+  justify-self: start;
+}
+
+.bp-attr-number {
+  margin-right: 2px;
+  color: #56667c;
+  font-variant-numeric: tabular-nums;
+}
+
+.bp-attr-missing {
+  font-size: 0.8rem;
+}
+
+/* Who may see a value that isn't public: one quiet line, the list on request. */
+.bp-attr-audience summary {
+  width: fit-content;
+  cursor: pointer;
+  color: #52637a;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.bp-attr-audience summary svg {
+  width: 13px;
+  height: 13px;
+  margin-right: 5px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  vertical-align: -2px;
+}
+
+.bp-attr-audience span {
+  display: block;
+  margin-top: 2px;
+  color: #52637a;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.bp-attr-inputs {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Every input of the editor has one size. */
+.bp-attr-list :is(input:not([type="checkbox"]):not([type="file"]), select, textarea) {
+  min-height: 42px;
+  font-size: 1rem;
+}
+
+/* One right edge: a single input ends where the second part of a group ends. */
+.bp-attr-inputs > input,
+.bp-attr-inputs > select,
+.bp-attr-fixed {
+  max-width: calc((100% - 28px) * 2 / 3 + 14px);
+}
+
+/* At most three parts per line; four parts read two by two. */
+.bp-attr-parts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(max(190px, (100% - 28px) / 3), 1fr));
+  gap: 4px 14px;
+}
+
+.bp-attr-parts:has(> label:nth-child(4):last-child) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Each part is a label over its input; the labels of one line share a row, so the inputs line up. */
+.bp-attr-parts label {
+  display: grid;
+  grid-row: span 2;
+  grid-template-rows: subgrid;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.bp-attr-parts label > span {
+  align-self: end;
+  color: #405367;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.bp-attr-parts label > input,
+.bp-attr-parts label > select {
+  align-self: start;
+}
+
+.bp-attr-parts .bp-attr-wide {
+  grid-column: 1 / -1;
+}
+
+.bp-attr-optional {
+  color: #52637a;
+}
+
+.bp-attr-row code {
+  color: var(--bp-muted);
+  word-break: break-all;
+}
+
+.bp-attr-fixed {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bp-bg);
+  color: var(--bp-text);
+}
+
+/* Lists of rows (#44): each row in a box, titled by its content; the empty row waits behind "+ Add a row". */
+.bp-attr-repeat {
+  padding: 12px;
+  border: 1px solid var(--bp-border);
+  border-radius: 12px;
+  background: var(--bp-surface);
+}
+
+.bp-attr-repeat-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.bp-attr-row-title {
+  color: var(--bp-text);
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
+.bp-attr-repeat.is-removed,
+.bp-attr-repeat.is-new-row.is-collapsed {
+  display: none;
+}
+
+.bp-add-row {
+  justify-self: start;
+}
+
+/* A document: the current file, then a framed box to upload another; it is sent on its own, not with Save. */
+.bp-attr-upload {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 12px 10px;
+  border: 1px dashed var(--bp-border);
+  border-radius: 10px;
+}
+
+.bp-attr-upload legend {
+  float: none;
+  width: auto;
+  margin: 0;
+  padding: 0 6px;
+  color: #405367;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.bp-attr-file {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.bp-attr-file [data-upload-chosen] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bp-attr-confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: #9a3412;
+  font-weight: 600;
+}
+
+/* A refused value: red on the field itself or only on the refused parts of a grouped value. */
+.bp-attr-row.is-invalid .bp-attr-inputs > input,
+.bp-attr-row.is-invalid .bp-attr-inputs > select,
+.bp-attr-row.is-invalid .bp-attr-inputs > textarea,
+.bp-attr-row.is-invalid .bp-attr-repeat :is(input, select, textarea),
+.bp-attr-parts label.is-invalid-part :is(input, select, textarea) {
+  border-color: #dc2626;
+  background: #fff7f7;
+  outline: 3px solid rgba(220, 38, 38, 0.12);
+}
+
+.bp-attr-row.is-invalid .bp-field-marker {
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+/* "Show only missing values": rows that are filled in or fine step aside. */
+.bp-only-missing .bp-attr-row:not(.is-missing):not(.is-invalid),
+.bp-only-missing .bp-edit-section.has-no-missing {
+  display: none;
+}
+
+/* The save bar: opaque, covering the gap below it; quiet while there is nothing to save, lifted when there is. */
+.bp-editor-card .bp-product-editor-savebar {
+  bottom: 12px;
+  margin-top: 8px;
+  padding: 10px 12px 10px 18px;
+  border: 1px solid var(--bp-border);
+  border-radius: 12px;
+  background: var(--bp-surface);
+  box-shadow: 0 12px 0 var(--bp-surface), 0 4px 14px rgba(10, 40, 80, 0.06);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.bp-editor-card .bp-product-editor-savebar.has-unsaved {
+  border-color: rgba(42, 110, 207, 0.45);
+  box-shadow: 0 12px 0 var(--bp-surface), 0 10px 28px rgba(10, 40, 80, 0.14);
+}
+
+.bp-editor-card .bp-savebar-text {
+  min-width: 0;
+  overflow: hidden;
+  color: #52637a;
+  font-size: 0.9rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bp-editor-card .has-unsaved .bp-savebar-text {
+  color: var(--bp-text);
+  font-weight: 600;
+}
+
+.bp-editor-card .has-unsaved .bp-savebar-text::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--bp-primary);
+  vertical-align: 1px;
+}
+
+.bp-editor-card .bp-savebar-text.is-done {
+  color: #166534;
+  font-weight: 600;
+}
+
+.bp-editor-card .bp-savebar-text.is-done::before {
+  content: "\2713  ";
+}
+
+.bp-savebar-actions {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.bp-product-editor-savebar button {
+  white-space: nowrap;
+}
+
+.bp-editor-card .bp-product-editor-savebar:not(.has-unsaved) .bp-primary-button {
+  border-color: var(--bp-border);
+  background: transparent;
+  color: var(--bp-primary);
+}
+
+.bp-editor-card .bp-product-editor-savebar:not(.has-unsaved) .bp-secondary-button {
+  visibility: hidden;
+}
+
+/* ==== Motion: gentle, and only for people who have not asked their system for less ================================= */
+
+@media (prefers-reduced-motion: no-preference) {
+  .bp-editor-card .bp-edit-section:not([hidden]) {
+    animation: bp-section-in 0.18s ease-out;
+  }
+
+  .bp-status-line,
+  .bp-savebar-text.is-done {
+    animation: bp-fade-in 0.3s ease-out;
+  }
+}
+
+@keyframes bp-section-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes bp-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* ==== Dark theme ===================================================================================================== */
+
+[data-theme="dark"] .bp-help-text,
+[data-theme="dark"] .bp-field-help,
+[data-theme="dark"] .bp-completeness,
+[data-theme="dark"] .bp-chip-meta,
+[data-theme="dark"] .bp-editor-summary,
+[data-theme="dark"] .bp-editor-progress,
+[data-theme="dark"] .bp-editor-legend,
+[data-theme="dark"] .bp-editor-card .bp-template-sync-note,
+[data-theme="dark"] .bp-editor-card .bp-savebar-text,
+[data-theme="dark"] .bp-editor-card .bp-edit-nav .bp-edit-nav-button .bp-edit-nav-count,
+[data-theme="dark"] .bp-attr-audience summary,
+[data-theme="dark"] .bp-attr-audience span,
+[data-theme="dark"] .bp-attr-optional,
+[data-theme="dark"] .bp-remove-record summary,
+[data-theme="dark"] .bp-product-template-meta dt {
+  color: var(--bp-muted);
+}
+
+[data-theme="dark"] .bp-family-identity-field > label,
+[data-theme="dark"] .bp-family-identity-field > span,
+[data-theme="dark"] .bp-editor-name > span,
+[data-theme="dark"] .bp-editor-card .bp-attr-parts label > span,
+[data-theme="dark"] .bp-attr-upload legend,
+[data-theme="dark"] .bp-console-form-card label {
+  color: var(--bp-muted);
+}
+
+[data-theme="dark"] main :is(input, textarea)::placeholder {
+  color: #7f93ad;
+}
+
+[data-theme="dark"] main :is(input:not([type="checkbox"]):not([type="file"]), select, textarea):focus {
+  border-color: var(--bp-primary);
+  box-shadow: 0 0 0 3px rgba(122, 182, 255, 0.35);
+}
+
+/* site.css gives cards' inputs a white background that its dark rule doesn't reach. */
+[data-theme="dark"] .bp-console-form-card :is(input:not([type="checkbox"]), select, textarea) {
+  border-color: var(--bp-border);
+  background: #101f35;
+  color: var(--bp-text);
+}
+
+[data-theme="dark"] .bp-console-form-card :is(input, textarea)[readonly] {
+  background: #0b1628;
+  color: var(--bp-muted);
+}
+
+[data-theme="dark"] main .bp-field-marker {
+  border-color: #2f4566;
+  background: transparent;
+  color: #c3d3e6;
+}
+
+[data-theme="dark"] .bp-missing-note,
+[data-theme="dark"] .bp-attr-missing,
+[data-theme="dark"] .bp-attr-confirm {
+  color: #fdba74;
+}
+
+[data-theme="dark"] .bp-done-note,
+[data-theme="dark"] .bp-editor-card .bp-savebar-text.is-done {
+  color: #86efac;
+}
+
+[data-theme="dark"] .bp-progress,
+[data-theme="dark"] .bp-progress::-webkit-progress-bar {
+  background: #24395a;
+}
+
+[data-theme="dark"] main .bp-status-line.is-done {
+  background: rgba(34, 197, 94, 0.12);
+  color: #86efac;
+}
+
+[data-theme="dark"] main .bp-status-line.is-problem {
+  background: rgba(255, 107, 120, 0.12);
+  color: var(--bp-danger);
+}
+
+[data-theme="dark"] main .bp-status-line.is-info {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--bp-muted);
+}
+
+[data-theme="dark"] .bp-console-form-card label.bp-secondary-button {
+  color: var(--bp-text);
+}
+
+[data-theme="dark"] .bp-console-table tr.table-active {
+  --bs-table-bg-state: rgba(122, 182, 255, 0.12);
+}
+
+[data-theme="dark"] .bp-page-heading p,
+[data-theme="dark"] .bp-editor-scope,
+[data-theme="dark"] .bp-value-sources {
+  color: var(--bp-muted);
+}
+
+[data-theme="dark"] dialog.bp-dialog::backdrop {
+  background: rgba(2, 6, 23, 0.65);
+}
+
+[data-theme="dark"] .bp-product-template-card-media,
+[data-theme="dark"] .bp-product-editor-preview,
+[data-theme="dark"] .bp-product-template-meta div {
+  border-color: var(--bp-border);
+  background: #12233b;
+}
+
+[data-theme="dark"] .bp-product-version-tab.bp-product-version-chip {
+  border-color: var(--bp-border);
+  background: #101f35;
+}
+
+[data-theme="dark"] .bp-product-version-tab.bp-product-version-chip.is-active {
+  border-color: var(--bp-primary);
+}
+
+[data-theme="dark"] .bp-editor-tools,
+[data-theme="dark"] .bp-attr-row {
+  border-color: #1d2f48;
+}
+
+[data-theme="dark"] .bp-attr-number {
+  color: #8ea2bd;
+}
+
+[data-theme="dark"] .bp-editor-card .bp-edit-nav .bp-edit-nav-button {
+  background: transparent;
+  color: var(--bp-text);
+}
+
+[data-theme="dark"] .bp-editor-card .bp-edit-nav .bp-edit-nav-button:hover {
+  background: #12233b;
+}
+
+[data-theme="dark"] .bp-editor-card .bp-edit-nav .bp-edit-nav-button.is-active,
+[data-theme="dark"] .bp-editor-card .bp-edit-nav .bp-edit-nav-button.is-active .bp-edit-nav-count {
+  background: #132d4f;
+  color: #cce3ff;
+}
+
+[data-theme="dark"] .bp-editor-card .bp-edit-nav .bp-edit-nav-button.has-missing-fields {
+  color: var(--bp-danger);
+}
+
+[data-theme="dark"] .bp-editor-card .bp-product-editor-savebar.has-unsaved {
+  border-color: rgba(122, 182, 255, 0.5);
+}
+
+[data-theme="dark"] .bp-editor-switch input[role="switch"] {
+  background: #33476a;
+}
+
+[data-theme="dark"] .bp-editor-switch input[role="switch"]:checked {
+  background: var(--bp-primary);
+}
+
+/* The dialogs: site.css draws them white in both themes. */
+[data-theme="dark"] .bp-modal-panel {
+  border-color: var(--bp-border);
+  background: #101f35;
+  color: var(--bp-text);
+}
+
+/* The refused red stays readable on the dark surfaces. */
+[data-theme="dark"] .bp-attr-row.is-invalid .bp-attr-inputs > input,
+[data-theme="dark"] .bp-attr-row.is-invalid .bp-attr-inputs > select,
+[data-theme="dark"] .bp-attr-row.is-invalid .bp-attr-inputs > textarea,
+[data-theme="dark"] .bp-attr-row.is-invalid .bp-attr-repeat :is(input, select, textarea),
+[data-theme="dark"] .bp-attr-parts label.is-invalid-part :is(input, select, textarea) {
+  border-color: var(--bp-danger);
+  background: rgba(255, 107, 120, 0.1);
+  outline-color: rgba(255, 107, 120, 0.18);
+}
+
+[data-theme="dark"] .bp-attr-row.is-invalid .bp-field-marker {
+  border-color: rgba(255, 107, 120, 0.5);
+  color: var(--bp-danger);
+}
+
+/* ==== Narrower screens =============================================================================================== */
+
+/* Up to 1280 px: a narrower label column, so groups keep their parts side by side. */
+@media (max-width: 1279.98px) {
+  .bp-attr-row {
+    grid-template-columns: minmax(170px, 230px) minmax(0, 1fr);
+    gap: 8px 20px;
+  }
+}
+
+/* Below 1024 px: the side menu becomes a row of tabs above the form, underlined when open. */
+@media (max-width: 1023.98px) {
+  .bp-editor-card,
+  .bp-admin-page :is(.bp-product-editor-hero, .bp-product-version-console, .bp-product-editor-section, .bp-product-template-hero) {
+    padding: 18px 16px;
+  }
+
+  .bp-remove-record {
+    padding: 12px 16px;
+  }
+
+  .bp-editor-progress {
+    justify-items: start;
+  }
+
+  .bp-editor-card .bp-editor-switch {
+    margin-left: 0;
+  }
+
+  .bp-edit-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bp-editor-card .bp-edit-nav {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    overflow-x: auto;
+    padding: 6px 0;
+    background: var(--bp-surface);
+  }
+
+  .bp-editor-card .bp-edit-nav .bp-edit-nav-button.is-active::before,
+  .bp-editor-card .bp-edit-nav .bp-edit-nav-button.has-missing-fields::before {
+    top: auto;
+    right: 12px;
+    bottom: 0;
+    left: 12px;
+    width: auto;
+    height: 2px;
+  }
+
+  .bp-editor-card .bp-edit-section.bp-card {
+    scroll-margin-top: 64px;
+  }
+
+  .bp-editor-card .bp-product-editor-savebar {
+    padding: 8px 10px 8px 14px;
+  }
+}
+
+/* Between 721 and 1023 px the add-model form keeps its three parts in one row, inside the card's margin. */
+@media (min-width: 721px) and (max-width: 1023.98px) {
+  .bp-add-model {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .bp-attr-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bp-attr-file {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .bp-attr-file [data-upload-button] {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+
+/* ==== The audit log: one line per event, opened for its details ================================================== */
+
+.bp-auditlog-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.bp-auditlog-filters label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  font-size: 0.85rem;
+  color: #52637a;
+}
+
+.bp-auditlog-filters input,
+.bp-auditlog-filters select {
+  min-width: 150px;
+  max-width: 100%;
+}
+
+.bp-auditlog-search {
+  flex: 1 1 260px;
+}
+
+.bp-auditlog-search input {
+  width: 100%;
+}
+
+.bp-auditlog-filter-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.bp-auditlog-more {
+  flex-basis: 100%;
+}
+
+.bp-auditlog-more summary {
+  width: fit-content;
+  color: #2a6ecf;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.bp-auditlog-more > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.bp-auditlog-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px 16px;
+}
+
+.bp-auditlog-head h2 {
+  margin: 0;
+}
+
+.bp-auditlog-head p {
+  margin: 0;
+  color: #52637a;
+}
+
+.bp-auditlog-day {
+  margin: 22px 0 4px;
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: #52637a;
+}
+
+.bp-auditlog-list,
+.bp-auditlog-item {
+  border-color: #e6ebf1;
+}
+
+.bp-auditlog-list {
+  border-top: 1px solid #e6ebf1;
+}
+
+.bp-auditlog-item {
+  border-bottom: 1px solid #e6ebf1;
+}
+
+.bp-auditlog-item > summary {
+  display: grid;
+  grid-template-columns: 50px 22px minmax(0, 1fr) auto 16px;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.bp-auditlog-item > summary::-webkit-details-marker {
+  display: none;
+}
+
+.bp-auditlog-item > summary:hover,
+.bp-auditlog-item[open] > summary {
+  background: #f5f8fc;
+}
+
+.bp-auditlog-item > summary:focus-visible {
+  outline: 2px solid #2a6ecf;
+  outline-offset: -2px;
+}
+
+.bp-auditlog-time {
+  color: #52637a;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.bp-auditlog-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #eef2f7;
+  color: #475569;
+}
+
+.bp-auditlog-icon svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bp-auditlog-item.is-problem .bp-auditlog-icon {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.bp-auditlog-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--bp-text);
+}
+
+.bp-auditlog-text b {
+  font-weight: 600;
+}
+
+.bp-auditlog-change {
+  margin-left: 6px;
+  color: #52637a;
+}
+
+.bp-auditlog-tags {
+  display: flex;
+  gap: 6px;
+}
+
+.bp-auditlog-tags span {
+  padding: 0 8px;
+  border: 1px solid #d7dee8;
+  border-radius: 999px;
+  color: #52637a;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.bp-auditlog-chevron {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: #64748b;
+  stroke-width: 2;
+}
+
+.bp-auditlog-item[open] > summary .bp-auditlog-chevron {
+  transform: rotate(90deg);
+}
+
+.bp-auditlog-detail {
+  display: grid;
+  gap: 14px;
+  margin: 2px 8px 14px 92px;
+}
+
+.bp-auditlog-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px 22px;
+  margin: 0;
+}
+
+.bp-auditlog-facts dt,
+.bp-auditlog-values th {
+  color: #52637a;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.bp-auditlog-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.bp-auditlog-values {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.bp-auditlog-values th {
+  padding: 4px 10px 4px 0;
+  border-bottom: 1px solid #e6ebf1;
+  text-align: left;
+}
+
+.bp-auditlog-values td {
+  padding: 6px 10px 6px 0;
+  border-bottom: 1px solid #eef2f7;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.bp-auditlog-values .is-refused td:last-child {
+  color: #b91c1c;
+}
+
+.bp-auditlog-tech summary {
+  width: fit-content;
+  color: #52637a;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.bp-auditlog-tech pre {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f5f8fc;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.bp-auditlog-more-events {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bp-auditlog-chevron {
+    transition: transform 0.15s ease;
+  }
+}
+
+@media (max-width: 720px) {
+  .bp-auditlog-item > summary {
+    grid-template-columns: 44px 22px minmax(0, 1fr) 16px;
+  }
+
+  .bp-auditlog-tags {
+    display: none;
+  }
+
+  .bp-auditlog-detail {
+    margin-left: 8px;
+  }
+
+  .bp-auditlog-values {
+    table-layout: fixed;
+  }
+}
+
+[data-theme="dark"] :is(.bp-auditlog-list, .bp-auditlog-item, .bp-auditlog-values th, .bp-auditlog-tags span) {
+  border-color: var(--bp-border);
+}
+
+[data-theme="dark"] .bp-auditlog-values td {
+  border-color: rgba(148, 163, 184, 0.16);
+}
+
+[data-theme="dark"] :is(.bp-auditlog-item > summary:hover, .bp-auditlog-item[open] > summary, .bp-auditlog-tech pre) {
+  background: rgba(148, 163, 184, 0.1);
+}
+
+[data-theme="dark"] :is(.bp-auditlog-filters label, .bp-auditlog-head p, .bp-auditlog-day, .bp-auditlog-time, .bp-auditlog-change,
+  .bp-auditlog-tags span, .bp-auditlog-facts dt, .bp-auditlog-values th, .bp-auditlog-tech summary) {
+  color: var(--bp-muted);
+}
+
+[data-theme="dark"] .bp-auditlog-icon {
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--bp-text);
+}
+
+[data-theme="dark"] .bp-auditlog-item.is-problem .bp-auditlog-icon {
+  background: rgba(255, 107, 120, 0.14);
+  color: var(--bp-danger);
+}
+
+[data-theme="dark"] .bp-auditlog-values .is-refused td:last-child {
+  color: var(--bp-danger);
+}
+
+[data-theme="dark"] .bp-auditlog-more summary {
+  color: #7ab6ff;
+}
+
+/* ==== Batteries (step 2d-2) ======================================================================================== */
+
+/* The list: search and "Create battery" beside the heading's text, then one quiet table. */
+.bp-batteries-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bp-batteries-search {
+  display: flex;
+  flex: 1 1 420px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  max-width: 640px;
+}
+
+.bp-batteries-search input {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+
+.bp-batteries-clear {
+  font-weight: 600;
+}
+
+.bp-batteries-count {
+  margin: 0;
+  padding: 14px 16px 10px;
+  color: #52637a;
+}
+
+.bp-batteries-muted,
+.bp-battery-id {
+  color: #6b7a90;
+}
+
+.bp-batteries-table td small,
+.bp-battery-id {
+  display: block;
+  font-size: 0.82rem;
+}
+
+.bp-battery-id {
+  overflow-wrap: anywhere;
+}
+
+/* The battery lists keep their row icons in view at 1280 px (redesign R5): the batch and the cluster wrap instead. */
+.bp-console-table:has(.bp-actions-column) td:is([data-label="Batch"], [data-label="Cluster"]) {
+  white-space: normal;
+}
+
+.bp-battery-link {
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.bp-battery-link:hover,
+.bp-battery-link:focus-visible {
+  text-decoration: underline;
+}
+
+/* "Published · version 2" is done, so it is the only green tag; "Draft" stays a plain outlined tag. */
+main .bp-field-marker.is-published {
+  border-color: #b7dfc4;
+  color: #166534;
+}
+
+/* The battery page's heading: its serial number, status and the records its values come from. */
+.bp-battery-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+
+.bp-battery-title h1 {
+  margin-bottom: 4px;
+}
+
+.bp-battery-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px 28px;
+  margin: 18px 0 0;
+}
+
+.bp-battery-facts dt {
+  margin-bottom: 2px;
+  color: #6b7a90;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.bp-battery-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The battery ID is long: it gets two columns where there is room. */
+@media (min-width: 721px) {
+  .bp-battery-facts .bp-battery-fact-wide {
+    grid-column: span 2;
+  }
+}
+
+.bp-battery-facts .bp-id-copy-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* At least 24 px tall, for WCAG 2.5.8 (step 6a). */
+.bp-text-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  margin-left: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--bp-primary);
+  font-weight: 600;
+}
+
+.bp-text-button:hover,
+.bp-text-button:focus-visible {
+  text-decoration: underline;
+}
+
+/* One card per part of the battery: publication, live values, accident reports, versions. */
+.bp-battery-card h2 {
+  margin: 2px 0 4px;
+  font-size: 1.25rem;
+  font-weight: 650;
+}
+
+.bp-battery-card > p,
+.bp-battery-card-head p {
+  max-width: 900px;
+  color: #52637a;
+}
+
+.bp-battery-card .bp-status-line {
+  margin: 14px 0 0;
+}
+
+.bp-battery-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
+/* What the passport still needs, under the record that holds it. */
+.bp-missing-groups {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bp-missing-groups li {
+  display: grid;
+  gap: 2px;
+  padding: 10px 14px;
+  border: 1px solid #e6ebf1;
+  border-radius: 12px;
+}
+
+.bp-missing-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+}
+
+.bp-missing-group-head a {
+  font-weight: 600;
+}
+
+.bp-missing-groups li > span {
+  color: #52637a;
+}
+
+.bp-battery-checks {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #e6ebf1;
+}
+
+.bp-battery-checks summary {
+  width: fit-content;
+  color: #52637a;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bp-battery-checks details p,
+.bp-battery-checks details ul {
+  margin-top: 8px;
+}
+
+.bp-file-checks {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bp-file-checks li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding: 6px 0;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.bp-file-checks li:last-child {
+  border-bottom: 0;
+}
+
+.bp-battery-fixed-note {
+  margin: 8px 4px 0;
+  color: #6b7a90;
+  font-size: 0.9rem;
+}
+
+/* The live values: the editor's fields, each with when its value was measured and where it came from. */
+.bp-live-form {
+  margin-top: 14px;
+}
+
+.bp-live-meta {
+  margin: -6px 0 0;
+  color: #6b7a90;
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+.bp-live-save {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #e6ebf1;
+}
+
+.bp-live-save label {
+  display: grid;
+  gap: 6px;
+}
+
+.bp-accident-upload {
+  margin-top: 16px;
+}
+
+/* A frozen passport: why adding is off, and the way to the new passport (redesign R5, item 6). */
+.bp-accident-frozen {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--bp-border);
+  border-radius: 10px;
+  background: rgba(100, 116, 139, 0.06);
+}
+
+.bp-accident-frozen .bp-i {
+  margin-top: 2px;
+  color: var(--bp-muted);
+}
+
+/* How the passport's readers see the reports: a small link, after the work. */
+.bp-accident-readers {
+  margin: 16px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--bp-border);
+  font-size: 0.85rem;
+}
+
+.bp-accident-readers a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.bp-accident-readers .bp-i {
+  width: 16px;
+  height: 16px;
+}
+
+/* A new battery: where it comes from, then its own values. */
+.bp-new-battery-part + .bp-new-battery-part {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #e6ebf1;
+}
+
+.bp-new-battery-part h2 {
+  margin: 0 0 4px;
+  font-size: 1.25rem;
+  font-weight: 650;
+}
+
+.bp-new-battery-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px 24px;
+  margin-top: 12px;
+}
+
+.bp-new-battery-choices label {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
+.bp-new-battery-choices label > span {
+  font-weight: 600;
+}
+
+[data-theme="dark"] :is(.bp-batteries-count, .bp-batteries-muted, .bp-battery-id, .bp-battery-facts dt, .bp-battery-card > p,
+  .bp-battery-card-head p, .bp-missing-groups li > span, .bp-battery-checks summary, .bp-battery-fixed-note, .bp-live-meta) {
+  color: var(--bp-muted);
+}
+
+[data-theme="dark"] :is(.bp-missing-groups li, .bp-battery-checks, .bp-file-checks li, .bp-live-save, .bp-new-battery-part + .bp-new-battery-part) {
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
+[data-theme="dark"] main .bp-field-marker.is-published {
+  border-color: rgba(134, 239, 172, 0.35);
+  color: #86efac;
+}
+
+@media (max-width: 720px) {
+  .bp-batteries-tools,
+  .bp-batteries-search {
+    align-items: stretch;
+  }
+
+  .bp-live-meta {
+    text-align: left;
+  }
+}
+
+/* ==== The team's battery page: where else to find it, and each version's signature ================================= */
+
+.bp-battery-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 18px;
+  margin: 10px 0 0;
+}
+
+.bp-battery-links a {
+  font-weight: 600;
+}
+
+.bp-signature-details {
+  margin-top: 4px;
+  font-size: 0.85rem;
+}
+
+.bp-signature-details summary {
+  width: fit-content;
+  color: #52637a;
+  cursor: pointer;
+}
+
+.bp-signature-details dl {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0;
+}
+
+.bp-signature-details dt {
+  color: #52637a;
+  font-weight: 600;
+}
+
+.bp-signature-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+[data-theme="dark"] :is(.bp-signature-details summary, .bp-signature-details dt) {
+  color: var(--bp-muted);
+}
+
+/* ==== Modules: the battery's list and the model's description (decision 31) ========================================== */
+
+.bp-module-table {
+  margin-top: 12px;
+}
+
+.bp-module-upload {
+  margin-top: 14px;
+}
+
+.bp-module-edit {
+  margin-top: 12px;
+}
+
+.bp-module-edit summary {
+  width: fit-content;
+  color: #52637a;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bp-module-edit label,
+.bp-module-description {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.bp-module-edit textarea {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.9rem;
+}
+
+.bp-passport-modules small {
+  color: #52637a;
+}
+
+[data-theme="dark"] :is(.bp-module-edit summary, .bp-passport-modules small) {
+  color: var(--bp-muted);
+}
+
+/* ==== Admin, cluster admin and help pages (step 3e) ================================================================
+   Decision 27's finish on the remaining admin tabs, the cluster admin pages and the help: one card per thing, a short
+   intro with the tab's one main button, lists whose rows open in place, outlined sentence-case tags, dialogs for
+   adding things, and the rare or risky actions at the end of a row's panel. */
+
+/* The page heading: one title, one line. */
+.bp-admin-heading h1 {
+  margin: 0 0 4px;
+  font-size: 2rem;
+  font-weight: 650;
+}
+
+.bp-admin-heading p {
+  margin: 0;
+  color: var(--bp-muted);
+}
+
+/* A tab's intro card: what it is for, its numbers, and its one main button. */
+.bp-tab-intro {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 28px;
+}
+
+.bp-tab-intro h2 {
+  margin: 0 0 4px;
+  font-size: 1.25rem;
+  font-weight: 650;
+}
+
+.bp-tab-intro p {
+  max-width: 760px;
+  margin: 0;
+  color: #52637a;
+}
+
+.bp-tab-intro-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.bp-counts {
+  color: var(--bp-muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+/* Quiet outlined tags in sentence case. */
+.bp-soft-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid #d6dee8;
+  border-radius: 999px;
+  color: #405367;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.bp-soft-tag.is-off {
+  border-style: dashed;
+  color: var(--bp-muted);
+}
+
+.bp-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+
+/* A list card: a toolbar, then one row per thing. A row opens in place to show its panel. */
+.bp-list-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.bp-list-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 20px;
+  padding: 14px 20px;
+}
+
+.bp-list-tools h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 650;
+}
+
+.bp-list-search {
+  flex: 0 1 320px;
+}
+
+.bp-list-search input {
+  width: 100%;
+}
+
+.bp-list-head,
+.bp-row > summary {
+  display: grid;
+  grid-template-columns: var(--bp-row-columns, minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1.6fr) 96px);
+  align-items: center;
+  gap: 6px 20px;
+  padding: 12px 20px;
+}
+
+.bp-list-head {
+  border-top: 1px solid var(--bp-border);
+  color: var(--bp-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.bp-row {
+  border-top: 1px solid var(--bp-border);
+}
+
+.bp-row > summary {
+  list-style: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.bp-row > summary::-webkit-details-marker {
+  display: none;
+}
+
+.bp-row > summary:hover,
+.bp-row[open] > summary {
+  background: rgba(42, 110, 207, 0.05);
+}
+
+.bp-row-title {
+  min-width: 0;
+}
+
+.bp-row-title strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.bp-row-title small,
+.bp-row-title code {
+  display: block;
+  color: var(--bp-muted);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.bp-row-open {
+  justify-self: end;
+  color: var(--bp-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bp-row-open::after {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-3px) rotate(45deg);
+  transition: transform 0.15s ease;
+}
+
+.bp-row[open] .bp-row-open::after {
+  transform: translateY(1px) rotate(225deg);
+}
+
+.bp-row-open .is-close,
+.bp-row[open] .bp-row-open .is-open {
+  display: none;
+}
+
+.bp-row[open] .bp-row-open .is-close {
+  display: inline;
+}
+
+.bp-row-label {
+  display: none;
+}
+
+.bp-list-empty {
+  margin: 0;
+  padding: 18px 20px;
+  border-top: 1px solid var(--bp-border);
+  color: var(--bp-muted);
+}
+
+/* A row's panel: small cards side by side, the risky actions last. */
+.bp-row-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  padding: 4px 20px 20px;
+}
+
+.bp-subcard {
+  padding: 16px;
+  border: 1px solid var(--bp-border);
+  border-radius: 12px;
+  background: var(--bp-surface);
+}
+
+.bp-subcard h3 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.bp-subcard form {
+  display: grid;
+  gap: 10px;
+}
+
+.bp-subcard label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.bp-subcard .bp-inline-form {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.bp-subcard .bp-add-membership {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: end;
+}
+
+.bp-add-membership button {
+  justify-self: start;
+}
+
+.bp-member-list {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.bp-member-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 10px;
+}
+
+.bp-danger-zone {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 20px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--bp-border);
+}
+
+.bp-danger-zone p {
+  max-width: 720px;
+  margin: 0;
+  color: #52637a;
+  font-size: 0.9rem;
+}
+
+.bp-danger-zone .bp-danger-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.bp-quiet-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--bp-danger);
+  font-weight: 600;
+}
+
+.bp-quiet-button:hover,
+.bp-quiet-button:focus-visible {
+  text-decoration: underline;
+}
+
+/* A small card for a rare setting, at the end of a tab. */
+.bp-setting-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
+.bp-setting-card h2 {
+  margin: 0 0 2px;
+  font-size: 1.125rem;
+  font-weight: 650;
+}
+
+.bp-setting-card p {
+  margin: 0;
+  color: #52637a;
+}
+
+.bp-setting-card form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Choices with a line of explanation each (a token's permission, a user's access). */
+.bp-choice-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.bp-choice-list legend {
+  margin-bottom: 4px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.bp-choice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--bp-border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.bp-choice:has(input:checked) {
+  border-color: var(--bp-primary);
+  background: rgba(42, 110, 207, 0.05);
+}
+
+.bp-console-form-card .bp-choice input[type="radio"] {
+  grid-row: span 2;
+  align-self: start;
+  width: auto;
+  min-height: 0;
+  margin-top: 4px;
+  padding: 0;
+  box-shadow: none;
+  accent-color: var(--bp-primary);
+}
+
+/* No ring around the radio itself (it was stretched into an oval, redesign R1): the whole option shows the focus. */
+.bp-console-form-card .bp-choice input[type="radio"]:focus {
+  box-shadow: none;
+  outline: none;
+}
+
+.bp-choice:has(input:focus-visible) {
+  outline: 2px solid var(--bp-primary);
+  outline-offset: 2px;
+}
+
+.bp-choice small {
+  color: #52637a;
+}
+
+.bp-dialog-form {
+  display: grid;
+  gap: 14px;
+}
+
+.bp-dialog-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.bp-dialog-form :is(input, select) {
+  width: 100%;
+  min-width: 0;
+}
+
+.bp-field-pairs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 14px;
+}
+
+.bp-dialog-wide {
+  width: min(100% - 32px, 620px);
+  min-width: 0;
+}
+
+/* A model's own picture, beside its module description (redesign R2). */
+.bp-model-picture {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  margin-bottom: 12px;
+}
+
+.bp-model-picture-preview {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 72px;
+  border: 1px solid var(--bp-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.bp-model-picture-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.bp-model-picture-remove {
+  margin: -6px 0 14px 110px;
+}
+
+@media (max-width: 575.98px) {
+  .bp-model-picture {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bp-model-picture-remove {
+    margin-left: 0;
+  }
+}
+
+/* A frozen passport's values: shown, not editable (redesign R1). The fieldset only disables its fields. */
+.bp-frozen-fields {
+  display: contents;
+}
+
+/* A chosen file: ready (green) or why it can't be sent (red), before anything is uploaded (redesign R1). */
+[data-upload-chosen].is-good {
+  color: #166534;
+  font-weight: 600;
+}
+
+[data-upload-chosen].is-wrong {
+  color: var(--bp-danger);
+  font-weight: 600;
+}
+
+[data-theme="dark"] [data-upload-chosen].is-good {
+  color: #86efac;
+}
+
+/* The status window (redesign R1, owner's point 3; the owner's step-5 test, 4 Nov 2026): each step's head and buttons
+   stay put and only the body between them scrolls, so nothing hides under the buttons. The buttons were a sticky bar
+   with a negative margin, which left the window 20 px shorter than its content, covered the last choice and gave the
+   window nothing to scroll. */
+[data-status-dialog][open] {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+[data-status-dialog] .bp-dialog-form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+[data-status-dialog] [data-status-step] {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+[data-status-dialog] .bp-dialog-head {
+  padding: 20px 20px 12px;
+}
+
+[data-status-dialog] .bp-dialog-body {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 14px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 20px 16px;
+}
+
+[data-status-dialog] .bp-dialog-actions {
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--bp-border);
+  background: #fff;
+}
+
+[data-theme="dark"] [data-status-dialog] .bp-dialog-actions {
+  background: #101f35;
+}
+
+/* The Help: one place, a contents list on the left with only the reader's parts. */
+.bp-help-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  align-items: start;
+  gap: 28px;
+}
+
+.bp-help-contents {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 2px;
+}
+
+.bp-help-contents p {
+  margin: 10px 0 4px;
+  color: var(--bp-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.bp-help-contents a {
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: var(--bp-text);
+  text-decoration: none;
+}
+
+.bp-help-contents a:hover,
+.bp-help-contents a:focus-visible {
+  background: rgba(42, 110, 207, 0.06);
+}
+
+.bp-help-contents a[aria-current] {
+  background: #e8f1ff;
+  color: var(--bp-scania-blue);
+  font-weight: 600;
+}
+
+.bp-help-parts {
+  display: grid;
+  gap: 20px;
+}
+
+.bp-help-part h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0 0 8px;
+  font-size: 1.25rem;
+  font-weight: 650;
+}
+
+.bp-help-part > p {
+  max-width: 820px;
+}
+
+.bp-steps {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: bp-step;
+}
+
+.bp-steps li {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 2px 12px;
+  counter-increment: bp-step;
+}
+
+.bp-steps li::before {
+  content: counter(bp-step);
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #bacde8;
+  border-radius: 50%;
+  color: var(--bp-scania-blue);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.bp-steps strong a {
+  font-weight: 600;
+}
+
+.bp-steps p {
+  margin: 0;
+  color: #52637a;
+}
+
+.bp-word-list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 18px;
+  margin: 0;
+}
+
+.bp-word-list dt {
+  font-weight: 600;
+}
+
+.bp-word-list dd {
+  margin: 0;
+  color: #52637a;
+}
+
+@media (max-width: 767.98px) {
+  .bp-list-head {
+    display: none;
+  }
+
+  .bp-row > summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 14px 16px;
+  }
+
+  .bp-row > summary > :not(.bp-row-title):not(.bp-row-open) {
+    grid-column: 1 / -1;
+  }
+
+  .bp-row > summary > .bp-row-open {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .bp-row-label {
+    display: inline;
+    margin-right: 6px;
+    color: var(--bp-muted);
+    font-size: 0.8rem;
+  }
+
+  .bp-row-panel {
+    padding: 4px 12px 16px;
+  }
+
+  .bp-list-tools {
+    padding: 14px 16px;
+  }
+
+  .bp-list-search {
+    flex-basis: 100%;
+  }
+
+  .bp-help-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .bp-help-contents {
+    position: static;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .bp-help-contents p {
+    display: none;
+  }
+
+  .bp-help-contents a {
+    border: 1px solid var(--bp-border);
+    font-size: 0.9rem;
+  }
+
+  .bp-word-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bp-word-list dd {
+    margin-bottom: 6px;
+  }
+}
+
+[data-theme="dark"] :is(.bp-tab-intro p, .bp-danger-zone p, .bp-setting-card p, .bp-choice small, .bp-steps p, .bp-word-list dd) {
+  color: var(--bp-muted);
+}
+
+[data-theme="dark"] .bp-soft-tag {
+  border-color: var(--bp-border);
+  color: var(--bp-text);
+}
+
+[data-theme="dark"] .bp-soft-tag.is-off {
+  color: var(--bp-muted);
+}
+
+[data-theme="dark"] .bp-help-contents a[aria-current] {
+  background: rgba(122, 182, 255, 0.14);
+  color: var(--bp-text);
+}
+
+[data-theme="dark"] .bp-steps li::before {
+  border-color: var(--bp-border);
+  color: var(--bp-text);
+}
+
+/* ==== Purchaser editing and lifecycle (step 4) =====================================================================
+   The few new pieces step 4 adds to bp-product-data.css: the battery status line, the repair history, the notices for
+   a passport that is no longer active, and the hand-over rows. Everything else is the app's existing classes. */
+
+/* The battery status at the top of its card: the status in words, and since when. */
+.bp-battery-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
+}
+
+.bp-battery-status strong {
+  font-size: 1.15rem;
+  font-weight: 650;
+}
+
+/* The repair history: one line per repair, newest first. */
+.bp-history {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  border-top: 1px solid var(--bp-border);
+}
+
+.bp-history li {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr);
+  gap: 2px 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--bp-border);
+}
+
+.bp-history time {
+  font-weight: 600;
+}
+
+.bp-history small {
+  grid-column: 2;
+  color: var(--bp-muted);
+}
+
+/* A passport that is no longer active, or a battery whose passport replaced another: one calm line on every page. */
+.bp-passport-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--bp-border);
+  border-left: 4px solid #64748b;
+  border-radius: 8px;
+  background: var(--bp-surface, #fff);
+}
+
+.bp-passport-notice.is-invalid {
+  border-left-color: #c2410c;
+}
+
+.bp-passport-notice strong {
+  font-weight: 650;
+}
+
+/* Hand-overs waiting for a cluster admin: one row each, with its two answers. */
+.bp-handover-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 18px;
+  padding: 12px 0;
+  border-top: 1px solid var(--bp-border);
+}
+
+.bp-handover-row:first-of-type {
+  border-top: 0;
+}
+
+.bp-handover-row .bp-dialog-actions {
+  margin: 0;
+}
+
+/* The suggestion under capacity fade: a measured capacity in, a suggested fade out. */
+.bp-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px 12px;
+  margin-top: 6px;
+}
+
+.bp-suggest label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+
+.bp-suggest input {
+  width: 9rem;
+}
+
+@media (max-width: 640px) {
+  .bp-history li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bp-history small {
+    grid-column: 1;
+  }
+}
+
+[data-theme="dark"] .bp-passport-notice {
+  background: transparent;
+}
+
+/* The status window's two steps: the second shows once "Next" is pressed (bp-status-change.js); without the script
+   both show. */
+[data-status-dialog].is-stepped [data-status-step="2"],
+[data-status-dialog].is-step-2 [data-status-step="1"] {
+  display: none;
+}
+
+[data-status-dialog].is-step-2 [data-status-step="2"] {
+  display: flex;
+}
+
+/* Hand-overs waiting for a cluster admin on the Registry (step 4d, mock-up S1): one row each, with its two answers. */
+.bp-handover-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 18px;
+  padding: 12px 0;
+  border-top: 1px solid var(--bp-border);
+}
+
+.bp-handover-row:first-of-type {
+  border-top: 0;
+}
+
+.bp-handover-row .bp-dialog-actions {
+  margin: 0;
+}
+
+/* ==== The battery pages' layout (redesign R4, option B, mock-up H and F1; the owner's improvements of 2 Nov 2026) =====
+   A short header: the model's picture, the battery and its two statuses, its facts, and one toolbar row with what to do
+   and where to open it. Then a slim side menu that shows one section at a time, like the old app's. On a phone: a
+   section picker, the facts folded, and the actions in a bar at the bottom. Badges, chips and notice lines come from
+   bp-status.css. */
+.bp-bh {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 16px 20px;
+  border: 1px solid var(--bp-border);
+  border-radius: 14px;
+  background: var(--bp-surface);
+}
+
+/* The picture, a column from the label down to the facts; the text top-aligned beside it. It is sized by its height
+   at its own shape (the 7M is tall, the 13M wide), the same as the public hero's picture (bp-status.css). */
+.bp-bh-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "picture id"
+    "picture facts";
+  gap: 10px 22px;
+  align-items: start;
+}
+
+.bp-bh-main.no-picture {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "id"
+    "facts";
+}
+
+.bp-bh-main > .bp-bh-id {
+  grid-area: id;
+}
+
+.bp-bh-main > .bp-bh-facts-row {
+  grid-area: facts;
+}
+
+.bp-bh-picture {
+  grid-area: picture;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  border: 1px solid var(--bp-border);
+  border-radius: 12px;
+  background: #f3f6fa;
+}
+
+/* The box fits the picture's visible shape: bp-battery-page.js cuts transparent margins off, hiding it meanwhile. */
+.bp-bh-picture img.is-trimming {
+  opacity: 0;
+}
+
+.bp-bh-picture img {
+  display: block;
+  width: auto;
+  height: 160px;
+  max-width: 220px;
+  object-fit: contain;
+}
+
+.bp-bh-id {
+  min-width: 0;
+}
+
+.bp-bh h1 {
+  margin: 2px 0 6px;
+  font-size: 1.6rem;
+  overflow-wrap: anywhere;
+}
+
+/* The facts: one line each, the long battery ID shortened in the middle (its copy button and tooltip keep it whole). */
+.bp-bh-facts-row {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 10px 22px;
+  padding-top: 10px;
+  border-top: 1px solid var(--bp-border);
+}
+
+.bp-bh-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+  gap: 8px 22px;
+  margin: 0;
+}
+
+.bp-bh-facts div {
+  min-width: 0;
+}
+
+.bp-bh-facts dt {
+  color: var(--bp-muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.bp-bh-facts dd {
+  margin: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The header facts' links (Batch, Economic operator) are at least 24 px tall too (step 6a). */
+.bp-bh-facts dd a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+}
+
+/* Its 24 px box overhangs its label's line instead of growing it, so the Cluster value stays level with the others. */
+.bp-bh-facts dt .bp-text-button {
+  position: relative;
+  z-index: 1;
+  margin-block: -4px;
+  margin-left: 6px;
+  font-size: 0.78rem;
+}
+
+/* The folded facts: each at its own width on one line, flowing to a next row only when they don't fit. */
+.bp-bh-details .bp-bh-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+}
+
+.bp-bh-details .bp-bh-facts dd {
+  overflow: visible;
+}
+
+.bp-bh-fact-id {
+  grid-column: 1 / -1;
+}
+
+.bp-bh-fact-id dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  overflow: visible;
+}
+
+.bp-bh-fact-id .bp-id-copy-row {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Step 6d: a battery ID's telling part is its end (…TESTDEMOC13M0001R2), so it wraps on a phone instead of ending in "…". */
+.bp-bh-fact-id .bp-id-value {
+  min-width: 0;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.bp-bh-details > summary {
+  display: none;
+}
+
+/* One toolbar row: the actions on the left, the labelled icon links on the right (owner's improvement 3). */
+.bp-bh-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--bp-border);
+}
+
+.bp-bh-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bp-bh-open {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.bp-ilink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 9px;
+  border-radius: 9px;
+  color: var(--bp-text);
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.bp-ilink .bp-i {
+  width: 18px;
+  height: 18px;
+  color: var(--bp-primary);
+}
+
+.bp-ilink:hover,
+.bp-ilink:focus-visible {
+  background: rgba(42, 110, 207, 0.08);
+  color: var(--bp-primary);
+}
+
+/* "More": the risky actions, in a small menu. */
+.bp-more {
+  position: relative;
+}
+
+.bp-more > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.bp-more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.bp-more-list {
+  position: absolute;
+  left: 0;
+  z-index: 5;
+  display: grid;
+  width: max-content;
+  min-width: 300px;
+  max-width: min(380px, calc(100vw - 28px));
+  margin-top: 6px;
+  padding: 6px;
+  border: 1px solid var(--bp-border);
+  border-radius: 12px;
+  background: var(--bp-surface);
+  box-shadow: 0 10px 28px rgba(10, 40, 80, 0.14);
+}
+
+/* Links and buttons alike, in the page's font (a button otherwise takes the browser's) and sized like the side menu's
+   entries: the name, and a quieter line under it (redesign R5, owner's item 2). */
+.bp-more-list a,
+.bp-more-list button {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--bp-text);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.bp-more-list .bp-i {
+  margin-top: 1px;
+}
+
+.bp-more-list a:hover,
+.bp-more-list button:hover {
+  background: rgba(42, 110, 207, 0.08);
+}
+
+.bp-more-list .is-danger {
+  color: var(--bp-danger);
+}
+
+.bp-more-list small {
+  display: block;
+  margin-top: 2px;
+  color: var(--bp-muted);
+  font-size: 0.78rem;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+/* The windows at page level keep the card's form styles; the host itself draws nothing. */
+.bp-console-form-card.bp-dialog-host {
+  display: contents;
+}
+
+/* The slim side menu: a coloured edge on the open section, in view while the page scrolls (owner's improvement 5). */
+.bp-bpage {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+  margin-top: 18px;
+}
+
+.bp-bnav {
+  position: sticky;
+  top: 12px;
+  gap: 2px;
+}
+
+.bp-bnav .bp-edit-nav-button {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1px 10px;
+  padding: 8px 10px;
+  border: 0;
+  border-left: 3px solid transparent;
+  border-radius: 0 8px 8px 0;
+  background: transparent;
+  text-decoration: none;
+}
+
+.bp-bnav .bp-edit-nav-button:hover {
+  background: rgba(42, 110, 207, 0.06);
+}
+
+.bp-bnav .bp-edit-nav-button.is-active {
+  border-left-color: var(--bp-primary);
+  background: rgba(42, 110, 207, 0.08);
+  color: var(--bp-primary);
+}
+
+.bp-bnav .bp-edit-nav-button .bp-i {
+  color: var(--bp-primary);
+}
+
+.bp-bnav .bp-edit-nav-button small {
+  grid-column: 2 / -1;
+  color: var(--bp-muted);
+  font-size: 0.74rem;
+  font-weight: 500;
+}
+
+.bp-count {
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgba(110, 130, 159, 0.16);
+  color: var(--bp-text);
+  font-size: 0.72rem;
+}
+
+.bp-bpicker {
+  display: none;
+}
+
+.bp-bpanel > [data-section] > .bp-card:first-child {
+  margin-top: 0 !important;
+}
+
+/* The overview's tiles: each live value with a small line of its last 7 days (owner's improvement 4). */
+.bp-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin: 16px 0 4px;
+}
+
+.bp-tile {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--bp-border);
+  border-radius: 12px;
+}
+
+.bp-tile-title {
+  color: var(--bp-muted);
+  font-size: 0.74rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.bp-tile-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.bp-spark {
+  width: 100%;
+  height: 36px;
+  margin: 2px 0;
+}
+
+.bp-spark polyline {
+  fill: none;
+  stroke: var(--bp-primary);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.bp-tile-flat {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  color: var(--bp-muted);
+  font-size: 0.8rem;
+}
+
+.bp-tile small {
+  color: var(--bp-muted);
+  font-size: 0.76rem;
+}
+
+/* The overview's "Nothing needs you" or what needs doing. */
+.bp-todo {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bp-todo li {
+  padding: 8px 12px;
+  border-left: 3px solid #f59e0b;
+  border-radius: 0 8px 8px 0;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.bp-todo li.is-none {
+  border-left-color: #22c55e;
+  background: rgba(34, 197, 94, 0.07);
+}
+
+.bp-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.bp-overview > div {
+  padding: 12px 14px;
+  border: 1px solid var(--bp-border);
+  border-radius: 12px;
+}
+
+.bp-overview dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--bp-muted);
+  font-size: 0.76rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.bp-overview dd {
+  margin: 6px 0 0;
+}
+
+.bp-overview dd small {
+  display: block;
+  color: var(--bp-muted);
+}
+
+@media (max-width: 767.98px) {
+  .bp-bh {
+    padding: 14px;
+  }
+
+  .bp-bh h1 {
+    font-size: 1.35rem;
+  }
+
+  .bp-bh-facts-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* On a phone the picture is about 100 px tall beside the name; the facts take the full width below. */
+  .bp-bh-main {
+    grid-template-areas:
+      "picture id"
+      "facts facts";
+    gap: 10px 14px;
+  }
+
+  .bp-bh-main.no-picture {
+    grid-template-areas:
+      "id"
+      "facts";
+  }
+
+  .bp-bh-picture {
+    align-self: start;
+    min-width: 0;
+    padding: 6px;
+  }
+
+  .bp-bh-picture img {
+    height: 100px;
+    max-width: 110px;
+  }
+
+  .bp-bh-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* The less used facts fold behind "More details" (owner's improvement 9). */
+  .bp-bh-details > summary {
+    display: inline-block;
+    color: var(--bp-primary);
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .bp-bh-details[open] > summary {
+    margin-bottom: 8px;
+  }
+
+  /* "More" beside the five links, so the header stays short. */
+  .bp-bh-bar {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .bp-bh-bar .bp-more > summary {
+    min-height: 0;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+  }
+
+  .bp-bh-open {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    margin-left: 0;
+  }
+
+  .bp-ilink {
+    flex-direction: column;
+    gap: 3px;
+    padding: 6px 2px;
+    font-size: 0.7rem;
+    text-align: center;
+  }
+
+  /* The actions in a bar at the bottom of the screen; the page leaves room for it (owner's improvement 8). */
+  .bp-bh-actions {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 20;
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    gap: 8px;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--bp-border);
+    background: var(--bp-surface);
+    box-shadow: 0 -6px 18px rgba(10, 40, 80, 0.08);
+  }
+
+  .bp-battery-page {
+    padding-bottom: 84px;
+  }
+
+  .bp-more {
+    position: static;
+  }
+
+  .bp-more-list {
+    left: 14px;
+    right: 14px;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+  }
+
+  /* A section picker at the top instead of the stacked menu (owner's improvement 7). */
+  .bp-bpage {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    margin-top: 14px;
+  }
+
+  .bp-bnav {
+    display: none;
+  }
+
+  .bp-bpicker {
+    display: block;
+  }
+
+  .bp-bpicker label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-weight: 600;
+  }
+
+  .bp-bpicker select {
+    flex: 1;
+    min-height: 42px;
+    padding: 8px 10px;
+    border: 1px solid var(--bp-border);
+    border-radius: 10px;
+    background: var(--bp-surface);
+    color: var(--bp-text);
+    font: inherit;
+    font-weight: 600;
+  }
+}
+
+[data-theme="dark"] .bp-bh-picture {
+  background: #e9eef5;
+}
+
+[data-theme="dark"] .bp-bnav .bp-edit-nav-button {
+  border-color: transparent;
+  background: transparent;
+  text-decoration: none;
+}
+
+[data-theme="dark"] .bp-bnav .bp-edit-nav-button.is-active {
+  border-left-color: var(--bp-primary);
+  background: rgba(122, 182, 255, 0.1);
+  color: var(--bp-primary);
+}
+
+/* The battery page's tables fit the panel beside the side menu (redesign R6): site.css gives console tables a
+   1080 px minimum, wider than the panel at 1280 px, which hid the right-hand columns behind a sideways scroll. */
+.bp-bpanel .bp-console-table {
+  min-width: 0;
+}
+
+.bp-bpanel .bp-console-table td[data-label="Published"] {
+  white-space: normal;
+}
+
+/* The cluster admin's History (redesign R6): one line per event, its time first. */
+.bp-cluster-history {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bp-cluster-history li {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 4px 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--bp-border);
+}
+
+.bp-cluster-history-when {
+  color: var(--bp-muted);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 575.98px) {
+  .bp-cluster-history li {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* "Passports of this battery" (redesign R6): one line per passport, oldest first, this one marked. */
+.bp-passport-chain {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bp-passport-chain li {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--bp-border);
+  border-radius: 10px;
+}
+
+.bp-passport-chain li.is-this {
+  border-color: var(--bp-primary);
+}
+
+.bp-passport-chain-number {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(42, 110, 207, 0.1);
+  color: var(--bp-primary);
+  font-weight: 700;
+}
+
+.bp-passport-chain-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.bp-passport-chain-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+@media (max-width: 575.98px) {
+  .bp-passport-chain li {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .bp-passport-chain-links {
+    grid-column: 2;
+  }
+}
+
+/* ==== One battery list (redesign R7, the owner's item 4) ============================================================ */
+
+/* The search and, for the team, Create battery: one row above the list on both pages. */
+.bp-battery-list-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* The serial number with its copy icon. */
+.bp-one-line-list .bp-id-copy-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Every row on one line from tablet width up (redesign R7, the owner's item 3); a phone keeps its cards. The two statuses
+   side by side, told apart by their shape (a square battery tag, a round passport pill) and named for screen readers; a
+   long serial number, model, batch or cluster name ends in "…" with the whole of it on hover. */
+@media (min-width: 768px) {
+  /* site.css pads every console cell 14 px with !important; this list needs the room. */
+  .bp-console-table.bp-one-line-list :is(th, td) {
+    padding-inline: 7px !important;
+  }
+
+  .bp-one-line-list .bp-icon-action-row {
+    gap: 4px;
+  }
+
+  /* 32 px row icons (37.6 px elsewhere), still well above the 24 px a finger needs. */
+  .bp-one-line-list .bp-report-action {
+    inline-size: 2rem;
+    block-size: 2rem;
+    min-inline-size: 2rem;
+    min-block-size: 2rem;
+  }
+
+  .bp-console-table.bp-one-line-list td,
+  .bp-console-table.bp-one-line-list td:is([data-label="Batch"], [data-label="Cluster"]) {
+    white-space: nowrap;
+  }
+
+  /* A cell's max-width isn't kept by a table's automatic layout, so the clip is on the text itself. */
+  .bp-one-line-list .bp-one-line-clip {
+    display: inline-block;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+  }
+
+  /* Any serial number fits at 1280 px: about 17 characters show, the demo's whole, a longer one ends in "…". */
+  .bp-one-line-list .bp-one-line-clip.is-serial {
+    max-width: 165px;
+  }
+
+  .bp-one-line-list .bp-badges {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  .bp-one-line-list .bp-badge-kind {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* The last row icon's name opens to its left, so it stays inside the list (centred, it made the list scroll sideways). */
+.bp-one-line-list .bp-icon-action-row > .bp-report-action:last-child::after {
+  right: 0;
+  left: auto;
+  transform: translateY(4px);
+}
+
+.bp-one-line-list .bp-icon-action-row > .bp-report-action:last-child:is(:hover, :focus-visible)::after {
+  transform: translateY(0);
+}
+
+/* ==== Uploads on each battery's page (step 5c) =====================================================================
+   The few new pieces step 5 adds to bp-product-data.css: the check's value table, its outcome tags and the notes.
+   Everything else is the app's existing classes. */
+
+.bp-upload-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.bp-soft-tag.is-refused {
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.bp-soft-tag.is-saved {
+  border-color: #86efac;
+  color: #166534;
+}
+
+/* The values: what the battery has now, what the file brings, and what happens. */
+.bp-upload-values {
+  width: 100%;
+  margin-top: 8px;
+  font-size: 0.92rem;
+}
+
+.bp-upload-values th {
+  font-weight: 600;
+  color: var(--bp-muted);
+}
+
+.bp-upload-values th,
+.bp-upload-values td {
+  padding: 5px 10px 5px 0;
+  vertical-align: top;
+}
+
+.bp-upload-values .is-refused {
+  color: #991b1b;
+}
+
+/* A status change or repair in the check (step 5d, mock-up B2's dashed line). */
+.bp-upload-status {
+  font-weight: 600;
+}
+
+/* An e-mail or file name is one long word: it wraps in the check's head and the earlier uploads' rows (step 5's review). */
+.bp-upload-head > span,
+[data-upload-row] > summary > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bp-upload-notes {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--bp-muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  .bp-upload-values thead {
+    display: none;
+  }
+
+  .bp-upload-values tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    padding: 6px 0;
+    border-bottom: 1px solid var(--bp-border);
+  }
+
+  .bp-upload-values td:first-child,
+  .bp-upload-values td:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .bp-upload-values td:first-child {
+    font-weight: 600;
+  }
+
+  .bp-upload-values td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    color: var(--bp-muted);
+    font-size: 0.8rem;
+  }
+}
+
+[data-theme="dark"] .bp-soft-tag.is-refused,
+[data-theme="dark"] .bp-upload-values .is-refused {
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .bp-soft-tag.is-saved {
+  color: #86efac;
+}

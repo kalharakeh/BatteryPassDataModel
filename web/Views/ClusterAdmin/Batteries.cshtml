@@ -1,0 +1,19 @@
+@using BatteryPassWeb.Dpp.Pages
+@model RegistryPage
+@{
+    // The customer admin's area opens here (finding U14): their batteries, inside the area's tabs, with the Registry's
+    // list, search and icons. Each row's pencil opens the battery's page.
+    ViewData["Title"] = "Batteries";
+}
+<main class="bp-page bp-admin-page">
+    <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
+    @await Html.PartialAsync("_ClusterAdminTabs", "batteries")
+    @await Html.PartialAsync("~/Views/ProductData/_Messages.cshtml")
+
+    @await Html.PartialAsync("_BatteryList", new BatteryListView("/cluster-admin/batteries", Model.Query, Model.Rows, Model.ShowClusters,
+        Model.OpenHref, Model.Actions, row => Model.BatteryStatusShown.Contains(row.PackId))
+    {
+        Empty = Model.Scope,
+        ClusterWord = Model.Team ? "Cluster" : "Customer",
+    })
+</main>

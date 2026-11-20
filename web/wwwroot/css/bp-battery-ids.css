@@ -1,0 +1,580 @@
+/* The "Battery IDs" page (step 6d): the release form, its refusals, the releases and the released IDs. */
+
+.bp-release-form {
+  display: grid;
+  gap: 18px;
+}
+
+.bp-release-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.bp-release-grid label,
+.bp-release-range label,
+.bp-release-list,
+.bp-release-filter label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.bp-release-grid label > span,
+.bp-release-range label > span,
+.bp-release-list > span,
+.bp-release-filter label > span,
+.bp-release-ranges legend {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--bp-text);
+}
+
+.bp-release-ranges {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--bp-border);
+  border-radius: 12px;
+}
+
+.bp-release-ranges legend {
+  float: left;
+  width: 100%;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.bp-release-ranges > p {
+  margin: 0;
+}
+
+.bp-release-range {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 7.5rem 2.5rem;
+  align-items: end;
+  gap: 10px;
+}
+
+.bp-release-range [data-remove-range] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.4rem;
+  border: 1px solid var(--bp-border);
+  border-radius: 9px;
+  background: var(--bp-surface);
+  color: var(--bp-muted);
+}
+
+.bp-release-range [data-remove-range][hidden] {
+  display: none;
+}
+
+.bp-release-ranges [data-add-range] {
+  justify-self: start;
+}
+
+.bp-release-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.bp-release-problems {
+  margin: 14px 0 18px;
+  padding: 14px 16px;
+  border: 1px solid #f1b4b4;
+  border-radius: 12px;
+  background: #fff5f5;
+}
+
+.bp-release-problems h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  color: #a12020;
+}
+
+.bp-release-problems > p {
+  margin: 0 0 10px;
+}
+
+.bp-release-problems table {
+  background: transparent;
+}
+
+/* A reason may be long (the serial rule, 6d-5): it wraps rather than widening the page. */
+.bp-problems-table td:last-child {
+  min-width: 16rem;
+  white-space: normal;
+}
+
+.bp-release-filter {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 10rem)) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.bp-release-filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bp-release-counts {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bp-release-row-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.bp-release-row-actions > * + * {
+  margin-left: 14px;
+}
+
+.bp-text-button.is-danger {
+  color: #b42318;
+}
+
+/* A released ID's status: a small calm chip, one colour per status. */
+.bp-id-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bp-id-status.is-available {
+  background: #e7f6ee;
+  color: #17663f;
+}
+
+.bp-id-status.is-used {
+  background: #e8f0fc;
+  color: #1d4f91;
+}
+
+.bp-id-status.is-published {
+  background: #edf0f5;
+  color: #0a2850;
+}
+
+.bp-id-status.is-voided {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+[data-theme="dark"] .bp-release-problems {
+  border-color: rgba(248, 113, 113, 0.45);
+  background: rgba(127, 29, 29, 0.25);
+}
+
+[data-theme="dark"] .bp-release-problems h3 {
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .bp-id-status.is-available { background: rgba(34, 197, 94, 0.16); color: #86efac; }
+[data-theme="dark"] .bp-id-status.is-used { background: rgba(96, 165, 250, 0.16); color: #93c5fd; }
+[data-theme="dark"] .bp-id-status.is-published { background: rgba(148, 163, 184, 0.18); color: #e2e8f0; }
+[data-theme="dark"] .bp-id-status.is-voided { background: rgba(148, 163, 184, 0.12); color: #94a3b8; }
+[data-theme="dark"] .bp-text-button.is-danger { color: #fca5a5; }
+
+@media (max-width: 767px) {
+  .bp-release-grid,
+  .bp-release-filter {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bp-release-range {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--bp-border);
+  }
+
+  .bp-release-range label:nth-child(3) {
+    grid-column: 1;
+  }
+
+  .bp-release-row-actions {
+    text-align: left;
+    white-space: normal;
+  }
+}
+
+/* The create page's picker (6d). */
+.bp-id-picker {
+  display: grid;
+  gap: 4px;
+  max-width: 34rem;
+}
+
+.bp-id-picker > span {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+/* On a phone the two lists are compact rows rather than the console's one-card-per-cell layout: a release or an ID in
+   three or four short lines, so a long list stays short to scroll. */
+@media (max-width: 767px) {
+  .bp-problems-table,
+  .bp-problems-table tbody,
+  .bp-problems-table tr,
+  .bp-problems-table td,
+  .bp-releases-table,
+  .bp-releases-table tbody,
+  .bp-released-table,
+  .bp-released-table tbody {
+    display: block;
+    width: 100%;
+    min-width: 0 !important; /* the console table's own minimum width would push the right-hand column off screen */
+  }
+
+  .bp-problems-table thead,
+  .bp-releases-table thead,
+  .bp-released-table thead {
+    display: none;
+  }
+
+  .bp-releases-table tr,
+  .bp-released-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 12px;
+    padding: 12px 2px;
+    border-bottom: 1px solid var(--bp-border);
+  }
+
+  .bp-releases-table td,
+  .bp-released-table td {
+    display: block;
+    min-width: 0;
+    padding: 0 !important;
+    border: 0 !important;
+    background: none !important;
+    box-shadow: none !important;
+  }
+
+  .bp-releases-table td:nth-child(1) { grid-column: 1; grid-row: 1; }
+  .bp-releases-table td:nth-child(4) { grid-column: 1 / -1; grid-row: 3; }
+  .bp-releases-table td:nth-child(2) { grid-column: 2; grid-row: 1; text-align: right; color: var(--bp-muted); font-size: 0.86rem; }
+  .bp-releases-table td:nth-child(3) { grid-column: 1 / -1; grid-row: 2; font-size: 0.86rem; }
+  .bp-releases-table td:nth-child(3) small { display: inline !important; margin-left: 4px; }
+  .bp-releases-table td:nth-child(5) { grid-column: 1 / -1; grid-row: 4; text-align: left; }
+
+  .bp-released-table td:nth-child(1) { grid-column: 1; grid-row: 1; }
+  .bp-released-table td:nth-child(5) { grid-column: 2; grid-row: 1; text-align: right; }
+  .bp-released-table td:nth-child(5) small { max-width: 10rem; }
+  .bp-released-table td:nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
+  .bp-released-table td:nth-child(3),
+  .bp-released-table td:nth-child(4) { grid-row: 3; font-size: 0.84rem; color: var(--bp-muted); }
+  .bp-released-table td:nth-child(3) { grid-column: 1; }
+  .bp-released-table td:nth-child(4) { grid-column: 2; text-align: right; }
+  .bp-released-table td:nth-child(4) small { display: none !important; }
+  .bp-released-table td:nth-child(6) { grid-column: 1 / -1; grid-row: 4; text-align: left; }
+  .bp-released-table td:nth-child(6):empty { display: none; }
+
+  /* These lists fit the screen, so the "Swipe" hint site.css puts under phone tables isn't wanted. */
+  .bp-problems-table tr {
+    padding: 8px 0;
+    border-bottom: 1px solid #f1b4b4;
+  }
+
+  .bp-problems-table td,
+  .bp-releases-table td,
+  .bp-released-table td {
+    padding: 0 !important;
+    border: 0 !important;
+    background: none !important;
+    white-space: normal !important; /* the console table keeps cells on one line, wider than a phone */
+    overflow-wrap: anywhere;
+  }
+
+  .bp-table-scroll:has(.bp-problems-table, .bp-releases-table, .bp-released-table) {
+    overflow-x: visible;
+    padding-bottom: 0;
+  }
+
+  .bp-table-scroll:has(.bp-problems-table, .bp-releases-table, .bp-released-table)::after {
+    display: none;
+  }
+
+  .bp-releases-table .bp-text-button,
+  .bp-released-table .bp-text-button {
+    padding-left: 0;
+  }
+
+  .bp-released-table .bp-id-copy-row {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .bp-released-table .bp-id-value {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* 6d-2b, the owner's layout: the summary with "Release new IDs", the three tabs, the per-row menu and a release's page. */
+.bp-ids-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 20px;
+}
+
+.bp-ids-summary h2 {
+  margin: 0 0 2px;
+  font-size: 1.25rem;
+}
+
+.bp-ids-counts {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+}
+
+.bp-ids-counts > div {
+  min-width: 84px;
+  padding: 8px 12px;
+  border: 1px solid var(--bp-border);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.bp-ids-counts dt {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--bp-muted);
+}
+
+.bp-ids-counts dd {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--bp-text);
+}
+
+.bp-ids-counts .is-available dd { color: #17663f; }
+.bp-ids-counts .is-voided dd { color: #6b7280; }
+.bp-ids-release-button[aria-disabled="true"] { opacity: 0.55; pointer-events: none; }
+
+.bp-subtabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--bp-border);
+}
+
+.bp-subtab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: -1px;
+  padding: 10px 14px;
+  border-bottom: 3px solid transparent;
+  color: var(--bp-muted);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.bp-subtab:hover { color: var(--bp-text); }
+
+.bp-subtab.is-active {
+  border-bottom-color: var(--bp-primary);
+  color: var(--bp-text);
+}
+
+.bp-subtab-count {
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--bp-border);
+  font-size: 0.78rem;
+}
+
+.bp-ids-tab {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.bp-release-name { font-weight: 700; }
+
+.bp-id-demo {
+  display: inline-flex;
+  margin-left: 8px;
+  padding: 0 7px;
+  border: 1px solid #f0c36d;
+  border-radius: 999px;
+  background: #fff8e6;
+  color: #7a4b00;
+  font-size: 0.72rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.bp-release-row-actions a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.bp-release-demo {
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+  align-self: end;
+  padding-bottom: 8px;
+  white-space: nowrap;
+}
+
+.bp-release-filter {
+  grid-template-columns: minmax(0, 1fr) repeat(3, minmax(0, 9rem)) auto auto auto;
+}
+
+.bp-releases-voided {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.bp-releases-voided .bp-release-demo { padding-bottom: 0; }
+
+.bp-ids-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0 8px;
+}
+
+.bp-release-fields {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.bp-row-menu { position: relative; display: inline-block; }
+.bp-row-menu > summary { list-style: none; cursor: pointer; display: inline-flex; padding: 4px 8px; border: 1px solid var(--bp-border); border-radius: 8px; color: var(--bp-muted); }
+.bp-row-menu > summary::-webkit-details-marker { display: none; }
+.bp-row-menu-list {
+  position: absolute;
+  right: 0;
+  z-index: 5;
+  display: grid;
+  min-width: 190px;
+  margin-top: 4px;
+  padding: 6px;
+  border: 1px solid var(--bp-border);
+  border-radius: 10px;
+  background: var(--bp-surface);
+  box-shadow: 0 10px 28px rgba(10, 40, 80, 0.14);
+  text-align: left;
+  white-space: normal;
+}
+
+.bp-row-menu-list button {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--bp-text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bp-row-menu-list button:hover { background: rgba(42, 110, 207, 0.08); }
+.bp-row-menu-list small { display: block; color: var(--bp-muted); font-size: 0.78rem; font-weight: 400; }
+
+.bp-release-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px 24px;
+  align-items: start;
+}
+
+.bp-release-head h1 { margin: 2px 0 4px; font-size: 1.6rem; }
+.bp-release-head-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+.bp-release-head-actions .bp-primary-button { display: inline-flex; align-items: center; gap: 6px; }
+.bp-release-next { grid-column: 1 / -1; }
+
+[data-theme="dark"] .bp-id-demo { border-color: rgba(240, 195, 109, 0.5); background: rgba(240, 195, 109, 0.12); color: #f5d38f; }
+[data-theme="dark"] .bp-ids-counts .is-available dd { color: #86efac; }
+
+@media (max-width: 767px) {
+  .bp-ids-summary { grid-template-columns: minmax(0, 1fr); }
+  .bp-ids-counts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bp-ids-release-button { justify-self: start; }
+  .bp-subtabs { overflow-x: auto; }
+  .bp-subtab { padding: 10px 10px; white-space: nowrap; }
+  .bp-release-filter { grid-template-columns: minmax(0, 1fr); }
+  .bp-release-demo { padding-bottom: 0; }
+  .bp-ids-list-head { flex-wrap: wrap; }
+  .bp-release-head { grid-template-columns: minmax(0, 1fr); }
+  .bp-release-head-actions { justify-content: flex-start; }
+  .bp-releases-table td:nth-child(5) { display: flex !important; flex-wrap: wrap; gap: 6px 16px; }
+  .bp-releases-table td:nth-child(5) > * + * { margin-left: 0 !important; }
+  .bp-row-menu-list { right: auto; left: 0; }
+}
+
+/* The missing-settings notice (6d-2b): a red box, as the refusals', not a quiet status line. */
+.bp-settings-missing {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border: 1px solid #e08080;
+  border-left-width: 5px;
+  border-radius: 12px;
+  background: #fff1f1;
+  color: #5c1010;
+}
+
+.bp-settings-missing svg {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: #b42318;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bp-settings-missing h2 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #a12020;
+}
+
+.bp-settings-missing p { margin: 0; }
+
+.bp-release-fields:disabled .bp-primary-button { opacity: 0.5; cursor: not-allowed; }
+
+[data-theme="dark"] .bp-settings-missing { border-color: rgba(248, 113, 113, 0.6); background: rgba(127, 29, 29, 0.3); color: #fde2e2; }
+[data-theme="dark"] .bp-settings-missing h2 { color: #fca5a5; }
+[data-theme="dark"] .bp-settings-missing svg { stroke: #fca5a5; }

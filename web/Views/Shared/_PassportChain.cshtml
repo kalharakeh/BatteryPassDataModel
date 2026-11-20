@@ -1,0 +1,58 @@
+@using BatteryPassWeb.Dpp.Pages
+@model ChainView
+@* "Passports of this battery" (redesign R6, the owner's item 12): every passport of a battery placed on the market again,
+   oldest first. The team sees all of them and their histories; the detail page (team, market surveillance) the
+   published ones; a cluster admin only public facts, since an earlier passport may have been another customer's. *@
+@if (Model.Shown.Count > 1)
+{
+    <section class="bp-card bp-console-form-card bp-battery-card mb-4" id="passport-chain">
+        <span class="bp-summary-title">Passports of this battery</span>
+        <h2>@Words.Count(Model.Shown.Count, "passport")</h2>
+        <p class="mb-0">The battery was placed on the market again, and each time got a new passport.@(Model.Reader switch { ChainReader.ClusterAdmin => " Only public facts are shown: an earlier passport may have belonged to another customer.", ChainReader.Team => " An earlier passport's page shows it as it was when it was replaced, to read only.", _ => null })</p>
+        <ol class="bp-passport-chain">
+            @foreach (var link in Model.Shown)
+            {
+                <li class="@(link.IsThis ? "is-this" : null)">
+                    <span class="bp-passport-chain-number">@link.Number</span>
+                    <span class="bp-passport-chain-main">
+                        @await Html.PartialAsync("_IdValue", link.Identifier)
+                        <span class="bp-badges is-compact">
+                            @await Html.PartialAsync("_StatusBadge", StatusBadge.Passport(link.Published ? link.Status : null))
+                            @if (link.IsNewest)
+                            {
+                                <span class="bp-chip">Newest</span>
+                            }
+                            @if (link.IsThis)
+                            {
+                                <span class="bp-chip">This one</span>
+                            }
+                        </span>
+                        <small class="d-block text-secondary">@(link.FromUtc is { } from ? $"From {ValueWords.Time(from)}" : "Not published")@(link.ToUtc is { } to ? $" to {ValueWords.Time(to)}" : link.Published ? " to now" : null)</small>
+                    </span>
+                    <span class="bp-passport-chain-links">
+                        @switch (Model.Reader)
+                        {
+                            case ChainReader.Team:
+                                @* What each link leads to, in its words (redesign R7, the owner's item 2). *@
+                                @if (!link.IsThis)
+                                {
+                                    <a href="@BatteryPages.BatteryHref(link.PackId)" title="@(link.IsNewest ? "The newest passport's battery page" : "This passport's battery page as it was when it was replaced; nothing on it changes")">@(link.IsNewest ? "Newest passport's page" : $"Passport {link.Number}'s page (read only)")</a>
+                                }
+                                <a href="/admin/audit?q=@Uri.EscapeDataString(link.PackId)" title="Everything that happened to passport @link.Number">History</a>
+                                break;
+                            case ChainReader.Detail:
+                                @if (!link.IsThis)
+                                {
+                                    <a href="@PassportPages.DetailHref(link.Identifier)">Detail page</a>
+                                }
+                                break;
+                            default:
+                                <a href="@PassportPages.SummaryHref(link.Identifier)">Public page</a>
+                                break;
+                        }
+                    </span>
+                </li>
+            }
+        </ol>
+    </section>
+}

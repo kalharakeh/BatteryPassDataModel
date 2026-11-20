@@ -1,0 +1,114 @@
+{
+  "header": {
+    "digitalProductPassportId": "urn:test:dpp:VPC8C05-6788:v1",
+    "dppStatus": "active",
+    "lastUpdatedUtc": "2026-10-28T09:30:00Z"
+  },
+  "family": { "id": "family-test", "name": "Test battery family" },
+  "model": {
+    "id": "model-test",
+    "familyId": "family-test",
+    "name": "EXB-NMC-100",
+    "values": {
+      "batteryCategory": { "batteryCategoryValue": "industrial/non-stationary battery" },
+      "batteryMass": { "gramKilogramUnit": "kg", "gramKilogramValue": 512.5 },
+      "separateCollectionSymbol": { "contentType": "image/svg+xml", "url": "https://www.batteries.scania.test/battery/symbols/separate-collection.svg", "language": "en-GB", "resourceTitle": "Separate collection symbol" },
+      "symbolsForCadmiumAndLead": { "contentType": "image/svg+xml", "url": "https://www.batteries.scania.test/battery/symbols/cd-pb.svg", "language": "en-GB", "resourceTitle": "Symbols for cadmium and lead" },
+      "extinguishingAgent": { "agentFireClass": "B", "extinguishingAgent": "Water" },
+      "meaningOfLabelsAndSymbols": "The crossed-out wheeled bin means the battery must be collected separately from other waste.",
+      "informationOfDueDiligenceReport": { "contentType": "application/pdf", "url": "https://www.batteries.scania.test/battery/due-diligence-report.pdf", "language": "en-GB", "resourceTitle": "Due diligence report" },
+      "batteryChemistry": { "chemicalCodeValue": "Li-ion NMC" },
+      "criticalRawMaterials": [ "Cobalt", "Lithium", "Natural graphite", "Nickel" ],
+      "materialsUsedInCathodeAnodeAndElectrolyte": [ "Cathode: lithium nickel manganese cobalt oxide (NMC 811)", "Anode: graphite", "Electrolyte: LiPF6 in carbonate solvents" ],
+      "hazardousSubstancesAndTheirImpact": [
+        { "chemicalName": "Lithium hexafluorophosphate", "identifierType": "CAS No", "identifier": "21324-40-3", "concentration": 1.2, "hazardPhrases": [ "H301", "H314", "H372" ], "precautionaryPhrases": [ "P260", "P280", "P301+P310" ], "substanceLocation": "Electrolyte" }
+      ],
+      "dismantlingInformation": { "contentType": "application/pdf", "url": "https://passport.example.com/dpp/documents/doc-dismantling", "language": "en-GB", "resourceTitle": "Dismantling manual" },
+      "partNumbersForComponents": { "contentType": "application/pdf", "url": "https://passport.example.com/dpp/documents/doc-part-numbers", "language": "en-GB", "resourceTitle": "Part numbers for components" },
+      "informationOnSourcesOfSpareParts": { "contentType": "application/pdf", "url": "https://passport.example.com/dpp/documents/doc-spare-parts", "language": "en-GB", "resourceTitle": "Sources of spare parts" },
+      "safetyMeasures": { "contentType": "application/pdf", "url": "https://passport.example.com/dpp/documents/doc-safety-measures", "language": "en-GB", "resourceTitle": "Safety measures" },
+      "informationOnTheRoleOfEndUsersInContributingToWastePrevention": { "contentType": "text/html", "url": "https://www.batteries.scania.test/battery/waste-prevention", "language": "en-GB", "resourceTitle": "Your role in waste prevention" },
+      "informationOnTheRoleOfEndUsersInContributingToTheSeparateCollectionOfWasteBatteries": { "contentType": "text/html", "url": "https://www.batteries.scania.test/battery/separate-collection", "language": "en-GB", "resourceTitle": "Your role in separate collection" },
+      "informationOnBatteryCollectionPreparationForSecondLifeAndOnTreatmentAtEndOfLife": { "contentType": "application/pdf", "url": "https://www.batteries.scania.test/battery/collection-and-treatment.pdf", "language": "en-GB", "resourceTitle": "Collection, second life and treatment" },
+      "ratedCapacity": { "amperehourMiliamperehourValue": 200, "ampereHourMiliamperehourUnit": "Ah" },
+      "capacityFade": { "percentUnit": "%", "percentageValue": 0 },
+      "minimumVoltage": { "voltValue": 520.0, "voltUnit": "V" },
+      "maximumVoltage": { "voltValue": 740.0, "voltUnit": "V" },
+      "nominalVoltage": { "voltValue": 650.0, "voltUnit": "V", "temperatureRangeLowerBoundaryValue": -20, "temperatureRangeLowerBoundaryUnit": "°C", "temperatureRangeUpperBoundaryValue": 45, "temperatureRangeUpperBoundaryUnit": "°C" },
+      "originalPowerCapability": { "wattValueAt80PercentStateOfCharge": 250000, "wattValueAt20PercentStateOfCharge": 180000, "wattUnit": "W" },
+      "powerFade": { "percentUnit": "%", "percentageValue": 0 },
+      "maximumPermittedBatteryPower": { "wattValue": 300000, "wattUnit": "W" },
+      "initialRoundTripEnergyEfficiency": { "percentUnit": "%", "percentageValue": 95 },
+      "roundTripEnergyEfficiencyAt50PerCentOfCycleLife": { "percentUnit": "%", "percentageValue": 92 },
+      "energyRoundTripEfficiencyFade": { "percentUnit": "%", "percentageValue": 0 },
+      "initialInternalResistanceOfBatteryCellAndPackModuleRecommended": { "ohmValueForBatteryPack": 1, "ohmValueForBatteryCell": 1, "ohmUnit": "Ohm" },
+      "internalResistanceIncreaseOfPackCellAndModuleRecommended": { "internalResistanceIncreaseValueForBatteryPack": 0, "percentUnit": "%" },
+      "expectedLifetimeInCalendarYears": 12,
+      "expectedLifetimeNumberOfChargeDischargeCycles": 4000,
+      "cycleLifeReferenceTest": "IEC 62660-1",
+      "cRateOfRelevantCycleLifeTest": { "amperePerAmpereHourValue": 0.5, "amperePerAmpereHourUnit": "A/Ah" },
+      "temperatureRangeIdleStateLowerBoundary": { "degreeCelsiusUnit": "°C", "celsiusValue": -30 },
+      "temperatureRangeIdleStateUpperBoundary": { "degreeCelsiusUnit": "°C", "celsiusValue": 55 }
+    }
+  },
+  "site": {
+    "id": "site-test",
+    "name": "Example plant",
+    "values": {
+      "uniqueManufacturerIdentifier": "urn:test:manufacturer:example-plant",
+      "manufacturerInformation": { "name": "Example Battery Systems AB", "registeredTradeNameOrRegisteredTrademark": "Example Batteries", "postalAddress": "Exempelvägen 1, 111 11 Stockholm, Sweden", "webAddress": "https://www.batteries.scania.test", "eMailAddress": "battery.passport@batteries.scania.test" },
+      "manufacturingPlace": "Example plant, Stockholm, Sweden"
+    }
+  },
+  "batch": {
+    "id": "batch-test-2026",
+    "modelId": "model-test",
+    "siteId": "site-test",
+    "year": 2026,
+    "values": {
+      "batteryModelIdentifier": "EXB-NMC-100",
+      "carbonFootprintLabel": { "contentType": "image/png", "url": "https://www.batteries.scania.test/battery/carbon-footprint-label.png", "language": "en-GB", "resourceTitle": "Carbon footprint label" },
+      "euDeclarationOfConformity": { "contentType": "application/pdf", "url": "https://www.batteries.scania.test/battery/eu-declaration-of-conformity.pdf", "language": "en-GB", "resourceTitle": "EU declaration of conformity" },
+      "resultsOfTestReportsProvingCompliance": { "contentType": "application/pdf", "url": "https://passport.example.com/dpp/documents/doc-test-reports", "language": "en-GB", "resourceTitle": "Test reports" },
+      "batteryCarbonFootprintPerFunctionalUnit": { "kgCO2EquivalentPerKilowattHourValue": 75.4, "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh" },
+      "contributionOfRawMaterialAcquisitionAndPreProcessingLifecycleStage": { "kgCO2EquivalentPerKilowattHourValue": 48.1, "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh" },
+      "contributionOfMainProductProductionLifecycleStage": { "kgCO2EquivalentPerKilowattHourValue": 20.3, "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh" },
+      "contributionOfDistributionLifecycleStage": { "kgCO2EquivalentPerKilowattHourValue": 2.2, "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh" },
+      "contributionOfEndOfLifeAndRecyclingLifecycleStage": { "kgCO2EquivalentPerKilowattHourValue": 4.8, "kgCO2EquivalentPerKilowattHourUnit": "kgCO2-eq/kWh" },
+      "carbonFootprintPerformanceClass": "Class B",
+      "webLinkToPublicCarbonFootprintStudy": "https://www.batteries.scania.test/battery/carbon-footprint-study",
+      "nickelRecycledContentShare": { "percentUnit": "%", "percentageValue": 6 },
+      "cobaltRecycledContentShare": { "percentUnit": "%", "percentageValue": 16 },
+      "lithiumRecycledContentShare": { "percentUnit": "%", "percentageValue": 6 },
+      "leadRecycledContentShare": { "percentUnit": "%", "percentageValue": 0 },
+      "renewableContentShare": { "percentUnit": "%", "percentageValue": 3 }
+    }
+  },
+  "operator": {
+    "id": "operator-test",
+    "name": "Example Battery Systems AB",
+    "values": {
+      "economicOperatorId": "urn:test:operator:example-battery-systems",
+      "economicOperatorInformation": { "name": "Example Battery Systems AB", "registeredTradeNameOrRegisteredTrademark": "Example Batteries", "postalAddress": "Exempelvägen 1, 111 11 Stockholm, Sweden", "webAddress": "https://www.batteries.scania.test", "eMailAddress": "battery.passport@batteries.scania.test" }
+    }
+  },
+  "pack": {
+    "id": "pack-VPC8C05-6788",
+    "batchId": "batch-test-2026",
+    "operatorId": "operator-test",
+    "clusterId": "cluster-test",
+    "values": {
+      "uniqueProductIdentifier": "urn:test:battery:VPC8C05-6788",
+      "batterySerialNumber": "VPC8C05-6788",
+      "thirdPartyServiceProvider": "Example Passport Hosting AB",
+      "manufacturingDate": "2026-09",
+      "warrantyPeriod": "P8Y",
+      "batteryStatus": { "batteryStatusValues": "original" },
+      "capacityFade": { "percentUnit": "%", "percentageValue": 4 },
+      "stateOfChargeSoC": { "percentUnit": "%", "percentageValue": 76 },
+      "numberOfFullChargingAndDischargingCycles": 412,
+      "temperatureInformation": { "degreeCelsiusUnit": "°C", "celsiusValue": 23 },
+      "informationOnAccidents": { "contentType": "text/html", "url": "https://passport.example.com/dpp/packs/pack-VPC8C05-6788/accidents", "language": "en-GB", "resourceTitle": "Accident information" }
+    }
+  }
+}

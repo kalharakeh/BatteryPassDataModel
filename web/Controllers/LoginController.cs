@@ -33,7 +33,7 @@ public class LoginController : Controller
         var safeReturnUrl = SafeInteractiveReturnUrl(next) ?? SafeInteractiveReturnUrl(returnUrl);
         if (User.Identity?.IsAuthenticated == true && !switchAccount)
         {
-            return Redirect(safeReturnUrl ?? "/admin");
+            return Redirect(safeReturnUrl ?? StartPage(User));
         }
 
         return View(new LoginViewModel { ReturnUrl = safeReturnUrl ?? string.Empty });
@@ -44,7 +44,7 @@ public class LoginController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Index(LoginViewModel model, CancellationToken cancellationToken)
     {
-        var loginResult = await _authService.AuthenticateLoginAsync(model.Email, model.Password, cancellationToken);
+        var loginResult = await _authService.AuthenticateLoginAsync(model.Email, model.Password, Sender(HttpContext), cancellationToken);
         if (loginResult.Status == LoginAuthenticationStatus.RequiresTemporaryPasswordChange)
         {
             return View("ChangeTemporaryPassword", new TemporaryPasswordChangeViewModel
@@ -56,7 +56,7 @@ public class LoginController : Controller
 
         if (loginResult.Status != LoginAuthenticationStatus.Authenticated || loginResult.Principal == null)
         {
-            model.ErrorMessage = "Invalid email or password.";
+            model.ErrorMessage = SignInAttempts.Words; // the same words for every refusal (H1 round two)
             return View(model);
         }
 
@@ -69,19 +69,23 @@ public class LoginController : Controller
             return Redirect(safeReturnUrl);
         }
 
-        if (principal.IsInRole("admin"))
-        {
-            return Redirect("/admin");
-        }
-
-        return Redirect("/");
+        return Redirect(StartPage(principal));
     }
+
+    private const string ForgotPasswordAnswer = "If an account exists, a temporary password has been sent.";
 
     [HttpPost("forgot-password")]
     [EnableRateLimiting(SecurityRateLimitPolicyNames.Login)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ForgotPassword([FromForm] string email, CancellationToken cancellationToken)
     {
+        // Finding W6: an address that isn't one is stored, logged and mailed nowhere; the answer is the same as always.
+        if (EmailAddressRule.Problem(email) is not null)
+        {
+            TempData["ForgotPasswordMessage"] = ForgotPasswordAnswer;
+            return Redirect("/login");
+        }
+
         var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
         await _authService.CreatePasswordResetAsync(
             email,
@@ -102,7 +106,7 @@ public class LoginController : Controller
             "account",
             string.IsNullOrWhiteSpace(email) ? "anonymous" : email.Trim().ToLowerInvariant(),
             cancellationToken: cancellationToken);
-        TempData["ForgotPasswordMessage"] = "If an account exists, a temporary password has been sent.";
+        TempData["ForgotPasswordMessage"] = ForgotPasswordAnswer;
         return Redirect("/login");
     }
 
@@ -125,6 +129,14 @@ public class LoginController : Controller
             return View(model);
         }
 
+        if (AuthService.NewPasswordProblem(model.Password) is { } problem)
+        {
+            model.ErrorMessage = problem;
+            model.Password = string.Empty;
+            model.PasswordConfirmation = string.Empty;
+            return View(model);
+        }
+
         var success = await _authService.ConsumeTemporaryPasswordAsync(
             model.Email,
             model.TemporaryPassword,
@@ -139,7 +151,7 @@ public class LoginController : Controller
             return View(model);
         }
 
-        TempData["ForgotPasswordMessage"] = "Password changed. Sign in with your new password.";
+        TempData["ForgotPasswordMessage"] = "Password changed. Log in with your new password.";
         await _applicationAuditService.AppendApplicationAuditEventAsync(
             "security.password.changed",
             model.Email.Trim().ToLowerInvariant(),
@@ -160,6 +172,18 @@ public class LoginController : Controller
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return Redirect("/");
     }
+
+    /// <summary>
+    /// Where signing in leads when no page was asked for (finding U31): the team's "To do" page (U05), the Registry for
+    /// everyone else signed in (U01), the home page's search for a visitor.
+    /// </summary>
+    public static string StartPage(ClaimsPrincipal user) =>
+        user.Identity?.IsAuthenticated != true ? "/"
+        : AccessControlService.IsAdmin(user) ? "/admin/start"
+        : "/registry";
+
+    /// <summary>The sender a sign-in counts against: the client address exactly as the sign-in rate limiter takes it (H1 round two).</summary>
+    public static string Sender(HttpContext context) => context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
     private string RequestBaseUrl() => $"{Request.Scheme}://{Request.Host}";
 

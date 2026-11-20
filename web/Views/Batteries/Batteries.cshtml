@@ -1,0 +1,70 @@
+@using BatteryPassWeb.Dpp.Pages
+@using BatteryPassWeb.Dpp.Store
+@model BatteriesPage
+@{
+    ViewData["Title"] = "Batteries";
+}
+
+<main class="bp-page bp-admin-page">
+    <link rel="stylesheet" href="~/css/bp-product-data.css" asp-append-version="true" />
+    @await Html.PartialAsync("_AdminTabs", "batteries")
+    @await Html.PartialAsync("~/Views/ProductData/_Messages.cshtml")
+
+    <section class="bp-card bp-product-template-hero bp-console-form-card bp-batteries-hero mt-4">
+        <div>
+            <span class="bp-summary-title">Batteries</span>
+            <h2>Batteries and their passports</h2>
+            <p class="mb-0">
+                One passport per battery. A new battery is a draft, seen only by your team, until its passport is published.
+            </p>
+        </div>
+    </section>
+
+    @if (Model.Waiting.Count > 0)
+    {
+        @* Round two, A2: saved changes that the public passports don't show yet. *@
+        <p class="bp-warning mt-3 mb-0" role="status">
+            Saved changes are waiting on @Words.Count(Model.Waiting.Count, "published battery", "published batteries"):
+            @for (var i = 0; i < Model.Waiting.Count; i++)
+            {
+                <a href="@BatteryPages.BatteryHref(Model.Waiting[i].PackId)">@Model.Waiting[i].SerialNumber</a>@(i < Model.Waiting.Count - 1 ? ", " : ".")
+            }
+            Each battery's page says what holds them back.
+        </p>
+    }
+
+    @* Finding R02: the published real batteries the team hasn't recorded in the EU registry yet, and their CSV. *@
+    @if (Model.NotInTheRegistry > 0 || Model.OnlyNotInTheRegistry)
+    {
+        <p class="bp-help-text mt-3 mb-0" data-registry-line>
+            @if (Model.OnlyNotInTheRegistry)
+            {
+                <text>Showing the @Words.Count(Model.NotInTheRegistry, "published battery", "published batteries") not yet in the EU registry.</text>
+                <a href="/admin/batteries">Show all batteries</a>
+            }
+            else
+            {
+                <a href="/admin/batteries?registry=missing">@Words.Count(Model.NotInTheRegistry, "published battery is", "published batteries are") not yet in the EU registry</a>
+            }
+            @if (Model.NotInTheRegistry > 0)
+            {
+                <text> · </text><a href="/admin/batteries/registry.csv" download>Download them as CSV</a>
+            }
+        </p>
+    }
+
+    @* Decision 65: the check of all published passports runs every hour; the team can run it now. *@
+    <form method="post" action="/admin/batteries/check" class="mt-3">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="bp-secondary-button bp-button-compact">Check all passports now</button>
+        <small class="bp-help-text ms-2">Finds published passports that lack saved changes, and puts their marks right. It runs every hour by itself.</small>
+    </form>
+
+    @* The shared list (redesign R7, the owner's choice "One shared list"): every battery, drafts too, and Create. *@
+    @await Html.PartialAsync("_BatteryList", new BatteryListView("/admin/batteries", Model.Query, Model.Rows, ShowClusters: true,
+        row => BatteryPages.BatteryHref(row.PackId), row => RowActions.For(row, BatteryPages.BatteryHref(row.PackId), team: true), _ => true)
+    {
+        CreateHref = "/admin/batteries/new",
+        Empty = "No batteries yet. Use Create battery to add the first; it starts as a draft.",
+    })
+</main>

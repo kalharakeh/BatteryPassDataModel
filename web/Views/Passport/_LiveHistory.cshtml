@@ -1,0 +1,87 @@
+@using BatteryPassWeb.Dpp.Api
+@using BatteryPassWeb.Dpp.Forms
+@using BatteryPassWeb.Dpp.Pages
+@inject AttributeForms Forms
+@inject TimeProvider Clock
+@model LiveTab
+@{
+    // The live values of the last week (decision 30), as this reader may see them: one small chart per value (redesign
+    // R5, the owner's item 7), then every reading, newest first, folded. The detail page's "Live values" tab (item 8).
+    const int Shown = 100;
+    const int Width = 300;
+    const int Height = 70;
+    string Reading(LiveHistoryEntry entry) => string.Join(", ", ValueWords.Lines(Forms.For(entry.Attribute), entry.Value).Select(line => line.Text));
+    var now = Clock.GetUtcNow().UtcDateTime;
+    var end = Model.WeekEndUtc ?? now;
+    var older = LiveTrends.IsOlderWeek(end, now); // the battery stopped reporting: its last week of readings (R7)
+    var charts = LiveTrends.ForTab(Model.Latest, Model.History, now, Reading, end);
+    var week = older ? "that week" : "this week";
+}
+<h2 class="h5 mb-2">@LiveTrends.WeekTitle(end, now)</h2>
+@if (older)
+{
+    <p class="bp-help-text d-print-none">The battery has sent no reading since @ValueWords.Time(end), so the charts show its last week of readings. Every reading of that week, with when it was measured and how it arrived, is under the charts.</p>
+}
+else
+{
+    <p class="bp-help-text d-print-none">Each value's latest reading and when it was taken, and how it went over the last week when the battery sent readings. Every reading of the week, with when it was measured and how it arrived, is under the charts.</p>
+}
+@* On paper, each value's latest reading instead of the charts (step 6a-2, the owner's P3). *@
+<table class="bp-print-live d-none d-print-table">
+    <thead><tr><th>Value</th><th>Latest reading</th><th>When and from where</th></tr></thead>
+    <tbody>
+        @foreach (var chart in charts)
+        {
+            <tr><td>@chart.Title</td><td>@chart.Shown</td><td>@chart.Note</td></tr>
+        }
+    </tbody>
+</table>
+<div class="bp-live-charts">
+    @foreach (var chart in charts)
+    {
+        <figure class="bp-live-chart">
+            <figcaption>@chart.Title</figcaption>
+            <strong class="bp-live-chart-value">@chart.Shown</strong>
+            @if (chart.Line(Width, Height) is { } line)
+            {
+                <svg class="bp-live-chart-plot" viewBox="0 -4 @Width @(Height + 22)" role="img" aria-label="@chart.TrendWords">
+                    @foreach (var (x, label) in chart.Days(Width))
+                    {
+                        <line class="bp-live-chart-day" x1="@x.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)" x2="@x.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)" y1="0" y2="@Height" />
+                        @:<text class="bp-live-chart-label" x="@x.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)" y="@(Height + 14)">@label</text>
+                    }
+                    <polyline points="@line" />
+                </svg>
+                <small class="bp-live-chart-range">Low @ValueWords.Number(chart.Low!.Value) · high @ValueWords.Number(chart.High!.Value)@(chart.Unit.Length == 0 ? null : $" {chart.Unit}") · @Words.Count(chart.Readings, "reading")</small>
+            }
+            else
+            {
+                <span class="bp-live-chart-flat">@(chart.Readings switch { 0 => older ? "No reading that week" : "No reading in the last 7 days", 1 => $"One reading {week}", _ => $"{Words.Count(chart.Readings, "reading")} {week}" })</span>
+            }
+            <small>@chart.Note</small>
+        </figure>
+    }
+</div>
+@if (Model.History.Count > 0)
+{
+<details class="bp-live-all">
+    <summary>All readings (@Model.History.Count)</summary>
+    <p class="text-secondary small mt-2">Newest first.@(Model.History.Count > Shown ? $" The latest {Shown} of {Model.History.Count}." : string.Empty)</p>
+    <div class="bp-table-scroll">
+        <table class="table align-middle bp-console-table bp-mobile-card-table mb-0">
+            <thead><tr><th>Measured</th><th>Value</th><th>Reading</th><th>Came from</th></tr></thead>
+            <tbody>
+                @foreach (var entry in Model.History.Take(Shown))
+                {
+                    <tr>
+                        <td data-label="Measured">@ValueWords.Time(entry.MeasuredAtUtc)</td>
+                        <td data-label="Value">@entry.Attribute.Label @entry.Attribute.Name</td>
+                        <td data-label="Reading">@Reading(entry)</td>
+                        <td data-label="Came from">@PassportPages.SourceWord(entry.Source)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</details>
+}
