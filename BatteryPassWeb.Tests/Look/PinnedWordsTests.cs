@@ -75,4 +75,16 @@ public sealed class PinnedWordsTests
         Assert.DoesNotContain("Sign in with your new password", login, StringComparison.Ordinal);
         Assert.DoesNotContain("sign in", Read("web", "Views", "Help", "Guide.cshtml"), StringComparison.OrdinalIgnoreCase);
     }
+
+    /// <summary>Review 2 of N1, point 4: the customer admin's battery History (moves and hand-overs) says "customer".</summary>
+    [Fact]
+    public void TheCustomerAdminsHistory_ShouldSayCustomer()
+    {
+        var history = Read("web", "Dpp", "Audit", "ClusterHistory.cs");
+
+        foreach (var old in new[] { "\"Another cluster\"", "to your cluster\"", "to another cluster\"", "asked another cluster", "asked your cluster", "moved to another cluster" })
+        {
+            Assert.DoesNotContain(old, history, StringComparison.Ordinal);
+        }
+    }
 }

@@ -128,16 +128,16 @@ public sealed class ClusterHistory(ApplicationAuditService audit, AuditLines lin
             var accepted = metadata.TryGetValue("accepted", out var a) && a.IsBoolean && a.AsBoolean;
 
             // A hand-over is asked and cancelled by the sending cluster's admin and answered by the receiving one's: when
-            // that side isn't theirs, the actor is "Another cluster", never its name or its people.
-            string Side(bool theirSideIsMine) => role == nameof(SenderKind.ClusterAdmin) && !theirSideIsMine ? "Another cluster" : who;
+            // that side isn't theirs, the actor is "Another customer", never its name or its people.
+            string Side(bool theirSideIsMine) => role == nameof(SenderKind.ClusterAdmin) && !theirSideIsMine ? "Another customer" : who; // the customer admin's page says "customer" (review 2 of N1, point 4)
 
             if (type == BatteryPages.ClusterChangedEvent || (type == HandOverService.AnsweredEvent && accepted))
             {
                 if (Mine(from) || Mine(to))
                 {
                     var words = type == BatteryPages.ClusterChangedEvent
-                        ? Mine(to) ? " moved the battery to your cluster" : " moved the battery to another cluster"
-                        : Mine(to) ? " accepted the battery's hand-over to your cluster" : " accepted the battery's hand-over: it moved to another cluster";
+                        ? Mine(to) ? " moved the battery to you" : " moved the battery to another customer"
+                        : Mine(to) ? " accepted the battery's hand-over to you" : " accepted the battery's hand-over: it moved to another customer";
                     yield return (original, Line(original, type == BatteryPages.ClusterChangedEvent ? who : Side(Mine(to)), words));
                 }
 
@@ -151,7 +151,7 @@ public sealed class ClusterHistory(ApplicationAuditService audit, AuditLines lin
                 {
                     var words = type switch
                     {
-                        HandOverService.AskedEvent => Mine(from) ? " asked another cluster to accept the battery" : " asked your cluster to accept the battery",
+                        HandOverService.AskedEvent => Mine(from) ? " asked another customer to accept the battery" : " asked you to accept the battery",
                         HandOverService.CancelledEvent => " cancelled the battery's hand-over",
                         _ => " declined the battery's hand-over",
                     };
