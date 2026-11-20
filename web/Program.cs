@@ -189,15 +189,8 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.OnRejected = async (context, cancellationToken) =>
-    {
-        var response = context.HttpContext.Response;
-        if (!response.HasStarted)
-        {
-            response.StatusCode = StatusCodes.Status429TooManyRequests;
-            await response.WriteAsJsonAsync(new { error = "Too many requests." }, cancellationToken);
-        }
-    };
+    // JSON for the API and the passports' .json addresses, a sentence for a person on a page (review 2 of N1, point 6).
+    options.OnRejected = TooManyRequests.WriteAsync;
 
     options.AddPolicy(SecurityRateLimitPolicyNames.Login, context =>
         RateLimitPartition.GetFixedWindowLimiter(
