@@ -3,7 +3,11 @@
     var title = ViewData["Title"] as string ?? BatteryPassWeb.Services.TopBar.AppName;
     var isAuthenticated = User.Identity?.IsAuthenticated == true;
     var requestPath = Context.Request.Path;
-    var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
+    // On the error and "not found" pages the theme button leads home, not back to the error (review 1 of N1, point 6).
+    var returnUrl = requestPath.Equals(BatteryPassWeb.Configuration.ErrorPages.ErrorPath, StringComparison.OrdinalIgnoreCase)
+        || requestPath.Equals(BatteryPassWeb.Configuration.ErrorPages.NotFoundPath, StringComparison.OrdinalIgnoreCase)
+            ? $"{Context.Request.PathBase}/"
+            : $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
     var theme = BatteryPassWeb.Controllers.ThemeController.NormalizeTheme(
         Context.Request.Cookies[BatteryPassWeb.Controllers.ThemeController.ThemeCookieName]);
     var nextTheme = theme.Equals("dark", StringComparison.OrdinalIgnoreCase) ? "light" : "dark";

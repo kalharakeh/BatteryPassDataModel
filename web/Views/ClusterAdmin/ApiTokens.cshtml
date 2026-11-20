@@ -61,7 +61,7 @@
         </form>
     </dialog>
 
-    @await Html.PartialAsync("_ApiTokenList", new BatteryPassWeb.Models.ViewModels.ApiTokenListViewModel(Model.ApiTokens, "/cluster-admin/api-tokens", false, false, "No API tokens for your clusters yet."))
+    @await Html.PartialAsync("_ApiTokenList", new BatteryPassWeb.Models.ViewModels.ApiTokenListViewModel(Model.ApiTokens, "/cluster-admin/api-tokens", false, false, "No API tokens yet."))
 
     @await Html.PartialAsync("_ConfirmModal")
 </main>

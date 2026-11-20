@@ -430,15 +430,34 @@ public sealed class DppStore
         return await Collection<UploadRecord>().Find(Builders<UploadRecord>.Filter.Empty).SortByDescending(upload => upload.AtUtc).Limit(limit).ToListAsync(cancellationToken);
     }
 
-    /// <summary>The uploads since <paramref name="sinceUtc"/>, newest first: the team's "To do" page (finding U05), one query.</summary>
-    public async Task<IReadOnlyList<UploadRecord>> ListUploadsSinceAsync(DateTime sinceUtc, CancellationToken cancellationToken = default)
+    /// <summary>How many uploads the team's "To do" page reads at most (review 1 of N1, point 5).</summary>
+    public const int RefusedUploadsRead = 200;
+
+    /// <summary>
+    /// The uploads since <paramref name="sinceUtc"/> with a refused battery or value, newest first, at most
+    /// <see cref="RefusedUploadsRead"/>: the team's "To do" page (finding U05). The database filters them and returns only
+    /// what the page shows: the time and each battery's name, pack, outcome and its values' outcomes (review 1, point 5).
+    /// </summary>
+    public async Task<IReadOnlyList<UploadRecord>> ListRefusedUploadsSinceAsync(DateTime sinceUtc, CancellationToken cancellationToken = default)
     {
         if (_database is null)
         {
             return [];
         }
 
-        return await Collection<UploadRecord>().Find(upload => upload.AtUtc >= sinceUtc).SortByDescending(upload => upload.AtUtc).ToListAsync(cancellationToken);
+        var filter = Builders<UploadRecord>.Filter.Gte(upload => upload.AtUtc, sinceUtc)
+            & (Builders<UploadRecord>.Filter.Eq("Batteries.Outcome", "refused") | Builders<UploadRecord>.Filter.Eq("Batteries.Values.Outcome", "Rejected"));
+        var shown = Builders<UploadRecord>.Projection
+            .Include(upload => upload.AtUtc)
+            .Include("Batteries.NamedAs")
+            .Include("Batteries.PackId")
+            .Include("Batteries.Outcome")
+            .Include("Batteries.Values.Outcome");
+        return await Collection<UploadRecord>().Find(filter)
+            .SortByDescending(upload => upload.AtUtc)
+            .Limit(RefusedUploadsRead)
+            .Project<UploadRecord>(shown)
+            .ToListAsync(cancellationToken);
     }
 
     /// <summary>The latest uploads that named this battery, newest first (step 5c).</summary>

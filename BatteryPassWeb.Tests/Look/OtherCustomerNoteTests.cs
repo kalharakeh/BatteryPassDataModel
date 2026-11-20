@@ -13,7 +13,9 @@ public sealed class OtherCustomerNoteTests
     [Fact]
     public void AnotherCustomersBattery_ShouldSaySo()
     {
-        var branch = Hero[Hero.IndexOf("else if (signedIn)\n", StringComparison.Ordinal)..Hero.IndexOf("                else\n", Hero.IndexOf("else if (signedIn)\n", StringComparison.Ordinal), StringComparison.Ordinal)];
+        // Only when the battery has a customer and the reader another one (review 1, point 2).
+        var start = Hero.IndexOf("else if (signedIn && Model.AnotherCustomers)\n", StringComparison.Ordinal);
+        var branch = Hero[start..Hero.IndexOf("else if (signedIn)\n", start, StringComparison.Ordinal)];
 
         Assert.Contains("<p class=\"bp-report-hero-cta bp-report-hero-cta-warning mb-0\">This battery belongs to another customer; you see its public data.</p>", branch, StringComparison.Ordinal);
         Assert.DoesNotContain("switchAccount", branch, StringComparison.Ordinal);

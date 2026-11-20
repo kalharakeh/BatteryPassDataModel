@@ -229,6 +229,7 @@ public sealed class UploadPages(UploadService uploads, AttributeForms forms, Att
             StatusChangeService.RepairNeedsDate => $"{asks}The repair has no day. Add repairDate to the file and check it again, or {takeOut}",
             StatusChangeService.RepairNotInTheFuture => $"{asks}The repair's day lies in the future. Correct repairDate in the file and check it again, or {takeOut}",
             StatusChangeService.NotYours => $"{asks}Only the team and the battery's customer admins change its status. Ask the team, or {takeOut}",
+            UploadService.NotYours => "This battery belongs to another customer, so nothing from this file can be saved for it. Check that the file is for the right battery.", // the API keeps its own word (review 1, point 3)
             UploadService.NamedTwice => "The file names this battery more than once, so none of its entries is used. Keep one entry for this battery and check the file again.",
             _ when problem.StartsWith("a battery that is ", StringComparison.Ordinal) => $"{asks}{Upper(problem)}. {Upper(takeOut)}",
             _ when problem.StartsWith("the passport can't get a new version now", StringComparison.Ordinal) =>

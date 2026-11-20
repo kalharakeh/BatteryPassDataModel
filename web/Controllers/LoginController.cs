@@ -151,7 +151,7 @@ public class LoginController : Controller
             return View(model);
         }
 
-        TempData["ForgotPasswordMessage"] = "Password changed. Sign in with your new password.";
+        TempData["ForgotPasswordMessage"] = "Password changed. Log in with your new password.";
         await _applicationAuditService.AppendApplicationAuditEventAsync(
             "security.password.changed",
             model.Email.Trim().ToLowerInvariant(),

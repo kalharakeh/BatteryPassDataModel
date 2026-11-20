@@ -27,7 +27,7 @@ public sealed class AccessControlService
     public const string CantChangeThisAccount = "You can't change this person's account here. Ask the Scania team.";
     public const string AddressKeptForTheTeam = "Only the team can use this address.";
     public const string NewPasswordForAppWideRole = "Set a new password when you give this account access across the app: someone else may know its old one.";
-    public const string NotYourOwnAccount = "You can't change your own account here. Use Account at the top of the page.";
+    public const string NotYourOwnAccount = "You can't change your own account here. Use \"Your account\" in the menu under your name.";
 
     private readonly ClusterRepository _clusterRepository;
     private readonly string _fallbackAdminEmail;

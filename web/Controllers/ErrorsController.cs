@@ -9,25 +9,33 @@ namespace BatteryPassWeb.Controllers;
 [IgnoreAntiforgeryToken]
 public sealed class ErrorsController : Controller
 {
-    /// <summary>An unexpected error, re-run here by the exception handler: no detail is shown (status 500).</summary>
+    /// <summary>The API's answer to an unexpected error, as its other errors are worded: no detail (review 1, point 4).</summary>
+    public const string ApiError = "Something went wrong. Try again later.";
+
+    /// <summary>
+    /// An unexpected error, re-run here by the exception handler: no detail is shown (status 500). A call to the API gets
+    /// the API's own form, <c>{"error": ...}</c>, never the page.
+    /// </summary>
     [Route(ErrorPages.ErrorPath)]
     public IActionResult Error()
     {
+        if (ErrorPages.OriginalPath(HttpContext).StartsWithSegments("/api"))
+        {
+            return new ObjectResult(new { error = ApiError }) { StatusCode = StatusCodes.Status500InternalServerError };
+        }
+
         Response.StatusCode = StatusCodes.Status500InternalServerError;
         return View("~/Views/Shared/Error.cshtml");
     }
 
     /// <summary>
-    /// An address no route matches (the fallback, <see cref="ErrorPages.MapNotFoundPage"/>): the "not found" page with the
-    /// search box (status 404). An address under /api keeps its plain 404 for the systems that call it.
+    /// The "not found" page with the search box (status 404), for an address no route matched: a 404 re-run here by
+    /// <see cref="ErrorPages.UseErrorPages"/>; the API, files and wrong methods never come here.
     /// </summary>
+    [HttpGet(ErrorPages.NotFoundPath)]
+    [HttpHead(ErrorPages.NotFoundPath)]
     public IActionResult NotFoundPage()
     {
-        if (Request.Path.StartsWithSegments("/api"))
-        {
-            return NotFound();
-        }
-
         Response.StatusCode = StatusCodes.Status404NotFound;
         return View("~/Views/Errors/NotFound.cshtml");
     }

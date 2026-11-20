@@ -72,14 +72,14 @@
                     }
                     @if (ClusterTokenRules.HasMoreThanAClusterToken(token.AccessMode, token.GlobalAccess))
                     {
-                        <small class="d-block text-secondary" data-more-than-cluster-token>@ClusterTokenRules.StillDoes(token.AccessMode)</small>
+                        <small class="d-block text-secondary" data-more-than-cluster-token>@ClusterTokenRules.StillDoes(token.AccessMode, word)</small>
                     }
                 </span>
                 <span>
                     <span class="bp-row-label">Batteries</span>@Batteries(token)
                     @if (token.AllowUnassigned && !token.GlobalAccess)
                     {
-                        <small class="d-block text-secondary">Also batteries in no cluster</small>
+                        <small class="d-block text-secondary">Also batteries with no @word</small>
                     }
                 </span>
                 <span class="text-secondary"><span class="bp-row-label">Last used</span>@(string.IsNullOrWhiteSpace(token.LastUsedAt) ? "Never" : token.LastUsedAt)</span>

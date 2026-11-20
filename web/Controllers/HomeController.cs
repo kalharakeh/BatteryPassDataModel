@@ -1,5 +1,7 @@
+using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Dpp.Pages;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace BatteryPassWeb.Controllers;
 
@@ -19,8 +21,11 @@ public class HomeController(PassportPages pages) : Controller
     /// <summary>The near matches the home page offers (finding U02): serial number, model and address.</summary>
     public const string NearMatchesKey = "NearMatches";
 
-    /// <summary>Whether more passports match than are offered.</summary>
+    /// <summary>Whether more passports match than are offered (signed-in readers only).</summary>
     public const string NearMatchesMoreKey = "NearMatchesMore";
+
+    /// <summary>The search text the near matches belong to, handed from the search to the home page once.</summary>
+    private const string NearMatchesQueryKey = "NearMatchesQuery";
 
     /// <summary>How many characters a search needs before near matches are offered, and how many at most.</summary>
     public const int NearMatchMinimum = 3;
@@ -28,23 +33,32 @@ public class HomeController(PassportPages pages) : Controller
     public const int NearMatchLimit = 3;
 
     [HttpGet("")]
+    [QueryPresent("q", present: false)]
     public async Task<IActionResult> Index([FromQuery] string? q, [FromQuery] string? notFound, [FromServices] BatteryPages batteries, CancellationToken cancellationToken, [FromServices] BatteryPassWeb.Dpp.Demo.DemoDataSwitch? demo = null)
     {
         ViewData["SearchQuery"] = q?.Trim() ?? string.Empty;
         ViewData["SearchNotFound"] = string.Equals(notFound, "1", StringComparison.OrdinalIgnoreCase);
-        if (ViewData["SearchNotFound"] is true && IdFromSearch(q) is { Length: >= NearMatchMinimum } typed)
+        // Near matches only as the search worked them out and handed them over (review 1, point 1): a query flag alone offers nothing.
+        if (ViewData["SearchNotFound"] is true
+            && TempData?[NearMatchesQueryKey] is string handed && handed == IdFromSearch(q)
+            && TempData[NearMatchesKey] is string[] lines)
         {
-            // Near matches (finding U02): the Registry's own matching, among the published passports only.
-            var (matches, total) = await NearMatchesAsync(batteries, typed, cancellationToken);
-            ViewData[NearMatchesKey] = matches;
-            ViewData[NearMatchesMoreKey] = total > matches.Count;
+            ViewData[NearMatchesKey] = lines.Select(line => line.Split('\t')).Where(parts => parts.Length == 3).Select(parts => new NearMatch(parts[0], parts[1], parts[2])).ToArray();
+            ViewData[NearMatchesMoreKey] = TempData[NearMatchesMoreKey] is true;
         }
 
         // A sample to open, as the old app had: a published demo battery, never a real one (as the API help, 30 Oct 2026);
         // DEMO-C7M-0001, the easiest to read, and none while the demo is switched off (finding U06).
         ViewData[SampleKey] = demo is { Enabled: false } ? string.Empty : await SampleBatteryIdAsync(batteries, cancellationToken);
-        return View();
+        return View(nameof(Index)); // also for IndexWithQuery
     }
+
+    /// <summary>The home page with a search text: as <see cref="Index"/>, rate limited as the public reads are (review 1, point 1).</summary>
+    [HttpGet("")]
+    [QueryPresent("q")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.PublicDataRead)]
+    public Task<IActionResult> IndexWithQuery([FromQuery] string? q, [FromQuery] string? notFound, [FromServices] BatteryPages batteries, CancellationToken cancellationToken, [FromServices] BatteryPassWeb.Dpp.Demo.DemoDataSwitch? demo = null) =>
+        Index(q, notFound, batteries, cancellationToken, demo);
 
     /// <summary>The home page's sample (finding U06): the demo's simplest passport, one model and one version.</summary>
     public const string SampleSerialNumber = "DEMO-C7M-0001";
@@ -69,6 +83,7 @@ public class HomeController(PassportPages pages) : Controller
     }
 
     [HttpGet("search")]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.PublicDataRead)]
     public async Task<IActionResult> Search([FromQuery] string? q, CancellationToken cancellationToken, [FromServices] BatteryPages? batteries = null)
     {
         var query = IdFromSearch(q);
@@ -98,6 +113,14 @@ public class HomeController(PassportPages pages) : Controller
             }
         }
 
+        if (batteries is not null && query.Length >= NearMatchMinimum && TempData is { } handOver)
+        {
+            var (matches, total) = await NearMatchesAsync(batteries, query, cancellationToken);
+            handOver[NearMatchesQueryKey] = query;
+            handOver[NearMatchesKey] = matches.Select(match => $"{match.SerialNumber}\t{match.ModelName}\t{match.Href}").ToArray();
+            handOver[NearMatchesMoreKey] = User.Identity?.IsAuthenticated == true && total > matches.Count;
+        }
+
         return RedirectToAction(nameof(Index), new { q = query, notFound = "1" });
     }
 
@@ -105,12 +128,15 @@ public class HomeController(PassportPages pages) : Controller
     public sealed record NearMatch(string SerialNumber, string ModelName, string Href);
 
     /// <summary>
-    /// The published passports the search text is part of, with the Registry's own matching (finding U02), one per
-    /// battery; at most <see cref="NearMatchLimit"/> of them, and the total. Clusters don't count, as for a visitor.
+    /// The published passports near the search text, one per battery; at most <see cref="NearMatchLimit"/> of them, and
+    /// the total. Signed in: the Registry's own matching (finding U02), clusters aside. A visitor: serial numbers that start
+    /// with the text, never the addresses' parts, so the fleet can't be listed (review 1, point 1).
     /// </summary>
     private async Task<(IReadOnlyList<NearMatch> Matches, int Total)> NearMatchesAsync(BatteryPages batteries, string query, CancellationToken cancellationToken)
     {
-        var list = await batteries.ListOnePerBatteryAsync(query, IsPublished, matchClusters: false, cancellationToken);
+        var list = User.Identity?.IsAuthenticated == true
+            ? await batteries.ListOnePerBatteryAsync(query, IsPublished, matchClusters: false, cancellationToken)
+            : await batteries.ListOnePerBatteryAsync(null, row => IsPublished(row) && row.SerialNumber.StartsWith(query, StringComparison.OrdinalIgnoreCase), matchClusters: false, cancellationToken);
         var matches = list.Rows
             .Where(row => row.Identifier.Length > 0)
             .Take(NearMatchLimit)

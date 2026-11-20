@@ -19,6 +19,9 @@ public class ClusterAdminController : Controller
     /// <summary>The two roles in a customer, in a customer admin's words (<see cref="ClusterRepository.OnlyTwoClusterRoles"/>, W07).</summary>
     public const string OnlyTwoCustomerRoles = "A person is a user or a customer admin.";
 
+    /// <summary><see cref="ClusterRepository.NoSuchCluster"/> in a customer admin's words (review 1 of N1, point 3).</summary>
+    public const string NoSuchCustomer = "No customer has this ID.";
+
     /// <summary>The users whose name and password this cluster admin may change (finding R19).</summary>
     public const string MayChangeAccountKey = "MayChangeAccount";
 
@@ -203,7 +206,7 @@ public class ClusterAdminController : Controller
             return Redirect("/cluster-admin/api-tokens");
         }
 
-        var name = Text(Request.Form, "name", "Cluster API token");
+        var name = Text(Request.Form, "name", "API token");
         // A cluster token reads its clusters' batteries or also sends their live values; creating and publishing are the
         // team's (decision 29), so nothing above read + write is given here.
         var accessMode = ParseTokenMode(Text(Request.Form, "accessMode", "read")) == ExternalTokenAccessMode.Read
@@ -402,7 +405,7 @@ public class ClusterAdminController : Controller
         // The team may administer any ID, so the cluster must exist (finding W7).
         if (!await _clusterRepository.ClusterExistsAsync(clusterId, cancellationToken))
         {
-            TempData["ErrorMessage"] = ClusterRepository.NoSuchCluster;
+            TempData["ErrorMessage"] = NoSuchCustomer;
             return Redirect(back);
         }
 
@@ -411,7 +414,7 @@ public class ClusterAdminController : Controller
             // An existing account only joins the cluster: whatever was typed, its name and password stay (finding R19).
             await _clusterRepository.UpsertClusterMembershipAsync(email, clusterId, role, cancellationToken);
             await AuditUserSavedAsync("Cluster user's membership saved.", email, null, clusterId, role, false, cancellationToken);
-            TempData["StatusMessage"] = change == "cluster" ? "Clusters saved." : AlreadyHasAnAccount;
+            TempData["StatusMessage"] = change == "cluster" ? "Customers saved." : AlreadyHasAnAccount;
             return Redirect(back);
         }
 
