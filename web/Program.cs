@@ -208,10 +208,8 @@ builder.Services.AddRateLimiter(options =>
         RateLimitPartition.GetFixedWindowLimiter(
             ExternalApiRateLimitPartitionKey(context),
             _ => FixedWindowOptions(externalApiLifecycleRateLimitPerWindow, rateLimitWindowSeconds)));
-    options.AddPolicy(SecurityRateLimitPolicyNames.FileUpload, context =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            FileUploadRateLimitPartitionKey(context),
-            _ => FixedWindowOptions(fileUploadRateLimitPerWindow, rateLimitWindowSeconds)));
+    // Counted per signed-in person, by address for the rest (FU4): needs the limiter to run after authentication, below.
+    UploadRateLimit.Add(options, fileUploadRateLimitPerWindow, rateLimitWindowSeconds);
 
     // A passport's public data takes no token: counted by the caller's address only (C3 round two, point 5).
     PublicDataRateLimit.Add(options, externalApiReadRateLimitPerWindow, rateLimitWindowSeconds);
@@ -373,7 +371,7 @@ app.Use(async (context, next) =>
         await WriteRequestLimitErrorAsync(
             context,
             StatusCodes.Status413PayloadTooLarge,
-            BatteryPassWeb.Dpp.Loading.LoadLimits.AppliesTo(context.Request) ? BatteryPassWeb.Dpp.Loading.LoadLimits.TooLarge : $"Request body is too large. Maximum allowed size is {maxBodyBytes} bytes.");
+            BatteryPassWeb.Dpp.Loading.LoadLimits.AppliesTo(context.Request) ? BatteryPassWeb.Dpp.Loading.LoadLimits.TooLarge : BatteryPassWeb.Dpp.Documents.UploadLimitWords.RequestTooLarge(NamedBodyLimitFor(context.Request, batteryPassOptions, maxBodyBytes)));
         return;
     }
 
@@ -381,11 +379,12 @@ app.Use(async (context, next) =>
 });
 app.UseStaticFiles();
 app.UseRouting();
+app.UseAuthentication();
+// After authentication, so that the upload limit knows the person (FU4); the sign-in and API limits count by address or token.
 if (batteryPassOptions.EnableRateLimiting)
 {
     app.UseRateLimiter();
 }
-app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
@@ -495,17 +494,6 @@ static string ExternalApiRateLimitPartitionKey(HttpContext context)
     return $"external-ip:{RemoteIpPartitionKey(context)}";
 }
 
-static string FileUploadRateLimitPartitionKey(HttpContext context)
-{
-    if (context.User.Identity?.IsAuthenticated == true
-        && !string.IsNullOrWhiteSpace(context.User.Identity.Name))
-    {
-        return $"upload-user:{HashForRateLimitPartition(context.User.Identity.Name)}";
-    }
-
-    return $"upload-ip:{RemoteIpPartitionKey(context)}";
-}
-
 static string RemoteIpPartitionKey(HttpContext context) =>
     context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
@@ -541,6 +529,13 @@ static void ApplyConfiguredMaxRequestBodySize(HttpContext context, BatteryPassOp
         feature.MaxRequestBodySize = maxBodyBytes;
     }
 }
+
+// The limit a person is told: a file upload's own limit (the body is allowed a little more for the form's other fields), not the body cap.
+static long NamedBodyLimitFor(HttpRequest request, BatteryPassOptions options, long bodyCap) =>
+    !BatteryPassWeb.Dpp.Loading.LoadLimits.AppliesTo(request) && !request.HasJsonContentType() && request.HasFormContentType
+        && (request.ContentType?.StartsWith("multipart/", StringComparison.OrdinalIgnoreCase) ?? false)
+        ? options.MaxUploadBytes
+        : bodyCap;
 
 static long ConfiguredBodyLimitFor(HttpRequest request, BatteryPassOptions options)
 {

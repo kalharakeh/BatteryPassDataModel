@@ -102,6 +102,30 @@ public sealed class AuthService
     /// <summary>A hash nobody has the password of: an address with no account costs the same time as one with an account (finding W4).</summary>
     private static readonly string NoAccountHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N"));
 
+    private long _dummyChecks;
+
+    /// <summary>How many password checks against the hash nobody has the password of this service has run; the tests read it (FU3).</summary>
+    public long DummyChecks => Interlocked.Read(ref _dummyChecks);
+
+    private long _passwordChecks;
+
+    /// <summary>How many password checks (real or dummy) this service has run on the sign-in path; the tests read it (FU round two, 6).</summary>
+    public long PasswordChecks => Interlocked.Read(ref _passwordChecks);
+
+    /// <summary>One password check; every sign-in runs the same number of them, whether or not the account exists.</summary>
+    private bool Check(string password, string hash)
+    {
+        Interlocked.Increment(ref _passwordChecks);
+        return BCrypt.Net.BCrypt.Verify(password, hash);
+    }
+
+    /// <summary>One password check that can't succeed, as long as a real one.</summary>
+    private void DummyCheck(string password)
+    {
+        _ = Check(password, NoAccountHash);
+        Interlocked.Increment(ref _dummyChecks);
+    }
+
     /// <summary>A demo account (marked by the demo data) when this site's demo data is switched off: it can't sign in (finding R03).</summary>
     private bool IsSwitchedOffDemoAccount(BsonDocument user) =>
         !_demoData.Enabled && user.GetValue(BatteryPassWeb.Dpp.Demo.DemoDataService.AccountMark, false) is { IsBoolean: true, AsBoolean: true };
@@ -159,12 +183,15 @@ public sealed class AuthService
 
         if (user != null && IsSwitchedOffDemoAccount(user))
         {
-            _ = BCrypt.Net.BCrypt.Verify(password, NoAccountHash);
+            DummyCheck(password); // two checks, as every other refusal costs
+            DummyCheck(password);
             return LoginAuthenticationResult.Invalid();
         }
 
         // "Forgot password": the temporary password is the owner's way back, so no lock ever stands in front of it.
-        if (user != null && await IsActiveTemporaryPasswordAsync(normalizedEmail, password, cancellationToken))
+        // One password check for this step whether or not the account has an active request, so that pressing "Forgot password"
+        // for an address can't be told from the time a wrong sign-in takes (FU round two, 6).
+        if (await IsActiveTemporaryPasswordAsync(normalizedEmail, password, accountExists: user != null, cancellationToken))
         {
             return LoginAuthenticationResult.RequiresTemporaryPasswordChange(normalizedEmail);
         }
@@ -174,7 +201,7 @@ public sealed class AuthService
         var now = _clock.GetUtcNow().UtcDateTime;
         if (database != null && await LockedAsync(database, account, from, now, accountPage, cancellationToken))
         {
-            _ = BCrypt.Net.BCrypt.Verify(password, NoAccountHash); // as long as a password check
+            DummyCheck(password); // as long as a password check
             return LoginAuthenticationResult.Locked();
         }
 
@@ -230,14 +257,20 @@ public sealed class AuthService
         if (user != null)
         {
             var passwordHash = BsonHelpers.GetString(user, "passwordHash");
-            return !string.IsNullOrWhiteSpace(passwordHash) && BCrypt.Net.BCrypt.Verify(password, passwordHash)
+            if (string.IsNullOrWhiteSpace(passwordHash))
+            {
+                DummyCheck(password); // an account with no password yet answers as slowly as no account (FU3)
+                return LoginAuthenticationResult.Invalid();
+            }
+
+            return Check(password, passwordHash)
                 ? LoginAuthenticationResult.Authenticated(new ClaimsPrincipal())
                 : LoginAuthenticationResult.Invalid();
         }
 
         if (databaseReached)
         {
-            _ = BCrypt.Net.BCrypt.Verify(password, NoAccountHash);
+            DummyCheck(password);
         }
 
         return CanUseDemoAdminFallback()
@@ -539,11 +572,17 @@ public sealed class AuthService
         return true;
     }
 
-    private async Task<bool> IsActiveTemporaryPasswordAsync(string email, string password, CancellationToken cancellationToken)
+    private async Task<bool> IsActiveTemporaryPasswordAsync(string email, string password, bool accountExists, CancellationToken cancellationToken)
     {
-        var request = await FindActiveTemporaryPasswordRequestAsync(email.Trim().ToLowerInvariant(), cancellationToken);
-        return request != null
-            && BCrypt.Net.BCrypt.Verify(password, BsonHelpers.GetString(request, "temporaryPasswordHash"));
+        var request = accountExists ? await FindActiveTemporaryPasswordRequestAsync(email.Trim().ToLowerInvariant(), cancellationToken) : null;
+        var hash = request is null ? null : BsonHelpers.GetString(request, "temporaryPasswordHash");
+        if (string.IsNullOrWhiteSpace(hash))
+        {
+            DummyCheck(password);
+            return false;
+        }
+
+        return Check(password, hash);
     }
 
     private async Task<BsonDocument?> FindActiveTemporaryPasswordRequestAsync(string normalizedEmail, CancellationToken cancellationToken)

@@ -25,23 +25,33 @@ public sealed record LoadChangeLine(string Name, string Old, string New)
 }
 
 /// <summary>
-/// What a load does to published passports, said before Load (X1 round three): each published battery built from a
-/// record that changes gets a new version for each saved part, as on the forms, one save at a time.
+/// What a load does to published passports, said before Load (X1 round three; FU1): each published battery built from a
+/// record that changes gets one new version, made after the whole load is saved, with all of its changes.
 /// </summary>
-/// <param name="Batteries">How many published batteries the load reaches.</param>
-/// <param name="MostVersions">The most new versions one of them gets.</param>
-/// <param name="FewestVersions">The fewest.</param>
+/// <param name="Batteries">How many published batteries the load reaches with a change.</param>
 /// <param name="Parts">Which records and parts reach them ("Battery model Core800: its values and 2 documents").</param>
-public sealed record LoadPublication(int Batteries, int MostVersions, int FewestVersions, IReadOnlyList<string> Parts)
+/// <param name="Waiting">How many more have changes waiting from an earlier load that stopped, or from a hand save, and are reached by a record of the workbook.</param>
+public sealed record LoadPublication(int Batteries, IReadOnlyList<string> Parts, int Waiting = 0)
 {
     public string Text
     {
         get
         {
-            var versions = MostVersions == FewestVersions
-                ? $"{(Batteries == 1 ? "It gets" : "Each gets")} {Pages.Words.Count(MostVersions, "new version")}, one for each part saved"
-                : $"Each gets one new version for each part saved, {FewestVersions} to {MostVersions}";
-            return $"{Pages.Words.Count(Batteries, "published battery", "published batteries")} {(Batteries == 1 ? "is" : "are")} built from records this load changes. {versions}: {string.Join("; ", Parts)}. If the load stops part way, {(Batteries == 1 ? "it stays" : "they stay")} on a version with only some of the changes until the workbook is loaded again.";
+            var one = Batteries == 1;
+            var text = new System.Text.StringBuilder();
+            if (Batteries > 0)
+            {
+                text.Append($"{Pages.Words.Count(Batteries, "published battery", "published batteries")} {(one ? "is" : "are")} built from records this load changes. {(one ? "It gets" : "Each gets")} one new version, made after the whole load is saved, with all of the changes: {string.Join("; ", Parts)}. ");
+            }
+
+            if (Waiting > 0)
+            {
+                text.Append($"{Pages.Words.Count(Waiting, "more published battery", "more published batteries")} {(Waiting == 1 ? "has" : "have")} changes waiting from an earlier load or save and {(Waiting == 1 ? "is" : "are")} reached by this workbook: this load publishes {(Waiting == 1 ? "it" : "them")} too, one new version each. ");
+            }
+
+            var all = Batteries + Waiting == 1;
+            text.Append($"If the load stops part way, {(all ? "it stays" : "they stay")} on {(all ? "its" : "their")} version, with the changes waiting. Load the workbook again, or press \"Publish the waiting changes\" on {(all ? "its" : "each")} page, and {(all ? "it gets" : "each gets")} one version.");
+            return text.ToString();
         }
     }
 }
@@ -95,8 +105,14 @@ public sealed record LoadCheck(
     /// <summary>True when the load would make or change something.</summary>
     public bool HasChanges => Records.Any(record => record.State != LoadStates.Same);
 
+    /// <summary>
+    /// How many published batteries, apart from those the load changes, have changes waiting and are reached by a record
+    /// of the workbook: the load publishes them too, so it is offered even when no record changes.
+    /// </summary>
+    public int WaitingPassports { get; init; }
+
     /// <summary>"Load" is offered only for a check without problems that has something to do.</summary>
-    public bool CanLoad => !HasProblems && HasChanges;
+    public bool CanLoad => !HasProblems && (HasChanges || WaitingPassports > 0);
 
     public int Count(LoadRecord record) => Records.Count(item => item.Record == record);
 
@@ -235,6 +251,8 @@ internal sealed class LoadPlan
     public List<LoadPending> Pending { get; } = [];
 
     public int PublishedPassports { get; set; }
+
+    public int WaitingPassports { get; set; }
 
     public LoadPublication? Publication { get; set; }
 

@@ -1305,7 +1305,6 @@ public sealed partial class ProductDataLoader(
     private async Task PublishedAsync(LoadPlan plan, CancellationToken cancellationToken)
     {
         var reached = new HashSet<string>(StringComparer.Ordinal);
-        var parts = new Dictionary<string, int>(StringComparer.Ordinal); // published battery -> the saved parts that reach it
         foreach (var record in plan.All.Where(record => record.ExistingId is not null && record.Record != LoadRecord.Family))
         {
             if (record.ChangesPassportData)
@@ -1313,7 +1312,6 @@ public sealed partial class ProductDataLoader(
                 foreach (var passport in await editor.AffectedAsync(LoadFields.KindOf(record.Record), record.ExistingId!, cancellationToken))
                 {
                     reached.Add(passport.PackId);
-                    parts[passport.PackId] = parts.GetValueOrDefault(passport.PackId) + Parts(record);
                 }
             }
 
@@ -1327,18 +1325,15 @@ public sealed partial class ProductDataLoader(
             }
         }
 
+        // Batteries with changes waiting that a record of the workbook reaches, changed or not: the load publishes them too.
+        var waiting = (await WaitingReachedAsync(plan, cancellationToken)).Count(passport => !reached.Contains(passport.PackId));
         plan.PublishedPassports = reached.Count;
-        if (reached.Count > 0)
+        plan.WaitingPassports = waiting;
+        if (reached.Count > 0 || waiting > 0)
         {
-            plan.Publication = new LoadPublication(reached.Count, parts.Values.Max(), parts.Values.Min(), PartWords(plan));
+            plan.Publication = new LoadPublication(reached.Count, PartWords(plan), waiting);
         }
     }
-
-    /// <summary>
-    /// How many saves of a record each give its published batteries a new version, as on the forms: one for its values
-    /// (changed or removed together) and one for each uploaded document.
-    /// </summary>
-    private static int Parts(RecordPlan record) => (record.Changed.Count > 0 || record.Removals.Count > 0 ? 1 : 0) + record.Uploads.Count;
 
     /// <summary>The saved parts that reach published batteries, in words: "Core800: its values and 2 documents".</summary>
     private static IReadOnlyList<string> PartWords(LoadPlan plan) => plan.All
@@ -1370,7 +1365,7 @@ public sealed partial class ProductDataLoader(
         var records = plan.All.Select(record => record.View()).ToArray();
         var problems = plan.Problems.Distinct().ToArray();
         var pending = plan.Pending.Distinct().ToArray();
-        return new LoadCheck(name, null, records, problems, plan.Notes.ToArray(), plan.PublishedPassports, Stamp(workbook, files, records, problems, pending)) { Pending = pending, Publication = plan.Publication };
+        return new LoadCheck(name, null, records, problems, plan.Notes.ToArray(), plan.PublishedPassports, Stamp(workbook, files, records, problems, pending)) { Pending = pending, Publication = plan.Publication, WaitingPassports = plan.WaitingPassports };
     }
 
     /// <summary>

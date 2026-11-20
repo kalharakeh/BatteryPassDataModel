@@ -72,6 +72,26 @@ public sealed record PassportCheckResult(int Checked, int Marked, int Cleared, i
 /// <summary>One published passport after an action that can publish: what happened, its active version, and what holds it back.</summary>
 public sealed record PassportOutcome(string PackId, PublishOutcome Outcome, int Version, IReadOnlyList<string> Blocking);
 
+/// <summary>The batteries a held load reached (<see cref="PublicationService.HoldPublications"/>), each with whether it carries a change that was waiting.</summary>
+public sealed class PublicationHold : IDisposable
+{
+    private readonly Dictionary<string, bool> _packs = new(StringComparer.Ordinal);
+    private bool _holding = true;
+
+    public bool IsHolding => _holding;
+
+    public IReadOnlyCollection<string> PackIds => _packs.Keys;
+
+    /// <summary>True when a battery was noted by a change that was already waiting (the log then says so).</summary>
+    internal bool CarriesWaiting(string packId) => _packs.TryGetValue(packId, out var waiting) && waiting;
+
+    internal void Note(string packId, bool withWaiting = false) => _packs[packId] = CarriesWaiting(packId) || withWaiting;
+
+    internal void Release() => _holding = false;
+
+    public void Dispose() => _holding = false;
+}
+
 /// <summary>A published passport whose saved data differs from its active <see cref="Version"/>, and what blocks the new one.</summary>
 public sealed record WaitingChange(int Version, IReadOnlyList<string> Blocking);
 
@@ -689,8 +709,53 @@ public sealed class PublicationService(
         }
     }
 
+    /// <summary>The load whose publications are held back, in the flow of the code that began it; nobody else's saves are held (FU1).</summary>
+    private static readonly AsyncLocal<PublicationHold?> Held = new();
+
+    /// <summary>
+    /// Holds back the new versions that the saves made by the code that calls this would publish (FU1): a battery they
+    /// reach is only noted, its waiting marker stays set, and <see cref="PublishHeldAsync"/> publishes each noted battery
+    /// once, with all of the changes. Call it from the method that saves, not from a helper that has awaited it, and
+    /// dispose the result in a <c>using</c>. Without <see cref="PublishHeldAsync"/> (a load that stops) the batteries
+    /// stay marked and are published by the next save that reaches them or by "Publish the waiting changes".
+    /// </summary>
+    public PublicationHold HoldPublications()
+    {
+        var hold = new PublicationHold();
+        Held.Value = hold;
+        return hold;
+    }
+
+    /// <summary>Ends the hold and publishes each battery it noted, once (a battery whose passport is unchanged keeps its version).</summary>
+    public async Task PublishHeldAsync(PublicationHold hold, ChangeSender sender)
+    {
+        ArgumentNullException.ThrowIfNull(hold);
+        ArgumentNullException.ThrowIfNull(sender);
+        hold.Release();
+        foreach (var packId in hold.PackIds.ToArray())
+        {
+            try
+            {
+                if (await store.GetActiveVersionAsync(packId, CancellationToken.None) is { } active)
+                {
+                    await RepublishOneAsync(sender, packId, active, CancellationToken.None, withWaiting: hold.CarriesWaiting(packId));
+                }
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                await FailedAsync(sender, packId, exception); // the others go on
+            }
+        }
+    }
+
     private async Task RepublishOneAsync(ChangeSender sender, string packId, PassportVersion active, CancellationToken cancellationToken, bool withWaiting = false)
     {
+        if (Held.Value is { IsHolding: true } hold)
+        {
+            hold.Note(packId, withWaiting); // published once, after the whole load is saved (FU1)
+            return;
+        }
+
         var result = await PublishCoreAsync(packId, sender, retryOnConflict: true, cancellationToken, withWaiting);
         if (result.Problem is not null)
         {

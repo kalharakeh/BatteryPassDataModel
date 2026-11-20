@@ -836,7 +836,7 @@ public sealed partial class ProductDataPages(
             return "the picture must be a PNG or JPEG file";
         }
 
-        return limit > 0 && content.LongLength > limit ? $"the picture is larger than the {limit}-byte upload limit" : null;
+        return limit > 0 && content.LongLength > limit ? UploadLimitWords.FileTooLarge("picture", limit) : null;
     }
 
     public async Task<(byte[] Content, string ContentType)?> FamilyPictureAsync(string familyId, CancellationToken cancellationToken = default)

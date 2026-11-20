@@ -311,7 +311,7 @@ public sealed class DocumentService(
         var limit = options.Value.MaxUploadBytes;
         if (limit > 0 && upload.Content.LongLength > limit)
         {
-            return (null, $"the file is larger than the {limit}-byte upload limit");
+            return (null, UploadLimitWords.FileTooLarge("file", limit));
         }
 
         var contentType = FileTypes.Detect(upload.Content);
