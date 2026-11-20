@@ -93,7 +93,9 @@ public sealed class SecurityHeadersTests
         var headers = program.IndexOf("app.UseSecurityHeaders();", StringComparison.Ordinal);
 
         Assert.True(headers > 0);
-        Assert.True(headers < program.IndexOf("app.UseExceptionHandler(", StringComparison.Ordinal));
+        // The exception handler is added by ErrorPages.UseErrorPages (finding U04), so the headers come before that call.
+        Assert.True(headers < program.IndexOf("app.UseErrorPages();", StringComparison.Ordinal));
+        Assert.Contains("app.UseExceptionHandler(", File.ReadAllText(DppTestFiles.RepoFile("web", "Configuration", "ErrorPages.cs")), StringComparison.Ordinal);
         Assert.True(headers < program.IndexOf("app.UseStaticFiles();", StringComparison.Ordinal));
         Assert.True(headers < program.IndexOf("app.Map(BatteryPassHealthCheck.Path", StringComparison.Ordinal));
     }
