@@ -99,6 +99,25 @@ public sealed class ProductDataLoadOneVersionTests(MongoFixture mongo)
     }
 
     [Fact]
+    public async Task AHandSaveAfterALoad_ShouldStillPublishAtOnce_TheHoldDoesNotOutliveTheLoad()
+    {
+        var rig = Around(await PublicationTesting.PublishedRigAsync(mongo));
+        Assert.True((await rig.LoadAsync(ModelBatchAndDocument(), Files())).Loaded);
+        Assert.Equal(2, (await ActiveAsync(rig)).Number);
+
+        var mass = (await rig.Store.GetAsync<BatteryModel>("model-test"))!.Values["batteryMass"].Value!.DeepClone();
+        mass["gramKilogramValue"] = 530;
+        var post = new BatteryPassWeb.Dpp.Pages.EditorPost(
+            new Dictionary<string, System.Text.Json.Nodes.JsonNode> { ["batteryMass"] = mass },
+            new Dictionary<string, string>(),
+            new Dictionary<string, int>());
+        var saved = await PageTesting.Editor(rig.Rig).SaveAsync(ChangeSender.Team(Who), TargetKind.Model, "model-test", post, confirmed: true);
+
+        Assert.Equal(BatteryPassWeb.Dpp.Pages.EditorOutcome.Saved, saved.Outcome);
+        Assert.Equal(3, (await ActiveAsync(rig)).Number); // a hand save gives its own version, as before
+    }
+
+    [Fact]
     public async Task WhilePublicationsAreHeld_ALiveValueCollectsNothing_AStaticSaveCollectsTheBattery_AndAnUnchangedPassportKeepsItsVersion()
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo);
