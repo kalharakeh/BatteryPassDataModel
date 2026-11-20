@@ -1,4 +1,5 @@
 using BatteryPassWeb.Configuration;
+using BatteryPassWeb.Dpp.Access;
 using BatteryPassWeb.Dpp.Pages;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -84,7 +85,7 @@ public class HomeController(PassportPages pages) : Controller
 
     [HttpGet("search")]
     [EnableRateLimiting(SecurityRateLimitPolicyNames.PublicDataRead)]
-    public async Task<IActionResult> Search([FromQuery] string? q, CancellationToken cancellationToken, [FromServices] BatteryPages? batteries = null)
+    public async Task<IActionResult> Search([FromQuery] string? q, CancellationToken cancellationToken, [FromServices] BatteryPages? batteries = null, [FromServices] DppReaders? readers = null)
     {
         var query = IdFromSearch(q);
         if (query.Length == 0)
@@ -97,28 +98,32 @@ public class HomeController(PassportPages pages) : Controller
             return Redirect(PageOf(passport.Address));
         }
 
-        // In other capitals (finding U02): the one published passport whose serial number, battery ID or passport ID it is.
         if (batteries is not null && query.Length >= NearMatchMinimum)
         {
-            var list = await batteries.ListOnePerBatteryAsync(query, IsPublished, matchClusters: false, cancellationToken);
-            var same = list.Rows.Where(row => string.Equals(row.SerialNumber, query, StringComparison.OrdinalIgnoreCase) || string.Equals(row.Identifier, query, StringComparison.OrdinalIgnoreCase)).ToArray();
+            // One read for the exact steps and the near matches (review 2, point 5).
+            var rows = await batteries.SearchRowsAsync(query, IsPublished, cancellationToken);
+            var list = rows.Where(row => row.Matches).Select(row => row.Row).ToArray();
+
+            // In other capitals (finding U02): the one published passport whose serial number, battery ID or passport ID it is.
+            var same = list.Where(row => string.Equals(row.SerialNumber, query, StringComparison.OrdinalIgnoreCase) || string.Equals(row.Identifier, query, StringComparison.OrdinalIgnoreCase)).ToArray();
             if (same.Length == 1 && same[0].Identifier.Length > 0)
             {
                 return Redirect(PageOf(same[0].Identifier));
             }
 
-            if (list.Rows.Count == 1 && list.Rows[0].Active?.DigitalProductPassportId is { } passportId && string.Equals(passportId, query, StringComparison.OrdinalIgnoreCase))
+            if (list.Length == 1 && list[0].Active?.DigitalProductPassportId is { } passportId && string.Equals(passportId, query, StringComparison.OrdinalIgnoreCase))
             {
-                return Redirect(PageOf(list.Rows[0].Identifier));
+                return Redirect(PageOf(list[0].Identifier));
             }
-        }
 
-        if (batteries is not null && query.Length >= NearMatchMinimum && TempData is { } handOver)
-        {
-            var (matches, total) = await NearMatchesAsync(batteries, query, cancellationToken);
-            handOver[NearMatchesQueryKey] = query;
-            handOver[NearMatchesKey] = matches.Select(match => $"{match.SerialNumber}\t{match.ModelName}\t{match.Href}").ToArray();
-            handOver[NearMatchesMoreKey] = User.Identity?.IsAuthenticated == true && total > matches.Count;
+            if (TempData is { } handOver)
+            {
+                var reader = readers is null ? Reader.Anonymous : await readers.ForAsync(User, cancellationToken);
+                var (matches, more) = NearMatches(rows, query, reader);
+                handOver[NearMatchesQueryKey] = query;
+                handOver[NearMatchesKey] = matches.Select(match => $"{match.SerialNumber}\t{match.ModelName}\t{match.Href}").ToArray();
+                handOver[NearMatchesMoreKey] = more;
+            }
         }
 
         return RedirectToAction(nameof(Index), new { q = query, notFound = "1" });
@@ -128,21 +133,31 @@ public class HomeController(PassportPages pages) : Controller
     public sealed record NearMatch(string SerialNumber, string ModelName, string Href);
 
     /// <summary>
-    /// The published passports near the search text, one per battery; at most <see cref="NearMatchLimit"/> of them, and
-    /// the total. Signed in: the Registry's own matching (finding U02), clusters aside. A visitor: serial numbers that start
-    /// with the text, never the addresses' parts, so the fleet can't be listed (review 1, point 1).
+    /// The published passports near the search text, one per battery, from the rows the search already read; at most
+    /// <see cref="NearMatchLimit"/> of them, and whether more match. Nobody lists through the search what their Registry
+    /// doesn't list (review 2, point 1): the batteries the reader may list there (the Registry's own <see cref="DemoScope.Lists"/>
+    /// and <see cref="RegistryList.MayList"/>) by the Registry's matching (finding U02), clusters aside, and only they count
+    /// for "Type more"; any published battery also by the visitor's rule, its serial number from the start, by its letters
+    /// and digits (review 1, point 1; decision 80), so a signed-in reader gets at least what a visitor gets. A visitor lists
+    /// nothing in the Registry, so a visitor gets the visitor's rule alone.
     /// </summary>
-    private async Task<(IReadOnlyList<NearMatch> Matches, int Total)> NearMatchesAsync(BatteryPages batteries, string query, CancellationToken cancellationToken)
+    private (IReadOnlyList<NearMatch> Matches, bool More) NearMatches(IReadOnlyList<SearchRow> rows, string query, Reader reader)
     {
-        var list = User.Identity?.IsAuthenticated == true
-            ? await batteries.ListOnePerBatteryAsync(query, IsPublished, matchClusters: false, cancellationToken)
-            : await batteries.ListOnePerBatteryAsync(null, row => IsPublished(row) && row.SerialNumber.StartsWith(query, StringComparison.OrdinalIgnoreCase), matchClusters: false, cancellationToken);
-        var matches = list.Rows
-            .Where(row => row.Identifier.Length > 0)
-            .Take(NearMatchLimit)
-            .Select(row => new NearMatch(row.SerialNumber, row.ModelName, PageOf(row.Identifier)))
-            .ToArray();
-        return (matches, list.Rows.Count);
+        var listed = DemoScope.Lists(reader, rows, row => row.Row.IsDemo)
+            .Where(row => RegistryList.MayList(reader, row.Row))
+            .Select(row => row.Row.PackId)
+            .ToHashSet(StringComparer.Ordinal);
+        var byRegistry = rows.Where(row => listed.Contains(row.Row.PackId) && row.Matches).Select(row => row.Row).Where(row => row.Identifier.Length > 0).ToArray();
+        // Serial numbers compared as decision 80 compares them, by their letters and digits (review 2, point 7).
+        var key = BatteryPassWeb.Dpp.Identifiers.IdentifierForms.Clean(query);
+        var byPrefix = rows
+            .Where(row => key.Length >= NearMatchMinimum && !(listed.Contains(row.Row.PackId) && row.Matches)
+                && BatteryPassWeb.Dpp.Identifiers.IdentifierForms.Clean(row.Row.SerialNumber).StartsWith(key, StringComparison.Ordinal))
+            .Select(row => row.Row)
+            .Where(row => row.Identifier.Length > 0);
+        var shown = byRegistry.Concat(byPrefix).Take(NearMatchLimit).ToArray();
+        var matches = shown.Select(row => new NearMatch(row.SerialNumber, row.ModelName, PageOf(row.Identifier))).ToArray();
+        return (matches, byRegistry.Length > shown.Count(row => listed.Contains(row.PackId)));
     }
 
     /// <summary>A passport the public may open: the battery's active one.</summary>

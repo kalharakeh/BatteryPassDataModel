@@ -83,6 +83,7 @@ internal sealed class ShellSite : IAsyncDisposable
         services.AddRateLimiter(limiter =>
         {
             limiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            limiter.OnRejected = TooManyRequests.WriteAsync;
             PublicDataRateLimit.Add(limiter, readLimit ?? 100000, 60);
         });
         services.AddAuthorization(authorization =>

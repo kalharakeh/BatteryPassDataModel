@@ -30,6 +30,22 @@ public sealed class ClusterHistoryTests(MongoFixture mongo)
     private static async Task SaveAsync(PublicationRig rig, ChangeSender sender, string property, JsonNode value) =>
         Assert.True((await rig.Pipeline.SaveAsync(sender, new ChangeSet(TargetKind.Pack, rig.PackId, new Dictionary<string, JsonNode?> { [property] = value }, "form"))).Saved);
 
+    /// <summary>Review 2 of N1, point 4: a move by the team reads in the customer's words on both sides' History.</summary>
+    [Fact]
+    public async Task AMoveByTheTeam_ShouldReadInCustomerWords()
+    {
+        var rig = await PublicationTesting.PublishedRigAsync(mongo).WithClustersAsync();
+        Assert.Null(await BatteryTesting.Pages(rig).SetClusterAsync("team@example.com", rig.PackId, BatteryTesting.South));
+
+        var pack = (await rig.Store.GetAsync<BatteryPack>(rig.PackId))!;
+        var forNorth = Text(await History(rig).ForAsync(pack, new HashSet<string> { BatteryTesting.North }));
+        var forSouth = Text(await History(rig).ForAsync(pack, new HashSet<string> { BatteryTesting.South }));
+
+        Assert.Contains("moved the battery to another customer", forNorth, StringComparison.Ordinal);
+        Assert.Contains("moved the battery to you", forSouth, StringComparison.Ordinal);
+        Assert.DoesNotContain("cluster", forNorth + forSouth, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public async Task ABatteryMovedBetweenTwoClusters_ShouldShowEachClusterOnlyItsOwnTime()
     {
@@ -56,14 +72,15 @@ public sealed class ClusterHistoryTests(MongoFixture mongo)
         // North: its own change and the hand-over out; nothing after, nothing of South's.
         Assert.Contains(NorthAdmin, forNorth, StringComparison.Ordinal);
         Assert.Contains("71", forNorth, StringComparison.Ordinal);
-        Assert.Contains("asked another cluster to accept the battery", forNorth, StringComparison.Ordinal);
-        Assert.Contains("Another cluster accepted the battery's hand-over: it moved to another cluster", forNorth, StringComparison.Ordinal);
+        Assert.Contains("asked another customer to accept the battery", forNorth, StringComparison.Ordinal);
+        Assert.Contains("Another customer accepted the battery's hand-over: it moved to another customer", forNorth, StringComparison.Ordinal);
         Assert.DoesNotContain("42", forNorth, StringComparison.Ordinal);
         Assert.DoesNotContain("marked the passport invalid", forNorth, StringComparison.Ordinal);
 
         // South: the hand-over in, its own change, the mark and its undoing as facts; nothing before, nothing of North's.
-        Assert.Contains("Another cluster asked your cluster to accept the battery", forSouth, StringComparison.Ordinal);
-        Assert.Contains($"{SouthAdmin} accepted the battery's hand-over to your cluster", forSouth, StringComparison.Ordinal);
+        Assert.Contains("Another customer asked you to accept the battery", forSouth, StringComparison.Ordinal);
+        Assert.Contains($"{SouthAdmin} accepted the battery's hand-over to you", forSouth, StringComparison.Ordinal);
+        Assert.DoesNotContain("cluster", forNorth + forSouth, StringComparison.OrdinalIgnoreCase); // the customer admin's page (review 2 of N1, point 4)
         Assert.Contains("42", forSouth, StringComparison.Ordinal);
         Assert.Contains("The manufacturer's team marked the passport invalid", forSouth, StringComparison.Ordinal);
         Assert.Contains("The manufacturer's team undid the passport's mark", forSouth, StringComparison.Ordinal);

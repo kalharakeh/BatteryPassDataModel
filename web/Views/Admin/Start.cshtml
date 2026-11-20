@@ -31,7 +31,7 @@
                     }
                     else
                     {
-                        <span class="bp-todo-count">@box.Count</span>
+                        <span class="bp-todo-count">@box.Count@(box.AtLeast ? "+" : null)</span>
                     }
                 </header>
                 @if (box.Count == 0)
@@ -46,6 +46,10 @@
                             <li><a href="@line.Href">@line.Title</a><span>@line.Note</span></li>
                         }
                     </ul>
+                    @if (box.AtLeast)
+                    {
+                        <p class="bp-todo-clear mb-0">@box.Count or more: the box reads the newest @BatteryPassWeb.Dpp.Store.DppStore.RefusedUploadsRead uploads with something refused.</p>
+                    }
                     @if (box.MoreHref is { } more)
                     {
                         <p class="bp-todo-more"><a href="@more">@box.MoreText ›</a></p>

@@ -75,4 +75,38 @@ public sealed class PinnedWordsTests
         Assert.DoesNotContain("Sign in with your new password", login, StringComparison.Ordinal);
         Assert.DoesNotContain("sign in", Read("web", "Views", "Help", "Guide.cshtml"), StringComparison.OrdinalIgnoreCase);
     }
+
+    /// <summary>Review 2 of N1, point 4: the customer admin's battery History (moves and hand-overs) says "customer".</summary>
+    [Fact]
+    public void TheCustomerAdminsHistory_ShouldSayCustomer()
+    {
+        var history = Read("web", "Dpp", "Audit", "ClusterHistory.cs");
+
+        foreach (var old in new[] { "\"Another cluster\"", "to your cluster\"", "to another cluster\"", "asked another cluster", "asked your cluster", "moved to another cluster" })
+        {
+            Assert.DoesNotContain(old, history, StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>
+    /// Review 2 of N1, point 8: "log in", "logged in" and "logged out" on the pages non-team readers see, never "sign(ed)
+    /// in/out" (code comments aside).
+    /// </summary>
+    [Theory]
+    [InlineData("Help", "Guide.cshtml")]
+    [InlineData("Help", "Index.cshtml")]
+    [InlineData("Home", "Index.cshtml")]
+    [InlineData("Home", "NotAllowed.cshtml")]
+    [InlineData("Login", "Index.cshtml")]
+    [InlineData("Account", "Index.cshtml")]
+    [InlineData("Registry", "Index.cshtml")]
+    [InlineData("Passport", "_PassportHero.cshtml")]
+    [InlineData("Dpp", "NotAvailable.cshtml")]
+    public void ThePagesNonTeamReadersSee_ShouldSayLogIn(string folder, string view)
+    {
+        var text = string.Join("\n", Read("web", "Views", folder, view).Split('\n')
+            .Where(line => !line.TrimStart().StartsWith("//", StringComparison.Ordinal) && !line.TrimStart().StartsWith("@*", StringComparison.Ordinal)));
+
+        Assert.DoesNotMatch(new System.Text.RegularExpressions.Regex(@"(?i)\bsign(ed)?[ -](in|out)\b"), text);
+    }
 }

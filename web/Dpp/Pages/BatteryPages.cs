@@ -162,6 +162,9 @@ public sealed record PublicationView(
     public int MissingCount => Missing.Sum(group => group.Attributes.Count);
 }
 
+/// <summary>A row of the home search (review 2 of N1, point 5): the battery, and whether the text is part of its IDs.</summary>
+public sealed record SearchRow(BatteryRow Row, bool Matches);
+
 /// <summary>The team's "Passport status" card (S5): the passport's DPP status, its mark, whether the battery is waste.</summary>
 /// <param name="Status">The DPP status (#2) of the passport's newest version; null for a draft.</param>
 /// <param name="BatteryName">The battery's serial number, which the confirm step names.</param>
@@ -379,6 +382,22 @@ public sealed class BatteryPages(
         ArgumentNullException.ThrowIfNull(mayList);
         var (rows, versions) = await RowsAsync(cancellationToken);
         return OnePerBatteryPage(rows, versions, query, mayList, matchClusters);
+    }
+
+    /// <summary>
+    /// The home search's rows, from one read (review 2 of N1, point 5): the batteries <paramref name="mayList"/> keeps, one
+    /// row each, sorted as the lists are, and for each whether the search text is part of its IDs by the Registry's own
+    /// matching (clusters aside), so the exact steps and the near matches need no second read.
+    /// </summary>
+    public async Task<IReadOnlyList<SearchRow>> SearchRowsAsync(string query, Func<BatteryRow, bool> mayList, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(mayList);
+        var (rows, versions) = await RowsAsync(cancellationToken);
+        var byPack = rows.ToDictionary(row => row.PackId, StringComparer.Ordinal);
+        var wanted = query?.Trim() ?? string.Empty;
+        return Sorted(OnePerBattery(rows.Where(mayList).ToArray()))
+            .Select(row => new SearchRow(row, wanted.Length > 0 && Earlier(row, byPack).Prepend(row).Any(each => Matches(each, wanted, versions[each.PackId], clusters: false))))
+            .ToArray();
     }
 
     private static BatteriesPage OnePerBatteryPage(List<BatteryRow> rows, ILookup<string, PassportVersion> versions, string? query, Func<BatteryRow, bool> mayList, bool matchClusters)

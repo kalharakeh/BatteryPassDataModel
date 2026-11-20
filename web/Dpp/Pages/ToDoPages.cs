@@ -9,7 +9,11 @@ public sealed record ToDoLine(string Title, string Note, string Href);
 
 /// <summary>One box of the team's "To do" page: its count, up to four lines and a link to all of them.</summary>
 /// <param name="Clear">The calm line shown when there is nothing to do.</param>
-public sealed record ToDoBox(string Key, string Title, string Icon, int Count, string Clear, IReadOnlyList<ToDoLine> Lines, string? MoreHref, string? MoreText);
+public sealed record ToDoBox(string Key, string Title, string Icon, int Count, string Clear, IReadOnlyList<ToDoLine> Lines, string? MoreHref, string? MoreText)
+{
+    /// <summary>The count stopped at a cap, so the real number is at least this (review 2 of N1, point 2).</summary>
+    public bool AtLeast { get; init; }
+}
 
 /// <summary>The team's "To do" page: the six boxes and how many batteries there are.</summary>
 public sealed record ToDoPage(IReadOnlyList<ToDoBox> Boxes, int Batteries);
@@ -105,7 +109,8 @@ public sealed class ToDoPages(BatteryPages batteries, PublicationService publica
 
     private async Task<ToDoBox> UploadsAsync(IReadOnlyDictionary<string, BatteryRow> byPack, CancellationToken cancellationToken)
     {
-        var lines = (await store.ListRefusedUploadsSinceAsync(nowUtc.AddDays(-UploadDays), cancellationToken))
+        var read = await store.ListRefusedUploadsSinceAsync(nowUtc.AddDays(-UploadDays), cancellationToken);
+        var lines = read
             .SelectMany(upload => upload.Batteries
                 .Where(battery => battery.Outcome == "refused" || battery.Values.Any(value => value.Outcome == "Rejected"))
                 .Select(battery => new ToDoLine(
@@ -114,7 +119,10 @@ public sealed class ToDoPages(BatteryPages batteries, PublicationService publica
                     battery.PackId is null ? "/admin/audit" : $"{BatteryPages.BatteryHref(battery.PackId)}?section=upload")))
             .ToArray();
         return new ToDoBox("uploads", "Uploads with refused values", "upload", lines.Length, $"No value was refused in the last {UploadDays} days.", lines.Take(Shown).ToArray(),
-            "/admin/audit", "Audit log");
+            "/admin/audit", "Audit log")
+        {
+            AtLeast = read.Count >= DppStore.RefusedUploadsRead, // the read stops at the newest 200 (point 5 of review 1)
+        };
     }
 
     /// <summary>Published real batteries not recorded in the EU registry yet (wave 2's count, finding R02).</summary>
