@@ -126,7 +126,7 @@ public sealed partial class ProductDataLoader
         foreach (var passport in await WaitingReachedAsync(plan, none))
         {
             before.TryAdd(passport.PackId, passport);
-            hold?.Note(passport.PackId);
+            hold?.Note(passport.PackId, withWaiting: true);
         }
 
         await editor.PublishHeldAsync(hold, sender);

@@ -72,24 +72,27 @@ public sealed record PassportCheckResult(int Checked, int Marked, int Cleared, i
 /// <summary>One published passport after an action that can publish: what happened, its active version, and what holds it back.</summary>
 public sealed record PassportOutcome(string PackId, PublishOutcome Outcome, int Version, IReadOnlyList<string> Blocking);
 
-/// <summary>A published passport whose saved data differs from its active <see cref="Version"/>, and what blocks the new one.</summary>
-/// <summary>The batteries a held load reached (<see cref="PublicationService.HoldPublications"/>).</summary>
+/// <summary>The batteries a held load reached (<see cref="PublicationService.HoldPublications"/>), each with whether it carries a change that was waiting.</summary>
 public sealed class PublicationHold : IDisposable
 {
-    private readonly HashSet<string> _packIds = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, bool> _packs = new(StringComparer.Ordinal);
     private bool _holding = true;
 
     public bool IsHolding => _holding;
 
-    public IReadOnlyCollection<string> PackIds => _packIds;
+    public IReadOnlyCollection<string> PackIds => _packs.Keys;
 
-    internal void Note(string packId) => _packIds.Add(packId);
+    /// <summary>True when a battery was noted by a change that was already waiting (the log then says so).</summary>
+    internal bool CarriesWaiting(string packId) => _packs.TryGetValue(packId, out var waiting) && waiting;
+
+    internal void Note(string packId, bool withWaiting = false) => _packs[packId] = CarriesWaiting(packId) || withWaiting;
 
     internal void Release() => _holding = false;
 
     public void Dispose() => _holding = false;
 }
 
+/// <summary>A published passport whose saved data differs from its active <see cref="Version"/>, and what blocks the new one.</summary>
 public sealed record WaitingChange(int Version, IReadOnlyList<string> Blocking);
 
 /// <summary>The new version, or why there is none; <see cref="Unchanged"/> when the content equals the active version's.</summary>
@@ -729,14 +732,27 @@ public sealed class PublicationService(
         ArgumentNullException.ThrowIfNull(hold);
         ArgumentNullException.ThrowIfNull(sender);
         hold.Release();
-        await RepublishAsync(sender, hold.PackIds);
+        foreach (var packId in hold.PackIds.ToArray())
+        {
+            try
+            {
+                if (await store.GetActiveVersionAsync(packId, CancellationToken.None) is { } active)
+                {
+                    await RepublishOneAsync(sender, packId, active, CancellationToken.None, withWaiting: hold.CarriesWaiting(packId));
+                }
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                await FailedAsync(sender, packId, exception); // the others go on
+            }
+        }
     }
 
     private async Task RepublishOneAsync(ChangeSender sender, string packId, PassportVersion active, CancellationToken cancellationToken, bool withWaiting = false)
     {
         if (Held.Value is { IsHolding: true } hold)
         {
-            hold.Note(packId); // published once, after the whole load is saved (FU1)
+            hold.Note(packId, withWaiting); // published once, after the whole load is saved (FU1)
             return;
         }
 

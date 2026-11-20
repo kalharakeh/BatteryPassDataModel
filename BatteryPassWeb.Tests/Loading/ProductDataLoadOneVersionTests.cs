@@ -2,6 +2,9 @@ using System.Text.Json.Nodes;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Loading;
+using BatteryPassWeb.Dpp.Pages;
+using MongoDB.Driver;
+using BatteryPassWeb.Dpp.Publication;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Dpp.Values;
 using BatteryPassWeb.Tests.Dpp;
@@ -206,5 +209,34 @@ public sealed class ProductDataLoadOneVersionTests(MongoFixture mongo)
 
         await rig.Publication.PublishHeldAsync(hold, sender); // nothing differs: the version stays
         Assert.Equal(1, (await rig.Store.GetActiveVersionAsync(rig.PackId))!.Number);
+    }
+
+    [Fact]
+    public async Task AHeldLiveValueWithAMarker_ShouldBeNotedAndPublishedOnceWithTheWaitingWords_AndTheHoldEndsWithIt()
+    {
+        var rig = await PublicationTesting.PublishedRigAsync(mongo);
+        var sender = ChangeSender.Team(Who);
+        var editor = PageTesting.Editor(rig);
+        var mass = (await rig.Store.GetAsync<BatteryModel>("model-test"))!.Values["batteryMass"].Value!.DeepClone();
+        mass["gramKilogramValue"] = 530;
+        EditorPost Post(JsonNode value) => new(new Dictionary<string, JsonNode> { ["batteryMass"] = value }, new Dictionary<string, string>(), new Dictionary<string, int>());
+
+        using var hold = rig.Publication.HoldPublications();
+        await editor.SaveAsync(sender, TargetKind.Model, "model-test", Post(mass), confirmed: true); // a static change: marks the battery, noted
+        Assert.Equal(1, (await rig.Store.GetActiveVersionAsync(rig.PackId))!.Number);
+        await rig.Publication.ValuesSavedAsync(TargetKind.Pack, rig.PackId, ["stateOfChargeSoC"], sender, CancellationToken.None); // a live value on a marked battery
+
+        Assert.Equal([rig.PackId], hold.PackIds);
+        await rig.Publication.PublishHeldAsync(hold, sender);
+
+        Assert.Equal(2, (await rig.Store.GetActiveVersionAsync(rig.PackId))!.Number); // once
+        var published = (await rig.Context.Database!.GetCollection<MongoDB.Bson.BsonDocument>("applicationAuditEvents").Find(MongoDB.Driver.FilterDefinition<MongoDB.Bson.BsonDocument>.Empty).ToListAsync())
+            .Where(entry => entry["eventType"].AsString == PublicationService.PublishedEvent).Select(entry => entry.ToString()).ToArray();
+        Assert.Contains(published, entry => entry.Contains("with the changes that were waiting", StringComparison.Ordinal));
+
+        // The hold ended with the release: a second save in the same flow publishes at once.
+        mass["gramKilogramValue"] = 540;
+        await editor.SaveAsync(sender, TargetKind.Model, "model-test", Post(mass), confirmed: true);
+        Assert.Equal(3, (await rig.Store.GetActiveVersionAsync(rig.PackId))!.Number);
     }
 }
