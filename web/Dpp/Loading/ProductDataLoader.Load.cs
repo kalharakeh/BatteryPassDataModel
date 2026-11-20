@@ -81,6 +81,11 @@ public sealed partial class ProductDataLoader
         var saved = new List<string>(); // records that were already there and that the load has saved changes to
         var before = new Dictionary<string, AffectedPassport>(StringComparer.Ordinal);
 
+        // One new version for each published battery the load reaches, made after the whole load is saved (FU1). A load that
+        // stops part way leaves each reached battery on its version with its marker set; the next load, or "Publish the
+        // waiting changes" on its page, publishes it once.
+        using var hold = editor.HoldPublications();
+
         // The order of saving: first every record the load makes, made and filled in full. No reader sees any of them
         // yet (no battery uses a new record), and a stop there removes them again. Then the records that were already
         // there, which readers may see. Every reason a step could be refused was judged by the check; a stop now can
@@ -115,6 +120,7 @@ public sealed partial class ProductDataLoader
             return await StoppedAsync(who, check, exception, [], saved, madeKept: made.Count);
         }
 
+        await editor.PublishHeldAsync(hold, sender);
         var outcomes = await editor.OutcomesAsync(before.Values.ToArray(), none);
         var newRecords = plan.All.Count(record => record.IsNew);
         var changed = plan.All.Count(record => !record.IsNew && record.HasWork);

@@ -541,6 +541,16 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
     }
 
     /// <summary>
+    /// Holds back the new versions of the saves made by the caller, until <see cref="PublishHeldAsync"/> (FU1: a product
+    /// data load gives each battery one version). Null without the publication service (some tests).
+    /// </summary>
+    public PublicationHold? HoldPublications() => publication?.HoldPublications();
+
+    /// <summary>Publishes what a hold noted, once for each battery.</summary>
+    public Task PublishHeldAsync(PublicationHold? hold, ChangeSender sender) =>
+        hold is null || publication is null ? Task.CompletedTask : publication.PublishHeldAsync(hold, sender);
+
+    /// <summary>
     /// What each of these published passports got from a change just made (round two, A3): a new version, nothing to
     /// publish, or held back with what blocks it. Empty without the publication service (some tests).
     /// </summary>

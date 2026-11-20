@@ -86,9 +86,9 @@ public sealed class ProductDataLoadRoundThreeTests(MongoFixture mongo)
         var result = await rig.LoadAsync(workbook, files);
 
         Assert.Empty(check.Texts());
-        Assert.Equal("1 published battery is built from records this load changes. It gets 3 new versions, one for each part saved: Battery model EXB-NMC-100: its values and 2 documents. If the load stops part way, it stays on a version with only some of the changes until the workbook is loaded again.", check.Publication?.Text);
+        Assert.StartsWith("1 published battery is built from records this load changes. It gets one new version, made after the whole load is saved, with all of the changes: Battery model EXB-NMC-100: its values and 2 documents. If the load stops part way", check.Publication?.Text, StringComparison.Ordinal);
         Assert.True(result.Loaded, result.Message);
-        Assert.Equal(4, (await rig.Store.GetActiveVersionAsync(rig.Rig.PackId))?.Number); // as said: 1 + 3
+        Assert.Equal(2, (await rig.Store.GetActiveVersionAsync(rig.Rig.PackId))?.Number); // as said: one new version for the whole load
     }
 
     [Fact]

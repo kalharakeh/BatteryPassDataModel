@@ -25,23 +25,19 @@ public sealed record LoadChangeLine(string Name, string Old, string New)
 }
 
 /// <summary>
-/// What a load does to published passports, said before Load (X1 round three): each published battery built from a
-/// record that changes gets a new version for each saved part, as on the forms, one save at a time.
+/// What a load does to published passports, said before Load (X1 round three; FU1): each published battery built from a
+/// record that changes gets one new version, made after the whole load is saved, with all of its changes.
 /// </summary>
 /// <param name="Batteries">How many published batteries the load reaches.</param>
-/// <param name="MostVersions">The most new versions one of them gets.</param>
-/// <param name="FewestVersions">The fewest.</param>
 /// <param name="Parts">Which records and parts reach them ("Battery model Core800: its values and 2 documents").</param>
-public sealed record LoadPublication(int Batteries, int MostVersions, int FewestVersions, IReadOnlyList<string> Parts)
+public sealed record LoadPublication(int Batteries, IReadOnlyList<string> Parts)
 {
     public string Text
     {
         get
         {
-            var versions = MostVersions == FewestVersions
-                ? $"{(Batteries == 1 ? "It gets" : "Each gets")} {Pages.Words.Count(MostVersions, "new version")}, one for each part saved"
-                : $"Each gets one new version for each part saved, {FewestVersions} to {MostVersions}";
-            return $"{Pages.Words.Count(Batteries, "published battery", "published batteries")} {(Batteries == 1 ? "is" : "are")} built from records this load changes. {versions}: {string.Join("; ", Parts)}. If the load stops part way, {(Batteries == 1 ? "it stays" : "they stay")} on a version with only some of the changes until the workbook is loaded again.";
+            var one = Batteries == 1;
+            return $"{Pages.Words.Count(Batteries, "published battery", "published batteries")} {(one ? "is" : "are")} built from records this load changes. {(one ? "It gets" : "Each gets")} one new version, made after the whole load is saved, with all of the changes: {string.Join("; ", Parts)}. If the load stops part way, {(one ? "it stays" : "they stay")} on {(one ? "its" : "their")} version, with the changes waiting, until the workbook is loaded again or the waiting changes are published from {(one ? "its" : "each")} page.";
         }
     }
 }

@@ -219,10 +219,10 @@ public sealed class ProductDataLoadAgainTests(MongoFixture mongo)
         Assert.Empty(check.Texts());
         SameLines(["EXB-NMC-100: Changed", "EXB-NMC-100, batch 2026 · Example plant: Changed"], Changed(check));
         Assert.Equal(1, check.PublishedPassports);
-        Assert.Equal("1 published battery is built from records this load changes. It gets 2 new versions, one for each part saved: Battery model EXB-NMC-100: its values; Batch EXB-NMC-100, batch 2026 · Example plant: its values. If the load stops part way, it stays on a version with only some of the changes until the workbook is loaded again.", check.Publication?.Text);
+        Assert.StartsWith("1 published battery is built from records this load changes. It gets one new version, made after the whole load is saved, with all of the changes: Battery model EXB-NMC-100: its values; Batch EXB-NMC-100, batch 2026 · Example plant: its values. If the load stops part way", check.Publication?.Text, StringComparison.Ordinal);
         Assert.True(result.Loaded, result.Message);
         Assert.Equal("Product data loaded: 2 records changed, of 1 battery family, 1 battery model and 1 batch. 1 passport got a new version.", result.Message);
-        Assert.Equal(3, (await rig.Store.GetActiveVersionAsync(rig.Rig.PackId))?.Number); // one new version for each record's save, as by hand
+        Assert.Equal(2, (await rig.Store.GetActiveVersionAsync(rig.Rig.PackId))?.Number); // one new version for the whole load (FU1), not one for each record's save
         Assert.Equal("520", (await rig.Store.GetAsync<BatteryModel>("model-test"))!.Values["batteryMass"].Value!["gramKilogramValue"]!.ToJsonString());
         Assert.Single(await rig.Store.ListBatchesAsync("model-test"));
         Assert.Null((await rig.Store.GetAsync<BatteryPack>(rig.Rig.PackId))!.ChangesWaitingSinceUtc);

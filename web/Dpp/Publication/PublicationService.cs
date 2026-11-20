@@ -73,6 +73,23 @@ public sealed record PassportCheckResult(int Checked, int Marked, int Cleared, i
 public sealed record PassportOutcome(string PackId, PublishOutcome Outcome, int Version, IReadOnlyList<string> Blocking);
 
 /// <summary>A published passport whose saved data differs from its active <see cref="Version"/>, and what blocks the new one.</summary>
+/// <summary>The batteries a held load reached (<see cref="PublicationService.HoldPublications"/>).</summary>
+public sealed class PublicationHold : IDisposable
+{
+    private readonly HashSet<string> _packIds = new(StringComparer.Ordinal);
+    private bool _holding = true;
+
+    public bool IsHolding => _holding;
+
+    public IReadOnlyCollection<string> PackIds => _packIds;
+
+    internal void Note(string packId) => _packIds.Add(packId);
+
+    internal void Release() => _holding = false;
+
+    public void Dispose() => _holding = false;
+}
+
 public sealed record WaitingChange(int Version, IReadOnlyList<string> Blocking);
 
 /// <summary>The new version, or why there is none; <see cref="Unchanged"/> when the content equals the active version's.</summary>
@@ -689,8 +706,40 @@ public sealed class PublicationService(
         }
     }
 
+    /// <summary>The load whose publications are held back, in the flow of the code that began it; nobody else's saves are held (FU1).</summary>
+    private static readonly AsyncLocal<PublicationHold?> Held = new();
+
+    /// <summary>
+    /// Holds back the new versions that the saves made by the code that calls this would publish (FU1): a battery they
+    /// reach is only noted, its waiting marker stays set, and <see cref="PublishHeldAsync"/> publishes each noted battery
+    /// once, with all of the changes. Call it from the method that saves, not from a helper that has awaited it, and
+    /// dispose the result in a <c>using</c>. Without <see cref="PublishHeldAsync"/> (a load that stops) the batteries
+    /// stay marked and are published by the next save that reaches them or by "Publish the waiting changes".
+    /// </summary>
+    public PublicationHold HoldPublications()
+    {
+        var hold = new PublicationHold();
+        Held.Value = hold;
+        return hold;
+    }
+
+    /// <summary>Ends the hold and publishes each battery it noted, once (a battery whose passport is unchanged keeps its version).</summary>
+    public async Task PublishHeldAsync(PublicationHold hold, ChangeSender sender)
+    {
+        ArgumentNullException.ThrowIfNull(hold);
+        ArgumentNullException.ThrowIfNull(sender);
+        hold.Release();
+        await RepublishAsync(sender, hold.PackIds);
+    }
+
     private async Task RepublishOneAsync(ChangeSender sender, string packId, PassportVersion active, CancellationToken cancellationToken, bool withWaiting = false)
     {
+        if (Held.Value is { IsHolding: true } hold)
+        {
+            hold.Note(packId); // published once, after the whole load is saved (FU1)
+            return;
+        }
+
         var result = await PublishCoreAsync(packId, sender, retryOnConflict: true, cancellationToken, withWaiting);
         if (result.Problem is not null)
         {
