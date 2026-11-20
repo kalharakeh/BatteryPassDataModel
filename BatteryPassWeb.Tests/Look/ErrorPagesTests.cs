@@ -100,6 +100,48 @@ public sealed class ErrorPagesTests(MongoFixture mongo)
         Assert.DoesNotContain("127.0.0.1:9", body, StringComparison.Ordinal);
     }
 
+    /// <summary>Review 1, point 4: a known address asked with the wrong method keeps its 405, as before the "not found" page.</summary>
+    [Theory]
+    [InlineData("/login/logout")]
+    [InlineData("/api/auth/login")]
+    [InlineData("/api/auth/logout")]
+    public async Task AKnownAddressWithTheWrongMethod_ShouldKeepIts405(string path)
+    {
+        await using var site = await ShellSite.StartAsync(mongo.NewContext());
+
+        var (status, body, _) = await site.GetAsync(path);
+
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, status);
+        Assert.DoesNotContain("Page not found", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>Review 1, point 4: an error inside an API call answers as the API does, never with the HTML page.</summary>
+    [Fact]
+    public async Task AnErrorInAnApiCall_ShouldAnswerAPlain500()
+    {
+        await using var site = await ShellSite.StartAsync(mongo.NewContext(), throwOn: "/api/external/v1/forced-error");
+
+        var (status, body, _) = await site.GetAsync("/api/external/v1/forced-error");
+
+        Assert.Equal(HttpStatusCode.InternalServerError, status);
+        Assert.DoesNotContain("<html", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("SHELLSECRETDETAIL", body, StringComparison.Ordinal);
+        Assert.Contains("\"error\"", body, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("/css/no-such-file.css")]
+    [InlineData("/images/no-such-picture.png")]
+    public async Task AMissingFile_ShouldKeepItsPlain404(string path)
+    {
+        await using var site = await ShellSite.StartAsync(mongo.NewContext());
+
+        var (status, body, _) = await site.GetAsync(path);
+
+        Assert.Equal(HttpStatusCode.NotFound, status);
+        Assert.DoesNotContain("<html", body, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public void TheApp_ShouldUseTheSameWiring()
     {
