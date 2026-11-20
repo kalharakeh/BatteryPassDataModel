@@ -16,11 +16,14 @@ public static class ClusterTokenRules
         && (string.Equals(accessMode, "sign", StringComparison.OrdinalIgnoreCase)
             || string.Equals(accessMode, "readWriteSign", StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>What such a token can still do, as the tokens page says it.</summary>
-    public static string StillDoes(string? accessMode) =>
+    /// <summary>
+    /// What such a token can still do, as the tokens page says it: in <paramref name="word"/>, "cluster" on the team's page,
+    /// "customer" on a customer admin's (decision 55; review 1 of N1, point 3).
+    /// </summary>
+    public static string StillDoes(string? accessMode, string word = "cluster") =>
         string.Equals(accessMode, "readWriteSign", StringComparison.OrdinalIgnoreCase)
-            ? "Made with more access than a cluster token has. It still reads and sends live values for its clusters; it can't create or publish batteries."
-            : "Made with more access than a cluster token has. It still only reads its clusters' batteries; it can't create or publish batteries.";
+            ? $"Made with more access than a {word} token has. It still reads and sends live values for its {word}s; it can't create or publish batteries."
+            : $"Made with more access than a {word} token has. It still only reads its {word}s' batteries; it can't create or publish batteries.";
 
     /// <summary>The access a replacement gets: what the old token could really do.</summary>
     public static ExternalTokenAccessMode ReplacementMode(string? accessMode) =>

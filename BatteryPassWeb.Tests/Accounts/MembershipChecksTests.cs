@@ -70,7 +70,7 @@ public sealed class MembershipChecksTests(MongoFixture mongo)
 
         await team.SaveUser(CancellationToken.None);
 
-        Assert.Equal(ClusterRepository.NoSuchCluster, team.TempData["ErrorMessage"]);
+        Assert.Equal(ClusterAdminController.NoSuchCustomer, team.TempData["ErrorMessage"]); // the customer admin's page says "customer" (review 1, point 3)
         Assert.Equal(["north"], await rig.ClustersOfAsync(AccountRig.NorthUser));
 
         var newAccount = AccountRig.Form(TeamOnClusterAdminPages(rig),

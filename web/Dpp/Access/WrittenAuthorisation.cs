@@ -32,9 +32,9 @@ public static class WrittenAuthorisation
     public const string Refusal = "the Scania team hasn't recorded your authorisation to update passport data yet";
 
     /// <summary>A hand-over waiting for an answer whose sending cluster lost its authorisation meanwhile (round two, 3).</summary>
-    public const string GiverMissing = "The sending cluster's authorisation to update passport data isn't recorded any more, so the battery can't move yet.";
+    public const string GiverMissing = "The sending customer's authorisation to update passport data isn't recorded any more, so the battery can't move yet.";
 
-    public const string GiverRefusal = "the sending cluster's authorisation to update passport data isn't recorded any more, so the battery can't move yet";
+    public const string GiverRefusal = "the sending customer's authorisation to update passport data isn't recorded any more, so the battery can't move yet";
 
     /// <summary>Whether this sender needs its battery's cluster to be authorised: cluster admins and battery system tokens.</summary>
     public static bool Needed(ChangeSender sender)

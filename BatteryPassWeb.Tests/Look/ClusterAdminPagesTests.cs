@@ -66,7 +66,7 @@ public sealed class ClusterAdminPagesTests
         Assert.Contains("<strong>Read + write</strong><small>Also sends their live values.</small>", window, StringComparison.Ordinal);
         Assert.DoesNotContain("globalAccess", window, StringComparison.Ordinal);
         Assert.Contains("checked=\"@(Model.Clusters.Count == 1)\"", window, StringComparison.Ordinal);
-        Assert.Contains("@await Html.PartialAsync(\"_ApiTokenList\", new BatteryPassWeb.Models.ViewModels.ApiTokenListViewModel(Model.ApiTokens, \"/cluster-admin/api-tokens\", false, false, \"No API tokens for your clusters yet.\"))", Tokens, StringComparison.Ordinal);
+        Assert.Contains("@await Html.PartialAsync(\"_ApiTokenList\", new BatteryPassWeb.Models.ViewModels.ApiTokenListViewModel(Model.ApiTokens, \"/cluster-admin/api-tokens\", false, false, \"No API tokens yet.\"))", Tokens, StringComparison.Ordinal); // "customer" words on their page (review 1, point 3)
     }
 
     [Fact]
