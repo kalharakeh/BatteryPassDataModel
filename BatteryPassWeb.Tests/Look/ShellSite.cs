@@ -156,13 +156,18 @@ internal sealed class ShellSite : IAsyncDisposable
     }
 
     /// <summary>A GET as <paramref name="email"/> (an account in the database), or as a visitor.</summary>
-    public Task<(HttpStatusCode Status, string Body, string? Location)> GetAsync(string path, string? email = null, string? claims = null) =>
-        SendAsync(HttpMethod.Get, path, email, claims);
+    public Task<(HttpStatusCode Status, string Body, string? Location)> GetAsync(string path, string? email = null, string? claims = null, string? accept = null) =>
+        SendAsync(HttpMethod.Get, path, email, claims, accept);
 
     /// <summary>A request with <paramref name="method"/>, as <paramref name="email"/> or as a visitor, with no body.</summary>
-    public async Task<(HttpStatusCode Status, string Body, string? Location)> SendAsync(HttpMethod method, string path, string? email = null, string? claims = null)
+    public async Task<(HttpStatusCode Status, string Body, string? Location)> SendAsync(HttpMethod method, string path, string? email = null, string? claims = null, string? accept = null)
     {
         using var request = new HttpRequestMessage(method, path);
+        if (accept is not null)
+        {
+            request.Headers.TryAddWithoutValidation("Accept", accept);
+        }
+
         if (email is not null)
         {
             request.Headers.Add(UserHeader, email);
