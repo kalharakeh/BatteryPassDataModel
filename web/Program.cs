@@ -208,10 +208,8 @@ builder.Services.AddRateLimiter(options =>
         RateLimitPartition.GetFixedWindowLimiter(
             ExternalApiRateLimitPartitionKey(context),
             _ => FixedWindowOptions(externalApiLifecycleRateLimitPerWindow, rateLimitWindowSeconds)));
-    options.AddPolicy(SecurityRateLimitPolicyNames.FileUpload, context =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            FileUploadRateLimitPartitionKey(context),
-            _ => FixedWindowOptions(fileUploadRateLimitPerWindow, rateLimitWindowSeconds)));
+    // Counted per signed-in person, by address for the rest (FU4): needs the limiter to run after authentication, below.
+    UploadRateLimit.Add(options, fileUploadRateLimitPerWindow, rateLimitWindowSeconds);
 
     // A passport's public data takes no token: counted by the caller's address only (C3 round two, point 5).
     PublicDataRateLimit.Add(options, externalApiReadRateLimitPerWindow, rateLimitWindowSeconds);
@@ -381,11 +379,12 @@ app.Use(async (context, next) =>
 });
 app.UseStaticFiles();
 app.UseRouting();
+app.UseAuthentication();
+// After authentication, so that the upload limit knows the person (FU4); the sign-in and API limits count by address or token.
 if (batteryPassOptions.EnableRateLimiting)
 {
     app.UseRateLimiter();
 }
-app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
@@ -493,17 +492,6 @@ static string ExternalApiRateLimitPartitionKey(HttpContext context)
     }
 
     return $"external-ip:{RemoteIpPartitionKey(context)}";
-}
-
-static string FileUploadRateLimitPartitionKey(HttpContext context)
-{
-    if (context.User.Identity?.IsAuthenticated == true
-        && !string.IsNullOrWhiteSpace(context.User.Identity.Name))
-    {
-        return $"upload-user:{HashForRateLimitPartition(context.User.Identity.Name)}";
-    }
-
-    return $"upload-ip:{RemoteIpPartitionKey(context)}";
 }
 
 static string RemoteIpPartitionKey(HttpContext context) =>
