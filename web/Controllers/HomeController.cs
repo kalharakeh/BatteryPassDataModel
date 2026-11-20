@@ -1,4 +1,5 @@
 using BatteryPassWeb.Configuration;
+using BatteryPassWeb.Dpp.Access;
 using BatteryPassWeb.Dpp.Pages;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -84,7 +85,7 @@ public class HomeController(PassportPages pages) : Controller
 
     [HttpGet("search")]
     [EnableRateLimiting(SecurityRateLimitPolicyNames.PublicDataRead)]
-    public async Task<IActionResult> Search([FromQuery] string? q, CancellationToken cancellationToken, [FromServices] BatteryPages? batteries = null)
+    public async Task<IActionResult> Search([FromQuery] string? q, CancellationToken cancellationToken, [FromServices] BatteryPages? batteries = null, [FromServices] DppReaders? readers = null)
     {
         var query = IdFromSearch(q);
         if (query.Length == 0)
@@ -117,7 +118,8 @@ public class HomeController(PassportPages pages) : Controller
 
             if (TempData is { } handOver)
             {
-                var (matches, more) = NearMatches(rows, query);
+                var reader = readers is null ? Reader.Anonymous : await readers.ForAsync(User, cancellationToken);
+                var (matches, more) = NearMatches(rows, query, reader);
                 handOver[NearMatchesQueryKey] = query;
                 handOver[NearMatchesKey] = matches.Select(match => $"{match.SerialNumber}\t{match.ModelName}\t{match.Href}").ToArray();
                 handOver[NearMatchesMoreKey] = more;
@@ -132,20 +134,23 @@ public class HomeController(PassportPages pages) : Controller
 
     /// <summary>
     /// The published passports near the search text, one per battery, from the rows the search already read; at most
-    /// <see cref="NearMatchLimit"/> of them, and whether more match. Signed in: the Registry's own matching (finding U02),
-    /// clusters aside. A visitor: serial numbers that start with the text, never the addresses' parts, so the fleet can't
-    /// be listed (review 1, point 1); no "more" for a visitor.
+    /// <see cref="NearMatchLimit"/> of them, and whether more match. Nobody lists through the search what their Registry
+    /// doesn't list (review 2, point 1): the batteries the reader may list there (the Registry's own <see cref="DemoScope.Lists"/>
+    /// and <see cref="RegistryList.MayList"/>) by the Registry's matching (finding U02), clusters aside, and only they count
+    /// for "Type more"; every other published battery by the visitor's rule, its serial number from the start (review 1,
+    /// point 1). A visitor lists nothing in the Registry, so a visitor gets the visitor's rule alone.
     /// </summary>
-    private (IReadOnlyList<NearMatch> Matches, bool More) NearMatches(IReadOnlyList<SearchRow> rows, string query)
+    private (IReadOnlyList<NearMatch> Matches, bool More) NearMatches(IReadOnlyList<SearchRow> rows, string query, Reader reader)
     {
-        var signedIn = User.Identity?.IsAuthenticated == true;
-        var near = rows
-            .Where(row => row.Row.Identifier.Length > 0
-                && (signedIn ? row.Matches : row.Row.SerialNumber.StartsWith(query, StringComparison.OrdinalIgnoreCase)))
-            .Select(row => row.Row)
-            .ToArray();
-        var matches = near.Take(NearMatchLimit).Select(row => new NearMatch(row.SerialNumber, row.ModelName, PageOf(row.Identifier))).ToArray();
-        return (matches, signedIn && near.Length > matches.Length);
+        var listed = DemoScope.Lists(reader, rows, row => row.Row.IsDemo)
+            .Where(row => RegistryList.MayList(reader, row.Row))
+            .Select(row => row.Row.PackId)
+            .ToHashSet(StringComparer.Ordinal);
+        var byRegistry = rows.Where(row => listed.Contains(row.Row.PackId) && row.Matches).Select(row => row.Row).Where(row => row.Identifier.Length > 0).ToArray();
+        var byPrefix = rows.Where(row => !listed.Contains(row.Row.PackId) && row.Row.SerialNumber.StartsWith(query, StringComparison.OrdinalIgnoreCase)).Select(row => row.Row).Where(row => row.Identifier.Length > 0);
+        var shown = byRegistry.Concat(byPrefix).Take(NearMatchLimit).ToArray();
+        var matches = shown.Select(row => new NearMatch(row.SerialNumber, row.ModelName, PageOf(row.Identifier))).ToArray();
+        return (matches, byRegistry.Length > shown.Count(row => listed.Contains(row.PackId)));
     }
 
     /// <summary>A passport the public may open: the battery's active one.</summary>

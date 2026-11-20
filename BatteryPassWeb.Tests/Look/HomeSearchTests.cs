@@ -126,6 +126,55 @@ public sealed partial class HomeSearchTests(MongoFixture mongo)
         Assert.Equal(HttpStatusCode.OK, (await site.GetAsync("/")).Status); // the home page itself stays open
     }
 
+    /// <summary>
+    /// Review 2, point 1: signed in, the Registry's matching and "Type more" only for the batteries the reader may list in
+    /// the Registry; every other published battery only by the visitor's rule (serial number from its start).
+    /// </summary>
+    [Fact]
+    public async Task ACustomersUser_ShouldFindOtherCustomersBatteriesOnlyByTheVisitorsRule()
+    {
+        await using var site = await SiteAsync(mongo);
+
+        var (_, byAddress, _) = await site.FollowAsync("/search?q=dpp", "demo.north.user@example.test");
+        var (_, byPrefix, _) = await site.FollowAsync("/search?q=demo-c13", "demo.north.user@example.test");
+        var (_, inside, _) = await site.FollowAsync("/search?q=c13m", "demo.north.user@example.test");
+
+        Assert.Equal(["DEMO-C7M-0001"], OfferedSerials(byAddress)); // their own customer's only
+        Assert.DoesNotContain("Type more", byAddress, StringComparison.Ordinal);
+        Assert.Equal(["DEMO-C13M-0001"], OfferedSerials(byPrefix)); // a south battery, as a visitor would get it
+        Assert.Empty(OfferedSerials(inside)); // not from the start of the serial number
+    }
+
+    [Fact]
+    public async Task ADemoAccount_ShouldNotFindARealBatteryByItsAddress()
+    {
+        await using var site = await SiteAsync(mongo);
+        var real = await MakeOneBatteryRealAsync(site, "DEMO-C13M-0001");
+
+        var (_, demo, _) = await site.FollowAsync("/search?q=dpp", "demo.msa@example.test");
+        await site.Services.GetRequiredService<BatteryPassWeb.Services.ClusterRepository>()
+            .UpsertUserAsync("real.msa@example.test", "Rita Real", [BatteryPassWeb.Services.AccessControlService.RoleMarketSurveillanceAuthority], BCrypt.Net.BCrypt.HashPassword("real-msa-password-1", 4));
+        var (_, realMsa, _) = await site.FollowAsync("/search?q=dpp", "real.msa@example.test");
+        await ToDoPageViewTests.AddTeamAsync(site);
+        var (_, team, _) = await site.FollowAsync("/search?q=dpp", ToDoPageViewTests.Team);
+
+        Assert.DoesNotContain(real, OfferedSerials(demo)); // R03: outside the demo a demo reader is a visitor
+        Assert.NotEmpty(OfferedSerials(demo));
+        Assert.Equal(3, OfferedSerials(realMsa).Length); // market surveillance lists every published battery (three are active)
+        Assert.Contains(real, OfferedSerials(realMsa));
+        Assert.Equal(3, OfferedSerials(team).Length);
+    }
+
+    /// <summary>Marks one demo battery as real (outside the demo), as a real battery on the same site would be.</summary>
+    private static async Task<string> MakeOneBatteryRealAsync(ShellSite site, string serial)
+    {
+        var row = (await site.Services.GetRequiredService<BatteryPassWeb.Dpp.Pages.BatteryPages>().TeamListAsync(null)).Rows.Single(each => each.SerialNumber == serial);
+        await site.Services.GetRequiredService<BatteryPassWeb.Services.MongoContext>().Database!
+            .GetCollection<MongoDB.Bson.BsonDocument>(BatteryPassWeb.Dpp.Store.DppStore.Packs)
+            .UpdateOneAsync(Builders<MongoDB.Bson.BsonDocument>.Filter.Eq("_id", row.PackId), Builders<MongoDB.Bson.BsonDocument>.Update.Set("IsDemo", false));
+        return serial;
+    }
+
     /// <summary>Review 2, point 5: a failed search reads the passports once, not once for the exact steps and again for the near matches.</summary>
     [Theory]
     [InlineData(null)]
