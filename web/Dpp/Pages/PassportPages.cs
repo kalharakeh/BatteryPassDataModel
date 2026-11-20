@@ -65,6 +65,12 @@ public sealed record PassportPage(
     /// </summary>
     public string? BatteryStatus => Audiences.SelectMany(section => section.Values).FirstOrDefault(value => value.Attribute.Number == 22)?.Lines.FirstOrDefault()?.Text;
 
+    /// <summary>
+    /// The battery has a customer and the reader belongs to customers, none of them its (finding W10, review 1 point 2): the
+    /// summary then says the battery is another customer's. A demo reader outside the demo counts as a visitor here.
+    /// </summary>
+    public bool AnotherCustomers { get; init; }
+
     /// <summary>How many modules the battery has (decision 31): app data, public, not part of the signed passport.</summary>
     public int ModuleCount { get; init; }
 
@@ -327,6 +333,7 @@ public sealed class PassportPages(DppStore store, DemoBoundary demo, PassportRea
             carbon,
             recycled)
         {
+            AnotherCustomers = clusters.Count > 0 && who.ClusterIds.Count > 0 && !who.ClusterIds.Any(clusters.Contains),
             KeyFigures = KeyFigures.From(number => Find(everyone, AttributeCatalog.ByNumber(number)), Words, carbon, recycled),
             PublicData = PublicPassport.Data(everyone, reader.PublicProof(version, everyone)),
             Chain = detail && (who.Roles.Contains(ReaderRole.Team) || who.Roles.Contains(ReaderRole.MarketSurveillance))
