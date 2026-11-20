@@ -111,7 +111,7 @@ public sealed class TestSerialKeyTests(MongoFixture mongo)
         new() { Value = JsonValue.Create(text), GeneratedAtUtc = old.GeneratedAtUtc, Source = old.Source, Who = old.Who };
 
     /// <summary>A real battery whose ID has the key of the demo spare's test ID (such a serial can no longer be released; one from before can exist).</summary>
-    private static async Task MakeHolderAsync(DemoRig rig, BatteryPack like, bool demoMarked = false)
+    private static async Task MakeHolderAsync(DemoRig rig, BatteryPack like, bool demoMarked = false, string? clusterId = null)
     {
         var pool = rig.Services.GetRequiredService<BatteryIdPool>();
         Assert.True((await pool.ReleaseAsync(Who, List("PO real", "FU5-REAL-1"))).Done);
@@ -122,6 +122,64 @@ public sealed class TestSerialKeyTests(MongoFixture mongo)
         real.Values["uniqueProductIdentifier"] = Same(real.Values["uniqueProductIdentifier"], $"{Base}/25S/UN778474481-{RealSerial}");
         real.ItemKey = IdentifierForms.ItemKey($"UN778474481-{RealSerial}");
         real.IsDemo = demoMarked;
+        real.ClusterId = clusterId;
         await rig.Database.GetCollection<BatteryPack>(DppStore.Packs).ReplaceOneAsync(pack => pack.Id == real.Id, real);
+    }
+
+    [Fact]
+    public async Task AReleasedRealIdWhoseKeyStartsWithTest_WrittenStraightIntoThePool_ShouldBeRefusedAtCreationAndNeverPicked()
+    {
+        var (rig, pool, c7) = await SeededAsync(mongo);
+        using var _ = rig;
+        await rig.Store.ReleasedIds.InsertOneAsync(new ReleasedBatteryId
+        {
+            Id = IdentifierForms.Clean("T-EST-1"),
+            SerialNumber = "T-EST-1",
+            Identifier = $"{Base}/25S/UN778474481-T-EST-1",
+            ReleaseId = "release-before-fu5",
+            Reference = "PO before FU5",
+            Status = ReleasedIdStatuses.Available,
+            ReleasedBy = Who,
+            ReleasedAtUtc = DateTime.UtcNow,
+        });
+
+        var result = await rig.Services.GetRequiredService<PackCreationService>().CreateAsync(ChangeSender.Team(Who), NewBattery(c7, "T-EST-1"));
+
+        Assert.Null(result.Pack);
+        Assert.Contains(DunsIdentifierScheme.StartsWithTest, result.Problem, StringComparison.Ordinal);
+        Assert.Null(await pool.PickAsync("T-EST-1", "pack-x", null)); // nor by a swap, which picks the same way
+        Assert.Equal(ReleasedIdStatuses.Available, (await pool.GetAsync("T-EST-1"))!.Status);
+    }
+
+    [Fact]
+    public async Task AClusterAdmin_ShouldNeverGetFarEnoughToLearnASerialNumber_OnlyTheTeamCreatesBatteries()
+    {
+        var (rig, _, c7) = await SeededAsync(mongo);
+        using var _ = rig;
+        await MakeHolderAsync(rig, c7, clusterId: "cluster-a");
+
+        var result = await rig.Services.GetRequiredService<PackCreationService>().CreateAsync(ChangeSender.ClusterAdmin("b@example.test", "cluster-b"), NewBattery(c7, DemoDataService.SpareSerials[0]) with { ClusterId = "cluster-b" });
+
+        Assert.Null(result.Pack);
+        Assert.Equal("only the team creates packs", result.Problem);
+    }
+
+    [Fact]
+    public async Task ADemoSender_ShouldBeToldTheSerialNumberOfADemoBatteryInADemoCluster()
+    {
+        var rig = await DemoRig.StartAsync(mongo, dunsIds: true);
+        using var _ = rig;
+        await rig.Demo.SeedAsync(Who);
+        var holder = (await rig.Store.FindPacksBySerialNumberAsync("DEMO-C7M-0001")).Single(); // in a demo cluster, on demo product data
+        holder.Values["batterySerialNumber"] = Same(holder.Values["batterySerialNumber"], "DEMO-HOLDER-1");
+        holder.Values["uniqueProductIdentifier"] = Same(holder.Values["uniqueProductIdentifier"], $"{Base}/25S/UN778474481-TEST-DEMO-SPARE-0001");
+        holder.ItemKey = IdentifierForms.ItemKey("UN778474481-TEST-DEMO-SPARE-0001");
+        await rig.Database.GetCollection<BatteryPack>(DppStore.Packs).ReplaceOneAsync(pack => pack.Id == holder.Id, holder);
+        var like = (await rig.Store.FindPacksBySerialNumberAsync("DEMO-CORE-0001")).Single();
+
+        var result = await rig.Services.GetRequiredService<PackCreationService>().CreateAsync(DemoTeam, NewBattery(like, DemoDataService.SpareSerials[0]));
+
+        Assert.Null(result.Pack);
+        Assert.Contains("DEMO-HOLDER-1", result.Problem, StringComparison.Ordinal);
     }
 }

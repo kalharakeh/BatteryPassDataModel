@@ -375,7 +375,9 @@ public sealed partial class BatteryIdPool(
         await store.ReleasedIds.FindOneAndUpdateAsync(
             Builders<ReleasedBatteryId>.Filter.Eq(item => item.Id, IdentifierForms.Clean(serialNumber))
                 & Builders<ReleasedBatteryId>.Filter.Eq(item => item.Status, ReleasedIdStatuses.Available)
-                & (Builders<ReleasedBatteryId>.Filter.Eq(item => item.ModelId, null) | Builders<ReleasedBatteryId>.Filter.Eq(item => item.ModelId, modelId)),
+                & (Builders<ReleasedBatteryId>.Filter.Eq(item => item.ModelId, null) | Builders<ReleasedBatteryId>.Filter.Eq(item => item.ModelId, modelId))
+                // A real ID whose key starts with TEST, released before FU5, is never picked (its key is the released ID's own Id).
+                & (Builders<ReleasedBatteryId>.Filter.Eq(item => item.IsDemo, true) | !Builders<ReleasedBatteryId>.Filter.Regex(item => item.Id, "^" + IdentifierForms.TestMarker)),
             Builders<ReleasedBatteryId>.Update.Set(item => item.Status, ReleasedIdStatuses.Used).Set(item => item.PackId, packId),
             new FindOneAndUpdateOptions<ReleasedBatteryId> { ReturnDocument = ReturnDocument.After },
             cancellationToken);
@@ -430,6 +432,12 @@ public sealed partial class BatteryIdPool(
         if (await GetAsync(serialNumber, cancellationToken) is { } wanted && wanted.IsDemo != old.IsDemo)
         {
             return SwapNeedsSameKind;
+        }
+
+        // A real ID released before FU5 whose key starts with TEST can't be used, as a new serial number of that kind can't be released.
+        if (await GetAsync(serialNumber, cancellationToken) is { IsDemo: false } keyed && IdentifierForms.Clean(keyed.SerialNumber).StartsWith(IdentifierForms.TestMarker, StringComparison.Ordinal))
+        {
+            return DunsIdentifierScheme.StartsWithTest;
         }
 
         // The one rule (S1 round two): no other battery has the same ID apart from capitals and dashes.
@@ -507,10 +515,12 @@ public sealed partial class BatteryIdPool(
 
     /// <summary>
     /// <see cref="SameIdTakenAsync(string, string?, CancellationToken)"/> for a sender: one who may not see the other
-    /// battery (a demo sender on a real battery, a cluster admin or feed outside its cluster) is told that the ID is taken
-    /// and not whose serial number it is (FU5); <c>Hidden</c> is true for that answer, which needs no more words.
+    /// battery is told that the ID is taken and not whose serial number it is (FU5); <c>Hidden</c> is true for that
+    /// answer, which needs no more words. Only the team creates batteries, so this is asked for the team and for the
+    /// team's demo sender (a demo token or account).
     /// </summary>
-    public async Task<(string Message, bool Hidden)?> SameIdTakenAsync(string identifier, string? exceptPackId, ChangeSender sender, CancellationToken cancellationToken = default)
+    /// <param name="clusterIsDemoOrNone">The app's rule for a cluster (<c>DemoBoundary.ClusterIsDemoOrNoneAsync</c>); without it a battery of a cluster counts as outside the demo, which only says less.</param>
+    public async Task<(string Message, bool Hidden)?> SameIdTakenAsync(string identifier, string? exceptPackId, ChangeSender sender, Func<string?, Task<bool>>? clusterIsDemoOrNone = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(sender);
         if (await store.FindPackByItemIgnoringDashesAsync(IdentifierForms.Short(identifier), cancellationToken) is not { } holder || holder.Id == exceptPackId)
@@ -518,19 +528,19 @@ public sealed partial class BatteryIdPool(
             return null;
         }
 
-        return await MaySeeAsync(sender, holder, cancellationToken)
+        return await MaySeeAsync(sender, holder, clusterIsDemoOrNone, cancellationToken)
             ? (DunsIdentifierScheme.SameIdTaken(IdentifierForms.Short(identifier), Text(holder, "batterySerialNumber") ?? holder.Id), false)
             : (DunsIdentifierScheme.TakenByAnother(IdentifierForms.Short(identifier)), true);
     }
 
     /// <summary>
-    /// Whether the sender may see this battery: the team sees every battery, a cluster admin or feed those of its own
-    /// clusters, and a demo sender only those inside the demo (<see cref="BatteryPassWeb.Dpp.Access.DemoScope.Inside"/>: a
-    /// demo-ID battery on real product data is real to it; a battery of a cluster is counted as outside, which only says less).
+    /// Whether the sender may see this battery: the team sees every battery, a demo sender only those inside the demo
+    /// (<see cref="BatteryPassWeb.Dpp.Access.DemoScope.Inside"/>: a demo-ID battery on real product data is real to it).
+    /// Anyone else is not asked (only the team creates batteries) and sees none.
     /// </summary>
-    private async Task<bool> MaySeeAsync(ChangeSender sender, BatteryPack holder, CancellationToken cancellationToken)
+    private async Task<bool> MaySeeAsync(ChangeSender sender, BatteryPack holder, Func<string?, Task<bool>>? clusterIsDemoOrNone, CancellationToken cancellationToken)
     {
-        if (sender.Kind != SenderKind.Team && !(holder.ClusterId is not null && sender.ClusterIds.Contains(holder.ClusterId)))
+        if (sender.Kind != SenderKind.Team)
         {
             return false;
         }
@@ -543,7 +553,8 @@ public sealed partial class BatteryIdPool(
         var batch = await store.GetAsync<ProductionBatch>(holder.BatchId, cancellationToken);
         var model = batch is null ? null : await store.GetAsync<BatteryModel>(batch.ModelId, cancellationToken);
         var economicOperator = await store.GetAsync<EconomicOperator>(holder.OperatorId, cancellationToken);
-        return BatteryPassWeb.Dpp.Access.DemoScope.Inside(holder, batch, model, economicOperator, clusterIsDemoOrNone: holder.ClusterId is null);
+        var clusterIsDemo = clusterIsDemoOrNone is null ? holder.ClusterId is null : await clusterIsDemoOrNone(holder.ClusterId);
+        return BatteryPassWeb.Dpp.Access.DemoScope.Inside(holder, batch, model, economicOperator, clusterIsDemo);
     }
 
     /// <summary>A draft gives its ID back (swapped, or the draft removed): it is available again.</summary>

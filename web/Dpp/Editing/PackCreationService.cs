@@ -153,9 +153,15 @@ public sealed class PackCreationService(
                 return Failed(RemovedId);
             }
 
+            // A real ID released before FU5 whose key starts with TEST: refused as a new serial number of that kind is.
+            if (await pool.GetAsync(asked, cancellationToken) is { IsDemo: false } testKeyed && IdentifierForms.Clean(testKeyed.SerialNumber).StartsWith(IdentifierForms.TestMarker, StringComparison.Ordinal))
+            {
+                return Failed(DunsIdentifierScheme.StartsWithTest);
+            }
+
             // The one rule (S1 round two): no other battery has the same ID apart from capitals and dashes. Asked before
             // the ID is picked, so it stays available.
-            if (await pool.GetAsync(asked, cancellationToken) is { } releasedId && await pool.SameIdTakenAsync(releasedId.Identifier, null, sender, cancellationToken) is { } taken)
+            if (await pool.GetAsync(asked, cancellationToken) is { } releasedId && await pool.SameIdTakenAsync(releasedId.Identifier, null, sender, id => demo.ClusterIsDemoOrNoneAsync(id, cancellationToken), cancellationToken) is { } taken)
             {
                 return Failed(releasedId.Status == ReleasedIdStatuses.Available && !taken.Hidden ? $"{taken.Message}. {BatteryIdPool.VoidTheTakenId}" : taken.Message); // only an available ID can be voided, and only by one who sees the other battery
             }
@@ -245,7 +251,7 @@ public sealed class PackCreationService(
             }
 
             var identifier = pack.Values["uniqueProductIdentifier"].Value!.GetValue<string>();
-            return Failed(pool is not null && await pool.SameIdTakenAsync(identifier, pack.Id, sender, CancellationToken.None) is { } taken
+            return Failed(pool is not null && await pool.SameIdTakenAsync(identifier, pack.Id, sender, id => demo.ClusterIsDemoOrNoneAsync(id, CancellationToken.None), CancellationToken.None) is { } taken
                 ? taken.Message
                 : DunsIdentifierScheme.SameIdTaken(IdentifierForms.Short(identifier), "another battery"));
         }
