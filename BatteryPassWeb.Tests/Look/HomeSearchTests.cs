@@ -4,6 +4,7 @@ using BatteryPassWeb.Dpp.Demo;
 using BatteryPassWeb.Tests.Demo;
 using BatteryPassWeb.Tests.Dpp;
 using Microsoft.Extensions.DependencyInjection;
+using MongoDB.Driver;
 
 namespace BatteryPassWeb.Tests.Look;
 
@@ -123,6 +124,31 @@ public sealed partial class HomeSearchTests(MongoFixture mongo)
         Assert.Equal(HttpStatusCode.TooManyRequests, (await site.GetAsync("/search?q=NOPE-0000")).Status);
         Assert.Equal(HttpStatusCode.TooManyRequests, (await site.GetAsync("/?q=NOPE-0000&notFound=1")).Status);
         Assert.Equal(HttpStatusCode.OK, (await site.GetAsync("/")).Status); // the home page itself stays open
+    }
+
+    /// <summary>Review 2, point 5: a failed search reads the passports once, not once for the exact steps and again for the near matches.</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("demo.msa@example.test")]
+    public async Task AFailedSearch_ShouldReadTheFleetOnce(string? email)
+    {
+        var context = mongo.NewContext();
+        await using var site = await ShellSite.StartAsync(context);
+        await site.Services.GetRequiredService<DemoDataService>().ResetAsync(DemoRig.Who);
+        var database = context.Database!;
+        await database.RunCommandAsync<MongoDB.Bson.BsonDocument>(new MongoDB.Bson.BsonDocument("profile", 2));
+
+        var (status, _, _) = await site.GetAsync("/search?q=NOPE-0000", email);
+
+        await database.RunCommandAsync<MongoDB.Bson.BsonDocument>(new MongoDB.Bson.BsonDocument("profile", 0));
+        var profile = await database.GetCollection<MongoDB.Bson.BsonDocument>("system.profile").Find(MongoDB.Driver.FilterDefinition<MongoDB.Bson.BsonDocument>.Empty).ToListAsync();
+        var fullReads = profile.Count(entry =>
+            entry.GetValue("ns", string.Empty).AsString.EndsWith("." + BatteryPassWeb.Dpp.Store.DppStore.Versions, StringComparison.Ordinal)
+            && entry.GetValue("command", new MongoDB.Bson.BsonDocument()).AsBsonDocument is var command
+            && command.Contains("find")
+            && (!command.Contains("filter") || command["filter"].AsBsonDocument.ElementCount == 0));
+        Assert.Equal(HttpStatusCode.Redirect, status);
+        Assert.Equal(1, fullReads);
     }
 
     [Fact]

@@ -97,28 +97,31 @@ public class HomeController(PassportPages pages) : Controller
             return Redirect(PageOf(passport.Address));
         }
 
-        // In other capitals (finding U02): the one published passport whose serial number, battery ID or passport ID it is.
         if (batteries is not null && query.Length >= NearMatchMinimum)
         {
-            var list = await batteries.ListOnePerBatteryAsync(query, IsPublished, matchClusters: false, cancellationToken);
-            var same = list.Rows.Where(row => string.Equals(row.SerialNumber, query, StringComparison.OrdinalIgnoreCase) || string.Equals(row.Identifier, query, StringComparison.OrdinalIgnoreCase)).ToArray();
+            // One read for the exact steps and the near matches (review 2, point 5).
+            var rows = await batteries.SearchRowsAsync(query, IsPublished, cancellationToken);
+            var list = rows.Where(row => row.Matches).Select(row => row.Row).ToArray();
+
+            // In other capitals (finding U02): the one published passport whose serial number, battery ID or passport ID it is.
+            var same = list.Where(row => string.Equals(row.SerialNumber, query, StringComparison.OrdinalIgnoreCase) || string.Equals(row.Identifier, query, StringComparison.OrdinalIgnoreCase)).ToArray();
             if (same.Length == 1 && same[0].Identifier.Length > 0)
             {
                 return Redirect(PageOf(same[0].Identifier));
             }
 
-            if (list.Rows.Count == 1 && list.Rows[0].Active?.DigitalProductPassportId is { } passportId && string.Equals(passportId, query, StringComparison.OrdinalIgnoreCase))
+            if (list.Length == 1 && list[0].Active?.DigitalProductPassportId is { } passportId && string.Equals(passportId, query, StringComparison.OrdinalIgnoreCase))
             {
-                return Redirect(PageOf(list.Rows[0].Identifier));
+                return Redirect(PageOf(list[0].Identifier));
             }
-        }
 
-        if (batteries is not null && query.Length >= NearMatchMinimum && TempData is { } handOver)
-        {
-            var (matches, total) = await NearMatchesAsync(batteries, query, cancellationToken);
-            handOver[NearMatchesQueryKey] = query;
-            handOver[NearMatchesKey] = matches.Select(match => $"{match.SerialNumber}\t{match.ModelName}\t{match.Href}").ToArray();
-            handOver[NearMatchesMoreKey] = User.Identity?.IsAuthenticated == true && total > matches.Count;
+            if (TempData is { } handOver)
+            {
+                var (matches, more) = NearMatches(rows, query);
+                handOver[NearMatchesQueryKey] = query;
+                handOver[NearMatchesKey] = matches.Select(match => $"{match.SerialNumber}\t{match.ModelName}\t{match.Href}").ToArray();
+                handOver[NearMatchesMoreKey] = more;
+            }
         }
 
         return RedirectToAction(nameof(Index), new { q = query, notFound = "1" });
@@ -128,21 +131,21 @@ public class HomeController(PassportPages pages) : Controller
     public sealed record NearMatch(string SerialNumber, string ModelName, string Href);
 
     /// <summary>
-    /// The published passports near the search text, one per battery; at most <see cref="NearMatchLimit"/> of them, and
-    /// the total. Signed in: the Registry's own matching (finding U02), clusters aside. A visitor: serial numbers that start
-    /// with the text, never the addresses' parts, so the fleet can't be listed (review 1, point 1).
+    /// The published passports near the search text, one per battery, from the rows the search already read; at most
+    /// <see cref="NearMatchLimit"/> of them, and whether more match. Signed in: the Registry's own matching (finding U02),
+    /// clusters aside. A visitor: serial numbers that start with the text, never the addresses' parts, so the fleet can't
+    /// be listed (review 1, point 1); no "more" for a visitor.
     /// </summary>
-    private async Task<(IReadOnlyList<NearMatch> Matches, int Total)> NearMatchesAsync(BatteryPages batteries, string query, CancellationToken cancellationToken)
+    private (IReadOnlyList<NearMatch> Matches, bool More) NearMatches(IReadOnlyList<SearchRow> rows, string query)
     {
-        var list = User.Identity?.IsAuthenticated == true
-            ? await batteries.ListOnePerBatteryAsync(query, IsPublished, matchClusters: false, cancellationToken)
-            : await batteries.ListOnePerBatteryAsync(null, row => IsPublished(row) && row.SerialNumber.StartsWith(query, StringComparison.OrdinalIgnoreCase), matchClusters: false, cancellationToken);
-        var matches = list.Rows
-            .Where(row => row.Identifier.Length > 0)
-            .Take(NearMatchLimit)
-            .Select(row => new NearMatch(row.SerialNumber, row.ModelName, PageOf(row.Identifier)))
+        var signedIn = User.Identity?.IsAuthenticated == true;
+        var near = rows
+            .Where(row => row.Row.Identifier.Length > 0
+                && (signedIn ? row.Matches : row.Row.SerialNumber.StartsWith(query, StringComparison.OrdinalIgnoreCase)))
+            .Select(row => row.Row)
             .ToArray();
-        return (matches, list.Rows.Count);
+        var matches = near.Take(NearMatchLimit).Select(row => new NearMatch(row.SerialNumber, row.ModelName, PageOf(row.Identifier))).ToArray();
+        return (matches, signedIn && near.Length > matches.Length);
     }
 
     /// <summary>A passport the public may open: the battery's active one.</summary>
