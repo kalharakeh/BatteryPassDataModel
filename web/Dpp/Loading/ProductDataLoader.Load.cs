@@ -63,7 +63,8 @@ public sealed partial class ProductDataLoader
                 return new LoadResult(false, ChangedSinceCheck, check);
             }
 
-            return check.HasChanges
+            // A load with nothing new still publishes the changes that wait on batteries its records reach (FU round two, 1).
+            return check.HasChanges || check.WaitingPassports > 0
                 ? await CarryOutAsync(who, check, plan, workbook)
                 : new LoadResult(false, NothingToLoad, check, plan.Family?.ExistingId);
         }
@@ -117,7 +118,15 @@ public sealed partial class ProductDataLoader
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
-            return await StoppedAsync(who, check, exception, [], saved, madeKept: made.Count);
+            return await StoppedAsync(who, check, exception, [], saved, madeKept: made.Count, reachedBatteries: before.Count);
+        }
+
+        // Batteries that an earlier load, or a load that stopped, left with changes waiting, and that a record named in the
+        // workbook reaches, are published now too: once each, with everything (FU round two, 1).
+        foreach (var passport in await WaitingReachedAsync(plan, none))
+        {
+            before.TryAdd(passport.PackId, passport);
+            hold?.Note(passport.PackId);
         }
 
         await editor.PublishHeldAsync(hold, sender);
@@ -126,6 +135,7 @@ public sealed partial class ProductDataLoader
         var changed = plan.All.Count(record => !record.IsNew && record.HasWork);
         var did = (newRecords, changed) switch
         {
+            (0, 0) => "no record needed a change",
             (> 0, > 0) => $"{Words.Count(newRecords, "record")} made and {changed} changed",
             (> 0, _) => $"{Words.Count(newRecords, "record")} made",
             _ => $"{Words.Count(changed, "record")} changed",
@@ -151,7 +161,7 @@ public sealed partial class ProductDataLoader
             entityId: plan.Family?.Id ?? string.Empty,
             cancellationToken: none);
         var published = outcomes.Count > 0 ? " " + PublishWords.ForMany(outcomes) : string.Empty;
-        return new LoadResult(true, $"Product data loaded: {did}, of {check.Summary}.{published}", check, plan.Family?.Id);
+        return new LoadResult(true, newRecords + changed == 0 ? $"Nothing in the workbook was new.{published}" : $"Product data loaded: {did}, of {check.Summary}.{published}", check, plan.Family?.Id);
 
         // One record: made when it is new, then its name, own fields, values and documents.
         async Task SaveRecordAsync(RecordPlan record)
@@ -330,7 +340,7 @@ public sealed partial class ProductDataLoader
     /// undone by hand.
     /// </summary>
     /// <param name="madeKept">In the second part: how many new records were made, and stay.</param>
-    private async Task<LoadResult> StoppedAsync(string who, LoadCheck check, Exception exception, List<Func<Task<bool>>> made, List<string> touched, int madeKept = 0)
+    private async Task<LoadResult> StoppedAsync(string who, LoadCheck check, Exception exception, List<Func<Task<bool>>> made, List<string> touched, int madeKept = 0, int reachedBatteries = 0)
     {
         var left = 0;
         for (var index = made.Count - 1; index >= 0; index--)
@@ -353,8 +363,11 @@ public sealed partial class ProductDataLoader
             : left == 0 ? " The records it had made were removed again."
             : $" {left} of the {Words.Count(made.Count, "record")} it had made couldn't be removed again; look at the product data pages.";
         var kept = madeKept > 0 ? $" The {Words.Count(madeKept, "new record")} it made stay{(madeKept == 1 ? "s" : string.Empty)}, complete." : string.Empty;
+        var waiting = reachedBatteries > 0 && touched.Count > 0
+            ? $" {Words.Count(reachedBatteries, "published battery", "published batteries")} built from these records stay{(reachedBatteries == 1 ? "s" : string.Empty)} on {(reachedBatteries == 1 ? "its" : "their")} version, with the changes waiting. Loading the workbook again, or \"Publish the waiting changes\" on {(reachedBatteries == 1 ? "its" : "each")} page, publishes {(reachedBatteries == 1 ? "it" : "them")}."
+            : string.Empty;
         var stays = touched.Count == 0 && madeKept == 0 ? " Nothing was saved. Load again when the fault is gone."
-            : $"{kept}{(touched.Count > 0 ? $" It had started to save changes to: {string.Join(", ", touched)}." : string.Empty)} Load again to finish; nothing has to be undone by hand.";
+            : $"{kept}{(touched.Count > 0 ? $" It had started to save changes to: {string.Join(", ", touched)}." : string.Empty)} Load again to finish; nothing has to be undone by hand.{waiting}";
         try
         {
             await audit.AppendApplicationAuditEventAsync(
@@ -372,6 +385,28 @@ public sealed partial class ProductDataLoader
         }
 
         return new LoadResult(false, $"The load stopped part way: {reason}.{removed}{stays}", check);
+    }
+
+    /// <summary>
+    /// The published batteries that have changes waiting (their marker is set) and that any record named in the workbook
+    /// reaches, changed or not (FU round two, 1). A battery is listed once.
+    /// </summary>
+    private async Task<IReadOnlyList<AffectedPassport>> WaitingReachedAsync(LoadPlan plan, CancellationToken cancellationToken)
+    {
+        var reached = new Dictionary<string, AffectedPassport>(StringComparer.Ordinal);
+        foreach (var record in plan.All.Where(record => record.ExistingId is not null && record.Record != LoadRecord.Family))
+        {
+            foreach (var passport in await editor.AffectedAsync(LoadFields.KindOf(record.Record), record.ExistingId!, cancellationToken))
+            {
+                reached.TryAdd(passport.PackId, passport);
+            }
+        }
+
+        var marked = (await store.GetManyAsync<BatteryPack>(reached.Keys, cancellationToken))
+            .Where(pack => pack.ChangesWaitingSinceUtc is not null)
+            .Select(pack => pack.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        return reached.Values.Where(passport => marked.Contains(passport.PackId)).ToArray();
     }
 
     /// <summary>A step of the load that was refused although the check had passed it.</summary>

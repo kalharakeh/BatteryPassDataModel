@@ -1,7 +1,9 @@
+using System.Text.Json.Nodes;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Loading;
 using BatteryPassWeb.Dpp.Store;
+using BatteryPassWeb.Dpp.Values;
 using BatteryPassWeb.Tests.Dpp;
 using static BatteryPassWeb.Tests.Loading.LoadTesting;
 
@@ -120,6 +122,72 @@ public sealed class ProductDataLoadOneVersionTests(MongoFixture mongo)
 
         Assert.Equal(BatteryPassWeb.Dpp.Pages.EditorOutcome.Saved, saved.Outcome);
         Assert.Equal(3, (await ActiveAsync(rig)).Number); // a hand save gives its own version, as before
+    }
+
+    /// <summary>A second batch of the seed model (2025) with a second published battery on it: version 1.</summary>
+    private static async Task<string> SecondBatteryAsync(LoadRig rig)
+    {
+        var seed = rig.Rig.Seed.Sources;
+        var batch = new ProductionBatch { Id = "batch-test-2025", ModelId = seed.Batch.ModelId, SiteId = seed.Batch.SiteId, Year = 2025, Values = new Dictionary<string, AttributeValue>(seed.Batch.Values) };
+        var values = seed.Pack.Values.ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.Ordinal);
+        values["batterySerialNumber"] = new AttributeValue { Value = JsonValue.Create("VPC8C05-6790"), GeneratedAtUtc = values["batterySerialNumber"].GeneratedAtUtc, Source = "seed" };
+        values["uniqueProductIdentifier"] = new AttributeValue { Value = JsonValue.Create("urn:test:battery:VPC8C05-6790"), GeneratedAtUtc = values["uniqueProductIdentifier"].GeneratedAtUtc, Source = "seed" };
+        var pack = new BatteryPack { Id = "pack-test-2", BatchId = batch.Id, OperatorId = seed.Pack.OperatorId, ClusterId = seed.Pack.ClusterId, Values = values };
+        await rig.Store.InsertAsync(batch);
+        await rig.Store.InsertAsync(pack);
+        Assert.Null((await rig.Rig.Publication.PublishAsync(PublicationTesting.Team, pack.Id)).Problem);
+        return pack.Id;
+    }
+
+    [Fact]
+    public async Task AReloadAfterAStopAfterTheModel_ShouldPublishEveryBatteryTheWorkbookReaches_OnceEach()
+    {
+        var rig = Around(await PublicationTesting.PublishedRigAsync(mongo));
+        var second = await SecondBatteryAsync(rig);
+        var workbook = ModelBatchAndDocument();
+        rig.Loader.StepHook = step => step == "model" ? throw new InvalidOperationException("the database went away") : Task.CompletedTask;
+        var stopped = await rig.LoadAsync(workbook, Files());
+        Assert.False(stopped.Loaded);
+        Assert.Contains("stay on their version, with the changes waiting. Loading the workbook again, or \"Publish the waiting changes\" on each page, publishes them.", stopped.Message, StringComparison.Ordinal);
+        Assert.Equal(1, (await rig.Store.GetActiveVersionAsync(second))!.Number);
+        rig.Loader.StepHook = null;
+
+        var check = await rig.CheckAsync(workbook, Files());
+        var again = await rig.LoadAsync(workbook, Files());
+
+        Assert.Contains("1 more published battery has changes waiting from an earlier load or save", check.Publication?.Text, StringComparison.Ordinal);
+        Assert.Contains("press \"Publish the waiting changes\"", check.Publication?.Text, StringComparison.Ordinal);
+        Assert.True(again.Loaded, again.Message);
+        Assert.Equal(2, (await ActiveAsync(rig)).Number); // the battery of the batch the re-load changes
+        var other = (await rig.Store.GetActiveVersionAsync(second))!; // reached by the model only: saved before the stop
+        Assert.Equal(2, other.Number);
+        Assert.Contains("\"gramKilogramValue\":520", other.StaticCore.ToJsonString(), StringComparison.Ordinal);
+        Assert.Null((await rig.Store.GetAsync<BatteryPack>(second))!.ChangesWaitingSinceUtc);
+    }
+
+    [Fact]
+    public async Task AReloadAfterAStopAfterTheLastSave_ShouldSayNothingIsNewAndStillPublish()
+    {
+        var rig = Around(await PublicationTesting.PublishedRigAsync(mongo));
+        var workbook = ModelBatchAndDocument();
+        rig.Loader.StepHook = step => step == "batch" ? throw new InvalidOperationException("the database went away") : Task.CompletedTask;
+        Assert.False((await rig.LoadAsync(workbook, Files())).Loaded);
+        Assert.Equal(1, (await ActiveAsync(rig)).Number);
+        rig.Loader.StepHook = null;
+
+        var check = await rig.CheckAsync(workbook, Files());
+        var again = await rig.LoadAsync(workbook, Files());
+
+        Assert.False(check.HasChanges); // every record is as the workbook says
+        Assert.True(check.CanLoad); // but a battery has changes waiting, so Load is offered
+        Assert.NotNull(check.Publication);
+        Assert.True(again.Loaded, again.Message);
+        Assert.Equal(2, (await ActiveAsync(rig)).Number);
+        Assert.Null((await rig.Store.GetAsync<BatteryPack>(rig.Rig.PackId))!.ChangesWaitingSinceUtc);
+
+        var third = await rig.LoadAsync(workbook, Files()); // nothing waits now
+        Assert.False(third.Loaded);
+        Assert.Equal(2, (await ActiveAsync(rig)).Number);
     }
 
     [Fact]

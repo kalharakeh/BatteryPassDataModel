@@ -1325,10 +1325,13 @@ public sealed partial class ProductDataLoader(
             }
         }
 
+        // Batteries with changes waiting that a record of the workbook reaches, changed or not: the load publishes them too.
+        var waiting = (await WaitingReachedAsync(plan, cancellationToken)).Count(passport => !reached.Contains(passport.PackId));
         plan.PublishedPassports = reached.Count;
-        if (reached.Count > 0)
+        plan.WaitingPassports = waiting;
+        if (reached.Count > 0 || waiting > 0)
         {
-            plan.Publication = new LoadPublication(reached.Count, PartWords(plan));
+            plan.Publication = new LoadPublication(reached.Count, PartWords(plan), waiting);
         }
     }
 
@@ -1362,7 +1365,7 @@ public sealed partial class ProductDataLoader(
         var records = plan.All.Select(record => record.View()).ToArray();
         var problems = plan.Problems.Distinct().ToArray();
         var pending = plan.Pending.Distinct().ToArray();
-        return new LoadCheck(name, null, records, problems, plan.Notes.ToArray(), plan.PublishedPassports, Stamp(workbook, files, records, problems, pending)) { Pending = pending, Publication = plan.Publication };
+        return new LoadCheck(name, null, records, problems, plan.Notes.ToArray(), plan.PublishedPassports, Stamp(workbook, files, records, problems, pending)) { Pending = pending, Publication = plan.Publication, WaitingPassports = plan.WaitingPassports };
     }
 
     /// <summary>

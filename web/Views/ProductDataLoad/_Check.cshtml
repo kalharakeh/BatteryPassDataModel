@@ -26,7 +26,7 @@
         {
             <span class="bp-soft-tag is-refused" data-load-verdict>@Words.Count(check.WorkbookProblem is null ? check.Problems.Count : 1, "problem")</span>
         }
-        else if (check.HasChanges)
+        else if (check.CanLoad)
         {
             <span class="bp-soft-tag is-saved" data-load-verdict>Ready to load</span>
         }
@@ -64,6 +64,10 @@
     else if (check.HasChanges)
     {
         <p class="bp-help-text mt-2 mb-0">No problems. Press Load to save everything below, or nothing if something goes wrong on the way.</p>
+    }
+    else if (check.CanLoad)
+    {
+        <p class="bp-help-text mt-2 mb-0">The app already holds everything this workbook says. Press Load to publish the changes that wait on published batteries.</p>
     }
     else
     {
