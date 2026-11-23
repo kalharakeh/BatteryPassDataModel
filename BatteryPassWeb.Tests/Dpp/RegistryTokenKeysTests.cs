@@ -110,7 +110,7 @@ public sealed class RegistryTokenKeysTests : IDisposable
     }
 
     [Fact]
-    public async Task WhileTheEuIsDown_WithoutKeys_ATokenShouldBe401_AndThePublicPartStaysOpen()
+    public async Task WhileTheEuIsDown_WithoutKeys_ATokenShouldBe401_UntilTheKeySetAnswersAgain()
     {
         var keys = KeySet.With((_key, KeyId));
         keys.Down = true;
@@ -134,6 +134,21 @@ public sealed class RegistryTokenKeysTests : IDisposable
         keys.Body = body;
 
         Assert.Equal(401, (await Check(keys, _clock).CheckAsync(TokenNow())).Status);
+    }
+
+    [Fact]
+    public async Task ATooLargeKeySetWithoutALength_ShouldNotBeRead()
+    {
+        var keys = KeySet.With((_key, KeyId));
+        keys.Unsized = true;
+        var check = Check(keys, _clock);
+        Assert.True((await check.CheckAsync(TokenNow())).Authorised); // the same answer, small enough, is read
+
+        var large = KeySet.With((_key, KeyId));
+        large.Unsized = true;
+        large.Body = new JsonObject { ["keys"] = new JsonArray(Jwk(_key, KeyId)), ["padding"] = new string('x', BatteryPassWeb.Dpp.RegistryToken.RegistryTokenKeys.MaxBytes) }.ToJsonString();
+
+        Assert.Equal(401, (await Check(large, _clock).CheckAsync(TokenNow())).Status);
     }
 
     [Fact]

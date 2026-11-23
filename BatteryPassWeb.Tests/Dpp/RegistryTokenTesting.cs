@@ -74,6 +74,13 @@ internal static class RegistryTokenTesting
         return $"{signed}.{Base64UrlEncoder.Encode(key.SignData(Encoding.ASCII.GetBytes(signed), HashAlgorithmName.SHA384))}";
     }
 
+    /// <summary>A compact token from header and claims written as raw JSON text (to write a name twice), signed with ES384.</summary>
+    public static string RawToken(ECDsa key, string header, string claims)
+    {
+        var signed = $"{Base64UrlEncoder.Encode(Encoding.UTF8.GetBytes(header))}.{Base64UrlEncoder.Encode(Encoding.UTF8.GetBytes(claims))}";
+        return $"{signed}.{Base64UrlEncoder.Encode(key.SignData(Encoding.ASCII.GetBytes(signed), HashAlgorithmName.SHA384))}";
+    }
+
     /// <summary>A token signed with HMAC-SHA256, its secret the public key: the old trick of a verifier that trusts the token's alg.</summary>
     public static string HmacToken(byte[] secret, JsonObject claims)
     {
@@ -88,6 +95,48 @@ internal static class RegistryTokenTesting
     {
         var used = settings ?? Settings;
         return new RegistryTokenCheck(used, new RegistryTokenKeys(keySet, used, clock, NullLogger<RegistryTokenKeys>.Instance), clock);
+    }
+
+    /// <summary>Content whose length isn't known before it is read: no Content-Length header.</summary>
+    public sealed class UnsizedContent(byte[] bytes) : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) => stream.WriteAsync(bytes).AsTask();
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
+        }
+
+        protected override Task<Stream> CreateContentReadStreamAsync() => Task.FromResult<Stream>(new OneWayStream(bytes));
+    }
+
+    /// <summary>A stream that can only be read forward, in small pieces, and has no length.</summary>
+    private sealed class OneWayStream(byte[] bytes) : Stream
+    {
+        private int _position;
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            var take = Math.Min(Math.Min(count, 4096), bytes.Length - _position);
+            Array.Copy(bytes, _position, buffer, offset, take);
+            _position += take;
+            return take;
+        }
+
+        public override void Flush()
+        {
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
 
     /// <summary>A clock the test sets.</summary>
@@ -117,6 +166,9 @@ internal static class RegistryTokenTesting
         /// <summary>Text to serve in place of the key set, when set.</summary>
         public string? Body { get; set; }
 
+        /// <summary>Serve the body without a Content-Length, as a chunked answer would come.</summary>
+        public bool Unsized { get; set; }
+
         public static KeySet With(params (ECDsa Key, string KeyId)[] keys)
         {
             var set = new KeySet();
@@ -139,7 +191,7 @@ internal static class RegistryTokenTesting
             }
 
             var body = Body ?? new JsonObject { ["keys"] = new JsonArray(Keys.Select(key => (JsonNode)key.DeepClone()).ToArray()) }.ToJsonString();
-            var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+            var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = Unsized ? new UnsizedContent(Encoding.UTF8.GetBytes(body)) : new StringContent(body, Encoding.UTF8, "application/json") };
             if (CacheControl is not null)
             {
                 response.Headers.TryAddWithoutValidation("Cache-Control", CacheControl);

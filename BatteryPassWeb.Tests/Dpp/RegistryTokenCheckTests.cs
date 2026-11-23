@@ -77,6 +77,8 @@ public sealed class RegistryTokenCheckTests : IDisposable
         { "no exp", claims => claims.Remove("exp"), null },
         { "no iat", claims => claims.Remove("iat"), null },
         { "exp as text", claims => claims["exp"] = claims["exp"]!.ToString(), null },
+        { "nbf 31 s ahead", claims => claims["nbf"] = Start.AddSeconds(31).ToUnixTimeSeconds(), null },
+        { "nbf as text", claims => claims["nbf"] = Start.ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture), null },
         { "wrong audience", claims => claims["aud"] = "https://another.example.com", null },
         { "audience with a closing slash", claims => claims["aud"] = Audience + "/", null },
         { "audience with a path", claims => claims["aud"] = Audience + "/25S", null },
@@ -106,6 +108,40 @@ public sealed class RegistryTokenCheckTests : IDisposable
         var result = await CheckAsync(token);
 
         Assert.Equal((401, "expired"), (result.Status, result.Reason));
+    }
+
+    [Fact]
+    public async Task AnNbfWithinTheSkew_ShouldBeAccepted_AndOneBeyondIt401()
+    {
+        var soon = await CheckAsync(Valid(claims => claims["nbf"] = Start.AddSeconds(29).ToUnixTimeSeconds()));
+        var later = await CheckAsync(Valid(claims => claims["nbf"] = Start.AddSeconds(31).ToUnixTimeSeconds()));
+
+        Assert.True(soon.Authorised);
+        Assert.Equal((401, "not-yet-valid"), (later.Status, later.Reason));
+    }
+
+    [Fact]
+    public async Task ANameWrittenTwiceInTheHeader_ShouldBe401()
+    {
+        var claims = Claims(Start).ToJsonString();
+        var twice = RawToken(_key, $"{{\"typ\":\"at+jwt\",\"alg\":\"HS256\",\"alg\":\"ES384\",\"kid\":\"{KeyId}\"}}", claims);
+        var once = RawToken(_key, $"{{\"typ\":\"at+jwt\",\"alg\":\"ES384\",\"kid\":\"{KeyId}\"}}", claims);
+
+        Assert.True((await CheckAsync(once)).Authorised);
+        Assert.Equal((401, "malformed"), ((await CheckAsync(twice)).Status, (await CheckAsync(twice)).Reason));
+    }
+
+    [Fact]
+    public async Task ANameWrittenTwiceInTheRequestor_ShouldBe403()
+    {
+        var claims = Claims(Start);
+        claims.Remove("resource_requestor_identifiers");
+        var text = claims.ToJsonString().TrimEnd('}')
+            + $",\"resource_requestor_identifiers\":[{{\"type\":\"ORG_IDENTIFIER\",\"value\":\"ORG-SOMEONE-ELSE\",\"value\":\"{Organisation}\"}}]}}";
+
+        var result = await CheckAsync(RawToken(_key, Header().ToJsonString(), text));
+
+        Assert.Equal((403, "requestor-unreadable"), (result.Status, result.Reason));
     }
 
     [Fact]

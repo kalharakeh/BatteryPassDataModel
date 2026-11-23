@@ -225,6 +225,21 @@ public sealed class RegistryTokenHttpTests(MongoFixture mongo) : IDisposable
     }
 
     [Fact]
+    public async Task WhileTheEusKeySetIsDown_WithNoKeys_ATokenShouldBe401_AndAnonymousReadsStayOpen()
+    {
+        await using var site = await SiteAsync();
+        site.Keys.Down = true;
+
+        using var token = await site.GetAsync($"/dpp/{site.Id}", "application/json", $"Bearer {ValidToken()}");
+        using var anonymous = await site.GetAsync($"/dpp/{site.Id}", "application/json");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, token.StatusCode);
+        await AssertNoPassportAsync(site, token);
+        Assert.Equal(HttpStatusCode.OK, anonymous.StatusCode);
+        Assert.Equal(PublicPaths(site), Paths(JsonNode.Parse(await anonymous.Content.ReadAsStringAsync())!.AsObject()));
+    }
+
+    [Fact]
     public async Task WhileTheCheckIsOff_AValidToken_ShouldStillBe401_NeverThePublicPart()
     {
         await using var site = await SiteAsync(RegistryTokenSettings.Off);
