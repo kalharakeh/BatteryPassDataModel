@@ -28,31 +28,44 @@ namespace BatteryPassWeb.Tests.Dpp;
 [Collection(MongoCollection.Name)]
 public sealed class PublicPassportDataTests(MongoFixture mongo)
 {
+    // R3 (the manager's decision 6, G01): the page only when text/html or text/* is named and rated at least as high as
+    // JSON; JSON otherwise. The EU registry's Accept isn't known yet (E13). Changed from C3's tie rule: "*/*", no header,
+    // "application/json, */*", application/ld+json and a refused JSON with nothing else named now get the data.
     [Theory]
     [InlineData("application/json", true)]
     [InlineData("application/json; charset=utf-8", true)]
     [InlineData("application/json;q=1, text/html;q=0.5", true)]
-    [InlineData("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", false)]
-    [InlineData("text/html, application/json", false)]
-    [InlineData("*/*", false)]
-    [InlineData("", false)]
-    [InlineData(null, false)]
-    [InlineData("application/json;q=0", false)]
-    [InlineData("application/json;q=0.5, text/*", false)] // text/* covers the page (C3 round two, point 7)
-    [InlineData("application/json;q=0.5, */*", false)]
-    [InlineData("application/json, */*", false)] // a tie goes to the page
+    [InlineData("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", false)] // a browser keeps the page
+    [InlineData("text/html, application/json", false)] // a tie goes to the page when the page is named
+    [InlineData("*/*", true)]
+    [InlineData("", true)]
+    [InlineData(null, true)]
+    [InlineData("application/json;q=0", true)] // nothing names the page
+    [InlineData("application/json;q=0.5, text/*", false)] // text/* names the page (C3 round two, point 7)
+    [InlineData("application/json;q=0.5, */*", true)]
+    [InlineData("application/json, */*", true)]
     [InlineData("application/json, text/*", false)]
-    [InlineData("application/ld+json", false)]
+    [InlineData("application/ld+json", true)]
+    [InlineData("application/ld+json, text/html;q=0.9", true)]
+    [InlineData("application/ld+json;q=0.4, text/*;q=0.5", false)]
     [InlineData("application/json, */*;q=0.1", true)]
     [InlineData("application/json, text/*;q=0.5", true)]
     [InlineData("application/json, text/html;q=0.1, */*", true)] // text/html itself says how much the page is wanted
-    [InlineData("*/*;q=0.8, application/json;q=0", false)]
+    [InlineData("*/*;q=0.8, application/json;q=0", true)]
+    [InlineData("text/html, */*", false)]
+    [InlineData("text/html;q=0", true)] // the page refused
+    [InlineData("text/plain", true)] // text/plain isn't the page
+    [InlineData("application/xml", true)]
     [InlineData("application/*", true)]
     [InlineData("application/json;q=abc, text/html;q=0.9", false)] // an unreadable q: the range is ignored (C3 round three, point 4)
     [InlineData("application/json;q=2, text/html;q=0.9", false)] // a q above 1 is unreadable too
     [InlineData("application/json;q=, text/html;q=0.9", false)]
     [InlineData("application/json, text/html;q=abc", true)]
     [InlineData("application/json;q=0.95, text/html;q=0.9", true)]
+    [InlineData("text/html;q=0.9, application/json;q=0.95", true)]
+    [InlineData("text/html;q=0.9, application/json;q=0.9", false)]
+    [InlineData("not a media type, text/html", false)] // a range that can't be read is skipped, the rest still counts
+    [InlineData("not a media type", true)]
     public void TheAddress_ShouldAnswerData_OnlyWhenAskedForJson(string? accept, bool data) =>
         Assert.Equal(data, PrefersJsonAttribute.PrefersJson(accept));
 

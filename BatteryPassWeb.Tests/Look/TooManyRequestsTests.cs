@@ -69,7 +69,7 @@ public sealed class TooManyRequestsTests(MongoFixture mongo)
 
     [Fact]
     public void TheJsonRule_ShouldBeThePassportAddressesOwn() =>
-        Assert.Contains("PrefersJsonAttribute.PrefersJson(", File.ReadAllText(DppTestFiles.RepoFile("web", "Configuration", "TooManyRequests.cs")), StringComparison.Ordinal);
+        Assert.Contains("PrefersJsonAttribute.AnswersData(", File.ReadAllText(DppTestFiles.RepoFile("web", "Configuration", "TooManyRequests.cs")), StringComparison.Ordinal);
 
     [Fact]
     public void TheAppAndTheApiReference_ShouldSaySo()

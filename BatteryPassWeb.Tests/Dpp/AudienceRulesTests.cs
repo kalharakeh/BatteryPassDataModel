@@ -11,7 +11,7 @@ public sealed class AudienceRulesTests
     internal static readonly string[] ReaderKinds =
     [
         "anonymous", "own-cluster-user", "own-cluster-admin", "other-cluster", "team", "notified-body",
-        "market-surveillance", "commission", "li-repair", "li-recycling", "li-treatment",
+        "market-surveillance", "commission", "li-repair", "li-recycling", "li-treatment", "eu-registry",
     ];
 
     public static TheoryData<string, int> EveryReaderAndAttribute()
@@ -79,6 +79,7 @@ public sealed class AudienceRulesTests
     internal static bool Expected(string kind, AttributeDefinition attribute) => kind switch
     {
         "team" or "market-surveillance" => true,
+        "eu-registry" => true, // R3, decision 94: all four levels, as the EU's combined example carries them, until E3 is answered
         "anonymous" or "other-cluster" => attribute.Audience == Audience.Public,
         "own-cluster-user" or "own-cluster-admin" => attribute.Audience is Audience.Public or Audience.Purchaser or Audience.Shared,
         "notified-body" => attribute.Audience is Audience.Public or Audience.Shared or Audience.Authorities, // R05: the model's restricted data too (the owner, 11 Nov 2026)
@@ -102,6 +103,7 @@ public sealed class AudienceRulesTests
         "li-repair" => Reader.With("repair@example.com", ReaderRole.LiRepair),
         "li-recycling" => Reader.With("recycling@example.com", ReaderRole.LiRecycling),
         "li-treatment" => Reader.With("treatment@example.com", ReaderRole.LiTreatment),
+        "eu-registry" => DppReaders.EuRegistry("ORG-TEST-1"),
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
     };
 }

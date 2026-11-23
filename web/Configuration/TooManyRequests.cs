@@ -24,11 +24,12 @@ public static class TooManyRequests
 
         response.StatusCode = StatusCodes.Status429TooManyRequests;
         var path = http.Request.Path;
-        // JSON for the API, the .json addresses, and a passport address asked for JSON by the same rule its data answer
-        // uses (PrefersJson; point 10 of round three).
+        // JSON for the API, the .json addresses, and a passport address that answers data by the same rule its data answer
+        // uses (PrefersJson; point 10 of round three). Only the passport addresses: since R3 no Accept header or "*/*" gets
+        // a passport's data, but the search and the sign-in page keep their sentence.
         if (path.StartsWithSegments("/api")
             || (path.Value ?? string.Empty).EndsWith(".json", StringComparison.OrdinalIgnoreCase)
-            || BatteryPassWeb.Dpp.Api.PrefersJsonAttribute.PrefersJson(http.Request.Headers.Accept.ToString()))
+            || (path.StartsWithSegments("/dpp") && BatteryPassWeb.Dpp.Api.PrefersJsonAttribute.AnswersData(http.Request)))
         {
             await response.WriteAsJsonAsync(new { error = "Too many requests." }, cancellationToken);
             return;

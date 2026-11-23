@@ -5,6 +5,7 @@ using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Controllers;
 using BatteryPassWeb.Dpp;
 using BatteryPassWeb.Dpp.Demo;
+using BatteryPassWeb.Dpp.RegistryToken;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Builder;
@@ -36,9 +37,11 @@ public sealed class PublicDataHttpTests(MongoFixture mongo)
     [InlineData("application/json, */*;q=0.1", true)]
     [InlineData(Browser, false)]
     [InlineData("application/json;q=0.5, text/*", false)]
-    [InlineData("application/json, */*", false)]
-    [InlineData("application/ld+json", false)]
-    [InlineData("", false)]
+    [InlineData("application/json, */*", true)] // R3, decision 6: the page only when it is named and wanted as much as JSON
+    [InlineData("application/ld+json", true)]
+    [InlineData("*/*", true)]
+    [InlineData("", true)]
+    [InlineData("text/html, application/json", false)]
     public async Task ThePublicAddress_ShouldAnswerDataOrPage_ByTheAcceptHeader(string accept, bool data)
     {
         await using var site = await SiteAsync();
@@ -112,7 +115,8 @@ public sealed class PublicDataHttpTests(MongoFixture mongo)
             statuses.Add(answer.StatusCode);
         }
 
-        Assert.Equal([HttpStatusCode.OK, HttpStatusCode.OK, HttpStatusCode.OK, HttpStatusCode.TooManyRequests], statuses);
+        // R3: a token that isn't the EU registry's valid one gets 401, never the public part, and still counts.
+        Assert.Equal([HttpStatusCode.Unauthorized, HttpStatusCode.Unauthorized, HttpStatusCode.Unauthorized, HttpStatusCode.TooManyRequests], statuses);
         using var page = await site.GetAsync($"/dpp/{site.Id}", Browser);
         Assert.Equal(HttpStatusCode.OK, page.StatusCode); // the page itself has no limit, as before
     }
@@ -208,7 +212,9 @@ public sealed class PublicDataHttpTests(MongoFixture mongo)
         services.AddDpp();
         services.AddSingleton<DemoDataService>();
         services.AddControllersWithViews().AddApplicationPart(typeof(PassportController).Assembly);
-        services.AddAuthentication().AddCookie();
+        services.AddAuthentication(Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationDefaults.AuthenticationScheme).AddCookie()
+            .AddRegistryToken(); // R3: wired as Program.cs wires it, the check off
+        services.AddRegistryToken(BatteryPassWeb.Dpp.RegistryToken.RegistryTokenSettings.Off);
         services.AddAuthorization(authorization =>
         {
             authorization.AddPolicy("AdminOnly", policy => policy.RequireRole("admin"));
@@ -223,8 +229,9 @@ public sealed class PublicDataHttpTests(MongoFixture mongo)
 
         var app = builder.Build();
         app.UseRouting();
-        app.UseRateLimiter();
         app.UseAuthentication();
+        app.UseRegistryToken();
+        app.UseRateLimiter();
         app.UseAuthorization();
         app.MapControllers();
         return app;
