@@ -31,10 +31,10 @@ public sealed class ProductDataPagesTests(MongoFixture mongo)
         var family = Assert.Single((await pages.FamiliesAsync()).Families);
         var page = (await pages.FamilyAsync("family-test", modelId))!;
 
-        Assert.Equal(29, family.Missing); // the seeded model and batch are complete; #20 is filled in on creation; #57 counts (R22)
+        Assert.Equal(39, family.Missing); // the seeded model and batch are complete; #20 is filled in on creation; #57 counts (R22)
         var chips = page.Models.ToDictionary(chip => chip.Model.Id, chip => chip.Missing);
-        Assert.Equal((0, 29), (chips["model-test"], chips[modelId]));
-        Assert.Equal(29, page.ModelEditor!.Missing);
+        Assert.Equal((0, 39), (chips["model-test"], chips[modelId]));
+        Assert.Equal(39, page.ModelEditor!.Missing);
     }
 
     [Fact]
@@ -64,7 +64,7 @@ public sealed class ProductDataPagesTests(MongoFixture mongo)
         Assert.Equal("model-test", page.SelectedModel?.Id);
         var batch = Assert.Single(page.Batches);
         Assert.Equal(("Example plant", 17, 17, 1, 0), (batch.SiteName, batch.Filled, batch.Total, batch.Packs, batch.Published));
-        Assert.Equal((TargetKind.Model, 38, 38), (page.ModelEditor!.Kind, page.ModelEditor.Filled, page.ModelEditor.Total));
+        Assert.Equal((TargetKind.Model, 48, 48), (page.ModelEditor!.Kind, page.ModelEditor.Filled, page.ModelEditor.Total));
         Assert.Equal("/admin/models/model-test", page.ModelEditor.SaveAction);
         Assert.Null(await PageTesting.Pages(rig).FamilyAsync("no-such-family", null));
     }

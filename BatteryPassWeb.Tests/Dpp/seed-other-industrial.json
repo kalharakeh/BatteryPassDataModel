@@ -49,7 +49,17 @@
       "cRateOfRelevantCycleLifeTest": { "amperePerAmpereHourValue": 0.5, "amperePerAmpereHourUnit": "A/Ah" },
       "temperatureRangeIdleStateLowerBoundary": { "degreeCelsiusUnit": "°C", "celsiusValue": -30 },
       "temperatureRangeIdleStateUpperBoundary": { "degreeCelsiusUnit": "°C", "celsiusValue": 55 },
-      "notInUseTemperatureRangeTest": { "en-GB": "Storage test to IEC 62660-1 between -30 °C and 55 °C" }
+      "notInUseTemperatureRangeTest": { "en-GB": "Storage test to IEC 62660-1 between -30 °C and 55 °C" },
+      "endUserRoleInWastePrevention": { "en-GB": "Use and store the battery as the manual says, and have it repaired rather than replaced." },
+      "endUserRoleInSeparateCollection": { "en-GB": "Never put the battery with other waste: hand it in for separate collection at its end of life." },
+      "separateCollectionPoints": { "en-GB": "Collection points for industrial batteries: https://www.batteries.scania.test/battery/collection-points" },
+      "takeBackCollectionPoints": { "en-GB": "The manufacturer takes the battery back free of charge: contact your Scania dealer." },
+      "preparationForReuseFacilities": { "en-GB": "Authorised re-use facility: Example Re-use Centre, Sweden." },
+      "preparationForRepurposingFacilities": { "en-GB": "Authorised repurposing facility: Example Second-Life Hub, Sweden." },
+      "wasteBatteryTreatmentFacilities": { "en-GB": "Authorised recycling plant: Example Recycling AB, Sweden." },
+      "wasteBatterySafetyInstructions": { "en-GB": "Store a damaged battery dry and ventilated, away from anything that burns, and call the dealer." },
+      "batteryLabelSymbolMeaning": { "en-GB": "The crossed-out wheeled bin means the battery must be collected separately from other waste." },
+      "batterySubstancesImpact": { "en-GB": "Thrown away with other waste, the electrolyte and metals can harm soil, water and health." }
     }
   },
   "site": {

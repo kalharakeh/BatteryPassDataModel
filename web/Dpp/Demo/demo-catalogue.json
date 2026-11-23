@@ -195,6 +195,36 @@
           "language": "en-GB",
           "resourceTitle": "Collection, second life and treatment"
         },
+        "endUserRoleInWastePrevention": {
+          "en-GB": "Use and store the battery as the manual says, and have it repaired rather than replaced. (demo)"
+        },
+        "endUserRoleInSeparateCollection": {
+          "en-GB": "Never put the battery with other waste: hand it in for separate collection at its end of life. (demo)"
+        },
+        "separateCollectionPoints": {
+          "en-GB": "Collection points for industrial batteries: https://www.example.com/battery/collection-points (demo)"
+        },
+        "takeBackCollectionPoints": {
+          "en-GB": "The manufacturer takes the battery back free of charge: contact your Scania dealer. (demo)"
+        },
+        "preparationForReuseFacilities": {
+          "en-GB": "Authorised re-use facility: Example Re-use Centre, Sweden. (demo)"
+        },
+        "preparationForRepurposingFacilities": {
+          "en-GB": "Authorised repurposing facility: Example Second-Life Hub, Sweden. (demo)"
+        },
+        "wasteBatteryTreatmentFacilities": {
+          "en-GB": "Authorised recycling plant: Example Recycling AB, Sweden. (demo)"
+        },
+        "wasteBatterySafetyInstructions": {
+          "en-GB": "Store a damaged battery dry and ventilated, away from anything that burns, and call the dealer. (demo)"
+        },
+        "batteryLabelSymbolMeaning": {
+          "en-GB": "The crossed-out wheeled bin means the battery must be collected separately from other waste. (demo)"
+        },
+        "batterySubstancesImpact": {
+          "en-GB": "Thrown away with other waste, the electrolyte and metals can harm soil, water and health. (demo)"
+        },
         "ratedCapacity": {
           "amperehourMiliamperehourValue": 140,
           "ampereHourMiliamperehourUnit": "Ah"
@@ -377,6 +407,36 @@
           "language": "en-GB",
           "resourceTitle": "Collection, second life and treatment"
         },
+        "endUserRoleInWastePrevention": {
+          "en-GB": "Use and store the battery as the manual says, and have it repaired rather than replaced. (demo)"
+        },
+        "endUserRoleInSeparateCollection": {
+          "en-GB": "Never put the battery with other waste: hand it in for separate collection at its end of life. (demo)"
+        },
+        "separateCollectionPoints": {
+          "en-GB": "Collection points for industrial batteries: https://www.example.com/battery/collection-points (demo)"
+        },
+        "takeBackCollectionPoints": {
+          "en-GB": "The manufacturer takes the battery back free of charge: contact your Scania dealer. (demo)"
+        },
+        "preparationForReuseFacilities": {
+          "en-GB": "Authorised re-use facility: Example Re-use Centre, Sweden. (demo)"
+        },
+        "preparationForRepurposingFacilities": {
+          "en-GB": "Authorised repurposing facility: Example Second-Life Hub, Sweden. (demo)"
+        },
+        "wasteBatteryTreatmentFacilities": {
+          "en-GB": "Authorised recycling plant: Example Recycling AB, Sweden. (demo)"
+        },
+        "wasteBatterySafetyInstructions": {
+          "en-GB": "Store a damaged battery dry and ventilated, away from anything that burns, and call the dealer. (demo)"
+        },
+        "batteryLabelSymbolMeaning": {
+          "en-GB": "The crossed-out wheeled bin means the battery must be collected separately from other waste. (demo)"
+        },
+        "batterySubstancesImpact": {
+          "en-GB": "Thrown away with other waste, the electrolyte and metals can harm soil, water and health. (demo)"
+        },
         "ratedCapacity": {
           "amperehourMiliamperehourValue": 260,
           "ampereHourMiliamperehourUnit": "Ah"
@@ -557,6 +617,36 @@
           "url": "https://www.example.com/battery/collection-and-treatment.pdf",
           "language": "en-GB",
           "resourceTitle": "Collection, second life and treatment"
+        },
+        "endUserRoleInWastePrevention": {
+          "en-GB": "Use and store the battery as the manual says, and have it repaired rather than replaced. (demo)"
+        },
+        "endUserRoleInSeparateCollection": {
+          "en-GB": "Never put the battery with other waste: hand it in for separate collection at its end of life. (demo)"
+        },
+        "separateCollectionPoints": {
+          "en-GB": "Collection points for industrial batteries: https://www.example.com/battery/collection-points (demo)"
+        },
+        "takeBackCollectionPoints": {
+          "en-GB": "The manufacturer takes the battery back free of charge: contact your Scania dealer. (demo)"
+        },
+        "preparationForReuseFacilities": {
+          "en-GB": "Authorised re-use facility: Example Re-use Centre, Sweden. (demo)"
+        },
+        "preparationForRepurposingFacilities": {
+          "en-GB": "Authorised repurposing facility: Example Second-Life Hub, Sweden. (demo)"
+        },
+        "wasteBatteryTreatmentFacilities": {
+          "en-GB": "Authorised recycling plant: Example Recycling AB, Sweden. (demo)"
+        },
+        "wasteBatterySafetyInstructions": {
+          "en-GB": "Store a damaged battery dry and ventilated, away from anything that burns, and call the dealer. (demo)"
+        },
+        "batteryLabelSymbolMeaning": {
+          "en-GB": "The crossed-out wheeled bin means the battery must be collected separately from other waste. (demo)"
+        },
+        "batterySubstancesImpact": {
+          "en-GB": "Thrown away with other waste, the electrolyte and metals can harm soil, water and health. (demo)"
         },
         "ratedCapacity": {
           "amperehourMiliamperehourValue": 220,

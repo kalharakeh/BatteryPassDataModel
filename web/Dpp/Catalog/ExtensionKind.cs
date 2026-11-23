@@ -22,14 +22,25 @@ public enum ExtensionKind
 /// <summary>The kind of each extension, by its property; E1–E4 are minutes.</summary>
 public static class ExtensionKinds
 {
-    private static readonly Dictionary<string, ExtensionKind> Kinds = new(StringComparer.Ordinal)
+    private static readonly Dictionary<string, ExtensionKind> Kinds = Build();
+
+    private static Dictionary<string, ExtensionKind> Build()
     {
-        [AttributeCatalog.ManufacturingCity] = ExtensionKind.Text,
-        [AttributeCatalog.ManufacturingRegion] = ExtensionKind.Text,
-        [AttributeCatalog.ManufacturingCountry] = ExtensionKind.Country,
-        [AttributeCatalog.BatchNumber] = ExtensionKind.Text,
-        [AttributeCatalog.NotInUseTemperatureRangeTest] = ExtensionKind.LanguageText,
-    };
+        var kinds = new Dictionary<string, ExtensionKind>(StringComparer.Ordinal)
+        {
+            [AttributeCatalog.ManufacturingCity] = ExtensionKind.Text,
+            [AttributeCatalog.ManufacturingRegion] = ExtensionKind.Text,
+            [AttributeCatalog.ManufacturingCountry] = ExtensionKind.Country,
+            [AttributeCatalog.BatchNumber] = ExtensionKind.Text,
+            [AttributeCatalog.NotInUseTemperatureRangeTest] = ExtensionKind.LanguageText,
+        };
+        foreach (var (property, _) in AttributeCatalog.EndOfLifeTexts)
+        {
+            kinds[property] = ExtensionKind.LanguageText;
+        }
+
+        return kinds;
+    }
 
     /// <summary>The kind of an extension; null for an attribute of the file, whose form comes from the schema.</summary>
     public static ExtensionKind? Of(AttributeDefinition attribute)

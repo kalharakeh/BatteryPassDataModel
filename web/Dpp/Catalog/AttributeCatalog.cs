@@ -127,6 +127,24 @@ public static class AttributeCatalog
     public const string NotInUseTemperatureRangeTest = "notInUseTemperatureRangeTest";
 
     /// <summary>
+    /// The ten end-of-life texts of the EU's <c>wasteBatteryPreventionManagementInfo</c> (G23), under the EU's names, in
+    /// the EU's order: E11 to E20, one group on the model.
+    /// </summary>
+    public static IReadOnlyList<(string Property, string Name)> EndOfLifeTexts { get; } =
+    [
+        ("endUserRoleInWastePrevention", "End of life: the user's role in preventing waste"),
+        ("endUserRoleInSeparateCollection", "End of life: the user's role in separate collection"),
+        ("separateCollectionPoints", "End of life: separate collection points"),
+        ("takeBackCollectionPoints", "End of life: take-back points"),
+        ("preparationForReuseFacilities", "End of life: facilities preparing batteries for re-use"),
+        ("preparationForRepurposingFacilities", "End of life: facilities preparing batteries for repurposing"),
+        ("wasteBatteryTreatmentFacilities", "End of life: treatment facilities for waste batteries"),
+        ("wasteBatterySafetyInstructions", "End of life: safety instructions for waste batteries"),
+        ("batteryLabelSymbolMeaning", "End of life: meaning of the symbols on the battery"),
+        ("batterySubstancesImpact", "End of life: the substances' impact on health and the environment"),
+    ];
+
+    /// <summary>
     /// Decision 94 (package R1): the values the EU's battery format 1.0.0 requires that the file doesn't hold, kept in
     /// the EU's shape and under the EU's names, so that the EU view (R2) only has to copy them. All public, as in the EU's
     /// public view. Numbers 1005 on; pages show E5 on.
@@ -138,6 +156,7 @@ public static class AttributeCatalog
         new(1007, "Manufacturing country", Ident, ManufacturingCountry, L.Site, A.Public, G.None, E.Team, C.Fixed, null, R.Mandatory, true, "E7"),
         new(1008, "Batch label", Ident, BatchNumber, L.Batch, A.Public, G.None, E.Team, C.Fixed, null, R.Mandatory, true, "E8"),
         new(1010, "Test of the idle temperature range", Performance, NotInUseTemperatureRangeTest, L.Model, A.Public, G.None, E.Team, C.Fixed, null, R.Mandatory, true, "E10"),
+        .. EndOfLifeTexts.Select((text, index) => new AttributeDefinition(1011 + index, text.Name, Circularity, text.Property, L.Model, A.Public, G.None, E.Team, C.Fixed, null, R.Mandatory, true, $"E{11 + index}")),
     ];
 
     /// <summary>The values added beyond the file: the temperature times (E1–E4), then the EU's values (E5 on).</summary>

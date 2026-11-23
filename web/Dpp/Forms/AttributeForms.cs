@@ -155,6 +155,16 @@ public sealed class AttributeForms
         [AttributeCatalog.ManufacturingCity] = "The town or city of the site.",
         [AttributeCatalog.ManufacturingRegion] = "A region, county or state, if it helps to find the site.",
         [AttributeCatalog.NotInUseTemperatureRangeTest] = "The test or standard the idle temperature range (#88 and #89) comes from, for example a storage test to IEC 62660-1.",
+        ["endUserRoleInWastePrevention"] = "What the battery's user can do to prevent waste, such as using and storing it as the manual says. A link may go in the text.",
+        ["endUserRoleInSeparateCollection"] = "What the user does with the battery at its end of life: never with other waste, always to separate collection.",
+        ["separateCollectionPoints"] = "Where waste batteries are collected separately, or a link to the list.",
+        ["takeBackCollectionPoints"] = "Where the battery is taken back, for example by Scania or a dealer, free of charge.",
+        ["preparationForReuseFacilities"] = "Which facilities prepare these batteries for re-use, or a link to the list.",
+        ["preparationForRepurposingFacilities"] = "Which facilities prepare these batteries for a second life (repurposing), or a link to the list.",
+        ["wasteBatteryTreatmentFacilities"] = "Which facilities treat and recycle these batteries at end of life, or a link to the list.",
+        ["wasteBatterySafetyInstructions"] = "How to handle, store and transport a waste battery safely, also a damaged one.",
+        ["batteryLabelSymbolMeaning"] = "What the symbols on the battery mean. Often the same text as #27.",
+        ["batterySubstancesImpact"] = "What the battery's hazardous substances (#44) can do to people and the environment if the battery isn't disposed of properly.",
         [AttributeCatalog.BatchNumber] = "The batch's number, as the EU asks for it with the model. The app gives one when the model has a serial number format and the site a country, such as VPC8C05-SWE-2026; type your own to change it.",
     };
 
