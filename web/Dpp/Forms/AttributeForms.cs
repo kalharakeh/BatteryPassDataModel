@@ -154,6 +154,7 @@ public sealed class AttributeForms
     {
         [AttributeCatalog.ManufacturingCity] = "The town or city of the site.",
         [AttributeCatalog.ManufacturingRegion] = "A region, county or state, if it helps to find the site.",
+        [AttributeCatalog.NotInUseTemperatureRangeTest] = "The test or standard the idle temperature range (#88 and #89) comes from, for example a storage test to IEC 62660-1.",
         [AttributeCatalog.BatchNumber] = "The batch's number, as the EU asks for it with the model. The app gives one when the model has a serial number format and the site a country, such as VPC8C05-SWE-2026; type your own to change it.",
     };
 

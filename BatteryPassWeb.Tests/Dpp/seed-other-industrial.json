@@ -48,7 +48,8 @@
       "cycleLifeReferenceTest": "IEC 62660-1",
       "cRateOfRelevantCycleLifeTest": { "amperePerAmpereHourValue": 0.5, "amperePerAmpereHourUnit": "A/Ah" },
       "temperatureRangeIdleStateLowerBoundary": { "degreeCelsiusUnit": "°C", "celsiusValue": -30 },
-      "temperatureRangeIdleStateUpperBoundary": { "degreeCelsiusUnit": "°C", "celsiusValue": 55 }
+      "temperatureRangeIdleStateUpperBoundary": { "degreeCelsiusUnit": "°C", "celsiusValue": 55 },
+      "notInUseTemperatureRangeTest": { "en-GB": "Storage test to IEC 62660-1 between -30 °C and 55 °C" }
     }
   },
   "site": {

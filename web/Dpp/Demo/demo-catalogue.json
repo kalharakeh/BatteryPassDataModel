@@ -275,6 +275,9 @@
         "temperatureRangeIdleStateUpperBoundary": {
           "degreeCelsiusUnit": "°C",
           "celsiusValue": 45
+        },
+        "notInUseTemperatureRangeTest": {
+          "en-GB": "Storage test to IEC 62660-1 between -20 °C and 45 °C (demo)"
         }
       }
     },
@@ -454,6 +457,9 @@
         "temperatureRangeIdleStateUpperBoundary": {
           "degreeCelsiusUnit": "°C",
           "celsiusValue": 45
+        },
+        "notInUseTemperatureRangeTest": {
+          "en-GB": "Storage test to IEC 62660-1 between -20 °C and 45 °C (demo)"
         }
       }
     },
@@ -632,6 +638,9 @@
         "temperatureRangeIdleStateUpperBoundary": {
           "degreeCelsiusUnit": "°C",
           "celsiusValue": 45
+        },
+        "notInUseTemperatureRangeTest": {
+          "en-GB": "Storage test to IEC 62660-1 between -20 °C and 45 °C (demo)"
         }
       }
     }
