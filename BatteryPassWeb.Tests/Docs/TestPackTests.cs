@@ -73,7 +73,7 @@ public sealed partial class TestPackTests
     {
         var guide = Guide();
 
-        foreach (var heading in new[] { "## 1. Anyone, not signed in", "## 2. Cluster user", "## 3. Cluster admin", "## 4. The team", "## 5. Market surveillance", "## 6. Notified body, Commission and the legitimate-interest roles", "## 7. The API" })
+        foreach (var heading in new[] { "## 1. Anyone, not logged in", "## 2. Customer user", "## 3. Customer admin", "## 4. The team", "## 5. Market surveillance", "## 6. Notified body, Commission and the legitimate-interest roles", "## 7. The API" })
         {
             Assert.Contains(heading, guide, StringComparison.Ordinal);
         }

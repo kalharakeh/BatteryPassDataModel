@@ -8,6 +8,8 @@ What "Reset demo data" makes (decision 32). The team presses it at the end of th
 
 ## Clusters
 
+The team's pages (the Clusters tab) call them clusters. A customer's own people read "customer", and a cluster's ID is the **customer ID**: a customer's admin finds it at the top of their Registry and of their Admin page, and types it to hand a battery over.
+
 | Cluster ID | Name | Batteries |
 |---|---|---|
 | `demo-north` | Demo North Operations | DEMO-C7M-0001, DEMO-C7M-0002, DEMO-C7M-0003 |
@@ -16,24 +18,28 @@ What "Reset demo data" makes (decision 32). The team presses it at the end of th
 
 ## Accounts
 
-| Account | Role | Cluster |
-|---|---|---|
-| `demo.north.admin@example.test` | Cluster admin | demo-north |
-| `demo.north.user@example.test` | Cluster user | demo-north |
-| `demo.south.admin@example.test` | Cluster admin | demo-south |
-| `demo.south.user@example.test` | Cluster user | demo-south |
-| `demo.fleet.admin@example.test` | Cluster admin | demo-fleet |
-| `demo.fleet.user@example.test` | Cluster user | demo-fleet |
-| `demo.msa@example.test` | Market surveillance | — |
-| `demo.notified-body@example.test` | Notified body | — |
-| `demo.commission@example.test` | Commission | — |
-| `demo.repair@example.test` | Repair, repurposing and remanufacturing (legitimate interest) | — |
-| `demo.recycling@example.test` | Recycling and battery treatment (legitimate interest) | — |
-| `demo.treatment@example.test` | Authorised treatment and WEEE facilities (legitimate interest) | — |
+The "Name" and "Role" are what the app shows for the account: the name beside the initials in the top bar, and the role in the account menu and on "Your account".
+
+| Account | Name | Role | Customer (cluster) |
+|---|---|---|---|
+| `demo.north.admin@example.test` | Demo north admin | Customer admin | demo-north |
+| `demo.north.user@example.test` | Demo north user | Customer user | demo-north |
+| `demo.south.admin@example.test` | Demo south admin | Customer admin | demo-south |
+| `demo.south.user@example.test` | Demo south user | Customer user | demo-south |
+| `demo.fleet.admin@example.test` | Demo fleet admin | Customer admin | demo-fleet |
+| `demo.fleet.user@example.test` | Demo fleet user | Customer user | demo-fleet |
+| `demo.msa@example.test` | Demo market surveillance | Market Surveillance Authorities | — |
+| `demo.notified-body@example.test` | Demo notified body | Notified Body | — |
+| `demo.commission@example.test` | Demo Commission | Commission | — |
+| `demo.repair@example.test` | Demo repair shop | Legitimate interest: repair, repurposing, remanufacturing | — |
+| `demo.recycling@example.test` | Demo recycler | Legitimate interest: recycling and training | — |
+| `demo.treatment@example.test` | Demo treatment facility | Legitimate interest: authorised or WEEE treatment | — |
+
+After logging in, every one of these lands on the Registry (the team lands on "To do"). A customer's account also shows its customer in the account menu ("Customer: Demo North Operations").
 
 The team's account is not demo data: the project owner gives testers a team account if they test the team's pages.
 
-Demo accounts work only on demo batteries and demo clusters: on a battery that isn't demo (one made with a real battery ID or real product data, a demo-numbered battery on real product data included), every demo account sees what a visitor sees, and no action is offered. "Reset demo data" stops, and changes nothing, when a real account, battery or API token uses one of the demo's clusters, and names the cluster; demo accounts a demo admin added or made never stop it. They can sign in only while the site has the demo on (`ENABLE_DEMO_DATA`). The demo accounts that belong to a cluster are made as if that cluster's admin had made them, so the cluster admin may change their name and password; the accounts across the app are the team's.
+Demo accounts work only on demo batteries and demo clusters: on a battery that isn't demo (one made with a real battery ID or real product data, a demo-numbered battery on real product data included), every demo account sees what a visitor sees, and no action is offered. "Reset demo data" stops, and changes nothing, when a real account, battery or API token uses one of the demo's clusters, and names the cluster; demo accounts a demo admin added or made never stop it. They can log in only while the site has the demo on (`ENABLE_DEMO_DATA`). The demo accounts that belong to a cluster are made as if that cluster's admin had made them, so the customer admin may change their name and password; the accounts across the app are the team's.
 
 ## Tokens
 
@@ -62,6 +68,6 @@ Drafts are seen by the team only. The batteries come from the "Demo" release on 
 
 ## Sample files
 
-On `/help`, signed in as the team or a cluster admin, the "Upload a file" part offers two downloads for DEMO-C7M-0001:
+On `/help`, logged in as the team or a customer admin, the "Upload a file" part offers two downloads for DEMO-C7M-0001:
 - an upload file, with live values and a repair;
 - a battery system export (mapping BMS2_ACO), with made-up values.

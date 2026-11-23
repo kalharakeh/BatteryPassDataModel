@@ -51,7 +51,7 @@ public sealed class BatteryIdsHelpTests
         var script = Read("docs", "end-user-testing-guide.md");
 
         Assert.Contains("| Mark as invalid | Battery IDs tab |", pack, StringComparison.Ordinal); // a column for every reader
-        Assert.Equal(11, pack.Split('\n').Count(line => line.StartsWith('|') && (line.EndsWith("| – (Not allowed) |", StringComparison.Ordinal) || line.EndsWith("| – (sign-in) |", StringComparison.Ordinal) || line.EndsWith("| ✓ (and undo) | ✓ |", StringComparison.Ordinal))));
+        Assert.Equal(11, pack.Split('\n').Count(line => line.StartsWith('|') && (line.EndsWith("| – (Not allowed) |", StringComparison.Ordinal) || line.EndsWith("| – (log in) |", StringComparison.Ordinal) || line.EndsWith("| ✓ (and undo) | ✓ |", StringComparison.Ordinal))));
         foreach (var check in new[] { "Battery IDs: a range releases", "lists every reason and releases nothing", "Create battery picks a released serial number", "opens the release's page", "The Battery IDs page opens on Releases", "\"Show test IDs\" ticked", "voided IDs only with \"Show voided\" ticked", "a release whose IDs are all voided only with it ticked", "red notice naming it", "\"Change its battery ID…\" on a draft", "\"Not published yet\"" })
         {
             Assert.Contains(check, pack, StringComparison.Ordinal);
