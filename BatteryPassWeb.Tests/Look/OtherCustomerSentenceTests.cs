@@ -31,7 +31,7 @@ public sealed class OtherCustomerSentenceTests(MongoFixture mongo)
         var (site, south) = await SiteAsync(mongo);
         await using var _ = site;
 
-        var (_, page, _) = await site.GetAsync(south, "demo.north.user@example.test");
+        var (_, page, _) = await site.GetAsync(south, "demo.north.user@example.test", accept: "text/html"); // R3: the page is for a request that names it
 
         Assert.Contains(Another, page, StringComparison.Ordinal);
     }
@@ -44,7 +44,7 @@ public sealed class OtherCustomerSentenceTests(MongoFixture mongo)
         await site.Services.GetRequiredService<ClusterRepository>()
             .UpsertUserAsync("no.customer@example.test", "Nora None", [AccessControlService.RoleNormalUser], BCrypt.Net.BCrypt.HashPassword("no-customer-password-1", 4));
 
-        var (_, page, _) = await site.GetAsync(south, "no.customer@example.test");
+        var (_, page, _) = await site.GetAsync(south, "no.customer@example.test", accept: "text/html"); // R3: the page is for a request that names it
 
         Assert.DoesNotContain(Another, page, StringComparison.Ordinal);
         Assert.Contains(Neutral, page, StringComparison.Ordinal);

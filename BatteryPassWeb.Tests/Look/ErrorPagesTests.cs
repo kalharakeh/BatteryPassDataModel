@@ -60,7 +60,7 @@ public sealed class ErrorPagesTests(MongoFixture mongo)
     {
         await using var site = await ShellSite.StartAsync(mongo.NewContext());
 
-        var (_, body, _) = await site.GetAsync("/dpp/NO-SUCH-BATTERY-ID");
+        var (_, body, _) = await site.GetAsync("/dpp/NO-SUCH-BATTERY-ID", accept: "text/html"); // R3: the page, for a request that names it
 
         Assert.DoesNotContain("Page not found", body, StringComparison.Ordinal);
     }
