@@ -8,14 +8,27 @@ public sealed class OfficialSchemasTests
 {
     private static readonly OfficialSchemas Schemas = OfficialSchemas.Load();
 
+    /// <summary>
+    /// The files as published, with one local deviation (NOTICE.md, finding D06, decision 94): #78's ohm values are
+    /// numbers, not whole numbers. Undoing exactly that gives the published file byte for byte.
+    /// </summary>
     [Theory]
-    [InlineData(OfficialSchemas.FullResourceName, "31c0c4a5bdbbf2dc0d4908cfb94db1a0da1a65d7b41d545a04029a94c97000ab")]
-    [InlineData(OfficialSchemas.Feb2027ResourceName, "aa2ef3f30bd967023946032e338c02ca82f03bc8d26b0a110f0edeafbe4604f5")]
-    public void EmbeddedSchema_ShouldBeTheOfficialFileUnchanged(string resourceName, string expectedSha256)
+    [InlineData(OfficialSchemas.FullResourceName, "31c0c4a5bdbbf2dc0d4908cfb94db1a0da1a65d7b41d545a04029a94c97000ab", "3011fdc36ea8a5cf3f8a9e105a5878bf617748e01e22ecab6d20019746e0d33d")]
+    [InlineData(OfficialSchemas.Feb2027ResourceName, "aa2ef3f30bd967023946032e338c02ca82f03bc8d26b0a110f0edeafbe4604f5", "81cb73db5e2dd3478f4e8339f1550940a1bfb841795a449c32a2728dc425e5f3")]
+    public void EmbeddedSchema_ShouldBeTheOfficialFile_WithOnlyTheDecimalOhmsDeviation(string resourceName, string publishedSha256, string embeddedSha256)
     {
         using var stream = typeof(OfficialSchemas).Assembly.GetManifestResourceStream(resourceName);
         Assert.NotNull(stream);
-        Assert.Equal(expectedSha256, Convert.ToHexStringLower(SHA256.HashData(stream)));
+        using var buffer = new MemoryStream();
+        stream.CopyTo(buffer);
+        var bytes = buffer.ToArray();
+        Assert.Equal(embeddedSha256, Convert.ToHexStringLower(SHA256.HashData(bytes)));
+
+        const string Published = "\"ohmInteger\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ohmValueForBatteryModule\": {\n          \"type\": \"integer\"\n        },\n        \"ohmValueForBatteryPack\": {\n          \"type\": \"integer\"\n        },\n        \"ohmValueForBatteryCell\": {\n          \"type\": \"integer\"\n        },\n";
+        var text = System.Text.Encoding.UTF8.GetString(bytes);
+        var deviation = Published.Replace("\"integer\"", "\"number\"", StringComparison.Ordinal);
+        Assert.Equal(1, text.Split(deviation).Length - 1);
+        Assert.Equal(publishedSha256, Convert.ToHexStringLower(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(text.Replace(deviation, Published, StringComparison.Ordinal)))));
     }
 
     [Theory]

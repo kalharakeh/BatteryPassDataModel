@@ -253,8 +253,8 @@
           "percentageValue": 0
         },
         "initialInternalResistanceOfBatteryCellAndPackModuleRecommended": {
-          "ohmValueForBatteryPack": 1,
-          "ohmValueForBatteryCell": 1,
+          "ohmValueForBatteryPack": 0.06,
+          "ohmValueForBatteryCell": 0.0008,
           "ohmUnit": "Ohm"
         },
         "internalResistanceIncreaseOfPackCellAndModuleRecommended": {
@@ -435,8 +435,8 @@
           "percentageValue": 0
         },
         "initialInternalResistanceOfBatteryCellAndPackModuleRecommended": {
-          "ohmValueForBatteryPack": 1,
-          "ohmValueForBatteryCell": 1,
+          "ohmValueForBatteryPack": 0.06,
+          "ohmValueForBatteryCell": 0.0008,
           "ohmUnit": "Ohm"
         },
         "internalResistanceIncreaseOfPackCellAndModuleRecommended": {
@@ -616,8 +616,8 @@
           "percentageValue": 0
         },
         "initialInternalResistanceOfBatteryCellAndPackModuleRecommended": {
-          "ohmValueForBatteryPack": 1,
-          "ohmValueForBatteryCell": 1,
+          "ohmValueForBatteryPack": 0.06,
+          "ohmValueForBatteryCell": 0.0008,
           "ohmUnit": "Ohm"
         },
         "internalResistanceIncreaseOfPackCellAndModuleRecommended": {
