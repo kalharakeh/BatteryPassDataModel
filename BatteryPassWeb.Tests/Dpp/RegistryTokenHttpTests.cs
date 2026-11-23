@@ -328,10 +328,13 @@ public sealed class RegistryTokenHttpTests(MongoFixture mongo) : IDisposable
         return true;
     }
 
-    private async Task<Site> SiteAsync(RegistryTokenSettings? settings = null, int readLimit = 1000)
+    private Task<Site> SiteAsync(RegistryTokenSettings? settings = null, int readLimit = 1000) => StartAsync(mongo, _key, settings, readLimit);
+
+    /// <summary>A site with a published passport, the EU's key set serving <paramref name="key"/>, and the read limit.</summary>
+    internal static async Task<Site> StartAsync(MongoFixture mongo, ECDsa key, RegistryTokenSettings? settings = null, int readLimit = 1000)
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo);
-        var keys = KeySet.With((_key, KeyId));
+        var keys = KeySet.With((key, KeyId));
         var log = new ConcurrentQueue<string>();
         var app = Build(rig, settings ?? Settings, keys, log, readLimit);
         try
