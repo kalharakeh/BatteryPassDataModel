@@ -7,8 +7,9 @@ namespace BatteryPassWeb.Dpp.Api;
 /// <summary>
 /// Picks the data answer of a page address unless the request asks for the page (finding R07; R3, the manager's decision
 /// 6). A browser, which names text/html first, gets the page as before; a program gets the data, whatever else its Accept
-/// header lists. Of two actions on the same address, the one with this mark is chosen when it holds, the other one
-/// otherwise.
+/// header lists. A request that carries a credential (an Authorization header, or a token in the query or a cookie)
+/// always gets the data answer, where the EU registry's token is checked: never the page. Of two actions on the same
+/// address, the one with this mark is chosen when it holds, the other one otherwise.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class PrefersJsonAttribute : Attribute, IActionConstraint
@@ -17,11 +18,11 @@ public sealed class PrefersJsonAttribute : Attribute, IActionConstraint
 
     public bool Accept(ActionConstraintContext context) => AnswersData(context.RouteContext.HttpContext.Request);
 
-    /// <summary>Whether a passport's page address answers this request with data: an Accept header that doesn't ask for the page.</summary>
+    /// <summary>Whether a passport's page address answers this request with data: a credential, or an Accept header that doesn't ask for the page.</summary>
     public static bool AnswersData(HttpRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return PrefersJson(request.Headers.Accept.ToString());
+        return RegistryToken.RegistryTokenRequest.CarriesCredential(request) || PrefersJson(request.Headers.Accept.ToString());
     }
 
     /// <summary>

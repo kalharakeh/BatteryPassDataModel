@@ -61,6 +61,9 @@ public sealed class RestrictedReads(MongoContext context, ApplicationAuditServic
     public const string AccidentsPage = "accidents";
     public const string RegistryPage = "registry";
 
+    /// <summary>The EU's DPP Registry reading a battery's restricted data with its token (R3, decision 94).</summary>
+    public const string EuRegistryRead = "eu-registry";
+
     /// <summary>A claimed key that never got its entry (the app stopped in between) is taken again after this long.</summary>
     public static readonly TimeSpan StaleClaim = TimeSpan.FromMinutes(2);
 

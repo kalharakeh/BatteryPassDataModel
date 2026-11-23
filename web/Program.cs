@@ -2,6 +2,7 @@ using BatteryPassWeb.Configuration;
 using BatteryPassWeb.Controllers;
 using BatteryPassWeb.Dpp;
 using BatteryPassWeb.Dpp.Documents;
+using BatteryPassWeb.Dpp.RegistryToken;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -63,6 +64,13 @@ var trustedSigningKeysSetting = EnvironmentOrConfig(builder.Configuration, DemoS
 if (DemoSigningKeyService.UnreadableTrustedKeys(trustedSigningKeysSetting) is { } unreadableTrustedKeys && builder.Environment.IsProduction())
 {
     throw new InvalidOperationException(unreadableTrustedKeys);
+}
+
+// The EU registry's token check (R3, decision 94): the four EU_REGISTRY_ settings per environment, all or none.
+var registryToken = RegistryTokenSettings.Read(name => Environment.GetEnvironmentVariable(name) ?? builder.Configuration[name]);
+if (registryToken.StartProblem(builder.Environment.IsProduction(), builder.Environment.IsDevelopment()) is { } registryTokenProblem)
+{
+    throw new InvalidOperationException(registryTokenProblem);
 }
 
 var enableRateLimiting = ParseFeatureFlag(
@@ -178,7 +186,10 @@ builder.Services
         // The TempData cookie is the browser's: one person's battery messages never reach the next (owner's step-5 test).
         options.Events.OnSigningIn = context => CardMessages.ForgetAsync(context.HttpContext);
         options.Events.OnSigningOut = context => CardMessages.ForgetAsync(context.HttpContext);
-    });
+    })
+    // The EU registry's token at the passports' data addresses (R3): a scheme of its own, asked only there.
+    .AddRegistryToken();
+builder.Services.AddRegistryToken(registryToken);
 
 builder.Services.AddAuthorization(options =>
 {
@@ -380,6 +391,8 @@ app.Use(async (context, next) =>
 app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthentication();
+// The EU registry's token is checked before the read limit, which lets a valid one through (R3, decision 7).
+app.UseRegistryToken();
 // After authentication, so that the upload limit knows the person (FU4); the sign-in and API limits count by address or token.
 if (batteryPassOptions.EnableRateLimiting)
 {
@@ -434,6 +447,15 @@ using (var scope = app.Services.CreateScope())
         DemoSigningKeyService.DidDocumentPath,
         DemoSigningKeyService.TrustedKeysSetting,
         signingKeys.PublicKeyText());
+    if (registryToken.PartlySet)
+    {
+        app.Logger.LogWarning("{RegistryToken}", registryToken.StartLine);
+    }
+    else
+    {
+        app.Logger.LogInformation("{RegistryToken}", registryToken.StartLine);
+    }
+
     if (DppLinks.HostMismatch(fallbackOptions.AppBaseUrl, fallbackOptions.IdBaseUrl) is { } addressWarning)
     {
         app.Logger.LogWarning(addressWarning);
