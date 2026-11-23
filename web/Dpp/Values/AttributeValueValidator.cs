@@ -17,9 +17,9 @@ public sealed partial class AttributeValueValidator(OfficialSchemas schemas)
     public IReadOnlyList<SchemaIssue> Validate(AttributeDefinition attribute, JsonNode? value)
     {
         ArgumentNullException.ThrowIfNull(attribute);
-        if (attribute.IsExtension)
+        if (ExtensionKinds.Of(attribute) is { } kind)
         {
-            return ExtensionIssues(value).ToArray();
+            return (kind == ExtensionKind.Minutes ? ExtensionIssues(value) : EuValueIssues(kind, value)).ToArray();
         }
 
         var issues = schemas.CheckProperty(attribute.Section, attribute.Property, value);
@@ -36,6 +36,27 @@ public sealed partial class AttributeValueValidator(OfficialSchemas schemas)
         else if (seconds < 0)
         {
             yield return new SchemaIssue(string.Empty, "minimum: must not be below 0");
+        }
+    }
+
+    /// <summary>The longest text of a short value (a city, a batch label).</summary>
+    public const int ShortTextLength = 200;
+
+    /// <summary>A value of the EU's battery format the file doesn't hold (decision 94), checked by its kind.</summary>
+    private static IEnumerable<SchemaIssue> EuValueIssues(ExtensionKind kind, JsonNode? value)
+    {
+        var text = value is JsonValue leaf && leaf.GetValueKind() == JsonValueKind.String ? leaf.GetValue<string>() : null;
+        switch (kind)
+        {
+            case ExtensionKind.Text when string.IsNullOrWhiteSpace(text):
+                yield return new SchemaIssue(string.Empty, "type: must be a text");
+                break;
+            case ExtensionKind.Text when text!.Length > ShortTextLength || text.Any(char.IsControl):
+                yield return new SchemaIssue(string.Empty, $"maxLength: must be one line of at most {ShortTextLength} characters");
+                break;
+            case ExtensionKind.Country when !Countries.IsCode(text):
+                yield return new SchemaIssue(string.Empty, "enum: must be a country's three-letter code, such as SWE for Sweden");
+                break;
         }
     }
 

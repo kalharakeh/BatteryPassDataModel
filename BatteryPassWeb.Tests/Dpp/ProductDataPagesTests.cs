@@ -166,7 +166,7 @@ public sealed class ProductDataPagesTests(MongoFixture mongo)
         var economicOperator = await pages.SitesAndOperatorsAsync(null, "operator-test");
 
         Assert.Null(none.Editor);
-        Assert.Equal((1, 3, 3), (Assert.Single(none.Sites).Batches, none.Sites[0].Filled, none.Sites[0].Total));
+        Assert.Equal((1, 6, 6), (Assert.Single(none.Sites).Batches, none.Sites[0].Filled, none.Sites[0].Total));
         Assert.Equal(1, Assert.Single(none.Operators).Packs);
         Assert.Equal((TargetKind.Site, "/admin/sites/site-test"), (site.Editor!.Kind, site.Editor.SaveAction));
         Assert.Equal((TargetKind.Operator, 2), (economicOperator.Editor!.Kind, economicOperator.Editor.Total));

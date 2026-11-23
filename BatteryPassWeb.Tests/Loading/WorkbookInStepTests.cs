@@ -15,8 +15,11 @@ namespace BatteryPassWeb.Tests.Loading;
 /// </summary>
 public sealed class WorkbookInStepTests
 {
-    /// <summary>SHA-256 of "Core family - data to fill.xlsx" as it was sent to the owner on 13 November 2026.</summary>
-    private const string SentSha256 = "ae2e687285f4ae5cd69ce9af4c47f4c8dc98afee75dd615174bd94d0cb0cedd1";
+    /// <summary>
+    /// SHA-256 of "Core family - data to fill.xlsx": as it was sent to the owner on 13 November 2026, with the rows of the
+    /// EU's values added by package R1 (decision 94). The file as sent is kept with the tests (OldWorkbookTests).
+    /// </summary>
+    private const string SentSha256 = "66d5111427f6ec40e5eea81e27607a759625850aab8e06e76d6fdb0814ccf933";
 
     private static readonly LoadFields Fields = new(AttributeFormsTests.Forms);
 

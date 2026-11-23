@@ -625,7 +625,10 @@
           "webAddress": "https://www.example.com",
           "eMailAddress": "batteries@example.com"
         },
-        "manufacturingPlace": "Demo plant North, Stockholm, Sweden"
+        "manufacturingPlace": "Demo plant North, Stockholm, Sweden",
+        "manufacturingCity": "Stockholm (demo)",
+        "manufacturingRegion": "Stockholm County",
+        "manufacturingCountry": "SWE"
       }
     },
     {
@@ -640,7 +643,9 @@
           "webAddress": "https://www.example.com",
           "eMailAddress": "batteries@example.com"
         },
-        "manufacturingPlace": "Demo plant South, Malmo, Sweden"
+        "manufacturingPlace": "Demo plant South, Malmo, Sweden",
+        "manufacturingCity": "Malmö (demo)",
+        "manufacturingCountry": "SWE"
       }
     }
   ],

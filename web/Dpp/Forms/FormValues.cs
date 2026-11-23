@@ -185,6 +185,9 @@ public static class FormValues
                 return JsonValue.Create(whole);
             case InputKind.Number when decimal.TryParse(text.Contains('.', StringComparison.Ordinal) ? text : text.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var number):
                 return JsonValue.Create(number);
+            // A choice kept as a code (a country's "SWE") may be typed as its words ("Sweden"), in the workbook too.
+            case InputKind.Select when input.OptionWords is not null && input.FindOption(text) is { } option:
+                return JsonValue.Create(option);
             case InputKind.Lines:
                 var lines = text.Split('\n').Select(line => line.Trim()).Where(line => line.Length > 0).ToArray();
                 return lines.Length == 0 ? null : new JsonArray(lines.Select(line => (JsonNode)JsonValue.Create(line)).ToArray());

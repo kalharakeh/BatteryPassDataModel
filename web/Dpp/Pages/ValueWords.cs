@@ -159,6 +159,11 @@ public static class ValueWords
             return null;
         }
 
+        if (input.OptionWords is not null)
+        {
+            return input.Words(text);
+        }
+
         if (input.Kind == InputKind.Month && DateTime.TryParseExact(text, "yyyy-MM", CultureInfo.InvariantCulture, DateTimeStyles.None, out var month))
         {
             return month.ToString("MMMM yyyy", English);

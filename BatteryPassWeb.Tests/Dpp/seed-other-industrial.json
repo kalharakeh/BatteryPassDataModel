@@ -57,7 +57,10 @@
     "values": {
       "uniqueManufacturerIdentifier": "urn:test:manufacturer:example-plant",
       "manufacturerInformation": { "name": "Example Battery Systems AB", "registeredTradeNameOrRegisteredTrademark": "Example Batteries", "postalAddress": "Exempelvägen 1, 111 11 Stockholm, Sweden", "webAddress": "https://www.batteries.scania.test", "eMailAddress": "battery.passport@batteries.scania.test" },
-      "manufacturingPlace": "Example plant, Stockholm, Sweden"
+      "manufacturingPlace": "Example plant, Stockholm, Sweden",
+      "manufacturingCity": "Stockholm",
+      "manufacturingRegion": "Stockholm County",
+      "manufacturingCountry": "SWE"
     }
   },
   "batch": {

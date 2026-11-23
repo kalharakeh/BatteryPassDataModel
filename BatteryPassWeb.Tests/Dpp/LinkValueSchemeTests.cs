@@ -66,8 +66,8 @@ public sealed class LinkValueSchemeTests
     [Fact]
     public void TheExtensionAttributes_ShouldHoldNoLink()
     {
-        Assert.NotEmpty(AttributeCatalog.Extensions);
-        foreach (var attribute in AttributeCatalog.Extensions)
+        Assert.NotEmpty(AttributeCatalog.TemperatureTimes);
+        foreach (var attribute in AttributeCatalog.TemperatureTimes)
         {
             var form = Forms.For(attribute);
             Assert.NotEqual(FormKind.Link, form.Kind);

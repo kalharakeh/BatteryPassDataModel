@@ -23,12 +23,12 @@ public sealed class AttributeExtensionTests(MongoFixture mongo)
     {
         var temperature = AttributeCatalog.ByNumber(87);
 
-        Assert.Equal(["E1", "E2", "E3", "E4"], AttributeCatalog.Extensions.Select(attribute => attribute.Label));
+        Assert.Equal(["E1", "E2", "E3", "E4"], AttributeCatalog.TemperatureTimes.Select(attribute => attribute.Label));
         Assert.Equal(
             ["timeSpentInExtremeTemperaturesAboveBoundary", "timeSpentInExtremeTemperaturesBelowBoundary",
              "timeSpentChargingDuringExtremeTemperaturesAboveBoundary", "timeSpentChargingDuringExtremeTemperaturesBelowBoundary"],
-            AttributeCatalog.Extensions.Select(attribute => attribute.Property));
-        Assert.All(AttributeCatalog.Extensions, attribute =>
+            AttributeCatalog.TemperatureTimes.Select(attribute => attribute.Property));
+        Assert.All(AttributeCatalog.TemperatureTimes, attribute =>
         {
             Assert.True(attribute.IsExtension);
             Assert.Equal((temperature.Section, StorageLocation.Pack, ChangeRule.Live, temperature.Audience, temperature.Editors),
@@ -45,13 +45,13 @@ public sealed class AttributeExtensionTests(MongoFixture mongo)
     public void TheExtensions_ShouldNotBeInTheOfficialSchema()
     {
         // When BatteryPass-Ready adds them, this fails: the extensions should then become schema attributes.
-        Assert.All(AttributeCatalog.Extensions, attribute => Assert.Null(Schemas.FindProperty(attribute.Section, attribute.Property)));
+        Assert.All(AttributeCatalog.TemperatureTimes, attribute => Assert.Null(Schemas.FindProperty(attribute.Section, attribute.Property)));
     }
 
     [Fact]
     public void AnExtension_ShouldBeEnteredAsWholeMinutes()
     {
-        var form = AttributeFormsTests.Forms.For(AttributeCatalog.Extensions[0]);
+        var form = AttributeFormsTests.Forms.For(AttributeCatalog.TemperatureTimes[0]);
 
         Assert.Equal(FormKind.Single, form.Kind);
         var input = Assert.Single(form.Inputs);
@@ -67,10 +67,10 @@ public sealed class AttributeExtensionTests(MongoFixture mongo)
     [InlineData("""{"value":3600}""", false)]
     public void AnExtensionValue_ShouldBeAWholeNumberOfMinutesNotBelowZero(string json, bool valid)
     {
-        var issues = new AttributeValueValidator(Schemas).Validate(AttributeCatalog.Extensions[0], JsonNode.Parse(json));
+        var issues = new AttributeValueValidator(Schemas).Validate(AttributeCatalog.TemperatureTimes[0], JsonNode.Parse(json));
 
         Assert.Equal(valid, issues.Count == 0);
-        Assert.Equal(JsonValue.Create(3600)!.ToJsonString(), new AttributeValueNormalizer(Schemas).Normalize(AttributeCatalog.Extensions[0], JsonValue.Create(3600))!.ToJsonString());
+        Assert.Equal(JsonValue.Create(3600)!.ToJsonString(), new AttributeValueNormalizer(Schemas).Normalize(AttributeCatalog.TemperatureTimes[0], JsonValue.Create(3600))!.ToJsonString());
     }
 
     [Fact]
@@ -93,7 +93,7 @@ public sealed class AttributeExtensionTests(MongoFixture mongo)
         Assert.Equal(120, passport["batteryPassportData"]!["performanceAndDurability"]!["timeSpentInExtremeTemperaturesAboveBoundary"]!.GetValue<int>());
         Assert.Empty(Schemas.CheckPassport(passport, feb2027Variant: false));
         Assert.Empty(Schemas.CheckPassport(passport, feb2027Variant: true));
-        Assert.All(AttributeCatalog.Extensions, attribute => Assert.Contains(attribute, PassportStaticCore.NotSigned));
+        Assert.All(AttributeCatalog.TemperatureTimes, attribute => Assert.Contains(attribute, PassportStaticCore.NotSigned));
     }
 
     [Fact]

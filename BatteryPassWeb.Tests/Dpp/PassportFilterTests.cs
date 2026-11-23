@@ -82,14 +82,14 @@ public sealed class PassportFilterTests
         var performance = cut["batteryPassportData"]?["performanceAndDurability"]?.AsObject();
 
         Assert.Equal(sees, performance?.ContainsKey("temperatureInformation") == true);
-        Assert.All(AttributeCatalog.Extensions, extension => Assert.Equal(sees, performance?.ContainsKey(extension.Property) == true));
+        Assert.All(AttributeCatalog.TemperatureTimes, extension => Assert.Equal(sees, performance?.ContainsKey(extension.Property) == true));
     }
 
     /// <summary>The seed passport with E1–E4 added, so every attribute of the catalogue is present.</summary>
     private static JsonObject FullPassport()
     {
         var seed = DppTestSeed.Load();
-        foreach (var extension in AttributeCatalog.Extensions)
+        foreach (var extension in AttributeCatalog.TemperatureTimes)
         {
             seed.Sources.Pack.Values[extension.Property] = DppStoreTesting.Value(JsonValue.Create(3600));
         }

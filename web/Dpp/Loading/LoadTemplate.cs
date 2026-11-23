@@ -1,8 +1,9 @@
 namespace BatteryPassWeb.Dpp.Loading;
 
 /// <summary>
-/// The empty product data workbook, as it was sent to the owner on 13 November 2026, kept with the app so that the
-/// page can hand it out and a test can keep it in step with the catalogue.
+/// The empty product data workbook, as it was sent to the owner on 13 November 2026 with the rows of the EU's values
+/// added (package R1), kept with the app so that the page can hand it out and a test can keep it in step with the
+/// catalogue. A workbook without those rows still loads: a missing row changes nothing.
 /// </summary>
 public static class LoadTemplate
 {
@@ -11,7 +12,7 @@ public static class LoadTemplate
 
     private const string ResourceName = "Dpp.Loading.core-family-data-to-fill.xlsx";
 
-    /// <summary>The file's bytes, exactly as sent.</summary>
+    /// <summary>The file's bytes.</summary>
     public static byte[] Bytes()
     {
         using var stream = typeof(LoadTemplate).Assembly.GetManifestResourceStream(ResourceName)

@@ -126,7 +126,7 @@ public sealed class ExampleValuesTests(MongoFixture mongo)
         Assert.Contains(ExampleValues.WhatToDo, blocking);
         Assert.Contains(blocking, item => item.StartsWith("Still the demo's example file: #4", StringComparison.Ordinal)); // the copied demo PDFs (#45-48)
         Assert.Contains(blocking, item => item.StartsWith("Still the demo's example value: #", StringComparison.Ordinal));
-        Assert.All(blocking.Where(item => item != ExampleValues.WhatToDo), item => Assert.Matches(@"^Still the demo's example (value|file): #\d+ .+$", item));
+        Assert.All(blocking.Where(item => item != ExampleValues.WhatToDo), item => Assert.Matches(@"^Still the demo's example (value|file): (#|E)\d+ .+$", item));
         Assert.DoesNotContain(blocking, item => item.StartsWith('#')); // so the battery page doesn't list them as missing values
 
         await ReplaceExamplesAsync(copy.Rig, pack.Id);

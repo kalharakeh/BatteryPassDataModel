@@ -61,7 +61,7 @@
                     <option value=""></option>
                     @foreach (var option in input.Path == "language" || name == "language" ? LanguageNames.ByName(input.Options) : input.Options)
                     {
-                        <option value="@option" selected="@(option == text)">@(optionNames.GetValueOrDefault(option, LanguageNames.Of(option)))</option>
+                        <option value="@option" selected="@(option == text)">@(input.OptionWords is null ? optionNames.GetValueOrDefault(option, LanguageNames.Of(option)) : input.Words(option))</option>
                     }
                     @if (text.Length > 0 && !input.Options.Contains(text))
                     {

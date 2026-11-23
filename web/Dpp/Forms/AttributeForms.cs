@@ -79,10 +79,9 @@ public sealed class AttributeForms
     private static AttributeForm Build(JsonNode document, AttributeDefinition attribute)
     {
         var noConstants = new Dictionary<string, string>(StringComparer.Ordinal);
-        if (attribute.IsExtension)
+        if (ExtensionKinds.Of(attribute) is { } extension)
         {
-            // Beyond the schema (decision 28): a whole number of minutes, shown as "minutes" (the catalogue's unit is "min").
-            return new AttributeForm(attribute, FormKind.Single, [new FormInput(string.Empty, attribute.Name, InputKind.Integer, false, [], "minutes")], noConstants);
+            return new AttributeForm(attribute, FormKind.Single, [ExtensionInput(attribute, extension)], noConstants);
         }
 
         var node = OfficialSchemas.FindProperty(document, attribute.Section, attribute.Property)
@@ -129,6 +128,26 @@ public sealed class AttributeForms
             ? new AttributeForm(attribute, kind, [inputs[0] with { Label = attribute.Name, Required = true }], constants)
             : new AttributeForm(attribute, kind, Arrange(inputs), constants);
     }
+
+    /// <summary>The one input of a value added beyond the schema (decision 28, decision 94).</summary>
+    private static FormInput ExtensionInput(AttributeDefinition attribute, ExtensionKind kind)
+    {
+        var required = attribute.Requirement != Requirement.Conditional;
+        return kind switch
+        {
+            // A whole number of minutes, shown as "minutes" (the catalogue's unit is "min").
+            ExtensionKind.Minutes => new FormInput(string.Empty, attribute.Name, InputKind.Integer, false, [], "minutes"),
+            ExtensionKind.Country => new FormInput(string.Empty, attribute.Name, InputKind.Select, required, Countries.Codes, OptionWords: Countries.Names),
+            _ => new FormInput(string.Empty, attribute.Name, InputKind.Text, required, [], Hint: ExtensionHints.GetValueOrDefault(attribute.Property)),
+        };
+    }
+
+    /// <summary>The line under an extension's input, by its property.</summary>
+    private static readonly Dictionary<string, string> ExtensionHints = new(StringComparer.Ordinal)
+    {
+        [AttributeCatalog.ManufacturingCity] = "The town or city of the site.",
+        [AttributeCatalog.ManufacturingRegion] = "A region, county or state, if it helps to find the site.",
+    };
 
     /// <summary>The inputs of an object value, and its constants: single-valued enums, and units (the catalogue's unit).</summary>
     private static (IReadOnlyList<FormInput> Inputs, Dictionary<string, string> Constants) ObjectInputs(JsonNode document, JsonObject node, AttributeDefinition attribute)

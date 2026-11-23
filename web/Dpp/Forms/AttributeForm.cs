@@ -48,6 +48,7 @@ public enum InputKind
 /// One input of an attribute's form. <paramref name="Path"/> is the schema property it fills inside the value, or ""
 /// when the input is the whole value.
 /// </summary>
+/// <param name="OptionWords">For a choice whose stored codes aren't words (a country's "SWE"), what the page shows for each.</param>
 public sealed record FormInput(
     string Path,
     string Label,
@@ -55,7 +56,21 @@ public sealed record FormInput(
     bool Required,
     IReadOnlyList<string> Options,
     string? Unit = null,
-    string? Hint = null);
+    string? Hint = null,
+    IReadOnlyDictionary<string, string>? OptionWords = null)
+{
+    /// <summary>An option in words: its <see cref="OptionWords"/> entry, or the option itself.</summary>
+    public string Words(string option) => OptionWords?.GetValueOrDefault(option) ?? option;
+
+    /// <summary>The option typed as its code or its words, capitals not minding; null when it is neither.</summary>
+    public string? FindOption(string typed)
+    {
+        ArgumentNullException.ThrowIfNull(typed);
+        var text = typed.Trim();
+        return Options.FirstOrDefault(option => string.Equals(option, text, StringComparison.OrdinalIgnoreCase))
+            ?? Options.FirstOrDefault(option => string.Equals(Words(option), text, StringComparison.OrdinalIgnoreCase));
+    }
+}
 
 /// <summary>
 /// The form of one attribute. <see cref="Constants"/> are the schema properties the app fills in itself, such as

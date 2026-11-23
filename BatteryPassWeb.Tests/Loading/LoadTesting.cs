@@ -86,7 +86,10 @@ internal static class LoadTesting
     /// Core800), one batch each, one site, one operator, one substance for all models, every document, both pictures.
     /// It starts from the example column and replaces every value that is the demo's example.
     /// </summary>
-    public static FilledWorkbook Core() => FilledWorkbook.Empty()
+    public static FilledWorkbook Core() => Core(FilledWorkbook.Empty());
+
+    /// <summary><see cref="Core"/>, filled into <paramref name="start"/> (the workbook as sent on 13 November, for one).</summary>
+    public static FilledWorkbook Core(FilledWorkbook start) => start
         .ExampleInto(FamilySheet, "Core")
         .ExampleInto(ModelSheet, "Core800")
         .ExampleInto(BatchSheet, FirstBatch)
