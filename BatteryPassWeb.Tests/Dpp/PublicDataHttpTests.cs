@@ -36,9 +36,11 @@ public sealed class PublicDataHttpTests(MongoFixture mongo)
     [InlineData("application/json, */*;q=0.1", true)]
     [InlineData(Browser, false)]
     [InlineData("application/json;q=0.5, text/*", false)]
-    [InlineData("application/json, */*", false)]
-    [InlineData("application/ld+json", false)]
-    [InlineData("", false)]
+    [InlineData("application/json, */*", true)] // R3, decision 6: the page only when it is named and wanted as much as JSON
+    [InlineData("application/ld+json", true)]
+    [InlineData("*/*", true)]
+    [InlineData("", true)]
+    [InlineData("text/html, application/json", false)]
     public async Task ThePublicAddress_ShouldAnswerDataOrPage_ByTheAcceptHeader(string accept, bool data)
     {
         await using var site = await SiteAsync();
