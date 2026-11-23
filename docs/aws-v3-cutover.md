@@ -2,7 +2,7 @@
 
 **What this does:** the one Elastic Beanstalk environment behind `https://www.sib-scania-eubp.eu/` (`battery-pass-env`, `eu-north-1`) changes from the old app to the new one.
 - **Old app:** branch `security/demo-api-hardening`, database `battery_pass_demo`.
-- **New app:** the tag `new-app-v3.5` (the go-live version, on top of `new-app-v3.4`), database `battery_pass_v3`.
+- **New app:** the tag `new-app-v3.7` (the go-live version `new-app-v3.5`, then `new-app-v3.6` and `new-app-v3.7`, on top of `new-app-v3.4`), database `battery_pass_v3`.
 
 The old app stays restorable (section 7). Nothing runs side by side.
 
@@ -10,7 +10,7 @@ The old app stays restorable (section 7). Nothing runs side by side.
 
 **Cost:** none added. It is the same environment, load balancer, NAT gateway, instance, certificate and domain (design, "Where it runs": the no-extra-cost path, confirmed by the owner on 4 Nov 2026, "Kept is enough"). The one possible cost is a larger instance, if the new app needs more memory (section 6, check 8). That would be the owner's choice, and nothing here changes it.
 
-**This runbook is for the go-live version** (wave 2, the platform package, the hardening package, the serial number package and the Excel loader on top of `new-app-v3.4`). Where it says "the live database", that is `battery_pass_v3`, the database the owner enters real data into. It holds real product data and no demo data (decision 82).
+**This runbook is for the go-live version, brought up to `new-app-v3.7`** (wave 2, the platform package, the hardening package, the serial number package and the Excel loader on top of `new-app-v3.4`). Where it says "the live database", that is `battery_pass_v3`, the database the owner enters real data into. It holds real product data and no demo data (decision 82).
 
 **Old addresses stop working, by choice.** The old app's pages and links (its `/dpp/…` passports, QR codes and API) go away at the cut-over. No old QR code or link was ever shared (the owner: "No, demo only"), so there are no redirects.
 
@@ -45,10 +45,10 @@ DNS, HTTPS and the www redirect need no change.
    - Never put it in Git, a chat or a file in the repository.
 4. **The restore points** (section 7):
    - the tag `old-app-final` at 8c8bfe7 (the old app; the tag `app-v1.2-before-dpp-v3` already marks the same commit);
-   - the tag `new-app-v3.5` on the go-live commit, pushed to `origin`.
-5. **The bundle:** check out `new-app-v3.5` and run `powershell -ExecutionPolicy Bypass -File .\scripts\publish-elastic-beanstalk.ps1`. Keep the zip it prints (`artifacts\releases\BatteryPassWeb-elastic-beanstalk-<time>.zip`). The script leaves out `.env*` files.
+   - the tag `new-app-v3.7` on the go-live commit, pushed to `origin`.
+5. **The bundle:** check out `new-app-v3.7` and run `powershell -ExecutionPolicy Bypass -File .\scripts\publish-elastic-beanstalk.ps1`. Keep the zip it prints (`artifacts\releases\BatteryPassWeb-elastic-beanstalk-<time>.zip`). The script leaves out `.env*` files.
 6. **Upload it as a new application version, without deploying:**
-   - Beanstalk, Application `battery-pass`, Application versions, Upload, label `new-app-v3.5`.
+   - Beanstalk, Application `battery-pass`, Application versions, Upload, label `new-app-v3.7`.
    - Check that the application's version lifecycle setting won't delete the old app's version. Note the old version's label (Environment, Running version).
 7. **The settings file** for the switch: `cutover-settings.json` (section 4). Keep it outside the repository, and delete it after the switch.
 8. **No demo data on the live site** (decision 82):
@@ -88,8 +88,11 @@ The new app reads these. "Same" means the live environment's current value stays
 | `HEALTH_DIAGNOSTICS` | not set | **`true` stops the start in Production**. Leave it out. |
 | `ENABLE_DEMO_ADMIN_FALLBACK` | `false` or not set | Never a fallback admin on a public site. **In Production the app refuses to start if it is on.** The first team account comes from `FIRST_TEAM_ACCOUNT_EMAIL`. |
 | `DEMO_ADMIN_EMAIL`, `DEMO_ADMIN_PASSWORD` | not set | There is no default password. The fallback admin works only outside Production, and only when a password is set here. Don't set them on the live site. |
-| `ENABLE_RATE_LIMITING` | not set (on) | |
-| `FILE_UPLOAD_RATE_LIMIT_PER_WINDOW` | not set (10 per rate-limit window) | Limits file uploads. It now also limits the team's and cluster admins' file actions (accident reports, "Check the file"). With `ENABLE_RATE_LIMITING=false` nothing is limited. |
+| `ENABLE_RATE_LIMITING` | not set (on) | Turns all the rate limits off with `false`; leave it on. What a person or a caller sees over a limit is in section 6, check 18. |
+| `RATE_LIMIT_WINDOW_SECONDS` | not set (60) | The length of the window every limit counts in. |
+| `EXTERNAL_API_READ_RATE_LIMIT_PER_WINDOW` | not set (120 per window) | The public read limit, counted per client address: the passports' public data (`/dpp/…`, the `.json` addresses), the home search (`/search`) and the home page with a search text (`/?q=…`). The API's own read limit is counted apart, per token. **A search that finds nothing uses two of the allowance** (the search, then the home page it leads to). Do not set it low: an office of many people shares one address. |
+| `FILE_UPLOAD_RATE_LIMIT_PER_WINDOW` | not set (10 per rate-limit window) | Limits file uploads. It also limits the team's and cluster admins' file actions (accident reports, "Check the file"). **It counts per signed-in person** (by e-mail address), so people behind one office address each have the whole allowance; a caller who isn't signed in is counted by address. With `ENABLE_RATE_LIMITING=false` nothing is limited. |
+| `MAX_UPLOAD_BYTES` | not set (10 MB) | The biggest file one upload may carry. The pages and the 413 answer name it in megabytes ("10 MB"). The Excel load has its own, bigger limits (section 2.12). |
 | `TRUSTED_PROXY_NETWORKS`, `TRUSTED_PROXY_HOP_LIMIT` | not set | The defaults trust the load balancer's private ranges. **They decide the client address the app sees**, read from the forwarded header (`X-Forwarded-For`) of a trusted proxy, and the sign-in lock counts wrong passwords per client address. If they are wrong, every request seems to come from the proxy's address and one person guessing locks the account for everyone. Check 17 in section 6 tests it. |
 | `POWER_AUTOMATE_RESET_WEBHOOK_URL`, `…_SECRET`, `PASSWORD_RESET_APP_NAME` | same, if password reset e-mails are used | |
 | `ID_GENERATION_SECRET` | same | Only the old app reads it. Keeping it makes a roll-back simpler. |
@@ -146,14 +149,14 @@ Leave out the `FIRST_TEAM_ACCOUNT_EMAIL` line when `battery_pass_v3` already has
 ## 5. The day (the owner, in a quiet hour)
 
 1. **Save the old configuration:** Beanstalk, `battery-pass-env`, Actions, Save configuration, name `old-app-final`.
-2. **The PC:** close the PC's app. From now on the live site writes to `battery_pass_v3`, and only one app should write there. **Every instance on one database runs the same version:** the PC's app and the live site share `battery_pass_v3`, so update both to `new-app-v3.5` before the PC's app is started again. `new-app-v3.5` stores a battery ID key on each battery the first time it starts on a database; after that `new-app-v3.4` can't use that database (its battery list comes up empty with "Element 'ItemKey' does not match any field"). A back-up taken before the update is the only way back. To keep trying things on the PC afterwards, give the launcher a database of its own (a copy of `battery_pass_v3` under another name, in `MONGODB_DB`); don't start the PC's app against `battery_pass_v3` again. If it ever has to run against it, the launcher must set `ENABLE_DEMO_DATA=false` (decision 82), so that "Reset demo data" can't bring the demo families back into the real database.
+2. **The PC:** close the PC's app. From now on the live site writes to `battery_pass_v3`, and only one app should write there. **Every instance on one database runs the same version:** the PC's app and the live site share `battery_pass_v3`, so update both to `new-app-v3.7` before the PC's app is started again. `new-app-v3.5` stores a battery ID key on each battery the first time it starts on a database; after that `new-app-v3.4` can't use that database (its battery list comes up empty with "Element 'ItemKey' does not match any field"). A back-up taken before the update is the only way back. To keep trying things on the PC afterwards, give the launcher a database of its own (a copy of `battery_pass_v3` under another name, in `MONGODB_DB`); don't start the PC's app against `battery_pass_v3` again. If it ever has to run against it, the launcher must set `ENABLE_DEMO_DATA=false` (decision 82), so that "Reset demo data" can't bring the demo families back into the real database.
 3. **The switch** (AWS CLI, signed in to the account that holds the environment):
 
    ```powershell
-   aws elasticbeanstalk update-environment --region eu-north-1 --environment-name battery-pass-env --version-label new-app-v3.5 --option-settings file://cutover-settings.json
+   aws elasticbeanstalk update-environment --region eu-north-1 --environment-name battery-pass-env --version-label new-app-v3.7 --option-settings file://cutover-settings.json
    ```
 
-4. Wait until the environment's health is Green and its running version is `new-app-v3.5` (a few minutes; the site is down meanwhile).
+4. Wait until the environment's health is Green and its running version is `new-app-v3.7` (a few minutes; the site is down meanwhile).
 5. **Delete `cutover-settings.json`.**
 6. Run the checks (section 6).
 
@@ -187,6 +190,11 @@ Leave out the `FIRST_TEAM_ACCOUNT_EMAIL` line when `battery_pass_v3` already has
 15. **The sign-in survives a restart:** sign in, restart the environment (or deploy the same version again), reload: you are still signed in. If you are signed out each time, the collection `dataProtectionKeys` isn't being written: check the `MONGODB_URI` user has `readWrite` and look in the log. On the live site the log has no warning about unencrypted keys (the keys are encrypted with the signing key). A line saying that sign-in keys in the database are not encrypted and are never used means old documents from an earlier version, which can be deleted.
 16. **Loading product data from the Excel** (section 8, step 4) is the first real test of the proxy's body limit (section 2.12): load the workbook with all its files. A plain proxy error page (413) means the limit isn't 100 MB for `/admin/product-data-load`.
 17. **The sign-in lock counts per client address:** with a test team account, type ten wrong passwords from one network (the office); the sign-in page refuses with "Invalid email or password. Try again later." Then sign in to the same account with the right password from another network (a phone's own mobile connection): it must work. If it is refused too, the proxy isn't passing the client's address (`TRUSTED_PROXY_NETWORKS`, `TRUSTED_PROXY_HOP_LIMIT`; the app reads `X-Forwarded-For`), every sign-in then counts as one sender, and one person guessing could lock the account for everyone: put it right before the site is used. Afterwards press "Forgot password" for the test account; that clears the count.
+18. **Over a limit, and unknown addresses** (new in `new-app-v3.6`):
+    - **A rate limit.** A person on a page gets a short sentence: "Too many searches from your address. Try again in a minute." on the home search, "Too many tries from your address. Try again in a minute." on other pages such as the log-in page. The API, the `.json` addresses and a request that asks for JSON get `{"error": "Too many requests."}` with status 429. A reader whose search finds nothing and who then searches again quickly may see the sentence earlier than expected: a failed search uses two of the public read allowance (section 3).
+    - **An unknown address** shows the app's "Page not found" page with status 404. Under `/api` and for files (an address whose last part has a dot) the answer stays a plain 404. An address that exists but is asked the wrong way (for example opening `/login/logout` in the browser) answers 405, not "not found".
+    - **An error inside an `/api` call** answers `{"error": "Something went wrong. Try again later."}` with status 500. On a page, an error shows "Something went wrong" with no detail.
+    - To test it: open `https://www.sib-scania-eubp.eu/no-such-page` (the "not found" page, 404) and `https://www.sib-scania-eubp.eu/api/no-such-call` (a plain 404). Do not try to hit a rate limit on the live site; the limit is per address and the test would lock your own office out of the search for a minute.
 
 ## 7. Restore points, and rolling back to the old app
 
@@ -196,7 +204,7 @@ Leave out the `FIRST_TEAM_ACCOUNT_EMAIL` line when `battery_pass_v3` already has
 - the saved configuration `old-app-final`;
 - the database `battery_pass_demo`, untouched;
 - **a back-up of `battery_pass_v3`**: take one before every later update of the new app. An earlier version of the app can't open a database a later one has written to once a model is answered, a passport is published or a copy of product data is made (it answers 500). Only the back-up goes back;
-- the new app: the tag `new-app-v3.5` on `origin` (and the tag `new-app-v3.4` before it), its application version and the database `battery_pass_v3`.
+- the new app: the tag `new-app-v3.7` on `origin` (and the tag `new-app-v3.4`, the last version before the go-live version), its application version and the database `battery_pass_v3`.
 
 **Roll back** (one command again, for the same reason as section 4):
 
@@ -206,7 +214,7 @@ aws elasticbeanstalk update-environment --region eu-north-1 --environment-name b
 
 - The old app comes back with its old settings and `battery_pass_demo`, as before.
 - `battery_pass_v3` keeps everything the new app wrote.
-- **No way back to `new-app-v3.4` on the same database:** once `new-app-v3.5` has started on `battery_pass_v3`, `new-app-v3.4` can't use it (empty battery list, "Element 'ItemKey' does not match any field" and "'SerialFormat'" in its log). Only the back-up taken before the update goes back. Never run two versions on one database: the PC's app and the live site must run the same one.
+- **No way back to `new-app-v3.4` on the same database:** once `new-app-v3.5` or a later version has started on `battery_pass_v3`, `new-app-v3.4` can't use it (empty battery list, "Element 'ItemKey' does not match any field" and "'SerialFormat'" in its log). Only the back-up taken before the update goes back. Never run two versions on one database: the PC's app and the live site must run the same one.
 - Going forward again is section 5, step 3.
 
 ## 8. The first day on the live site, in order
@@ -216,7 +224,7 @@ After the switch and the checks of section 6. The team does these, signed in as 
 1. **Back-up** of `battery_pass_v3` just before the update (section 2.10): an Atlas snapshot or a `mongodump`. Note which one it is.
 2. **Deploy** (section 5). Wait for Green; delete `cutover-settings.json`.
 3. **The first team account**, if the database was empty (section 2.11): "Forgot password" with the address set in `FIRST_TEAM_ACCOUNT_EMAIL`, then sign in. Run checks 1 to 4 of section 6.
-4. **Load the product data from the Excel.** Battery families, "Load product data from Excel". Choose the filled workbook and the documents and pictures it names, then press **Check**. Fix what it lists by sheet, row and column and check again; replace the demo's example values it names. A document you don't have yet is listed under "Documents still to come": it can follow in a later load. When the check shows no problem, press **Load**. It saves all of it or nothing, and says how many passports get a new version. A second load of the same workbook says "Nothing to load".
+4. **Load the product data from the Excel.** Battery families, "Load product data from Excel". Choose the filled workbook and the documents and pictures it names, then press **Check**. Fix what it lists by sheet, row and column and check again; replace the demo's example values it names. A document you don't have yet is listed under "Documents still to come": it can follow in a later load. When the check shows no problem, press **Load**. It saves all of it or nothing, and says how many passports get a new version: **each published battery gets one new version for the whole load**, made after everything is saved. If a load stops part way, those batteries stay on their version with the changes waiting; load the workbook again (every load also publishes the waiting changes of the batteries it reaches) or press "Publish the waiting changes" on the battery's page. The hourly check only marks them; it never publishes. A second load of the same workbook says "Nothing to load".
 5. **Answer nothing by hand that the Excel carries.** The family's and each model's values, the three questions of each model, the sites, the operators, the hazardous substances and the documents come from the workbook. The workbook carries each model's serial number format too (`VPC8C05-#####` for Core800, `VPC8C05s-#####` for Core800s, `VPC7C05-#####` for Core700): the check shows the old and the new format and how many batteries don't fit it. Open each model's page and look; the format can also be set there. A value that is wrong is corrected in the workbook and loaded again. **If the database has a family copied from the demo** ("Copy as real product data", before decision 82), the load matches the family, the site and the operator by name and updates them (they lose their demo marks), makes the three models and their batches, and leaves the copied model and its batch as they were, with their example values. Open the copied model's page afterwards and remove it there (the page offers it).
 6. **Tick each customer's written authorisation** (Clusters tab, each cluster's row, with the date), if there are customers yet: until then their admins and tokens only read.
 7. **Release IDs** (Battery IDs): a serial number may hold small letters (`VPC8C05s-00001`) and must fit the model's format. The same serial in other capitals is the same serial.

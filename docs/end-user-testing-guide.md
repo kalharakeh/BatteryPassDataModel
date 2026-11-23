@@ -4,13 +4,13 @@ A step-by-step script for each kind of reader, on the demo data. Start with `doc
 
 Before each round:
 - On a test site with the demo on: a team member presses **Reset demo data** (Clusters tab, at the end) and copies the tokens shown once. On the live site and the owner's PC there is no demo (decision 82): skip this, and do part 8 with the team's own account.
-- Use one browser. Sign out before signing in as the next account.
+- Use one browser. Log out before logging in as the next account (your name at the right of the top bar opens the account menu with "Log out").
 - On every page and in every window, check each element is fully visible: scroll it into view, and nothing covers it.
 - Check at a desktop width, at a phone's width (375 px) and at 150 % Windows scaling.
 
 Each step says what to do, then **Expected:** what should happen.
 
-## 1. Anyone, not signed in
+## 1. Anyone, not logged in
 
 1. Open the home page and search `DEMO-C7M-0001`.
    **Expected:** the public page opens:
@@ -20,7 +20,7 @@ Each step says what to do, then **Expected:** what should happen.
 2. Scan or open the QR code's address.
    **Expected:** the same public page.
 3. Open `/dpp/DEMO-C7M-0001/detail`.
-   **Expected:** the sign-in page.
+   **Expected:** the log-in page.
 4. Search `DEMO-C7M-0002` (a draft).
    **Expected:** not found. Drafts are the team's only.
 5. Search `DEMO-C7M-0003`.
@@ -29,14 +29,25 @@ Each step says what to do, then **Expected:** what should happen.
    **Expected:** the newest passport, with a line that it replaces an earlier passport of this battery. No battery status is named.
 7. Print the public page (Ctrl+P, A4).
    **Expected:** the QR code, the page's address and "Printed …" at the top, every tab open, and no menus or buttons.
-8. Open `/dpp/UN778474481-TEST-DEMO-C7M-0001.json` (or the battery's address with `Accept: application/json`), with no sign-in.
+8. Open `/dpp/UN778474481-TEST-DEMO-C7M-0001.json` (or the battery's address with `Accept: application/json`), with no log-in.
    **Expected:** the public part as data, with a `proof`, and no #13 (service provider) and no battery status. The same address with a browser's Accept gives the page. Select the Passport ID and Battery ID on the page and copy: each is the whole address, with no line break.
 9. Open `/.well-known/did.json`.
    **Expected:** the site's public keys, no private part. The proof's key ID in the data is one of them.
 10. Open a passport address the team removed (section 4, step 25), also its `.json` and `/v1`.
    **Expected:** every one answers 410: "This battery's passport no longer exists. It was removed after the battery was recycled or exported."
+11. On the home page, search `demo-c`.
+   **Expected:**
+   - "No passport is exactly demo-c. Did you mean:" and at most three serial numbers that start with what you typed, each with its model (DEMO-C13M-0001, DEMO-C7M-0001, DEMO-CORE-0001), each opening that battery's public page;
+   - capitals, dashes and spaces don't matter: `democ7m` offers DEMO-C7M-0001.
+12. Search `c7m` (the middle of a serial number), `dd` (two characters) and `dpp` (part of an ID).
+   **Expected:** no list: "No published battery passport was found for …". A visitor's near matches start at the beginning of a serial number and need three letters or digits.
+13. Open `/no-such-page`, then `/api/no-such-call`.
+   **Expected:** the first shows the "Page not found" page with the home search (status 404); the second is a plain 404 with no page.
 
-## 2. Cluster user: `demo.north.user@example.test`
+## 2. Customer user: `demo.north.user@example.test`
+
+Log in.
+**Expected:** you land on the Registry. The top bar has Registry and Help; your name opens the account menu (your e-mail, the role "Customer user", "Customer: Demo North Operations", "Your account", the light or dark mode, "Log out").
 
 1. Open the Registry.
    **Expected:** DEMO-C7M-0001 and DEMO-C7M-0003 only (demo-north's published batteries), each with both badges.
@@ -50,19 +61,19 @@ Each step says what to do, then **Expected:** what should happen.
 4. Open `/dpp/DEMO-C13M-0001/detail` (demo-south's).
    **Expected:** the public sections only.
 5. Open `/help`.
-   **Expected:** "Your cluster's batteries", "Statuses", "Print a passport", "Your account" and "Need more access?". No cluster admin or team parts.
-6. Open Account (top bar).
+   **Expected:** "Find a passport", "What each reader sees", "Statuses", "Print a passport", "Your account", "Your batteries" and "Need more access?". No customer admin or team parts. "Find a passport" says what the search offers and where each reader lands after logging in.
+6. Open your name in the top bar, then "Your account".
    **Expected:**
-   - the fields "Your name" and "Your e-mail", and "Your role: Cluster member" as text;
-   - the top bar names the cluster;
+   - the fields "Your name" and "Your e-mail", and "Your role: Customer user" as text;
+   - the account menu names the customer;
    - changing the name alone saves; changing the password or the e-mail asks for "Current password", and a new password of fewer than 12 characters is refused.
 7. Open a battery that isn't demo (the team makes one with a real released ID and real product data) at its public address, then its detail page.
    **Expected:** the visitor's page only, with no extra sections.
 
-## 3. Cluster admin: `demo.north.admin@example.test`
+## 3. Customer admin: `demo.north.admin@example.test`
 
-1. Open the Registry.
-   **Expected:** demo-north's batteries, and a "Waiting for you" card for DEMO-CORE-0001 from demo-fleet.
+1. Log in, and open the Registry if you are not on it.
+   **Expected:** you land on the Registry: demo-north's batteries, "Your customer ID: demo-north" at the top (with a button that copies it), and a "Waiting for you" card for DEMO-CORE-0001 from demo-fleet. The top bar has Registry, Admin and Help; Admin opens on Batteries, with Users and API tokens beside it and the customer ID at its top too.
 2. Open DEMO-C7M-0001's battery page (its battery-page icon).
    **Expected:**
    - a header with the picture, the two badges and the facts;
@@ -84,19 +95,19 @@ Each step says what to do, then **Expected:** what should happen.
    **Expected:** the history gains a "Correction" entry, with no new version.
 7. Upload a file: download "An upload file" from `/help`, choose it, then "Check the file".
    **Expected:** the check lists what would change, including the repair line and the kept values. "Save" saves it, and it shows under Earlier uploads.
-8. Hand over…: type `demo-south`.
+8. Hand over…: type the receiving customer's ID, `demo-south`.
    **Expected:**
    - the app shows "Demo South Operations" to confirm;
    - after confirming, the battery waits and stays demo-north's until demo-south's admin accepts.
    - (Cancel it, or have `demo.south.admin` decline, to keep the demo as it was.)
 9. On the Registry's "Waiting for you" card, press Accept for DEMO-CORE-0001.
    **Expected:** it becomes demo-north's. `demo.fleet.user` then sees it as the public does.
-10. Cluster admin, Users and API tokens.
+10. Admin, Users and API tokens.
     **Expected:**
     - "Add user" with a new address makes an account in demo-north;
-    - "Add user" with `demo.msa@example.test` and a typed password gives "This person already has an account. They were added to your cluster; …", and the name and password stay as they were;
-    - a person from another cluster, a team account or your own account can't be changed: "You can't change this person's account here. Ask the Scania team.";
-    - the x beside a cluster asks first ("Remove from cluster"), then removes the person;
+    - "Add user" with `demo.msa@example.test` and a typed password gives "This person already has an account. They were added to your customer; …", and the name and password stay as they were;
+    - a person from another customer, a team account or your own account can't be changed: "You can't change this person's account here. Ask the Scania team.";
+    - the x beside a customer asks first ("Remove from this customer"), then removes the person;
     - a typed password of fewer than 12 characters is refused;
     - a new token's value is shown once;
     - "Deactivate token" switches a token off.
@@ -109,7 +120,10 @@ Each step says what to do, then **Expected:** what should happen.
 
 ## 4. The team
 
-1. Batteries tab.
+Log in.
+**Expected:** you land on "To do": boxes for drafts with missing values, saved changes not yet public, hand-overs waiting, battery IDs running low, uploads with refused values and batteries not yet in the EU registry. A box with nothing to do says so; each line opens the page where it is done. The top bar has To do, Admin, Registry and Help.
+
+1. Admin, Batteries tab.
    **Expected:** every battery, drafts included, one row per battery, with both badges.
 2. DEMO-C7M-0002 (a draft).
    **Expected:**
@@ -134,9 +148,9 @@ Each step says what to do, then **Expected:** what should happen.
    - the battery page asks who places it on the market;
    - "Scania" makes a draft new passport from the old battery;
    - publishing it makes the old one inactive and links the two.
-8. The battery the cluster admin set to waste (section 3, step 5): open its battery page, Change status, "Undo the waste", with a reason.
+8. The battery the customer admin set to waste (section 3, step 5): open its battery page, Change status, "Undo the waste", with a reason.
    **Expected:** the battery goes back to the status of the last version before the waste, a new version is published, and the history shows the undo.
-9. DEMO-C7M-0001, Accident reports: "Withdraw…" beside the report the cluster admin added, with a reason, then confirm.
+9. DEMO-C7M-0001, Accident reports: "Withdraw…" beside the report the customer admin added, with a reason, then confirm.
    **Expected:**
    - the report disappears from the accident page and its file can no longer be opened;
    - the audit log has who, when, why and the file's name;
@@ -157,7 +171,7 @@ Each step says what to do, then **Expected:** what should happen.
    **Expected:** the draft now has VPC-12222 and its ID; VPC-12221 is Available again.
 16. All IDs: search VPC-12230; in its row's ⋯ menu, Void…, with a reason. Then tick "Show voided", and then "Show test IDs".
    **Expected:** it leaves the list until "Show voided" is ticked, then shows as Voided with the reason; the create picker no longer offers it; the test IDs show only once ticked.
-17. Signed out, open `/25S/UN778474481-VPC-12223`, then `/25S/UN778474481-VPC-12230`.
+17. Logged out, open `/25S/UN778474481-VPC-12223`, then `/25S/UN778474481-VPC-12230`.
    **Expected:** "Not published yet", then "Not available".
 18. Clusters tab: Demo data, Clear demo data.
    **Expected:**
@@ -179,11 +193,11 @@ Each step says what to do, then **Expected:** what should happen.
 23. Clusters tab, open demo-north: "Written authorisation": take it away, then record it again with today's date.
    **Expected:** the row's tag changes between "Authorised …" and "Not authorised"; the audit log has both entries; a future date is refused; with it away, `demo.north.admin`'s page and token are read only (section 3, step 12); "Reset demo data" keeps it away if you took it away, and ticks the others.
 24. A published battery whose model says Yes to a question it lacks a value for (step 21), then the battery list.
-   **Expected:** "Saved changes are waiting on N published batteries: …", with links, also while a search is typed. Press "Check all passports now": "Checked N published batteries: …" and nothing is published. Add the missing value as the cluster admin or team: the passport gets its new version, and the waiting line is gone. "Publish the waiting changes" appears only when a change waits and nothing is in the way.
+   **Expected:** "Saved changes are waiting on N published batteries: …", with links, also while a search is typed. Press "Check all passports now": "Checked N published batteries: …" and nothing is published. Add the missing value as the customer admin or team: the passport gets its new version, and the waiting line is gone. "Publish the waiting changes" appears only when a change waits and nothing is in the way.
 25. DEMO-CORE-0003 (waste, marked for deletion): "Remove the passport…".
    **Expected:** a window that says it can't be undone and asks for the battery's ID; a wrong ID gives "Not removed: type the battery's ID exactly as it is shown, to confirm."; the right one removes it ("The passport of battery … is removed."). It is gone from the list; its addresses answer 410 (section 1, step 10); creating it again is refused; the audit log has one entry. Reset demo data brings it back.
 26. A published real battery (not demo): its "EU registry" section.
-   **Expected:** "Not recorded yet"; the list says "N published batteries are not yet in the EU registry" and offers the CSV. Record a day and "EUREG-TEST-42": "Registered on …", and the line is gone. A day in the future is refused. The public page, the data and the detail page as the cluster admin don't show it. A demo battery has no such section.
+   **Expected:** "Not recorded yet"; the list says "N published batteries are not yet in the EU registry" and offers the CSV. Record a day and "EUREG-TEST-42": "Registered on …", and the line is gone. A day in the future is refused. The public page, the data and the detail page as the customer admin don't show it. A demo battery has no such section.
 27. Families, Compact (demo): "Copy as real product data", then Release new IDs with "Test IDs" ticked, then Create battery.
    **Expected:**
    - the copy is a real family with its models (answers copied), batches, documents and sites; the demo family is as it was; a second press while one copy runs says "A copy is already running";
@@ -256,10 +270,10 @@ Use the tokens copied after the reset, on `/help/api`'s workbench or with any HT
 
 The team's own account, on a site with `ENABLE_DEMO_DATA=false`. Trial batteries are test IDs on the real product families. Don't press "Clear demo data" while real test batteries are there that you want to keep: it removes test IDs and test batteries too.
 
-1. **The first sign-in on a new database.** With `FIRST_TEAM_ACCOUNT_EMAIL` set to your address, open the sign-in page, press "Forgot password", type the address.
-   **Expected:** "If an account exists, a temporary password has been sent." The e-mail arrives; its temporary password signs in to the "set a new password" step; after you choose a password of at least 12 characters you are on the team's pages.
+1. **The first log-in on a new database.** With `FIRST_TEAM_ACCOUNT_EMAIL` set to your address, open the log-in page, press "Forgot password", type the address.
+   **Expected:** "If an account exists, a temporary password has been sent." The e-mail arrives; its temporary password logs in to the "set a new password" step; after you choose a password of at least 12 characters you are on the team's pages.
 2. **The lock.** Type a wrong password for a test account, 11 times, from one network.
-   **Expected:** the right password is then refused from that network with "Invalid email or password. Try again later.", but signs in from another network (a phone on mobile data). "Forgot password" works while the lock is on: its temporary password signs in, and choosing a new password unlocks the account at once.
+   **Expected:** the right password is then refused from that network with "Invalid email or password. Try again later.", but logs in from another network (a phone on mobile data). "Forgot password" works while the lock is on: its temporary password logs in, and choosing a new password unlocks the account at once.
 3. **Load the product data.** Battery families, "Load product data from Excel". Choose the filled workbook and its files, press **Check**.
    **Expected:** a list of what would be saved, and every problem by sheet, row and column. Nothing is saved yet.
 4. **Fix and load.** Correct the workbook until the check says "No problems", then press **Load**.
@@ -273,12 +287,16 @@ The team's own account, on a site with `ENABLE_DEMO_DATA=false`. Trial batteries
    In the same check: two columns with one heading, or a filled column without a heading, are each a problem line; a later model's empty recycled-content share is marked "taken from Core800" (write `none` if it has none); with a published battery on the family, a block "Published passports change" says how many new versions the load gives.
 8. **A test battery.** Release a test ID ("Test IDs"), make a battery of a real model with it, upload its readings, publish it. Open its address as a visitor, typed three ways.
    **Expected:** the same public page every time, with the "Test passport" tag; the ID keeps the small letter of the serial.
-9. **The use notice.** Sign in as a reader who sees restricted data (market surveillance, notified body) and open a published battery's detail page twice.
+9. **The use notice.** Log in as a reader who sees restricted data (market surveillance, notified body) and open a published battery's detail page twice.
    **Expected:** the notice is next to the restricted data; the team's audit log, filter "Restricted data opened", has one line for the day.
 10. **Tokens.** Clusters tab, API tokens, create a token for one cluster.
     **Expected:** only "Read" and "Read + write".
 11. **The look.** In the browser's developer tools, open the Network and Console tabs and move through the home page, a passport and a team page.
     **Expected:** every request goes to the site itself; no policy message.
+12. **One version per load.** With a published battery on the family, change a model's mass and replace a document in the workbook, press **Check**, then **Load**.
+    **Expected:** the check's block "Published passports change" says each published battery gets one new version, made after the whole load is saved. After the load the battery's passport has one new version (not one per change) with the new mass and the document. If a load ever stops part way, the battery stays on its version with "Saved changes are waiting" until you load the workbook again (every load also publishes the waiting changes of the batteries it reaches) or press "Publish the waiting changes" on its page.
+13. **Near matches.** On the home page, not logged in, type the first three or more characters of a real serial number, then a piece from its middle. Then log in as the team and type a piece of a battery ID.
+    **Expected:** the first gives "Did you mean" with at most three serial numbers that start with it; the middle piece gives nothing; as the team, the piece of the battery ID gives the batteries the Registry lists, at most three.
 
 ## Report
 
