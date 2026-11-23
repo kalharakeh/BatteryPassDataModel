@@ -157,7 +157,16 @@ internal static class RegistryTokenTesting
 
         public List<string> Asked { get; } = [];
 
-        public int Fetches => Asked.Count;
+        public int Fetches
+        {
+            get
+            {
+                lock (Asked)
+                {
+                    return Asked.Count;
+                }
+            }
+        }
 
         public bool Down { get; set; }
 
@@ -168,6 +177,19 @@ internal static class RegistryTokenTesting
 
         /// <summary>Serve the body without a Content-Length, as a chunked answer would come.</summary>
         public bool Unsized { get; set; }
+
+        /// <summary>Never answer: the fetch waits until it is cancelled.</summary>
+        public bool Hang { get; set; }
+
+        /// <summary>The answer's Date, Expires and Age headers, when set.</summary>
+        public DateTimeOffset? Date { get; set; }
+
+        public DateTimeOffset? Expires { get; set; }
+
+        public TimeSpan? Age { get; set; }
+
+        /// <summary>The Accept header of every fetch.</summary>
+        public List<string> Accepts { get; } = [];
 
         public static KeySet With(params (ECDsa Key, string KeyId)[] keys)
         {
@@ -182,12 +204,22 @@ internal static class RegistryTokenTesting
 
         public HttpClient CreateClient(string name) => new(this, disposeHandler: false);
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            Asked.Add(request.RequestUri!.ToString());
+            lock (Asked)
+            {
+                Asked.Add(request.RequestUri!.ToString());
+                Accepts.Add(request.Headers.Accept.ToString());
+            }
+
+            if (Hang)
+            {
+                await Task.Delay(Timeout.Infinite, cancellationToken);
+            }
+
             if (Down)
             {
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+                return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
             }
 
             var body = Body ?? new JsonObject { ["keys"] = new JsonArray(Keys.Select(key => (JsonNode)key.DeepClone()).ToArray()) }.ToJsonString();
@@ -197,7 +229,10 @@ internal static class RegistryTokenTesting
                 response.Headers.TryAddWithoutValidation("Cache-Control", CacheControl);
             }
 
-            return Task.FromResult(response);
+            response.Headers.Date = Date;
+            response.Headers.Age = Age;
+            response.Content.Headers.Expires = Expires;
+            return response;
         }
     }
 }

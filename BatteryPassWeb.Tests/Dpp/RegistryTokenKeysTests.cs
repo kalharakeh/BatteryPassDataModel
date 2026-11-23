@@ -91,7 +91,7 @@ public sealed class RegistryTokenKeysTests : IDisposable
         Assert.Equal(1, keys.Fetches);
         _clock.Now = _clock.Now.AddSeconds(2);
         Assert.True((await check.CheckAsync(TokenNow())).Authorised);
-        Assert.Equal(2, keys.Fetches);
+        await WaitForAsync(() => keys.Fetches == 2); // refreshed in the background
     }
 
     [Fact]
@@ -106,7 +106,8 @@ public sealed class RegistryTokenKeysTests : IDisposable
         _clock.Now = _clock.Now.AddMinutes(10);
 
         Assert.True((await check.CheckAsync(TokenNow())).Authorised);
-        Assert.Equal(2, keys.Fetches); // it tried
+        await WaitForAsync(() => keys.Fetches == 2); // it tried, in the background
+        Assert.True((await check.CheckAsync(TokenNow())).Authorised);
     }
 
     [Fact]
@@ -178,6 +179,108 @@ public sealed class RegistryTokenKeysTests : IDisposable
         keys.Keys.Add(Jwk(_key, KeyId, use: "enc"));
 
         Assert.Equal(401, (await Check(keys, _clock).CheckAsync(TokenNow())).Status);
+    }
+
+    [Fact]
+    public async Task AKnownKey_ShouldNeverWaitForAFetch_WhileTheKeySetHangs()
+    {
+        var keys = KeySet.With((_key, KeyId));
+        keys.CacheControl = "max-age=60";
+        var check = Check(keys, _clock);
+        Assert.True((await check.CheckAsync(TokenNow())).Authorised);
+        _clock.Now = _clock.Now.AddMinutes(2); // the keys are due
+        keys.Hang = true; // and the EU's key set doesn't answer
+        var token = TokenNow();
+
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var results = await Task.WhenAll(Enumerable.Range(0, 20).Select(_ => Task.Run(() => check.CheckAsync(token))));
+        watch.Stop();
+
+        Assert.All(results, result => Assert.True(result.Authorised));
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(2), $"the reads waited {watch.Elapsed}");
+        await WaitForAsync(() => keys.Fetches == 2); // one refresh, in the background
+        Assert.Equal(2, keys.Fetches);
+    }
+
+    [Fact]
+    public async Task AnUnknownKey_MayWaitForTheFetch_ButNoLongerThanItsTimeout()
+    {
+        using var stranger = NewKey();
+        var keys = KeySet.With((_key, KeyId));
+        var settings = Settings;
+        var keyCache = new BatteryPassWeb.Dpp.RegistryToken.RegistryTokenKeys(keys, settings, _clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<BatteryPassWeb.Dpp.RegistryToken.RegistryTokenKeys>.Instance) { Timeout = TimeSpan.FromSeconds(1) };
+        var check = new BatteryPassWeb.Dpp.RegistryToken.RegistryTokenCheck(settings, keyCache, _clock);
+        Assert.True((await check.CheckAsync(TokenNow())).Authorised);
+        _clock.Now = _clock.Now.AddMinutes(2);
+        keys.Hang = true;
+
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var unknown = await check.CheckAsync(TokenNow(stranger, "unknown"));
+        watch.Stop();
+
+        Assert.Equal((401, "unknown-key"), (unknown.Status, unknown.Reason));
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(5), $"waited {watch.Elapsed}");
+        Assert.True((await check.CheckAsync(TokenNow())).Authorised); // the known key still answers at once
+    }
+
+    [Fact]
+    public async Task TheKeySetsExpires_ShouldBeHonoured_WithoutMaxAge()
+    {
+        var keys = KeySet.With((_key, KeyId));
+        keys.Date = Start;
+        keys.Expires = Start.AddMinutes(5);
+        var check = Check(keys, _clock);
+
+        Assert.True((await check.CheckAsync(TokenNow())).Authorised);
+        _clock.Now = Start.AddSeconds(299);
+        Assert.True((await check.CheckAsync(TokenNow())).Authorised);
+        Assert.Equal(1, keys.Fetches);
+        _clock.Now = Start.AddSeconds(301);
+        Assert.True((await check.CheckAsync(TokenNow())).Authorised);
+        await WaitForAsync(() => keys.Fetches == 2);
+    }
+
+    [Theory]
+    [InlineData("max-age=600", null, 300, 299, 301)] // 600 s less an Age of 300
+    [InlineData(null, 600, 300, 299, 301)] // Expires 600 s after Date, less an Age of 300
+    [InlineData(null, -60, null, 59, 61)] // Expires already past: a minute, never less
+    public async Task TheAge_ShouldBeTakenOff_AndThePastKeptToAMinute(string? cacheControl, int? expiresInSeconds, int? ageSeconds, int stillKept, int refreshed)
+    {
+        var keys = KeySet.With((_key, KeyId));
+        keys.CacheControl = cacheControl;
+        keys.Date = Start;
+        keys.Expires = expiresInSeconds is { } seconds ? Start.AddSeconds(seconds) : null;
+        keys.Age = ageSeconds is { } age ? TimeSpan.FromSeconds(age) : null;
+        var check = Check(keys, _clock);
+        Assert.True((await check.CheckAsync(TokenNow())).Authorised);
+
+        _clock.Now = Start.AddSeconds(stillKept);
+        Assert.True((await check.CheckAsync(TokenNow())).Authorised);
+        Assert.Equal(1, keys.Fetches);
+        _clock.Now = Start.AddSeconds(refreshed);
+        Assert.True((await check.CheckAsync(TokenNow())).Authorised);
+        await WaitForAsync(() => keys.Fetches == 2);
+    }
+
+    [Fact]
+    public async Task TheFetch_ShouldAskForAKeySet()
+    {
+        var keys = KeySet.With((_key, KeyId));
+
+        Assert.True((await Check(keys, _clock).CheckAsync(TokenNow())).Authorised);
+
+        Assert.Contains("application/jwk-set+json", Assert.Single(keys.Accepts), StringComparison.Ordinal);
+    }
+
+    /// <summary>A refresh runs in the background: waits a little for it.</summary>
+    private static async Task WaitForAsync(Func<bool> condition)
+    {
+        for (var i = 0; i < 100 && !condition(); i++)
+        {
+            await Task.Delay(20);
+        }
+
+        Assert.True(condition());
     }
 
     [Fact]
