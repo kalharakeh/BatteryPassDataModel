@@ -120,6 +120,16 @@ public sealed class DppReaders(ClusterRepository clusters)
     }
 
     /// <summary>
+    /// The EU's DPP Registry as a reader (R3, decision 94), once its token holds: named by the organisation the token was
+    /// issued for, which is the site's own, never by anything the request says.
+    /// </summary>
+    public static Reader EuRegistry(string organisationId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(organisationId);
+        return Reader.With($"eu-registry:{organisationId}", ReaderRole.EuRegistry);
+    }
+
+    /// <summary>
     /// An API token as a reader (design 5.2). A token for named clusters reads like a cluster user of those clusters. A
     /// global token is the team's token, issued only for Scania's own systems, so it reads like the team.
     /// </summary>

@@ -14,6 +14,12 @@ public enum ReaderRole
     LiRepair,
     LiRecycling,
     LiTreatment,
+
+    /// <summary>
+    /// The EU's DPP Registry reading with a valid token (R3, decision 94): all four levels, as the EU's combined example
+    /// carries them, until the EU says which views it reads (E3). No account can hold it; only the token check gives it.
+    /// </summary>
+    EuRegistry,
 }
 
 /// <summary>Someone reading passport data: their roles and the clusters they belong to. Step 3 maps sign-ins and tokens to readers.</summary>
@@ -40,7 +46,10 @@ public static class AudienceRules
         ArgumentNullException.ThrowIfNull(reader);
         ArgumentNullException.ThrowIfNull(attribute);
         ArgumentNullException.ThrowIfNull(batteryClusterIds);
-        if (attribute.Audience == Audience.Public || reader.Roles.Contains(ReaderRole.Team) || reader.Roles.Contains(ReaderRole.MarketSurveillance))
+        if (attribute.Audience == Audience.Public
+            || reader.Roles.Contains(ReaderRole.Team)
+            || reader.Roles.Contains(ReaderRole.MarketSurveillance)
+            || reader.Roles.Contains(ReaderRole.EuRegistry))
         {
             return true;
         }
