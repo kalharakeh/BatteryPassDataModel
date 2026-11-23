@@ -128,7 +128,7 @@
         }
         @if (field.IsMissing)
         {
-            <span class="bp-attr-missing">Missing</span>
+            <span class="bp-attr-missing">@field.MissingWords</span>
         }
         @if (field.AudienceLabel is not null)
         {

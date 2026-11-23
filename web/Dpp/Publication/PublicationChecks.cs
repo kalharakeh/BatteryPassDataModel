@@ -44,6 +44,16 @@ public sealed class PublicationChecks(OfficialSchemas schemas)
             }
         }
 
+        // A value that is there but still lacks a part the EU requires (G20: a voltage's test temperatures) blocks as missing.
+        foreach (var attribute in AttributeCatalog.All)
+        {
+            if (Find(passport, attribute) is { } present && PassportNeeds.Lacking(attribute, present) is { } lacking
+                && PassportNeeds.NeedOf(attribute, answers) == Need.Required)
+            {
+                blocking.Add($"{attribute.Label} {attribute.Name} is missing ({lacking})");
+            }
+        }
+
         foreach (var (variant, feb2027) in new[] { ("Feb-2027 schema", true), ("Full schema", false) })
         {
             foreach (var issue in schemas.CheckPassport(passport, feb2027))

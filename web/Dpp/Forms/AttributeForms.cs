@@ -123,6 +123,12 @@ public sealed class AttributeForms
             _ => FormKind.Group,
         };
 
+        // The EU's format requires a voltage's test temperatures wherever the voltage is given (G20).
+        if (PassportNeeds.VoltagesWithTemperatures.Contains(attribute.Number))
+        {
+            inputs = inputs.Select(input => input.Path.StartsWith("temperatureRange", StringComparison.Ordinal) ? input with { Required = true } : input).ToArray();
+        }
+
         // A value with one input is labelled by the attribute itself; grouped inputs need their own label.
         return kind == FormKind.Single
             ? new AttributeForm(attribute, kind, [inputs[0] with { Label = attribute.Name, Required = true }], constants)

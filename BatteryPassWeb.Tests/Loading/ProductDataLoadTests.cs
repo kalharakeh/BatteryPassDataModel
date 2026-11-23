@@ -57,7 +57,10 @@ public sealed class ProductDataLoadTests(MongoFixture mongo)
     {
         var rig = await EmptyAsync(mongo);
 
-        await rig.LoadAsync(Core());
+        // A voltage without its test temperatures still loads (R1, G20): the model counts it as missing instead.
+        await rig.LoadAsync(Core()
+            .Clear(ModelSheet, "model|minimumVoltage|temperatureRangeLowerBoundaryValue", "Core800")
+            .Clear(ModelSheet, "model|minimumVoltage|temperatureRangeUpperBoundaryValue", "Core800"));
 
         var model = (await CoreAsync(rig)).Models.Single(item => item.Name == "Core800");
         var values = model.Values.ToDictionary(entry => entry.Key, entry => entry.Value.Value);
@@ -75,9 +78,9 @@ public sealed class ProductDataLoadTests(MongoFixture mongo)
         Same($$"""{"contentType":"text/html","url":"{{Web}}/battery/waste-prevention","language":"en-GB","resourceTitle":"Your role in waste prevention"}""", values["informationOnTheRoleOfEndUsersInContributingToWastePrevention"]);
         Assert.All(model.Values.Values, value => Assert.Equal(("form", Who), (value.Source, value.Who)));
 
-        // Nothing the passport needs is missing: the example column fills a whole model.
+        // Nothing the passport needs is missing but the minimum voltage's temperatures cleared above: the example column fills a whole model.
         Assert.Equal(new ModelAnswers(true, true, false), model.Answers());
-        Assert.Equal(0, RecordEditor.CountMissing(TargetKind.Model, model.Values, model.Answers()));
+        Assert.Equal(1, RecordEditor.CountMissing(TargetKind.Model, model.Values, model.Answers()));
         Assert.Equal("Ten liquid-cooled NMC modules around a central cooling plate, with the battery management unit on top.", model.ModuleDescription);
         Assert.Equal("image/png", model.PictureContentType);
         Assert.Empty(ExampleValues.Of(model.Values, model.ExampleDocumentIds));

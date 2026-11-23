@@ -205,11 +205,19 @@
         },
         "minimumVoltage": {
           "voltValue": 320,
-          "voltUnit": "V"
+          "voltUnit": "V",
+          "temperatureRangeLowerBoundaryValue": -20,
+          "temperatureRangeLowerBoundaryUnit": "°C",
+          "temperatureRangeUpperBoundaryValue": 45,
+          "temperatureRangeUpperBoundaryUnit": "°C"
         },
         "maximumVoltage": {
           "voltValue": 460,
-          "voltUnit": "V"
+          "voltUnit": "V",
+          "temperatureRangeLowerBoundaryValue": -20,
+          "temperatureRangeLowerBoundaryUnit": "°C",
+          "temperatureRangeUpperBoundaryValue": 45,
+          "temperatureRangeUpperBoundaryUnit": "°C"
         },
         "nominalVoltage": {
           "voltValue": 400,
@@ -376,11 +384,19 @@
         },
         "minimumVoltage": {
           "voltValue": 576,
-          "voltUnit": "V"
+          "voltUnit": "V",
+          "temperatureRangeLowerBoundaryValue": -20,
+          "temperatureRangeLowerBoundaryUnit": "°C",
+          "temperatureRangeUpperBoundaryValue": 45,
+          "temperatureRangeUpperBoundaryUnit": "°C"
         },
         "maximumVoltage": {
           "voltValue": 828,
-          "voltUnit": "V"
+          "voltUnit": "V",
+          "temperatureRangeLowerBoundaryValue": -20,
+          "temperatureRangeLowerBoundaryUnit": "°C",
+          "temperatureRangeUpperBoundaryValue": 45,
+          "temperatureRangeUpperBoundaryUnit": "°C"
         },
         "nominalVoltage": {
           "voltValue": 720,
@@ -546,11 +562,19 @@
         },
         "minimumVoltage": {
           "voltValue": 512,
-          "voltUnit": "V"
+          "voltUnit": "V",
+          "temperatureRangeLowerBoundaryValue": -20,
+          "temperatureRangeLowerBoundaryUnit": "°C",
+          "temperatureRangeUpperBoundaryValue": 45,
+          "temperatureRangeUpperBoundaryUnit": "°C"
         },
         "maximumVoltage": {
           "voltValue": 736,
-          "voltUnit": "V"
+          "voltUnit": "V",
+          "temperatureRangeLowerBoundaryValue": -20,
+          "temperatureRangeLowerBoundaryUnit": "°C",
+          "temperatureRangeUpperBoundaryValue": 45,
+          "temperatureRangeUpperBoundaryUnit": "°C"
         },
         "nominalVoltage": {
           "voltValue": 640,

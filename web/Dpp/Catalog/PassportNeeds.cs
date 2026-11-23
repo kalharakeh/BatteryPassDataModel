@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 namespace BatteryPassWeb.Dpp.Catalog;
 
 /// <summary>Whether a passport needs a value before it is published.</summary>
@@ -67,6 +69,36 @@ public static class PassportNeeds
 
         return DueByFeb2027(attribute) ? Need.Required : Need.Later;
     }
+
+    /// <summary>
+    /// The voltages (#64 to #66) whose test temperatures the EU's format requires wherever the voltage is given (G20):
+    /// the schema of the file leaves them optional.
+    /// </summary>
+    public static IReadOnlyList<int> VoltagesWithTemperatures { get; } = [64, 65, 66];
+
+    /// <summary>
+    /// What a value that is there still lacks before the passport may be published, in words that finish "is missing …"
+    /// ("the test temperatures"); null when nothing. Such a value is kept, shown and counted as missing; a save never
+    /// refuses it, so a workbook or a file filled before the rule still loads (package R1, decision 94).
+    /// </summary>
+    public static string? Lacking(AttributeDefinition attribute, JsonNode? value)
+    {
+        ArgumentNullException.ThrowIfNull(attribute);
+        if (value is JsonObject voltage && VoltagesWithTemperatures.Contains(attribute.Number) && !attribute.IsExtension
+            && (voltage["temperatureRangeLowerBoundaryValue"] is null || voltage["temperatureRangeUpperBoundaryValue"] is null))
+        {
+            return "the test temperatures";
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Missing for the passport: needed before it is published (<see cref="NeedOf"/>), and empty or still lacking a part
+    /// (<see cref="Lacking"/>). The one rule behind the editors' marks and counts and the battery's missing values.
+    /// </summary>
+    public static bool IsMissing(AttributeDefinition attribute, JsonNode? value, ModelAnswers answers) =>
+        NeedOf(attribute, answers) == Need.Required && (value is null || Lacking(attribute, value) is not null);
 
     /// <summary>
     /// Why a value is needed when only the model's answer makes it so, e.g. "needed because this model is made for cycling

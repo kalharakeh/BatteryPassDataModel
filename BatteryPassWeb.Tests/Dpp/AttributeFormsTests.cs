@@ -59,7 +59,7 @@ public sealed class AttributeFormsTests
     }
 
     [Fact]
-    public void Voltages_ShouldKeepTheirOptionalTestTemperatures()
+    public void Voltages_ShouldAskForTheirTestTemperatures()
     {
         var form = Forms.For(AttributeCatalog.ByNumber(66));
 
@@ -68,7 +68,7 @@ public sealed class AttributeFormsTests
             ["temperatureRangeLowerBoundaryValue", "temperatureRangeUpperBoundaryValue", "voltValue"],
             form.Inputs.Select(input => input.Path).Order(StringComparer.Ordinal));
         Assert.Equal("V", form.Inputs.Single(input => input.Path == "voltValue").Unit);
-        Assert.All(form.Inputs.Where(input => input.Path.StartsWith("temperature", StringComparison.Ordinal)), input => Assert.Equal(("°C", false), (input.Unit, input.Required)));
+        Assert.All(form.Inputs.Where(input => input.Path.StartsWith("temperature", StringComparison.Ordinal)), input => Assert.Equal(("°C", true), (input.Unit, input.Required))); // the EU requires them (R1, G20)
     }
 
     [Fact]
