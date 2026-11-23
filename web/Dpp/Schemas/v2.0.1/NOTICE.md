@@ -20,4 +20,15 @@ In `$defs/ohmInteger`, the three values `ohmValueForBatteryModule`, `ohmValueFor
 - **Effect:** a whole number stays valid; a decimal is now valid too. The definition keeps its name, so the rest of the schema is untouched.
 - **Raised with BatteryPass-Ready:** in the programme's first letter to them (finding D06). When a release takes decimals, replace these files and drop this section.
 
+## Local deviation: keys the schema doesn't define (decisions 28 and 94)
+
+The passports the app makes carry values the v2.0.1 schema doesn't define, under keys of their own in the schema's sections. The schema files are unchanged for this: their sections don't forbid other keys (no `additionalProperties: false`), so the checks pass.
+
+- **E1 to E4** (decision 28): the times spent in extreme temperatures, whole minutes, in `performanceAndDurability`.
+- **E5 to E20** (decision 94, package R1): the values the EU's battery format 1.0.0 requires, under the EU's names.
+  - **Plain texts:** `manufacturingCity`, `manufacturingRegion`, `manufacturingCountry` (ISO 3166 alpha-3) and `batchNumber`.
+  - **Language maps** such as `{"en-GB": "…"}`: `notInUseTemperatureRangeTest`, and the ten end-of-life texts in `circularityAndResourceEfficiency`.
+  - **Words:** `chemicalSymbol` ("Cadmium (Cd)", "Lead (Pb)"), as #42 carries names. The records keep the EU's addresses, and the EU view (package R2) sends them.
+- **If a later BatteryPass-Ready release defines one of these keys** with another meaning or type, the app's key must move before that release is taken in.
+
 The app embeds both files (see `web/BatteryPassWeb.csproj`) and checks passports and single values against them (`OfficialSchemas`). Don't edit them beyond the deviation above: `OfficialSchemasTests` compares their SHA-256 with the table above, and checks that undoing the deviation gives the published file byte for byte. `.gitattributes` stops git from changing their line endings. To move to a newer version, add the new files beside these and update this note and the tests.

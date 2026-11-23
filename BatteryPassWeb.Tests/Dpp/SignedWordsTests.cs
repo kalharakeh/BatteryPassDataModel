@@ -28,6 +28,20 @@ public sealed class SignedWordsTests(MongoFixture mongo)
     }
 
     [Fact]
+    public void ThePassportJson_ShouldCarryTheSymbolAsWords_AsItCarriesMaterials_WhileTheRecordKeepsTheEusAddresses()
+    {
+        var seed = DppTestSeed.Load();
+        var stored = seed.Sources.Model.Values[AttributeCatalog.ChemicalSymbol].Value;
+        Assert.All(stored.AsArray(), entry => Assert.StartsWith(EuCodeLists.ChemicalSymbolBase, entry!.GetValue<string>(), StringComparison.Ordinal));
+
+        var passport = BatteryPassWeb.Dpp.Assembly.PassportAssembler.Assemble(seed.Sources, seed.Header);
+
+        var symbols = passport["batteryPassportData"]!["symbolsLabelsAndDocumentationOfConformity"]![AttributeCatalog.ChemicalSymbol]!;
+        Assert.Equal(List("Cadmium (Cd)", "Lead (Pb)"), symbols, JsonNode.DeepEquals);
+        Assert.Equal(["Cadmium (Cd)", "Lead (Pb)"], ValueWords.Lines(AttributeFormsTests.Forms.For(AttributeCatalog.FindByProperty(AttributeCatalog.ChemicalSymbol)!), symbols).Select(line => line.Text));
+    }
+
+    [Fact]
     public async Task APassportPublishedAsV38PublishedIt_ShouldShowItsMaterialsExactlyAsSigned()
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo); // the seed's #42: names, as v3.8 kept them
