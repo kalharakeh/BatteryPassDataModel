@@ -576,6 +576,16 @@ public sealed partial class ProductDataLoader(
                 Effective(first, column, batch, batchWords); // notes where its empty cells were taken from
             }
             PlanValues(batch, sheet, cells, plan);
+
+            // A new batch's label that another batch of the model has would stop the load part way (E8, O4): an existing
+            // batch's is judged by the save pipeline's preview, a new one's here, so the check says so first.
+            if (batch.IsNew && model.Plan.ExistingId is { } modelOfBatch
+                && batch.Changed.GetValueOrDefault(AttributeCatalog.BatchNumber) is JsonValue typed && typed.TryGetValue<string>(out var label)
+                && await BatchLabels.TakenAsync(store, modelOfBatch, null, label, cancellationToken))
+            {
+                plan.Problems.Add(sheet.Place(LoadFields.BatchLabelKey, column).Problem($"{label}: {BatchLabels.Taken}. Type another label, or leave the cell empty and the app makes one"));
+            }
+
             await PlanDocumentsAsync(batch, LoadRecord.Batch, content, models, model, plan, sent, current?.ExampleDocumentIds, cancellationToken);
         }
     }
