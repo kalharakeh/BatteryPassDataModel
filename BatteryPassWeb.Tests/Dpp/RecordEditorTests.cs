@@ -14,7 +14,7 @@ public sealed class RecordEditorTests(MongoFixture mongo)
 
     [Theory]
     [InlineData(TargetKind.Model, 37)]
-    [InlineData(TargetKind.Batch, 16)]
+    [InlineData(TargetKind.Batch, 17)]
     [InlineData(TargetKind.Site, 6)]
     [InlineData(TargetKind.Operator, 2)]
     public void EachRecord_ShouldEditItsOwnAttributes(TargetKind kind, int count)
@@ -24,7 +24,7 @@ public sealed class RecordEditorTests(MongoFixture mongo)
 
     [Theory]
     [InlineData(TargetKind.Model, 29)]
-    [InlineData(TargetKind.Batch, 4)]
+    [InlineData(TargetKind.Batch, 5)]
     [InlineData(TargetKind.Site, 5)]
     [InlineData(TargetKind.Operator, 2)]
     public void AnEmptyRecord_ShouldMissOnlyItsValuesNeededByFeb2027(TargetKind kind, int count)

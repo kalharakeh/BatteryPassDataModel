@@ -19,7 +19,7 @@ public sealed class WorkbookInStepTests
     /// SHA-256 of "Core family - data to fill.xlsx": as it was sent to the owner on 13 November 2026, with the rows of the
     /// EU's values added by package R1 (decision 94). The file as sent is kept with the tests (OldWorkbookTests).
     /// </summary>
-    private const string SentSha256 = "66d5111427f6ec40e5eea81e27607a759625850aab8e06e76d6fdb0814ccf933";
+    private const string SentSha256 = "5ced37c2ae3896e4a36f167c18f1a498c52fccbc066ded756ebdb86f91fb4d2f";
 
     private static readonly LoadFields Fields = new(AttributeFormsTests.Forms);
 

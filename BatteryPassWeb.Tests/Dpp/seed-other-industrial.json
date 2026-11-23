@@ -70,6 +70,7 @@
     "year": 2026,
     "values": {
       "batteryModelIdentifier": "EXB-NMC-100",
+      "batchNumber": "EXB-SWE-2026",
       "carbonFootprintLabel": { "contentType": "image/png", "url": "https://www.batteries.scania.test/battery/carbon-footprint-label.png", "language": "en-GB", "resourceTitle": "Carbon footprint label" },
       "euDeclarationOfConformity": { "contentType": "application/pdf", "url": "https://www.batteries.scania.test/battery/eu-declaration-of-conformity.pdf", "language": "en-GB", "resourceTitle": "EU declaration of conformity" },
       "resultsOfTestReportsProvingCompliance": { "contentType": "application/pdf", "url": "https://passport.example.com/dpp/documents/doc-test-reports", "language": "en-GB", "resourceTitle": "Test reports" },

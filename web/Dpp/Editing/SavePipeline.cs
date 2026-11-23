@@ -158,6 +158,10 @@ public sealed class SavePipeline(
         {
             evaluation = await CheckPackRulesAsync(changes.TargetId, evaluation, statusChange && !target.Values.ContainsKey(AddedByCorrection), cancellationToken);
         }
+        else if (changes.Target == TargetKind.Batch)
+        {
+            evaluation = await CheckBatchRulesAsync(changes.TargetId, evaluation, cancellationToken);
+        }
 
         var removals = await EvaluateRemovalsAsync(sender, changes, target, cancellationToken);
         var results = evaluation.Results.Concat(removals).ToArray();
@@ -211,6 +215,12 @@ public sealed class SavePipeline(
                 entityType: $"dpp-{changes.Target.ToString().ToLowerInvariant()}",
                 entityId: changes.TargetId,
                 cancellationToken: none);
+            // A site's country makes the labels of its batches that have none (E8, O4), before their passports follow.
+            if (changes.Target == TargetKind.Site && stored.ContainsKey(AttributeCatalog.ManufacturingCountry))
+            {
+                await BatchLabels.FillForSiteAsync(store, changes.TargetId, sender.Who, generatedAt, none);
+            }
+
             // The values are saved: what follows (new versions) isn't stopped by a cancelled request, a closed browser or
             // a proxy's time-out (round four, 1).
             foreach (var listener in _listeners)
@@ -337,6 +347,24 @@ public sealed class SavePipeline(
         }
 
         return new Evaluation(results, accepted);
+    }
+
+    /// <summary>A batch's label (E8) is refused when another batch of the same model has it (O4).</summary>
+    private async Task<Evaluation> CheckBatchRulesAsync(string batchId, Evaluation evaluation, CancellationToken cancellationToken)
+    {
+        if (!evaluation.Accepted.TryGetValue(AttributeCatalog.BatchNumber, out var value)
+            || value is not JsonValue leaf || !leaf.TryGetValue<string>(out var label)
+            || await store.GetAsync<ProductionBatch>(batchId, cancellationToken) is not { } batch
+            || !await BatchLabels.TakenAsync(store, batch.ModelId, batch.Id, label, cancellationToken))
+        {
+            return evaluation;
+        }
+
+        var accepted = new Dictionary<string, JsonNode>(evaluation.Accepted, StringComparer.Ordinal);
+        accepted.Remove(AttributeCatalog.BatchNumber);
+        return new Evaluation(
+            evaluation.Results.Select(result => result.Key == AttributeCatalog.BatchNumber ? result with { Outcome = KeyOutcome.Rejected, Message = BatchLabels.Taken } : result).ToList(),
+            accepted);
     }
 
     /// <summary>

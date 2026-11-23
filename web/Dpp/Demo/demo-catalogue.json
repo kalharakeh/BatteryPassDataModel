@@ -688,6 +688,7 @@
       "testReport": "Compact 7M test report 2026",
       "values": {
         "batteryModelIdentifier": "CP7M",
+        "batchNumber": "CP7M-SWE-2026 (demo)",
         "carbonFootprintLabel": {
           "contentType": "image/png",
           "url": "https://www.example.com/demo/compact-7m/carbon-footprint-label.png",
@@ -748,6 +749,7 @@
       "testReport": "Compact 13M test report 2026",
       "values": {
         "batteryModelIdentifier": "CP13M",
+        "batchNumber": "CP13M-SWE-2026 (demo)",
         "carbonFootprintLabel": {
           "contentType": "image/png",
           "url": "https://www.example.com/demo/compact-13m/carbon-footprint-label.png",
@@ -808,6 +810,7 @@
       "testReport": "Core test report 2026",
       "values": {
         "batteryModelIdentifier": "CORE",
+        "batchNumber": "CORE-SWE-2026 (demo)",
         "carbonFootprintLabel": {
           "contentType": "image/png",
           "url": "https://www.example.com/demo/core/carbon-footprint-label.png",

@@ -123,6 +123,7 @@ public static class AttributeCatalog
     public const string ManufacturingCity = "manufacturingCity";
     public const string ManufacturingRegion = "manufacturingRegion";
     public const string ManufacturingCountry = "manufacturingCountry";
+    public const string BatchNumber = "batchNumber";
 
     /// <summary>
     /// Decision 94 (package R1): the values the EU's battery format 1.0.0 requires that the file doesn't hold, kept in
@@ -134,6 +135,7 @@ public static class AttributeCatalog
         new(1005, "Manufacturing city", Ident, ManufacturingCity, L.Site, A.Public, G.None, E.Team, C.Fixed, null, R.Mandatory, true, "E5"),
         new(1006, "Manufacturing region", Ident, ManufacturingRegion, L.Site, A.Public, G.None, E.Team, C.Fixed, null, R.Conditional, false, "E6"),
         new(1007, "Manufacturing country", Ident, ManufacturingCountry, L.Site, A.Public, G.None, E.Team, C.Fixed, null, R.Mandatory, true, "E7"),
+        new(1008, "Batch label", Ident, BatchNumber, L.Batch, A.Public, G.None, E.Team, C.Fixed, null, R.Mandatory, true, "E8"),
     ];
 
     /// <summary>The values added beyond the file: the temperature times (E1–E4), then the EU's values (E5 on).</summary>

@@ -474,12 +474,12 @@ public sealed partial class ProductDataPages(
     /// <summary>A new batch of a model: one per calendar year and manufacturing site (decision 3).</summary>
     public async Task<(string? BatchId, string? Problem)> CreateBatchAsync(string who, string modelId, int year, string siteId, CancellationToken cancellationToken = default)
     {
-        if (await store.GetAsync<BatteryModel>(modelId, cancellationToken) is null)
+        if (await store.GetAsync<BatteryModel>(modelId, cancellationToken) is not { } model)
         {
             return (null, "the battery model was not found");
         }
 
-        if (await store.GetAsync<ManufacturingSite>(siteId, cancellationToken) is null)
+        if (await store.GetAsync<ManufacturingSite>(siteId, cancellationToken) is not { } site)
         {
             return (null, "choose a manufacturing site; add it under Sites and operators first if it's missing");
         }
@@ -490,6 +490,12 @@ public sealed partial class ProductDataPages(
         }
 
         var batch = new ProductionBatch { Id = NewId("batch"), ModelId = modelId, SiteId = siteId, Year = year, Values = OneWayValues(TargetKind.Batch, who) };
+
+        // The batch's label (E8, O4), when the model's serial number format and the site's country make one that is free.
+        if (BatchLabels.Default(model, site, year) is { } label && !await BatchLabels.TakenAsync(store, modelId, null, label, cancellationToken))
+        {
+            batch.Values[AttributeCatalog.BatchNumber] = BatchLabels.Stored(label, who, clock.GetUtcNow().UtcDateTime);
+        }
         try
         {
             await store.InsertAsync(batch, cancellationToken);

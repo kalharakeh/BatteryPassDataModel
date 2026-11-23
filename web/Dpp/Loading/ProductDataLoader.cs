@@ -420,7 +420,9 @@ public sealed partial class ProductDataLoader(
             foreach (var (key, cell) in first.Cells)
             {
                 // A model's name and its serial number format are its own: they are never "the same as the first model's".
-                if (!cells.ContainsKey(key) && LoadFields.OwnField(key) is not { Kind: OwnFieldKind.Name or OwnFieldKind.SerialFormat or OwnFieldKind.NotLoadedYet })
+                // Nor is a batch's label (E8): no two batches of a model share one, and an empty one is the app's to make.
+                if (!cells.ContainsKey(key) && LoadFields.OwnField(key) is not { Kind: OwnFieldKind.Name or OwnFieldKind.SerialFormat or OwnFieldKind.NotLoadedYet }
+                    && key != LoadFields.BatchLabelKey)
                 {
                     cells[key] = cell;
                     taken++;

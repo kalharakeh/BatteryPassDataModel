@@ -85,6 +85,9 @@ public sealed class LoadFields
     /// <summary>The key of a line to fill on the hazardous substances sheet.</summary>
     public const string HazardLineKey = "hazard|line";
 
+    /// <summary>The batch's label (E8): each batch's own, never the first batch's.</summary>
+    public const string BatchLabelKey = "batch|" + AttributeCatalog.BatchNumber;
+
     /// <summary>
     /// The app's own fields the workbook has, in one place. A field that another update brings is added here: the
     /// serial number format becomes loadable by giving it a kind of its own instead of <see cref="OwnFieldKind.NotLoadedYet"/>.

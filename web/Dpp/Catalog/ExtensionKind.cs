@@ -27,6 +27,7 @@ public static class ExtensionKinds
         [AttributeCatalog.ManufacturingCity] = ExtensionKind.Text,
         [AttributeCatalog.ManufacturingRegion] = ExtensionKind.Text,
         [AttributeCatalog.ManufacturingCountry] = ExtensionKind.Country,
+        [AttributeCatalog.BatchNumber] = ExtensionKind.Text,
     };
 
     /// <summary>The kind of an extension; null for an attribute of the file, whose form comes from the schema.</summary>
