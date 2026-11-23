@@ -24,7 +24,7 @@ public sealed class AttributeFormsTests
     [InlineData(82, FormKind.Single, InputKind.Integer, null)]
     [InlineData(87, FormKind.Single, InputKind.Integer, "°C")]
     [InlineData(30, FormKind.Single, InputKind.Number, "kgCO2eq/kWh")]
-    [InlineData(42, FormKind.Lines, InputKind.Lines, null)]
+    [InlineData(42, FormKind.Single, InputKind.Choices, null)] // chosen from the EU's list (R1, G16)
     [InlineData(22, FormKind.Single, InputKind.Select, null)]
     public void OneInputAttributes_ShouldBeLabelledByTheirName(int number, FormKind kind, InputKind input, string? unit)
     {

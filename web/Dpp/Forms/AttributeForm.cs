@@ -44,6 +44,13 @@ public enum InputKind
     Duration,
 
     /// <summary>
+    /// One or more entries of one of the EU's code lists (#42, E9), shown as boxes to tick with the EU's labels and kept
+    /// as the EU's addresses. A name kept from before that isn't on the list shows as a box of its own, ticked, until the
+    /// team unticks it.
+    /// </summary>
+    Choices,
+
+    /// <summary>
     /// A text of a sentence or more in the passport's language, shown as a text area and kept as a language map,
     /// <c>{"en-GB": "…"}</c>, as the EU's format writes texts (decision 94, <see cref="Catalog.PassportLanguage"/>).
     /// </summary>

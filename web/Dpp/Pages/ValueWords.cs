@@ -94,6 +94,11 @@ public static class ValueWords
                 }
 
                 return rows;
+            // Entries of the EU's lists (#42, E9): one per line, by the EU's label; a name not on the list as it was.
+            case FormKind.Single when form.Inputs[0].Kind == InputKind.Choices:
+                return (value as JsonArray ?? []).Select(Scalar).OfType<string>()
+                    .Select(entry => new ValueLine(null, FormValues.Choice(form.Inputs[0], entry) is { } address ? form.Inputs[0].Words(address) : entry))
+                    .ToArray();
             case FormKind.Single:
                 var only = form.Inputs[0];
                 var single = Part(only, only.Path.Length == 0 ? value : value[only.Path]);

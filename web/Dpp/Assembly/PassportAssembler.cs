@@ -62,7 +62,23 @@ public static class PassportAssembler
         };
 
     private static JsonNode? Stored(Dictionary<string, AttributeValue> values, AttributeDefinition attribute) =>
-        values.TryGetValue(attribute.Property, out var stored) ? stored.Value.DeepClone() : null;
+        !values.TryGetValue(attribute.Property, out var stored) ? null
+        : attribute.Property == AttributeCatalog.CriticalRawMaterials ? RawMaterialWords(stored.Value)
+        : stored.Value.DeepClone();
+
+    /// <summary>
+    /// #42 in this passport as the BatteryPass-Ready schema has it, a list of names (G16): an entry kept as the EU's
+    /// address becomes the EU's label; a name kept from before stays as it was. The EU view (R2) sends the addresses.
+    /// </summary>
+    public static JsonNode RawMaterialWords(JsonNode stored)
+    {
+        ArgumentNullException.ThrowIfNull(stored);
+        return stored is JsonArray entries
+            ? new JsonArray(entries.Select(entry => entry is JsonValue value && value.TryGetValue<string>(out var text) && EuCodeLists.RawMaterials.TryGetValue(text, out var label)
+                ? JsonValue.Create(label)
+                : entry?.DeepClone()).ToArray())
+            : stored.DeepClone();
+    }
 
     private static JsonNode SystemValue(int number, PassportHeader header) => number switch
     {

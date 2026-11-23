@@ -90,6 +90,19 @@ public static class PassportNeeds
             return "the test temperatures";
         }
 
+        // #42 is chosen from the EU's list (G16). A name kept from before that isn't on it stays, and is missing a choice.
+        if (attribute.Property == AttributeCatalog.CriticalRawMaterials && value is JsonArray materials)
+        {
+            var off = materials.OfType<JsonValue>()
+                .Select(item => item.TryGetValue<string>(out var text) ? text : null)
+                .Where(text => text is not null && EuCodeLists.FindRawMaterial(text) is null)
+                .ToArray();
+            if (off.Length > 0)
+            {
+                return $"a choice from the EU's list: {string.Join(", ", off.Select(text => $"\"{text}\""))} {(off.Length == 1 ? "isn't" : "aren't")} on it";
+            }
+        }
+
         return null;
     }
 

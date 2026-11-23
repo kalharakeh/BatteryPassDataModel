@@ -92,6 +92,12 @@ public sealed class AttributeForms
             return new AttributeForm(attribute, FormKind.Upload, [], noConstants);
         }
 
+        // #42 is chosen from the EU's 34 critical raw materials (G16); the schema keeps it a list of texts.
+        if (attribute.Property == AttributeCatalog.CriticalRawMaterials)
+        {
+            return new AttributeForm(attribute, FormKind.Single, [new FormInput(string.Empty, attribute.Name, InputKind.Choices, true, [.. EuCodeLists.RawMaterials.Keys], Hint: "Every critical raw material in the battery above 0.1 % by weight, from the EU's list.", OptionWords: EuCodeLists.RawMaterials)], noConstants);
+        }
+
         var type = node["type"]?.GetValue<string>();
         if (type == "array")
         {
@@ -145,6 +151,7 @@ public sealed class AttributeForms
             ExtensionKind.Minutes => new FormInput(string.Empty, attribute.Name, InputKind.Integer, false, [], "minutes"),
             ExtensionKind.Country => new FormInput(string.Empty, attribute.Name, InputKind.Select, required, Countries.Codes, OptionWords: Countries.Names),
             ExtensionKind.LanguageText => new FormInput(string.Empty, attribute.Name, InputKind.LanguageText, required, [], Hint: ExtensionHints.GetValueOrDefault(attribute.Property)),
+            ExtensionKind.Codes => new FormInput(string.Empty, attribute.Name, InputKind.Choices, required, [.. EuCodeLists.ChemicalSymbols.Keys], Hint: ExtensionHints.GetValueOrDefault(attribute.Property), OptionWords: EuCodeLists.ChemicalSymbols),
             _ => new FormInput(string.Empty, attribute.Name, InputKind.Text, required, [], Hint: ExtensionHints.GetValueOrDefault(attribute.Property)),
         };
     }
@@ -154,6 +161,7 @@ public sealed class AttributeForms
     {
         [AttributeCatalog.ManufacturingCity] = "The town or city of the site.",
         [AttributeCatalog.ManufacturingRegion] = "A region, county or state, if it helps to find the site.",
+        [AttributeCatalog.ChemicalSymbol] = "The symbol the battery's label shows: cadmium, lead or both.",
         [AttributeCatalog.NotInUseTemperatureRangeTest] = "The test or standard the idle temperature range (#88 and #89) comes from, for example a storage test to IEC 62660-1.",
         ["endUserRoleInWastePrevention"] = "What the battery's user can do to prevent waste, such as using and storing it as the manual says. A link may go in the text.",
         ["endUserRoleInSeparateCollection"] = "What the user does with the battery at its end of life: never with other waste, always to separate collection.",

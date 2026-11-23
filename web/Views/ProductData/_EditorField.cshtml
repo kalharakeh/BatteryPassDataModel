@@ -75,6 +75,19 @@
             case InputKind.LongText:
                 <textarea name="@name" rows="3" aria-label="@input.Label" aria-invalid="@ariaInvalid" aria-describedby="@describedBy">@text</textarea>
                 break;
+            case InputKind.Choices:
+                var ticked = text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                <div class="bp-attr-parts" role="group" aria-label="@input.Label" aria-invalid="@ariaInvalid" aria-describedby="@describedBy">
+                    @foreach (var option in input.Options)
+                    {
+                        <label class="bp-checkbox-option"><input type="checkbox" name="@name" value="@option" checked="@ticked.Contains(option)" /> <span>@input.Words(option)</span></label>
+                    }
+                    @foreach (var other in ticked.Where(entry => !input.Options.Contains(entry)))
+                    {
+                        <label class="bp-checkbox-option"><input type="checkbox" name="@name" value="@other" checked /> <span>@other (not on the EU's list: untick it and choose from the list)</span></label>
+                    }
+                </div>
+                break;
             case InputKind.LanguageText:
                 <textarea name="@name" rows="3" lang="@PassportLanguage.Tag" aria-label="@input.Label" aria-invalid="@ariaInvalid" aria-describedby="@describedBy">@text</textarea>
                 break;
@@ -101,7 +114,7 @@
         <div class="bp-attr-parts">
             @foreach (var input in inputs)
             {
-                var wide = input.Kind is InputKind.Url or InputKind.LongText or InputKind.LanguageText;
+                var wide = input.Kind is InputKind.Url or InputKind.LongText or InputKind.LanguageText or InputKind.Choices;
                 var refused = row is null && field.IsRefused(input);
                 <label class="@($"{(wide ? "bp-attr-wide" : string.Empty)} {(refused ? "is-invalid-part" : string.Empty)}".Trim())">
                     <span>@WithUnit(input.Label, input.Unit)@if (!input.Required) {<span class="bp-attr-optional"> (optional)</span>}</span>

@@ -371,7 +371,7 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
                 continue;
             }
 
-            if (FormValues.SameValue(current, value))
+            if (FormValues.Same(form, current, value))
             {
                 continue;
             }

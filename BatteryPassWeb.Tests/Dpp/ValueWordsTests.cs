@@ -50,7 +50,7 @@ public sealed class ValueWordsTests
     [Fact]
     public void AList_ShouldReadOneItemPerLine()
     {
-        var lines = Lines(42, """["Cobalt","Lithium","Natural graphite"]""");
+        var lines = Lines(43, """["Cobalt","Lithium","Natural graphite"]"""); // #42 reads by the EU's labels (R1, CriticalRawMaterialsTests)
 
         Assert.Equal(["Cobalt", "Lithium", "Natural graphite"], lines.Select(line => line.Text));
     }

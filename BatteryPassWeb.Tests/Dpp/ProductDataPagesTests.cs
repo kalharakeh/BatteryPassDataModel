@@ -64,7 +64,7 @@ public sealed class ProductDataPagesTests(MongoFixture mongo)
         Assert.Equal("model-test", page.SelectedModel?.Id);
         var batch = Assert.Single(page.Batches);
         Assert.Equal(("Example plant", 17, 17, 1, 0), (batch.SiteName, batch.Filled, batch.Total, batch.Packs, batch.Published));
-        Assert.Equal((TargetKind.Model, 48, 48), (page.ModelEditor!.Kind, page.ModelEditor.Filled, page.ModelEditor.Total));
+        Assert.Equal((TargetKind.Model, 49, 49), (page.ModelEditor!.Kind, page.ModelEditor.Filled, page.ModelEditor.Total));
         Assert.Equal("/admin/models/model-test", page.ModelEditor.SaveAction);
         Assert.Null(await PageTesting.Pages(rig).FamilyAsync("no-such-family", null));
     }

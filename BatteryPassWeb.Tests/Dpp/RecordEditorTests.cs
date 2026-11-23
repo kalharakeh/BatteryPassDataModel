@@ -13,7 +13,7 @@ public sealed class RecordEditorTests(MongoFixture mongo)
     private const string ModelId = "model-test";
 
     [Theory]
-    [InlineData(TargetKind.Model, 48)]
+    [InlineData(TargetKind.Model, 49)]
     [InlineData(TargetKind.Batch, 17)]
     [InlineData(TargetKind.Site, 6)]
     [InlineData(TargetKind.Operator, 2)]
@@ -91,7 +91,7 @@ public sealed class RecordEditorTests(MongoFixture mongo)
         Assert.Equal(
             ["Identifiers and product data", "Symbols, labels and conformity", "Due diligence", "Materials and composition", "Circularity", "Performance and durability"],
             sections.Select(section => section.Title));
-        Assert.Equal(48, sections.Sum(section => section.Fields.Count));
+        Assert.Equal(49, sections.Sum(section => section.Fields.Count));
         var dismantling = sections.SelectMany(section => section.Fields).Single(field => field.Attribute.Number == 45);
         Assert.Equal(uploaded.Document!.Id, dismantling.Document?.Id);
         Assert.Equal(("Required by Feb 2027", "Shared"), (dismantling.Marker, dismantling.AudienceLabel));

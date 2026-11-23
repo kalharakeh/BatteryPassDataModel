@@ -68,9 +68,12 @@ public static class FormValues
 
         foreach (var input in form.Inputs)
         {
-            var text = input.Kind == InputKind.LanguageText
-                ? PassportLanguage.TextOf(input.Path.Length == 0 ? value : value[input.Path]) ?? string.Empty
-                : Text(input.Path.Length == 0 ? value : value[input.Path]);
+            var text = input.Kind switch
+            {
+                InputKind.LanguageText => PassportLanguage.TextOf(input.Path.Length == 0 ? value : value[input.Path]) ?? string.Empty,
+                InputKind.Choices => string.Join(",", Choices(input, ((input.Path.Length == 0 ? value : value[input.Path]) as JsonArray ?? []).OfType<JsonValue>().Select(item => item.TryGetValue<string>(out var entry) ? entry : item.ToJsonString()))),
+                _ => Text(input.Path.Length == 0 ? value : value[input.Path]),
+            };
             if (input.Kind == InputKind.Duration)
             {
                 var (amount, unit) = DurationParts(text);
@@ -134,8 +137,54 @@ public static class FormValues
             : (years.ToString(CultureInfo.InvariantCulture), "Y");
     }
 
+    /// <summary>
+    /// The entries of a choice as the form keeps them: each found on the input's list (by its address, its label or a
+    /// plain other name) as its address, in the list's order, then the names not on it, as they were, in their order.
+    /// </summary>
+    public static IReadOnlyList<string> Choices(FormInput input, IEnumerable<string> entries)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(entries);
+        var found = new HashSet<string>(StringComparer.Ordinal);
+        var others = new List<string>();
+        foreach (var entry in entries.Select(item => item.Trim()).Where(item => item.Length > 0))
+        {
+            if (Choice(input, entry) is { } address)
+            {
+                found.Add(address);
+            }
+            else if (!others.Contains(entry, StringComparer.Ordinal))
+            {
+                others.Add(entry);
+            }
+        }
+
+        return [.. input.Options.Where(found.Contains), .. others];
+    }
+
+    /// <summary>The address on the input's list an entry names; null when it names none.</summary>
+    public static string? Choice(FormInput input, string entry)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        return input.FindOption(entry)
+            ?? ((EuCodeLists.FindRawMaterial(entry) ?? EuCodeLists.FindChemicalSymbol(entry)) is { } address && input.Options.Contains(address) ? address : null);
+    }
+
     /// <summary>How many rows a stored list has; 0 for anything else.</summary>
     public static int RowCount(JsonNode? value) => value is JsonArray array ? array.Count : 0;
+
+    /// <summary>
+    /// True when two values of this form are the same: written canonically, or for a choice (#42, E9) naming the same
+    /// entries, so that a list kept from before by names ("Natural graphite") isn't rewritten as addresses by a save or a
+    /// load that didn't change it (G16). It becomes addresses when the team changes it.
+    /// </summary>
+    public static bool Same(AttributeForm form, JsonNode? first, JsonNode? second)
+    {
+        ArgumentNullException.ThrowIfNull(form);
+        return SameValue(first, second)
+            || (form.Inputs is [{ Kind: InputKind.Choices }] && first is JsonArray && second is JsonArray
+                && Show(form, first).SequenceEqual(Show(form, second)));
+    }
 
     /// <summary>True when two values are the same once written canonically (numbers in their shortest form, keys sorted).</summary>
     public static bool SameValue(JsonNode? first, JsonNode? second) =>
@@ -188,6 +237,11 @@ public static class FormValues
                 return JsonValue.Create(whole);
             case InputKind.Number when decimal.TryParse(text.Contains('.', StringComparison.Ordinal) ? text : text.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var number):
                 return JsonValue.Create(number);
+            // Entries of the EU's lists (#42, E9): ticked boxes post their addresses; typed names (the workbook) are found
+            // by their label or a plain other name. A name not on the list is kept as it was (G16).
+            case InputKind.Choices:
+                var chosen = Choices(input, text.Split([',', ';', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                return chosen.Count == 0 ? null : new JsonArray(chosen.Select(item => (JsonNode)JsonValue.Create(item)).ToArray());
             // A text in the passport's language is kept as a language map (decision 94); the page shows one language.
             case InputKind.LanguageText:
                 return PassportLanguage.Map(text.Replace("\r\n", "\n", StringComparison.Ordinal));

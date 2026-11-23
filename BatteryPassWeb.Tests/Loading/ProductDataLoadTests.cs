@@ -67,7 +67,8 @@ public sealed class ProductDataLoadTests(MongoFixture mongo)
         Same("""{"batteryCategoryValue":"industrial/non-stationary battery"}""", values["batteryCategory"]); // the app's own, never typed
         Same("""{"gramKilogramUnit":"kg","gramKilogramValue":470}""", values["batteryMass"]); // a number with the unit the app writes
         Same("""{"amperePerAmpereHourValue":0.5,"amperePerAmpereHourUnit":"A/Ah"}""", values["cRateOfRelevantCycleLifeTest"]);
-        Same("""["Cobalt","Lithium","Natural graphite","Nickel"]""", values["criticalRawMaterials"]); // a list, set apart with semicolons
+        // A list, set apart with semicolons, kept as the EU's addresses (R1, G16).
+        Same("""["https://repository.product-passport.ec.europa.eu/core/vocabs/critical-raw-material#cobalt","https://repository.product-passport.ec.europa.eu/core/vocabs/critical-raw-material#lithium","https://repository.product-passport.ec.europa.eu/core/vocabs/critical-raw-material#graphite","https://repository.product-passport.ec.europa.eu/core/vocabs/critical-raw-material#nickelBatteryGrade"]""", values["criticalRawMaterials"]);
         Same("10", values["expectedLifetimeInCalendarYears"]);
         Same("""{"agentFireClass":"B","extinguishingAgent":"Water"}""", values["extinguishingAgent"]);
         Same("""{"voltValue":512,"voltUnit":"V"}""", values["minimumVoltage"]); // no temperature typed: no temperature unit either

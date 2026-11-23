@@ -33,6 +33,7 @@ public static class ExtensionKinds
             [AttributeCatalog.ManufacturingCountry] = ExtensionKind.Country,
             [AttributeCatalog.BatchNumber] = ExtensionKind.Text,
             [AttributeCatalog.NotInUseTemperatureRangeTest] = ExtensionKind.LanguageText,
+            [AttributeCatalog.ChemicalSymbol] = ExtensionKind.Codes,
         };
         foreach (var (property, _) in AttributeCatalog.EndOfLifeTexts)
         {

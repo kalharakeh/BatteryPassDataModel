@@ -133,6 +133,9 @@
           "language": "en-GB",
           "resourceTitle": "Symbols for cadmium and lead"
         },
+        "chemicalSymbol": [
+          "https://repository.product-passport.ec.europa.eu/product/batteries/vocabs/battery-chemical-symbol#leadSymbol"
+        ],
         "extinguishingAgent": {
           "agentFireClass": "B",
           "extinguishingAgent": "Water"
@@ -345,6 +348,9 @@
           "language": "en-GB",
           "resourceTitle": "Symbols for cadmium and lead"
         },
+        "chemicalSymbol": [
+          "https://repository.product-passport.ec.europa.eu/product/batteries/vocabs/battery-chemical-symbol#leadSymbol"
+        ],
         "extinguishingAgent": {
           "agentFireClass": "B",
           "extinguishingAgent": "Water"
@@ -556,6 +562,9 @@
           "language": "en-GB",
           "resourceTitle": "Symbols for cadmium and lead"
         },
+        "chemicalSymbol": [
+          "https://repository.product-passport.ec.europa.eu/product/batteries/vocabs/battery-chemical-symbol#leadSymbol"
+        ],
         "extinguishingAgent": {
           "agentFireClass": "B",
           "extinguishingAgent": "Water"

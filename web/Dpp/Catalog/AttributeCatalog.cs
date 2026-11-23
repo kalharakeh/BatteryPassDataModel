@@ -125,6 +125,10 @@ public static class AttributeCatalog
     public const string ManufacturingCountry = "manufacturingCountry";
     public const string BatchNumber = "batchNumber";
     public const string NotInUseTemperatureRangeTest = "notInUseTemperatureRangeTest";
+    public const string ChemicalSymbol = "chemicalSymbol";
+
+    /// <summary>#42, chosen from the EU's list of critical raw materials (G16).</summary>
+    public const string CriticalRawMaterials = "criticalRawMaterials";
 
     /// <summary>
     /// The ten end-of-life texts of the EU's <c>wasteBatteryPreventionManagementInfo</c> (G23), under the EU's names, in
@@ -155,6 +159,7 @@ public static class AttributeCatalog
         new(1006, "Manufacturing region", Ident, ManufacturingRegion, L.Site, A.Public, G.None, E.Team, C.Fixed, null, R.Conditional, false, "E6"),
         new(1007, "Manufacturing country", Ident, ManufacturingCountry, L.Site, A.Public, G.None, E.Team, C.Fixed, null, R.Mandatory, true, "E7"),
         new(1008, "Batch label", Ident, BatchNumber, L.Batch, A.Public, G.None, E.Team, C.Fixed, null, R.Mandatory, true, "E8"),
+        new(1009, "Cadmium or lead symbol shown", Symbols, ChemicalSymbol, L.Model, A.Public, G.None, E.Team, C.Fixed, null, R.Conditional, true, "E9"),
         new(1010, "Test of the idle temperature range", Performance, NotInUseTemperatureRangeTest, L.Model, A.Public, G.None, E.Team, C.Fixed, null, R.Mandatory, true, "E10"),
         .. EndOfLifeTexts.Select((text, index) => new AttributeDefinition(1011 + index, text.Name, Circularity, text.Property, L.Model, A.Public, G.None, E.Team, C.Fixed, null, R.Mandatory, true, $"E{11 + index}")),
     ];

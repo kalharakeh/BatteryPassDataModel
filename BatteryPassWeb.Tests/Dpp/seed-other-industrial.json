@@ -14,6 +14,7 @@
       "batteryMass": { "gramKilogramUnit": "kg", "gramKilogramValue": 512.5 },
       "separateCollectionSymbol": { "contentType": "image/svg+xml", "url": "https://www.batteries.scania.test/battery/symbols/separate-collection.svg", "language": "en-GB", "resourceTitle": "Separate collection symbol" },
       "symbolsForCadmiumAndLead": { "contentType": "image/svg+xml", "url": "https://www.batteries.scania.test/battery/symbols/cd-pb.svg", "language": "en-GB", "resourceTitle": "Symbols for cadmium and lead" },
+      "chemicalSymbol": [ "https://repository.product-passport.ec.europa.eu/product/batteries/vocabs/battery-chemical-symbol#cadmiumSymbol", "https://repository.product-passport.ec.europa.eu/product/batteries/vocabs/battery-chemical-symbol#leadSymbol" ],
       "extinguishingAgent": { "agentFireClass": "B", "extinguishingAgent": "Water" },
       "meaningOfLabelsAndSymbols": "The crossed-out wheeled bin means the battery must be collected separately from other waste.",
       "informationOfDueDiligenceReport": { "contentType": "application/pdf", "url": "https://www.batteries.scania.test/battery/due-diligence-report.pdf", "language": "en-GB", "resourceTitle": "Due diligence report" },

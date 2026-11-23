@@ -690,7 +690,7 @@ public sealed partial class ProductDataLoader(
                 continue;
             }
 
-            if (FormValues.SameValue(stored, value))
+            if (FormValues.Same(form, stored, value))
             {
                 continue;
             }
@@ -706,8 +706,8 @@ public sealed partial class ProductDataLoader(
         foreach (var field in given)
         {
             var name = form.FieldName(field.Input);
-            var old = OneLine(before.GetValueOrDefault(name) ?? string.Empty);
-            var now = OneLine(after.GetValueOrDefault(name) ?? string.Empty);
+            var old = ChoiceWords(field.Input, OneLine(before.GetValueOrDefault(name) ?? string.Empty));
+            var now = ChoiceWords(field.Input, OneLine(after.GetValueOrDefault(name) ?? string.Empty));
             if (old != now)
             {
                 // As it will be stored, with the unit the app writes beside it.
@@ -717,6 +717,11 @@ public sealed partial class ProductDataLoader(
             }
         }
     }
+
+    /// <summary>A choice of the EU's lists (#42, E9) by the EU's labels, set apart as in the workbook; anything else as it is.</summary>
+    private static string ChoiceWords(FormInput input, string text) => input.Kind == InputKind.Choices
+        ? string.Join("; ", text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(input.Words))
+        : text;
 
     /// <summary>A list shows one entry per line in a form; on the check's one line they are set apart as in the workbook.</summary>
     private static string OneLine(string text) => string.Join("; ", text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
@@ -738,7 +743,7 @@ public sealed partial class ProductDataLoader(
             case InputKind.Integer or InputKind.Number when !cell.IsNumber && !PlainNumber().IsMatch(cell.Text):
                 plan.Problems.Add(cell.Place.Problem($"{Clip(cell.Text)} is not a number; type the number only{(cell.Text.Contains(',', StringComparison.Ordinal) ? ", with a point for decimals" : string.Empty)}"));
                 return null;
-            case InputKind.Lines:
+            case InputKind.Lines or InputKind.Choices:
                 return string.Join("\n", cell.Text.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
             default:
                 return cell.Text;

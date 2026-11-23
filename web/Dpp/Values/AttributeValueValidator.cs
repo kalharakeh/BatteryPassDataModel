@@ -60,6 +60,11 @@ public sealed partial class AttributeValueValidator(OfficialSchemas schemas)
             case ExtensionKind.Country when !Countries.IsCode(text):
                 yield return new SchemaIssue(string.Empty, "enum: must be a country's three-letter code, such as SWE for Sweden");
                 break;
+            case ExtensionKind.Codes when value is not JsonArray { Count: > 0 } codes
+                || codes.Any(code => code is not JsonValue entry || !entry.TryGetValue<string>(out var address) || !EuCodeLists.ChemicalSymbols.ContainsKey(address))
+                || codes.Select(code => code!.ToJsonString()).Distinct(StringComparer.Ordinal).Count() != codes.Count:
+                yield return new SchemaIssue(string.Empty, "enum: must be the cadmium symbol, the lead symbol or both");
+                break;
             case ExtensionKind.LanguageText when PassportLanguage.Problem(value) is { } problem:
                 yield return new SchemaIssue(string.Empty, $"type: {problem}");
                 break;
