@@ -39,6 +39,16 @@ public static class RegistryTokenRequest
     private static bool TokenOutsideTheHeader(HttpRequest request) =>
         request.Query.ContainsKey(TokenName) || request.Cookies.ContainsKey(TokenName);
 
+    /// <summary>
+    /// The address as the log may hold it: control characters made '?', at most 120 characters, so a crafted address can't
+    /// write a line of its own into the log.
+    /// </summary>
+    public static string ForLog(string? id)
+    {
+        var text = new string((id ?? string.Empty).Select(c => char.IsControl(c) ? '?' : c).ToArray());
+        return text.Length <= 120 ? text : text[..120] + "...";
+    }
+
     /// <summary>The token check's answer for this request, once it has run; null when it hasn't.</summary>
     public static RegistryTokenResult? Outcome(HttpContext context)
     {

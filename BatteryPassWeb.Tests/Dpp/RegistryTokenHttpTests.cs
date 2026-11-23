@@ -244,7 +244,15 @@ public sealed class RegistryTokenHttpTests(MongoFixture mongo) : IDisposable
             using var answer = await site.GetAsync($"/dpp/{site.Id}", "application/json", $"Bearer {token}");
         }
 
+        using (await site.GetAsync($"/dpp/{site.Id}?access_token={tokens[0]}", "application/json"))
+        using (await site.GetAsync($"/dpp/{site.Id}", Browser, cookie: $"access_token={tokens[0]}"))
+        using (await site.GetAsync("/dpp/X%0A%20%20%20%20%20%20EU%20registry%20read%20of%20Y:%20200.json", "application/json", "Bearer forged"))
+        {
+        }
+
         var log = string.Join("\n", site.Log);
+        Assert.DoesNotContain(site.Log, line => line.Contains("\n      EU registry read of Y", StringComparison.Ordinal)); // no line of its own
+        Assert.Contains("EU registry read of X?      EU registry read of Y: 200: refused, 401", log, StringComparison.Ordinal);
         Assert.Contains($"200, organisation {Organisation}", log, StringComparison.Ordinal);
         Assert.Contains("refused, 401 audience", log, StringComparison.Ordinal);
         Assert.Contains("refused, 403 requestor-other", log, StringComparison.Ordinal);
@@ -365,6 +373,7 @@ public sealed class RegistryTokenHttpTests(MongoFixture mongo) : IDisposable
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Logging.ClearProviders();
         builder.Logging.SetMinimumLevel(LogLevel.Trace);
+        builder.Logging.AddFilter("Microsoft.AspNetCore", LogLevel.Warning); // as the app's appsettings say (pinned below)
         builder.Logging.AddProvider(new ListLogger(log));
         builder.Configuration["DPP_PASSPORT_CHECK"] = "off";
         var options = new BatteryPassOptions { AppBaseUrl = DocumentTesting.BaseUrl, DemoAdminEmail = string.Empty, ExternalApiEncryptionKey = "http-test-key-for-the-token-hashes-0000" };

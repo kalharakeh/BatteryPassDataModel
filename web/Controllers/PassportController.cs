@@ -144,15 +144,16 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
         Response.Headers[HeaderNames.CacheControl] = "private, no-store";
         var result = RegistryTokenRequest.Outcome(HttpContext) ?? RegistryTokenResult.Invalid("not-checked");
         var log = HttpContext.RequestServices?.GetService<ILogger<PassportController>>();
+        var battery = RegistryTokenRequest.ForLog(id); // the address as asked, never a line of its own
         if (!result.Authorised)
         {
-            log?.LogInformation("EU registry read of {Battery}: refused, {Status} {Reason}.", id, result.Status, result.Reason);
+            log?.LogInformation("EU registry read of {Battery}: refused, {Status} {Reason}.", battery, result.Status, result.Reason);
             return RegistryTokenAnswers.Refusal(HttpContext, result);
         }
 
         if (await GoneAsync(this, id, json: true, cancellationToken) is { } gone)
         {
-            log?.LogInformation("EU registry read of {Battery}: 410, organisation {Organisation}.", id, result.OrganisationId);
+            log?.LogInformation("EU registry read of {Battery}: 410, organisation {Organisation}.", battery, result.OrganisationId);
             return gone;
         }
 
@@ -160,7 +161,7 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
         var passport = HttpContext.RequestServices?.GetService<PassportApi>() is { } api ? await api.ReadAsync(reader, id, cancellationToken) : null;
         if (passport is null)
         {
-            log?.LogInformation("EU registry read of {Battery}: 404, organisation {Organisation}.", id, result.OrganisationId);
+            log?.LogInformation("EU registry read of {Battery}: 404, organisation {Organisation}.", battery, result.OrganisationId);
             return NotFound(new { error = "No published passport has this ID." });
         }
 
@@ -175,7 +176,7 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
             await restricted.NoteBatteryAsync(reader.Who, RegistryTokenRequest.RoleLabel, RestrictedReads.EuRegistryRead, passport.Version.PackId, passport.Location.Identifier, sections, cancellationToken);
         }
 
-        log?.LogInformation("EU registry read of {Battery}: 200, organisation {Organisation}.", id, result.OrganisationId);
+        log?.LogInformation("EU registry read of {Battery}: 200, organisation {Organisation}.", battery, result.OrganisationId);
         return Content(passport.Passport.ToJsonString(), "application/json");
     }
 
