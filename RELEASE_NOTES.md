@@ -49,7 +49,7 @@ Tag `new-app-v3.6`, on top of `new-app-v3.5`: the navigation package (N1). Read 
 
 - **Where you land.** A customer's admin lands on the Registry, with "Your customer ID" at the top (and a button that copies it) and the "Waiting for you" card. Admin opens on their batteries, with Users and API tokens in its tabs and the customer ID at its top as well. A hand-over asks the receiving customer for that ID.
 - **Every other reader lands on the Registry.**
-- **The words:** "Customer admin" and "Customer user" in the account menu, "customer" in the lists, messages and the battery's history. The recycling role reads "Recycling and training".
+- **The words:** "Customer admin" and "Customer user" in the account menu, "customer" in the lists, messages and the battery's history. The recycling role reads "Legitimate interest: recycling and training".
 - On another customer's battery, the public page says it belongs to another customer and shows its public data, instead of telling the person to log in with another account. A customer's person on another customer's battery reads "This battery belongs to another customer; you see its public data."
 
 ### For readers
