@@ -86,18 +86,41 @@ public sealed class RegistryTokenHttpTests(MongoFixture mongo) : IDisposable
     }
 
     [Fact]
-    public async Task AValidToken_ShouldBeAnsweredAtEveryDataAddress_WithoutARedirect()
+    public async Task AValidToken_ShouldGetTheRestrictedPartsAtEveryDataAddress_Directly()
+    {
+        await using var site = await StartAsync(mongo, _key, dunsIds: true);
+        var (summary, version) = await site.DemoBatteryAsync();
+
+        foreach (var path in new[] { summary, $"{summary}.json", $"{summary}/v{version}", $"{summary}/v{version}.json" })
+        {
+            using var answer = await site.GetAsync(path, "application/json", $"Bearer {ValidToken()}");
+            using var anonymous = await site.GetAsync(path, "application/json");
+
+            Assert.True(answer.StatusCode == HttpStatusCode.OK, $"{path}: {answer.StatusCode}"); // never a 3xx, never a 404
+            Assert.True(anonymous.StatusCode == HttpStatusCode.OK, $"{path} anonymous: {anonymous.StatusCode}");
+            Assert.Equal("application/json", answer.Content.Headers.ContentType?.MediaType);
+            Assert.True(answer.Headers.CacheControl is { Private: true, NoStore: true }, path);
+            var registryPaths = Paths(JsonNode.Parse(await answer.Content.ReadAsStringAsync())!.AsObject());
+            var publicPaths = Paths(JsonNode.Parse(await anonymous.Content.ReadAsStringAsync())!.AsObject());
+            Assert.All(publicPaths, part => Assert.Contains(part, registryPaths));
+            foreach (var audience in new[] { BatteryPassWeb.Dpp.Catalog.Audience.Shared, BatteryPassWeb.Dpp.Catalog.Audience.Purchaser })
+            {
+                Assert.Contains(AttributeCatalog.All.Where(attribute => attribute.Audience == audience), attribute => registryPaths.Contains(attribute.Path));
+                Assert.DoesNotContain(AttributeCatalog.All.Where(attribute => attribute.Audience == audience), attribute => publicPaths.Contains(attribute.Path));
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ThePage_ShouldVaryByAcceptAndAuthorization()
     {
         await using var site = await SiteAsync();
 
-        foreach (var path in new[] { $"/dpp/{site.Id}.json", $"/dpp/{site.Id}/v1", $"/dpp/{site.Id}/v1.json" })
-        {
-            using var answer = await site.GetAsync(path, "application/json", $"Bearer {ValidToken()}");
+        using var page = await site.GetAsync($"/dpp/{site.Id}", Browser);
 
-            Assert.False((int)answer.StatusCode is >= 300 and < 400, path);
-            Assert.Equal("application/json", answer.Content.Headers.ContentType?.MediaType);
-            Assert.True(answer.Headers.CacheControl is { Private: true, NoStore: true }, path);
-        }
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        Assert.Equal("text/html", page.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(["Accept", "Authorization"], page.Headers.Vary);
     }
 
     public static TheoryData<string, string> RefusedCredentials() => new()
@@ -180,16 +203,25 @@ public sealed class RegistryTokenHttpTests(MongoFixture mongo) : IDisposable
     }
 
     [Fact]
-    public async Task TwoAuthorizationHeaders_ShouldBe401()
+    public async Task TwoAuthorizationHeaderLines_ShouldBe401_EvenWithTwoValidTokens()
     {
         await using var site = await SiteAsync();
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"/dpp/{site.Id}");
-        request.Headers.TryAddWithoutValidation("Accept", "application/json");
-        request.Headers.TryAddWithoutValidation("Authorization", [$"Bearer {ValidToken()}", $"Bearer {ValidToken()}"]);
+        var address = site.Http.BaseAddress!;
+        using var tcp = new System.Net.Sockets.TcpClient();
+        await tcp.ConnectAsync(address.Host, address.Port);
+        await using var stream = tcp.GetStream();
+        // Two separate lines on the wire (HttpClient would join two values into one line).
+        var request = $"GET /dpp/{site.Id} HTTP/1.1\r\nHost: {address.Authority}\r\nAccept: application/json\r\n"
+            + $"Authorization: Bearer {ValidToken()}\r\nAuthorization: Bearer {ValidToken()}\r\nConnection: close\r\n\r\n";
+        await stream.WriteAsync(System.Text.Encoding.ASCII.GetBytes(request));
 
-        using var answer = await site.Http.SendAsync(request);
+        using var reader = new StreamReader(stream);
+        var answer = await reader.ReadToEndAsync();
 
-        Assert.Equal(HttpStatusCode.Unauthorized, answer.StatusCode);
+        Assert.StartsWith("HTTP/1.1 401", answer, StringComparison.Ordinal);
+        Assert.Contains("WWW-Authenticate: Bearer error=\"invalid_request\"", answer, StringComparison.Ordinal);
+        Assert.DoesNotContain("batteryPassportData", answer, StringComparison.Ordinal);
+        Assert.Contains(site.Log, line => line.Contains("refused, 401 several-headers", StringComparison.Ordinal)); // the server saw two lines
     }
 
     [Fact]
@@ -207,8 +239,8 @@ public sealed class RegistryTokenHttpTests(MongoFixture mongo) : IDisposable
     [Fact]
     public async Task TheBatteryIdsAddress_ShouldRedirectWhateverTheHeaders_AndTheWholeChainStayWithinOneRedirect()
     {
-        await using var site = await SiteAsync();
-        const string item = "UN778474481-VBC-92921"; // the test passports have URN IDs, which have no /25S/ address
+        await using var site = await StartAsync(mongo, _key, dunsIds: true);
+        var item = (await site.DemoBatteryAsync()).Summary["/dpp/".Length..]; // a demo battery's ID, which has a /25S/ address
 
         using var withToken = await site.GetAsync($"/25S/{item}", "application/json", $"Bearer {ValidToken()}");
         using var garbage = await site.GetAsync($"/25S/{item}", "application/json", "Bearer not-a-token");
@@ -222,9 +254,11 @@ public sealed class RegistryTokenHttpTests(MongoFixture mongo) : IDisposable
         Assert.Equal(0, site.Keys.Fetches); // the resolver never checks a token
         using var target = await site.GetAsync(anonymous.Headers.Location!.ToString(), "application/json");
         using var registry = await site.GetAsync(anonymous.Headers.Location!.ToString(), "application/json", $"Bearer {ValidToken()}");
-        Assert.False((int)target.StatusCode is >= 300 and < 400); // the anonymous discovery ends there: one redirect in all
-        Assert.False((int)registry.StatusCode is >= 300 and < 400); // and the token's read at the same address: none
-        Assert.Equal("application/json", registry.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(HttpStatusCode.OK, target.StatusCode); // the anonymous discovery ends there, with the public part: one redirect in all
+        Assert.Equal(HttpStatusCode.OK, registry.StatusCode); // and the token's read at the same address: none
+        Assert.True(registry.Headers.CacheControl is { Private: true, NoStore: true });
+        Assert.True(Paths(JsonNode.Parse(await registry.Content.ReadAsStringAsync())!.AsObject()).Length
+            > Paths(JsonNode.Parse(await target.Content.ReadAsStringAsync())!.AsObject()).Length);
     }
 
     [Fact]
@@ -292,10 +326,16 @@ public sealed class RegistryTokenHttpTests(MongoFixture mongo) : IDisposable
         using var basic = await site.GetAsync("/api/external/v1/clusters", "application/json", "Basic dXNlcjpwYXNz");
         using var bearer = await site.GetAsync("/api/external/v1/clusters", "application/json", $"Bearer {ValidToken()}");
 
-        foreach (var answer in new[] { basic, bearer })
+        // The API's own answers, as on new-app-v3.8 (ExternalApiRepository and DppApiController are unchanged by R3).
+        foreach (var (answer, message) in new[] { (basic, "Token is invalid."), (bearer, "Token is required.") })
         {
-            Assert.NotEqual(RegistryTokenAnswers.ProblemType, answer.Content.Headers.ContentType?.MediaType); // the API's own answer
-            Assert.DoesNotContain("invalid_token", answer.Headers.WwwAuthenticate.ToString(), StringComparison.Ordinal);
+            Assert.Equal(HttpStatusCode.Unauthorized, answer.StatusCode);
+            Assert.Equal("application/json", answer.Content.Headers.ContentType?.MediaType);
+            Assert.Empty(answer.Headers.WwwAuthenticate);
+            var body = JsonNode.Parse(await answer.Content.ReadAsStringAsync())!;
+            Assert.False(body["success"]!.GetValue<bool>());
+            Assert.Equal(401, body["code"]!.GetValue<int>());
+            Assert.Equal(message, body["message"]!.GetValue<string>());
         }
 
         Assert.Equal(0, site.Keys.Fetches);
@@ -339,12 +379,12 @@ public sealed class RegistryTokenHttpTests(MongoFixture mongo) : IDisposable
     private Task<Site> SiteAsync(RegistryTokenSettings? settings = null, int readLimit = 1000) => StartAsync(mongo, _key, settings, readLimit);
 
     /// <summary>A site with a published passport, the EU's key set serving <paramref name="key"/>, and the read limit.</summary>
-    internal static async Task<Site> StartAsync(MongoFixture mongo, ECDsa key, RegistryTokenSettings? settings = null, int readLimit = 1000)
+    internal static async Task<Site> StartAsync(MongoFixture mongo, ECDsa key, RegistryTokenSettings? settings = null, int readLimit = 1000, bool dunsIds = false)
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo);
         var keys = KeySet.With((key, KeyId));
         var log = new ConcurrentQueue<string>();
-        var app = Build(rig, settings ?? Settings, keys, log, readLimit);
+        var app = Build(rig, settings ?? Settings, keys, log, readLimit, dunsIds);
         try
         {
             using var starting = new CancellationTokenSource(TimeSpan.FromSeconds(60));
@@ -362,7 +402,7 @@ public sealed class RegistryTokenHttpTests(MongoFixture mongo) : IDisposable
     }
 
     /// <summary>The app's controllers on the test database, wired as Program.cs wires them: routing, cookies and the EU registry's scheme, the token check, the read limit.</summary>
-    internal static WebApplication Build(PublicationRig rig, RegistryTokenSettings settings, KeySet keys, ConcurrentQueue<string> log, int readLimit)
+    internal static WebApplication Build(PublicationRig rig, RegistryTokenSettings settings, KeySet keys, ConcurrentQueue<string> log, int readLimit, bool dunsIds = false)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -376,7 +416,11 @@ public sealed class RegistryTokenHttpTests(MongoFixture mongo) : IDisposable
         builder.Logging.AddFilter("Microsoft.AspNetCore", LogLevel.Warning); // as the app's appsettings say (pinned below)
         builder.Logging.AddProvider(new ListLogger(log));
         builder.Configuration["DPP_PASSPORT_CHECK"] = "off";
-        var options = new BatteryPassOptions { AppBaseUrl = DocumentTesting.BaseUrl, DemoAdminEmail = string.Empty, ExternalApiEncryptionKey = "http-test-key-for-the-token-hashes-0000" };
+        var options = new BatteryPassOptions { AppBaseUrl = DocumentTesting.BaseUrl, DemoAdminEmail = string.Empty, DemoUsersPassword = BatteryPassWeb.Tests.Demo.DemoRig.Password, ExternalApiEncryptionKey = "http-test-key-for-the-token-hashes-0000" };
+        if (dunsIds)
+        {
+            BatteryPassWeb.Tests.Demo.DemoRig.WithDunsIds(options); // battery IDs with /25S/ and version addresses
+        }
         var services = builder.Services;
         services.AddSingleton(Options.Create(options));
         services.AddSingleton(rig.Context);
@@ -434,6 +478,16 @@ public sealed class RegistryTokenHttpTests(MongoFixture mongo) : IDisposable
         public string Id { get; } = Uri.EscapeDataString(PassportPagesTests.Identifier(rig));
 
         public string[] Published(Reader reader) => Paths(PassportFilter.Cut(published, reader, clusters));
+
+        public IServiceProvider Services => app.Services;
+
+        /// <summary>Resets the demo data and gives a published demo battery's page address and its active version.</summary>
+        public async Task<(string Summary, int Version)> DemoBatteryAsync()
+        {
+            await Services.GetRequiredService<DemoDataService>().ResetAsync(BatteryPassWeb.Tests.Demo.DemoRig.Who);
+            var row = (await Services.GetRequiredService<BatteryPassWeb.Dpp.Pages.BatteryPages>().TeamListAsync(null)).Rows.First(row => row.Active is not null);
+            return (BatteryPassWeb.Dpp.Pages.PassportPages.SummaryHref(row.Identifier), row.Active!.Number);
+        }
 
         public Task<HttpResponseMessage> GetAsync(string path, string accept, string? authorization = null, string? cookie = null)
         {

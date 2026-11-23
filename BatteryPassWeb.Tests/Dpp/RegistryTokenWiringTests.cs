@@ -82,16 +82,7 @@ public sealed class RegistryTokenWiringTests(MongoFixture mongo)
     }
 
     [Fact]
-    public void ThePage_ShouldVaryByTheTokenToo()
-    {
-        var controller = File.ReadAllText(DppTestFiles.RepoFile("web", "Controllers", "PassportController.cs"));
-
-        Assert.DoesNotContain("Response.Headers[HeaderNames.Vary] = HeaderNames.Accept;", controller, StringComparison.Ordinal);
-        Assert.Equal("Accept, Authorization", RegistryTokenRequest.Vary);
-    }
-
-    [Fact]
-    public void TheApp_ShouldCheckTheTokenAfterTheCookiesAndBeforeTheReadLimit_AndRefuseToStartHalfSet()
+    public void ProgramCs_ShouldCheckTheTokenAfterTheCookiesAndBeforeTheReadLimit()
     {
         var program = File.ReadAllText(DppTestFiles.RepoFile("web", "Program.cs"));
 
@@ -102,9 +93,7 @@ public sealed class RegistryTokenWiringTests(MongoFixture mongo)
         Assert.Contains(".AddRegistryToken();", program, StringComparison.Ordinal);
         Assert.Contains("builder.Services.AddRegistryToken(registryToken);", program, StringComparison.Ordinal);
         Assert.Contains(".AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)", program, StringComparison.Ordinal); // cookies stay the default
-        Assert.Contains("registryToken.StartProblem(builder.Environment.IsProduction(), builder.Environment.IsDevelopment()) is { } registryTokenProblem", program, StringComparison.Ordinal);
-        Assert.Contains("throw new InvalidOperationException(registryTokenProblem);", program, StringComparison.Ordinal);
-        Assert.Contains("registryToken.StartLine", program, StringComparison.Ordinal);
+        // The start check itself is tested on a real start of the app: RegistryTokenStartTests.
     }
 
     [Fact]

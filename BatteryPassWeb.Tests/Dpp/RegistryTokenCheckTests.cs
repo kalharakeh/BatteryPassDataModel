@@ -249,6 +249,23 @@ public sealed class RegistryTokenCheckTests : IDisposable
     }
 
     [Fact]
+    public async Task AKeyInTheToken_ShouldBeIgnored_EvenUnderTheEusOwnKeyId()
+    {
+        using var attacker = NewKey();
+        var keys = EuKeys();
+        var header = Header(); // the EU's own kid, so the check reaches the signature
+        header["jku"] = "https://attacker.example/jwks";
+        header["x5u"] = "https://attacker.example/cert";
+        header["jwk"] = Jwk(attacker, KeyId);
+
+        var result = await CheckAsync(Token(attacker, header, Claims(Start)), keys);
+
+        Assert.Equal((401, "signature"), (result.Status, result.Reason));
+        Assert.All(keys.Asked, address => Assert.Equal(JwksUrl, address));
+        Assert.True((await CheckAsync(Token(_key, header, Claims(Start)), keys)).Authorised); // the same header, signed by the EU's key
+    }
+
+    [Fact]
     public async Task AKeyAddressInTheToken_ShouldBeIgnored()
     {
         using var attacker = NewKey();
