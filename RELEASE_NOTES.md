@@ -1,6 +1,64 @@
 # Changelog
 All notable changes to the battery passport data model will be documented in this file.
 
+## new-app-v3.7: one version per Excel load, a limit per person, plainer upload messages (23 Nov 2026)
+
+Tag `new-app-v3.7`, on top of `new-app-v3.6`: the small follow-ups package (decision 90, landed by decision 92). Read "Before you update" first.
+
+### Before you update
+
+- **Nothing has to be done by hand.** There is no new setting, no new collection and no change to stored data; an account that has no password yet keeps working. Take the usual back-up first, and update the PC's app and the live site together (every instance on one database runs the same version).
+- **What changed in how the app counts:** the upload limit now counts each logged-in person (see "For the team"), so people sharing one office address no longer share one allowance. The setting is the same: `FILE_UPLOAD_RATE_LIMIT_PER_WINDOW`.
+
+### For the team
+
+- **One passport version per Excel load.** A load gives each published battery it reaches one new version, made after the whole load is saved, with all of the changes (before, one version per saved part). The check says how many published batteries are reached and which parts of the workbook reach them [decision 87, 90].
+- **A load that stops part way** leaves each reached battery on its version, with "Saved changes are waiting". The next load publishes it, one new version each: every load also publishes the waiting changes of the published batteries its workbook reaches, and the check names them ("N more published batteries have changes waiting …"). Pressing "Publish the waiting changes" on the battery's page does the same. The hourly check only marks waiting passports; it never publishes.
+- **The upload limit is named in megabytes** ("the file is larger than the 10 MB upload limit"), in every message, and an upload over the request limit says so in megabytes too [decision 90].
+- **The upload limit counts per person.** A logged-in person has an allowance of their own (by e-mail address); a caller who isn't logged in is counted by address, as before.
+- **A real serial can't start with TEST once capitals and dashes are ignored** (`T-EST-1`, `te-st-1`): TEST marks test IDs. This holds at release, creation, swap and when an ID is picked. A real ID released before this update with such a serial is refused when it is used. `TES-1` and `VBC-TEST-1` still release.
+
+### For customers
+
+- Their upload allowance is their own now, and an upload over the limit names it in megabytes. Nothing else changed on their pages.
+
+### For readers
+
+- **For everyone who logs in:** a wrong password costs the same number of password checks whether or not the address has an account or a password yet, so the time a log-in takes tells a guesser nothing. "Forgot password" and its temporary password work as before, also while an account is locked.
+
+## new-app-v3.6: one top bar, where people land, near matches and the "customer" words (20 Nov 2026)
+
+Tag `new-app-v3.6`, on top of `new-app-v3.5`: the navigation package (N1). Read "Before you update" first.
+
+### Before you update
+
+- **Nothing has to be done by hand.** There is no new setting, no new collection and no change to stored data.
+- **Names changed on the pages:** a customer's people now read "customer" where they read "cluster" (the API keeps "cluster"), "Log in" and "Log out" replace "Sign in", "Login" and "Logout", and the team's page is "Admin". Update any instructions or screenshots you hand out. The test documents and the Help already say so.
+- **Over a rate limit,** a person on a page now gets a short sentence instead of bare JSON; the API and the `.json` addresses keep `{"error": "Too many requests."}` with 429. An unknown address shows the app's "Page not found" page. The cut-over runbook (section 3 and check 18) has both.
+
+### For the team
+
+- **"To do" is the team's start page.** After logging in the team lands on "To do": drafts with missing values, saved changes not yet public, hand-overs waiting, battery IDs running low, uploads with refused values and batteries not yet in the EU registry. Each line opens the place to do it. A box that is at its limit says so ("200+").
+- **One top bar** on every page: the app's name, To do, Admin, Registry and Help, and the account as a name that opens a menu (e-mail, role, "Your account", light or dark mode, "Log out"). The footer's second menu is gone.
+- **One name per thing:** Battery Passport, Registry, Admin, Help, API reference (inside the Help), Your account, Log in and Log out.
+- The team's own pages keep "cluster" (the Clusters tab, cluster tokens); only the pages customers and readers see say "customer".
+- **The home search finds a passport whatever the capitals,** and offers near matches when nothing matches exactly (see "For readers").
+- **The home page's sample** opens DEMO-C7M-0001, and there is none while the demo is off.
+
+### For customers
+
+- **Where you land.** A customer's admin lands on the Registry, with "Your customer ID" at the top (and a button that copies it) and the "Waiting for you" card. Admin opens on their batteries, with Users and API tokens in its tabs and the customer ID at its top as well. A hand-over asks the receiving customer for that ID.
+- **Every other reader lands on the Registry.**
+- **The words:** "Customer admin" and "Customer user" in the account menu, "customer" in the lists, messages and the battery's history. The recycling role reads "Recycling and training".
+- On another customer's battery, the public page says it belongs to another customer and shows its public data, instead of telling the person to log in with another account. A customer's person on another customer's battery reads "This battery belongs to another customer; you see its public data."
+
+### For readers
+
+- **Near matches on the home search.** When nothing matches exactly, the page offers "Did you mean" with at most three passports. Not logged in, it offers the serial numbers that start with what was typed (letters and digits only, from three characters). Logged in, it also finds part of any battery ID, passport ID or serial number among the batteries the Registry lists for that reader. The matches are worked out inside the search and handed to the page once, so the page address alone offers nothing.
+- **A visitor's Help leaves out the Battery tag** a visitor never sees.
+- **An address that leads nowhere** shows "Page not found" with the home search (status 404); under `/api` and for files the answer stays a plain 404. A page that fails says "Something went wrong" with no detail; an API call that fails answers `{"error": …}` with 500.
+- **The home search and the home page with a search text** share the public read limit (`EXTERNAL_API_READ_RATE_LIMIT_PER_WINDOW` per `RATE_LIMIT_WINDOW_SECONDS`, per address). Over it a page says "Too many searches from your address. Try again in a minute." A search that finds nothing uses two of the allowance.
+
 ## new-app-v3.5, the go-live version: first account, no demo, Excel load, serial numbers, hardening (16 Nov 2026)
 
 Tag `new-app-v3.5`, on top of `new-app-v3.4`: the platform, hardening, serial number and product data loading packages. Read "Before you update" first.
