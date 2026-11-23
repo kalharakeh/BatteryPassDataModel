@@ -69,7 +69,7 @@ public sealed class DppStoreListingTests(MongoFixture mongo)
 
         var site = (await store.GetAsync<ManufacturingSite>("site-test"))!;
         Assert.Equal("Plant 2", site.Name);
-        Assert.Equal(3, site.Values.Count);
+        Assert.Equal(6, site.Values.Count); // with the city, region and country (R1, G11)
     }
 
     [Fact]
