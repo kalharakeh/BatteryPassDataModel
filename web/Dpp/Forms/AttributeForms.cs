@@ -144,6 +144,7 @@ public sealed class AttributeForms
             // A whole number of minutes, shown as "minutes" (the catalogue's unit is "min").
             ExtensionKind.Minutes => new FormInput(string.Empty, attribute.Name, InputKind.Integer, false, [], "minutes"),
             ExtensionKind.Country => new FormInput(string.Empty, attribute.Name, InputKind.Select, required, Countries.Codes, OptionWords: Countries.Names),
+            ExtensionKind.LanguageText => new FormInput(string.Empty, attribute.Name, InputKind.LanguageText, required, [], Hint: ExtensionHints.GetValueOrDefault(attribute.Property)),
             _ => new FormInput(string.Empty, attribute.Name, InputKind.Text, required, [], Hint: ExtensionHints.GetValueOrDefault(attribute.Property)),
         };
     }

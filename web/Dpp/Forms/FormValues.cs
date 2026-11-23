@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using BatteryPassWeb.Dpp.Catalog;
 using BatteryPassWeb.Dpp.Signing;
 
 namespace BatteryPassWeb.Dpp.Forms;
@@ -67,7 +68,9 @@ public static class FormValues
 
         foreach (var input in form.Inputs)
         {
-            var text = Text(input.Path.Length == 0 ? value : value[input.Path]);
+            var text = input.Kind == InputKind.LanguageText
+                ? PassportLanguage.TextOf(input.Path.Length == 0 ? value : value[input.Path]) ?? string.Empty
+                : Text(input.Path.Length == 0 ? value : value[input.Path]);
             if (input.Kind == InputKind.Duration)
             {
                 var (amount, unit) = DurationParts(text);
@@ -185,6 +188,9 @@ public static class FormValues
                 return JsonValue.Create(whole);
             case InputKind.Number when decimal.TryParse(text.Contains('.', StringComparison.Ordinal) ? text : text.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var number):
                 return JsonValue.Create(number);
+            // A text in the passport's language is kept as a language map (decision 94); the page shows one language.
+            case InputKind.LanguageText:
+                return PassportLanguage.Map(text.Replace("\r\n", "\n", StringComparison.Ordinal));
             // A choice kept as a code (a country's "SWE") may be typed as its words ("Sweden"), in the workbook too.
             case InputKind.Select when input.OptionWords is not null && input.FindOption(text) is { } option:
                 return JsonValue.Create(option);

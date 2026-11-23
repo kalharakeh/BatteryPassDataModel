@@ -32,6 +32,13 @@ public sealed class AttributeValueNormalizer(OfficialSchemas schemas)
     public JsonNode? Normalize(AttributeDefinition attribute, JsonNode? value)
     {
         ArgumentNullException.ThrowIfNull(attribute);
+
+        // A text in the passport's language sent as a plain text (an upload, the API) becomes its language map (decision 94).
+        if (ExtensionKinds.Of(attribute) == ExtensionKind.LanguageText && value is JsonValue plain && plain.TryGetValue<string>(out var text))
+        {
+            return PassportLanguage.Map(text);
+        }
+
         if (value is null || value.GetValueKind() is JsonValueKind.Object or JsonValueKind.Array)
         {
             return value;

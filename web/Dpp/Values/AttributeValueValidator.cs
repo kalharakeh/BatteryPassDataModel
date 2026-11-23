@@ -42,6 +42,9 @@ public sealed partial class AttributeValueValidator(OfficialSchemas schemas)
     /// <summary>The longest text of a short value (a city, a batch label).</summary>
     public const int ShortTextLength = 200;
 
+    /// <summary>The longest text in one language of a text value (a test's description, an end-of-life text).</summary>
+    public const int LongTextLength = 4000;
+
     /// <summary>A value of the EU's battery format the file doesn't hold (decision 94), checked by its kind.</summary>
     private static IEnumerable<SchemaIssue> EuValueIssues(ExtensionKind kind, JsonNode? value)
     {
@@ -56,6 +59,12 @@ public sealed partial class AttributeValueValidator(OfficialSchemas schemas)
                 break;
             case ExtensionKind.Country when !Countries.IsCode(text):
                 yield return new SchemaIssue(string.Empty, "enum: must be a country's three-letter code, such as SWE for Sweden");
+                break;
+            case ExtensionKind.LanguageText when PassportLanguage.Problem(value) is { } problem:
+                yield return new SchemaIssue(string.Empty, $"type: {problem}");
+                break;
+            case ExtensionKind.LanguageText when value!.AsObject().Any(pair => pair.Value!.GetValue<string>().Length > LongTextLength):
+                yield return new SchemaIssue(string.Empty, $"maxLength: must be at most {LongTextLength} characters");
                 break;
         }
     }

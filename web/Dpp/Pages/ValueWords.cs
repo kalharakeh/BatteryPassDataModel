@@ -148,6 +148,11 @@ public static class ValueWords
             return texts.Length == 0 ? null : string.Join(", ", texts);
         }
 
+        if (input.Kind == InputKind.LanguageText)
+        {
+            return BatteryPassWeb.Dpp.Catalog.PassportLanguage.TextOf(node);
+        }
+
         if (Decimal(node) is { } number)
         {
             return input.Unit is { } unit ? $"{Number(number)} {unit}" : Number(number);

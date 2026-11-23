@@ -42,6 +42,12 @@ public enum InputKind
 
     /// <summary>A period (#19): a whole number with years or months; the app stores the official form, e.g. P8Y (W05).</summary>
     Duration,
+
+    /// <summary>
+    /// A text of a sentence or more in the passport's language, shown as a text area and kept as a language map,
+    /// <c>{"en-GB": "…"}</c>, as the EU's format writes texts (decision 94, <see cref="Catalog.PassportLanguage"/>).
+    /// </summary>
+    LanguageText,
 }
 
 /// <summary>
