@@ -147,7 +147,7 @@ public sealed class RegistryTokenCheck(RegistryTokenSettings settings, RegistryT
             return RegistryTokenResult.Invalid("malformed");
         }
 
-        if (!string.Equals(Text(claims, "iss"), settings.Issuer, StringComparison.Ordinal))
+        if (!settings.IsIssuer(Text(claims, "iss")))
         {
             return RegistryTokenResult.Invalid("issuer");
         }

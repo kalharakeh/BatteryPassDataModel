@@ -50,6 +50,16 @@ public sealed class RegistryTokenCheckTests : IDisposable
     }
 
     [Fact]
+    public async Task TheIssuersClosingSlash_ShouldNotCount_OnEitherSide()
+    {
+        var withSlash = await CheckAsync(Valid(claims => claims["iss"] = Issuer + "/"));
+        var settingWithSlash = await CheckAsync(Valid(), settings: Settings with { Issuer = Issuer + "/" });
+
+        Assert.True(withSlash.Authorised);
+        Assert.True(settingWithSlash.Authorised);
+    }
+
+    [Fact]
     public async Task AnAudienceListOfTheSitesOriginAlone_ShouldBeAccepted()
     {
         Assert.True((await CheckAsync(Valid(claims => claims["aud"] = new JsonArray(Audience)))).Authorised);
@@ -65,7 +75,8 @@ public sealed class RegistryTokenCheckTests : IDisposable
         { "no kid", null, head => head.Remove("kid") },
         { "crit", null, head => head["crit"] = new JsonArray("exp") },
         { "wrong issuer (a production token at an acceptance site)", claims => claims["iss"] = "https://auth.product-passport.ec.europa.eu", null },
-        { "issuer with a closing slash", claims => claims["iss"] = Issuer + "/", null },
+        { "issuer with a path", claims => claims["iss"] = Issuer + "/oauth2", null },
+        { "issuer with two closing slashes", claims => claims["iss"] = Issuer + "//", null },
         { "no sub", claims => claims.Remove("sub"), null },
         { "empty client_id", claims => claims["client_id"] = "", null },
         { "no jti", claims => claims.Remove("jti"), null },

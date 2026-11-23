@@ -71,8 +71,41 @@ public sealed record RegistryTokenSettings(string? Issuer, string? JwksUrl, stri
             return $"{AudienceSetting} must be the site's own origin, its https address without a path or a closing slash, such as https://www.sib-scania-eubp.eu.";
         }
 
+        if (!development && !KeySetOnTheIssuersSite)
+        {
+            return $"{JwksUrlSetting} must be on the issuer's site ({OriginOf(Issuer!)}), as the EU's are: {OriginOf(Issuer!)}/oauth2/jwks. The EU's test and production keys are on different sites.";
+        }
+
         return null;
     }
+
+    /// <summary>
+    /// What the start log warns about without stopping the start: in Development, a key set off the issuer's site (outside
+    /// Development that stops the start, <see cref="StartProblem"/>).
+    /// </summary>
+    public IReadOnlyList<string> StartWarnings(bool development) =>
+        development && IsOn && !KeySetOnTheIssuersSite
+            ? [$"{JwksUrlSetting} ({JwksUrl}) isn't on the issuer's site ({OriginOf(Issuer!)}): the EU publishes its keys at its issuer's /oauth2/jwks. Outside Development the app won't start like this."]
+            : [];
+
+    /// <summary>
+    /// Whether a token's iss is this issuer. Exact, as the guide says, except for one closing slash on either side, which
+    /// the EU's own tables write both ways.
+    /// </summary>
+    public bool IsIssuer(string? tokenIssuer) =>
+        Issuer is not null && tokenIssuer is not null
+        && string.Equals(WithoutClosingSlash(tokenIssuer), WithoutClosingSlash(Issuer), StringComparison.Ordinal);
+
+    private static string WithoutClosingSlash(string text) => text.EndsWith('/') ? text[..^1] : text;
+
+    /// <summary>The key set is on the same scheme, host and port as the issuer.</summary>
+    private bool KeySetOnTheIssuersSite =>
+        Uri.TryCreate(Issuer, UriKind.Absolute, out var issuer)
+        && Uri.TryCreate(JwksUrl, UriKind.Absolute, out var keys)
+        && Uri.Compare(issuer, keys, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) == 0;
+
+    private static string OriginOf(string address) =>
+        Uri.TryCreate(address, UriKind.Absolute, out var uri) ? uri.GetLeftPart(UriPartial.Authority) : address;
 
     /// <summary>The start log's line: whether the check is on, naming no value but the issuer.</summary>
     public string StartLine => IsOn

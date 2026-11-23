@@ -9,7 +9,8 @@ namespace BatteryPassWeb.Dpp.RegistryToken;
 /// Expires, less Age). A known key ID never waits for a fetch: once the keys are due, they keep serving while one refresh
 /// runs in the background. Only an unknown key ID, or no keys at all, waits for a fetch. Never more than one fetch a
 /// minute, whatever asks. When the EU can't be reached the keys already held keep working; without them a token is
-/// refused and the fetch is tried again a minute later (the guide's §5.4 and §11).
+/// refused and the fetch is tried again a minute later (the guide's §5.4 and §11). The keys are also fetched once in the
+/// background when the app starts, so a wrong or unreachable address shows in the start log.
 /// </summary>
 public sealed class RegistryTokenKeys(IHttpClientFactory http, RegistryTokenSettings settings, TimeProvider clock, ILogger<RegistryTokenKeys> log)
 {
@@ -62,6 +63,15 @@ public sealed class RegistryTokenKeys(IHttpClientFactory http, RegistryTokenSett
         // An unknown key ID, or no keys yet: the EU may have added a key. Fetch, unless a fetch was made in the last minute.
         await FetchAsync(cancellationToken);
         return _keys.TryGetValue(keyId, out key) ? key : null;
+    }
+
+    /// <summary>The fetch at start (in the background): a key set that can't be read gives one warning naming its address.</summary>
+    public async Task WarmUpAsync()
+    {
+        if (settings.IsOn)
+        {
+            await FetchAsync(CancellationToken.None);
+        }
     }
 
     private void RefreshInTheBackground()

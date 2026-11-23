@@ -284,6 +284,79 @@ public sealed class RegistryTokenKeysTests : IDisposable
     }
 
     [Fact]
+    public async Task TheFetchAtStart_ShouldWarnOnce_NamingTheAddress_WhenTheKeySetCantBeRead()
+    {
+        var keys = KeySet.With((_key, KeyId));
+        keys.Down = true;
+        var log = new ListLog();
+        var cache = new BatteryPassWeb.Dpp.RegistryToken.RegistryTokenKeys(keys, Settings, _clock, log);
+
+        await cache.WarmUpAsync();
+
+        var warning = Assert.Single(log.Lines, line => line.StartsWith("Warning", StringComparison.Ordinal));
+        Assert.Contains(JwksUrl, warning, StringComparison.Ordinal);
+        Assert.Equal(1, keys.Fetches);
+    }
+
+    [Fact]
+    public async Task TheFetchAtStart_ShouldKeepTheKeys_SoTheFirstReadNeedNotWait()
+    {
+        var keys = KeySet.With((_key, KeyId));
+        var log = new ListLog();
+        var cache = new BatteryPassWeb.Dpp.RegistryToken.RegistryTokenKeys(keys, Settings, _clock, log);
+        var check = new BatteryPassWeb.Dpp.RegistryToken.RegistryTokenCheck(Settings, cache, _clock);
+
+        await cache.WarmUpAsync();
+        var result = await check.CheckAsync(TokenNow());
+
+        Assert.True(result.Authorised);
+        Assert.Equal(1, keys.Fetches);
+        Assert.DoesNotContain(log.Lines, line => line.StartsWith("Warning", StringComparison.Ordinal));
+        Assert.Contains(log.Lines, line => line.Contains(JwksUrl, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task TheFetchAtStart_ShouldDoNothing_WhileTheCheckIsOff()
+    {
+        var keys = KeySet.With((_key, KeyId));
+
+        await new BatteryPassWeb.Dpp.RegistryToken.RegistryTokenKeys(keys, BatteryPassWeb.Dpp.RegistryToken.RegistryTokenSettings.Off, _clock, new ListLog()).WarmUpAsync();
+
+        Assert.Equal(0, keys.Fetches);
+    }
+
+    [Fact]
+    public async Task AKeySetWithNoUsableKey_ShouldWarn()
+    {
+        using var p256 = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var keys = new KeySet();
+        keys.Keys.Add(Jwk(p256, KeyId, curve: "P-256"));
+        var log = new ListLog();
+
+        await new BatteryPassWeb.Dpp.RegistryToken.RegistryTokenKeys(keys, Settings, _clock, log).WarmUpAsync();
+
+        Assert.Contains(log.Lines, line => line.StartsWith("Warning", StringComparison.Ordinal) && line.Contains("no P-384 signing key", StringComparison.Ordinal));
+    }
+
+    /// <summary>The keys' log lines, with their level.</summary>
+    private sealed class ListLog : Microsoft.Extensions.Logging.ILogger<BatteryPassWeb.Dpp.RegistryToken.RegistryTokenKeys>
+    {
+        public List<string> Lines { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+
+        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            lock (Lines)
+            {
+                Lines.Add($"{logLevel}: {formatter(state, exception)}");
+            }
+        }
+    }
+
+    [Fact]
     public async Task ManyRequestsAtOnce_ShouldFetchTheKeysOnce()
     {
         var keys = KeySet.With((_key, KeyId));

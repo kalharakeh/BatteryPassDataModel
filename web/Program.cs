@@ -273,6 +273,17 @@ builder.Services.AddDpp();
 builder.Services.AddSingleton<BatteryPassWeb.Dpp.Demo.DemoDataService>();
 
 var app = builder.Build();
+foreach (var registryTokenWarning in registryToken.StartWarnings(app.Environment.IsDevelopment()))
+{
+    app.Logger.LogWarning("{RegistryTokenWarning}", registryTokenWarning);
+}
+
+if (registryToken.IsOn)
+{
+    // The EU's keys once at start, in the background: a key set that can't be read is one warning naming its address.
+    app.Lifetime.ApplicationStarted.Register(() => _ = app.Services.GetRequiredService<RegistryTokenKeys>().WarmUpAsync());
+}
+
 var batteryPassOptions = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<BatteryPassOptions>>().Value;
 
 // The security headers go on every response, so they come first (finding R24).

@@ -54,6 +54,43 @@ public sealed class RegistryTokenStartTests
         Assert.DoesNotContain(RegistryTokenTesting.Organisation, output, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task AKeySetOffTheIssuersSite_ShouldStopAProductionStart()
+    {
+        var settings = Production();
+        settings["EU_REGISTRY_ISSUER"] = "https://auth.product-passport.ec.europa.eu";
+        settings["EU_REGISTRY_JWKS_URL"] = "https://auth.acc.product-passport.ec.europa.eu/oauth2/jwks";
+        settings["EU_REGISTRY_AUDIENCE"] = "https://www.example.test";
+        settings["EU_REGISTRY_ORG_ID"] = RegistryTokenTesting.Organisation;
+
+        var (exited, output) = await RunAsync(settings, until: null, TimeSpan.FromSeconds(60));
+
+        Assert.True(exited, output);
+        Assert.Contains("EU_REGISTRY_JWKS_URL must be on the issuer's site", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AKeySetOffTheIssuersSite_ShouldBeAWarningInADevelopmentStart()
+    {
+        const string jwks = "http://127.0.0.1:9/elsewhere/jwks.json";
+        var settings = new Dictionary<string, string>
+        {
+            ["ASPNETCORE_ENVIRONMENT"] = "Development",
+            ["MONGODB_URI"] = "mongodb://127.0.0.1:9/?serverSelectionTimeoutMS=2000&connectTimeoutMS=2000",
+            ["MONGODB_DB"] = "r3-start-test",
+            ["EU_REGISTRY_ISSUER"] = "http://localhost:5455/test-issuer",
+            ["EU_REGISTRY_JWKS_URL"] = jwks,
+            ["EU_REGISTRY_AUDIENCE"] = "http://localhost:5455",
+            ["EU_REGISTRY_ORG_ID"] = RegistryTokenTesting.Organisation,
+        };
+
+        var (_, output) = await RunAsync(settings, until: jwks, TimeSpan.FromSeconds(60));
+
+        Assert.Contains("isn't on the issuer's site", output, StringComparison.Ordinal);
+        Assert.Contains(jwks, output, StringComparison.Ordinal);
+        Assert.DoesNotContain("Unhandled exception. System.InvalidOperationException: EU_REGISTRY", output, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// Runs the app with these settings only, until it exits, its output holds <paramref name="until"/>, or the time is up;
     /// then stops it by its own process ID. Gives whether it exited by itself, and everything it wrote.
