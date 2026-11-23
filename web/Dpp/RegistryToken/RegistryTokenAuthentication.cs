@@ -92,7 +92,8 @@ public sealed class RegistryTokenOptions : AuthenticationSchemeOptions;
 /// The EU registry's token as an authentication scheme of its own (R3, decision 7): it runs before the read limit, so the
 /// limit knows a valid token. Cookies stay the app's default scheme; this one is asked only at the data addresses, by
 /// <see cref="RegistryTokenAuthentication.UseRegistryToken"/>. Its answer is kept on the request for the passport's
-/// controller, which writes the 401 or 403. The log gets the result's fixed word, never the token.
+/// controller, which writes the 401 or 403 and the one log line (the result's fixed word, never the token). A refused
+/// token is "no result" to the framework, so the scheme writes no failure line of its own for each junk token.
 /// </summary>
 public sealed class RegistryTokenHandler(IOptionsMonitor<RegistryTokenOptions> options, ILoggerFactory logger, UrlEncoder encoder, RegistryTokenCheck check)
     : AuthenticationHandler<RegistryTokenOptions>(options, logger, encoder)
@@ -111,7 +112,7 @@ public sealed class RegistryTokenHandler(IOptionsMonitor<RegistryTokenOptions> o
         Context.Features.Set(result);
         if (!result.Authorised)
         {
-            return AuthenticateResult.Fail(result.Reason);
+            return AuthenticateResult.NoResult(); // the verdict is on the request; the controller answers and logs it
         }
 
         var identity = new ClaimsIdentity([new Claim(OrganisationClaim, result.OrganisationId!)], Scheme.Name);
@@ -135,6 +136,7 @@ public static class RegistryTokenAuthentication
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false });
         services.AddSingleton<RegistryTokenKeys>();
         services.AddSingleton<RegistryTokenCheck>();
+        services.AddSingleton<RegistryTokenLogGate>();
         return services;
     }
 

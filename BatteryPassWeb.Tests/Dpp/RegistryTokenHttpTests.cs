@@ -295,13 +295,10 @@ public sealed class RegistryTokenHttpTests(MongoFixture mongo) : IDisposable
 
         using (await site.GetAsync($"/dpp/{site.Id}?access_token={tokens[0]}", "application/json"))
         using (await site.GetAsync($"/dpp/{site.Id}", Browser, cookie: $"access_token={tokens[0]}"))
-        using (await site.GetAsync("/dpp/X%0A%20%20%20%20%20%20EU%20registry%20read%20of%20Y:%20200.json", "application/json", "Bearer forged"))
         {
         }
 
         var log = string.Join("\n", site.Log);
-        Assert.DoesNotContain(site.Log, line => line.Contains("\n      EU registry read of Y", StringComparison.Ordinal)); // no line of its own
-        Assert.Contains("EU registry read of X?      EU registry read of Y: 200: refused, 401", log, StringComparison.Ordinal);
         Assert.Contains($"200, organisation {Organisation}", log, StringComparison.Ordinal);
         Assert.Contains("refused, 401 audience", log, StringComparison.Ordinal);
         Assert.Contains("refused, 403 requestor-other", log, StringComparison.Ordinal);
@@ -312,6 +309,43 @@ public sealed class RegistryTokenHttpTests(MongoFixture mongo) : IDisposable
 
         Assert.DoesNotContain("ORG-SOMEONE-ELSE", log, StringComparison.Ordinal); // another organisation's ID is the token's, not ours
         Assert.DoesNotContain("Bearer", log, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AnAddress_ShouldNotWriteALineOfItsOwnIntoTheLog()
+    {
+        await using var site = await SiteAsync();
+
+        using (await site.GetAsync("/dpp/X%0A%20%20%20%20%20%20EU%20registry%20read%20of%20Y:%20200.json", "application/json", "Bearer forged"))
+        {
+        }
+
+        var log = string.Join("\n", site.Log);
+        Assert.DoesNotContain(site.Log, line => line.Contains("\n      EU registry read of Y", StringComparison.Ordinal)); // no line of its own
+        Assert.Contains("EU registry read of X?      EU registry read of Y: 200: refused, 401", log, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AFloodOfBadTokens_ShouldLeaveOneLineAMinute_WhileEveryValidAndForbiddenReadIsLogged()
+    {
+        await using var site = await SiteAsync();
+
+        for (var i = 0; i < 6; i++)
+        {
+            using var junk = await site.GetAsync($"/dpp/{site.Id}.json", "application/json", $"Bearer junk-{i}");
+            Assert.Equal(HttpStatusCode.Unauthorized, junk.StatusCode); // every one still refused
+        }
+
+        for (var i = 0; i < 2; i++)
+        {
+            using var other = await site.GetAsync($"/dpp/{site.Id}", "application/json", $"Bearer {ValidToken(claims => claims["resource_requestor_identifiers"]![0]!["value"] = "ORG-SOMEONE-ELSE")}");
+            using var valid = await site.GetAsync($"/dpp/{site.Id}", "application/json", $"Bearer {ValidToken()}");
+        }
+
+        Assert.Single(site.Log, line => line.Contains("refused, 401", StringComparison.Ordinal));
+        Assert.Equal(2, site.Log.Count(line => line.Contains("refused, 403", StringComparison.Ordinal)));
+        Assert.Equal(2, site.Log.Count(line => line.Contains($"200, organisation {Organisation}", StringComparison.Ordinal)));
+        Assert.DoesNotContain(site.Log, line => line.Contains("Failure message", StringComparison.Ordinal)); // the scheme writes no line of its own
     }
 
     [Fact]

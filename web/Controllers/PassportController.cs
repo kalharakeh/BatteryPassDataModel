@@ -147,7 +147,15 @@ public sealed class PassportController(DppReaders readers, PassportPages pages) 
         var battery = RegistryTokenRequest.ForLog(id); // the address as asked, never a line of its own
         if (!result.Authorised)
         {
-            log?.LogInformation("EU registry read of {Battery}: refused, {Status} {Reason}.", battery, result.Status, result.Reason);
+            // A 401 is one line per caller's address a minute, so junk tokens can't fill the log; a 403 is always a line.
+            var gate = result.Status == StatusCodes.Status401Unauthorized ? HttpContext.RequestServices?.GetService<RegistryTokenLogGate>() : null;
+            var skipped = 0;
+            if (gate is null || gate.Allow(HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown", out skipped))
+            {
+                log?.LogInformation("EU registry read of {Battery}: refused, {Status} {Reason}.{Skipped}", battery, result.Status, result.Reason,
+                    skipped > 0 ? $" ({skipped} more 401s from this address in the last minute weren't logged.)" : string.Empty);
+            }
+
             return RegistryTokenAnswers.Refusal(HttpContext, result);
         }
 
