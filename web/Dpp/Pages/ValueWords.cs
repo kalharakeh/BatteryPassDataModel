@@ -94,10 +94,12 @@ public static class ValueWords
                 }
 
                 return rows;
-            // Entries of the EU's lists (#42, E9): one per line, by the EU's label; a name not on the list as it was.
+            // Entries of the EU's lists (#42, E9): one per line. An EU address reads as its label; any other text exactly as
+            // stored, so a published passport shows what was signed (R1 round two, M1). Other names for an entry (the alias
+            // table) are the editor's and the missing check's, never the pages'.
             case FormKind.Single when form.Inputs[0].Kind == InputKind.Choices:
                 return (value as JsonArray ?? []).Select(Scalar).OfType<string>()
-                    .Select(entry => new ValueLine(null, FormValues.Choice(form.Inputs[0], entry) is { } address ? form.Inputs[0].Words(address) : entry))
+                    .Select(entry => new ValueLine(null, form.Inputs[0].Words(entry)))
                     .ToArray();
             case FormKind.Single:
                 var only = form.Inputs[0];

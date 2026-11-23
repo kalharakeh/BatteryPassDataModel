@@ -90,8 +90,9 @@ public sealed class CriticalRawMaterialsTests
         Assert.Equal(List("Cobalt", "Nickel – battery grade"), PassportAssembler.RawMaterialWords(List(Raw + "cobalt", Raw + "nickelBatteryGrade")), JsonNode.DeepEquals);
         Assert.Equal(List("Cobalt", "Natural graphite", "Nickel"), PassportAssembler.RawMaterialWords(List("Cobalt", "Natural graphite", "Nickel")), JsonNode.DeepEquals);
 
+        // On the pages a name kept from before reads exactly as stored (round two, M1: as it was signed).
         var lines = ValueWords.Lines(MaterialsForm, List(Raw + "cobalt", "Natural graphite", "Unobtainium"));
-        Assert.Equal(["Cobalt", "Graphite", "Unobtainium"], lines.Select(line => line.Text));
+        Assert.Equal(["Cobalt", "Natural graphite", "Unobtainium"], lines.Select(line => line.Text));
     }
 
     [Fact]
