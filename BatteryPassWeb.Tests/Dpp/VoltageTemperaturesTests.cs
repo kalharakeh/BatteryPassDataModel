@@ -2,7 +2,6 @@ using System.Text.Json.Nodes;
 using BatteryPassWeb.Dpp.Assembly;
 using BatteryPassWeb.Dpp.Catalog;
 using BatteryPassWeb.Dpp.Editing;
-using BatteryPassWeb.Dpp.Forms;
 using BatteryPassWeb.Dpp.Pages;
 using BatteryPassWeb.Dpp.Publication;
 using BatteryPassWeb.Dpp.Store;
@@ -85,8 +84,13 @@ public sealed class VoltageTemperaturesTests(MongoFixture mongo)
     {
         var rig = await PublicationTesting.PublishedRigAsync(mongo);
 
-        // A model saved before the rule: its minimum voltage has no temperatures. A save never refuses it.
-        var saved = await rig.Pipeline.SaveAsync(PublicationTesting.Team, new ChangeSet(TargetKind.Model, "model-test", new Dictionary<string, JsonNode?> { ["minimumVoltage"] = Voltage(withTemperatures: false) }, "form"));
+        // A model saved before the rule: its minimum voltage has no temperatures (written as v3.8 left it; a save that
+        // would make a published model lack them is refused, LackingRefusalTests). Another change to the model follows.
+        await rig.Store.SetValuesAsync<BatteryModel>("model-test", new Dictionary<string, AttributeValue>
+        {
+            ["minimumVoltage"] = new() { Value = Voltage(withTemperatures: false), GeneratedAtUtc = DppTestSeed.GeneratedAtUtc, Source = "form" },
+        });
+        var saved = await rig.Pipeline.SaveAsync(PublicationTesting.Team, new ChangeSet(TargetKind.Model, "model-test", new Dictionary<string, JsonNode?> { ["batteryMass"] = JsonValue.Create(512) }, "form"));
         Assert.Equal(KeyOutcome.Saved, Assert.Single(saved.Keys).Outcome);
 
         var active = await rig.Store.GetActiveVersionAsync(rig.PackId);

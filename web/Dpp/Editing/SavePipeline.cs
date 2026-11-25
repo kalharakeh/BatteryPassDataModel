@@ -163,6 +163,11 @@ public sealed class SavePipeline(
             evaluation = await CheckBatchRulesAsync(changes.TargetId, evaluation, cancellationToken);
         }
 
+        if (changes.Target is TargetKind.Model or TargetKind.Batch or TargetKind.Site or TargetKind.Operator)
+        {
+            evaluation = await RefuseNewLackingAsync(changes.Target, changes.TargetId, target.Values, evaluation, cancellationToken);
+        }
+
         var removals = await EvaluateRemovalsAsync(sender, changes, target, cancellationToken);
         var results = evaluation.Results.Concat(removals).ToArray();
         var removed = removals.Where(result => result.Outcome == KeyOutcome.Removed).Select(result => result.Key).ToArray();
@@ -400,6 +405,44 @@ public sealed class SavePipeline(
         }
 
         return notes;
+    }
+
+    /// <summary>Why a value that would leave published passports lacking part of it is refused (R1 round two, M2).</summary>
+    public static string LeavesPublishedLacking(string lacking) =>
+        $"The published passports need this value complete, and this would leave it missing {lacking}. Fill that in too, or keep the value as it was";
+
+    /// <summary>
+    /// A value that is complete now and would lack a part the EU requires after the save (a voltage without its test
+    /// temperatures, a #42 name off the EU's list) is refused when published passports need it: they would keep their
+    /// version until it is filled in, as a removal of a needed value would (R1 round two, M2). A value already lacking,
+    /// or not there before, stays accepted, so the team can fill values one at a time.
+    /// </summary>
+    private async Task<Evaluation> RefuseNewLackingAsync(TargetKind kind, string id, IReadOnlyDictionary<string, AttributeValue> current, Evaluation evaluation, CancellationToken cancellationToken)
+    {
+        List<KeyResult>? results = null;
+        Dictionary<string, JsonNode>? accepted = null;
+        ModelAnswers? answers = null;
+        bool? published = null;
+        foreach (var (key, value) in evaluation.Accepted)
+        {
+            if (AttributeCatalog.FindByProperty(key) is not { } attribute
+                || PassportNeeds.Lacking(attribute, value) is not { } lacking
+                || current.GetValueOrDefault(key)?.Value is not { } before
+                || PassportNeeds.Lacking(attribute, before) is not null
+                || PassportNeeds.NeedOf(attribute, answers ??= await AnswersAsync(kind, id, cancellationToken)) is not (Need.Required or Need.Unanswered)
+                || !(published ??= await UsedByPublishedPassportAsync(kind, id, cancellationToken)))
+            {
+                continue;
+            }
+
+            results ??= evaluation.Results.ToList();
+            accepted ??= new Dictionary<string, JsonNode>(evaluation.Accepted, StringComparer.Ordinal);
+            accepted.Remove(key);
+            var index = results.FindIndex(result => result.Key == key);
+            results[index] = results[index] with { Outcome = KeyOutcome.Rejected, Message = LeavesPublishedLacking(lacking) };
+        }
+
+        return results is null ? evaluation : new Evaluation(results, accepted!);
     }
 
     /// <summary>A batch's label (E8) is refused when another batch of the same model has it (O4).</summary>
