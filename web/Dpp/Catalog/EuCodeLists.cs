@@ -70,9 +70,6 @@ public static class EuCodeLists
     /// <summary>The address of a chemical symbol typed as its address, its code, its label, "Cadmium" or "Lead"; null when none.</summary>
     public static string? FindChemicalSymbol(string? typed) => Find(typed, ChemicalSymbolBase, ChemicalSymbols, SymbolAliases);
 
-    /// <summary>The label of an entry of either list; null for anything else.</summary>
-    public static string? LabelOf(string? address) =>
-        address is null ? null : RawMaterials.GetValueOrDefault(address) ?? ChemicalSymbols.GetValueOrDefault(address);
 
     private static string? Find(string? typed, string prefix, IReadOnlyDictionary<string, string> list, IReadOnlyDictionary<string, string> aliases)
     {

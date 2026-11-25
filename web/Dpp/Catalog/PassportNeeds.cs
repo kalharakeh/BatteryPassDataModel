@@ -84,7 +84,7 @@ public static class PassportNeeds
     public static string? Lacking(AttributeDefinition attribute, JsonNode? value)
     {
         ArgumentNullException.ThrowIfNull(attribute);
-        if (value is JsonObject voltage && VoltagesWithTemperatures.Contains(attribute.Number) && !attribute.IsExtension
+        if (value is JsonObject voltage && VoltagesWithTemperatures.Contains(attribute.Number)
             && (voltage["temperatureRangeLowerBoundaryValue"] is null || voltage["temperatureRangeUpperBoundaryValue"] is null))
         {
             return "the test temperatures";

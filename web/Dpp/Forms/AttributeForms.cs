@@ -156,25 +156,46 @@ public sealed class AttributeForms
         };
     }
 
+    /// <summary>The line under each end-of-life text (E11–E20), in the catalogue's order (<see cref="AttributeCatalog.EndOfLifeTexts"/>).</summary>
+    private static readonly string[] EndOfLifeHints =
+    [
+        "What the battery's user can do to prevent waste, such as using and storing it as the manual says. A link may go in the text.",
+        "What the user does with the battery at its end of life: never with other waste, always to separate collection.",
+        "Where waste batteries are collected separately, or a link to the list.",
+        "Where the battery is taken back, for example by Scania or a dealer, free of charge.",
+        "Which facilities prepare these batteries for re-use, or a link to the list.",
+        "Which facilities prepare these batteries for a second life (repurposing), or a link to the list.",
+        "Which facilities treat and recycle these batteries at end of life, or a link to the list.",
+        "How to handle, store and transport a waste battery safely, also a damaged one.",
+        "What the symbols on the battery mean. Often the same text as #27.",
+        "What the battery's hazardous substances (#44) can do to people and the environment if the battery isn't disposed of properly.",
+    ];
+
     /// <summary>The line under an extension's input, by its property.</summary>
-    private static readonly Dictionary<string, string> ExtensionHints = new(StringComparer.Ordinal)
+    private static readonly Dictionary<string, string> ExtensionHints = WithEndOfLifeHints(new(StringComparer.Ordinal)
     {
         [AttributeCatalog.ManufacturingCity] = "The town or city of the site.",
         [AttributeCatalog.ManufacturingRegion] = "A region, county or state, if it helps to find the site.",
         [AttributeCatalog.ChemicalSymbol] = "The symbol the battery's label shows: cadmium, lead or both.",
         [AttributeCatalog.NotInUseTemperatureRangeTest] = "The test or standard the idle temperature range (#88 and #89) comes from, for example a storage test to IEC 62660-1.",
-        ["endUserRoleInWastePrevention"] = "What the battery's user can do to prevent waste, such as using and storing it as the manual says. A link may go in the text.",
-        ["endUserRoleInSeparateCollection"] = "What the user does with the battery at its end of life: never with other waste, always to separate collection.",
-        ["separateCollectionPoints"] = "Where waste batteries are collected separately, or a link to the list.",
-        ["takeBackCollectionPoints"] = "Where the battery is taken back, for example by Scania or a dealer, free of charge.",
-        ["preparationForReuseFacilities"] = "Which facilities prepare these batteries for re-use, or a link to the list.",
-        ["preparationForRepurposingFacilities"] = "Which facilities prepare these batteries for a second life (repurposing), or a link to the list.",
-        ["wasteBatteryTreatmentFacilities"] = "Which facilities treat and recycle these batteries at end of life, or a link to the list.",
-        ["wasteBatterySafetyInstructions"] = "How to handle, store and transport a waste battery safely, also a damaged one.",
-        ["batteryLabelSymbolMeaning"] = "What the symbols on the battery mean. Often the same text as #27.",
-        ["batterySubstancesImpact"] = "What the battery's hazardous substances (#44) can do to people and the environment if the battery isn't disposed of properly.",
-        [AttributeCatalog.BatchNumber] = "The batch's number, as the EU asks for it with the model. The app gives one when the model has a serial number format and the site a country, such as VPC8C05-SWE-2026; type your own to change it.",
-    };
+        [AttributeCatalog.BatchNumber] = "The batch's number, as the EU asks for it with the model. The app gives one when the model has a serial number format and the site a country, such as VPC8C05-SWE-2026, and never changes it afterwards; type your own to change it.",
+    });
+
+    /// <summary>Adds the end-of-life texts' lines, keyed off the catalogue, so a property is never spelt twice.</summary>
+    private static Dictionary<string, string> WithEndOfLifeHints(Dictionary<string, string> hints)
+    {
+        if (EndOfLifeHints.Length != AttributeCatalog.EndOfLifeTexts.Count)
+        {
+            throw new InvalidOperationException("Each end-of-life text needs one line under its input.");
+        }
+
+        foreach (var (text, hint) in AttributeCatalog.EndOfLifeTexts.Zip(EndOfLifeHints))
+        {
+            hints[text.Property] = hint;
+        }
+
+        return hints;
+    }
 
     /// <summary>The inputs of an object value, and its constants: single-valued enums, and units (the catalogue's unit).</summary>
     private static (IReadOnlyList<FormInput> Inputs, Dictionary<string, string> Constants) ObjectInputs(JsonNode document, JsonObject node, AttributeDefinition attribute)

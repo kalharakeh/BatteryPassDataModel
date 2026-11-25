@@ -36,6 +36,7 @@ public sealed class EndOfLifeTextsTests
             Assert.Equal((StorageLocation.Model, Audience.Public, "circularityAndResourceEfficiency"), (text.Storage, text.Audience, text.Section));
             Assert.Equal(Need.Required, PassportNeeds.NeedOf(text, ModelAnswers.NotAnswered));
             Assert.Equal(InputKind.LanguageText, Assert.Single(AttributeFormsTests.Forms.For(text).Inputs).Kind);
+            Assert.False(string.IsNullOrWhiteSpace(Assert.Single(AttributeFormsTests.Forms.For(text).Inputs).Hint)); // keyed off the catalogue (round two, L9)
             Assert.StartsWith("End of life: ", text.Name, StringComparison.Ordinal);
         });
 

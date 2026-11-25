@@ -49,8 +49,9 @@ public sealed class ManufacturingPlaceTests
         Assert.Equal(249, Countries.Codes.Count);
         Assert.All(Countries.Codes, code => Assert.Matches("^[A-Z]{3}$", code));
         Assert.Equal("Sweden", Countries.Names["SWE"]);
-        Assert.Equal(("DEU", "FIN", "NOR", "GBR"), (Countries.Find("germany"), Countries.Find("Finland"), Countries.Find("nor"), Countries.Find("United Kingdom")));
-        Assert.Null(Countries.Find("Scandinavia"));
+        var input = Assert.Single(AttributeFormsTests.Forms.For(Country).Inputs);
+        Assert.Equal(("DEU", "FIN", "NOR", "GBR"), (input.FindOption("germany"), input.FindOption("Finland"), input.FindOption("nor"), input.FindOption("United Kingdom")));
+        Assert.Null(input.FindOption("Scandinavia"));
     }
 
     [Fact]

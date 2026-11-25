@@ -16,24 +16,6 @@ public static class Countries
     /// <summary>True for a code of the list, in capitals as the EU writes it ("SWE").</summary>
     public static bool IsCode(string? code) => code is not null && Names.ContainsKey(code);
 
-    /// <summary>The code of a country typed as its code or its name, capitals not minding ("swe", "Sweden"); null when none matches.</summary>
-    public static string? Find(string? typed)
-    {
-        var text = typed?.Trim();
-        if (string.IsNullOrEmpty(text))
-        {
-            return null;
-        }
-
-        var upper = text.ToUpperInvariant();
-        if (Names.ContainsKey(upper))
-        {
-            return upper;
-        }
-
-        return Names.FirstOrDefault(pair => string.Equals(pair.Value, text, StringComparison.OrdinalIgnoreCase)).Key;
-    }
-
     private static Dictionary<string, string> Build()
     {
         (string Code, string Name)[] list =
