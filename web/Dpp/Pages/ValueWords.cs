@@ -142,6 +142,9 @@ public static class ValueWords
     /// <summary>A number as the pages show it: grouped thousands, no trailing zeros ("250,000", "0.5").</summary>
     public static string Number(decimal number) => number.ToString("#,0.######", CultureInfo.InvariantCulture);
 
+    /// <summary>A number as stored, every decimal kept, no trailing zeros ("0.00012345", "0.0000005").</summary>
+    public static string Exact(decimal number) => number.ToString("#,0.############################", CultureInfo.InvariantCulture);
+
     private static string? Part(FormInput input, JsonNode? node)
     {
         if (node is null)
@@ -162,7 +165,9 @@ public static class ValueWords
 
         if (Decimal(node) is { } number)
         {
-            return input.Unit is { } unit ? $"{Number(number)} {unit}" : Number(number);
+            // A resistance is shown as stored: milliohm-level decimals are normal for #78 (R1 round two, L8).
+            var words = input.Unit == "Ohm" ? Exact(number) : Number(number);
+            return input.Unit is { } unit ? $"{words} {unit}" : words;
         }
 
         var text = Scalar(node);

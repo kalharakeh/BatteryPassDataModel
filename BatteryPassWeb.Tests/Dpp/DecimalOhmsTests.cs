@@ -60,6 +60,20 @@ public sealed class DecimalOhmsTests
         Assert.Contains(lines, line => line.Label == "Cell" && line.Text == "0.0008 Ohm");
     }
 
+    [Theory]
+    [InlineData("0.00012345", "0.00012345 Ohm")]
+    [InlineData("0.0000005", "0.0000005 Ohm")]
+    [InlineData("0.0450", "0.045 Ohm")]
+    [InlineData("1", "1 Ohm")]
+    public void AResistance_ShouldShowAsStored_WithoutRounding(string pack, string shown)
+    {
+        var value = JsonNode.Parse($$"""{"ohmValueForBatteryPack":{{pack}},"ohmValueForBatteryCell":0.0008,"ohmUnit":"Ohm"}""");
+
+        var lines = ValueWords.Lines(AttributeFormsTests.Forms.For(Resistance), value);
+
+        Assert.Contains(lines, line => line.Label == "Pack" && line.Text == shown); // round two, L8
+    }
+
     [Fact]
     public void APassportWithDecimalOhms_ShouldMeetTheSchema()
     {
