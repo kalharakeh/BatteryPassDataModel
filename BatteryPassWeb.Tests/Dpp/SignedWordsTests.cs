@@ -41,6 +41,29 @@ public sealed class SignedWordsTests(MongoFixture mongo)
         Assert.Equal(["Cadmium (Cd)", "Lead (Pb)"], ValueWords.Lines(AttributeFormsTests.Forms.For(AttributeCatalog.FindByProperty(AttributeCatalog.ChemicalSymbol)!), symbols).Select(line => line.Text));
     }
 
+    [Theory]
+    [InlineData(AttributeCatalog.CriticalRawMaterials)]
+    [InlineData(AttributeCatalog.ChemicalSymbol)]
+    public void AValueStoredAsAddressesAndPublishedAsWords_ShouldKeepItsOrigin(string property)
+    {
+        var attribute = AttributeCatalog.FindByProperty(property)!;
+        var seed = DppTestSeed.Load();
+        seed.Sources.Model.Values[AttributeCatalog.CriticalRawMaterials] = new BatteryPassWeb.Dpp.Values.AttributeValue
+        {
+            Value = List(Raw + "cobalt", Raw + "lithium"),
+            GeneratedAtUtc = DppTestSeed.GeneratedAtUtc,
+            Source = "form",
+        };
+        var passport = BatteryPassWeb.Dpp.Assembly.PassportAssembler.Assemble(seed.Sources, seed.Header);
+        var shown = passport["batteryPassportData"]![attribute.Section]![property];
+
+        var origin = PassportPages.Origin(attribute, seed.Sources, shown);
+
+        Assert.NotNull(origin);
+        Assert.Equal(DppTestSeed.GeneratedAtUtc, origin.GeneratedAtUtc);
+        Assert.Null(PassportPages.Origin(attribute, seed.Sources, List("Something else"))); // a value that changed since has no known origin
+    }
+
     [Fact]
     public async Task APassportPublishedAsV38PublishedIt_ShouldShowItsMaterialsExactlyAsSigned()
     {
