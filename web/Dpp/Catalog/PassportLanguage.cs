@@ -30,6 +30,34 @@ public static partial class PassportLanguage
     };
 
     /// <summary>
+    /// The text in the passport's language only, as the editor shows and takes it: a map's text under <see cref="Tag"/>,
+    /// a plain text as it is; null when the map has none in this language (round two, L5: never another language's text).
+    /// </summary>
+    public static string? OwnText(JsonNode? value) => value switch
+    {
+        JsonValue plain when plain.TryGetValue<string>(out var text) => text,
+        JsonObject map => map[Tag] is JsonValue own && own.TryGetValue<string>(out var text) ? text : null,
+        _ => null,
+    };
+
+    /// <summary>
+    /// A text saved in the passport's language, put into the stored map so that its other languages stay (round two, L5).
+    /// A stored value that isn't a map is replaced.
+    /// </summary>
+    public static JsonNode Merge(JsonNode? stored, JsonNode saved)
+    {
+        ArgumentNullException.ThrowIfNull(saved);
+        if (stored is not JsonObject map || saved is not JsonObject typed || typed[Tag] is not { } text)
+        {
+            return saved;
+        }
+
+        var merged = map.DeepClone().AsObject();
+        merged[Tag] = text.DeepClone();
+        return merged;
+    }
+
+    /// <summary>
     /// Why a value isn't a language map as the EU writes it: an object of at least one text, each under a tag such as
     /// en-GB; null when it is one.
     /// </summary>

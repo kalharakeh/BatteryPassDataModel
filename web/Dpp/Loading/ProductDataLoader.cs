@@ -688,7 +688,7 @@ public sealed partial class ProductDataLoader(
             }
 
             record.Cells[group.Key] = group.Select(entry => (entry.Field.Input.Path, entry.Cell)).ToList();
-            var value = FormValues.Read(form, name => texts.GetValueOrDefault(name));
+            var value = FormValues.Merge(form, stored, FormValues.Read(form, name => texts.GetValueOrDefault(name)));
             if (value is null)
             {
                 if (stored is not null)

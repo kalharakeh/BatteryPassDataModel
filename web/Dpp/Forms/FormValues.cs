@@ -70,7 +70,7 @@ public static class FormValues
         {
             var text = input.Kind switch
             {
-                InputKind.LanguageText => PassportLanguage.TextOf(input.Path.Length == 0 ? value : value[input.Path]) ?? string.Empty,
+                InputKind.LanguageText => PassportLanguage.OwnText(input.Path.Length == 0 ? value : value[input.Path]) ?? string.Empty,
                 InputKind.Choices => string.Join(",", Choices(input, ((input.Path.Length == 0 ? value : value[input.Path]) as JsonArray ?? []).OfType<JsonValue>().Select(item => item.TryGetValue<string>(out var entry) ? entry : item.ToJsonString()))),
                 _ => Text(input.Path.Length == 0 ? value : value[input.Path]),
             };
@@ -172,6 +172,18 @@ public static class FormValues
 
     /// <summary>How many rows a stored list has; 0 for anything else.</summary>
     public static int RowCount(JsonNode? value) => value is JsonArray array ? array.Count : 0;
+
+    /// <summary>
+    /// What a save of this form stores, given the stored value: a text in the passport's language goes into the stored
+    /// language map, keeping its other languages (round two, L5); anything else is the typed value itself.
+    /// </summary>
+    public static JsonNode? Merge(AttributeForm form, JsonNode? stored, JsonNode? typed)
+    {
+        ArgumentNullException.ThrowIfNull(form);
+        return typed is not null && form.Kind == FormKind.Single && form.Inputs is [{ Kind: InputKind.LanguageText }]
+            ? PassportLanguage.Merge(stored, typed)
+            : typed;
+    }
 
     /// <summary>
     /// True when two values of this form are the same: written canonically, or for a choice (#42, E9) naming the same

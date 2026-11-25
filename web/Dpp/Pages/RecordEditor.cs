@@ -359,7 +359,7 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
             }
 
             var changedMeanwhile = wasShown is not null && Fingerprint(FormValues.Show(form, current)) != wasShown;
-            var value = FormValues.Read(form, field);
+            var value = FormValues.Merge(form, current, FormValues.Read(form, field));
             if (value is null)
             {
                 // Emptied on the page: a removal, only when the page says it was edited there.
