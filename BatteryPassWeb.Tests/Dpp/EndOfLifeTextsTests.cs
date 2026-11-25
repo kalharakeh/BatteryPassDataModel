@@ -5,7 +5,6 @@ using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Forms;
 using BatteryPassWeb.Dpp.Pages;
 using BatteryPassWeb.Dpp.Publication;
-using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Dpp.Values;
 
 namespace BatteryPassWeb.Tests.Dpp;

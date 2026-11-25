@@ -48,6 +48,46 @@ public sealed class OldWorkbookTests(MongoFixture mongo)
         Assert.Equal(("Malmö", "Skåne", "SWE"), (Text(site, AttributeCatalog.ManufacturingCity), Text(site, AttributeCatalog.ManufacturingRegion), Text(site, AttributeCatalog.ManufacturingCountry)));
     }
 
+    /// <summary>Round two, L10: every one of the EU's new values (E5 to E20) and #42, on every record, before and after.</summary>
+    [Fact]
+    public async Task EveryNewValueAndTheMaterials_ShouldBeLeftAsTheyAre_ByTheOldWorkbookAndByTheSameNewOneAgain()
+    {
+        var rig = await LoadTesting.EmptyAsync(mongo);
+        Assert.True((await rig.LoadAsync(LoadTesting.Core())).Loaded);
+        var filled = await NewValuesAsync(rig);
+
+        // The new workbook filled them all: E5 to E8 and E10 to E20 on every record that holds them (E6 is optional and
+        // filled; E9 is the model's answer's, here "Lead" from the example), and #42.
+        var holders = AttributeCatalog.EuValues.Select(attribute => attribute.Label).ToHashSet(StringComparer.Ordinal);
+        Assert.All(holders, label => Assert.Contains(filled.Keys, key => key.EndsWith($"|{label}", StringComparison.Ordinal)));
+        Assert.Equal(3, filled.Keys.Count(key => key.EndsWith("|#42", StringComparison.Ordinal)));
+
+        Assert.True((await rig.LoadAsync(LoadTesting.Core(FilledWorkbook.SentOn13November()))).Loaded);
+        Assert.Equal(filled, await NewValuesAsync(rig));
+
+        Assert.True((await rig.LoadAsync(LoadTesting.Core())).Loaded);
+        Assert.Equal(filled, await NewValuesAsync(rig));
+    }
+
+    /// <summary>"record id|E5" (and "|#42") to the stored JSON, for every record that holds one of these values.</summary>
+    private static async Task<Dictionary<string, string>> NewValuesAsync(LoadRig rig)
+    {
+        var watched = AttributeCatalog.EuValues.Append(AttributeCatalog.ByNumber(42)).ToArray();
+        var records = (await rig.Store.ListAsync<ManufacturingSite>()).Select(record => (record.Id, record.Values))
+            .Concat((await rig.Store.ListAsync<ProductionBatch>()).Select(record => (record.Id, record.Values)))
+            .Concat((await rig.Store.ListAsync<BatteryModel>()).Select(record => (record.Id, record.Values)));
+        var values = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (id, stored) in records)
+        {
+            foreach (var attribute in watched.Where(attribute => stored.ContainsKey(attribute.Property)))
+            {
+                values[$"{id}|{attribute.Label}"] = stored[attribute.Property].Value.ToJsonString();
+            }
+        }
+
+        return values;
+    }
+
     private static string? Text(ManufacturingSite site, string property) =>
         site.Values.TryGetValue(property, out var value) ? value.Value.GetValue<string>() : null;
 }
