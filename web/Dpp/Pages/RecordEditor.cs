@@ -112,7 +112,13 @@ public sealed record EditorField(
     /// Empty although the passport needs it before publishing (<see cref="PassportNeeds"/>): what the team still has to
     /// fill in. Values needed only later, and conditional values the model's answers don't ask for, are not counted.
     /// </summary>
-    public bool IsMissing => !HasValue && Need == Need.Required;
+    public bool IsMissing => (!HasValue || Lacking is not null) && Need == Need.Required;
+
+    /// <summary>What the stored value still lacks (<see cref="PassportNeeds.Lacking"/>), such as "the test temperatures"; null when nothing.</summary>
+    public string? Lacking { get; init; }
+
+    /// <summary>The mark of a missing value: "Missing", or what part of it is missing.</summary>
+    public string MissingWords => Lacking is null || !HasValue ? "Missing" : $"Missing {Lacking}";
 
     /// <summary>For a conditional value, the short line that says whether this model needs it; null for the others.</summary>
     public string? NeedLine => PassportNeeds.EditorLine(Attribute, Answers);
@@ -261,8 +267,7 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
     /// <paramref name="answers"/> are the model's (for a model, or a battery of it); a batch, site or operator has no value they decide.
     /// </summary>
     public static int CountMissing(TargetKind kind, IReadOnlyDictionary<string, AttributeValue> stored, ModelAnswers answers) =>
-        AttributesOf(kind).Count(attribute =>
-            !stored.ContainsKey(attribute.Property) && PassportNeeds.NeedOf(attribute, answers) == Need.Required);
+        AttributesOf(kind).Count(attribute => PassportNeeds.IsMissing(attribute, stored.GetValueOrDefault(attribute.Property)?.Value, answers));
 
     /// <summary>
     /// The values the schema allows only one way, which have no input (#20 battery category). A new record starts with
@@ -354,7 +359,7 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
             }
 
             var changedMeanwhile = wasShown is not null && Fingerprint(FormValues.Show(form, current)) != wasShown;
-            var value = FormValues.Read(form, field);
+            var value = FormValues.Merge(form, current, FormValues.Read(form, field));
             if (value is null)
             {
                 // Emptied on the page: a removal, only when the page says it was edited there.
@@ -366,7 +371,7 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
                 continue;
             }
 
-            if (FormValues.SameValue(current, value))
+            if (FormValues.Same(form, current, value))
             {
                 continue;
             }
@@ -387,6 +392,17 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
             Conflicts = conflicts,
         };
     }
+
+    /// <summary>Gives these batches the app's label where they have none (E8; see <see cref="SavePipeline.FillBatchLabelsAsync"/>).</summary>
+    public Task<IReadOnlyList<string>> FillBatchLabelsAsync(string who, IEnumerable<string> batchIds, CancellationToken cancellationToken = default) =>
+        pipeline.FillBatchLabelsAsync(ChangeSender.Team(who), batchIds, cancellationToken);
+
+    /// <summary>
+    /// The values a field was posted with, one per line, for <see cref="Read(TargetKind, IReadOnlyDictionary{string, AttributeValue}, Func{string, string?}, string?)"/>:
+    /// a choice of the EU's lists posts each ticked box as a value of its own, and a name may hold a comma (round two, L3).
+    /// A field posted once is its value.
+    /// </summary>
+    public static string Posted(IEnumerable<string?> values) => string.Join('\n', values);
 
     private const string NameKey = "@name";
 
@@ -478,6 +494,7 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
                 RefusedParts = refusal?.Parts ?? new HashSet<string>(StringComparer.Ordinal),
                 Answers = answers,
                 OnABattery = kind == TargetKind.Pack,
+                Lacking = PassportNeeds.Lacking(attribute, value),
                 StoredLink = form.Kind == FormKind.Upload && value?["url"] is JsonValue url && url.TryGetValue<string>(out var link) ? link : null,
             });
         }

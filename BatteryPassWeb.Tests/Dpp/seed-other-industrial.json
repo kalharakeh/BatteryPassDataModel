@@ -14,6 +14,7 @@
       "batteryMass": { "gramKilogramUnit": "kg", "gramKilogramValue": 512.5 },
       "separateCollectionSymbol": { "contentType": "image/svg+xml", "url": "https://www.batteries.scania.test/battery/symbols/separate-collection.svg", "language": "en-GB", "resourceTitle": "Separate collection symbol" },
       "symbolsForCadmiumAndLead": { "contentType": "image/svg+xml", "url": "https://www.batteries.scania.test/battery/symbols/cd-pb.svg", "language": "en-GB", "resourceTitle": "Symbols for cadmium and lead" },
+      "chemicalSymbol": [ "https://repository.product-passport.ec.europa.eu/product/batteries/vocabs/battery-chemical-symbol#cadmiumSymbol", "https://repository.product-passport.ec.europa.eu/product/batteries/vocabs/battery-chemical-symbol#leadSymbol" ],
       "extinguishingAgent": { "agentFireClass": "B", "extinguishingAgent": "Water" },
       "meaningOfLabelsAndSymbols": "The crossed-out wheeled bin means the battery must be collected separately from other waste.",
       "informationOfDueDiligenceReport": { "contentType": "application/pdf", "url": "https://www.batteries.scania.test/battery/due-diligence-report.pdf", "language": "en-GB", "resourceTitle": "Due diligence report" },
@@ -32,8 +33,8 @@
       "informationOnBatteryCollectionPreparationForSecondLifeAndOnTreatmentAtEndOfLife": { "contentType": "application/pdf", "url": "https://www.batteries.scania.test/battery/collection-and-treatment.pdf", "language": "en-GB", "resourceTitle": "Collection, second life and treatment" },
       "ratedCapacity": { "amperehourMiliamperehourValue": 200, "ampereHourMiliamperehourUnit": "Ah" },
       "capacityFade": { "percentUnit": "%", "percentageValue": 0 },
-      "minimumVoltage": { "voltValue": 520.0, "voltUnit": "V" },
-      "maximumVoltage": { "voltValue": 740.0, "voltUnit": "V" },
+      "minimumVoltage": { "voltValue": 520.0, "voltUnit": "V", "temperatureRangeLowerBoundaryValue": -20, "temperatureRangeLowerBoundaryUnit": "°C", "temperatureRangeUpperBoundaryValue": 45, "temperatureRangeUpperBoundaryUnit": "°C" },
+      "maximumVoltage": { "voltValue": 740.0, "voltUnit": "V", "temperatureRangeLowerBoundaryValue": -20, "temperatureRangeLowerBoundaryUnit": "°C", "temperatureRangeUpperBoundaryValue": 45, "temperatureRangeUpperBoundaryUnit": "°C" },
       "nominalVoltage": { "voltValue": 650.0, "voltUnit": "V", "temperatureRangeLowerBoundaryValue": -20, "temperatureRangeLowerBoundaryUnit": "°C", "temperatureRangeUpperBoundaryValue": 45, "temperatureRangeUpperBoundaryUnit": "°C" },
       "originalPowerCapability": { "wattValueAt80PercentStateOfCharge": 250000, "wattValueAt20PercentStateOfCharge": 180000, "wattUnit": "W" },
       "powerFade": { "percentUnit": "%", "percentageValue": 0 },
@@ -48,7 +49,18 @@
       "cycleLifeReferenceTest": "IEC 62660-1",
       "cRateOfRelevantCycleLifeTest": { "amperePerAmpereHourValue": 0.5, "amperePerAmpereHourUnit": "A/Ah" },
       "temperatureRangeIdleStateLowerBoundary": { "degreeCelsiusUnit": "°C", "celsiusValue": -30 },
-      "temperatureRangeIdleStateUpperBoundary": { "degreeCelsiusUnit": "°C", "celsiusValue": 55 }
+      "temperatureRangeIdleStateUpperBoundary": { "degreeCelsiusUnit": "°C", "celsiusValue": 55 },
+      "notInUseTemperatureRangeTest": { "en-GB": "Storage test to IEC 62660-1 between -30 °C and 55 °C" },
+      "endUserRoleInWastePrevention": { "en-GB": "Use and store the battery as the manual says, and have it repaired rather than replaced." },
+      "endUserRoleInSeparateCollection": { "en-GB": "Never put the battery with other waste: hand it in for separate collection at its end of life." },
+      "separateCollectionPoints": { "en-GB": "Collection points for industrial batteries: https://www.batteries.scania.test/battery/collection-points" },
+      "takeBackCollectionPoints": { "en-GB": "The manufacturer takes the battery back free of charge: contact your Scania dealer." },
+      "preparationForReuseFacilities": { "en-GB": "Authorised re-use facility: Example Re-use Centre, Sweden." },
+      "preparationForRepurposingFacilities": { "en-GB": "Authorised repurposing facility: Example Second-Life Hub, Sweden." },
+      "wasteBatteryTreatmentFacilities": { "en-GB": "Authorised recycling plant: Example Recycling AB, Sweden." },
+      "wasteBatterySafetyInstructions": { "en-GB": "Store a damaged battery dry and ventilated, away from anything that burns, and call the dealer." },
+      "batteryLabelSymbolMeaning": { "en-GB": "The crossed-out wheeled bin means the battery must be collected separately from other waste." },
+      "batterySubstancesImpact": { "en-GB": "Thrown away with other waste, the electrolyte and metals can harm soil, water and health." }
     }
   },
   "site": {
@@ -57,7 +69,10 @@
     "values": {
       "uniqueManufacturerIdentifier": "urn:test:manufacturer:example-plant",
       "manufacturerInformation": { "name": "Example Battery Systems AB", "registeredTradeNameOrRegisteredTrademark": "Example Batteries", "postalAddress": "Exempelvägen 1, 111 11 Stockholm, Sweden", "webAddress": "https://www.batteries.scania.test", "eMailAddress": "battery.passport@batteries.scania.test" },
-      "manufacturingPlace": "Example plant, Stockholm, Sweden"
+      "manufacturingPlace": "Example plant, Stockholm, Sweden",
+      "manufacturingCity": "Stockholm",
+      "manufacturingRegion": "Stockholm County",
+      "manufacturingCountry": "SWE"
     }
   },
   "batch": {
@@ -67,6 +82,7 @@
     "year": 2026,
     "values": {
       "batteryModelIdentifier": "EXB-NMC-100",
+      "batchNumber": "EXB-SWE-2026",
       "carbonFootprintLabel": { "contentType": "image/png", "url": "https://www.batteries.scania.test/battery/carbon-footprint-label.png", "language": "en-GB", "resourceTitle": "Carbon footprint label" },
       "euDeclarationOfConformity": { "contentType": "application/pdf", "url": "https://www.batteries.scania.test/battery/eu-declaration-of-conformity.pdf", "language": "en-GB", "resourceTitle": "EU declaration of conformity" },
       "resultsOfTestReportsProvingCompliance": { "contentType": "application/pdf", "url": "https://passport.example.com/dpp/documents/doc-test-reports", "language": "en-GB", "resourceTitle": "Test reports" },

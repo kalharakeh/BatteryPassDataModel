@@ -112,13 +112,60 @@ public static class AttributeCatalog
     /// added beyond the file. Kept like #87: live pack values from the BMS, seen by the purchaser and market surveillance.
     /// Whole minutes (decision 28, amended). They never block publication. Numbers 1001–1004 only keep them apart; pages show E1–E4.
     /// </summary>
-    public static IReadOnlyList<AttributeDefinition> Extensions { get; } =
+    public static IReadOnlyList<AttributeDefinition> TemperatureTimes { get; } =
     [
         new(1001, "Time spent in extreme temperatures above boundary", Performance, "timeSpentInExtremeTemperaturesAboveBoundary", L.Pack, A.Purchaser, G.None, Live, C.Live, "min", R.Conditional, false, "E1"),
         new(1002, "Time spent in extreme temperatures below boundary", Performance, "timeSpentInExtremeTemperaturesBelowBoundary", L.Pack, A.Purchaser, G.None, Live, C.Live, "min", R.Conditional, false, "E2"),
         new(1003, "Time spent charging during extreme temperatures above boundary", Performance, "timeSpentChargingDuringExtremeTemperaturesAboveBoundary", L.Pack, A.Purchaser, G.None, Live, C.Live, "min", R.Conditional, false, "E3"),
         new(1004, "Time spent charging during extreme temperatures below boundary", Performance, "timeSpentChargingDuringExtremeTemperaturesBelowBoundary", L.Pack, A.Purchaser, G.None, Live, C.Live, "min", R.Conditional, false, "E4"),
     ];
+
+    public const string ManufacturingCity = "manufacturingCity";
+    public const string ManufacturingRegion = "manufacturingRegion";
+    public const string ManufacturingCountry = "manufacturingCountry";
+    public const string BatchNumber = "batchNumber";
+    public const string NotInUseTemperatureRangeTest = "notInUseTemperatureRangeTest";
+    public const string ChemicalSymbol = "chemicalSymbol";
+
+    /// <summary>#42, chosen from the EU's list of critical raw materials (G16).</summary>
+    public const string CriticalRawMaterials = "criticalRawMaterials";
+
+    /// <summary>
+    /// The ten end-of-life texts of the EU's <c>wasteBatteryPreventionManagementInfo</c> (G23), under the EU's names, in
+    /// the EU's order: E11 to E20, one group on the model.
+    /// </summary>
+    public static IReadOnlyList<(string Property, string Name)> EndOfLifeTexts { get; } =
+    [
+        ("endUserRoleInWastePrevention", "End of life: the user's role in preventing waste"),
+        ("endUserRoleInSeparateCollection", "End of life: the user's role in separate collection"),
+        ("separateCollectionPoints", "End of life: separate collection points"),
+        ("takeBackCollectionPoints", "End of life: take-back points"),
+        ("preparationForReuseFacilities", "End of life: facilities preparing batteries for re-use"),
+        ("preparationForRepurposingFacilities", "End of life: facilities preparing batteries for repurposing"),
+        ("wasteBatteryTreatmentFacilities", "End of life: treatment facilities for waste batteries"),
+        ("wasteBatterySafetyInstructions", "End of life: safety instructions for waste batteries"),
+        ("batteryLabelSymbolMeaning", "End of life: meaning of the symbols on the battery"),
+        ("batterySubstancesImpact", "End of life: the substances' impact on health and the environment"),
+    ];
+
+    /// <summary>
+    /// Decision 94 (package R1): the values the EU's battery format 1.0.0 requires that the file doesn't hold, kept in
+    /// the EU's shape and under the EU's names, so that the EU view (R2) only has to copy them. All public, as in the EU's
+    /// public view. Numbers 1005 on; pages show E5 on.
+    /// </summary>
+    public static IReadOnlyList<AttributeDefinition> EuValues { get; } =
+    [
+        new(1005, "Manufacturing city", Ident, ManufacturingCity, L.Site, A.Public, G.None, E.Team, C.Fixed, null, R.Mandatory, true, "E5"),
+        new(1006, "Manufacturing region", Ident, ManufacturingRegion, L.Site, A.Public, G.None, E.Team, C.Fixed, null, R.Conditional, false, "E6"),
+        new(1007, "Manufacturing country", Ident, ManufacturingCountry, L.Site, A.Public, G.None, E.Team, C.Fixed, null, R.Mandatory, true, "E7"),
+        new(1008, "Batch label", Ident, BatchNumber, L.Batch, A.Public, G.None, E.Team, C.Fixed, null, R.Mandatory, true, "E8"),
+        new(1009, "Cadmium or lead symbol shown", Symbols, ChemicalSymbol, L.Model, A.Public, G.None, E.Team, C.Fixed, null, R.Conditional, true, "E9"),
+        new(1010, "Test of the idle temperature range", Performance, NotInUseTemperatureRangeTest, L.Model, A.Public, G.None, E.Team, C.Fixed, null, R.Mandatory, true, "E10"),
+        .. EndOfLifeTexts.Select((text, index) => new AttributeDefinition(1011 + index, text.Name, Circularity, text.Property, L.Model, A.Public, G.None, E.Team, C.Fixed, null, R.Mandatory, true, $"E{11 + index}")),
+    ];
+
+    /// <summary>The values added beyond the file: the temperature times (E1–E4), then the EU's values (E5 on).</summary>
+    public static IReadOnlyList<AttributeDefinition> Extensions { get; } = [.. TemperatureTimes, .. EuValues];
 
     /// <summary>Every attribute the app keeps: the file's, then the extensions.</summary>
     public static IReadOnlyList<AttributeDefinition> All { get; } = [.. FileAttributes, .. Extensions];
@@ -152,12 +199,13 @@ public static class AttributeCatalog
         [83] = "Not needed for non-cycle applications.",
         [84] = "Not needed for non-cycle applications.",
         [85] = "Not needed for non-cycle applications.",
+        [1006] = "Optional: the EU takes a region beside the city.",
     };
 
-    /// <summary>The condition of a conditional attribute of the file; null for the others and for the extensions.</summary>
+    /// <summary>The condition of a conditional attribute of the file, or of an EU value; null for the others and for E1–E4.</summary>
     public static string? ConditionOf(AttributeDefinition attribute)
     {
         ArgumentNullException.ThrowIfNull(attribute);
-        return attribute.IsExtension ? null : ConditionTexts.GetValueOrDefault(attribute.Number);
+        return ConditionTexts.GetValueOrDefault(attribute.Number);
     }
 }

@@ -342,7 +342,9 @@ public sealed class ProductDataController(ProductDataPages pages, RecordEditor e
             var shared = save.SharedWith.Count == 0
                 ? string.Empty
                 : $" {(save.SharedWith.Count == 1 ? "Model" : "Models")} {string.Join(", ", save.SharedWith)} {(save.SharedWith.Count == 1 ? "has" : "have")} the same format.";
-            TempData[StatusKey] = $"Serial number format saved. A serial number that fits: {BatteryPassWeb.Dpp.Identifiers.SerialFormats.Example(save.Format)}.{shared} The passport didn't change: it isn't passport data.";
+            TempData[StatusKey] = save.Labels.Count == 0
+                ? $"Serial number format saved. A serial number that fits: {BatteryPassWeb.Dpp.Identifiers.SerialFormats.Example(save.Format)}.{shared} The passport didn't change: it isn't passport data."
+                : $"Serial number format saved. A serial number that fits: {BatteryPassWeb.Dpp.Identifiers.SerialFormats.Example(save.Format)}.{shared} {string.Join(" ", save.Labels)}";
         }
 
         return Redirect($"{ProductDataPages.FamilyHref(model.FamilyId, modelId)}#serial-format");
@@ -666,7 +668,7 @@ public sealed class ProductDataController(ProductDataPages pages, RecordEditor e
     {
         var form = Request.Form;
         var stamp = form[StampField].ToString();
-        var post = editor.Read(kind, stored, name => form.TryGetValue(name, out var value) ? value.ToString() : null, stamp);
+        var post = editor.Read(kind, stored, name => form.TryGetValue(name, out var value) ? RecordEditor.Posted(value) : null, stamp);
         var postedName = form["name"].ToString();
         string? nameTaken = null;
         var renamed = false;

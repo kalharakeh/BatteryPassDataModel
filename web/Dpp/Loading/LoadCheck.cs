@@ -33,15 +33,27 @@ public sealed record LoadChangeLine(string Name, string Old, string New)
 /// <param name="Waiting">How many more have changes waiting from an earlier load that stopped, or from a hand save, and are reached by a record of the workbook.</param>
 public sealed record LoadPublication(int Batteries, IReadOnlyList<string> Parts, int Waiting = 0)
 {
+    /// <summary>
+    /// The reached batteries whose next version would still lack a value, per model (R1 round two, M2): they keep their
+    /// version after the load until it is filled in. The load is still allowed.
+    /// </summary>
+    public IReadOnlyList<LoadHeld> Held { get; init; } = [];
+
     public string Text
     {
         get
         {
-            var one = Batteries == 1;
+            var getting = Batteries - Held.Sum(held => held.Batteries);
+            var one = getting == 1;
             var text = new System.Text.StringBuilder();
-            if (Batteries > 0)
+            if (getting > 0)
             {
-                text.Append($"{Pages.Words.Count(Batteries, "published battery", "published batteries")} {(one ? "is" : "are")} built from records this load changes. {(one ? "It gets" : "Each gets")} one new version, made after the whole load is saved, with all of the changes: {string.Join("; ", Parts)}. ");
+                text.Append($"{Pages.Words.Count(getting, "published battery", "published batteries")} {(one ? "is" : "are")} built from records this load changes. {(one ? "It gets" : "Each gets")} one new version, made after the whole load is saved, with all of the changes: {string.Join("; ", Parts)}. ");
+            }
+
+            foreach (var held in Held)
+            {
+                text.Append($"{Pages.Words.Count(held.Batteries, "published battery", "published batteries")} of {held.Model} {(held.Batteries == 1 ? "keeps its" : "keep their")} version until these are filled in: {string.Join("; ", held.Missing)}. The load still saves the changes. ");
             }
 
             if (Waiting > 0)
@@ -55,6 +67,9 @@ public sealed record LoadPublication(int Batteries, IReadOnlyList<string> Parts,
         }
     }
 }
+
+/// <summary>Published batteries of one model that a load reaches and that keep their version: what their passport still lacks.</summary>
+public sealed record LoadHeld(string Model, int Batteries, IReadOnlyList<string> Missing);
 
 /// <summary>One document or picture of a record, with what the load does with it.</summary>
 public sealed record LoadDocumentView(string Name, string Detail, string State);

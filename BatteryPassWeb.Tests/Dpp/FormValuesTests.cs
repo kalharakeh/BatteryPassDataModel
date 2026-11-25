@@ -41,7 +41,7 @@ public sealed class FormValuesTests
         }
         else
         {
-            Assert.True(FormValues.SameValue(stored, read), $"{property}: {stored?.ToJsonString()} came back as {read?.ToJsonString()}");
+            Assert.True(FormValues.Same(form, stored, read), $"{property}: {stored?.ToJsonString()} came back as {read?.ToJsonString()}");
         }
     }
 
@@ -64,7 +64,7 @@ public sealed class FormValuesTests
     {
         Assert.Null(FormValues.Read(Forms.For(AttributeCatalog.ByNumber(21)), _ => "  "));
         Assert.Null(FormValues.Read(Forms.For(AttributeCatalog.ByNumber(14)), _ => null));
-        Assert.Null(FormValues.Read(Forms.For(AttributeCatalog.ByNumber(42)), _ => "\n \n"));
+        Assert.Null(FormValues.Read(Forms.For(AttributeCatalog.ByNumber(43)), _ => "\n \n"));
     }
 
     [Fact]
@@ -89,7 +89,7 @@ public sealed class FormValuesTests
     [Fact]
     public void Lines_ShouldBeTrimmedAndBlankLinesDropped()
     {
-        var value = FormValues.Read(Forms.For(AttributeCatalog.ByNumber(42)), _ => " Cobalt \r\n\r\nLithium\n");
+        var value = FormValues.Read(Forms.For(AttributeCatalog.ByNumber(43)), _ => " Cobalt \r\n\r\nLithium\n"); // #42 is chosen from the EU's list (R1, G16)
 
         Assert.Equal("""["Cobalt","Lithium"]""", value!.ToJsonString());
     }

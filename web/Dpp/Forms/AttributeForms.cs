@@ -79,10 +79,9 @@ public sealed class AttributeForms
     private static AttributeForm Build(JsonNode document, AttributeDefinition attribute)
     {
         var noConstants = new Dictionary<string, string>(StringComparer.Ordinal);
-        if (attribute.IsExtension)
+        if (ExtensionKinds.Of(attribute) is { } extension)
         {
-            // Beyond the schema (decision 28): a whole number of minutes, shown as "minutes" (the catalogue's unit is "min").
-            return new AttributeForm(attribute, FormKind.Single, [new FormInput(string.Empty, attribute.Name, InputKind.Integer, false, [], "minutes")], noConstants);
+            return new AttributeForm(attribute, FormKind.Single, [ExtensionInput(attribute, extension)], noConstants);
         }
 
         var node = OfficialSchemas.FindProperty(document, attribute.Section, attribute.Property)
@@ -91,6 +90,12 @@ public sealed class AttributeForms
         if (DppLinks.RestrictedDocumentProperties.Contains(attribute.Property))
         {
             return new AttributeForm(attribute, FormKind.Upload, [], noConstants);
+        }
+
+        // #42 is chosen from the EU's 34 critical raw materials (G16); the schema keeps it a list of texts.
+        if (attribute.Property == AttributeCatalog.CriticalRawMaterials)
+        {
+            return new AttributeForm(attribute, FormKind.Single, [new FormInput(string.Empty, attribute.Name, InputKind.Choices, true, [.. EuCodeLists.RawMaterials.Keys], Hint: "Every critical raw material in the battery above 0.1 % by weight, from the EU's list.", OptionWords: EuCodeLists.RawMaterials)], noConstants);
         }
 
         var type = node["type"]?.GetValue<string>();
@@ -124,10 +129,72 @@ public sealed class AttributeForms
             _ => FormKind.Group,
         };
 
+        // The EU's format requires a voltage's test temperatures wherever the voltage is given (G20).
+        if (PassportNeeds.VoltagesWithTemperatures.Contains(attribute.Number))
+        {
+            inputs = inputs.Select(input => input.Path.StartsWith("temperatureRange", StringComparison.Ordinal) ? input with { Required = true } : input).ToArray();
+        }
+
         // A value with one input is labelled by the attribute itself; grouped inputs need their own label.
         return kind == FormKind.Single
             ? new AttributeForm(attribute, kind, [inputs[0] with { Label = attribute.Name, Required = true }], constants)
             : new AttributeForm(attribute, kind, Arrange(inputs), constants);
+    }
+
+    /// <summary>The one input of a value added beyond the schema (decision 28, decision 94).</summary>
+    private static FormInput ExtensionInput(AttributeDefinition attribute, ExtensionKind kind)
+    {
+        var required = attribute.Requirement != Requirement.Conditional;
+        return kind switch
+        {
+            // A whole number of minutes, shown as "minutes" (the catalogue's unit is "min").
+            ExtensionKind.Minutes => new FormInput(string.Empty, attribute.Name, InputKind.Integer, false, [], "minutes"),
+            ExtensionKind.Country => new FormInput(string.Empty, attribute.Name, InputKind.Select, required, Countries.Codes, OptionWords: Countries.Names),
+            ExtensionKind.LanguageText => new FormInput(string.Empty, attribute.Name, InputKind.LanguageText, required, [], Hint: ExtensionHints.GetValueOrDefault(attribute.Property)),
+            ExtensionKind.Codes => new FormInput(string.Empty, attribute.Name, InputKind.Choices, required, [.. EuCodeLists.ChemicalSymbols.Keys], Hint: ExtensionHints.GetValueOrDefault(attribute.Property), OptionWords: EuCodeLists.ChemicalSymbols),
+            _ => new FormInput(string.Empty, attribute.Name, InputKind.Text, required, [], Hint: ExtensionHints.GetValueOrDefault(attribute.Property)),
+        };
+    }
+
+    /// <summary>The line under each end-of-life text (E11–E20), in the catalogue's order (<see cref="AttributeCatalog.EndOfLifeTexts"/>).</summary>
+    private static readonly string[] EndOfLifeHints =
+    [
+        "What the battery's user can do to prevent waste, such as using and storing it as the manual says. A link may go in the text.",
+        "What the user does with the battery at its end of life: never with other waste, always to separate collection.",
+        "Where waste batteries are collected separately, or a link to the list.",
+        "Where the battery is taken back, for example by Scania or a dealer, free of charge.",
+        "Which facilities prepare these batteries for re-use, or a link to the list.",
+        "Which facilities prepare these batteries for a second life (repurposing), or a link to the list.",
+        "Which facilities treat and recycle these batteries at end of life, or a link to the list.",
+        "How to handle, store and transport a waste battery safely, also a damaged one.",
+        "What the symbols on the battery mean. Often the same text as #27.",
+        "What the battery's hazardous substances (#44) can do to people and the environment if the battery isn't disposed of properly.",
+    ];
+
+    /// <summary>The line under an extension's input, by its property.</summary>
+    private static readonly Dictionary<string, string> ExtensionHints = WithEndOfLifeHints(new(StringComparer.Ordinal)
+    {
+        [AttributeCatalog.ManufacturingCity] = "The town or city of the site.",
+        [AttributeCatalog.ManufacturingRegion] = "A region, county or state, if it helps to find the site.",
+        [AttributeCatalog.ChemicalSymbol] = "The symbol the battery's label shows: cadmium, lead or both.",
+        [AttributeCatalog.NotInUseTemperatureRangeTest] = "The test or standard the idle temperature range (#88 and #89) comes from, for example a storage test to IEC 62660-1.",
+        [AttributeCatalog.BatchNumber] = "The batch's number, as the EU asks for it with the model. The app gives one when the model has a serial number format and the site a country, such as VPC8C05-SWE-2026, and never changes it afterwards; type your own to change it.",
+    });
+
+    /// <summary>Adds the end-of-life texts' lines, keyed off the catalogue, so a property is never spelt twice.</summary>
+    private static Dictionary<string, string> WithEndOfLifeHints(Dictionary<string, string> hints)
+    {
+        if (EndOfLifeHints.Length != AttributeCatalog.EndOfLifeTexts.Count)
+        {
+            throw new InvalidOperationException("Each end-of-life text needs one line under its input.");
+        }
+
+        foreach (var (text, hint) in AttributeCatalog.EndOfLifeTexts.Zip(EndOfLifeHints))
+        {
+            hints[text.Property] = hint;
+        }
+
+        return hints;
     }
 
     /// <summary>The inputs of an object value, and its constants: single-valued enums, and units (the catalogue's unit).</summary>

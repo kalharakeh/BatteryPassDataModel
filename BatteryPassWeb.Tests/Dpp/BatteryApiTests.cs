@@ -150,7 +150,7 @@ public sealed class BatteryApiTests(MongoFixture mongo)
         Assert.Equal(["E1", "#63"], own.Select(entry => entry.Attribute.Label));
         Assert.Equal([now.AddHours(-1), now.AddHours(-2)], own.Select(entry => entry.MeasuredAtUtc));
         Assert.Equal(64, own[1].Value["percentageValue"]!.GetValue<int>());
-        Assert.Equal(AttributeCatalog.Extensions[0].Unit, own[0].Attribute.Unit);
+        Assert.Equal(AttributeCatalog.TemperatureTimes[0].Unit, own[0].Attribute.Unit);
         Assert.All(own, entry => Assert.Equal(BatteryApi.FeedSource, entry.Source));
         Assert.Equal(["E1", "#63", "#63", "#87"], week.Select(entry => entry.Attribute.Label));
         Assert.Empty(other);

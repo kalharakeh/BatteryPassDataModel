@@ -50,6 +50,9 @@ internal sealed class FilledWorkbook
     /// <summary>The workbook as it was sent: nothing filled but what the owner had already told us.</summary>
     public static FilledWorkbook Empty() => new(LoadTemplate.Bytes());
 
+    /// <summary>The workbook as it was sent on 13 November 2026, before the rows of the EU's values (package R1).</summary>
+    public static FilledWorkbook SentOn13November() => new(File.ReadAllBytes(BatteryPassWeb.Tests.Dpp.DppTestFiles.RepoFile("BatteryPassWeb.Tests", "Loading", "Workbooks", "core-family-data-to-fill-2026-11-13.xlsx")));
+
     /// <summary>Types a text into a cell of a value sheet.</summary>
     public FilledWorkbook Set(string sheet, string key, string column, string text) =>
         SetCell(sheet, RowOf(sheet, key), ColumnOf(sheet, column), text, number: false);

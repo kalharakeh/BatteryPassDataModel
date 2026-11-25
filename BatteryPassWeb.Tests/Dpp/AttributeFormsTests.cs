@@ -24,7 +24,7 @@ public sealed class AttributeFormsTests
     [InlineData(82, FormKind.Single, InputKind.Integer, null)]
     [InlineData(87, FormKind.Single, InputKind.Integer, "°C")]
     [InlineData(30, FormKind.Single, InputKind.Number, "kgCO2eq/kWh")]
-    [InlineData(42, FormKind.Lines, InputKind.Lines, null)]
+    [InlineData(42, FormKind.Single, InputKind.Choices, null)] // chosen from the EU's list (R1, G16)
     [InlineData(22, FormKind.Single, InputKind.Select, null)]
     public void OneInputAttributes_ShouldBeLabelledByTheirName(int number, FormKind kind, InputKind input, string? unit)
     {
@@ -59,7 +59,7 @@ public sealed class AttributeFormsTests
     }
 
     [Fact]
-    public void Voltages_ShouldKeepTheirOptionalTestTemperatures()
+    public void Voltages_ShouldAskForTheirTestTemperatures()
     {
         var form = Forms.For(AttributeCatalog.ByNumber(66));
 
@@ -68,7 +68,7 @@ public sealed class AttributeFormsTests
             ["temperatureRangeLowerBoundaryValue", "temperatureRangeUpperBoundaryValue", "voltValue"],
             form.Inputs.Select(input => input.Path).Order(StringComparer.Ordinal));
         Assert.Equal("V", form.Inputs.Single(input => input.Path == "voltValue").Unit);
-        Assert.All(form.Inputs.Where(input => input.Path.StartsWith("temperature", StringComparison.Ordinal)), input => Assert.Equal(("°C", false), (input.Unit, input.Required)));
+        Assert.All(form.Inputs.Where(input => input.Path.StartsWith("temperature", StringComparison.Ordinal)), input => Assert.Equal(("°C", true), (input.Unit, input.Required))); // the EU requires them (R1, G20)
     }
 
     [Fact]

@@ -695,13 +695,13 @@
       "type": "object",
       "properties": {
         "ohmValueForBatteryModule": {
-          "type": "integer"
+          "type": "number"
         },
         "ohmValueForBatteryPack": {
-          "type": "integer"
+          "type": "number"
         },
         "ohmValueForBatteryCell": {
-          "type": "integer"
+          "type": "number"
         },
         "ohmUnit": {
           "$ref": "#/$defs/ohm"

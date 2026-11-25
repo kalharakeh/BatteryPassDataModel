@@ -103,7 +103,7 @@ public sealed class PassportApiTests(MongoFixture mongo)
     [Theory]
     [InlineData("ratedEnergy")]
     [InlineData("#18")]
-    [InlineData("E5")]
+    [InlineData("E99")]
     [InlineData("aspects.performanceAndDurability.payload")]
     public void ARequestNamingNoAttribute_ShouldNameNone(string request)
     {
@@ -158,7 +158,7 @@ public sealed class PassportApiTests(MongoFixture mongo)
         var value = PassportApi.Values((await Api(rig).ReadAsync(OwnCluster, Serial(rig)))!, ["E1"]).Single();
 
         Assert.NotNull(value.Value);
-        Assert.Equal(AttributeCatalog.Extensions[0].Unit, value.Attribute!.Unit);
+        Assert.Equal(AttributeCatalog.TemperatureTimes[0].Unit, value.Attribute!.Unit);
     }
 
     [Fact]

@@ -453,7 +453,8 @@ public sealed class PassportPages(DppStore store, DemoBoundary demo, PassportRea
             StorageLocation.ModelWithPackOverride => sources.Pack.Values.GetValueOrDefault(attribute.Property) ?? sources.Model.Values.GetValueOrDefault(attribute.Property),
             _ => null,
         };
-        return stored is null || !FormValues.SameValue(stored.Value, shown)
+        // Compared as the passport carries it: #42 and E9 are kept as the EU's addresses and published as words (R1 round two, L7).
+        return stored is null || !FormValues.SameValue(PassportAssembler.Published(attribute, stored.Value), shown)
             ? null
             : new ValueOrigin(stored.GeneratedAtUtc, stored.Source, attribute.Change == ChangeRule.Live);
     }

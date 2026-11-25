@@ -4,11 +4,13 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using BatteryPassWeb.Dpp.Assembly;
 using BatteryPassWeb.Dpp.Catalog;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Forms;
 using BatteryPassWeb.Dpp.Pages;
+using BatteryPassWeb.Dpp.Publication;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Dpp.Values;
 using BatteryPassWeb.Services;
@@ -40,7 +42,8 @@ public sealed partial class ProductDataLoader(
     DppLinks links,
     AttributeForms forms,
     ApplicationAuditService audit,
-    BatteryPassWeb.Dpp.Identifiers.IIdentifierScheme identifiers)
+    BatteryPassWeb.Dpp.Identifiers.IIdentifierScheme identifiers,
+    PublicationService? publication = null)
 {
     /// <summary>The check judges values as the team's: who presses "Load" makes no difference to what is accepted.</summary>
     private static readonly ChangeSender Checker = ChangeSender.Team("product-data-load");
@@ -420,7 +423,9 @@ public sealed partial class ProductDataLoader(
             foreach (var (key, cell) in first.Cells)
             {
                 // A model's name and its serial number format are its own: they are never "the same as the first model's".
-                if (!cells.ContainsKey(key) && LoadFields.OwnField(key) is not { Kind: OwnFieldKind.Name or OwnFieldKind.SerialFormat or OwnFieldKind.NotLoadedYet })
+                // Nor is a batch's label (E8): no two batches of a model share one, and an empty one is the app's to make.
+                if (!cells.ContainsKey(key) && LoadFields.OwnField(key) is not { Kind: OwnFieldKind.Name or OwnFieldKind.SerialFormat or OwnFieldKind.NotLoadedYet }
+                    && key != LoadFields.BatchLabelKey)
                 {
                     cells[key] = cell;
                     taken++;
@@ -574,6 +579,16 @@ public sealed partial class ProductDataLoader(
                 Effective(first, column, batch, batchWords); // notes where its empty cells were taken from
             }
             PlanValues(batch, sheet, cells, plan);
+
+            // A new batch's label that another batch of the model has would stop the load part way (E8, O4): an existing
+            // batch's is judged by the save pipeline's preview, a new one's here, so the check says so first.
+            if (batch.IsNew && model.Plan.ExistingId is { } modelOfBatch
+                && batch.Changed.GetValueOrDefault(AttributeCatalog.BatchNumber) is JsonValue typed && typed.TryGetValue<string>(out var label)
+                && await BatchLabels.TakenAsync(store, modelOfBatch, null, label, cancellationToken))
+            {
+                plan.Problems.Add(sheet.Place(LoadFields.BatchLabelKey, column).Problem($"{label}: {BatchLabels.Taken}. Type another label, or leave the cell empty and the app makes one"));
+            }
+
             await PlanDocumentsAsync(batch, LoadRecord.Batch, content, models, model, plan, sent, current?.ExampleDocumentIds, cancellationToken);
         }
     }
@@ -676,7 +691,7 @@ public sealed partial class ProductDataLoader(
             }
 
             record.Cells[group.Key] = group.Select(entry => (entry.Field.Input.Path, entry.Cell)).ToList();
-            var value = FormValues.Read(form, name => texts.GetValueOrDefault(name));
+            var value = FormValues.Merge(form, stored, FormValues.Read(form, name => texts.GetValueOrDefault(name)));
             if (value is null)
             {
                 if (stored is not null)
@@ -688,7 +703,7 @@ public sealed partial class ProductDataLoader(
                 continue;
             }
 
-            if (FormValues.SameValue(stored, value))
+            if (FormValues.Same(form, stored, value))
             {
                 continue;
             }
@@ -704,8 +719,8 @@ public sealed partial class ProductDataLoader(
         foreach (var field in given)
         {
             var name = form.FieldName(field.Input);
-            var old = OneLine(before.GetValueOrDefault(name) ?? string.Empty);
-            var now = OneLine(after.GetValueOrDefault(name) ?? string.Empty);
+            var old = OneLine(ChoiceWords(field.Input, before.GetValueOrDefault(name) ?? string.Empty));
+            var now = OneLine(ChoiceWords(field.Input, after.GetValueOrDefault(name) ?? string.Empty));
             if (old != now)
             {
                 // As it will be stored, with the unit the app writes beside it.
@@ -715,6 +730,11 @@ public sealed partial class ProductDataLoader(
             }
         }
     }
+
+    /// <summary>A choice of the EU's lists (#42, E9) by the EU's labels, one per line; anything else as it is.</summary>
+    private static string ChoiceWords(FormInput input, string text) => input.Kind == InputKind.Choices
+        ? string.Join("\n", text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(input.Words))
+        : text;
 
     /// <summary>A list shows one entry per line in a form; on the check's one line they are set apart as in the workbook.</summary>
     private static string OneLine(string text) => string.Join("; ", text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
@@ -736,7 +756,7 @@ public sealed partial class ProductDataLoader(
             case InputKind.Integer or InputKind.Number when !cell.IsNumber && !PlainNumber().IsMatch(cell.Text):
                 plan.Problems.Add(cell.Place.Problem($"{Clip(cell.Text)} is not a number; type the number only{(cell.Text.Contains(',', StringComparison.Ordinal) ? ", with a point for decimals" : string.Empty)}"));
                 return null;
-            case InputKind.Lines:
+            case InputKind.Lines or InputKind.Choices:
                 return string.Join("\n", cell.Text.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
             default:
                 return cell.Text;
@@ -1331,7 +1351,90 @@ public sealed partial class ProductDataLoader(
         plan.WaitingPassports = waiting;
         if (reached.Count > 0 || waiting > 0)
         {
-            plan.Publication = new LoadPublication(reached.Count, PartWords(plan), waiting);
+            plan.Publication = new LoadPublication(reached.Count, PartWords(plan), waiting) { Held = await HeldAsync(plan, reached, cancellationToken) };
+        }
+    }
+
+    /// <summary>
+    /// The reached batteries whose next version would still lack a value once the workbook is saved, per model, with the
+    /// values (R1 round two, M2): the publication checks run on each one's passport as the load would leave it.
+    /// </summary>
+    private async Task<IReadOnlyList<LoadHeld>> HeldAsync(LoadPlan plan, IReadOnlyCollection<string> reached, CancellationToken cancellationToken)
+    {
+        if (publication is null)
+        {
+            return [];
+        }
+
+        var held = new Dictionary<string, (int Batteries, List<string> Missing)>(StringComparer.Ordinal);
+        foreach (var packId in reached)
+        {
+            string? model = null;
+            var report = await publication.CheckChangedAsync(packId, sources => { model = sources.Model.Name; AsLoaded(plan, sources); }, cancellationToken);
+            if (report is null || report.CanPublish || model is null)
+            {
+                continue;
+            }
+
+            (int Batteries, List<string> Missing) entry = held.TryGetValue(model, out var known) ? known : (0, new List<string>());
+            entry.Batteries++;
+            foreach (var item in report.Blocking.Select(PublishWords.Item).Where(item => !entry.Missing.Contains(item, StringComparer.Ordinal)))
+            {
+                entry.Missing.Add(item);
+            }
+
+            held[model] = entry;
+        }
+
+        return held.Select(pair => new LoadHeld(pair.Key, pair.Value.Batteries, pair.Value.Missing)).ToArray();
+    }
+
+    /// <summary>A battery's records as the load would leave them: the workbook's values, removals, documents and answers.</summary>
+    private void AsLoaded(LoadPlan plan, PassportSources sources)
+    {
+        var now = DateTime.UtcNow;
+        foreach (var record in plan.All.Where(record => record.ExistingId is not null))
+        {
+            var values = record.Record switch
+            {
+                LoadRecord.Model when record.ExistingId == sources.Model.Id => sources.Model.Values,
+                LoadRecord.Batch when record.ExistingId == sources.Batch.Id => sources.Batch.Values,
+                LoadRecord.Site when record.ExistingId == sources.Site.Id => sources.Site.Values,
+                LoadRecord.Operator when record.ExistingId == sources.Operator.Id => sources.Operator.Values,
+                _ => null,
+            };
+            if (values is null)
+            {
+                continue;
+            }
+
+            foreach (var (key, value) in record.Changed)
+            {
+                values[key] = new AttributeValue { Value = value.DeepClone(), GeneratedAtUtc = now, Source = "upload" };
+            }
+
+            foreach (var key in record.Removals)
+            {
+                values.Remove(key);
+            }
+
+            // A document the load uploads is there afterwards; its address is the app's, made at the load.
+            foreach (var upload in record.Uploads)
+            {
+                values[upload.Field.Attribute.Property] = new AttributeValue
+                {
+                    Value = new JsonObject { ["contentType"] = "application/pdf", ["url"] = links.DocumentUrl("load-check"), ["language"] = upload.Language ?? PassportLanguage.Tag, ["resourceTitle"] = upload.Title ?? upload.File.FileName },
+                    GeneratedAtUtc = now,
+                    Source = "upload",
+                };
+            }
+
+            if (record.Record == LoadRecord.Model)
+            {
+                sources.Model.HasCommercialWarranty = record.AnswersAfter.CommercialWarranty;
+                sources.Model.MadeForCyclingUse = record.AnswersAfter.CyclingUse;
+                sources.Model.CadmiumOrLeadAboveLimit = record.AnswersAfter.CadmiumOrLeadAboveLimit;
+            }
         }
     }
 

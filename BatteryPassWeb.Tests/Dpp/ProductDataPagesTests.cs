@@ -31,10 +31,10 @@ public sealed class ProductDataPagesTests(MongoFixture mongo)
         var family = Assert.Single((await pages.FamiliesAsync()).Families);
         var page = (await pages.FamilyAsync("family-test", modelId))!;
 
-        Assert.Equal(28, family.Missing); // the seeded model and batch are complete; #20 is filled in on creation; #57 counts (R22)
+        Assert.Equal(39, family.Missing); // the seeded model and batch are complete; #20 is filled in on creation; #57 counts (R22)
         var chips = page.Models.ToDictionary(chip => chip.Model.Id, chip => chip.Missing);
-        Assert.Equal((0, 28), (chips["model-test"], chips[modelId]));
-        Assert.Equal(28, page.ModelEditor!.Missing);
+        Assert.Equal((0, 39), (chips["model-test"], chips[modelId]));
+        Assert.Equal(39, page.ModelEditor!.Missing);
     }
 
     [Fact]
@@ -63,8 +63,8 @@ public sealed class ProductDataPagesTests(MongoFixture mongo)
 
         Assert.Equal("model-test", page.SelectedModel?.Id);
         var batch = Assert.Single(page.Batches);
-        Assert.Equal(("Example plant", 16, 16, 1, 0), (batch.SiteName, batch.Filled, batch.Total, batch.Packs, batch.Published));
-        Assert.Equal((TargetKind.Model, 37, 37), (page.ModelEditor!.Kind, page.ModelEditor.Filled, page.ModelEditor.Total));
+        Assert.Equal(("Example plant", 17, 17, 1, 0), (batch.SiteName, batch.Filled, batch.Total, batch.Packs, batch.Published));
+        Assert.Equal((TargetKind.Model, 49, 49), (page.ModelEditor!.Kind, page.ModelEditor.Filled, page.ModelEditor.Total));
         Assert.Equal("/admin/models/model-test", page.ModelEditor.SaveAction);
         Assert.Null(await PageTesting.Pages(rig).FamilyAsync("no-such-family", null));
     }
@@ -166,7 +166,7 @@ public sealed class ProductDataPagesTests(MongoFixture mongo)
         var economicOperator = await pages.SitesAndOperatorsAsync(null, "operator-test");
 
         Assert.Null(none.Editor);
-        Assert.Equal((1, 3, 3), (Assert.Single(none.Sites).Batches, none.Sites[0].Filled, none.Sites[0].Total));
+        Assert.Equal((1, 6, 6), (Assert.Single(none.Sites).Batches, none.Sites[0].Filled, none.Sites[0].Total));
         Assert.Equal(1, Assert.Single(none.Operators).Packs);
         Assert.Equal((TargetKind.Site, "/admin/sites/site-test"), (site.Editor!.Kind, site.Editor.SaveAction));
         Assert.Equal((TargetKind.Operator, 2), (economicOperator.Editor!.Kind, economicOperator.Editor.Total));

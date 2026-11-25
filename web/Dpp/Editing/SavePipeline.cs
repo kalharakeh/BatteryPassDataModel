@@ -158,6 +158,15 @@ public sealed class SavePipeline(
         {
             evaluation = await CheckPackRulesAsync(changes.TargetId, evaluation, statusChange && !target.Values.ContainsKey(AddedByCorrection), cancellationToken);
         }
+        else if (changes.Target == TargetKind.Batch)
+        {
+            evaluation = await CheckBatchRulesAsync(changes.TargetId, evaluation, cancellationToken);
+        }
+
+        if (changes.Target is TargetKind.Model or TargetKind.Batch or TargetKind.Site or TargetKind.Operator)
+        {
+            evaluation = await RefuseNewLackingAsync(changes.Target, changes.TargetId, target.Values, evaluation, cancellationToken);
+        }
 
         var removals = await EvaluateRemovalsAsync(sender, changes, target, cancellationToken);
         var results = evaluation.Results.Concat(removals).ToArray();
@@ -211,6 +220,13 @@ public sealed class SavePipeline(
                 entityType: $"dpp-{changes.Target.ToString().ToLowerInvariant()}",
                 entityId: changes.TargetId,
                 cancellationToken: none);
+            // A site's country makes the labels of its batches that have none (E8, O4), through this same path.
+            if (changes.Target == TargetKind.Site && stored.ContainsKey(AttributeCatalog.ManufacturingCountry))
+            {
+                var unlabelled = (await store.ListAsync<ProductionBatch>(none)).Where(batch => batch.SiteId == changes.TargetId && BatchLabels.Of(batch) is null);
+                await FillBatchLabelsAsync(sender, unlabelled.Select(batch => batch.Id), none);
+            }
+
             // The values are saved: what follows (new versions) isn't stopped by a cancelled request, a closed browser or
             // a proxy's time-out (round four, 1).
             foreach (var listener in _listeners)
@@ -337,6 +353,114 @@ public sealed class SavePipeline(
         }
 
         return new Evaluation(results, accepted);
+    }
+
+    /// <summary>The source of a value the app makes itself, such as a batch's label: "set by the app" on the pages.</summary>
+    public const string AppSource = "system";
+
+    /// <summary>
+    /// Gives each of these batches that has no label the app's label (E8, O4), through the save path: audited, checked for
+    /// uniqueness and kept as the app's (round two, L1). A label once there, typed or made, is never changed. A batch whose
+    /// label can't be made yet (no serial number format, no country) is passed over; one whose label another batch of the
+    /// model has is skipped, and the audit log says so. Returns a sentence for each batch it made or skipped.
+    /// </summary>
+    public async Task<IReadOnlyList<string>> FillBatchLabelsAsync(ChangeSender sender, IEnumerable<string> batchIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sender);
+        ArgumentNullException.ThrowIfNull(batchIds);
+        var notes = new List<string>();
+        foreach (var batchId in batchIds.Distinct(StringComparer.Ordinal).ToArray())
+        {
+            if (await store.GetAsync<ProductionBatch>(batchId, cancellationToken) is not { } batch || BatchLabels.Of(batch) is not null
+                || await store.GetAsync<BatteryModel>(batch.ModelId, cancellationToken) is not { } model
+                || await store.GetAsync<ManufacturingSite>(batch.SiteId, cancellationToken) is not { } site
+                || BatchLabels.Default(model, site, batch.Year) is not { } label)
+            {
+                continue;
+            }
+
+            var which = $"The {batch.Year} batch of {model.Name} from {site.Name}";
+            var result = await SaveAsync(
+                sender,
+                new ChangeSet(TargetKind.Batch, batch.Id, new Dictionary<string, JsonNode?> { [AttributeCatalog.BatchNumber] = JsonValue.Create(label) }, AppSource) { ByTheApp = true },
+                cancellationToken: cancellationToken);
+            if (result.Keys.FirstOrDefault() is { Outcome: KeyOutcome.Saved })
+            {
+                notes.Add($"{which} got the label {label}.");
+                continue;
+            }
+
+            var skipped = $"{which} got no label: {label} is another batch's of the model. Type one on the batch's page.";
+            notes.Add(skipped);
+            await audit.AppendApplicationAuditEventAsync(
+                AuditEventType,
+                sender.Who,
+                sender.Kind.ToString(),
+                AppSource,
+                skipped,
+                new BsonDocument { ["label"] = label },
+                entityType: "dpp-batch",
+                entityId: batch.Id,
+                cancellationToken: CancellationToken.None);
+        }
+
+        return notes;
+    }
+
+    /// <summary>Why a value that would leave published passports lacking part of it is refused (R1 round two, M2).</summary>
+    public static string LeavesPublishedLacking(string lacking) =>
+        $"The published passports need this value complete, and this would leave it missing {lacking}. Fill that in too, or keep the value as it was";
+
+    /// <summary>
+    /// A value that is complete now and would lack a part the EU requires after the save (a voltage without its test
+    /// temperatures, a #42 name off the EU's list) is refused when published passports need it: they would keep their
+    /// version until it is filled in, as a removal of a needed value would (R1 round two, M2). A value already lacking,
+    /// or not there before, stays accepted, so the team can fill values one at a time.
+    /// </summary>
+    private async Task<Evaluation> RefuseNewLackingAsync(TargetKind kind, string id, IReadOnlyDictionary<string, AttributeValue> current, Evaluation evaluation, CancellationToken cancellationToken)
+    {
+        List<KeyResult>? results = null;
+        Dictionary<string, JsonNode>? accepted = null;
+        ModelAnswers? answers = null;
+        bool? published = null;
+        foreach (var (key, value) in evaluation.Accepted)
+        {
+            if (AttributeCatalog.FindByProperty(key) is not { } attribute
+                || PassportNeeds.Lacking(attribute, value) is not { } lacking
+                || current.GetValueOrDefault(key)?.Value is not { } before
+                || PassportNeeds.Lacking(attribute, before) is not null
+                || PassportNeeds.NeedOf(attribute, answers ??= await AnswersAsync(kind, id, cancellationToken)) is not (Need.Required or Need.Unanswered)
+                || !(published ??= await UsedByPublishedPassportAsync(kind, id, cancellationToken)))
+            {
+                continue;
+            }
+
+            results ??= evaluation.Results.ToList();
+            accepted ??= new Dictionary<string, JsonNode>(evaluation.Accepted, StringComparer.Ordinal);
+            accepted.Remove(key);
+            var index = results.FindIndex(result => result.Key == key);
+            results[index] = results[index] with { Outcome = KeyOutcome.Rejected, Message = LeavesPublishedLacking(lacking) };
+        }
+
+        return results is null ? evaluation : new Evaluation(results, accepted!);
+    }
+
+    /// <summary>A batch's label (E8) is refused when another batch of the same model has it (O4).</summary>
+    private async Task<Evaluation> CheckBatchRulesAsync(string batchId, Evaluation evaluation, CancellationToken cancellationToken)
+    {
+        if (!evaluation.Accepted.TryGetValue(AttributeCatalog.BatchNumber, out var value)
+            || value is not JsonValue leaf || !leaf.TryGetValue<string>(out var label)
+            || await store.GetAsync<ProductionBatch>(batchId, cancellationToken) is not { } batch
+            || !await BatchLabels.TakenAsync(store, batch.ModelId, batch.Id, label, cancellationToken))
+        {
+            return evaluation;
+        }
+
+        var accepted = new Dictionary<string, JsonNode>(evaluation.Accepted, StringComparer.Ordinal);
+        accepted.Remove(AttributeCatalog.BatchNumber);
+        return new Evaluation(
+            evaluation.Results.Select(result => result.Key == AttributeCatalog.BatchNumber ? result with { Outcome = KeyOutcome.Rejected, Message = BatchLabels.Taken } : result).ToList(),
+            accepted);
     }
 
     /// <summary>

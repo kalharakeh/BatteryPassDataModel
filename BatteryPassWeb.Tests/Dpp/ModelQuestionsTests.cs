@@ -20,9 +20,9 @@ public sealed class ModelQuestionsTests
     {
         Assert.Equal([19], ModelQuestions.Decides[ModelQuestion.CommercialWarranty]);
         Assert.Equal(Cycling, ModelQuestions.Decides[ModelQuestion.CyclingUse]);
-        Assert.Equal([24], ModelQuestions.Decides[ModelQuestion.CadmiumOrLeadAboveLimit]);
+        Assert.Equal([24, 1009], ModelQuestions.Decides[ModelQuestion.CadmiumOrLeadAboveLimit]); // E9, which symbol (R1, O13)
         var decided = ModelQuestions.Decides.Values.SelectMany(numbers => numbers).Order();
-        var conditionalDueByFeb2027 = AttributeCatalog.FileAttributes
+        var conditionalDueByFeb2027 = AttributeCatalog.All
             .Where(attribute => attribute.Requirement == Requirement.Conditional && attribute.MandatoryFromFeb2027)
             .Select(attribute => attribute.Number)
             .Order();
@@ -43,7 +43,7 @@ public sealed class ModelQuestionsTests
     [Fact]
     public void RecycledContentAndTheExtensions_ShouldStayOptionalWhateverTheAnswers()
     {
-        var optional = AttributeCatalog.All.Where(attribute => attribute.Number is >= 49 and <= 52 || attribute.IsExtension).ToArray();
+        var optional = AttributeCatalog.All.Where(attribute => attribute.Number is >= 49 and <= 52 || AttributeCatalog.TemperatureTimes.Contains(attribute)).ToArray();
 
         Assert.Equal(8, optional.Length);
         foreach (var answers in new[] { ModelAnswers.NotAnswered, new ModelAnswers(true, true, true), new ModelAnswers(false, false, false) })

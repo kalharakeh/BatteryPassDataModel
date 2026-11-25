@@ -139,7 +139,7 @@ public sealed class DppApiWritingTests(MongoFixture mongo)
         Assert.Equal(["#63", "E2"], values.Select(value => value.GetProperty("attribute").GetString()).Order());
         Assert.All(values, value => Assert.Equal("2026-10-29T07:00:00Z", value.GetProperty("measuredAt").GetString()));
         Assert.All(values, value => Assert.Equal("battery system", value.GetProperty("source").GetString()));
-        Assert.Equal(AttributeCatalog.Extensions[1].Unit, values.Single(value => value.GetProperty("attribute").GetString() == "E2").GetProperty("unit").GetString());
+        Assert.Equal(AttributeCatalog.TemperatureTimes[1].Unit, values.Single(value => value.GetProperty("attribute").GetString() == "E2").GetProperty("unit").GetString());
         Assert.Equal(168, other.GetProperty("hours").GetInt32());
         Assert.Empty(other.GetProperty("values").EnumerateArray());
         Assert.Equal(StatusCodes.Status400BadRequest, tooLong.StatusCode);

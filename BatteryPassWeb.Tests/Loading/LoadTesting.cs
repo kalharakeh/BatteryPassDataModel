@@ -71,7 +71,8 @@ internal static class LoadTesting
         DocumentTesting.Links,
         AttributeFormsTests.Forms,
         new ApplicationAuditService(rig.Context),
-        new BatteryPassWeb.Dpp.Identifiers.TestIdentifierScheme()));
+        new BatteryPassWeb.Dpp.Identifiers.TestIdentifierScheme(),
+        rig.Publication));
 
     public const string ModelSheet = LoadFields.ModelsSheet;
     public const string BatchSheet = LoadFields.BatchesSheet;
@@ -86,7 +87,10 @@ internal static class LoadTesting
     /// Core800), one batch each, one site, one operator, one substance for all models, every document, both pictures.
     /// It starts from the example column and replaces every value that is the demo's example.
     /// </summary>
-    public static FilledWorkbook Core() => FilledWorkbook.Empty()
+    public static FilledWorkbook Core() => Core(FilledWorkbook.Empty());
+
+    /// <summary><see cref="Core"/>, filled into <paramref name="start"/> (the workbook as sent on 13 November, for one).</summary>
+    public static FilledWorkbook Core(FilledWorkbook start) => start
         .ExampleInto(FamilySheet, "Core")
         .ExampleInto(ModelSheet, "Core800")
         .ExampleInto(BatchSheet, FirstBatch)

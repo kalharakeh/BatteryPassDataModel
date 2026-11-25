@@ -32,6 +32,19 @@ public sealed class AttributeValueNormalizer(OfficialSchemas schemas)
     public JsonNode? Normalize(AttributeDefinition attribute, JsonNode? value)
     {
         ArgumentNullException.ThrowIfNull(attribute);
+
+        // Codes sent by name (an upload, the API: "lead") become the EU's addresses (G16).
+        if (ExtensionKinds.Of(attribute) == ExtensionKind.Codes && value is JsonValue named && named.TryGetValue<string>(out var name))
+        {
+            return new JsonArray(JsonValue.Create(EuCodeLists.FindChemicalSymbol(name) ?? name));
+        }
+
+        // A text in the passport's language sent as a plain text (an upload, the API) becomes its language map (decision 94).
+        if (ExtensionKinds.Of(attribute) == ExtensionKind.LanguageText && value is JsonValue plain && plain.TryGetValue<string>(out var text))
+        {
+            return PassportLanguage.Map(text);
+        }
+
         if (value is null || value.GetValueKind() is JsonValueKind.Object or JsonValueKind.Array)
         {
             return value;

@@ -57,14 +57,18 @@ public sealed class ProductDataLoadTests(MongoFixture mongo)
     {
         var rig = await EmptyAsync(mongo);
 
-        await rig.LoadAsync(Core());
+        // A voltage without its test temperatures still loads (R1, G20): the model counts it as missing instead.
+        await rig.LoadAsync(Core()
+            .Clear(ModelSheet, "model|minimumVoltage|temperatureRangeLowerBoundaryValue", "Core800")
+            .Clear(ModelSheet, "model|minimumVoltage|temperatureRangeUpperBoundaryValue", "Core800"));
 
         var model = (await CoreAsync(rig)).Models.Single(item => item.Name == "Core800");
         var values = model.Values.ToDictionary(entry => entry.Key, entry => entry.Value.Value);
         Same("""{"batteryCategoryValue":"industrial/non-stationary battery"}""", values["batteryCategory"]); // the app's own, never typed
         Same("""{"gramKilogramUnit":"kg","gramKilogramValue":470}""", values["batteryMass"]); // a number with the unit the app writes
         Same("""{"amperePerAmpereHourValue":0.5,"amperePerAmpereHourUnit":"A/Ah"}""", values["cRateOfRelevantCycleLifeTest"]);
-        Same("""["Cobalt","Lithium","Natural graphite","Nickel"]""", values["criticalRawMaterials"]); // a list, set apart with semicolons
+        // A list, set apart with semicolons, kept as the EU's addresses (R1, G16).
+        Same("""["https://repository.product-passport.ec.europa.eu/core/vocabs/critical-raw-material#cobalt","https://repository.product-passport.ec.europa.eu/core/vocabs/critical-raw-material#lithium","https://repository.product-passport.ec.europa.eu/core/vocabs/critical-raw-material#graphite","https://repository.product-passport.ec.europa.eu/core/vocabs/critical-raw-material#nickelBatteryGrade"]""", values["criticalRawMaterials"]);
         Same("10", values["expectedLifetimeInCalendarYears"]);
         Same("""{"agentFireClass":"B","extinguishingAgent":"Water"}""", values["extinguishingAgent"]);
         Same("""{"voltValue":512,"voltUnit":"V"}""", values["minimumVoltage"]); // no temperature typed: no temperature unit either
@@ -75,9 +79,9 @@ public sealed class ProductDataLoadTests(MongoFixture mongo)
         Same($$"""{"contentType":"text/html","url":"{{Web}}/battery/waste-prevention","language":"en-GB","resourceTitle":"Your role in waste prevention"}""", values["informationOnTheRoleOfEndUsersInContributingToWastePrevention"]);
         Assert.All(model.Values.Values, value => Assert.Equal(("form", Who), (value.Source, value.Who)));
 
-        // Nothing the passport needs is missing: the example column fills a whole model.
+        // Nothing the passport needs is missing but the minimum voltage's temperatures cleared above: the example column fills a whole model.
         Assert.Equal(new ModelAnswers(true, true, false), model.Answers());
-        Assert.Equal(0, RecordEditor.CountMissing(TargetKind.Model, model.Values, model.Answers()));
+        Assert.Equal(1, RecordEditor.CountMissing(TargetKind.Model, model.Values, model.Answers()));
         Assert.Equal("Ten liquid-cooled NMC modules around a central cooling plate, with the battery management unit on top.", model.ModuleDescription);
         Assert.Equal("image/png", model.PictureContentType);
         Assert.Empty(ExampleValues.Of(model.Values, model.ExampleDocumentIds));
@@ -152,8 +156,11 @@ public sealed class ProductDataLoadTests(MongoFixture mongo)
         Assert.Equal(3, (await rig.AuditAsync(ProductDataPages.ModuleDescriptionEvent)).Count);
         Assert.Equal(4, (await rig.AuditAsync(ProductDataPages.PictureEvent)).Count);
         var saves = await rig.AuditAsync(SavePipeline.AuditEventType);
-        Assert.Equal(8 + 15, saves.Count); // the values of 3 models, 3 batches, the site and the operator; and each upload's link
-        Assert.All(saves, save => Assert.Equal(("Team", "form"), (save["actorRole"].AsString, save["source"].AsString)));
+        // The values of 3 models, 3 batches, the site and the operator; each upload's link; and the label the app gives each
+        // new batch, saved as the app's (R1 round two, L1).
+        Assert.Equal(8 + 15 + 3, saves.Count);
+        Assert.Equal(3, saves.Count(save => save["source"].AsString == SavePipeline.AppSource));
+        Assert.All(saves.Where(save => save["source"].AsString != SavePipeline.AppSource), save => Assert.Equal(("Team", "form"), (save["actorRole"].AsString, save["source"].AsString)));
     }
 
     [Fact]

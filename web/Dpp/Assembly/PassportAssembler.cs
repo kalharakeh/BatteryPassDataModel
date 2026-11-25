@@ -62,7 +62,35 @@ public static class PassportAssembler
         };
 
     private static JsonNode? Stored(Dictionary<string, AttributeValue> values, AttributeDefinition attribute) =>
-        values.TryGetValue(attribute.Property, out var stored) ? stored.Value.DeepClone() : null;
+        values.TryGetValue(attribute.Property, out var stored) ? Published(attribute, stored.Value) : null;
+
+    /// <summary>
+    /// A stored value as this passport carries it. #42 and E9 are kept as the EU's addresses and carried as words, as the
+    /// BatteryPass-Ready schema has #42, a list of names (G16; E9 by the same rule, round two L2): an address becomes its
+    /// label ("Graphite", "Lead (Pb)"); a name kept from before stays as it was. The EU view (R2) sends the addresses. Every
+    /// other value is carried as stored.
+    /// </summary>
+    public static JsonNode Published(AttributeDefinition attribute, JsonNode stored)
+    {
+        ArgumentNullException.ThrowIfNull(attribute);
+        ArgumentNullException.ThrowIfNull(stored);
+        return attribute.Property switch
+        {
+            AttributeCatalog.CriticalRawMaterials => Words(stored, EuCodeLists.RawMaterials),
+            AttributeCatalog.ChemicalSymbol => Words(stored, EuCodeLists.ChemicalSymbols),
+            _ => stored.DeepClone(),
+        };
+    }
+
+    /// <summary>#42 as the passport carries it (see <see cref="Published"/>).</summary>
+    public static JsonNode RawMaterialWords(JsonNode stored) => Words(stored, EuCodeLists.RawMaterials);
+
+    private static JsonNode Words(JsonNode stored, IReadOnlyDictionary<string, string> labels) =>
+        stored is JsonArray entries
+            ? new JsonArray(entries.Select(entry => entry is JsonValue value && value.TryGetValue<string>(out var text) && labels.TryGetValue(text, out var label)
+                ? JsonValue.Create(label)
+                : entry?.DeepClone()).ToArray())
+            : stored.DeepClone();
 
     private static JsonNode SystemValue(int number, PassportHeader header) => number switch
     {

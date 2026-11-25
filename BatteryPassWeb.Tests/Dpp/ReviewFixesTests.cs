@@ -75,7 +75,10 @@ public sealed class ReviewFixesTests
 
         Assert.Equal(13, conditional.Length);
         Assert.All(conditional, a => Assert.False(string.IsNullOrWhiteSpace(BatteryPassWeb.Dpp.Catalog.AttributeCatalog.ConditionOf(a))));
-        Assert.All(BatteryPassWeb.Dpp.Catalog.AttributeCatalog.All.Except(conditional), a => Assert.Null(BatteryPassWeb.Dpp.Catalog.AttributeCatalog.ConditionOf(a)));
+        // E6, the manufacturing region the EU takes beside the city, says it is optional (R1, G11).
+        var region = BatteryPassWeb.Dpp.Catalog.AttributeCatalog.FindByProperty(BatteryPassWeb.Dpp.Catalog.AttributeCatalog.ManufacturingRegion)!;
+        Assert.Equal("Optional: the EU takes a region beside the city.", BatteryPassWeb.Dpp.Catalog.AttributeCatalog.ConditionOf(region));
+        Assert.All(BatteryPassWeb.Dpp.Catalog.AttributeCatalog.All.Except(conditional).Except([region]), a => Assert.Null(BatteryPassWeb.Dpp.Catalog.AttributeCatalog.ConditionOf(a)));
         Assert.Equal("Not needed when the battery contains no nickel.", BatteryPassWeb.Dpp.Catalog.AttributeCatalog.ConditionOf(BatteryPassWeb.Dpp.Catalog.AttributeCatalog.ByNumber(49)));
         // R01: the field's line says whether this model needs it; values no question decides keep the file's condition.
         Assert.Contains("field.NeedLine", Read("web", "Views", "ProductData", "_EditorField.cshtml"));

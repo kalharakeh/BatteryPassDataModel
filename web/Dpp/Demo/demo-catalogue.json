@@ -133,6 +133,9 @@
           "language": "en-GB",
           "resourceTitle": "Symbols for cadmium and lead"
         },
+        "chemicalSymbol": [
+          "https://repository.product-passport.ec.europa.eu/product/batteries/vocabs/battery-chemical-symbol#leadSymbol"
+        ],
         "extinguishingAgent": {
           "agentFireClass": "B",
           "extinguishingAgent": "Water"
@@ -195,6 +198,36 @@
           "language": "en-GB",
           "resourceTitle": "Collection, second life and treatment"
         },
+        "endUserRoleInWastePrevention": {
+          "en-GB": "Use and store the battery as the manual says, and have it repaired rather than replaced. (demo)"
+        },
+        "endUserRoleInSeparateCollection": {
+          "en-GB": "Never put the battery with other waste: hand it in for separate collection at its end of life. (demo)"
+        },
+        "separateCollectionPoints": {
+          "en-GB": "Collection points for industrial batteries: https://www.example.com/battery/collection-points (demo)"
+        },
+        "takeBackCollectionPoints": {
+          "en-GB": "The manufacturer takes the battery back free of charge: contact your Scania dealer. (demo)"
+        },
+        "preparationForReuseFacilities": {
+          "en-GB": "Authorised re-use facility: Example Re-use Centre, Sweden. (demo)"
+        },
+        "preparationForRepurposingFacilities": {
+          "en-GB": "Authorised repurposing facility: Example Second-Life Hub, Sweden. (demo)"
+        },
+        "wasteBatteryTreatmentFacilities": {
+          "en-GB": "Authorised recycling plant: Example Recycling AB, Sweden. (demo)"
+        },
+        "wasteBatterySafetyInstructions": {
+          "en-GB": "Store a damaged battery dry and ventilated, away from anything that burns, and call the dealer. (demo)"
+        },
+        "batteryLabelSymbolMeaning": {
+          "en-GB": "The crossed-out wheeled bin means the battery must be collected separately from other waste. (demo)"
+        },
+        "batterySubstancesImpact": {
+          "en-GB": "Thrown away with other waste, the electrolyte and metals can harm soil, water and health. (demo)"
+        },
         "ratedCapacity": {
           "amperehourMiliamperehourValue": 140,
           "ampereHourMiliamperehourUnit": "Ah"
@@ -205,11 +238,19 @@
         },
         "minimumVoltage": {
           "voltValue": 320,
-          "voltUnit": "V"
+          "voltUnit": "V",
+          "temperatureRangeLowerBoundaryValue": -20,
+          "temperatureRangeLowerBoundaryUnit": "°C",
+          "temperatureRangeUpperBoundaryValue": 45,
+          "temperatureRangeUpperBoundaryUnit": "°C"
         },
         "maximumVoltage": {
           "voltValue": 460,
-          "voltUnit": "V"
+          "voltUnit": "V",
+          "temperatureRangeLowerBoundaryValue": -20,
+          "temperatureRangeLowerBoundaryUnit": "°C",
+          "temperatureRangeUpperBoundaryValue": 45,
+          "temperatureRangeUpperBoundaryUnit": "°C"
         },
         "nominalVoltage": {
           "voltValue": 400,
@@ -245,8 +286,8 @@
           "percentageValue": 0
         },
         "initialInternalResistanceOfBatteryCellAndPackModuleRecommended": {
-          "ohmValueForBatteryPack": 1,
-          "ohmValueForBatteryCell": 1,
+          "ohmValueForBatteryPack": 0.06,
+          "ohmValueForBatteryCell": 0.0008,
           "ohmUnit": "Ohm"
         },
         "internalResistanceIncreaseOfPackCellAndModuleRecommended": {
@@ -267,6 +308,9 @@
         "temperatureRangeIdleStateUpperBoundary": {
           "degreeCelsiusUnit": "°C",
           "celsiusValue": 45
+        },
+        "notInUseTemperatureRangeTest": {
+          "en-GB": "Storage test to IEC 62660-1 between -20 °C and 45 °C (demo)"
         }
       }
     },
@@ -304,6 +348,9 @@
           "language": "en-GB",
           "resourceTitle": "Symbols for cadmium and lead"
         },
+        "chemicalSymbol": [
+          "https://repository.product-passport.ec.europa.eu/product/batteries/vocabs/battery-chemical-symbol#leadSymbol"
+        ],
         "extinguishingAgent": {
           "agentFireClass": "B",
           "extinguishingAgent": "Water"
@@ -366,6 +413,36 @@
           "language": "en-GB",
           "resourceTitle": "Collection, second life and treatment"
         },
+        "endUserRoleInWastePrevention": {
+          "en-GB": "Use and store the battery as the manual says, and have it repaired rather than replaced. (demo)"
+        },
+        "endUserRoleInSeparateCollection": {
+          "en-GB": "Never put the battery with other waste: hand it in for separate collection at its end of life. (demo)"
+        },
+        "separateCollectionPoints": {
+          "en-GB": "Collection points for industrial batteries: https://www.example.com/battery/collection-points (demo)"
+        },
+        "takeBackCollectionPoints": {
+          "en-GB": "The manufacturer takes the battery back free of charge: contact your Scania dealer. (demo)"
+        },
+        "preparationForReuseFacilities": {
+          "en-GB": "Authorised re-use facility: Example Re-use Centre, Sweden. (demo)"
+        },
+        "preparationForRepurposingFacilities": {
+          "en-GB": "Authorised repurposing facility: Example Second-Life Hub, Sweden. (demo)"
+        },
+        "wasteBatteryTreatmentFacilities": {
+          "en-GB": "Authorised recycling plant: Example Recycling AB, Sweden. (demo)"
+        },
+        "wasteBatterySafetyInstructions": {
+          "en-GB": "Store a damaged battery dry and ventilated, away from anything that burns, and call the dealer. (demo)"
+        },
+        "batteryLabelSymbolMeaning": {
+          "en-GB": "The crossed-out wheeled bin means the battery must be collected separately from other waste. (demo)"
+        },
+        "batterySubstancesImpact": {
+          "en-GB": "Thrown away with other waste, the electrolyte and metals can harm soil, water and health. (demo)"
+        },
         "ratedCapacity": {
           "amperehourMiliamperehourValue": 260,
           "ampereHourMiliamperehourUnit": "Ah"
@@ -376,11 +453,19 @@
         },
         "minimumVoltage": {
           "voltValue": 576,
-          "voltUnit": "V"
+          "voltUnit": "V",
+          "temperatureRangeLowerBoundaryValue": -20,
+          "temperatureRangeLowerBoundaryUnit": "°C",
+          "temperatureRangeUpperBoundaryValue": 45,
+          "temperatureRangeUpperBoundaryUnit": "°C"
         },
         "maximumVoltage": {
           "voltValue": 828,
-          "voltUnit": "V"
+          "voltUnit": "V",
+          "temperatureRangeLowerBoundaryValue": -20,
+          "temperatureRangeLowerBoundaryUnit": "°C",
+          "temperatureRangeUpperBoundaryValue": 45,
+          "temperatureRangeUpperBoundaryUnit": "°C"
         },
         "nominalVoltage": {
           "voltValue": 720,
@@ -416,8 +501,8 @@
           "percentageValue": 0
         },
         "initialInternalResistanceOfBatteryCellAndPackModuleRecommended": {
-          "ohmValueForBatteryPack": 1,
-          "ohmValueForBatteryCell": 1,
+          "ohmValueForBatteryPack": 0.06,
+          "ohmValueForBatteryCell": 0.0008,
           "ohmUnit": "Ohm"
         },
         "internalResistanceIncreaseOfPackCellAndModuleRecommended": {
@@ -438,6 +523,9 @@
         "temperatureRangeIdleStateUpperBoundary": {
           "degreeCelsiusUnit": "°C",
           "celsiusValue": 45
+        },
+        "notInUseTemperatureRangeTest": {
+          "en-GB": "Storage test to IEC 62660-1 between -20 °C and 45 °C (demo)"
         }
       }
     },
@@ -474,6 +562,9 @@
           "language": "en-GB",
           "resourceTitle": "Symbols for cadmium and lead"
         },
+        "chemicalSymbol": [
+          "https://repository.product-passport.ec.europa.eu/product/batteries/vocabs/battery-chemical-symbol#leadSymbol"
+        ],
         "extinguishingAgent": {
           "agentFireClass": "B",
           "extinguishingAgent": "Water"
@@ -536,6 +627,36 @@
           "language": "en-GB",
           "resourceTitle": "Collection, second life and treatment"
         },
+        "endUserRoleInWastePrevention": {
+          "en-GB": "Use and store the battery as the manual says, and have it repaired rather than replaced. (demo)"
+        },
+        "endUserRoleInSeparateCollection": {
+          "en-GB": "Never put the battery with other waste: hand it in for separate collection at its end of life. (demo)"
+        },
+        "separateCollectionPoints": {
+          "en-GB": "Collection points for industrial batteries: https://www.example.com/battery/collection-points (demo)"
+        },
+        "takeBackCollectionPoints": {
+          "en-GB": "The manufacturer takes the battery back free of charge: contact your Scania dealer. (demo)"
+        },
+        "preparationForReuseFacilities": {
+          "en-GB": "Authorised re-use facility: Example Re-use Centre, Sweden. (demo)"
+        },
+        "preparationForRepurposingFacilities": {
+          "en-GB": "Authorised repurposing facility: Example Second-Life Hub, Sweden. (demo)"
+        },
+        "wasteBatteryTreatmentFacilities": {
+          "en-GB": "Authorised recycling plant: Example Recycling AB, Sweden. (demo)"
+        },
+        "wasteBatterySafetyInstructions": {
+          "en-GB": "Store a damaged battery dry and ventilated, away from anything that burns, and call the dealer. (demo)"
+        },
+        "batteryLabelSymbolMeaning": {
+          "en-GB": "The crossed-out wheeled bin means the battery must be collected separately from other waste. (demo)"
+        },
+        "batterySubstancesImpact": {
+          "en-GB": "Thrown away with other waste, the electrolyte and metals can harm soil, water and health. (demo)"
+        },
         "ratedCapacity": {
           "amperehourMiliamperehourValue": 220,
           "ampereHourMiliamperehourUnit": "Ah"
@@ -546,11 +667,19 @@
         },
         "minimumVoltage": {
           "voltValue": 512,
-          "voltUnit": "V"
+          "voltUnit": "V",
+          "temperatureRangeLowerBoundaryValue": -20,
+          "temperatureRangeLowerBoundaryUnit": "°C",
+          "temperatureRangeUpperBoundaryValue": 45,
+          "temperatureRangeUpperBoundaryUnit": "°C"
         },
         "maximumVoltage": {
           "voltValue": 736,
-          "voltUnit": "V"
+          "voltUnit": "V",
+          "temperatureRangeLowerBoundaryValue": -20,
+          "temperatureRangeLowerBoundaryUnit": "°C",
+          "temperatureRangeUpperBoundaryValue": 45,
+          "temperatureRangeUpperBoundaryUnit": "°C"
         },
         "nominalVoltage": {
           "voltValue": 640,
@@ -586,8 +715,8 @@
           "percentageValue": 0
         },
         "initialInternalResistanceOfBatteryCellAndPackModuleRecommended": {
-          "ohmValueForBatteryPack": 1,
-          "ohmValueForBatteryCell": 1,
+          "ohmValueForBatteryPack": 0.06,
+          "ohmValueForBatteryCell": 0.0008,
           "ohmUnit": "Ohm"
         },
         "internalResistanceIncreaseOfPackCellAndModuleRecommended": {
@@ -608,6 +737,9 @@
         "temperatureRangeIdleStateUpperBoundary": {
           "degreeCelsiusUnit": "°C",
           "celsiusValue": 45
+        },
+        "notInUseTemperatureRangeTest": {
+          "en-GB": "Storage test to IEC 62660-1 between -20 °C and 45 °C (demo)"
         }
       }
     }
@@ -625,7 +757,10 @@
           "webAddress": "https://www.example.com",
           "eMailAddress": "batteries@example.com"
         },
-        "manufacturingPlace": "Demo plant North, Stockholm, Sweden"
+        "manufacturingPlace": "Demo plant North, Stockholm, Sweden",
+        "manufacturingCity": "Stockholm (demo)",
+        "manufacturingRegion": "Stockholm County",
+        "manufacturingCountry": "SWE"
       }
     },
     {
@@ -640,7 +775,9 @@
           "webAddress": "https://www.example.com",
           "eMailAddress": "batteries@example.com"
         },
-        "manufacturingPlace": "Demo plant South, Malmo, Sweden"
+        "manufacturingPlace": "Demo plant South, Malmo, Sweden",
+        "manufacturingCity": "Malmö (demo)",
+        "manufacturingCountry": "SWE"
       }
     }
   ],
@@ -683,6 +820,7 @@
       "testReport": "Compact 7M test report 2026",
       "values": {
         "batteryModelIdentifier": "CP7M",
+        "batchNumber": "CP7M-SWE-2026 (demo)",
         "carbonFootprintLabel": {
           "contentType": "image/png",
           "url": "https://www.example.com/demo/compact-7m/carbon-footprint-label.png",
@@ -743,6 +881,7 @@
       "testReport": "Compact 13M test report 2026",
       "values": {
         "batteryModelIdentifier": "CP13M",
+        "batchNumber": "CP13M-SWE-2026 (demo)",
         "carbonFootprintLabel": {
           "contentType": "image/png",
           "url": "https://www.example.com/demo/compact-13m/carbon-footprint-label.png",
@@ -803,6 +942,7 @@
       "testReport": "Core test report 2026",
       "values": {
         "batteryModelIdentifier": "CORE",
+        "batchNumber": "CORE-SWE-2026 (demo)",
         "carbonFootprintLabel": {
           "contentType": "image/png",
           "url": "https://www.example.com/demo/core/carbon-footprint-label.png",

@@ -47,7 +47,8 @@ public static class ModelQuestions
     {
         [ModelQuestion.CommercialWarranty] = [19],
         [ModelQuestion.CyclingUse] = [71, 72, 74, 82, 83, 84, 85],
-        [ModelQuestion.CadmiumOrLeadAboveLimit] = [24],
+        // E9 (1009): which symbol, cadmium, lead or both (the owner's answer O13, G16).
+        [ModelQuestion.CadmiumOrLeadAboveLimit] = [24, 1009],
     };
 
     /// <summary>The question as the model's page asks it.</summary>
@@ -90,11 +91,6 @@ public static class ModelQuestions
     public static ModelQuestion? QuestionOf(AttributeDefinition attribute)
     {
         ArgumentNullException.ThrowIfNull(attribute);
-        if (attribute.IsExtension)
-        {
-            return null;
-        }
-
         foreach (var (question, numbers) in Decides)
         {
             if (numbers.Contains(attribute.Number))

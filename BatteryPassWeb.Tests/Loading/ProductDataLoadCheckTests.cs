@@ -48,7 +48,7 @@ public sealed class ProductDataLoadCheckTests(MongoFixture mongo)
 
         var model = check.Records.Single(record => record.Name == "Core800");
         Assert.Contains(new LoadChangeLine("Battery mass", string.Empty, "470 kg"), model.Changes);
-        Assert.Contains(new LoadChangeLine("Critical raw materials", string.Empty, "Cobalt; Lithium; Natural graphite; Nickel"), model.Changes);
+        Assert.Contains(new LoadChangeLine("Critical raw materials", string.Empty, "Cobalt; Lithium; Graphite; Nickel – battery grade"), model.Changes); // the EU's labels (R1, G16)
         Assert.Contains(new LoadChangeLine("Nominal voltage: valid from this temperature", string.Empty, "-20 °C"), model.Changes);
         Assert.Contains(new LoadChangeLine("Does this battery come with a commercial warranty?", string.Empty, "Yes"), model.Changes);
         Assert.Contains(new LoadChangeLine("Hazardous substances and their impact", string.Empty, "Lithium hexafluorophosphate (CAS No 21324-40-3, 1.2)"), model.Changes);
