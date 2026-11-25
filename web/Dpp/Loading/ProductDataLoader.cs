@@ -4,11 +4,13 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using BatteryPassWeb.Dpp.Assembly;
 using BatteryPassWeb.Dpp.Catalog;
 using BatteryPassWeb.Dpp.Documents;
 using BatteryPassWeb.Dpp.Editing;
 using BatteryPassWeb.Dpp.Forms;
 using BatteryPassWeb.Dpp.Pages;
+using BatteryPassWeb.Dpp.Publication;
 using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Dpp.Values;
 using BatteryPassWeb.Services;
@@ -40,7 +42,8 @@ public sealed partial class ProductDataLoader(
     DppLinks links,
     AttributeForms forms,
     ApplicationAuditService audit,
-    BatteryPassWeb.Dpp.Identifiers.IIdentifierScheme identifiers)
+    BatteryPassWeb.Dpp.Identifiers.IIdentifierScheme identifiers,
+    PublicationService? publication = null)
 {
     /// <summary>The check judges values as the team's: who presses "Load" makes no difference to what is accepted.</summary>
     private static readonly ChangeSender Checker = ChangeSender.Team("product-data-load");
@@ -1348,7 +1351,90 @@ public sealed partial class ProductDataLoader(
         plan.WaitingPassports = waiting;
         if (reached.Count > 0 || waiting > 0)
         {
-            plan.Publication = new LoadPublication(reached.Count, PartWords(plan), waiting);
+            plan.Publication = new LoadPublication(reached.Count, PartWords(plan), waiting) { Held = await HeldAsync(plan, reached, cancellationToken) };
+        }
+    }
+
+    /// <summary>
+    /// The reached batteries whose next version would still lack a value once the workbook is saved, per model, with the
+    /// values (R1 round two, M2): the publication checks run on each one's passport as the load would leave it.
+    /// </summary>
+    private async Task<IReadOnlyList<LoadHeld>> HeldAsync(LoadPlan plan, IReadOnlyCollection<string> reached, CancellationToken cancellationToken)
+    {
+        if (publication is null)
+        {
+            return [];
+        }
+
+        var held = new Dictionary<string, (int Batteries, List<string> Missing)>(StringComparer.Ordinal);
+        foreach (var packId in reached)
+        {
+            string? model = null;
+            var report = await publication.CheckChangedAsync(packId, sources => { model = sources.Model.Name; AsLoaded(plan, sources); }, cancellationToken);
+            if (report is null || report.CanPublish || model is null)
+            {
+                continue;
+            }
+
+            (int Batteries, List<string> Missing) entry = held.TryGetValue(model, out var known) ? known : (0, new List<string>());
+            entry.Batteries++;
+            foreach (var item in report.Blocking.Select(PublishWords.Item).Where(item => !entry.Missing.Contains(item, StringComparer.Ordinal)))
+            {
+                entry.Missing.Add(item);
+            }
+
+            held[model] = entry;
+        }
+
+        return held.Select(pair => new LoadHeld(pair.Key, pair.Value.Batteries, pair.Value.Missing)).ToArray();
+    }
+
+    /// <summary>A battery's records as the load would leave them: the workbook's values, removals, documents and answers.</summary>
+    private void AsLoaded(LoadPlan plan, PassportSources sources)
+    {
+        var now = DateTime.UtcNow;
+        foreach (var record in plan.All.Where(record => record.ExistingId is not null))
+        {
+            var values = record.Record switch
+            {
+                LoadRecord.Model when record.ExistingId == sources.Model.Id => sources.Model.Values,
+                LoadRecord.Batch when record.ExistingId == sources.Batch.Id => sources.Batch.Values,
+                LoadRecord.Site when record.ExistingId == sources.Site.Id => sources.Site.Values,
+                LoadRecord.Operator when record.ExistingId == sources.Operator.Id => sources.Operator.Values,
+                _ => null,
+            };
+            if (values is null)
+            {
+                continue;
+            }
+
+            foreach (var (key, value) in record.Changed)
+            {
+                values[key] = new AttributeValue { Value = value.DeepClone(), GeneratedAtUtc = now, Source = "upload" };
+            }
+
+            foreach (var key in record.Removals)
+            {
+                values.Remove(key);
+            }
+
+            // A document the load uploads is there afterwards; its address is the app's, made at the load.
+            foreach (var upload in record.Uploads)
+            {
+                values[upload.Field.Attribute.Property] = new AttributeValue
+                {
+                    Value = new JsonObject { ["contentType"] = "application/pdf", ["url"] = links.DocumentUrl("load-check"), ["language"] = upload.Language ?? PassportLanguage.Tag, ["resourceTitle"] = upload.Title ?? upload.File.FileName },
+                    GeneratedAtUtc = now,
+                    Source = "upload",
+                };
+            }
+
+            if (record.Record == LoadRecord.Model)
+            {
+                sources.Model.HasCommercialWarranty = record.AnswersAfter.CommercialWarranty;
+                sources.Model.MadeForCyclingUse = record.AnswersAfter.CyclingUse;
+                sources.Model.CadmiumOrLeadAboveLimit = record.AnswersAfter.CadmiumOrLeadAboveLimit;
+            }
         }
     }
 

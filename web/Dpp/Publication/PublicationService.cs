@@ -155,6 +155,26 @@ public sealed class PublicationService(
     }
 
     /// <summary>
+    /// The checks the pack's next version would meet if its records were changed by <paramref name="change"/> (a
+    /// workbook's values, before a load: R1 round two, M2), saving nothing. The records are fresh copies; null when the
+    /// pack, or a record it links to, is missing.
+    /// </summary>
+    public async Task<PublicationReport?> CheckChangedAsync(string packId, Action<PassportSources> change, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        var sources = await store.LoadSourcesAsync(packId, cancellationToken);
+        if (sources is null)
+        {
+            return null;
+        }
+
+        change(sources);
+        var number = await store.GetLatestVersionNumberAsync(packId, cancellationToken) + 1;
+        var header = new PassportHeader(identifiers.NewPassportIdentifier(PackIdentifier(sources.Pack), number), DppStatuses.Active, clock.GetUtcNow().UtcDateTime);
+        return WithDemoRule(sources, checks.Check(PassportAssembler.Assemble(sources, header), sources.Model.Answers()), number);
+    }
+
+    /// <summary>
     /// The publication checks of many drafts at once, as <see cref="CheckAsync(string, CancellationToken)"/> makes them for one
     /// (the team's "To do" page, finding U05): the records are read once per collection, not once per battery. A draft
     /// whose batch, model, site or operator is missing is left out, as the single check returns nothing for it.
