@@ -156,8 +156,11 @@ public sealed class ProductDataLoadTests(MongoFixture mongo)
         Assert.Equal(3, (await rig.AuditAsync(ProductDataPages.ModuleDescriptionEvent)).Count);
         Assert.Equal(4, (await rig.AuditAsync(ProductDataPages.PictureEvent)).Count);
         var saves = await rig.AuditAsync(SavePipeline.AuditEventType);
-        Assert.Equal(8 + 15, saves.Count); // the values of 3 models, 3 batches, the site and the operator; and each upload's link
-        Assert.All(saves, save => Assert.Equal(("Team", "form"), (save["actorRole"].AsString, save["source"].AsString)));
+        // The values of 3 models, 3 batches, the site and the operator; each upload's link; and the label the app gives each
+        // new batch, saved as the app's (R1 round two, L1).
+        Assert.Equal(8 + 15 + 3, saves.Count);
+        Assert.Equal(3, saves.Count(save => save["source"].AsString == SavePipeline.AppSource));
+        Assert.All(saves.Where(save => save["source"].AsString != SavePipeline.AppSource), save => Assert.Equal(("Team", "form"), (save["actorRole"].AsString, save["source"].AsString)));
     }
 
     [Fact]

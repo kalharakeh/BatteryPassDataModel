@@ -393,6 +393,10 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
         };
     }
 
+    /// <summary>Gives these batches the app's label where they have none (E8; see <see cref="SavePipeline.FillBatchLabelsAsync"/>).</summary>
+    public Task<IReadOnlyList<string>> FillBatchLabelsAsync(string who, IEnumerable<string> batchIds, CancellationToken cancellationToken = default) =>
+        pipeline.FillBatchLabelsAsync(ChangeSender.Team(who), batchIds, cancellationToken);
+
     /// <summary>
     /// The values a field was posted with, one per line, for <see cref="Read(TargetKind, IReadOnlyDictionary{string, AttributeValue}, Func{string, string?}, string?)"/>:
     /// a choice of the EU's lists posts each ticked box as a value of its own, and a name may hold a comma (round two, L3).

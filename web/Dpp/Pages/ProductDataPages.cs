@@ -147,6 +147,9 @@ public sealed record FamilyPage(
 /// </summary>
 public sealed record SerialFormatSave(string? Problem, bool Saved, bool Changed, string? Format, int Misfits, IReadOnlyList<string> Examples, IReadOnlyList<string> SharedWith)
 {
+    /// <summary>What the save did to the batch labels the app makes (E8, round two L1), one sentence each; empty when nothing.</summary>
+    public IReadOnlyList<string> Labels { get; init; } = [];
+
     /// <summary>Nothing is saved yet: the page says how many batteries don't fit and asks.</summary>
     public bool NeedsConfirmation => Problem is null && !Saved;
 }
@@ -490,12 +493,6 @@ public sealed partial class ProductDataPages(
         }
 
         var batch = new ProductionBatch { Id = NewId("batch"), ModelId = modelId, SiteId = siteId, Year = year, Values = OneWayValues(TargetKind.Batch, who) };
-
-        // The batch's label (E8, O4), when the model's serial number format and the site's country make one that is free.
-        if (BatchLabels.Default(model, site, year) is { } label && !await BatchLabels.TakenAsync(store, modelId, null, label, cancellationToken))
-        {
-            batch.Values[AttributeCatalog.BatchNumber] = BatchLabels.Stored(label, who, clock.GetUtcNow().UtcDateTime);
-        }
         try
         {
             await store.InsertAsync(batch, cancellationToken);
@@ -506,6 +503,9 @@ public sealed partial class ProductDataPages(
         }
 
         await AuditAsync(CreatedEvent, who, $"Batch {year} of model {modelId} created", "dpp-batch", batch.Id, cancellationToken);
+
+        // The batch's label (E8, O4), when the model's serial number format and the site's country make one that is free.
+        await editor.FillBatchLabelsAsync(who, [batch.Id], CancellationToken.None);
         return (batch.Id, null);
     }
 
@@ -631,7 +631,11 @@ public sealed partial class ProductDataPages(
             "dpp-model",
             model.Id,
             cancellationToken);
-        return new SerialFormatSave(null, true, true, wanted, 0, [], sharedWith);
+
+        // The model's batches without a label get the app's, now that the format makes one (E8, round two L1).
+        var unlabelled = (await store.ListBatchesAsync(model.Id, cancellationToken)).Where(batch => BatchLabels.Of(batch) is null).Select(batch => batch.Id);
+        var labels = wanted is null ? [] : await editor.FillBatchLabelsAsync(who, unlabelled, CancellationToken.None);
+        return new SerialFormatSave(null, true, true, wanted, 0, [], sharedWith) { Labels = labels };
     }
 
     /// <summary>

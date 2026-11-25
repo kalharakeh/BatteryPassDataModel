@@ -493,6 +493,7 @@ public sealed class AuditLines(DppStore store, DocumentStore documents, Attribut
         "external-api" or "api" or "feed" => "API",
         "upload" => "Upload",
         "admin-ui" => "Admin page",
+        "system" => "The app",
         _ => string.Empty,
     };
 
@@ -504,6 +505,7 @@ public sealed class AuditLines(DppStore store, DocumentStore documents, Attribut
         "external-api" or "api" or "feed" => "The API",
         "upload" => "A data upload",
         "admin-ui" => "The admin pages",
+        "system" => "The app, by itself",
         "" => "Not recorded",
         _ => source,
     };

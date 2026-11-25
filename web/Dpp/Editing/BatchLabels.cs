@@ -56,34 +56,6 @@ public static class BatchLabels
         return (await store.ListBatchesAsync(modelId, cancellationToken)).Any(other => other.Id != batchId && Same(Of(other), label));
     }
 
-    /// <summary>
-    /// Gives each batch of the site that has no label yet the app's label, when it can be made and no other batch of the
-    /// model has it. Called when the site's country is saved: a batch made before the country (or before labels) gets its
-    /// label without a step of its own.
-    /// </summary>
-    public static async Task FillForSiteAsync(DppStore store, string siteId, string who, DateTime nowUtc, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(store);
-        if (await store.GetAsync<ManufacturingSite>(siteId, cancellationToken) is not { } site)
-        {
-            return;
-        }
-
-        foreach (var batch in (await store.ListAsync<ProductionBatch>(cancellationToken)).Where(batch => batch.SiteId == siteId && Of(batch) is null))
-        {
-            if (await store.GetAsync<BatteryModel>(batch.ModelId, cancellationToken) is { } model
-                && Default(model, site, batch.Year) is { } label
-                && !await TakenAsync(store, model.Id, batch.Id, label, cancellationToken))
-            {
-                await store.SetValuesAsync<ProductionBatch>(batch.Id, new Dictionary<string, AttributeValue> { [AttributeCatalog.BatchNumber] = Stored(label, who, nowUtc) }, cancellationToken);
-            }
-        }
-    }
-
-    /// <summary>The label as a stored value, entered by the app for <paramref name="who"/>.</summary>
-    public static AttributeValue Stored(string label, string who, DateTime nowUtc) =>
-        new() { Value = JsonValue.Create(label), GeneratedAtUtc = nowUtc, Source = "form", Who = who };
-
     private static string? Text(IReadOnlyDictionary<string, AttributeValue> values, string property) =>
         values.GetValueOrDefault(property)?.Value is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
 }
