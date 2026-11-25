@@ -666,7 +666,7 @@ public sealed class ProductDataController(ProductDataPages pages, RecordEditor e
     {
         var form = Request.Form;
         var stamp = form[StampField].ToString();
-        var post = editor.Read(kind, stored, name => form.TryGetValue(name, out var value) ? value.ToString() : null, stamp);
+        var post = editor.Read(kind, stored, name => form.TryGetValue(name, out var value) ? RecordEditor.Posted(value) : null, stamp);
         var postedName = form["name"].ToString();
         string? nameTaken = null;
         var renamed = false;

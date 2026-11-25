@@ -55,7 +55,7 @@ public sealed class CriticalRawMaterialsTests
     [Fact]
     public void TickedOrTypedMaterials_ShouldBeKeptAsTheEusAddresses_InTheListsOrder_AndOthersAsTyped()
     {
-        Assert.Equal(List(Raw + "cobalt", Raw + "lithium"), FormValues.Read(MaterialsForm, _ => $"{Raw}lithium,{Raw}cobalt"), JsonNode.DeepEquals);
+        Assert.Equal(List(Raw + "cobalt", Raw + "lithium"), FormValues.Read(MaterialsForm, _ => $"{Raw}lithium\n{Raw}cobalt"), JsonNode.DeepEquals);
         Assert.Equal(
             List(Raw + "cobalt", Raw + "graphite", Raw + "nickelBatteryGrade", "Unobtainium"),
             FormValues.Read(MaterialsForm, _ => "Nickel\nUnobtainium\nNatural graphite\nCobalt"),
@@ -67,7 +67,7 @@ public sealed class CriticalRawMaterialsTests
     {
         var shown = FormValues.Show(MaterialsForm, List("Lithium", "Natural graphite", "Unobtainium"));
 
-        Assert.Equal($"{Raw}lithium,{Raw}graphite,Unobtainium", Assert.Single(shown).Value);
+        Assert.Equal($"{Raw}lithium\n{Raw}graphite\nUnobtainium", Assert.Single(shown).Value); // one entry per line (round two, L3)
     }
 
     [Fact]

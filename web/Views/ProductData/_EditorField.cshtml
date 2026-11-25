@@ -76,7 +76,7 @@
                 <textarea name="@name" rows="3" aria-label="@input.Label" aria-invalid="@ariaInvalid" aria-describedby="@describedBy">@text</textarea>
                 break;
             case InputKind.Choices:
-                var ticked = text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                var ticked = text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                 <div class="bp-attr-parts" role="group" aria-label="@input.Label" aria-invalid="@ariaInvalid" aria-describedby="@describedBy">
                     @foreach (var option in input.Options)
                     {

@@ -716,8 +716,8 @@ public sealed partial class ProductDataLoader(
         foreach (var field in given)
         {
             var name = form.FieldName(field.Input);
-            var old = ChoiceWords(field.Input, OneLine(before.GetValueOrDefault(name) ?? string.Empty));
-            var now = ChoiceWords(field.Input, OneLine(after.GetValueOrDefault(name) ?? string.Empty));
+            var old = OneLine(ChoiceWords(field.Input, before.GetValueOrDefault(name) ?? string.Empty));
+            var now = OneLine(ChoiceWords(field.Input, after.GetValueOrDefault(name) ?? string.Empty));
             if (old != now)
             {
                 // As it will be stored, with the unit the app writes beside it.
@@ -728,9 +728,9 @@ public sealed partial class ProductDataLoader(
         }
     }
 
-    /// <summary>A choice of the EU's lists (#42, E9) by the EU's labels, set apart as in the workbook; anything else as it is.</summary>
+    /// <summary>A choice of the EU's lists (#42, E9) by the EU's labels, one per line; anything else as it is.</summary>
     private static string ChoiceWords(FormInput input, string text) => input.Kind == InputKind.Choices
-        ? string.Join("; ", text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(input.Words))
+        ? string.Join("\n", text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(input.Words))
         : text;
 
     /// <summary>A list shows one entry per line in a form; on the check's one line they are set apart as in the workbook.</summary>

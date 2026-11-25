@@ -71,7 +71,7 @@ public static class FormValues
             var text = input.Kind switch
             {
                 InputKind.LanguageText => PassportLanguage.OwnText(input.Path.Length == 0 ? value : value[input.Path]) ?? string.Empty,
-                InputKind.Choices => string.Join(",", Choices(input, ((input.Path.Length == 0 ? value : value[input.Path]) as JsonArray ?? []).OfType<JsonValue>().Select(item => item.TryGetValue<string>(out var entry) ? entry : item.ToJsonString()))),
+                InputKind.Choices => string.Join("\n", Choices(input, ((input.Path.Length == 0 ? value : value[input.Path]) as JsonArray ?? []).OfType<JsonValue>().Select(item => item.TryGetValue<string>(out var entry) ? entry : item.ToJsonString()))),
                 _ => Text(input.Path.Length == 0 ? value : value[input.Path]),
             };
             if (input.Kind == InputKind.Duration)
@@ -252,7 +252,9 @@ public static class FormValues
             // Entries of the EU's lists (#42, E9): ticked boxes post their addresses; typed names (the workbook) are found
             // by their label or a plain other name. A name not on the list is kept as it was (G16).
             case InputKind.Choices:
-                var chosen = Choices(input, text.Split([',', ';', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                // One entry per line (the page's ticked boxes, the workbook's names set apart with ";"), never split on a
+                // comma: a name may hold one (round two, L3).
+                var chosen = Choices(input, text.Split([';', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
                 return chosen.Count == 0 ? null : new JsonArray(chosen.Select(item => (JsonNode)JsonValue.Create(item)).ToArray());
             // A text in the passport's language is kept as a language map (decision 94); the page shows one language.
             case InputKind.LanguageText:

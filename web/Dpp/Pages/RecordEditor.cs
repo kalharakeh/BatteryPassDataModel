@@ -393,6 +393,13 @@ public sealed class RecordEditor(AttributeForms forms, SavePipeline pipeline, Dp
         };
     }
 
+    /// <summary>
+    /// The values a field was posted with, one per line, for <see cref="Read(TargetKind, IReadOnlyDictionary{string, AttributeValue}, Func{string, string?}, string?)"/>:
+    /// a choice of the EU's lists posts each ticked box as a value of its own, and a name may hold a comma (round two, L3).
+    /// A field posted once is its value.
+    /// </summary>
+    public static string Posted(IEnumerable<string?> values) => string.Join('\n', values);
+
     private const string NameKey = "@name";
 
     private static Dictionary<string, string>? ParseStamp(string? stamp)
