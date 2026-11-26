@@ -1,0 +1,165 @@
+@using BatteryPassWeb.Controllers
+@using BatteryPassWeb.Dpp.Loading
+@using BatteryPassWeb.Dpp.Pages
+@model ProductDataLoadPage
+@* The check of a product data workbook (decision 83): what a load would do, record by record, and every problem by
+   sheet, row and column. Shown in place by the page's script, or with the whole page without it. *@
+@{
+    var check = Model.Check;
+}
+@if (check is null)
+{
+    <section class="bp-card bp-console-form-card mt-4" data-load-check data-can-load="false" data-stamp="">
+        <p class="alert alert-danger bp-status-line is-problem mb-0" role="alert">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4.5v4.5M8 11.5v.5" /></svg>
+            <span>@(Model.Error ?? ProductDataLoadController.ChooseFirst)</span>
+        </p>
+    </section>
+    return;
+}
+<section class="bp-card bp-console-form-card mt-4" id="check" data-load-check data-can-load="@(check.CanLoad ? "true" : "false")" data-stamp="@(check.CanLoad ? check.Stamp : string.Empty)">
+    <span class="bp-summary-title">Check</span>
+    <div class="bp-upload-head">
+        <h2 class="mb-0">What a load would do</h2>
+        <span class="text-secondary">@check.WorkbookName</span>
+        @if (check.HasProblems)
+        {
+            <span class="bp-soft-tag is-refused" data-load-verdict>@Words.Count(check.WorkbookProblem is null ? check.Problems.Count : 1, "problem")</span>
+        }
+        else if (check.CanLoad)
+        {
+            <span class="bp-soft-tag is-saved" data-load-verdict>Ready to load</span>
+        }
+        else
+        {
+            <span class="bp-soft-tag" data-load-verdict>Nothing to load</span>
+        }
+    </div>
+
+    @if (check.WorkbookProblem is { } unreadable)
+    {
+        <div class="alert alert-warning mt-3 mb-0" role="alert" data-load-problems>
+            <strong>The workbook wasn't read.</strong>
+            <p class="mb-0 mt-1">The file @check.WorkbookName: @unreadable.</p>
+        </div>
+        return;
+    }
+
+    <p class="mt-2 mb-0" data-load-summary>
+        The workbook holds @check.Summary. Nothing is saved yet.
+    </p>
+
+    @if (check.Problems.Count > 0)
+    {
+        <div class="alert alert-warning mt-3 mb-0" role="alert" data-load-problems>
+            <strong>@Words.Count(check.Problems.Count, "problem") to put right in the workbook. Nothing can be loaded until then.</strong>
+            <ul class="mb-0 mt-2">
+                @foreach (var problem in check.Problems)
+                {
+                    <li data-load-problem>@if (problem.Where.Length > 0) {<strong>@problem.Where:</strong> }@problem.Message.</li>
+                }
+            </ul>
+        </div>
+    }
+    else if (check.HasChanges)
+    {
+        <p class="bp-help-text mt-2 mb-0">No problems. Press Load to save everything below, or nothing if something goes wrong on the way.</p>
+    }
+    else if (check.CanLoad)
+    {
+        <p class="bp-help-text mt-2 mb-0">The app already holds everything this workbook says. Press Load to publish the changes that wait on published batteries.</p>
+    }
+    else
+    {
+        <p class="bp-help-text mt-2 mb-0">The app already holds everything this workbook says: there is nothing to load.</p>
+    }
+
+    @if (check.Publication is { } publication)
+    {
+        <div class="alert alert-info mt-3 mb-0" role="note" data-load-publication>
+            <strong>Published passports change.</strong>
+            <p class="mb-0 mt-1">@publication.Text</p>
+        </div>
+    }
+
+    @if (check.Pending.Count > 0)
+    {
+        <div class="mt-3" data-load-pending>
+            <h3 class="h6 mb-1">Documents still to come</h3>
+            <p class="bp-help-text mb-1">
+                These don't stop the load: everything else is saved, and each of these stays as it is in the app. Load
+                the workbook again with the file, or add it on the record's page, when you have it.
+            </p>
+            <table class="bp-upload-values">
+                <thead><tr><th>Record</th><th>Document</th><th>What is missing</th><th>What it means</th></tr></thead>
+                <tbody>
+                    @foreach (var pending in check.Pending)
+                    {
+                        <tr data-load-pending-row><td>@pending.Record</td><td data-label="Document">@pending.Document</td><td data-label="What is missing">@pending.Missing</td><td data-label="What it means">@pending.Meaning</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (check.Notes.Count > 0)
+    {
+        <ul class="bp-upload-notes" data-load-notes>
+            @foreach (var note in check.Notes)
+            {
+                <li>@note</li>
+            }
+        </ul>
+    }
+
+    @foreach (var record in check.Records)
+    {
+        var tag = record.State == LoadStates.Same ? string.Empty : "is-saved";
+        <details class="mt-3" data-load-record="@record.Kind" open="@(record.State != LoadStates.Same && check.Records.Count <= 3)">
+            <summary>
+                <strong>@record.Kind @record.Name</strong>
+                <span class="bp-soft-tag @tag" data-load-state>@record.State</span>
+                <span class="text-secondary">
+                    @if (record.Changes.Count > 0) {<text>@Words.Count(record.Changes.Count, "value") · </text>}@if (record.Documents.Count > 0) {<text>@Words.Count(record.Documents.Count, "document or picture", "documents and pictures")</text>}
+                </span>
+            </summary>
+            @if (record.Changes.Count > 0)
+            {
+                <table class="bp-upload-values">
+                    <thead><tr><th>Value</th><th>Now in the app</th><th>In the workbook</th></tr></thead>
+                    <tbody>
+                        @foreach (var change in record.Changes)
+                        {
+                            <tr data-load-change><td>@change.Name</td><td data-label="Now in the app">@(change.Old.Length == 0 ? "—" : change.Old)</td><td data-label="In the workbook">@change.New@if (change.TakenFrom is { } from) {<span class="text-secondary" data-load-taken> · taken from @from</span>}</td></tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            @if (record.Documents.Count > 0)
+            {
+                <table class="bp-upload-values">
+                    <thead><tr><th>Document or picture</th><th>What is loaded</th><th>Result</th></tr></thead>
+                    <tbody>
+                        @foreach (var document in record.Documents)
+                        {
+                            <tr data-load-document><td>@document.Name</td><td data-label="What is loaded">@document.Detail</td><td data-label="Result" class="@(document.State == LoadStates.Same ? "text-secondary" : string.Empty)">@document.State</td></tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            @if (record.Notes.Count > 0)
+            {
+                <ul class="bp-upload-notes">
+                    @foreach (var note in record.Notes)
+                    {
+                        <li>@note</li>
+                    }
+                </ul>
+            }
+            @if (record.Changes.Count == 0 && record.Documents.Count == 0 && record.Notes.Count == 0)
+            {
+                <p class="bp-help-text mt-2 mb-0">Nothing changes.</p>
+            }
+        </details>
+    }
+</section>

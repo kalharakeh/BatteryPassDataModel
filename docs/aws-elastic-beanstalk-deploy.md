@@ -1,5 +1,7 @@
 # AWS Elastic Beanstalk Deploy Runbook
 
+> **The live site now runs the new app (DPP V3).** Its cut-over and roll-back are in [aws-v3-cutover.md](aws-v3-cutover.md). This runbook describes how the old app (branch `security/demo-api-hardening`) was first set up.
+
 This runbook deploys the current ASP.NET app to AWS Elastic Beanstalk while keeping the existing MongoDB Atlas database and data.
 
 Target shape:
@@ -125,9 +127,22 @@ MONGODB_DB=<your existing database name>
 SESSION_SECRET=<long random value>
 EXTERNAL_API_ENCRYPTION_KEY=<32 character random value>
 ID_GENERATION_SECRET=<long random value>
-DEMO_ADMIN_EMAIL=<your real admin email>
-DEMO_ADMIN_PASSWORD=<strong password>
+BATTERY_PASS_SIGNING_PRIVATE_KEY_BASE64=<the site's P-256 private key, base64 PKCS#8>
+APP_BASE_URL=<the site's whole address, https://…>
+DPP_ID_BASE_URL=<the same site, https://…>
 ```
+
+In Production the app doesn't start without the signing key (a value that isn't a P-256 key stops it too), or when `APP_BASE_URL` or `DPP_ID_BASE_URL` isn't a whole `http://` or `https://` address, or when the two aren't the same site (scheme, host and port); the message says which. Make the key once and keep it (never put it in Git or a chat): with another key, every earlier passport shows "Not verified". **Before changing it**, copy the current public key from the start-up log line "After a key change, add this public key to …" into `BATTERY_PASS_SIGNING_TRUSTED_PUBLIC_KEYS` (comma-separated; an entry that isn't a P-256 public key stops the app). The site's key list is `/.well-known/did.json` on the site's address: it must reach the app.
+
+There is no fallback admin in Production: the app doesn't start if `ENABLE_DEMO_ADMIN_FALLBACK` is on, and `DEMO_ADMIN_PASSWORD` has no default. A new live database has no account at all: set `FIRST_TEAM_ACCOUNT_EMAIL` (one address) before the first start, then open the sign-in page and press "Forgot password" (the reset mail's webhook, below, must work). When the database already has a team account the setting does nothing. The database must be MongoDB with collation support (Atlas has it; Amazon DocumentDB does not).
+
+Demo data, demo accounts and demo tokens are off in Production unless `ENABLE_DEMO_DATA=true` is set; set `ENABLE_DEMO_DATA=false` on the live site anyway (decision 82: the live database holds real product data only). `HEALTH_DIAGNOSTICS=true` stops the start in Production. File uploads (including the team's and cluster admins' file actions) are limited by `FILE_UPLOAD_RATE_LIMIT_PER_WINDOW` (10 per window by default) while rate limiting is on; the limit counts per signed-in person, and per address for a caller who isn't signed in. The public reads (a passport's public data, the home search and the home page with a search text) share `EXTERNAL_API_READ_RATE_LIMIT_PER_WINDOW` (120 per window by default) per address; the window is `RATE_LIMIT_WINDOW_SECONDS` (60). Over a limit a page shows a short sentence, and the API and the `.json` addresses answer `{"error": "Too many requests."}` with 429. The largest file is `MAX_UPLOAD_BYTES` (10 MB). An unknown address shows the "not found" page with 404, except under `/api` and for files; an error in an `/api` call answers `{"error": …}` with 500. The cut-over runbook, section 3 and check 18, has the detail.
+
+A proxy in front of the app must allow bodies of 100 MB for `/admin/product-data-load` (the Excel load); elsewhere the upload limit is enough. For nginx: `location /admin/product-data-load { client_max_body_size 100m; }`.
+
+The app keeps three more collections, made at start-up: `dataProtectionKeys` (sign-in and form keys, encrypted with a secret made from the signing key: a database copy without that key carries no usable sign-in keys; each environment has its own), `signInAttempts` and `restrictedReads`. Every response carries security headers; the pages load their styles and scripts from the app itself. The cut-over runbook, section 3, says what a back-up, a reset and "Clear demo data" do with them.
+
+The app also checks every published passport against its saved data shortly after it starts and every hour; `DPP_PASSPORT_CHECK=off` turns that off (leave it on). A collection `dpp_removed_passports` is made with its index at start-up.
 
 Optional if you use password reset emails:
 
@@ -158,6 +173,7 @@ While using this temporary Beanstalk URL, keep these environment properties:
 ```text
 APP_BASE_URL=http://battery-pass-env.eba-2a34ep5k.eu-north-1.elasticbeanstalk.com
 APP_URL=http://battery-pass-env.eba-2a34ep5k.eu-north-1.elasticbeanstalk.com
+DPP_ID_BASE_URL=http://battery-pass-env.eba-2a34ep5k.eu-north-1.elasticbeanstalk.com
 REQUIRE_HTTPS_REDIRECTION=false
 ```
 
@@ -278,6 +294,7 @@ After `https://sib-dpd.eu` works:
    REQUIRE_HTTPS_REDIRECTION=true
    APP_BASE_URL=https://sib-dpd.eu
    APP_URL=https://sib-dpd.eu
+   DPP_ID_BASE_URL=https://sib-dpd.eu
    ```
 
 6. Apply.
@@ -293,7 +310,22 @@ After `https://sib-dpd.eu` works:
    https://sib-dpd.eu
    ```
 
-## 13. What not to do
+## 13. Updating a site that already runs
+
+After an update to a newer version of the app:
+
+- **Back up the database first.** The earlier version of the app can't open a database the new one has written to once a model is answered, a passport is published or a copy of product data is made (it answers 500, for example "Element 'CadmiumOrLeadAboveLimit' does not match any field"). Going back needs the back-up: take an Atlas snapshot or a `mongodump` before you update, and note which one it is.
+- **Check the settings.** Production doesn't start without `BATTERY_PASS_SIGNING_PRIVATE_KEY_BASE64`, or when `APP_BASE_URL` or `DPP_ID_BASE_URL` isn't a whole http(s) address, or when the two are different sites. If the signing key changes, list the earlier public key in `BATTERY_PASS_SIGNING_TRUSTED_PUBLIC_KEYS` first. `/.well-known/did.json` must reach the app. Moving `DPP_ID_BASE_URL` to another host makes every earlier passport's public data say `"proof": null` until it gets a new version.
+- **Answer each model's three questions** (the team, on each model's page): until a model is answered, its drafts can't be published and its published batteries get no status change and no new version. Every existing model is "not answered" after the update.
+- **Tick each customer's written authorisation** (the team, Clusters tab, each cluster's row, with the date): a cluster without the tick, every cluster from before the update included, can read but its admins and tokens change nothing.
+- **The first passport check** runs a minute after the app starts and then every hour. It finds whatever was already waiting, also from before the update, and marks it; the battery list then names those batteries. The team can press "Check all passports now". Leave `DPP_PASSPORT_CHECK` on.
+- **Demo data:** the live site has none (decision 82). Set `ENABLE_DEMO_DATA=false`, press "Clear demo data" once if any is left, and take every "Reset demo data" step out of your routine. A site that keeps a demo for a test on purpose (`ENABLE_DEMO_DATA` on) presses "Reset demo data" once after an update, so the demo is rebuilt under the new rules; the reset stops and changes nothing if a real account, battery or API token uses one of the demo's clusters, and says which.
+- **Sign-in keys and the lock:** the first start makes the first key in `dataProtectionKeys`, so everybody is signed out once. Changing the signing key signs everybody out once. The PC and the live site don't share sign-ins even on one database. Ten wrong passwords in 15 minutes from one client address lock that address out of that account for 15 minutes (others still sign in); the proxy settings must pass the client's address on (`TRUSTED_PROXY_NETWORKS`, `TRUSTED_PROXY_HOP_LIMIT`, header `X-Forwarded-For`), or one person guessing locks the account for everyone.
+- **Battery IDs:** nothing by hand. The start gives old batteries their `item_key`; if the log names two batteries with the same ID apart from capitals and dashes, the team decides which is right.
+- **Real accounts need no step.**
+- **Customer (cluster) admins** can set a new password or name only for people they added after the update. For people who existed before, the team sets the password.
+
+## 14. What not to do
 
 - Do not add MongoDB Atlas network access `0.0.0.0/0`.
 - Do not upload `.env.local`.

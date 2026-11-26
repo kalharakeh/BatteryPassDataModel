@@ -1,4 +1,9 @@
 using BatteryPassWeb.Configuration;
+using BatteryPassWeb.Controllers;
+using BatteryPassWeb.Dpp;
+using BatteryPassWeb.Dpp.Documents;
+using BatteryPassWeb.Dpp.RegistryToken;
+using BatteryPassWeb.Dpp.Store;
 using BatteryPassWeb.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
@@ -15,6 +20,58 @@ DotEnvLoader.Load(Path.Combine(currentDirectory, ".env.local"));
 DotEnvLoader.Load(Path.Combine(currentDirectory, "web", ".env.local"));
 
 var builder = WebApplication.CreateBuilder(args);
+
+if (DeploymentSecurityConfiguration.MissingDatabaseName(builder.Environment.IsProduction(), Environment.GetEnvironmentVariable("MONGODB_DB")) is { } missingDatabase)
+{
+    throw new InvalidOperationException(missingDatabase);
+}
+
+if (DemoAdminFallbackConfiguration.ProductionRefusal(
+        builder.Environment.IsProduction(),
+        ParseFeatureFlag(EnvironmentOrConfig(builder.Configuration, "ENABLE_DEMO_ADMIN_FALLBACK", "EnableDemoAdminFallback"))) is { } fallbackInProduction)
+{
+    throw new InvalidOperationException(fallbackInProduction);
+}
+
+if (BatteryPassHealthCheck.ProductionRefusal(builder.Environment.IsProduction(), builder.Configuration[BatteryPassHealthCheck.DiagnosticsEnvironmentVariable]) is { } diagnosticsInProduction)
+{
+    throw new InvalidOperationException(diagnosticsInProduction);
+}
+
+// The QR code's address and the battery IDs' address must be one site (finding D18); outside Production a warning.
+// A setting that is there but empty counts as not set (C3 round three, point 1).
+var appBaseUrlSetting = SiteAddressSettings.AppBaseUrl(Environment.GetEnvironmentVariable, builder.Configuration);
+var idBaseUrlSetting = SiteAddressSettings.IdBaseUrl(Environment.GetEnvironmentVariable, builder.Configuration);
+
+// Production needs the site's own signing key and two whole http(s) addresses (the manager's decision 61).
+if (DemoSigningKeyService.ProductionKeyProblem(builder.Environment.IsProduction(), Environment.GetEnvironmentVariable(DemoSigningKeyService.PrivateKeySetting)) is { } missingSigningKey)
+{
+    throw new InvalidOperationException(missingSigningKey);
+}
+
+if (DppLinks.ProductionAddressProblem(builder.Environment.IsProduction(), appBaseUrlSetting, idBaseUrlSetting) is { } addressProblem)
+{
+    throw new InvalidOperationException(addressProblem);
+}
+
+if (DppLinks.HostMismatch(appBaseUrlSetting, idBaseUrlSetting) is { } hostMismatch && builder.Environment.IsProduction())
+{
+    throw new InvalidOperationException(hostMismatch);
+}
+
+// Older public keys the app still trusts after a key change (finding R23): an unreadable entry stops Production.
+var trustedSigningKeysSetting = EnvironmentOrConfig(builder.Configuration, DemoSigningKeyService.TrustedKeysSetting, "SigningTrustedPublicKeys");
+if (DemoSigningKeyService.UnreadableTrustedKeys(trustedSigningKeysSetting) is { } unreadableTrustedKeys && builder.Environment.IsProduction())
+{
+    throw new InvalidOperationException(unreadableTrustedKeys);
+}
+
+// The EU registry's token check (R3, decision 94): the four EU_REGISTRY_ settings per environment, all or none.
+var registryToken = RegistryTokenSettings.Read(name => Environment.GetEnvironmentVariable(name) ?? builder.Configuration[name]);
+if (registryToken.StartProblem(builder.Environment.IsProduction(), builder.Environment.IsDevelopment()) is { } registryTokenProblem)
+{
+    throw new InvalidOperationException(registryTokenProblem);
+}
 
 var enableRateLimiting = ParseFeatureFlag(
     EnvironmentOrConfig(builder.Configuration, "ENABLE_RATE_LIMITING", "EnableRateLimiting"),
@@ -43,9 +100,6 @@ var maxAuthorizationHeaderBytes = ParsePositiveIntSetting(
 var maxJsonBodyBytes = ParsePositiveLongSetting(
     EnvironmentOrConfig(builder.Configuration, "MAX_JSON_BODY_BYTES", "MaxJsonBodyBytes"),
     BatteryPassOptions.DefaultMaxJsonBodyBytes);
-var maxTelemetryPoints = ParsePositiveIntSetting(
-    EnvironmentOrConfig(builder.Configuration, "MAX_TELEMETRY_POINTS", "MaxTelemetryPoints"),
-    BatteryPassOptions.DefaultMaxTelemetryPoints);
 var maxUploadBytes = ParsePositiveLongSetting(
     EnvironmentOrConfig(builder.Configuration, "MAX_UPLOAD_BYTES", "MaxUploadBytes"),
     BatteryPassOptions.DefaultMaxUploadBytes);
@@ -69,14 +123,14 @@ builder.Services.Configure<BatteryPassOptions>(options =>
     options.DemoAdminEmail = Environment.GetEnvironmentVariable("DEMO_ADMIN_EMAIL")
         ?? builder.Configuration["BatteryPass:DemoAdminEmail"]
         ?? "admin@example.test";
+    // No default: the fallback admin works only with a password the environment gives (finding R21).
     options.DemoAdminPassword = Environment.GetEnvironmentVariable("DEMO_ADMIN_PASSWORD")
         ?? builder.Configuration["BatteryPass:DemoAdminPassword"]
-        ?? "Password123!";
+        ?? string.Empty;
+    options.DemoUsersPassword = Environment.GetEnvironmentVariable("DEMO_USERS_PASSWORD")
+        ?? builder.Configuration["BatteryPass:DemoUsersPassword"];
     options.ExternalApiEncryptionKey = Environment.GetEnvironmentVariable("EXTERNAL_API_ENCRYPTION_KEY")
         ?? builder.Configuration["BatteryPass:ExternalApiEncryptionKey"]
-        ?? string.Empty;
-    options.IdGenerationSecret = Environment.GetEnvironmentVariable("ID_GENERATION_SECRET")
-        ?? builder.Configuration["BatteryPass:IdGenerationSecret"]
         ?? string.Empty;
     options.PowerAutomateResetWebhookUrl = Environment.GetEnvironmentVariable("POWER_AUTOMATE_RESET_WEBHOOK_URL")
         ?? builder.Configuration["BatteryPass:PowerAutomateResetWebhookUrl"]
@@ -87,23 +141,13 @@ builder.Services.Configure<BatteryPassOptions>(options =>
     options.PasswordResetAppName = Environment.GetEnvironmentVariable("PASSWORD_RESET_APP_NAME")
         ?? builder.Configuration["BatteryPass:PasswordResetAppName"]
         ?? "Battery Pass";
-    options.AppBaseUrl = Environment.GetEnvironmentVariable("APP_BASE_URL")
-        ?? Environment.GetEnvironmentVariable("APP_URL")
-        ?? builder.Configuration["BatteryPass:AppBaseUrl"]
-        ?? builder.Configuration["BatteryPass:AppUrl"]
-        ?? string.Empty;
+    options.IdAgency = (Environment.GetEnvironmentVariable("DPP_ID_AGENCY") ?? builder.Configuration["BatteryPass:IdAgency"] ?? string.Empty).Trim();
+    options.IdCompany = (Environment.GetEnvironmentVariable("DPP_ID_COMPANY") ?? builder.Configuration["BatteryPass:IdCompany"] ?? string.Empty).Trim();
+    options.IdBaseUrl = (idBaseUrlSetting ?? string.Empty).Trim().TrimEnd('/');
+    options.AppBaseUrl = appBaseUrlSetting ?? string.Empty;
     options.RequireHttpsRedirection = DeploymentSecurityConfiguration.ParseRequireHttpsRedirection(
         Environment.GetEnvironmentVariable("REQUIRE_HTTPS_REDIRECTION")
             ?? builder.Configuration["BatteryPass:RequireHttpsRedirection"]);
-    options.EnableDemoData = ParseFeatureFlag(
-        Environment.GetEnvironmentVariable("ENABLE_DEMO_DATA")
-            ?? builder.Configuration["BatteryPass:EnableDemoData"]);
-    options.EnablePublicDemoReadToken = ParseFeatureFlag(
-        Environment.GetEnvironmentVariable("ENABLE_PUBLIC_DEMO_READ_TOKEN")
-            ?? builder.Configuration["BatteryPass:EnablePublicDemoReadToken"]);
-    options.EnableDemoWriteSignTesting = ParseFeatureFlag(
-        Environment.GetEnvironmentVariable("ENABLE_DEMO_WRITE_SIGN_TESTING")
-            ?? builder.Configuration["BatteryPass:EnableDemoWriteSignTesting"]);
     options.EnableDemoAdminFallback = ParseFeatureFlag(
         Environment.GetEnvironmentVariable("ENABLE_DEMO_ADMIN_FALLBACK")
             ?? builder.Configuration["BatteryPass:EnableDemoAdminFallback"]);
@@ -116,7 +160,6 @@ builder.Services.Configure<BatteryPassOptions>(options =>
     options.FileUploadRateLimitPerWindow = fileUploadRateLimitPerWindow;
     options.MaxAuthorizationHeaderBytes = maxAuthorizationHeaderBytes;
     options.MaxJsonBodyBytes = maxJsonBodyBytes;
-    options.MaxTelemetryPoints = maxTelemetryPoints;
     options.MaxUploadBytes = maxUploadBytes;
 });
 
@@ -130,7 +173,7 @@ builder.Services
     .AddCookie(options =>
     {
         options.LoginPath = "/login";
-        options.AccessDeniedPath = "/login";
+        options.AccessDeniedPath = "/not-allowed";
         options.Cookie.Name = "battery-pass-demo-session";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
@@ -140,7 +183,13 @@ builder.Services
             context.HttpContext.RequestServices
                 .GetRequiredService<AuthenticationSessionService>()
                 .ValidatePrincipalAsync(context);
-    });
+        // The TempData cookie is the browser's: one person's battery messages never reach the next (owner's step-5 test).
+        options.Events.OnSigningIn = context => CardMessages.ForgetAsync(context.HttpContext);
+        options.Events.OnSigningOut = context => CardMessages.ForgetAsync(context.HttpContext);
+    })
+    // The EU registry's token at the passports' data addresses (R3): a scheme of its own, asked only there.
+    .AddRegistryToken();
+builder.Services.AddRegistryToken(registryToken);
 
 builder.Services.AddAuthorization(options =>
 {
@@ -151,15 +200,8 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.OnRejected = async (context, cancellationToken) =>
-    {
-        var response = context.HttpContext.Response;
-        if (!response.HasStarted)
-        {
-            response.StatusCode = StatusCodes.Status429TooManyRequests;
-            await response.WriteAsJsonAsync(new { error = "Too many requests." }, cancellationToken);
-        }
-    };
+    // JSON for the API and the passports' .json addresses, a sentence for a person on a page (review 2 of N1, point 6).
+    options.OnRejected = TooManyRequests.WriteAsync;
 
     options.AddPolicy(SecurityRateLimitPolicyNames.Login, context =>
         RateLimitPartition.GetFixedWindowLimiter(
@@ -177,10 +219,11 @@ builder.Services.AddRateLimiter(options =>
         RateLimitPartition.GetFixedWindowLimiter(
             ExternalApiRateLimitPartitionKey(context),
             _ => FixedWindowOptions(externalApiLifecycleRateLimitPerWindow, rateLimitWindowSeconds)));
-    options.AddPolicy(SecurityRateLimitPolicyNames.FileUpload, context =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            FileUploadRateLimitPartitionKey(context),
-            _ => FixedWindowOptions(fileUploadRateLimitPerWindow, rateLimitWindowSeconds)));
+    // Counted per signed-in person, by address for the rest (FU4): needs the limiter to run after authentication, below.
+    UploadRateLimit.Add(options, fileUploadRateLimitPerWindow, rateLimitWindowSeconds);
+
+    // A passport's public data takes no token: counted by the caller's address only (C3 round two, point 5).
+    PublicDataRateLimit.Add(options, externalApiReadRateLimitPerWindow, rateLimitWindowSeconds);
 });
 
 builder.Services.AddControllersWithViews();
@@ -204,60 +247,50 @@ builder.Services.AddHttpsRedirection(options =>
     // had already visited. 307 keeps the setting a genuine off switch.
     options.RedirectStatusCode = StatusCodes.Status307TemporaryRedirect;
 });
+// ENABLE_DEMO_DATA (finding R03): on outside Production unless false, off in Production unless true.
+builder.Services.AddSingleton(new BatteryPassWeb.Dpp.Demo.DemoDataSwitch(BatteryPassWeb.Dpp.Demo.DemoDataSwitch.Parse(
+    EnvironmentOrConfig(builder.Configuration, "ENABLE_DEMO_DATA", "DemoDataEnabled"),
+    builder.Environment.IsProduction())));
 builder.Services.AddSingleton<MongoContext>();
-builder.Services.AddSingleton<PassportRepository>();
-builder.Services.AddSingleton<BatteryRepository>();
-builder.Services.AddSingleton<BatteryTableService>();
-builder.Services.AddSingleton<BatteryPassportSnapshotService>();
-builder.Services.AddSingleton<BatteryPassportDeltaService>();
-builder.Services.AddSingleton<BatteryTemplateUpdateService>();
-builder.Services.AddSingleton<BatteryRouteResolutionService>();
+// The sign-in and form keys live in the database, so a restart signs nobody out (finding S09).
+// Encrypted with a secret made from the signing key, which is not in the database (PL round two).
+builder.Services.AddBatteryPassDataProtection(builder.Environment.EnvironmentName, DemoSigningKeyService.DataProtectionSecret(Environment.GetEnvironmentVariable(DemoSigningKeyService.PrivateKeySetting)));
 builder.Services.AddSingleton<ClusterRepository>();
-builder.Services.AddSingleton<PassportViewModelFactory>();
-builder.Services.AddSingleton<SchemaRegistryService>();
-builder.Services.AddSingleton<JsonSchemaValidationService>();
-builder.Services.AddSingleton<PassportValidationService>();
-builder.Services.AddSingleton<PassportPublishPolicyService>();
-builder.Services.AddSingleton<PassportReadinessService>();
-builder.Services.AddSingleton<PassportEvidenceService>();
-builder.Services.AddSingleton<DataCompletionPolicyService>();
-builder.Services.AddSingleton<EditableFieldPolicyService>();
-builder.Services.AddSingleton<LocalAdminEditableFieldPolicyService>();
-builder.Services.AddSingleton<ProductTemplateService>();
-builder.Services.AddSingleton<DemoRequiredDataCompletionService>();
-builder.Services.AddSingleton<PassportDataNormalizationService>();
-builder.Services.AddSingleton<CanonicalPassportSnapshotService>();
-builder.Services.AddSingleton<DemoSigningKeyService>();
-builder.Services.AddSingleton<PassportTrustService>();
-builder.Services.AddSingleton<AuditRevisionService>();
-builder.Services.AddSingleton<BatteryAuditService>();
+// The issuer is the battery IDs' site (finding R23); without DPP_ID_BASE_URL, the app's own address.
+builder.Services.AddSingleton(_ => new DemoSigningKeyService(idBaseUrlSetting, appBaseUrlSetting, trustedSigningKeysSetting));
 builder.Services.AddSingleton<ApplicationAuditService>();
 builder.Services.AddSingleton<ApplicationSettingsService>();
 builder.Services.AddSingleton<AuthenticationSessionService>();
-builder.Services.AddSingleton<BatteryCreationService>();
-builder.Services.AddSingleton<PassportTrustWorkflowService>();
 builder.Services.AddSingleton<AccessControlService>();
 builder.Services.AddSingleton<PassportQrCodeService>();
-builder.Services.AddSingleton(provider =>
-{
-    var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<BatteryPassOptions>>().Value;
-    var environment = provider.GetRequiredService<IWebHostEnvironment>();
-    return new BatteryIdService(options.IdGenerationSecret, environment.IsDevelopment());
-});
 builder.Services.AddSingleton<AuthService>();
+builder.Services.AddSingleton<FirstTeamAccount>();
 builder.Services.AddHttpClient<IEmailSender, PowerAutomateEmailSender>();
 builder.Services.AddSingleton<ExternalApiSecurityService>();
 builder.Services.AddSingleton<ExternalApiRepository>();
-builder.Services.AddSingleton<BatteryTelemetryRepository>();
 builder.Services.AddSingleton<ExternalApiInitializer>();
+builder.Services.AddDpp();
+builder.Services.AddSingleton<BatteryPassWeb.Dpp.Demo.DemoDataService>();
 
 var app = builder.Build();
+foreach (var registryTokenWarning in registryToken.StartWarnings(app.Environment.IsDevelopment()))
+{
+    app.Logger.LogWarning("{RegistryTokenWarning}", registryTokenWarning);
+}
+
+if (registryToken.IsOn)
+{
+    // The EU's keys once at start, in the background: a key set that can't be read is one warning naming its address.
+    app.Lifetime.ApplicationStarted.Register(() => _ = app.Services.GetRequiredService<RegistryTokenKeys>().WarmUpAsync());
+}
+
 var batteryPassOptions = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<BatteryPassOptions>>().Value;
 
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/error");
-}
+// The security headers go on every response, so they come first (finding R24).
+app.UseSecurityHeaders();
+
+// The error page outside Development, and the "not found" page after the routes (finding U04).
+app.UseErrorPages();
 
 var healthDiagnosticsEnabled = BatteryPassHealthCheck.DiagnosticsEnabled(
     builder.Configuration[BatteryPassHealthCheck.DiagnosticsEnvironmentVariable]);
@@ -360,7 +393,7 @@ app.Use(async (context, next) =>
         await WriteRequestLimitErrorAsync(
             context,
             StatusCodes.Status413PayloadTooLarge,
-            $"Request body is too large. Maximum allowed size is {maxBodyBytes} bytes.");
+            BatteryPassWeb.Dpp.Loading.LoadLimits.AppliesTo(context.Request) ? BatteryPassWeb.Dpp.Loading.LoadLimits.TooLarge : BatteryPassWeb.Dpp.Documents.UploadLimitWords.RequestTooLarge(NamedBodyLimitFor(context.Request, batteryPassOptions, maxBodyBytes)));
         return;
     }
 
@@ -368,17 +401,76 @@ app.Use(async (context, next) =>
 });
 app.UseStaticFiles();
 app.UseRouting();
+app.UseAuthentication();
+// The EU registry's token is checked before the read limit, which lets a valid one through (R3, decision 7).
+app.UseRegistryToken();
+// After authentication, so that the upload limit knows the person (FU4); the sign-in and API limits count by address or token.
 if (batteryPassOptions.EnableRateLimiting)
 {
     app.UseRateLimiter();
 }
-app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapNotFoundPage();
 
 using (var scope = app.Services.CreateScope())
 {
+    await scope.ServiceProvider.GetRequiredService<DppStore>().EnsureIndexesAsync();
+    await scope.ServiceProvider.GetRequiredService<DocumentStore>().EnsureIndexesAsync();
+    // The first team account on a database that has none (decision 78); the log says only whether it was made or ignored.
+    var firstTeamAccount = await scope.ServiceProvider.GetRequiredService<FirstTeamAccount>()
+        .RunAsync(EnvironmentOrConfig(builder.Configuration, FirstTeamAccount.Setting, "FirstTeamAccountEmail"));
+    if (firstTeamAccount.LogLine is { } firstTeamAccountLine)
+    {
+        app.Logger.LogInformation("{FirstTeamAccount}", firstTeamAccountLine);
+    }
+    if (DemoSigningKeyService.DataProtectionSecret(Environment.GetEnvironmentVariable(DemoSigningKeyService.PrivateKeySetting)) is null)
+    {
+        app.Logger.LogWarning(DataProtectionSetup.NotEncryptedWarning);
+    }
+    else if (app.Environment.IsProduction()
+        && new MongoXmlRepository(scope.ServiceProvider.GetRequiredService<MongoContext>(), app.Environment.EnvironmentName, null, production: true).UnencryptedKeyCount() is > 0 and var unencryptedKeys)
+    {
+        app.Logger.LogWarning(
+            "{Count} sign-in keys in the database are not encrypted (from an earlier version, or from a developer's PC without a signing key). This site never uses them; they can be deleted from {Collection}.",
+            unencryptedKeys,
+            MongoXmlRepository.CollectionName);
+    }
+    var fallbackOptions = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<BatteryPassOptions>>().Value;
+    if (fallbackOptions.EnableDemoAdminFallback && string.IsNullOrWhiteSpace(fallbackOptions.DemoAdminPassword))
+    {
+        app.Logger.LogWarning(DemoAdminFallbackConfiguration.NoPasswordWarning);
+    }
+    if (!scope.ServiceProvider.GetRequiredService<DppLinks>().IsConfigured)
+    {
+        app.Logger.LogWarning("APP_BASE_URL is not set: battery packs can't be created and documents can't be linked until it is.");
+    }
+    if (DemoSigningKeyService.UnreadableTrustedKeys(trustedSigningKeysSetting) is { } trustedKeysWarning)
+    {
+        app.Logger.LogWarning(trustedKeysWarning);
+    }
+    var signingKeys = scope.ServiceProvider.GetRequiredService<DemoSigningKeyService>();
+    app.Logger.LogInformation(
+        "Passports are signed as {Issuer}, key {KeyId}. The key is published at {DidDocumentPath}. After a key change, add this public key to {TrustedKeysSetting}: {PublicKey}",
+        signingKeys.Issuer,
+        signingKeys.KeyId,
+        DemoSigningKeyService.DidDocumentPath,
+        DemoSigningKeyService.TrustedKeysSetting,
+        signingKeys.PublicKeyText());
+    if (registryToken.PartlySet)
+    {
+        app.Logger.LogWarning("{RegistryToken}", registryToken.StartLine);
+    }
+    else
+    {
+        app.Logger.LogInformation("{RegistryToken}", registryToken.StartLine);
+    }
+
+    if (DppLinks.HostMismatch(fallbackOptions.AppBaseUrl, fallbackOptions.IdBaseUrl) is { } addressWarning)
+    {
+        app.Logger.LogWarning(addressWarning);
+    }
     var initializer = scope.ServiceProvider.GetRequiredService<ExternalApiInitializer>();
     await initializer.InitializeAsync();
 }
@@ -435,17 +527,6 @@ static string ExternalApiRateLimitPartitionKey(HttpContext context)
     return $"external-ip:{RemoteIpPartitionKey(context)}";
 }
 
-static string FileUploadRateLimitPartitionKey(HttpContext context)
-{
-    if (context.User.Identity?.IsAuthenticated == true
-        && !string.IsNullOrWhiteSpace(context.User.Identity.Name))
-    {
-        return $"upload-user:{HashForRateLimitPartition(context.User.Identity.Name)}";
-    }
-
-    return $"upload-ip:{RemoteIpPartitionKey(context)}";
-}
-
 static string RemoteIpPartitionKey(HttpContext context) =>
     context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
@@ -482,8 +563,21 @@ static void ApplyConfiguredMaxRequestBodySize(HttpContext context, BatteryPassOp
     }
 }
 
+// The limit a person is told: a file upload's own limit (the body is allowed a little more for the form's other fields), not the body cap.
+static long NamedBodyLimitFor(HttpRequest request, BatteryPassOptions options, long bodyCap) =>
+    !BatteryPassWeb.Dpp.Loading.LoadLimits.AppliesTo(request) && !request.HasJsonContentType() && request.HasFormContentType
+        && (request.ContentType?.StartsWith("multipart/", StringComparison.OrdinalIgnoreCase) ?? false)
+        ? options.MaxUploadBytes
+        : bodyCap;
+
 static long ConfiguredBodyLimitFor(HttpRequest request, BatteryPassOptions options)
 {
+    // A product data load sends the workbook with all its files at once (decision 83); each file still passes the upload limit.
+    if (BatteryPassWeb.Dpp.Loading.LoadLimits.AppliesTo(request))
+    {
+        return BatteryPassWeb.Dpp.Loading.LoadLimits.MaxRequestBytes;
+    }
+
     if (request.HasJsonContentType())
     {
         return options.MaxJsonBodyBytes;

@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DPP V3 — battery pages redesign</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<!-- The app's own stylesheets, so the screens look exactly like the app. site.css is not changed. -->
+<link rel="stylesheet" href="../../web/wwwroot/css/site.css" data-app-css>
+<link rel="stylesheet" href="../../web/wwwroot/css/bp-product-data.css" data-app-css>
+<style data-redesign>
+/* ==== Battery pages redesign ========================================================================================
+   The new pieces for bp-product-data.css: icons, the two status badges, the battery header, the three layout options
+   (only the chosen one is built), the Registry's waiting card, a fixed action row in the status window and the
+   upload feedback. Everything else is the app's existing classes. */
+
+/* Icons: one inline SVG sprite; each icon is a stroke drawing in the text colour. */
+.bp-i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---- The two statuses: a square BATTERY tag (#22) and a round PASSPORT pill (#2), never alike ---------------------- */
+.bp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 2px 10px 2px 7px;
+  border: 1px solid;
+  font-size: 0.86rem;
+  font-weight: 650;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+.bp-badge .bp-i { width: 16px; height: 16px; }
+.bp-badge-kind { margin-right: 2px; font-size: 0.66rem; font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.72; }
+.bp-badge small { font-weight: 500; opacity: 0.85; }
+.bp-badge.is-battery { border-radius: 6px; }
+.bp-badge.is-passport { border-radius: 999px; }
+/* Battery status #22: what happened to the battery. Cool colours, one per status. */
+.bp-badge.is-original { border-color: #cbd5e1; background: #f8fafc; color: #334155; }
+.bp-badge.is-reused { border-color: #99f6e4; background: #f0fdfa; color: #0f5e57; }
+.bp-badge.is-repurposed { border-color: #ddd6fe; background: #f5f3ff; color: #5b21b6; }
+.bp-badge.is-remanufactured { border-color: #bfdbfe; background: #eff6ff; color: #1e40af; }
+.bp-badge.is-waste { border-color: #a8a29e; background: #f5f5f4; color: #44403c; }
+/* Passport status #2: whether the passport counts. Green live, grey retired, red when something is wrong. */
+.bp-badge.is-active { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
+.bp-badge.is-draft { border-style: dashed; border-color: #94a3b8; background: transparent; color: #475569; }
+.bp-badge.is-inactive, .bp-badge.is-archived { border-color: #cbd5e1; background: #f1f5f9; color: #475569; }
+.bp-badge.is-invalid { border-color: #fca5a5; background: #fef2f2; color: #991b1b; }
+.bp-badge.is-marked { border-style: dashed; border-color: #f87171; background: #fff; color: #991b1b; }
+
+/* ---- The battery header: who it is, both statuses, where to open it, what to do ----------------------------------- */
+.bp-bh {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid var(--bp-border);
+  border-radius: 14px;
+  background: var(--bp-surface);
+}
+.bp-bh-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 24px; }
+.bp-bh-id { min-width: 0; }
+.bp-bh h1 { margin: 2px 0 8px; font-size: 1.6rem; overflow-wrap: anywhere; }
+.bp-bh-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.bp-bh-help { display: inline-grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--bp-muted); }
+.bp-bh-help:hover { background: rgba(42, 110, 207, 0.08); color: var(--bp-primary); }
+
+/* "Open": labelled icon links to the battery's other pages. */
+.bp-bh-open { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 2px; }
+.bp-ilink {
+  display: inline-grid;
+  justify-items: center;
+  gap: 4px;
+  min-width: 70px;
+  padding: 8px 6px 6px;
+  border-radius: 10px;
+  color: var(--bp-text);
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+}
+.bp-ilink .bp-i { width: 22px; height: 22px; color: var(--bp-primary); }
+.bp-ilink:hover { background: rgba(42, 110, 207, 0.08); color: var(--bp-primary); }
+
+/* The facts, as a compact list. */
+.bp-bh-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px 22px; margin: 0; padding-top: 12px; border-top: 1px solid var(--bp-border); }
+.bp-bh-facts div { min-width: 0; }
+.bp-bh-facts dt { color: var(--bp-muted); font-size: 0.74rem; font-weight: 600; }
+.bp-bh-facts dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.bp-bh-facts .is-wide { grid-column: 1 / -1; }
+.bp-bh-facts dd .bp-text-button { margin-left: 6px; font-size: 0.85rem; }
+.bp-test-tag { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; margin-left: 6px; padding: 1px 8px; border: 1px solid #fcd34d; border-radius: 999px; background: #fffbeb; color: #92400e; font-size: 0.74rem; font-weight: 650; cursor: help; vertical-align: 1px; }
+.bp-test-tag .bp-i { width: 14px; height: 14px; }
+.bp-test-note { margin: 4px 0 0; color: #92400e; font-size: 0.85rem; }
+
+/* "Do": the actions, as labelled icon buttons. Risky ones wait under "More". */
+.bp-bh-do { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.bp-with-icon { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.bp-more { position: relative; }
+.bp-more > summary { list-style: none; cursor: pointer; }
+.bp-more > summary::-webkit-details-marker { display: none; }
+.bp-more-list { position: absolute; right: 0; z-index: 5; display: grid; min-width: 250px; margin-top: 6px; padding: 6px; border: 1px solid var(--bp-border); border-radius: 12px; background: var(--bp-surface); box-shadow: 0 10px 28px rgba(10, 40, 80, 0.14); }
+.bp-more-list button { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border: 0; border-radius: 8px; background: none; color: var(--bp-text); text-align: left; }
+.bp-more-list button:hover { background: rgba(42, 110, 207, 0.08); }
+.bp-more-list .is-danger { color: var(--bp-danger); }
+.bp-more-list small { display: block; color: var(--bp-muted); font-size: 0.76rem; }
+
+/* A notice, folded into the header as one slim line. */
+.bp-bh-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0; padding: 8px 10px 8px 12px; border: 1px solid; border-radius: 10px; font-size: 0.92rem; }
+.bp-bh-notice > span { flex: 1 1 260px; min-width: 0; }
+.bp-bh-notice.is-danger { border-color: #fecaca; background: #fef2f2; color: #7f1d1d; }
+.bp-bh-notice.is-info { border-color: #bfdbfe; background: #eff6ff; color: #1e3a8a; }
+.bp-bh-notice.is-quiet { border-color: #e2e8f0; background: #f8fafc; color: #334155; }
+
+/* ---- The page's sections (all three options share them) ------------------------------------------------------------ */
+.bp-sec-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.bp-sec-head h2 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 1.15rem; }
+.bp-sec-head h2 .bp-i { width: 20px; height: 20px; color: var(--bp-primary); }
+.bp-sec-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--bp-border); }
+.bp-sec-foot small { color: var(--bp-muted); }
+.bp-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin: 14px 0 0; }
+.bp-overview > div { padding: 12px 14px; border: 1px solid var(--bp-border); border-radius: 12px; }
+.bp-overview dt { display: flex; align-items: center; gap: 8px; color: var(--bp-muted); font-size: 0.76rem; font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em; }
+.bp-overview dd { margin: 6px 0 0; }
+.bp-overview dd small { display: block; color: var(--bp-muted); }
+.bp-todo { display: grid; gap: 6px; margin: 14px 0 0; padding: 0; list-style: none; }
+.bp-todo li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 12px; border-left: 3px solid #f59e0b; border-radius: 0 8px 8px 0; background: rgba(245, 158, 11, 0.08); }
+.bp-todo li.is-none { border-left-color: #22c55e; background: rgba(34, 197, 94, 0.07); }
+.bp-live-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 18px; margin-top: 14px; }
+.bp-live-grid label { display: grid; gap: 4px; }
+.bp-live-grid label > span { font-size: 0.86rem; font-weight: 600; }
+.bp-live-grid small { color: var(--bp-muted); font-size: 0.76rem; }
+
+/* ---- Option A: tabs across the page --------------------------------------------------------------------------------- */
+.bp-btabs { display: flex; gap: 2px; margin-top: 18px; overflow-x: auto; border-bottom: 1px solid var(--bp-border); scrollbar-width: thin; }
+.bp-btab { display: inline-flex; align-items: center; gap: 7px; padding: 10px 13px; border: 0; border-bottom: 3px solid transparent; background: none; color: var(--bp-muted); font-weight: 650; white-space: nowrap; }
+.bp-btab .bp-i { width: 17px; height: 17px; }
+.bp-btab[aria-selected="true"] { border-bottom-color: var(--bp-primary); color: var(--bp-primary); }
+.bp-count { padding: 0 7px; border-radius: 999px; background: rgba(110, 130, 159, 0.16); color: var(--bp-text); font-size: 0.72rem; }
+.bp-count.is-missing { background: rgba(245, 158, 11, 0.18); color: #92400e; }
+
+/* ---- Option B: a side menu, one section at a time (the old app's way; the menu reuses .bp-edit-nav) --------------- */
+.bp-bpage { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 20px; align-items: start; margin-top: 20px; }
+.bp-bnav { position: sticky; top: 16px; }
+.bp-bnav .bp-edit-nav-button { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; }
+.bp-bnav .bp-edit-nav-button .bp-i { color: var(--bp-primary); }
+.bp-bnav .bp-edit-nav-button small { grid-column: 2 / -1; color: var(--bp-muted); font-size: 0.74rem; font-weight: 500; }
+.bp-bnav .bp-edit-nav-button.is-later { border-style: dashed; }
+.bp-bnav hr { margin: 6px 0; }
+
+/* ---- Option C: an overview, then sections that open in place ----------------------------------------------------- */
+.bp-cfold { margin-top: 12px; border: 1px solid var(--bp-border); border-radius: 14px; background: var(--bp-surface); }
+.bp-cfold > summary { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto 16px; align-items: center; gap: 4px 12px; padding: 14px 16px; list-style: none; cursor: pointer; }
+.bp-cfold > summary::-webkit-details-marker { display: none; }
+.bp-cfold > summary .bp-i { color: var(--bp-primary); }
+.bp-cfold > summary strong { font-size: 1.02rem; }
+.bp-cfold > summary span { color: var(--bp-muted); font-size: 0.86rem; text-align: right; }
+.bp-cfold > summary::after { content: "›"; color: var(--bp-muted); font-size: 1.3rem; line-height: 1; transition: transform 0.15s ease; }
+.bp-cfold[open] > summary::after { transform: rotate(90deg); }
+.bp-cfold-body { padding: 0 16px 16px; }
+
+/* ---- The status window: its buttons stay at the bottom edge; the chosen option is outlined, never a ring --------- */
+.bp-dialog-scroll { max-height: 62vh; overflow-y: auto; padding-right: 4px; }
+.bp-dialog-foot { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin: 12px -4px 0; padding: 12px 4px 2px; border-top: 1px solid var(--bp-border); background: var(--bp-surface); }
+.bp-choice2 { display: grid; grid-template-columns: 22px 22px minmax(0, 1fr); align-items: start; gap: 2px 10px; padding: 10px 12px; border: 1px solid var(--bp-border); border-radius: 10px; }
+.bp-choice2 input { align-self: start; margin-top: 3px; box-shadow: none !important; }
+.bp-choice2 .bp-i { margin-top: 2px; color: var(--bp-primary); }
+.bp-choice2 small { grid-column: 3; color: var(--bp-muted); }
+.bp-choice2.is-chosen { border-color: var(--bp-primary); background: rgba(42, 110, 207, 0.06); }
+
+/* ---- The Registry: the waiting card stands out; rows show both statuses and an Open button --------------------- */
+.bp-wait { border-left: 5px solid var(--bp-primary); background: linear-gradient(90deg, rgba(42, 110, 207, 0.07), transparent 60%), var(--bp-surface); }
+.bp-wait-head { display: flex; align-items: center; gap: 12px; }
+.bp-wait-bell { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--bp-primary); color: #fff; }
+.bp-wait-bell .bp-i { width: 22px; height: 22px; }
+.bp-row-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.bp-row-badges .bp-badge { min-height: 24px; font-size: 0.78rem; }
+.bp-nav-count { margin-left: 6px; padding: 0 7px; border-radius: 999px; background: #f59e0b; color: #1f2937; font-size: 0.72rem; font-weight: 700; }
+
+/* ---- Uploads: what was chosen, and whether it's the right kind, before anything is sent ------------------------- */
+.bp-chosen { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 12px; border: 1px solid; border-radius: 10px; }
+.bp-chosen.is-good { border-color: #bbf7d0; background: #f0fdf4; color: #14532d; }
+.bp-chosen.is-wrong { border-color: #fecaca; background: #fef2f2; color: #7f1d1d; }
+.bp-chosen > span { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+.bp-busy { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #bfdbfe; border-radius: 10px; background: #eff6ff; color: #1e3a8a; }
+.bp-spin { width: 20px; height: 20px; animation: bp-spin 0.9s linear infinite; }
+@keyframes bp-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .bp-spin { animation: none; } }
+
+/* ---- Earlier and new passports: a calm chip beside the passport badge and one plain line, never a banner ------- */
+.bp-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 1px 10px 1px 7px; border: 1px solid var(--bp-border); border-radius: 999px; background: var(--bp-surface); color: var(--bp-primary); font-size: 0.8rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.bp-chip .bp-i { width: 15px; height: 15px; }
+.bp-chip:hover { border-color: var(--bp-primary); }
+.bp-lineage { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; color: var(--bp-muted); font-size: 0.88rem; }
+.bp-lineage .bp-i { width: 15px; height: 15px; }
+
+/* ---- Phones ---------------------------------------------------------------------------------------------------- */
+@media (max-width: 767.98px) {
+  .bp-bh { padding: 14px; }
+  .bp-bh h1 { font-size: 1.35rem; }
+  .bp-bh-open { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); width: 100%; }
+  .bp-ilink { min-width: 0; padding: 6px 2px; font-size: 0.7rem; }
+  .bp-bh-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bp-bh-do { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bp-bh-do > *, .bp-bh-do .bp-more > summary { width: 100%; }
+  /* On a phone the "More" menu spans the header's width instead of hanging off its button. */
+  .bp-bh { position: relative; }
+  .bp-more { position: static; }
+  .bp-more-list { left: 14px; right: 14px; min-width: 0; }
+  .bp-bpage { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .bp-bnav { position: static; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bp-bnav .bp-edit-nav-button small, .bp-bnav hr { display: none; }
+  .bp-cfold > summary { grid-template-columns: 22px minmax(0, 1fr) 16px; }
+  .bp-cfold > summary span { grid-column: 2; text-align: left; }
+  .bp-cfold > summary::after { grid-column: 3; grid-row: 1; }
+}
+
+/* ---- Dark ------------------------------------------------------------------------------------------------------ */
+[data-theme="dark"] .bp-badge { background: transparent; }
+[data-theme="dark"] .bp-badge.is-original { border-color: #64748b; color: #cbd5e1; }
+[data-theme="dark"] .bp-badge.is-reused { border-color: #2dd4bf; color: #5eead4; }
+[data-theme="dark"] .bp-badge.is-repurposed { border-color: #a78bfa; color: #c4b5fd; }
+[data-theme="dark"] .bp-badge.is-remanufactured { border-color: #60a5fa; color: #93c5fd; }
+[data-theme="dark"] .bp-badge.is-waste { border-color: #a8a29e; color: #d6d3d1; }
+[data-theme="dark"] .bp-badge.is-active { border-color: #22c55e; color: #86efac; }
+[data-theme="dark"] .bp-badge.is-draft, [data-theme="dark"] .bp-badge.is-inactive, [data-theme="dark"] .bp-badge.is-archived { border-color: #64748b; color: #cbd5e1; }
+[data-theme="dark"] .bp-badge.is-invalid, [data-theme="dark"] .bp-badge.is-marked { border-color: #f87171; color: #fca5a5; }
+[data-theme="dark"] .bp-bh-notice.is-danger { border-color: #7f1d1d; background: rgba(127, 29, 29, 0.25); color: #fecaca; }
+[data-theme="dark"] .bp-bh-notice.is-info { border-color: #1e3a8a; background: rgba(30, 58, 138, 0.25); color: #bfdbfe; }
+[data-theme="dark"] .bp-bh-notice.is-quiet { border-color: var(--bp-border); background: transparent; color: var(--bp-text); }
+[data-theme="dark"] .bp-test-tag { border-color: #b45309; background: transparent; color: #fcd34d; }
+[data-theme="dark"] .bp-test-note { color: #fcd34d; }
+[data-theme="dark"] .bp-count.is-missing { color: #fcd34d; }
+[data-theme="dark"] .bp-chosen.is-good { border-color: #166534; background: rgba(22, 101, 52, 0.2); color: #bbf7d0; }
+[data-theme="dark"] .bp-chosen.is-wrong { border-color: #7f1d1d; background: rgba(127, 29, 29, 0.25); color: #fecaca; }
+[data-theme="dark"] .bp-busy { border-color: #1e3a8a; background: rgba(30, 58, 138, 0.25); color: #bfdbfe; }
+</style>
+<style>
+  /* Mock-up notes only (mk-*); everything else is the app's own classes or the redesign block above. */
+  body { padding-bottom: 60px; }
+  .mk-intro, .mk-caption { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+  .mk-intro { padding-top: 20px; }
+  .mk-intro h1 { font-size: 1.6rem; }
+  .mk-intro ol, .mk-intro ul { padding-left: 20px; }
+  .mk-caption { margin-top: 44px; border-top: 3px solid #041e42; padding-top: 12px; }
+  .mk-caption h2 { font-size: 1.25rem; margin-bottom: 4px; }
+  .mk-caption p { color: #475569; margin-bottom: 0; max-width: 900px; }
+  .mk-part { display: inline-block; margin-right: 8px; padding: 1px 8px; border-radius: 999px; background: #041e42; color: #fff; font-size: .8rem; font-weight: 600; vertical-align: 2px; }
+  main.bp-page { max-width: 1180px; margin-left: auto; margin-right: auto; padding-left: 16px; padding-right: 16px; }
+  .mk-later { outline: 2px dashed #94a3b8; outline-offset: 4px; }
+  .mk-later-tag { float: right; font-size: .78rem; color: #64748b; }
+  .mk-modal-stage { position: relative; background: rgba(15, 23, 42, .46); border-radius: 12px; padding: 28px 12px; display: grid; place-items: center; }
+  .mk-modal-stage .bp-modal-panel { position: static; display: block; width: min(100%, 680px); margin: 0; }
+  .mk-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .mk-pair > * { min-width: 0; }
+  /* Shown open here; in the app the menu floats over the page. */
+  .mk-static-menu .bp-more-list { position: static; }
+  @media (max-width: 767.98px) { .mk-static-menu { grid-column: 1 / -1; } }
+  /* The public hero is full-width in the app; side by side here it fits its column. */
+  .mk-pair .bp-report-hero-card { width: auto; margin-inline: 0; transform: none; }
+  .mk-q { margin-top: 10px; padding: 10px 14px; border-left: 4px solid #041e42; background: #f1f5f9; color: #0f172a; }
+  .mk-table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  .mk-table th, .mk-table td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: top; }
+  [data-theme="dark"] .mk-caption p, [data-theme="dark"] .mk-intro p, [data-theme="dark"] .mk-intro li { color: #9fb1c8; }
+  [data-theme="dark"] .mk-caption { border-top-color: #7ab6ff; }
+  [data-theme="dark"] .mk-q { background: #0d1b2f; color: #e6eef8; border-left-color: #7ab6ff; }
+  [data-theme="dark"] .mk-table th, [data-theme="dark"] .mk-table td { border-bottom-color: #2a3d55; }
+</style>
+</head>
+<body>
+<!-- One icon sprite; the app gets it as a shared partial. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/></symbol>
+  <symbol id="i-qr" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 14h2v2h-2zM18 18h2v2h-2zM14 19h1M19 14h1"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v4h4"/><path d="M12 8v4l3 2"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></symbol>
+  <symbol id="i-battery" viewBox="0 0 24 24"><rect x="3" y="7" width="16" height="10" rx="2"/><path d="M21 10v4M7 10v4M11 10v4"/></symbol>
+  <symbol id="i-passport" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M9 16h6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></symbol>
+  <symbol id="i-archive" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10h14V9M10 13h4"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17v.5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.5l-5.3 2.9 1.2-6-4.5-4.1 6-.7z"/></symbol>
+  <symbol id="i-reuse" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13.7-5.7L20 8"/><path d="M20 4v4h-4"/><path d="M20 12a8 8 0 0 1-13.7 5.7L4 16"/><path d="M4 20v-4h4"/></symbol>
+  <symbol id="i-repurpose" viewBox="0 0 24 24"><path d="M3 7h4l10 10h4M3 17h4l3-3M14 10l3-3h4"/><path d="M18 4l3 3-3 3M18 14l3 3-3 3"/></symbol>
+  <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8V21h3.2l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.5-.5-2.4z"/></symbol>
+  <symbol id="i-waste" viewBox="0 0 24 24"><path d="M5 7h14l-1.5 13h-11z"/><path d="M9 4h6M3 7h18"/><path d="M10 11l2 3 2-3"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24"><path d="M7 4L3 8l4 4M3 8h14M17 12l4 4-4 4M21 16H7"/></symbol>
+  <symbol id="i-note" viewBox="0 0 24 24"><path d="M5 4h14v11l-5 5H5z"/><path d="M14 20v-5h5M9 9h6M9 13h3"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 20V9M7 14l5-5 5 5M5 4h14"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17v.5"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 1 1 12 0v5l2 2H4z"/><path d="M10 21h4"/></symbol>
+  <symbol id="i-handover" viewBox="0 0 24 24"><path d="M4 9h13l-3-3M20 15H7l3 3"/></symbol>
+  <symbol id="i-live" viewBox="0 0 24 24"><path d="M3 12h4l2-5 4 10 2-5h6"/></symbol>
+  <symbol id="i-modules" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></symbol>
+  <symbol id="i-versions" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></symbol>
+  <symbol id="i-accident" viewBox="0 0 24 24"><path d="M8 3h8l5 5v8l-5 5H8l-5-5V8z"/><path d="M12 8v5M12 16v.5"/></symbol>
+  <symbol id="i-overview" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="5" rx="1"/><rect x="13" y="10" width="8" height="11" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/></symbol>
+  <symbol id="i-values" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h1M4 12h1M4 18h1"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M12 8v5M12 16v.5"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 5a3 3 0 0 1 0 6M21 20a6 6 0 0 0-4-5.6"/></symbol>
+  <symbol id="i-spinner" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9" /></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></symbol>
+  <symbol id="i-publish" viewBox="0 0 24 24"><path d="M12 15V4M7 9l5-5 5 5"/><path d="M5 14v6h14v-6"/></symbol>
+</svg>
+
+<div class="mk-intro">
+  <h1>Battery pages — a simpler layout</h1>
+  <p class="text-secondary">Mock-up only; nothing is built yet. It uses the app's own stylesheets, so it looks like the app. <code>site.css</code> is not changed. Every card and action that works today stays; this changes where things are and how they look.</p>
+  <h2 class="h5 mt-3">What's wrong today</h2>
+  <ul class="text-secondary">
+    <li>On a phone the team's battery page is <strong>8 to 11 screens long</strong>: nine cards stacked, six separate Save buttons. The old app showed <strong>one section at a time</strong> from a side menu, with one Save.</li>
+    <li>The battery status (#22) and the passport status (#2) look alike and live in different places. "Invalid" and its Undo are on the last card.</li>
+    <li>The header mixes facts, five plain links and notices, so it's hard to read and pushes the work down.</li>
+    <li>Bugs: no feedback while the demo data resets, the odd oval in the status window, no sign an accident report file was chosen, the wrong Compact 13M picture, two public search bugs. Each has a fix in the plan.</li>
+  </ul>
+  <h2 class="h5 mt-3">How to read this</h2>
+  <ol class="text-secondary">
+    <li><strong>H</strong>: the new header and the two statuses. Every option uses it.</li>
+    <li><strong>A, B, C</strong>: three ways to lay out the rest of the page. <strong>One is built.</strong></li>
+    <li><strong>F1–F6</strong>: how the cluster admin's page, the status window, the public page, the Registry, uploads and pictures follow.</li>
+  </ol>
+  <p class="text-secondary mb-0">Dashed outlines mark the "Upload a file" card from step 5c, which waits for this redesign.</p>
+</div>
+
+<!-- ============================================================================================== H header -->
+<div class="mk-caption">
+  <h2><span class="mk-part">H</span>The header: who the battery is, its two statuses, where to open it, what to do</h2>
+  <p>The same on every option. Two badges that never look alike: a square <strong>BATTERY</strong> tag (what happened to the battery, #22) and a round <strong>PASSPORT</strong> pill (whether its passport counts, #2). The links become labelled icons. The main actions are buttons; the risky ones wait under "More". Notices become one slim line here, so nothing pushes the page down.</p>
+</div>
+<main class="bp-page bp-admin-page">
+  <nav class="bp-breadcrumb" aria-label="Breadcrumb"><a href="#">Batteries</a><span aria-current="page">DEMO-C7M-0001</span></nav>
+  <header class="bp-bh" id="top">
+    <div class="bp-bh-top">
+      <div class="bp-bh-id">
+        <span class="bp-summary-title">Battery · Compact 7M of Compact</span>
+        <h1>DEMO-C7M-0001</h1>
+        <div class="bp-bh-badges">
+          <span class="bp-badge is-battery is-reused"><svg class="bp-i"><use href="#i-reuse"/></svg><span class="bp-badge-kind">Battery</span>Re-used <small>· repaired 23 Oct</small></span>
+          <span class="bp-badge is-passport is-active"><svg class="bp-i"><use href="#i-check"/></svg><span class="bp-badge-kind">Passport</span>Active · version 3</span>
+          <button type="button" class="bp-bh-help" aria-label="What do the two statuses mean?" title="What do the two statuses mean?"><svg class="bp-i"><use href="#i-help"/></svg></button>
+        </div>
+      </div>
+      <nav class="bp-bh-open" aria-label="Open this battery elsewhere">
+        <a class="bp-ilink" href="#"><svg class="bp-i"><use href="#i-globe"/></svg>Public page</a>
+        <a class="bp-ilink" href="#"><svg class="bp-i"><use href="#i-doc"/></svg>Detail page</a>
+        <a class="bp-ilink" href="#"><svg class="bp-i"><use href="#i-qr"/></svg>QR code</a>
+        <a class="bp-ilink" href="#"><svg class="bp-i"><use href="#i-download"/></svg>Save QR</a>
+        <a class="bp-ilink" href="#"><svg class="bp-i"><use href="#i-history"/></svg>History</a>
+      </nav>
+    </div>
+    <dl class="bp-bh-facts">
+      <div class="is-wide"><dt>Battery ID #6</dt><dd><span class="bp-id-value">urn:x-battery-pass:TEST-47c52ad4c32542e5b51b3b3326034fc1</span><button type="button" class="bp-test-tag" title="IDs that start with TEST- are test identifiers">Test ID<svg class="bp-i"><use href="#i-help"/></svg></button></dd></div>
+      <div><dt>Batch</dt><dd><a href="#">2026 · Demo plant North</a></dd></div>
+      <div><dt>Economic operator</dt><dd><a href="#">Scania Industrial Batteries (demo)</a></dd></div>
+      <div><dt>Cluster</dt><dd>Demo North Operations <button type="button" class="bp-text-button">Change</button></dd></div>
+      <div><dt>Made · warranty</dt><dd>July 2026 · 8 years</dd></div>
+    </dl>
+    <div class="bp-bh-do">
+      <button type="button" class="bp-primary-button bp-with-icon"><svg class="bp-i"><use href="#i-swap"/></svg>Change status</button>
+      <button type="button" class="bp-secondary-button bp-with-icon"><svg class="bp-i"><use href="#i-note"/></svg>Add a note</button>
+      <button type="button" class="bp-secondary-button bp-with-icon mk-later"><svg class="bp-i"><use href="#i-upload"/></svg>Upload a file</button>
+      <details class="bp-more mk-static-menu" open>
+        <summary class="bp-secondary-button bp-with-icon"><svg class="bp-i"><use href="#i-more"/></svg>More</summary>
+        <div class="bp-more-list" role="menu">
+          <button type="button" role="menuitem" class="is-danger"><svg class="bp-i"><use href="#i-alert"/></svg><span>Mark as invalid…<small>Freezes the passport; every page says so</small></span></button>
+          <button type="button" role="menuitem" disabled><svg class="bp-i"><use href="#i-trash"/></svg><span>Mark for deletion…<small>Only when the battery is waste</small></span></button>
+        </div>
+      </details>
+    </div>
+  </header>
+</main>
+
+<div class="mk-caption">
+  <h2><span class="mk-part">H</span>The same header when the passport no longer counts</h2>
+  <p>Each notice is one line with its action in reach. Left: an invalid passport, with the reason (team and market surveillance only) and <strong>Undo invalid</strong> right there. Right: the earlier battery after repurposing: a small <strong>New passport</strong> chip beside its badge and one plain line, no banner.</p>
+</div>
+<main class="bp-page bp-admin-page">
+  <div class="mk-pair">
+    <header class="bp-bh">
+      <div class="bp-bh-id">
+        <span class="bp-summary-title">Battery · Compact 7M of Compact</span>
+        <h1>DEMO-C7M-0003</h1>
+        <div class="bp-bh-badges">
+          <span class="bp-badge is-battery is-original"><svg class="bp-i"><use href="#i-star"/></svg><span class="bp-badge-kind">Battery</span>Original</span>
+          <span class="bp-badge is-passport is-invalid"><svg class="bp-i"><use href="#i-alert"/></svg><span class="bp-badge-kind">Passport</span>Invalid · version 1</span>
+        </div>
+      </div>
+      <p class="bp-bh-notice is-danger"><svg class="bp-i"><use href="#i-shield"/></svg><span><strong>Invalid since 2 Nov 2026.</strong> Market surveillance: “Demo: wrong carbon footprint figures”. Nothing on the passport changes until it's undone.</span><button type="button" class="bp-secondary-button bp-button-compact">Undo invalid</button></p>
+    </header>
+    <header class="bp-bh">
+      <div class="bp-bh-id">
+        <span class="bp-summary-title">Battery · Compact 13M of Compact</span>
+        <h1>DEMO-C13M-0001</h1>
+        <div class="bp-bh-badges">
+          <span class="bp-badge is-battery is-repurposed"><svg class="bp-i"><use href="#i-repurpose"/></svg><span class="bp-badge-kind">Battery</span>Repurposed</span>
+          <span class="bp-badge is-passport is-inactive"><svg class="bp-i"><use href="#i-pause"/></svg><span class="bp-badge-kind">Passport</span>Inactive · version 2</span>
+          <a class="bp-chip" href="#"><svg class="bp-i"><use href="#i-arrow"/></svg>New passport</a>
+        </div>
+        <p class="bp-lineage"><svg class="bp-i"><use href="#i-repurpose"/></svg>Repurposed on 2 Nov 2026; the battery continues on its new passport.</p>
+      </div>
+    </header>
+  </div>
+</main>
+
+<div class="mk-caption">
+  <h2><span class="mk-part">H</span>"What do the two statuses mean?" (the ? next to the badges)</h2>
+  <p>One small window, the same on the team's, the cluster admin's and the public pages.</p>
+</div>
+<main class="bp-page bp-admin-page">
+  <div class="mk-modal-stage">
+    <div class="bp-modal-panel bp-dialog" role="dialog" aria-labelledby="explain-title">
+      <h2 id="explain-title">Two statuses</h2>
+      <p class="bp-help-text"><strong>Battery</strong> (square tag) says what has happened to the battery. <strong>Passport</strong> (round pill) says whether this passport is the one that counts.</p>
+      <table class="mk-table">
+        <tbody>
+          <tr><td><span class="bp-badge is-battery is-original"><svg class="bp-i"><use href="#i-star"/></svg>Original</span></td><td>As made; never repaired or reused.</td></tr>
+          <tr><td><span class="bp-badge is-battery is-reused"><svg class="bp-i"><use href="#i-reuse"/></svg>Re-used</span></td><td>Back in use for its first purpose: after a repair (same passport), or prepared for re-use and placed on the market again (new passport).</td></tr>
+          <tr><td><span class="bp-badge is-battery is-repurposed"><svg class="bp-i"><use href="#i-repurpose"/></svg>Repurposed</span></td><td>Now used for a different purpose. It gets a new passport.</td></tr>
+          <tr><td><span class="bp-badge is-battery is-remanufactured"><svg class="bp-i"><use href="#i-wrench"/></svg>Remanufactured</span></td><td>Rebuilt to work as new. It gets a new passport.</td></tr>
+          <tr><td><span class="bp-badge is-battery is-waste"><svg class="bp-i"><use href="#i-waste"/></svg>Waste</span></td><td>Taken out of use for recycling. Final; the team can then mark the passport for deletion.</td></tr>
+          <tr><td><span class="bp-badge is-passport is-active"><svg class="bp-i"><use href="#i-check"/></svg>Active</span></td><td>The passport that counts now.</td></tr>
+          <tr><td><span class="bp-badge is-passport is-archived"><svg class="bp-i"><use href="#i-archive"/></svg>Archived</span></td><td>An older version of this passport; a newer one counts.</td></tr>
+          <tr><td><span class="bp-badge is-passport is-inactive"><svg class="bp-i"><use href="#i-pause"/></svg>Inactive</span></td><td>Replaced by the battery's new passport after repurposing, remanufacturing or re-use elsewhere.</td></tr>
+          <tr><td><span class="bp-badge is-passport is-invalid"><svg class="bp-i"><use href="#i-alert"/></svg>Invalid</span></td><td>Its data shouldn't be trusted, for example after a market surveillance finding. Only the team undoes it.</td></tr>
+          <tr><td><span class="bp-badge is-passport is-marked"><svg class="bp-i"><use href="#i-trash"/></svg>Marked for deletion</span></td><td>The battery is waste and gone; the passport will be deleted.</td></tr>
+          <tr><td><span class="bp-badge is-passport is-draft"><svg class="bp-i"><use href="#i-passport"/></svg>Draft</span></td><td>Not published yet; only the team sees it.</td></tr>
+        </tbody>
+      </table>
+      <div class="bp-dialog-actions"><button type="button" class="bp-secondary-button">Close</button></div>
+    </div>
+  </div>
+</main>
+
+<!-- ============================================================================================== A tabs -->
+<div class="mk-caption">
+  <h2><span class="mk-part">A</span>Option A · Tabs across the page</h2>
+  <p>Under the header, one tab per job; only the chosen tab shows. It lands on <strong>Overview</strong>. On a phone the tab row slides sideways on its own. After a save the page comes back to the same tab with its message.</p>
+</div>
+<main class="bp-page bp-admin-page">
+  <div class="bp-btabs" role="tablist" aria-label="Battery sections" data-scroll-strip>
+    <button class="bp-btab" role="tab" aria-selected="true"><svg class="bp-i"><use href="#i-overview"/></svg>Overview</button>
+    <button class="bp-btab" role="tab" aria-selected="false"><svg class="bp-i"><use href="#i-values"/></svg>Passport values</button>
+    <button class="bp-btab" role="tab" aria-selected="false"><svg class="bp-i"><use href="#i-swap"/></svg>Status &amp; repairs</button>
+    <button class="bp-btab" role="tab" aria-selected="false"><svg class="bp-i"><use href="#i-live"/></svg>Live values</button>
+    <button class="bp-btab mk-later" role="tab" aria-selected="false"><svg class="bp-i"><use href="#i-upload"/></svg>Uploads</button>
+    <button class="bp-btab" role="tab" aria-selected="false"><svg class="bp-i"><use href="#i-accident"/></svg>Accidents <span class="bp-count">1</span></button>
+    <button class="bp-btab" role="tab" aria-selected="false"><svg class="bp-i"><use href="#i-modules"/></svg>Modules <span class="bp-count">7</span></button>
+    <button class="bp-btab" role="tab" aria-selected="false"><svg class="bp-i"><use href="#i-versions"/></svg>Versions <span class="bp-count">3</span></button>
+    <button class="bp-btab" role="tab" aria-selected="false"><svg class="bp-i"><use href="#i-shield"/></svg>Passport status</button>
+  </div>
+  <section class="bp-card bp-console-form-card mt-3" role="tabpanel">
+    <div class="bp-sec-head"><h2><svg class="bp-i"><use href="#i-overview"/></svg>Overview</h2></div>
+    <ul class="bp-todo"><li class="is-none">Nothing needs you. Every value the passport needs by February 2027 is there.</li></ul>
+    <dl class="bp-overview">
+      <div><dt><svg class="bp-i"><use href="#i-passport"/></svg>Publication</dt><dd>Published since 2 Nov 2026 · version 3<small>Signature verified · 6 uploaded files unchanged</small></dd></div>
+      <div><dt><svg class="bp-i"><use href="#i-swap"/></svg>Last status change</dt><dd>Repaired on 23 Oct 2026<small>Module 4 replaced after a coolant leak</small></dd></div>
+      <div><dt><svg class="bp-i"><use href="#i-live"/></svg>Live values</dt><dd>Charge 78 % · 214 cycles · 24 °C<small>From the battery system, 2 Nov 2026, 16:44</small></dd></div>
+      <div><dt><svg class="bp-i"><use href="#i-accident"/></svg>Accidents</dt><dd>1 report<small>Coolant leak at the 12-month service</small></dd></div>
+    </dl>
+  </section>
+</main>
+
+<!-- ============================================================================================== B side menu -->
+<div class="mk-caption">
+  <h2><span class="mk-part">B</span>Option B · A side menu, one section at a time (like the old app)</h2>
+  <p>The menu on the left lists every section with a one-line hint; only the chosen section shows on the right, with its Save button right under its fields. The menu is the old app's own menu style, the one the values editor already uses. On a phone the menu becomes two columns of buttons above the section. After a save the page comes back to the same section with its message. Here "Live values" is chosen.</p>
+</div>
+<main class="bp-page bp-admin-page">
+  <div class="bp-bpage">
+    <nav class="bp-edit-nav bp-bnav" aria-label="Battery sections">
+      <button type="button" class="bp-edit-nav-button" aria-pressed="false"><svg class="bp-i"><use href="#i-overview"/></svg><span class="bp-edit-nav-label">Overview</span><small>Nothing needs you</small></button>
+      <button type="button" class="bp-edit-nav-button" aria-pressed="false"><svg class="bp-i"><use href="#i-values"/></svg><span class="bp-edit-nav-label">Passport values</span><small>All filled in</small></button>
+      <button type="button" class="bp-edit-nav-button" aria-pressed="false"><svg class="bp-i"><use href="#i-swap"/></svg><span class="bp-edit-nav-label">Status &amp; repairs</span><small>Re-used · 1 repair</small></button>
+      <button type="button" class="bp-edit-nav-button is-active" aria-pressed="true"><svg class="bp-i"><use href="#i-live"/></svg><span class="bp-edit-nav-label">Live values</span><small>2 Nov, 16:44</small></button>
+      <button type="button" class="bp-edit-nav-button is-later mk-later" aria-pressed="false"><svg class="bp-i"><use href="#i-upload"/></svg><span class="bp-edit-nav-label">Upload a file</span><small>Step 5c</small></button>
+      <button type="button" class="bp-edit-nav-button" aria-pressed="false"><svg class="bp-i"><use href="#i-accident"/></svg><span class="bp-edit-nav-label">Accident reports</span><span class="bp-count">1</span></button>
+      <button type="button" class="bp-edit-nav-button" aria-pressed="false"><svg class="bp-i"><use href="#i-modules"/></svg><span class="bp-edit-nav-label">Modules</span><span class="bp-count">7</span></button>
+      <button type="button" class="bp-edit-nav-button" aria-pressed="false"><svg class="bp-i"><use href="#i-versions"/></svg><span class="bp-edit-nav-label">Versions</span><span class="bp-count">3</span></button>
+      <hr>
+      <button type="button" class="bp-edit-nav-button" aria-pressed="false"><svg class="bp-i"><use href="#i-shield"/></svg><span class="bp-edit-nav-label">Passport status</span><small>Mark invalid or for deletion</small></button>
+    </nav>
+    <section class="bp-card bp-console-form-card" id="live">
+      <div class="bp-sec-head"><h2><svg class="bp-i"><use href="#i-live"/></svg>Live values</h2><small class="text-secondary">Change the passport in place, without a new version</small></div>
+      <p class="bp-help-text mt-2 mb-0">The battery system sends these; type one here before it does, or to correct one.</p>
+      <div class="bp-live-grid">
+        <label><span>#63 State of charge (%)</span><input type="text" value="78"><small>2 Nov, 16:44 · battery system</small></label>
+        <label><span>#83 Full cycles</span><input type="text" value="214"><small>2 Nov, 16:44 · battery system</small></label>
+        <label><span>#87 Temperature (°C)</span><input type="text" value="24"><small>2 Nov, 16:44 · battery system</small></label>
+        <label><span>E1 Minutes above the hot limit</span><input type="text" value="0"><small>2 Nov, 16:44 · battery system</small></label>
+        <label><span>E2 Minutes below the cold limit</span><input type="text" value="12"><small>2 Nov, 16:44 · battery system</small></label>
+        <label><span>E3–E4 Minutes charging outside the limits</span><input type="text" value="0 · 0"><small>2 Nov, 16:44 · battery system</small></label>
+      </div>
+      <div class="bp-sec-foot">
+        <label class="d-flex flex-wrap align-items-center gap-2 mb-0"><small>Measured at (now if empty)</small><input type="datetime-local"></label>
+        <button type="button" class="bp-primary-button">Save live values</button>
+      </div>
+    </section>
+  </div>
+</main>
+
+<!-- ============================================================================================== C overview + sections -->
+<div class="mk-caption">
+  <h2><span class="mk-part">C</span>Option C · An overview, then sections that open in place</h2>
+  <p>Under the header, a short overview says what needs you. Below it, each section is one closed row with a summary on the right; tap to open it, with its Save button inside. Several can be open at once, and the page stays one scroll. Here "Status &amp; repairs" is open.</p>
+</div>
+<main class="bp-page bp-admin-page">
+  <section class="bp-card bp-console-form-card mt-2">
+    <ul class="bp-todo mt-0"><li class="is-none">Nothing needs you. Every value the passport needs by February 2027 is there.</li></ul>
+    <dl class="bp-overview">
+      <div><dt><svg class="bp-i"><use href="#i-passport"/></svg>Publication</dt><dd>Published since 2 Nov 2026 · version 3<small>Signature verified · 6 files unchanged</small></dd></div>
+      <div><dt><svg class="bp-i"><use href="#i-live"/></svg>Live values</dt><dd>Charge 78 % · 214 cycles · 24 °C<small>2 Nov 2026, 16:44</small></dd></div>
+    </dl>
+  </section>
+  <details class="bp-cfold"><summary><svg class="bp-i"><use href="#i-values"/></svg><strong>Passport values</strong><span>All filled in</span></summary></details>
+  <details class="bp-cfold" open id="status">
+    <summary><svg class="bp-i"><use href="#i-swap"/></svg><strong>Status &amp; repairs</strong><span>Re-used · 1 repair</span></summary>
+    <div class="bp-cfold-body">
+      <div class="bp-sec-head">
+        <span class="bp-badge is-battery is-reused"><svg class="bp-i"><use href="#i-reuse"/></svg><span class="bp-badge-kind">Battery</span>Re-used <small>· since 2 Nov 2026, after a repair</small></span>
+        <div class="d-flex flex-wrap gap-2">
+          <button type="button" class="bp-secondary-button bp-with-icon"><svg class="bp-i"><use href="#i-note"/></svg>Add a note</button>
+          <button type="button" class="bp-primary-button bp-with-icon"><svg class="bp-i"><use href="#i-swap"/></svg>Change status</button>
+        </div>
+      </div>
+      <h3 class="h6 mt-3 mb-0">Repair history <em class="bp-field-marker">Not passport data</em></h3>
+      <ul class="bp-history">
+        <li><time>23 Oct 2026</time><span>Module 4 replaced after a coolant leak.</span><small>Recorded 2 Nov 2026, 16:44 by smoke-admin@example.test</small></li>
+      </ul>
+      <small class="bp-field-help d-block mt-2">Seen by the battery's cluster, market surveillance and your team.</small>
+    </div>
+  </details>
+  <details class="bp-cfold"><summary><svg class="bp-i"><use href="#i-live"/></svg><strong>Live values</strong><span>2 Nov, 16:44</span></summary></details>
+  <details class="bp-cfold mk-later"><summary><svg class="bp-i"><use href="#i-upload"/></svg><strong>Upload a file</strong><span>Step 5c</span></summary></details>
+  <details class="bp-cfold"><summary><svg class="bp-i"><use href="#i-accident"/></svg><strong>Accident reports</strong><span>1 report</span></summary></details>
+  <details class="bp-cfold"><summary><svg class="bp-i"><use href="#i-modules"/></svg><strong>Modules</strong><span>7 modules</span></summary></details>
+  <details class="bp-cfold"><summary><svg class="bp-i"><use href="#i-versions"/></svg><strong>Versions</strong><span>3 · all verified</span></summary></details>
+  <details class="bp-cfold"><summary><svg class="bp-i"><use href="#i-shield"/></svg><strong>Passport status</strong><span>Active</span></summary></details>
+</main>
+
+<div class="mk-caption">
+  <h2>Comparing A, B and C</h2>
+  <p>All three keep every feature, use the header H, and put each Save under what it saves.</p>
+</div>
+<main class="bp-page bp-admin-page">
+  <section class="bp-card bp-console-form-card">
+    <table class="mk-table">
+      <thead><tr><th></th><th>A · Tabs</th><th>B · Side menu</th><th>C · Overview + sections</th></tr></thead>
+      <tbody>
+        <tr><th>Shows at once</th><td>One tab</td><td>One section</td><td>Overview + any you open</td></tr>
+        <tr><th>On a phone</th><td>Tab row slides sideways; some tabs hidden off-screen</td><td>Two columns of buttons above the section</td><td>A list of rows; nothing hidden</td></tr>
+        <tr><th>Like the old app</th><td>No</td><td><strong>Yes</strong> (same menu style)</td><td>Partly</td></tr>
+        <tr><th>Finding a section</th><td>Read the tab names</td><td>Menu with a hint per section</td><td>Rows with a summary each</td></tr>
+        <tr><th>Build effort</th><td>Medium</td><td>Medium (reuses the menu)</td><td>Low (open/closed rows)</td></tr>
+      </tbody>
+    </table>
+    <h3 class="h6 mt-3">Where every card of today goes (all options)</h3>
+    <table class="mk-table">
+      <tbody>
+        <tr><th>Header</th><td>Battery ID with copy, batch, operator, cluster with Change, made and warranty; the five links; the test-ID tag; notices (invalid, inactive, new passport of an earlier battery, hand-over waiting with "Cancel it") as one line each.</td></tr>
+        <tr><th>Do row</th><td>Publish passport (a draft that's ready), Change status, Add a note, Upload a file (5c), Hand over (cluster admin). Under <strong>More</strong>: Mark as invalid, Mark for deletion, Remove draft battery.</td></tr>
+        <tr><th>Overview</th><td>Today's Publication card: what needs you (missing values by group with "Fill in"), values needed only after Feb 2027, the uploaded files' fingerprint checks; plus the last status change, the latest live values and the accident count.</td></tr>
+        <tr><th>Sections</th><td>Passport values · Status &amp; repairs (history, notes, the new-passport choice) · Live values · Upload a file · Accident reports · Modules (with "Type or correct the list") · Versions with signatures · Passport status (mark or undo).</td></tr>
+      </tbody>
+    </table>
+    <p class="mk-q mb-0"><strong>Chosen by the owner on 2 Nov 2026: B.</strong> It's what you asked about ("a side bar showing only selected information"), it works like the old app you found simpler, and it reuses the menu the values editor already has. C is the fallback if you prefer to scroll one page.</p>
+  </section>
+</main>
+
+<!-- ============================================================================================== F1 cluster admin -->
+<div class="mk-caption">
+  <h2><span class="mk-part">F1</span>The cluster admin's battery page follows the same pattern</h2>
+  <p>Same header and badges, without what only the team does. Their actions: Change status, Add a note, Upload a file, Hand over. Modules and versions are read-only. Its notices are the same slim lines: here a hand-over waiting (with the one <strong>Cancel</strong>) and, on a battery's new passport, "New passport of …". The page opens only while the passport is active (step 4a); an invalid or inactive battery shows its badge on the Registry row and its notice on the detail page.</p>
+</div>
+<main class="bp-page bp-admin-page">
+  <nav class="bp-breadcrumb" aria-label="Breadcrumb"><a href="#">Registry</a><span aria-current="page">DEMO-C7M-0001</span></nav>
+  <header class="bp-bh">
+    <div class="bp-bh-top">
+      <div class="bp-bh-id">
+        <span class="bp-summary-title">Battery · Compact 7M of Compact</span>
+        <h1>DEMO-C7M-0001</h1>
+        <div class="bp-bh-badges">
+          <span class="bp-badge is-battery is-reused"><svg class="bp-i"><use href="#i-reuse"/></svg><span class="bp-badge-kind">Battery</span>Re-used</span>
+          <span class="bp-badge is-passport is-active"><svg class="bp-i"><use href="#i-check"/></svg><span class="bp-badge-kind">Passport</span>Active · version 3</span>
+          <button type="button" class="bp-bh-help" aria-label="What do the two statuses mean?"><svg class="bp-i"><use href="#i-help"/></svg></button>
+        </div>
+      </div>
+      <nav class="bp-bh-open" aria-label="Open this battery elsewhere">
+        <a class="bp-ilink" href="#"><svg class="bp-i"><use href="#i-globe"/></svg>Public page</a>
+        <a class="bp-ilink" href="#"><svg class="bp-i"><use href="#i-doc"/></svg>Detail page</a>
+        <a class="bp-ilink" href="#"><svg class="bp-i"><use href="#i-accident"/></svg>Accident page</a>
+      </nav>
+    </div>
+    <p class="bp-bh-notice is-quiet"><svg class="bp-i"><use href="#i-handover"/></svg><span>Hand-over to <strong>Demo South Operations</strong> waiting for their answer, asked 2 Nov 2026, 16:44.</span><button type="button" class="bp-secondary-button bp-button-compact">Cancel the hand-over</button></p>
+    <dl class="bp-bh-facts">
+      <div class="is-wide"><dt>Battery ID #6</dt><dd><span class="bp-id-value">urn:x-battery-pass:TEST-47c52ad4c32542e5b51b3b3326034fc1</span><button type="button" class="bp-test-tag" title="IDs that start with TEST- are test identifiers">Test ID<svg class="bp-i"><use href="#i-help"/></svg></button></dd></div>
+      <div><dt>Batch</dt><dd>2026 · Demo plant North</dd></div>
+      <div><dt>Cluster</dt><dd>Demo North Operations</dd></div>
+    </dl>
+    <div class="bp-bh-do">
+      <button type="button" class="bp-primary-button bp-with-icon"><svg class="bp-i"><use href="#i-swap"/></svg>Change status</button>
+      <button type="button" class="bp-secondary-button bp-with-icon"><svg class="bp-i"><use href="#i-note"/></svg>Add a note</button>
+      <button type="button" class="bp-secondary-button bp-with-icon mk-later"><svg class="bp-i"><use href="#i-upload"/></svg>Upload a file</button>
+      <button type="button" class="bp-secondary-button bp-with-icon"><svg class="bp-i"><use href="#i-handover"/></svg>Hand over…</button>
+    </div>
+  </header>
+  <div class="bp-bpage">
+    <nav class="bp-edit-nav bp-bnav" aria-label="Battery sections">
+      <button type="button" class="bp-edit-nav-button is-active" aria-pressed="true"><svg class="bp-i"><use href="#i-overview"/></svg><span class="bp-edit-nav-label">Overview</span></button>
+      <button type="button" class="bp-edit-nav-button" aria-pressed="false"><svg class="bp-i"><use href="#i-swap"/></svg><span class="bp-edit-nav-label">Status &amp; repairs</span></button>
+      <button type="button" class="bp-edit-nav-button" aria-pressed="false"><svg class="bp-i"><use href="#i-live"/></svg><span class="bp-edit-nav-label">Live values</span></button>
+      <button type="button" class="bp-edit-nav-button is-later mk-later" aria-pressed="false"><svg class="bp-i"><use href="#i-upload"/></svg><span class="bp-edit-nav-label">Upload a file</span></button>
+      <button type="button" class="bp-edit-nav-button" aria-pressed="false"><svg class="bp-i"><use href="#i-accident"/></svg><span class="bp-edit-nav-label">Accident reports</span><span class="bp-count">1</span></button>
+      <button type="button" class="bp-edit-nav-button" aria-pressed="false"><svg class="bp-i"><use href="#i-modules"/></svg><span class="bp-edit-nav-label">Modules</span><span class="bp-count">7</span></button>
+      <button type="button" class="bp-edit-nav-button" aria-pressed="false"><svg class="bp-i"><use href="#i-versions"/></svg><span class="bp-edit-nav-label">Versions</span><span class="bp-count">3</span></button>
+    </nav>
+    <section class="bp-card bp-console-form-card">
+      <div class="bp-sec-head"><h2><svg class="bp-i"><use href="#i-overview"/></svg>Overview</h2></div>
+      <dl class="bp-overview">
+        <div><dt><svg class="bp-i"><use href="#i-swap"/></svg>Last status change</dt><dd>Repaired on 23 Oct 2026<small>Module 4 replaced after a coolant leak</small></dd></div>
+        <div><dt><svg class="bp-i"><use href="#i-live"/></svg>Live values</dt><dd>Charge 78 % · 214 cycles · 24 °C<small>2 Nov 2026, 16:44</small></dd></div>
+      </dl>
+    </section>
+  </div>
+</main>
+
+<!-- ============================================================================================== F2 status window -->
+<div class="mk-caption">
+  <h2><span class="mk-part">F2</span>The status window: buttons always in view, no odd oval</h2>
+  <p>The window's buttons stay fixed at its bottom edge, so "Save and publish a new version" never needs scrolling (point 3). The chosen option is outlined as a whole, and the round radio keeps its size (point 2: the oval was a focus ring stretched over the radio). Each choice shows its badge icon.</p>
+</div>
+<main class="bp-page bp-admin-page">
+  <div class="mk-pair">
+    <div class="mk-modal-stage">
+      <div class="bp-modal-panel bp-dialog bp-dialog-wide" role="dialog" aria-labelledby="st1">
+        <h2 id="st1">Change the battery status</h2>
+        <p class="bp-help-text">Now: <span class="bp-badge is-battery is-reused"><svg class="bp-i"><use href="#i-reuse"/></svg>Re-used</span>. What happened to the battery?</p>
+        <div class="bp-dialog-scroll d-grid gap-2">
+          <label class="bp-choice2 is-chosen"><input type="radio" name="w" checked><svg class="bp-i"><use href="#i-wrench"/></svg><strong>Repaired</strong><small>Status stays re-used; the repair joins its history. Same passport.</small></label>
+          <label class="bp-choice2"><input type="radio" name="w"><svg class="bp-i"><use href="#i-reuse"/></svg><strong>Prepared for re-use and placed on the market again</strong><small>Status re-used. A new, linked passport follows.</small></label>
+          <label class="bp-choice2"><input type="radio" name="w"><svg class="bp-i"><use href="#i-wrench"/></svg><strong>Remanufactured</strong><small>A new, linked passport follows.</small></label>
+          <label class="bp-choice2"><input type="radio" name="w"><svg class="bp-i"><use href="#i-repurpose"/></svg><strong>Repurposed</strong><small>For a new use. A new, linked passport follows.</small></label>
+          <label class="bp-choice2"><input type="radio" name="w"><svg class="bp-i"><use href="#i-waste"/></svg><strong>Waste</strong><small>Final. The passport stays active until the team marks it for deletion after recycling.</small></label>
+          <label class="bp-choice2"><input type="radio" name="w"><svg class="bp-i"><use href="#i-pencil"/></svg><strong>Correct the values</strong><small>For a mistyped value (team only): the status stays, nothing joins the history, and a new version is published.</small></label>
+        </div>
+        <div class="bp-dialog-foot"><button type="button" class="bp-secondary-button">Cancel</button><button type="button" class="bp-primary-button">Next</button></div>
+      </div>
+    </div>
+    <div class="mk-modal-stage">
+      <div class="bp-modal-panel bp-dialog bp-dialog-wide" role="dialog" aria-labelledby="st2">
+        <h2 id="st2">Repaired: check the values</h2>
+        <div class="bp-dialog-scroll">
+          <div class="bp-live-grid mt-0">
+            <label><span>Day of the repair</span><input type="date" value="2026-11-02"></label>
+            <label><span>What was repaired</span><input type="text" placeholder="e.g. Module 4 replaced"></label>
+            <label><span>#59 Capacity fade (%)</span><input type="text" value="4"></label>
+            <label><span>#69 Power fade (%)</span><input type="text" value="3"></label>
+            <label><span>#74 Energy round-trip efficiency fade (%)</span><input type="text" value="2"></label>
+            <label><span>#79 Internal resistance increase (%)</span><input type="text" value="5"></label>
+            <label><span>#81 Expected lifetime (years)</span><input type="text" value="10"></label>
+          </div>
+        </div>
+        <div class="bp-dialog-foot"><button type="button" class="bp-secondary-button">Back</button><button type="button" class="bp-primary-button">Save and publish a new version</button></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ============================================================================================== F3 public -->
+<div class="mk-caption">
+  <h2><span class="mk-part">F3</span>The public pages: a test tag, and an earlier or newer passport as one small chip and one plain line</h2>
+  <p>Point 10a, redrawn for question 4. Searching DEMO-C13M-0001 still opens the new passport (first card), but today's banner ("Active. This passport replaces an earlier one…") is gone. Instead, an <strong>Earlier passport</strong> chip sits beside the passport badge, with one quiet line. Public readers get the facts without the battery status, which is purchaser data: "Replaces an earlier passport of this battery (since 2 Nov 2026)". Readers allowed #22 (the detail page, the battery pages, the Registry) read "Repurposed on 2 Nov 2026…". The test passport's yellow banner becomes a small amber <strong>Test passport</strong> tag; a tap or a hover explains it (third card), and the detail page's identifiers say it in words. The earlier passport (second card) has the mirror image: a <strong>New passport</strong> chip. The same chip and line appear on the team's battery page. The Battery tag (#22) is purchaser data: it shows only to the battery's cluster, market surveillance and the team (on the detail page, the Registry and the battery pages), never on the public summary.</p>
+</div>
+<main class="bp-page">
+  <div class="mk-pair">
+    <section class="bp-report-hero-card p-3">
+      <span class="bp-summary-title">Battery</span>
+      <h1 class="h3 mb-1">DEMO-C13M-0001</h1>
+      <p class="text-secondary mb-2">Model: CP13M</p>
+      <div class="bp-bh-badges">
+        <span class="bp-badge is-passport is-active"><svg class="bp-i"><use href="#i-check"/></svg><span class="bp-badge-kind">Passport</span>Active</span>
+        <a class="bp-chip" href="#"><svg class="bp-i"><use href="#i-history"/></svg>Earlier passport</a>
+        <button type="button" class="bp-test-tag" title="IDs that start with TEST- are test identifiers">Test passport<svg class="bp-i"><use href="#i-help"/></svg></button>
+        <button type="button" class="bp-bh-help" aria-label="What do the two statuses mean?"><svg class="bp-i"><use href="#i-help"/></svg></button>
+      </div>
+      <p class="bp-lineage"><svg class="bp-i"><use href="#i-history"/></svg>Replaces an earlier passport of this battery (since 2 Nov 2026).</p>
+    </section>
+    <section class="bp-report-hero-card p-3">
+      <span class="bp-summary-title">Battery</span>
+      <h1 class="h3 mb-1">DEMO-C13M-0001</h1>
+      <p class="text-secondary mb-2">Model: CP13M</p>
+      <div class="bp-bh-badges">
+        <span class="bp-badge is-passport is-inactive"><svg class="bp-i"><use href="#i-pause"/></svg><span class="bp-badge-kind">Passport</span>Inactive</span>
+        <a class="bp-chip" href="#"><svg class="bp-i"><use href="#i-arrow"/></svg>New passport</a>
+        <button type="button" class="bp-test-tag" title="IDs that start with TEST- are test identifiers">Test passport<svg class="bp-i"><use href="#i-help"/></svg></button>
+      </div>
+      <p class="bp-lineage"><svg class="bp-i"><use href="#i-history"/></svg>This battery continues on a new passport since 2 Nov 2026.</p>
+    </section>
+    <section class="bp-report-hero-card p-3">
+      <span class="bp-summary-title">A tap on "Test passport"</span>
+      <div class="bp-modal-panel mt-2" style="position: static; width: 100%;">
+        <h2 class="h5">A test passport</h2>
+        <p class="mb-2">This battery's IDs start with <strong>TEST-</strong>: it isn't a real passport yet. Real IDs come once the identifier scheme is chosen.</p>
+        <div class="d-flex justify-content-end"><button type="button" class="bp-secondary-button">Close</button></div>
+      </div>
+      <p class="bp-test-note mt-3">On the detail page, under the IDs: "Test identifiers: these IDs start with TEST-, so this isn't a real passport yet."</p>
+    </section>
+  </div>
+</main>
+
+<div class="mk-caption">
+  <h2><span class="mk-part">F3</span>An invalid passport is found, and says so</h2>
+  <p>Point 10b: searching DEMO-C7M-0003 opens its passport instead of "No published battery passport was found". This one keeps a red line, because readers must not rely on its data. The reason shows only to the team and market surveillance.</p>
+</div>
+<main class="bp-page">
+  <div class="mk-pair">
+    <section class="bp-report-hero-card p-3">
+      <span class="bp-summary-title">Battery</span>
+      <h1 class="h3 mb-1">DEMO-C7M-0003</h1>
+      <p class="text-secondary mb-2">Model: CP7M</p>
+      <div class="bp-bh-badges mb-2">
+        <span class="bp-badge is-passport is-invalid"><svg class="bp-i"><use href="#i-alert"/></svg><span class="bp-badge-kind">Passport</span>Invalid</span>
+      </div>
+      <p class="bp-bh-notice is-danger"><svg class="bp-i"><use href="#i-alert"/></svg><span><strong>Marked invalid on 2 Nov 2026.</strong> Don't rely on its data. It stays readable for reference.</span></p>
+    </section>
+  </div>
+</main>
+
+<!-- ============================================================================================== F4 registry -->
+<div class="mk-caption">
+  <h2><span class="mk-part">F4</span>The Registry: "Waiting for you" stands out; rows show both statuses and an Open button</h2>
+  <p>For a cluster admin. The waiting card has a bell, a count and an accent edge, and comes first (point 12). The Registry entry in the top bar shows the count too. Each row shows both badges and a labelled <strong>Open</strong> button where "Manage" was (point 11).</p>
+</div>
+<main class="bp-page bp-admin-page bp-registry-page">
+  <p class="mb-2"><a href="#" class="fw-semibold">Registry</a><span class="bp-nav-count">1</span> <small class="text-secondary">← the top bar entry</small></p>
+  <section class="bp-card bp-console-form-card bp-wait" id="waiting">
+    <div class="bp-wait-head">
+      <span class="bp-wait-bell"><svg class="bp-i"><use href="#i-bell"/></svg></span>
+      <div><span class="bp-summary-title">Waiting for you</span><h2 class="h5 mb-0">1 battery handed over to your cluster</h2></div>
+    </div>
+    <div class="bp-handover-row mt-3">
+      <div><strong>DEMO-CORE-0001</strong> · Core<small class="d-block text-secondary">From Demo Fleet Operations, asked 2 Nov 2026, 16:44</small></div>
+      <div class="bp-dialog-actions"><button type="button" class="bp-primary-button">Accept</button><button type="button" class="bp-secondary-button">Decline</button></div>
+    </div>
+  </section>
+  <section class="bp-card bp-console-form-card mt-4">
+    <div class="bp-table-scroll">
+      <table class="table align-middle bp-console-table bp-mobile-card-table mb-0">
+        <thead><tr><th>Serial number</th><th>Model</th><th>Status</th><th><span class="visually-hidden">Open</span></th></tr></thead>
+        <tbody>
+          <tr>
+            <td data-label="Serial number"><a href="#"><strong>DEMO-C7M-0001</strong></a><small class="d-block text-secondary">Version 3 · updated 2 Nov 2026</small></td>
+            <td data-label="Model">Compact 7M <small class="d-block text-secondary">Compact</small></td>
+            <td data-label="Status"><div class="bp-row-badges"><span class="bp-badge is-battery is-reused"><svg class="bp-i"><use href="#i-reuse"/></svg>Re-used</span><span class="bp-badge is-passport is-active"><svg class="bp-i"><use href="#i-check"/></svg>Active</span></div></td>
+            <td data-label=""><a class="bp-secondary-button bp-button-compact bp-with-icon" href="#">Open<svg class="bp-i"><use href="#i-arrow"/></svg></a></td>
+          </tr>
+          <tr>
+            <td data-label="Serial number"><a href="#"><strong>DEMO-C7M-0003</strong></a><small class="d-block text-secondary">Version 1 · updated 2 Nov 2026</small></td>
+            <td data-label="Model">Compact 7M <small class="d-block text-secondary">Compact</small></td>
+            <td data-label="Status"><div class="bp-row-badges"><span class="bp-badge is-battery is-original"><svg class="bp-i"><use href="#i-star"/></svg>Original</span><span class="bp-badge is-passport is-invalid"><svg class="bp-i"><use href="#i-alert"/></svg>Invalid</span></div></td>
+            <td data-label=""><a class="bp-secondary-button bp-button-compact bp-with-icon" href="#">Open<svg class="bp-i"><use href="#i-arrow"/></svg></a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<!-- ============================================================================================== F5 uploads -->
+<div class="mk-caption">
+  <h2><span class="mk-part">F5</span>Uploads say what was chosen and whether it's the right kind; the demo reset says it's working</h2>
+  <p>Every upload in the app works the same way (point 13). As soon as a file is chosen it shows its name, size and kind, and warns at once if the kind is wrong for this upload. The server still checks the content and answers in words on the page, including "too large". The demo reset disables its buttons and says how long it takes (point 1).</p>
+</div>
+<main class="bp-page bp-admin-page">
+  <div class="mk-pair">
+    <section class="bp-card bp-console-form-card">
+      <div class="bp-sec-head"><h2><svg class="bp-i"><use href="#i-accident"/></svg>Add an accident report</h2></div>
+      <div class="d-grid gap-2 mt-3">
+        <p class="bp-chosen is-good mb-0"><svg class="bp-i"><use href="#i-file"/></svg><span><strong>collision-12-oct.pdf</strong> · 412 KB · PDF, the right kind</span><button type="button" class="bp-text-button">Choose another</button></p>
+        <p class="bp-chosen is-wrong mb-0"><svg class="bp-i"><use href="#i-alert"/></svg><span><strong>photos.zip</strong> isn't a PDF, PNG or JPEG. Choose the report itself.</span><button type="button" class="bp-text-button">Choose another</button></p>
+      </div>
+      <div class="bp-sec-foot"><small>PDF, PNG or JPEG, up to 10 MB, checked by its content.</small><button type="button" class="bp-primary-button bp-with-icon"><svg class="bp-i"><use href="#i-upload"/></svg>Add report</button></div>
+    </section>
+    <section class="bp-card bp-console-form-card bp-setting-card">
+      <div class="bp-sec-head"><h2>Demo data <span class="bp-soft-tag ms-1">Loaded</span></h2></div>
+      <p class="bp-busy mt-3 mb-0"><svg class="bp-i bp-spin"><use href="#i-spinner"/></svg><span><strong>Resetting the demo data…</strong> This takes about 2 minutes. You can keep this page open; it reloads when done.</span></p>
+      <div class="d-flex flex-wrap gap-2 mt-3"><button type="button" class="bp-secondary-button" disabled>Reset demo data</button><button type="button" class="bp-danger-button" disabled>Clear demo data</button></div>
+    </section>
+  </div>
+</main>
+
+<!-- ============================================================================================== F6 pictures -->
+<div class="mk-caption">
+  <h2><span class="mk-part">F6</span>A picture per model, falling back to the family's</h2>
+  <p>On the battery family page, each model can have its own picture (point 8). A battery shows its model's picture, else its family's. The demo gets back the old app's 13M picture (double stack), from the tag. Splitting Compact into two families isn't needed.</p>
+</div>
+<main class="bp-page bp-admin-page">
+  <section class="bp-card bp-console-form-card">
+    <div class="bp-sec-head"><h2><svg class="bp-i"><use href="#i-image"/></svg>Pictures of the Compact family</h2></div>
+    <table class="mk-table mt-2">
+      <thead><tr><th>Picture of</th><th>Shown for</th><th></th></tr></thead>
+      <tbody>
+        <tr><td><strong>Compact</strong> (family)</td><td>Any model without its own</td><td><button type="button" class="bp-text-button">Replace</button></td></tr>
+        <tr><td><strong>Compact 7M</strong></td><td>Uses the family's picture</td><td><button type="button" class="bp-text-button">Add its own</button></td></tr>
+        <tr><td><strong>Compact 13M</strong></td><td>Its own: compact13.png (double stack)</td><td><button type="button" class="bp-text-button">Replace</button> <button type="button" class="bp-text-button">Remove</button></td></tr>
+      </tbody>
+    </table>
+  </section>
+</main>
+
+<div class="mk-caption">
+  <h2>The owner's answers (2 Nov 2026)</h2>
+  <p>Layout B, the side menu. The badges keep their own colours (decision 36). A picture per model, with the family's as fallback. A serial number with two passports opens the new one, with the calm chip and line of F3.</p>
+</div>
+</body>
+</html>

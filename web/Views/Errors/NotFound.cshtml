@@ -1,0 +1,14 @@
+@{
+    // The "not found" page (finding U04): an address that leads nowhere, with the home page's search.
+    ViewData["Title"] = "Page not found";
+}
+<main class="bp-page bp-message-page">
+    <h1>Page not found</h1>
+    <p>There is no page at this address. Look for a battery passport by its serial number, battery ID or passport ID:</p>
+    <form action="/search" class="bp-message-search" role="search">
+        <label for="bp-not-found-search" class="visually-hidden">Serial number, battery ID or passport ID</label>
+        <input id="bp-not-found-search" name="q" placeholder="Serial number, battery ID or passport ID" />
+        <button type="submit" class="bp-primary-button">Search</button>
+    </form>
+    <p class="bp-message-actions"><a href="/">Go to the home page</a></p>
+</main>

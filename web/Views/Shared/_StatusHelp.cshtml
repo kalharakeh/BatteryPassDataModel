@@ -1,0 +1,16 @@
+@using BatteryPassWeb.Dpp.Pages
+@using BatteryPassWeb.Dpp.Store
+@* "What do the two statuses mean?" (redesign R3, owner's point 9): the link beside the badges opens this explainer; it
+   says so in words, since a bare "?" went unseen (R5, item 5). In a list's Status heading it is a small ringed "?".
+   A popover needs no script; the explainer is written once per page, however many buttons point at it. *@
+<button type="button" class="bp-status-help-button" popovertarget="status-help" aria-label="What do the two statuses mean?"><svg class="bp-i" aria-hidden="true"><use href="#i-help" /></svg><span class="bp-status-help-words">What do these mean?</span></button>
+@if (!Context.Items.ContainsKey("status-help"))
+{
+    Context.Items["status-help"] = true;
+    <div id="status-help" class="bp-status-help" popover>
+        <h2>Two statuses</h2>
+        <p class="mb-0"><strong>Battery</strong> (square tag) says what has happened to the battery. <strong>Passport</strong> (round pill) says whether this passport is the one that counts.</p>
+        @await Html.PartialAsync("_StatusMeanings")
+        <div class="d-flex justify-content-end"><button type="button" class="bp-secondary-button" popovertarget="status-help" popovertargetaction="hide">Close</button></div>
+    </div>
+}

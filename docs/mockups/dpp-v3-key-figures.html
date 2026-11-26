@@ -1,0 +1,2198 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DPP V3 — key figures</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<!-- The app's own stylesheets, so the screens look exactly like the app. site.css is not changed. -->
+<link rel="stylesheet" href="../../web/wwwroot/css/site.css" data-app-css>
+<link rel="stylesheet" href="../../web/wwwroot/css/bp-product-data.css" data-app-css>
+<link rel="stylesheet" href="../../web/wwwroot/css/bp-status.css" data-app-css>
+<style data-key-figures>
+/* ==== Key figures ===================================================================================================
+   The public summary's "Summary report" card, renamed and widened: the public values a reader wants first, as tiles.
+   The same card shows on the detail page under the hero. Public attributes only (V3 longlist), so it is the same card
+   for every reader. These rules would go to bp-status.css next to .bp-hero-compact. */
+.bp-i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.bp-kf-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
+.bp-kf-head p { margin: 0; color: var(--bp-muted); font-size: .88rem; }
+.bp-kf-group { margin: 16px 0 8px; color: var(--bp-muted); font-size: .72rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.bp-kf-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.bp-kf-grid.is-five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.bp-kf { min-width: 0; padding: 14px 16px; border: 1px solid var(--bp-border); border-radius: 12px; background: var(--bp-surface); }
+.bp-kf.is-wide { grid-column: span 2; }
+.bp-kf-label { display: flex; align-items: center; gap: 8px; color: var(--bp-muted); font-size: .8rem; font-weight: 650; }
+.bp-kf-label .bp-i { width: 18px; height: 18px; color: var(--bp-primary); }
+.bp-kf-value { margin-top: 6px; font-size: 1.45rem; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.bp-kf-value small { color: var(--bp-muted); font-size: .9rem; font-weight: 600; }
+.bp-kf-sub { margin: 2px 0 0; color: var(--bp-muted); font-size: .84rem; line-height: 1.35; }
+.bp-kf-class { display: inline-block; margin-left: 8px; padding: 1px 9px; border: 1px solid #86efac; border-radius: 999px; background: #f0fdf4; color: #166534; font-size: .8rem; font-weight: 700; vertical-align: 4px; }
+/* Carbon footprint by life-cycle stage: one stacked bar instead of the pie, with its legend. */
+.bp-kf-stack { display: flex; height: 12px; margin-top: 10px; overflow: hidden; border-radius: 999px; background: #e2e8f0; }
+.bp-kf-stack span { display: block; height: 100%; }
+.bp-kf-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 0 0; padding: 0; list-style: none; color: var(--bp-muted); font-size: .8rem; }
+.bp-kf-legend i { display: inline-block; width: 9px; height: 9px; margin-right: 5px; border-radius: 2px; }
+.bp-kf-legend b { color: var(--bp-text); font-weight: 650; }
+/* Recycled content: one short bar per material. */
+.bp-kf-bars { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 6px 10px; margin-top: 10px; font-size: .84rem; }
+.bp-kf-bars .bp-kf-track { height: 8px; overflow: hidden; border-radius: 999px; background: #e2e8f0; }
+.bp-kf-bars .bp-kf-track span { display: block; height: 100%; border-radius: 999px; background: #08a348; }
+.bp-kf-bars b { font-weight: 650; text-align: right; }
+.bp-kf-foot { margin: 14px 0 0; color: var(--bp-muted); font-size: .84rem; }
+@media (max-width: 991.98px) {
+  .bp-kf-grid, .bp-kf-grid.is-five { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 575.98px) {
+  .bp-kf { padding: 12px; }
+  .bp-kf-value { font-size: 1.25rem; }
+}
+[data-theme="dark"] .bp-kf-stack, [data-theme="dark"] .bp-kf-bars .bp-kf-track { background: #334155; }
+[data-theme="dark"] .bp-kf-class { border-color: #166534; background: #052e16; color: #86efac; }
+
+/* ---- Mock-up only ------------------------------------------------------------------------------------------------- */
+.mk-intro, .mk-caption { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+.mk-intro { padding-top: 20px; }
+.mk-intro h1 { font-size: 1.6rem; }
+.mk-intro ol, .mk-intro ul { padding-left: 20px; }
+.mk-caption { margin-top: 44px; border-top: 3px solid #041e42; padding-top: 12px; }
+.mk-caption h2 { font-size: 1.25rem; margin-bottom: 4px; }
+.mk-caption p { color: #475569; margin-bottom: 0; max-width: 900px; }
+.mk-part { display: inline-block; margin-right: 8px; padding: 1px 8px; border-radius: 999px; background: #041e42; color: #fff; font-size: .8rem; font-weight: 600; vertical-align: 2px; }
+.mk-stage { max-width: 1180px; margin: 16px auto 0; padding: 0 16px; display: grid; gap: 16px; }
+.mk-hero { display: grid; grid-template-columns: 1fr auto; gap: 16px; padding: 18px 20px; border: 1px solid var(--bp-border); border-radius: 14px; background: var(--bp-surface); }
+.mk-hero h1 { margin: 0 0 6px; font-size: 1.5rem; }
+.mk-hero .mk-pic { display: grid; place-items: center; width: 96px; height: 160px; border: 1px solid var(--bp-border); border-radius: 10px; }
+.mk-hero dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px 18px; margin: 14px 0 0; grid-column: 1 / -1; }
+.mk-hero dt { color: var(--bp-muted); font-size: .74rem; font-weight: 600; }
+.mk-hero dd { margin: 0; font-weight: 600; }
+.mk-tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 16px; border: 1px solid var(--bp-border); border-radius: 14px; background: var(--bp-surface); color: var(--bp-muted); font-size: .9rem; }
+.mk-tabs span { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--bp-border); }
+.mk-tabs span:first-child { border-color: var(--bp-primary); color: var(--bp-primary); font-weight: 650; }
+.mk-whole { max-width: 1280px; margin: 16px auto 0; }
+.mk-whole .mk-picture { display: inline-grid; place-items: center; }
+.mk-q { margin-top: 10px; padding: 10px 14px; border-left: 4px solid #041e42; background: #f1f5f9; color: #0f172a; }
+.mk-table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.mk-table th, .mk-table td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: top; }
+.mk-yes { color: #166534; font-weight: 700; }
+@media (max-width: 575.98px) { .mk-hero .mk-pic { width: 60px; height: 100px; } }
+[data-theme="dark"] body { background: #0b1220; color: #e2e8f0; }
+[data-theme="dark"] .mk-caption p, [data-theme="dark"] .mk-intro p, [data-theme="dark"] .mk-intro li { color: #9fb1c8; }
+[data-theme="dark"] .mk-caption { border-top-color: #7ab6ff; }
+[data-theme="dark"] .mk-q { background: #13203a; color: #e2e8f0; border-left-color: #7ab6ff; }
+[data-theme="dark"] .mk-table th, [data-theme="dark"] .mk-table td { border-bottom-color: #334155; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-battery" viewBox="0 0 24 24"><rect x="3" y="7" width="16" height="10" rx="2"/><path d="M21 10v4M7 10v4M11 10v4"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 8-11h-6z"/></symbol>
+  <symbol id="i-cycle" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13.7-5.7L20 8"/><path d="M20 4v4h-4"/><path d="M20 12a8 8 0 0 1-13.7 5.7L4 16"/><path d="M4 20v-4h4"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-5"/><path d="M4 20h16"/></symbol>
+  <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5 19c0-8 5-13 15-14-1 10-6 15-14 15"/><path d="M5 19l8-8"/></symbol>
+  <symbol id="i-recycle" viewBox="0 0 24 24"><path d="M7 19H4l3-5M17 19h3l-3-5M12 4l-2 3.5M12 4l2 3.5"/><path d="M8.5 9.5L6 14M15.5 9.5L18 14M9 19h6"/></symbol>
+  <symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/><path d="M7.5 15h9"/></symbol>
+  <symbol id="i-thermo" viewBox="0 0 24 24"><path d="M10 14V5a2 2 0 1 1 4 0v9a4 4 0 1 1-4 0z"/><path d="M12 9v7"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/></symbol>
+  <symbol id="i-pack" viewBox="0 0 48 80"><rect x="6" y="6" width="36" height="68" rx="4"/><path d="M6 20h36M6 34h36M6 48h36M6 62h36M18 2h12"/></symbol>
+</svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"></path></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7z"></path><path d="M14 3v5h5M10 13h6M10 17h6"></path></symbol>
+    <symbol id="i-qr" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"></rect><rect x="14" y="4" width="6" height="6" rx="1"></rect><rect x="4" y="14" width="6" height="6" rx="1"></rect><path d="M14 14h2v2h-2zM18 18h2v2h-2zM14 19h1M19 14h1"></path></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.6"></path><path d="M4 4v4h4"></path><path d="M12 8v4l3 2"></path></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"></circle><circle cx="12" cy="12" r="1.3"></circle><circle cx="19" cy="12" r="1.3"></circle></symbol>
+    <symbol id="i-battery" viewBox="0 0 24 24"><rect x="3" y="7" width="16" height="10" rx="2"></rect><path d="M21 10v4M7 10v4M11 10v4"></path></symbol>
+    <symbol id="i-passport" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"></rect><circle cx="12" cy="10" r="3"></circle><path d="M9 16h6"></path></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M8 12.5l2.5 2.5L16 9.5"></path></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M10 9v6M14 9v6"></path></symbol>
+    <symbol id="i-archive" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1"></rect><path d="M5 9v10h14V9M10 13h4"></path></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l9.5 17h-19z"></path><path d="M12 10v4M12 17v.5"></path></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"></path></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.5l-5.3 2.9 1.2-6-4.5-4.1 6-.7z"></path></symbol>
+    <symbol id="i-reuse" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13.7-5.7L20 8"></path><path d="M20 4v4h-4"></path><path d="M20 12a8 8 0 0 1-13.7 5.7L4 16"></path><path d="M4 20v-4h4"></path></symbol>
+    <symbol id="i-repurpose" viewBox="0 0 24 24"><path d="M3 7h4l10 10h4M3 17h4l3-3M14 10l3-3h4"></path><path d="M18 4l3 3-3 3M18 14l3 3-3 3"></path></symbol>
+    <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8V21h3.2l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.5-.5-2.4z"></path></symbol>
+    <symbol id="i-waste" viewBox="0 0 24 24"><path d="M5 7h14l-1.5 13h-11z"></path><path d="M9 4h6M3 7h18"></path><path d="M10 11l2 3 2-3"></path></symbol>
+    <symbol id="i-swap" viewBox="0 0 24 24"><path d="M7 4L3 8l4 4M3 8h14M17 12l4 4-4 4M21 16H7"></path></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M5 4h14v11l-5 5H5z"></path><path d="M14 20v-5h5M9 9h6M9 13h3"></path></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 20V9M7 14l5-5 5 5M5 4h14"></path></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17v.5"></path></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"></path></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 1 1 12 0v5l2 2H4z"></path><path d="M10 21h4"></path></symbol>
+    <symbol id="i-handover" viewBox="0 0 24 24"><path d="M4 9h13l-3-3M20 15H7l3 3"></path></symbol>
+    <symbol id="i-live" viewBox="0 0 24 24"><path d="M3 12h4l2-5 4 10 2-5h6"></path></symbol>
+    <symbol id="i-modules" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"></rect><rect x="13" y="4" width="7" height="7" rx="1"></rect><rect x="4" y="13" width="7" height="7" rx="1"></rect><rect x="13" y="13" width="7" height="7" rx="1"></rect></symbol>
+    <symbol id="i-versions" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"></path><path d="M3 13l9 5 9-5"></path></symbol>
+    <symbol id="i-accident" viewBox="0 0 24 24"><path d="M8 3h8l5 5v8l-5 5H8l-5-5V8z"></path><path d="M12 8v5M12 16v.5"></path></symbol>
+    <symbol id="i-overview" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"></rect><rect x="13" y="3" width="8" height="5" rx="1"></rect><rect x="13" y="10" width="8" height="11" rx="1"></rect><rect x="3" y="13" width="8" height="8" rx="1"></rect></symbol>
+    <symbol id="i-values" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h1M4 12h1M4 18h1"></path></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path><path d="M12 8v5M12 16v.5"></path></symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"></path><path d="M13 7l4 4"></path></symbol>
+    <symbol id="i-publish" viewBox="0 0 24 24"><path d="M12 15V4M7 9l5-5 5 5"></path><path d="M5 14v6h14v-6"></path></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 8-11h-6z"></path></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 16a8 8 0 1 1 16 0"></path><path d="M12 16l4-5"></path><path d="M4 20h16"></path></symbol>
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5 19c0-8 5-13 15-14-1 10-6 15-14 15"></path><path d="M5 19l8-8"></path></symbol>
+    <symbol id="i-recycle" viewBox="0 0 24 24"><path d="M7 19H4l3-5M17 19h3l-3-5M12 4l-2 3.5M12 4l2 3.5"></path><path d="M8.5 9.5L6 14M15.5 9.5L18 14M9 19h6"></path></symbol>
+    <symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"></path><path d="M7.5 15h9"></path></symbol>
+    <symbol id="i-thermo" viewBox="0 0 24 24"><path d="M10 14V5a2 2 0 1 1 4 0v9a4 4 0 1 1-4 0z"></path><path d="M12 9v7"></path></symbol>
+</svg>
+
+<div class="mk-intro">
+  <h1>Key figures — the public summary's report card, renamed</h1>
+  <p class="text-secondary">Mock-up only; nothing is built yet. It uses the app's own stylesheets. The owner asked to keep and rename the "Summary report" card (power, carbon pie, recycled content), to show it on the detail page too, and to pick the public values a reader needs most. Values are the demo Compact 7M's.</p>
+  <ul class="text-secondary">
+    <li><strong>Only public values</strong> (V3 longlist "public"), so the card is the same for every reader and on both pages. No purchaser data: no battery status (#22), state of charge, cycles so far or temperature.</li>
+    <li><strong>Nothing the hero already shows</strong> (family, model, serial, modules, category, weight, made when and by whom).</li>
+    <li><strong>Nothing worked out</strong>: every figure is a value from the file. Energy in kWh isn't a V3 attribute, so it isn't shown.</li>
+  </ul>
+  <p class="text-secondary mb-0"><strong>R</strong> is the recommended set (8 tiles), <strong>S</strong> the smaller alternative (5 tiles), <strong>D</strong> the whole detail page with the same card, its titles linking to their entries. The table at the end says why each figure is there.</p>
+</div>
+
+<!-- ============================================================================================== R recommended -->
+<div class="mk-caption">
+  <h2><span class="mk-part">R</span>Recommended: 8 key figures in three groups</h2>
+  <p>Using it, the environment, safety. The carbon pie becomes one bar with its four stages; recycled content gets one short bar per material and the renewable share under it.</p>
+</div>
+<div class="mk-stage">
+  <section class="mk-hero" aria-label="Hero (as built, shortened)">
+    <div>
+      <span class="bp-summary-title">Battery passport</span>
+      <h1>Compact 7M · DEMO-C7M-0001</h1>
+      <span class="bp-badge is-passport is-active"><svg class="bp-i" aria-hidden="true"><use href="#i-check"/></svg><span class="bp-badge-kind">Passport</span>Active</span>
+    </div>
+    <div class="mk-pic" aria-hidden="true"><svg width="48" height="80" style="fill:none;stroke:#64748b;stroke-width:2"><use href="#i-pack"/></svg></div>
+    <dl>
+      <div><dt>Battery family</dt><dd>Compact</dd></div>
+      <div><dt>Battery model</dt><dd>CP7M</dd></div>
+      <div><dt>Category</dt><dd>Industrial, non-stationary</dd></div>
+      <div><dt>Weight</dt><dd>320 kg</dd></div>
+      <div><dt>Manufactured</dt><dd>July 2026</dd></div>
+    </dl>
+  </section>
+
+  <section class="bp-card bp-report-wide-section" aria-labelledby="kf-r">
+    <div class="bp-kf-head">
+      <span class="bp-summary-title" id="kf-r">Key figures</span>
+      <p>From this battery's passport. Every value is in the sections below.</p>
+    </div>
+
+    <p class="bp-kf-group">Using it</p>
+    <div class="bp-kf-grid">
+      <div class="bp-kf">
+        <div class="bp-kf-label"><svg class="bp-i" aria-hidden="true"><use href="#i-battery"/></svg>Capacity and voltage</div>
+        <div class="bp-kf-value">140 Ah <small>at 400 V</small></div>
+        <p class="bp-kf-sub">Works between 320 and 460 V</p>
+      </div>
+      <div class="bp-kf">
+        <div class="bp-kf-label"><svg class="bp-i" aria-hidden="true"><use href="#i-bolt"/></svg>Power</div>
+        <div class="bp-kf-value">171 kW <small>at 80 % charge</small></div>
+        <p class="bp-kf-sub">126 kW at 20 % charge · at most 180 kW</p>
+      </div>
+      <div class="bp-kf">
+        <div class="bp-kf-label"><svg class="bp-i" aria-hidden="true"><use href="#i-cycle"/></svg>Expected lifetime</div>
+        <div class="bp-kf-value">3,000 <small>cycles</small></div>
+        <p class="bp-kf-sub">Tested at 0.5 C · warranty 8 years</p>
+      </div>
+      <div class="bp-kf">
+        <div class="bp-kf-label"><svg class="bp-i" aria-hidden="true"><use href="#i-gauge"/></svg>Round-trip efficiency</div>
+        <div class="bp-kf-value">93 %</div>
+        <p class="bp-kf-sub">90 % at half its cycle life</p>
+      </div>
+    </div>
+
+    <p class="bp-kf-group">Environment</p>
+    <div class="bp-kf-grid">
+      <div class="bp-kf is-wide">
+        <div class="bp-kf-label"><svg class="bp-i" aria-hidden="true"><use href="#i-leaf"/></svg>Carbon footprint</div>
+        <div class="bp-kf-value">64 <small>kg CO₂e per kWh</small><span class="bp-kf-class">Class B</span></div>
+        <div class="bp-kf-stack" role="img" aria-label="Raw materials 34, production 21, distribution 3, end of life and recycling 6 kg CO2e per kWh">
+          <span style="width:53.1%;background:#22577a"></span><span style="width:32.8%;background:#38a3a5"></span><span style="width:4.7%;background:#f2a541"></span><span style="width:9.4%;background:#57cc99"></span>
+        </div>
+        <ul class="bp-kf-legend">
+          <li><i style="background:#22577a"></i>Raw materials <b>34</b></li>
+          <li><i style="background:#38a3a5"></i>Production <b>21</b></li>
+          <li><i style="background:#f2a541"></i>Distribution <b>3</b></li>
+          <li><i style="background:#57cc99"></i>End of life <b>6</b></li>
+        </ul>
+      </div>
+      <div class="bp-kf is-wide">
+        <div class="bp-kf-label"><svg class="bp-i" aria-hidden="true"><use href="#i-recycle"/></svg>Recycled content</div>
+        <div class="bp-kf-bars">
+          <span>Nickel</span><span class="bp-kf-track"><span style="width:30%"></span></span><b>30 %</b>
+          <span>Cobalt</span><span class="bp-kf-track"><span style="width:26%"></span></span><b>26 %</b>
+          <span>Lithium</span><span class="bp-kf-track"><span style="width:23%"></span></span><b>23 %</b>
+          <span>Lead</span><span class="bp-kf-track"><span style="width:35%"></span></span><b>35 %</b>
+        </div>
+        <p class="bp-kf-sub mt-2">Renewable content <strong>38 %</strong></p>
+      </div>
+    </div>
+
+    <p class="bp-kf-group">Safety</p>
+    <div class="bp-kf-grid">
+      <div class="bp-kf is-wide">
+        <div class="bp-kf-label"><svg class="bp-i" aria-hidden="true"><use href="#i-flask"/></svg>Chemistry</div>
+        <div class="bp-kf-value">Li-ion NMC</div>
+        <p class="bp-kf-sub">Critical raw materials: cobalt, lithium, natural graphite, nickel</p>
+      </div>
+      <div class="bp-kf is-wide">
+        <div class="bp-kf-label"><svg class="bp-i" aria-hidden="true"><use href="#i-thermo"/></svg>Storage and fire</div>
+        <div class="bp-kf-value">−20 to 45 °C <small>when idle</small></div>
+        <p class="bp-kf-sub">In a fire: water (fire class B)</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ============================================================================================== S smaller -->
+<div class="mk-caption">
+  <h2><span class="mk-part">S</span>Smaller alternative: 5 key figures in one row</h2>
+  <p>The three the owner kept (power, carbon, recycled content), plus capacity and lifetime. Shorter on a phone; efficiency, chemistry, storage and fire stay in the sections only.</p>
+</div>
+<div class="mk-stage">
+  <section class="bp-card bp-report-wide-section" aria-labelledby="kf-s">
+    <div class="bp-kf-head">
+      <span class="bp-summary-title" id="kf-s">Key figures</span>
+      <p>From this battery's passport. Every value is in the sections below.</p>
+    </div>
+    <div class="bp-kf-grid is-five mt-3">
+      <div class="bp-kf">
+        <div class="bp-kf-label"><svg class="bp-i" aria-hidden="true"><use href="#i-battery"/></svg>Capacity</div>
+        <div class="bp-kf-value">140 Ah</div>
+        <p class="bp-kf-sub">At 400 V (320–460 V)</p>
+      </div>
+      <div class="bp-kf">
+        <div class="bp-kf-label"><svg class="bp-i" aria-hidden="true"><use href="#i-bolt"/></svg>Power</div>
+        <div class="bp-kf-value">171 kW</div>
+        <p class="bp-kf-sub">At 80 % charge; 126 kW at 20 %</p>
+      </div>
+      <div class="bp-kf">
+        <div class="bp-kf-label"><svg class="bp-i" aria-hidden="true"><use href="#i-cycle"/></svg>Lifetime</div>
+        <div class="bp-kf-value">3,000 <small>cycles</small></div>
+        <p class="bp-kf-sub">Warranty 8 years</p>
+      </div>
+      <div class="bp-kf">
+        <div class="bp-kf-label"><svg class="bp-i" aria-hidden="true"><use href="#i-leaf"/></svg>Carbon footprint</div>
+        <div class="bp-kf-value">64 <small>kg CO₂e/kWh</small></div>
+        <div class="bp-kf-stack" role="img" aria-label="Raw materials 34, production 21, distribution 3, end of life 6">
+          <span style="width:53.1%;background:#22577a"></span><span style="width:32.8%;background:#38a3a5"></span><span style="width:4.7%;background:#f2a541"></span><span style="width:9.4%;background:#57cc99"></span>
+        </div>
+        <p class="bp-kf-sub mt-1">Class B</p>
+      </div>
+      <div class="bp-kf">
+        <div class="bp-kf-label"><svg class="bp-i" aria-hidden="true"><use href="#i-recycle"/></svg>Recycled content</div>
+        <div class="bp-kf-value">23–35 %</div>
+        <p class="bp-kf-sub">Ni 30 · Co 26 · Li 23 · Pb 35</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ============================================================================================== D detail -->
+<div class="mk-caption">
+  <h2><span class="mk-part">D</span>The whole detail page, with the key figures linked to their entries</h2>
+  <p>As built in the prototype (DEMO-C7M-0001, as the team sees it; the owner chose R). The card sits between the hero and the data sections and is the same for every reader. Live values (one small chart per value, every reading folded) and Modules are tabs of their own. Each title is a link with a small ↓: it opens the tab the entry sits in, scrolls to it and marks it. Here "Capacity and voltage ↓" was clicked: the Performance tab is open and "Rated capacity" is marked, with its date and source. The public summary's card has no links.</p>
+</div>
+<div class="mk-whole">
+<div class="bp-main ">
+            <main class="bp-page">
+    <section class="bp-report-hero-card bp-hero-compact">
+    <div class="bp-report-hero-layout">
+        <article class="bp-report-hero-info bp-summary-identity-grid bp-report-identity-grid">
+            <section class="bp-summary-id-panel bp-report-identity-panel bp-report-identity-panel--battery bp-report-header bp-report-title-block">
+                <span class="bp-summary-title">Battery</span>
+                <h1>DEMO-C7M-0001</h1>
+                <p class="text-secondary">Model: CP7M</p>
+                <div class="bp-badges mt-3" data-passport-badges="">
+<span class="bp-badge is-battery is-reused"><svg class="bp-i" aria-hidden="true"><use href="#i-reuse"></use></svg><span class="bp-badge-kind">Battery</span>Re-used
+</span>
+                    <span class="bp-badge is-passport is-active"><svg class="bp-i" aria-hidden="true"><use href="#i-check"></use></svg><span class="bp-badge-kind">Passport</span>Active
+</span>
+
+<button type="button" class="bp-test-tag" popovertarget="test-help" title="IDs that start with TEST- are test identifiers">Test passport<svg class="bp-i" aria-hidden="true"><use href="#i-help"></use></svg></button>
+    
+                    <button type="button" class="bp-status-help-button" popovertarget="status-help" aria-label="What do the two statuses mean?"><svg class="bp-i" aria-hidden="true"><use href="#i-help"></use></svg><span class="bp-status-help-words">What do these mean?</span></button>
+    
+
+                </div>
+            </section>
+
+            <section class="bp-summary-id-panel bp-report-identity-panel bp-report-identity-panel--identifiers">
+                <span class="bp-summary-title">Identifiers</span>
+                <p class="bp-passport-id"><span class="bp-id-label">Passport ID:</span><span class="bp-id-copy-row"><span class="bp-id-value">urn:x-battery-pass:TEST-DPP-41c65bed6afb42ebb5cee98ec7c6d650</span>    <button type="button" class="bp-copy-id-button" aria-label="Copy ID" title="Copy ID" data-tooltip="Copy ID" data-copy-id-button="" data-copy-value="urn:x-battery-pass:TEST-DPP-41c65bed6afb42ebb5cee98ec7c6d650">
+        <svg class="bp-copy-id-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="9" y="9" width="10" height="10" rx="2"></rect>
+            <path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"></path>
+        </svg>
+    </button>
+</span></p>
+                <p class="bp-passport-id"><span class="bp-id-label">Battery ID:</span><span class="bp-id-copy-row"><span class="bp-id-value">urn:x-battery-pass:TEST-86a0c12cc6174aed891edb336f77c27d</span>    <button type="button" class="bp-copy-id-button" aria-label="Copy ID" title="Copy ID" data-tooltip="Copy ID" data-copy-id-button="" data-copy-value="urn:x-battery-pass:TEST-86a0c12cc6174aed891edb336f77c27d">
+        <svg class="bp-copy-id-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="9" y="9" width="10" height="10" rx="2"></rect>
+            <path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"></path>
+        </svg>
+    </button>
+</span></p>
+                    <p class="bp-test-note">Test identifiers: these IDs start with TEST-, so this isn't a real passport yet. Real ones come once the identifier scheme is chosen.</p>
+            </section>
+
+            <section class="bp-summary-id-panel bp-summary-qr-panel bp-report-identity-panel bp-report-identity-panel--qr">
+                <span class="bp-summary-title">QR code</span>
+                <a class="bp-report-hero-qr" href="#" aria-label="Save the QR code of battery DEMO-C7M-0001">
+                    <span class="mk-picture"><svg width="60" height="100" viewBox="0 0 48 80" style="fill:none;stroke:#64748b;stroke-width:2" aria-hidden="true"><rect x="6" y="6" width="36" height="68" rx="4"></rect><path d="M6 20h36M6 34h36M6 48h36M6 62h36M18 2h12"></path></svg></span>
+                </a>
+            </section>
+
+                <div class="bp-report-hero-media bp-hero-picture">
+                    <div class="bp-image-wrap">
+                        <span class="mk-picture"><svg width="60" height="100" viewBox="0 0 48 80" style="fill:none;stroke:#64748b;stroke-width:2" aria-hidden="true"><rect x="6" y="6" width="36" height="68" rx="4"></rect><path d="M6 20h36M6 34h36M6 48h36M6 62h36M18 2h12"></path></svg></span>
+                    </div>
+                </div>
+                
+
+            <dl class="bp-field-grid bp-report-hero-fields bp-summary-fields-panel">
+                <div><dt>Battery family</dt><dd>Compact</dd></div>
+                <div><dt>Battery serial number</dt><dd>DEMO-C7M-0001</dd></div>
+                <div><dt>Battery model</dt><dd>CP7M</dd></div>
+                    <div class="bp-passport-modules"><dt>Modules</dt><dd>7                        <small class="d-block">Seven liquid-cooled NMC modules in one pack housing, with the battery management unit at the front.</small>
+</dd></div>
+                <div><dt>Category</dt><dd>industrial/non-stationary battery</dd></div>
+                <div><dt>Weight</dt><dd>320 kg</dd></div>
+                <div><dt>Manufactured date</dt><dd>July 2026</dd></div>
+                <div><dt>Manufactured by</dt><dd>Scania Industrial Batteries (demo)</dd></div>
+                <div><dt>Last updated</dt><dd>2 Nov 2026, 19:50</dd></div>
+                    <div><dt>Signature</dt><dd>Verified</dd></div>
+            </dl>
+
+            <div class="bp-hero-ctas">
+                    <a class="bp-report-hero-cta" href="#">&lt;- Back to summary</a>
+            </div>
+        </article>
+    </div>
+</section>
+
+            <section class="bp-card bp-report-wide-section bp-kf-card" aria-labelledby="key-figures-title">
+        <div class="bp-kf-head">
+            <span class="bp-summary-title" id="key-figures-title">Key figures</span>
+            <p>From this battery's passport. Each title leads to its full entry below.</p>
+        </div>
+            <p class="bp-kf-group">Using it</p>
+            <div class="bp-kf-grid">
+<div class="bp-kf">
+    <div class="bp-kf-label">
+        <a href="#value-57" data-key-figure-link=""><svg class="bp-i" aria-hidden="true"><use href="#i-battery"></use></svg>Capacity and voltage <span class="bp-kf-down" aria-hidden="true">↓</span></a>
+</div>
+
+    <div class="bp-kf-value">140 Ah            <small> at 400 V</small>
+</div>
+        <p class="bp-kf-sub">Works between 320 and 460 V</p>
+</div>
+<div class="bp-kf">
+    <div class="bp-kf-label">
+        <a href="#value-67" data-key-figure-link=""><svg class="bp-i" aria-hidden="true"><use href="#i-bolt"></use></svg>Power <span class="bp-kf-down" aria-hidden="true">↓</span></a>
+</div>
+
+    <div class="bp-kf-value">171 kW            <small> at 80 % charge</small>
+</div>
+        <p class="bp-kf-sub">126 kW at 20 % charge · at most 180 kW</p>
+</div>
+<div class="bp-kf">
+    <div class="bp-kf-label">
+        <a href="#value-82" data-key-figure-link=""><svg class="bp-i" aria-hidden="true"><use href="#i-reuse"></use></svg>Expected lifetime <span class="bp-kf-down" aria-hidden="true">↓</span></a>
+</div>
+
+    <div class="bp-kf-value">3,000            <small> cycles</small>
+</div>
+        <p class="bp-kf-sub">Tested at 0.5 C · warranty 8 years</p>
+</div>
+<div class="bp-kf">
+    <div class="bp-kf-label">
+        <a href="#value-71" data-key-figure-link=""><svg class="bp-i" aria-hidden="true"><use href="#i-gauge"></use></svg>Round-trip efficiency <span class="bp-kf-down" aria-hidden="true">↓</span></a>
+</div>
+
+    <div class="bp-kf-value">93 %</div>
+        <p class="bp-kf-sub">90 % at half its cycle life</p>
+</div>
+            </div>
+            <p class="bp-kf-group">Environment</p>
+            <div class="bp-kf-grid">
+                    <div class="bp-kf is-wide">
+                        <div class="bp-kf-label">
+        <a href="#value-30" data-key-figure-link=""><svg class="bp-i" aria-hidden="true"><use href="#i-leaf"></use></svg>Carbon footprint <span class="bp-kf-down" aria-hidden="true">↓</span></a>
+</div>
+
+                        <div class="bp-kf-value">64 <small>kg CO₂e per kWh</small>                                <span class="bp-kf-class">Class B</span>
+</div>
+                            <div class="bp-kf-stack" role="img" aria-label="Raw material acquisition 34, Main production 21, Distribution 3, End of life and recycling 6">
+                                    <span style="width:53.13%;background:#22577a"></span>
+                                    <span style="width:32.81%;background:#38a3a5"></span>
+                                    <span style="width:4.69%;background:#f2a541"></span>
+                                    <span style="width:9.38%;background:#57cc99"></span>
+                            </div>
+                            <ul class="bp-kf-legend">
+                                    <li><i style="background:#22577a"></i>Raw material acquisition <b>34</b></li>
+                                    <li><i style="background:#38a3a5"></i>Main production <b>21</b></li>
+                                    <li><i style="background:#f2a541"></i>Distribution <b>3</b></li>
+                                    <li><i style="background:#57cc99"></i>End of life and recycling <b>6</b></li>
+                            </ul>
+                    </div>
+                    <div class="bp-kf is-wide">
+                        <div class="bp-kf-label">
+        <a href="#value-49" data-key-figure-link=""><svg class="bp-i" aria-hidden="true"><use href="#i-recycle"></use></svg>Recycled content <span class="bp-kf-down" aria-hidden="true">↓</span></a>
+</div>
+
+                            <div class="bp-kf-bars">
+                                    <span>Nickel</span><span class="bp-kf-track"><span style="width:30%"></span></span><b>30 %</b>
+                                    <span>Cobalt</span><span class="bp-kf-track"><span style="width:26%"></span></span><b>26 %</b>
+                                    <span>Lithium</span><span class="bp-kf-track"><span style="width:23%"></span></span><b>23 %</b>
+                                    <span>Lead</span><span class="bp-kf-track"><span style="width:35%"></span></span><b>35 %</b>
+                            </div>
+                            <p class="bp-kf-sub mt-2">Renewable content <strong>38 %</strong></p>
+                    </div>
+            </div>
+            <p class="bp-kf-group">Safety</p>
+            <div class="bp-kf-grid">
+<div class="bp-kf is-wide">
+    <div class="bp-kf-label">
+        <a href="#value-41" data-key-figure-link=""><svg class="bp-i" aria-hidden="true"><use href="#i-flask"></use></svg>Chemistry <span class="bp-kf-down" aria-hidden="true">↓</span></a>
+</div>
+
+    <div class="bp-kf-value">Li-ion NMC</div>
+        <p class="bp-kf-sub">Critical raw materials: cobalt, lithium, natural graphite, nickel</p>
+</div>
+<div class="bp-kf is-wide">
+    <div class="bp-kf-label">
+        <a href="#value-88" data-key-figure-link=""><svg class="bp-i" aria-hidden="true"><use href="#i-thermo"></use></svg>Storage and fire <span class="bp-kf-down" aria-hidden="true">↓</span></a>
+</div>
+
+    <div class="bp-kf-value">−20 to 45 °C            <small> when idle</small>
+</div>
+        <p class="bp-kf-sub">In a fire: water (fire class B)</p>
+</div>
+            </div>
+    </section>
+
+    <section class="bp-card bp-report-wide-section">
+    <ul class="nav nav-tabs bp-tabs" id="passport-tabs" role="tablist" style="flex-wrap:wrap;overflow-x:visible">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-purchaser" type="button" role="tab" aria-selected="false" tabindex="-1">
+                        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="vertical-align:-2px;margin-right:4px"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"></rect><path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7"></path></svg>
+                    Purchaser
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-shared" type="button" role="tab" aria-selected="false" tabindex="-1">
+                        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="vertical-align:-2px;margin-right:4px"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"></rect><path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7"></path></svg>
+                    Shared
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-authorities" type="button" role="tab" aria-selected="false" tabindex="-1">
+                        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="vertical-align:-2px;margin-right:4px"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"></rect><path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7"></path></svg>
+                    Authorities
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-live" type="button" role="tab" aria-selected="false" tabindex="-1">
+                        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="vertical-align:-2px;margin-right:4px"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"></rect><path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7"></path></svg>
+                    Live values
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-modules" type="button" role="tab" aria-selected="false" tabindex="-1">
+                        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="vertical-align:-2px;margin-right:4px"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"></rect><path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7"></path></svg>
+                    Modules
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-dppHeader" type="button" role="tab" aria-selected="false" tabindex="-1">
+                    Passport
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-identifiersAndProductData" type="button" role="tab" aria-selected="false" tabindex="-1">
+                    Identifiers
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-symbolsLabelsAndDocumentationOfConformity" type="button" role="tab" aria-selected="false" tabindex="-1">
+                    Symbols and conformity
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-batteryCarbonFootprint" type="button" role="tab" aria-selected="false" tabindex="-1">
+                    Carbon footprint
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-supplyChainDueDiligence" type="button" role="tab" aria-selected="false" tabindex="-1">
+                    Due diligence
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-batteryMaterialsAndComposition" type="button" role="tab" aria-selected="false" tabindex="-1">
+                    Materials
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-circularityAndResourceEfficiency" type="button" role="tab" aria-selected="false" tabindex="-1">
+                    Circularity
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-performanceAndDurability" type="button" role="tab" aria-selected="true">
+                    Performance
+                </button>
+            </li>
+    </ul>
+
+    <div class="tab-content pt-4">
+            <div class="tab-pane fade" id="tab-live" role="tabpanel">
+                <h2 class="h5 mb-2">The last 7 days</h2>
+<p class="bp-help-text">Each value now, and how it went over the last week. Every reading, with when it was measured and how it arrived, is under the charts.</p>
+<div class="bp-live-charts">
+        <figure class="bp-live-chart">
+            <figcaption>State of Charge (SoC) (%)</figcaption>
+            <strong class="bp-live-chart-value">61 %</strong>
+                <svg class="bp-live-chart-plot" viewBox="0 -4 300 92" role="img" aria-label="From 76 to 61 over the last 7 days">
+                        <line class="bp-live-chart-day" x1="34" x2="34" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="34" y="84">28 Oct</text>
+                        <line class="bp-live-chart-day" x1="76.9" x2="76.9" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="76.9" y="84">29</text>
+                        <line class="bp-live-chart-day" x1="119.7" x2="119.7" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="119.7" y="84">30</text>
+                        <line class="bp-live-chart-day" x1="162.6" x2="162.6" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="162.6" y="84">31</text>
+                        <line class="bp-live-chart-day" x1="205.4" x2="205.4" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="205.4" y="84">1</text>
+                        <line class="bp-live-chart-day" x1="248.3" x2="248.3" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="248.3" y="84">2</text>
+                        <line class="bp-live-chart-day" x1="291.1" x2="291.1" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="291.1" y="84">3</text>
+                    <polyline points="3.4,11.9 14.1,2 24.8,11.9 35.5,35 46.2,58.1 56.9,68 67.6,58.1 78.4,35 89.1,11.9 99.8,2 110.5,11.9 121.2,35 131.9,58.1 142.6,68 153.4,58.1 164.1,35 174.8,11.9 185.5,2 196.2,11.9 206.9,35 217.6,58.1 228.4,68 239.1,58.1 249.8,35 260.5,11.9 271.2,2 281.9,11.9 281.9,28.4"></polyline>
+                </svg>
+                <small class="bp-live-chart-range">Low 25 · high 85 % · 28 readings</small>
+            <small>Measured 2 Nov 2026, 19:50 · typed in the app</small>
+        </figure>
+        <figure class="bp-live-chart">
+            <figcaption>Number of full charging and discharging cycles</figcaption>
+            <strong class="bp-live-chart-value">411</strong>
+                <svg class="bp-live-chart-plot" viewBox="0 -4 300 92" role="img" aria-label="From 398 to 411 over the last 7 days">
+                        <line class="bp-live-chart-day" x1="34" x2="34" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="34" y="84">28 Oct</text>
+                        <line class="bp-live-chart-day" x1="76.9" x2="76.9" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="76.9" y="84">29</text>
+                        <line class="bp-live-chart-day" x1="119.7" x2="119.7" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="119.7" y="84">30</text>
+                        <line class="bp-live-chart-day" x1="162.6" x2="162.6" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="162.6" y="84">31</text>
+                        <line class="bp-live-chart-day" x1="205.4" x2="205.4" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="205.4" y="84">1</text>
+                        <line class="bp-live-chart-day" x1="248.3" x2="248.3" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="248.3" y="84">2</text>
+                        <line class="bp-live-chart-day" x1="291.1" x2="291.1" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="291.1" y="84">3</text>
+                    <polyline points="3.4,68 14.1,62.9 24.8,62.9 35.5,57.8 46.2,57.8 56.9,52.8 67.6,52.8 78.4,47.7 89.1,47.7 99.8,42.6 110.5,42.6 121.2,37.5 131.9,37.5 142.6,32.5 153.4,32.5 164.1,27.4 174.8,27.4 185.5,22.3 196.2,22.3 206.9,17.2 217.6,17.2 228.4,12.2 239.1,12.2 249.8,7.1 260.5,7.1 271.2,2 281.9,2"></polyline>
+                </svg>
+                <small class="bp-live-chart-range">Low 398 · high 411 · 27 readings</small>
+            <small>Measured 2 Nov 2026, 19:50 · battery system</small>
+        </figure>
+        <figure class="bp-live-chart">
+            <figcaption>Temperature information (°C)</figcaption>
+            <strong class="bp-live-chart-value">16 °C</strong>
+                <svg class="bp-live-chart-plot" viewBox="0 -4 300 92" role="img" aria-label="From 28 to 16 over the last 7 days">
+                        <line class="bp-live-chart-day" x1="34" x2="34" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="34" y="84">28 Oct</text>
+                        <line class="bp-live-chart-day" x1="76.9" x2="76.9" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="76.9" y="84">29</text>
+                        <line class="bp-live-chart-day" x1="119.7" x2="119.7" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="119.7" y="84">30</text>
+                        <line class="bp-live-chart-day" x1="162.6" x2="162.6" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="162.6" y="84">31</text>
+                        <line class="bp-live-chart-day" x1="205.4" x2="205.4" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="205.4" y="84">1</text>
+                        <line class="bp-live-chart-day" x1="248.3" x2="248.3" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="248.3" y="84">2</text>
+                        <line class="bp-live-chart-day" x1="291.1" x2="291.1" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="291.1" y="84">3</text>
+                    <polyline points="3.4,2 14.1,35 24.8,68 35.5,35 46.2,2 56.9,35 67.6,68 78.4,35 89.1,2 99.8,35 110.5,68 121.2,35 131.9,2 142.6,35 153.4,68 164.1,35 174.8,2 185.5,35 196.2,68 206.9,35 217.6,2 228.4,35 239.1,68 249.8,35 260.5,2 271.2,35 281.9,68"></polyline>
+                </svg>
+                <small class="bp-live-chart-range">Low 16 · high 28 °C · 27 readings</small>
+            <small>Measured 2 Nov 2026, 19:50 · battery system</small>
+        </figure>
+        <figure class="bp-live-chart">
+            <figcaption>E1 Time spent in extreme temperatures above boundary (min)</figcaption>
+            <strong class="bp-live-chart-value">57 min</strong>
+                <svg class="bp-live-chart-plot" viewBox="0 -4 300 92" role="img" aria-label="From 31 to 57 over the last 7 days">
+                        <line class="bp-live-chart-day" x1="34" x2="34" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="34" y="84">28 Oct</text>
+                        <line class="bp-live-chart-day" x1="76.9" x2="76.9" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="76.9" y="84">29</text>
+                        <line class="bp-live-chart-day" x1="119.7" x2="119.7" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="119.7" y="84">30</text>
+                        <line class="bp-live-chart-day" x1="162.6" x2="162.6" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="162.6" y="84">31</text>
+                        <line class="bp-live-chart-day" x1="205.4" x2="205.4" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="205.4" y="84">1</text>
+                        <line class="bp-live-chart-day" x1="248.3" x2="248.3" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="248.3" y="84">2</text>
+                        <line class="bp-live-chart-day" x1="291.1" x2="291.1" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="291.1" y="84">3</text>
+                    <polyline points="3.4,68 14.1,65.5 24.8,62.9 35.5,60.4 46.2,57.8 56.9,55.3 67.6,52.8 78.4,50.2 89.1,47.7 99.8,45.2 110.5,42.6 121.2,40.1 131.9,37.5 142.6,35 153.4,32.5 164.1,29.9 174.8,27.4 185.5,24.8 196.2,22.3 206.9,19.8 217.6,17.2 228.4,14.7 239.1,12.2 249.8,9.6 260.5,7.1 271.2,4.5 281.9,2"></polyline>
+                </svg>
+                <small class="bp-live-chart-range">Low 31 · high 57 min · 27 readings</small>
+            <small>Measured 2 Nov 2026, 19:50 · battery system</small>
+        </figure>
+        <figure class="bp-live-chart">
+            <figcaption>E2 Time spent in extreme temperatures below boundary (min)</figcaption>
+            <strong class="bp-live-chart-value">18 min</strong>
+                <svg class="bp-live-chart-plot" viewBox="0 -4 300 92" role="img" aria-label="From 12 to 18 over the last 7 days">
+                        <line class="bp-live-chart-day" x1="34" x2="34" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="34" y="84">28 Oct</text>
+                        <line class="bp-live-chart-day" x1="76.9" x2="76.9" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="76.9" y="84">29</text>
+                        <line class="bp-live-chart-day" x1="119.7" x2="119.7" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="119.7" y="84">30</text>
+                        <line class="bp-live-chart-day" x1="162.6" x2="162.6" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="162.6" y="84">31</text>
+                        <line class="bp-live-chart-day" x1="205.4" x2="205.4" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="205.4" y="84">1</text>
+                        <line class="bp-live-chart-day" x1="248.3" x2="248.3" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="248.3" y="84">2</text>
+                        <line class="bp-live-chart-day" x1="291.1" x2="291.1" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="291.1" y="84">3</text>
+                    <polyline points="3.4,68 14.1,68 24.8,68 35.5,57 46.2,57 56.9,57 67.6,57 78.4,46 89.1,46 99.8,46 110.5,46 121.2,35 131.9,35 142.6,35 153.4,35 164.1,24 174.8,24 185.5,24 196.2,24 206.9,13 217.6,13 228.4,13 239.1,13 249.8,2 260.5,2 271.2,2 281.9,2"></polyline>
+                </svg>
+                <small class="bp-live-chart-range">Low 12 · high 18 min · 27 readings</small>
+            <small>Measured 2 Nov 2026, 19:50 · battery system</small>
+        </figure>
+        <figure class="bp-live-chart">
+            <figcaption>E3 Time spent charging during extreme temperatures above boundary (min)</figcaption>
+            <strong class="bp-live-chart-value">0 min</strong>
+                <svg class="bp-live-chart-plot" viewBox="0 -4 300 92" role="img" aria-label="From 0 to 0 over the last 7 days">
+                        <line class="bp-live-chart-day" x1="34" x2="34" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="34" y="84">28 Oct</text>
+                        <line class="bp-live-chart-day" x1="76.9" x2="76.9" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="76.9" y="84">29</text>
+                        <line class="bp-live-chart-day" x1="119.7" x2="119.7" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="119.7" y="84">30</text>
+                        <line class="bp-live-chart-day" x1="162.6" x2="162.6" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="162.6" y="84">31</text>
+                        <line class="bp-live-chart-day" x1="205.4" x2="205.4" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="205.4" y="84">1</text>
+                        <line class="bp-live-chart-day" x1="248.3" x2="248.3" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="248.3" y="84">2</text>
+                        <line class="bp-live-chart-day" x1="291.1" x2="291.1" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="291.1" y="84">3</text>
+                    <polyline points="3.4,35 14.1,35 24.8,35 35.5,35 46.2,35 56.9,35 67.6,35 78.4,35 89.1,35 99.8,35 110.5,35 121.2,35 131.9,35 142.6,35 153.4,35 164.1,35 174.8,35 185.5,35 196.2,35 206.9,35 217.6,35 228.4,35 239.1,35 249.8,35 260.5,35 271.2,35 281.9,35"></polyline>
+                </svg>
+                <small class="bp-live-chart-range">Low 0 · high 0 min · 27 readings</small>
+            <small>Measured 2 Nov 2026, 19:50 · battery system</small>
+        </figure>
+        <figure class="bp-live-chart">
+            <figcaption>E4 Time spent charging during extreme temperatures below boundary (min)</figcaption>
+            <strong class="bp-live-chart-value">0 min</strong>
+                <svg class="bp-live-chart-plot" viewBox="0 -4 300 92" role="img" aria-label="From 0 to 0 over the last 7 days">
+                        <line class="bp-live-chart-day" x1="34" x2="34" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="34" y="84">28 Oct</text>
+                        <line class="bp-live-chart-day" x1="76.9" x2="76.9" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="76.9" y="84">29</text>
+                        <line class="bp-live-chart-day" x1="119.7" x2="119.7" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="119.7" y="84">30</text>
+                        <line class="bp-live-chart-day" x1="162.6" x2="162.6" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="162.6" y="84">31</text>
+                        <line class="bp-live-chart-day" x1="205.4" x2="205.4" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="205.4" y="84">1</text>
+                        <line class="bp-live-chart-day" x1="248.3" x2="248.3" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="248.3" y="84">2</text>
+                        <line class="bp-live-chart-day" x1="291.1" x2="291.1" y1="0" y2="70"></line>
+                        <text class="bp-live-chart-label" x="291.1" y="84">3</text>
+                    <polyline points="3.4,35 14.1,35 24.8,35 35.5,35 46.2,35 56.9,35 67.6,35 78.4,35 89.1,35 99.8,35 110.5,35 121.2,35 131.9,35 142.6,35 153.4,35 164.1,35 174.8,35 185.5,35 196.2,35 206.9,35 217.6,35 228.4,35 239.1,35 249.8,35 260.5,35 271.2,35 281.9,35"></polyline>
+                </svg>
+                <small class="bp-live-chart-range">Low 0 · high 0 min · 27 readings</small>
+            <small>Measured 2 Nov 2026, 19:50 · battery system</small>
+        </figure>
+</div>
+<details class="bp-live-all">
+    <summary>All readings (190)</summary>
+    <p class="text-secondary small mt-2">Newest first. The latest 100 of 190.</p>
+    <div class="bp-table-scroll">
+        <table class="table align-middle bp-console-table bp-mobile-card-table mb-0">
+            <thead><tr><th>Measured</th><th>Value</th><th>Reading</th><th>Came from</th></tr></thead>
+            <tbody>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 19:50</td>
+                        <td data-label="Value">#63 State of Charge (SoC)</td>
+                        <td data-label="Reading">61 %</td>
+                        <td data-label="Came from">typed in the app</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 19:50</td>
+                        <td data-label="Value">#63 State of Charge (SoC)</td>
+                        <td data-label="Reading">76 %</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 19:50</td>
+                        <td data-label="Value">#83 Number of full charging and discharging cycles</td>
+                        <td data-label="Reading">411</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 19:50</td>
+                        <td data-label="Value">#87 Temperature information</td>
+                        <td data-label="Reading">16 °C</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 19:50</td>
+                        <td data-label="Value">E1 Time spent in extreme temperatures above boundary</td>
+                        <td data-label="Reading">57 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 19:50</td>
+                        <td data-label="Value">E2 Time spent in extreme temperatures below boundary</td>
+                        <td data-label="Reading">18 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 19:50</td>
+                        <td data-label="Value">E3 Time spent charging during extreme temperatures above boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 19:50</td>
+                        <td data-label="Value">E4 Time spent charging during extreme temperatures below boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 13:50</td>
+                        <td data-label="Value">#63 State of Charge (SoC)</td>
+                        <td data-label="Reading">85 %</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 13:50</td>
+                        <td data-label="Value">#83 Number of full charging and discharging cycles</td>
+                        <td data-label="Reading">411</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 13:50</td>
+                        <td data-label="Value">#87 Temperature information</td>
+                        <td data-label="Reading">22 °C</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 13:50</td>
+                        <td data-label="Value">E1 Time spent in extreme temperatures above boundary</td>
+                        <td data-label="Reading">56 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 13:50</td>
+                        <td data-label="Value">E2 Time spent in extreme temperatures below boundary</td>
+                        <td data-label="Reading">18 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 13:50</td>
+                        <td data-label="Value">E3 Time spent charging during extreme temperatures above boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 13:50</td>
+                        <td data-label="Value">E4 Time spent charging during extreme temperatures below boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 07:50</td>
+                        <td data-label="Value">#63 State of Charge (SoC)</td>
+                        <td data-label="Reading">76 %</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 07:50</td>
+                        <td data-label="Value">#83 Number of full charging and discharging cycles</td>
+                        <td data-label="Reading">410</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 07:50</td>
+                        <td data-label="Value">#87 Temperature information</td>
+                        <td data-label="Reading">28 °C</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 07:50</td>
+                        <td data-label="Value">E1 Time spent in extreme temperatures above boundary</td>
+                        <td data-label="Reading">55 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 07:50</td>
+                        <td data-label="Value">E2 Time spent in extreme temperatures below boundary</td>
+                        <td data-label="Reading">18 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 07:50</td>
+                        <td data-label="Value">E3 Time spent charging during extreme temperatures above boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 07:50</td>
+                        <td data-label="Value">E4 Time spent charging during extreme temperatures below boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 01:50</td>
+                        <td data-label="Value">#63 State of Charge (SoC)</td>
+                        <td data-label="Reading">55 %</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 01:50</td>
+                        <td data-label="Value">#83 Number of full charging and discharging cycles</td>
+                        <td data-label="Reading">410</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 01:50</td>
+                        <td data-label="Value">#87 Temperature information</td>
+                        <td data-label="Reading">22 °C</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 01:50</td>
+                        <td data-label="Value">E1 Time spent in extreme temperatures above boundary</td>
+                        <td data-label="Reading">54 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 01:50</td>
+                        <td data-label="Value">E2 Time spent in extreme temperatures below boundary</td>
+                        <td data-label="Reading">18 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 01:50</td>
+                        <td data-label="Value">E3 Time spent charging during extreme temperatures above boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">2 Nov 2026, 01:50</td>
+                        <td data-label="Value">E4 Time spent charging during extreme temperatures below boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 19:50</td>
+                        <td data-label="Value">#63 State of Charge (SoC)</td>
+                        <td data-label="Reading">34 %</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 19:50</td>
+                        <td data-label="Value">#83 Number of full charging and discharging cycles</td>
+                        <td data-label="Reading">409</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 19:50</td>
+                        <td data-label="Value">#87 Temperature information</td>
+                        <td data-label="Reading">16 °C</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 19:50</td>
+                        <td data-label="Value">E1 Time spent in extreme temperatures above boundary</td>
+                        <td data-label="Reading">53 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 19:50</td>
+                        <td data-label="Value">E2 Time spent in extreme temperatures below boundary</td>
+                        <td data-label="Reading">17 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 19:50</td>
+                        <td data-label="Value">E3 Time spent charging during extreme temperatures above boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 19:50</td>
+                        <td data-label="Value">E4 Time spent charging during extreme temperatures below boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 13:50</td>
+                        <td data-label="Value">#63 State of Charge (SoC)</td>
+                        <td data-label="Reading">25 %</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 13:50</td>
+                        <td data-label="Value">#83 Number of full charging and discharging cycles</td>
+                        <td data-label="Reading">409</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 13:50</td>
+                        <td data-label="Value">#87 Temperature information</td>
+                        <td data-label="Reading">22 °C</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 13:50</td>
+                        <td data-label="Value">E1 Time spent in extreme temperatures above boundary</td>
+                        <td data-label="Reading">52 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 13:50</td>
+                        <td data-label="Value">E2 Time spent in extreme temperatures below boundary</td>
+                        <td data-label="Reading">17 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 13:50</td>
+                        <td data-label="Value">E3 Time spent charging during extreme temperatures above boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 13:50</td>
+                        <td data-label="Value">E4 Time spent charging during extreme temperatures below boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 07:50</td>
+                        <td data-label="Value">#63 State of Charge (SoC)</td>
+                        <td data-label="Reading">34 %</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 07:50</td>
+                        <td data-label="Value">#83 Number of full charging and discharging cycles</td>
+                        <td data-label="Reading">408</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 07:50</td>
+                        <td data-label="Value">#87 Temperature information</td>
+                        <td data-label="Reading">28 °C</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 07:50</td>
+                        <td data-label="Value">E1 Time spent in extreme temperatures above boundary</td>
+                        <td data-label="Reading">51 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 07:50</td>
+                        <td data-label="Value">E2 Time spent in extreme temperatures below boundary</td>
+                        <td data-label="Reading">17 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 07:50</td>
+                        <td data-label="Value">E3 Time spent charging during extreme temperatures above boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 07:50</td>
+                        <td data-label="Value">E4 Time spent charging during extreme temperatures below boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 01:50</td>
+                        <td data-label="Value">#63 State of Charge (SoC)</td>
+                        <td data-label="Reading">55 %</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 01:50</td>
+                        <td data-label="Value">#83 Number of full charging and discharging cycles</td>
+                        <td data-label="Reading">408</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 01:50</td>
+                        <td data-label="Value">#87 Temperature information</td>
+                        <td data-label="Reading">22 °C</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 01:50</td>
+                        <td data-label="Value">E1 Time spent in extreme temperatures above boundary</td>
+                        <td data-label="Reading">50 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 01:50</td>
+                        <td data-label="Value">E2 Time spent in extreme temperatures below boundary</td>
+                        <td data-label="Reading">17 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 01:50</td>
+                        <td data-label="Value">E3 Time spent charging during extreme temperatures above boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">1 Nov 2026, 01:50</td>
+                        <td data-label="Value">E4 Time spent charging during extreme temperatures below boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 19:50</td>
+                        <td data-label="Value">#63 State of Charge (SoC)</td>
+                        <td data-label="Reading">76 %</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 19:50</td>
+                        <td data-label="Value">#83 Number of full charging and discharging cycles</td>
+                        <td data-label="Reading">407</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 19:50</td>
+                        <td data-label="Value">#87 Temperature information</td>
+                        <td data-label="Reading">16 °C</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 19:50</td>
+                        <td data-label="Value">E1 Time spent in extreme temperatures above boundary</td>
+                        <td data-label="Reading">49 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 19:50</td>
+                        <td data-label="Value">E2 Time spent in extreme temperatures below boundary</td>
+                        <td data-label="Reading">16 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 19:50</td>
+                        <td data-label="Value">E3 Time spent charging during extreme temperatures above boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 19:50</td>
+                        <td data-label="Value">E4 Time spent charging during extreme temperatures below boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 13:50</td>
+                        <td data-label="Value">#63 State of Charge (SoC)</td>
+                        <td data-label="Reading">85 %</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 13:50</td>
+                        <td data-label="Value">#83 Number of full charging and discharging cycles</td>
+                        <td data-label="Reading">407</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 13:50</td>
+                        <td data-label="Value">#87 Temperature information</td>
+                        <td data-label="Reading">22 °C</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 13:50</td>
+                        <td data-label="Value">E1 Time spent in extreme temperatures above boundary</td>
+                        <td data-label="Reading">48 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 13:50</td>
+                        <td data-label="Value">E2 Time spent in extreme temperatures below boundary</td>
+                        <td data-label="Reading">16 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 13:50</td>
+                        <td data-label="Value">E3 Time spent charging during extreme temperatures above boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 13:50</td>
+                        <td data-label="Value">E4 Time spent charging during extreme temperatures below boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 07:50</td>
+                        <td data-label="Value">#63 State of Charge (SoC)</td>
+                        <td data-label="Reading">76 %</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 07:50</td>
+                        <td data-label="Value">#83 Number of full charging and discharging cycles</td>
+                        <td data-label="Reading">406</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 07:50</td>
+                        <td data-label="Value">#87 Temperature information</td>
+                        <td data-label="Reading">28 °C</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 07:50</td>
+                        <td data-label="Value">E1 Time spent in extreme temperatures above boundary</td>
+                        <td data-label="Reading">47 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 07:50</td>
+                        <td data-label="Value">E2 Time spent in extreme temperatures below boundary</td>
+                        <td data-label="Reading">16 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 07:50</td>
+                        <td data-label="Value">E3 Time spent charging during extreme temperatures above boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 07:50</td>
+                        <td data-label="Value">E4 Time spent charging during extreme temperatures below boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 01:50</td>
+                        <td data-label="Value">#63 State of Charge (SoC)</td>
+                        <td data-label="Reading">55 %</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 01:50</td>
+                        <td data-label="Value">#83 Number of full charging and discharging cycles</td>
+                        <td data-label="Reading">406</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 01:50</td>
+                        <td data-label="Value">#87 Temperature information</td>
+                        <td data-label="Reading">22 °C</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 01:50</td>
+                        <td data-label="Value">E1 Time spent in extreme temperatures above boundary</td>
+                        <td data-label="Reading">46 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 01:50</td>
+                        <td data-label="Value">E2 Time spent in extreme temperatures below boundary</td>
+                        <td data-label="Reading">16 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 01:50</td>
+                        <td data-label="Value">E3 Time spent charging during extreme temperatures above boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">31 Oct 2026, 01:50</td>
+                        <td data-label="Value">E4 Time spent charging during extreme temperatures below boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">30 Oct 2026, 19:50</td>
+                        <td data-label="Value">#63 State of Charge (SoC)</td>
+                        <td data-label="Reading">34 %</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">30 Oct 2026, 19:50</td>
+                        <td data-label="Value">#83 Number of full charging and discharging cycles</td>
+                        <td data-label="Reading">405</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">30 Oct 2026, 19:50</td>
+                        <td data-label="Value">#87 Temperature information</td>
+                        <td data-label="Reading">16 °C</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">30 Oct 2026, 19:50</td>
+                        <td data-label="Value">E1 Time spent in extreme temperatures above boundary</td>
+                        <td data-label="Reading">45 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">30 Oct 2026, 19:50</td>
+                        <td data-label="Value">E2 Time spent in extreme temperatures below boundary</td>
+                        <td data-label="Reading">15 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">30 Oct 2026, 19:50</td>
+                        <td data-label="Value">E3 Time spent charging during extreme temperatures above boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">30 Oct 2026, 19:50</td>
+                        <td data-label="Value">E4 Time spent charging during extreme temperatures below boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">30 Oct 2026, 13:50</td>
+                        <td data-label="Value">#63 State of Charge (SoC)</td>
+                        <td data-label="Reading">25 %</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">30 Oct 2026, 13:50</td>
+                        <td data-label="Value">#83 Number of full charging and discharging cycles</td>
+                        <td data-label="Reading">405</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">30 Oct 2026, 13:50</td>
+                        <td data-label="Value">#87 Temperature information</td>
+                        <td data-label="Reading">22 °C</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">30 Oct 2026, 13:50</td>
+                        <td data-label="Value">E1 Time spent in extreme temperatures above boundary</td>
+                        <td data-label="Reading">44 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">30 Oct 2026, 13:50</td>
+                        <td data-label="Value">E2 Time spent in extreme temperatures below boundary</td>
+                        <td data-label="Reading">15 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">30 Oct 2026, 13:50</td>
+                        <td data-label="Value">E3 Time spent charging during extreme temperatures above boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">30 Oct 2026, 13:50</td>
+                        <td data-label="Value">E4 Time spent charging during extreme temperatures below boundary</td>
+                        <td data-label="Reading">0 minutes</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Measured">30 Oct 2026, 07:50</td>
+                        <td data-label="Value">#63 State of Charge (SoC)</td>
+                        <td data-label="Reading">34 %</td>
+                        <td data-label="Came from">battery system</td>
+                    </tr>
+            </tbody>
+        </table>
+    </div>
+</details>
+
+            </div>
+            <div class="tab-pane fade" id="tab-modules" role="tabpanel">
+                <h2 class="h5 mb-2">7 modules</h2>
+                <p class="bp-help-text">Seen only by the battery's cluster, market surveillance and the manufacturer's team.</p>
+                <div class="bp-table-scroll">
+                    <table class="table align-middle bp-console-table bp-mobile-card-table mb-0">
+                        <thead><tr><th>Position</th><th>Serial number</th><th>Connectivity ID</th></tr></thead>
+                        <tbody>
+                                <tr>
+                                    <td data-label="Position">1</td>
+                                    <td data-label="Serial number">DEMO-C7M-0001-M01</td>
+                                    <td data-label="Connectivity ID">CAN-DEMO-C7M-0001-01</td>
+                                </tr>
+                                <tr>
+                                    <td data-label="Position">2</td>
+                                    <td data-label="Serial number">DEMO-C7M-0001-M02</td>
+                                    <td data-label="Connectivity ID">CAN-DEMO-C7M-0001-02</td>
+                                </tr>
+                                <tr>
+                                    <td data-label="Position">3</td>
+                                    <td data-label="Serial number">DEMO-C7M-0001-M03</td>
+                                    <td data-label="Connectivity ID">CAN-DEMO-C7M-0001-03</td>
+                                </tr>
+                                <tr>
+                                    <td data-label="Position">4</td>
+                                    <td data-label="Serial number">DEMO-C7M-0001-M04</td>
+                                    <td data-label="Connectivity ID">CAN-DEMO-C7M-0001-04</td>
+                                </tr>
+                                <tr>
+                                    <td data-label="Position">5</td>
+                                    <td data-label="Serial number">DEMO-C7M-0001-M05</td>
+                                    <td data-label="Connectivity ID">CAN-DEMO-C7M-0001-05</td>
+                                </tr>
+                                <tr>
+                                    <td data-label="Position">6</td>
+                                    <td data-label="Serial number">DEMO-C7M-0001-M06</td>
+                                    <td data-label="Connectivity ID">CAN-DEMO-C7M-0001-06</td>
+                                </tr>
+                                <tr>
+                                    <td data-label="Position">7</td>
+                                    <td data-label="Serial number">DEMO-C7M-0001-M07</td>
+                                    <td data-label="Connectivity ID">CAN-DEMO-C7M-0001-07</td>
+                                </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="tab-purchaser" role="tabpanel">
+                <h2 class="h5 mb-2">Purchaser</h2>
+                <p class="bp-help-text">Seen by the battery's cluster and market surveillance.</p>
+                    <dl class="bp-field-grid">
+                            <div id="value-22">
+                                <dt>Battery status</dt>
+                                <dd>
+                                        <span class="">
+re-used                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-59">
+                                <dt>Capacity fade</dt>
+                                <dd>
+                                        <span class="">
+6 %                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-63">
+                                <dt>State of Charge (SoC)</dt>
+                                <dd>
+                                        <span class="">
+61 %                                        </span>
+                                        <span class="d-block small text-secondary">Measured 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-69">
+                                <dt>Power fade</dt>
+                                <dd>
+                                        <span class="">
+4 %                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-74">
+                                <dt>Energy round trip efficiency fade</dt>
+                                <dd>
+                                        <span class="">
+0 %                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-79">
+                                <dt>Internal resistance increase of pack (cell and module recommended)</dt>
+                                <dd>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Pack:</span>
+0 %                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-81">
+                                <dt>Expected lifetime in calendar years</dt>
+                                <dd>
+                                        <span class="">
+10 years                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-83">
+                                <dt>Number of full charging and discharging cycles</dt>
+                                <dd>
+                                        <span class="">
+411                                        </span>
+                                        <span class="d-block small text-secondary">Measured 2 Nov 2026, 19:50 · battery system</span>
+                                </dd>
+                            </div>
+                            <div id="value-87">
+                                <dt>Temperature information</dt>
+                                <dd>
+                                        <span class="">
+16 °C                                        </span>
+                                        <span class="d-block small text-secondary">Measured 2 Nov 2026, 19:50 · battery system</span>
+                                </dd>
+                            </div>
+                            <div id="value-92">
+                                <dt>Information on accidents</dt>
+                                <dd>
+                                        <span class="">
+                                                <a href="#" rel="noreferrer">Accident information</a>
+                                        </span>
+                                        <span class="d-block small text-secondary">Measured 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-1001">
+                                <dt>E1 Time spent in extreme temperatures above boundary</dt>
+                                <dd>
+                                        <span class="">
+57 minutes                                        </span>
+                                        <span class="d-block small text-secondary">Measured 2 Nov 2026, 19:50 · battery system</span>
+                                </dd>
+                            </div>
+                            <div id="value-1002">
+                                <dt>E2 Time spent in extreme temperatures below boundary</dt>
+                                <dd>
+                                        <span class="">
+18 minutes                                        </span>
+                                        <span class="d-block small text-secondary">Measured 2 Nov 2026, 19:50 · battery system</span>
+                                </dd>
+                            </div>
+                            <div id="value-1003">
+                                <dt>E3 Time spent charging during extreme temperatures above boundary</dt>
+                                <dd>
+                                        <span class="">
+0 minutes                                        </span>
+                                        <span class="d-block small text-secondary">Measured 2 Nov 2026, 19:50 · battery system</span>
+                                </dd>
+                            </div>
+                            <div id="value-1004">
+                                <dt>E4 Time spent charging during extreme temperatures below boundary</dt>
+                                <dd>
+                                        <span class="">
+0 minutes                                        </span>
+                                        <span class="d-block small text-secondary">Measured 2 Nov 2026, 19:50 · battery system</span>
+                                </dd>
+                            </div>
+                    </dl>
+                    <h3 class="h6 mt-3 mb-0">Repair history</h3>
+                        <dl class="bp-field-grid mt-2">
+                                <div>
+                                    <dt><time datetime="2026-11-02">2 Nov 2026</time></dt>
+                                    <dd>
+                                        Correction: Checked by the redesign flow.
+                                        <span class="d-block small text-secondary">Added by the manufacturer's team</span>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt><time datetime="2026-10-23">23 Oct 2026</time></dt>
+                                    <dd>
+                                        Module 4 replaced after a coolant leak.
+                                        <span class="d-block small text-secondary">Recorded by the manufacturer's team</span>
+                                    </dd>
+                                </div>
+                        </dl>
+            </div>
+            <div class="tab-pane fade" id="tab-shared" role="tabpanel">
+                <h2 class="h5 mb-2">Shared</h2>
+                <p class="bp-help-text">Seen by the battery's cluster, market surveillance, the Commission and, per value, repairers, recyclers and treatment facilities with a legitimate interest.</p>
+                    <dl class="bp-field-grid">
+                            <div id="value-43">
+                                <dt>Materials used in cathode, anode and electrolyte</dt>
+                                <dd>
+                                        <span class="d-block">
+Cathode: lithium nickel manganese cobalt oxide (NMC 811)                                        </span>
+                                        <span class="d-block">
+Anode: graphite                                        </span>
+                                        <span class="d-block">
+Electrolyte: LiPF6 in carbonate solvents                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-45">
+                                <dt>Dismantling information: Manuals for the removal and the disassembly of the battery pack</dt>
+                                <dd>
+                                        <span class="">
+                                                <a href="#" rel="noreferrer">Dismantling manual - Compact 7M</a>
+                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-46">
+                                <dt>Part numbers for components</dt>
+                                <dd>
+                                        <span class="">
+                                                <a href="#" rel="noreferrer">Part numbers for components - Compact 7M</a>
+                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-47">
+                                <dt>Information on sources of spare parts</dt>
+                                <dd>
+                                        <span class="">
+                                                <a href="#" rel="noreferrer">Sources of spare parts - Compact 7M</a>
+                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-48">
+                                <dt>Safety measures</dt>
+                                <dd>
+                                        <span class="">
+                                                <a href="#" rel="noreferrer">Safety measures - Compact 7M</a>
+                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                    </dl>
+            </div>
+            <div class="tab-pane fade" id="tab-authorities" role="tabpanel">
+                <h2 class="h5 mb-2">Authorities</h2>
+                <p class="bp-help-text">Seen by notified bodies, market surveillance and the Commission.</p>
+                    <dl class="bp-field-grid">
+                            <div id="value-7">
+                                <dt>Unique economic operator identifier</dt>
+                                <dd>
+                                        <span class="">
+urn:x-demo:operator:industrial-batteries                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-12">
+                                <dt>Unique manufacturer identifier</dt>
+                                <dd>
+                                        <span class="">
+urn:x-demo:manufacturer:plant-north                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-13">
+                                <dt>Third party service provider</dt>
+                                <dd>
+                                        <span class="">
+Demo Passport Hosting AB, Nordic region                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-29">
+                                <dt>Results of test reports proving compliance</dt>
+                                <dd>
+                                        <span class="">
+                                                <a href="#" rel="noreferrer">Compact 7M test report 2026</a>
+                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                    </dl>
+            </div>
+            <div class="tab-pane fade" id="tab-dppHeader" role="tabpanel">
+                <h2 class="h5 mb-2">Passport</h2>
+                <p class="bp-help-text">This passport and the battery it belongs to.</p>
+                    <dl class="bp-field-grid">
+                            <div id="value-1">
+                                <dt>DPP Schema version</dt>
+                                <dd>
+                                        <span class="">
+BatteryPass-Ready 2.0.1                                        </span>
+                                </dd>
+                            </div>
+                            <div id="value-2">
+                                <dt>DPP Status</dt>
+                                <dd>
+                                        <span class="">
+Active                                        </span>
+                                </dd>
+                            </div>
+                            <div id="value-3">
+                                <dt>DPP Granularity</dt>
+                                <dd>
+                                        <span class="">
+item                                        </span>
+                                </dd>
+                            </div>
+                            <div id="value-4">
+                                <dt>Date-time of latest update of DPP</dt>
+                                <dd>
+                                        <span class="">
+2 Nov 2026, 19:50                                        </span>
+                                </dd>
+                            </div>
+                            <div id="value-5">
+                                <dt>Unique battery passport identifier / unique DPP identifier</dt>
+                                <dd>
+                                        <span class="">
+urn:x-battery-pass:TEST-DPP-41c65bed6afb42ebb5cee98ec7c6d650                                        </span>
+                                </dd>
+                            </div>
+                            <div id="value-6">
+                                <dt>Unique battery identifier / unique product identifier</dt>
+                                <dd>
+                                        <span class="">
+urn:x-battery-pass:TEST-86a0c12cc6174aed891edb336f77c27d                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · set by the app</span>
+                                </dd>
+                            </div>
+                    </dl>
+            </div>
+            <div class="tab-pane fade" id="tab-identifiersAndProductData" role="tabpanel">
+                <h2 class="h5 mb-2">Identifiers and product data</h2>
+                <p class="bp-help-text">What the battery is and who makes it.</p>
+                    <dl class="bp-field-grid">
+                            <div id="value-10">
+                                <dt>Battery model identifier</dt>
+                                <dd>
+                                        <span class="">
+CP7M                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-11">
+                                <dt>Battery serial number</dt>
+                                <dd>
+                                        <span class="">
+DEMO-C7M-0001                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-14">
+                                <dt>Economic operator information</dt>
+                                <dd>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Name:</span>
+Scania Industrial Batteries (demo)                                        </span>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Registered trade name or trademark:</span>
+Scania Industrial Batteries                                        </span>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Postal address:</span>
+Demo Street 1, 111 11 Stockholm, Sweden                                        </span>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Website:</span>
+https://www.example.com                                        </span>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Email:</span>
+batteries@example.com                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-15">
+                                <dt>Manufacturer information</dt>
+                                <dd>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Name:</span>
+Scania Industrial Batteries (demo)                                        </span>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Registered trade name or trademark:</span>
+Scania Industrial Batteries                                        </span>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Postal address:</span>
+Demo Street 1, 111 11 Stockholm, Sweden                                        </span>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Website:</span>
+https://www.example.com                                        </span>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Email:</span>
+batteries@example.com                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-16">
+                                <dt>Manufacturing place</dt>
+                                <dd>
+                                        <span class="">
+Demo plant North, Stockholm, Sweden                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-17">
+                                <dt>Manufacturing date</dt>
+                                <dd>
+                                        <span class="">
+July 2026                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-19">
+                                <dt>Warranty period of the battery</dt>
+                                <dd>
+                                        <span class="">
+8 years                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-20">
+                                <dt>Battery category</dt>
+                                <dd>
+                                        <span class="">
+industrial/non-stationary battery                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-21">
+                                <dt>Battery mass</dt>
+                                <dd>
+                                        <span class="">
+320 kg                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                    </dl>
+            </div>
+            <div class="tab-pane fade" id="tab-symbolsLabelsAndDocumentationOfConformity" role="tabpanel">
+                <h2 class="h5 mb-2">Symbols, labels and conformity</h2>
+                <p class="bp-help-text">The battery's symbols and its declaration of conformity.</p>
+                    <dl class="bp-field-grid">
+                            <div id="value-23">
+                                <dt>Separate collection symbol</dt>
+                                <dd>
+                                        <span class="">
+                                                <a href="#" rel="noreferrer">Separate collection symbol</a>
+                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-24">
+                                <dt>Symbols for cadmium and lead</dt>
+                                <dd>
+                                        <span class="">
+                                                <a href="#" rel="noreferrer">Symbols for cadmium and lead</a>
+                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-25">
+                                <dt>Carbon footprint label</dt>
+                                <dd>
+                                        <span class="">
+                                                <a href="#" rel="noreferrer">Carbon footprint label</a>
+                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-26">
+                                <dt>Extinguishing agent</dt>
+                                <dd>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Fire class:</span>
+B                                        </span>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Extinguishing agent:</span>
+Water                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-27">
+                                <dt>Meaning of labels and symbols</dt>
+                                <dd>
+                                        <span class="">
+The crossed-out wheeled bin means the battery must be collected separately from other waste.                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-28">
+                                <dt>EU declaration of conformity</dt>
+                                <dd>
+                                        <span class="">
+                                                <a href="#" rel="noreferrer">EU declaration of conformity</a>
+                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                    </dl>
+            </div>
+            <div class="tab-pane fade" id="tab-batteryCarbonFootprint" role="tabpanel">
+                <h2 class="h5 mb-2">Carbon footprint</h2>
+                <p class="bp-help-text">Per functional unit and per life-cycle stage.</p>
+                    <dl class="bp-field-grid">
+                            <div id="value-30">
+                                <dt>Battery carbon footprint per Functional Unit</dt>
+                                <dd>
+                                        <span class="">
+64 kgCO2eq/kWh                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-31">
+                                <dt>Contribution of raw material acquisition and pre-processing lifecycle stage</dt>
+                                <dd>
+                                        <span class="">
+34 kgCO2eq/kWh                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-32">
+                                <dt>Contribution of main product production lifecycle stage</dt>
+                                <dd>
+                                        <span class="">
+21 kgCO2eq/kWh                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-33">
+                                <dt>Contribution of distribution lifecycle stage</dt>
+                                <dd>
+                                        <span class="">
+3 kgCO2eq/kWh                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-34">
+                                <dt>Contribution of end of life and recycling lifecycle stage</dt>
+                                <dd>
+                                        <span class="">
+6 kgCO2eq/kWh                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-35">
+                                <dt>Carbon footprint performance class</dt>
+                                <dd>
+                                        <span class="">
+Class B                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-36">
+                                <dt>Web link to public carbon footprint study</dt>
+                                <dd>
+                                        <span class="">
+                                                <a href="#" rel="noreferrer">https://www.example.com/demo/compact-7m/carbon-footprint-study</a>
+                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                    </dl>
+            </div>
+            <div class="tab-pane fade" id="tab-supplyChainDueDiligence" role="tabpanel">
+                <h2 class="h5 mb-2">Due diligence</h2>
+                <p class="bp-help-text">The supply chain due diligence report.</p>
+                    <dl class="bp-field-grid">
+                            <div id="value-38">
+                                <dt>Information of due diligence report</dt>
+                                <dd>
+                                        <span class="">
+                                                <a href="#" rel="noreferrer">Due diligence report</a>
+                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                    </dl>
+            </div>
+            <div class="tab-pane fade" id="tab-batteryMaterialsAndComposition" role="tabpanel">
+                <h2 class="h5 mb-2">Materials and composition</h2>
+                <p class="bp-help-text">Chemistry, critical raw materials and hazardous substances.</p>
+                    <dl class="bp-field-grid">
+                            <div id="value-41">
+                                <dt>Battery chemistry</dt>
+                                <dd>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Chemistry:</span>
+Li-ion NMC                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-42">
+                                <dt>Critical raw materials</dt>
+                                <dd>
+                                        <span class="d-block">
+Cobalt                                        </span>
+                                        <span class="d-block">
+Lithium                                        </span>
+                                        <span class="d-block">
+Natural graphite                                        </span>
+                                        <span class="d-block">
+Nickel                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-44">
+                                <dt>Hazardous substances and their impact</dt>
+                                <dd>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Chemical name:</span>
+Lithium hexafluorophosphate                                        </span>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Identifier type:</span>
+CAS No                                        </span>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Identifier:</span>
+21324-40-3                                        </span>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Concentration:</span>
+1.2                                        </span>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Hazard phrases:</span>
+H301, H314, H372                                        </span>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Precautionary phrases:</span>
+P260, P280, P301+P310                                        </span>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Where in the battery:</span>
+Electrolyte                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                    </dl>
+            </div>
+            <div class="tab-pane fade" id="tab-circularityAndResourceEfficiency" role="tabpanel">
+                <h2 class="h5 mb-2">Circularity</h2>
+                <p class="bp-help-text">Recycled and renewable content, and the end user's role in collection and waste prevention.</p>
+                    <dl class="bp-field-grid">
+                            <div id="value-49">
+                                <dt>Nickel recycled content share</dt>
+                                <dd>
+                                        <span class="">
+30 %                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-50">
+                                <dt>Cobalt recycled content share</dt>
+                                <dd>
+                                        <span class="">
+26 %                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-51">
+                                <dt>Lithium recycled content share</dt>
+                                <dd>
+                                        <span class="">
+23 %                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-52">
+                                <dt>Lead recycled content share</dt>
+                                <dd>
+                                        <span class="">
+35 %                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-53">
+                                <dt>Renewable content share</dt>
+                                <dd>
+                                        <span class="">
+38 %                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-54">
+                                <dt>Information on the role of end-users in contributing to waste prevention</dt>
+                                <dd>
+                                        <span class="">
+                                                <a href="#" rel="noreferrer">Your role in waste prevention</a>
+                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-55">
+                                <dt>Information on the role of end-users in contributing to the separate collection of waste batteries</dt>
+                                <dd>
+                                        <span class="">
+                                                <a href="#" rel="noreferrer">Your role in separate collection</a>
+                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-56">
+                                <dt>Information on battery collection, preparation for second life and on treatment at end of life</dt>
+                                <dd>
+                                        <span class="">
+                                                <a href="#" rel="noreferrer">Collection, second life and treatment</a>
+                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                    </dl>
+            </div>
+            <div class="tab-pane fade active show" id="tab-performanceAndDurability" role="tabpanel">
+                <h2 class="h5 mb-2">Performance and durability</h2>
+                <p class="bp-help-text">Capacity, voltage, power, efficiency and expected lifetime.</p>
+                    <dl class="bp-field-grid">
+                            <div id="value-57" class="is-landed">
+                                <dt>Rated capacity</dt>
+                                <dd>
+                                        <span class="">
+140 Ah                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-64">
+                                <dt>Minimum voltage</dt>
+                                <dd>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Voltage:</span>
+320 V                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-65">
+                                <dt>Maximum voltage</dt>
+                                <dd>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Voltage:</span>
+460 V                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-66">
+                                <dt>Nominal voltage</dt>
+                                <dd>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Voltage:</span>
+400 V                                        </span>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Test temperature from:</span>
+-20 °C                                        </span>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Test temperature to:</span>
+45 °C                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-67">
+                                <dt>Original power capability</dt>
+                                <dd>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Power at 80 % state of charge:</span>
+171,000 W                                        </span>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Power at 20 % state of charge:</span>
+126,000 W                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-70">
+                                <dt>Maximum permitted battery power</dt>
+                                <dd>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Power:</span>
+180,000 W                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-71">
+                                <dt>Initial round trip energy efficiency</dt>
+                                <dd>
+                                        <span class="">
+93 %                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-72">
+                                <dt>Round trip energy efficiency at 50% of cycle life</dt>
+                                <dd>
+                                        <span class="">
+90 %                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-78">
+                                <dt>Initial internal resistance of battery cell and pack (module recommended)</dt>
+                                <dd>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Pack:</span>
+1 Ohm                                        </span>
+                                        <span class="d-block">
+                                                <span class="text-secondary">Cell:</span>
+1 Ohm                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-82">
+                                <dt>Expected lifetime - Number of charge-discharge cycles</dt>
+                                <dd>
+                                        <span class="">
+3,000                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-84">
+                                <dt>Cycle-life reference test</dt>
+                                <dd>
+                                        <span class="">
+IEC 62660-1                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-85">
+                                <dt>C-rate of relevant cycle-life test</dt>
+                                <dd>
+                                        <span class="">
+0.5 A/Ah                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-88">
+                                <dt>Temperature range idle state, lower boundary</dt>
+                                <dd>
+                                        <span class="">
+-20 °C                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                            <div id="value-89">
+                                <dt>Temperature range idle state, upper boundary</dt>
+                                <dd>
+                                        <span class="">
+45 °C                                        </span>
+                                        <span class="d-block small text-secondary">Entered 2 Nov 2026, 19:50 · typed in the app</span>
+                                </dd>
+                            </div>
+                    </dl>
+            </div>
+    </div>
+</section>
+
+</main>
+
+
+        </div>
+</div>
+
+<!-- ============================================================================================== why -->
+<div class="mk-caption">
+  <h2>Why these figures</h2>
+  <p>All public in the V3 longlist. "R" and "S" say which set shows each one.</p>
+</div>
+<div class="mk-stage">
+  <div class="table-responsive">
+  <table class="mk-table">
+    <thead><tr><th>Figure</th><th>Attributes</th><th>Why a reader cares</th><th>R</th><th>S</th></tr></thead>
+    <tbody>
+      <tr><td>Capacity and voltage</td><td>#57, #66, #64, #65</td><td>How much the battery holds and at what voltage: the first thing anyone comparing batteries checks.</td><td class="mk-yes">✓</td><td class="mk-yes">✓</td></tr>
+      <tr><td>Power</td><td>#67, #70</td><td>What it can deliver, at high and low charge (the old card's "Original power capability").</td><td class="mk-yes">✓</td><td class="mk-yes">✓</td></tr>
+      <tr><td>Expected lifetime</td><td>#82, #85, #19</td><td>How long it should last, and the warranty that backs it.</td><td class="mk-yes">✓</td><td class="mk-yes">✓</td></tr>
+      <tr><td>Round-trip efficiency</td><td>#71, #72</td><td>How much energy comes back out, new and at half its life.</td><td class="mk-yes">✓</td><td></td></tr>
+      <tr><td>Carbon footprint</td><td>#30, #35, #31–#34</td><td>The regulation's headline environmental figure and its class; the stages show where it comes from.</td><td class="mk-yes">✓</td><td class="mk-yes">✓</td></tr>
+      <tr><td>Recycled and renewable content</td><td>#49–#52, #53</td><td>What share of the key metals is recycled (the old card's donuts), and the renewable share.</td><td class="mk-yes">✓</td><td class="mk-yes">✓</td></tr>
+      <tr><td>Chemistry</td><td>#41, #42</td><td>What is inside, for anyone handling, buying or recycling it.</td><td class="mk-yes">✓</td><td></td></tr>
+      <tr><td>Storage and fire</td><td>#88, #89, #26</td><td>Safe idle temperatures, and what to put out a fire with: first responders and warehouses.</td><td class="mk-yes">✓</td><td></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="mk-q"><strong>Two smaller choices, with a default.</strong> (1) Power is stored in W (171,000 W); the card shows kW for reading, the sections keep W. (2) The carbon pie becomes one bar, which fits a tile and reads on a phone; the pie can stay if the owner prefers it.</div>
+  <p class="text-secondary small mt-3 mb-5">Not shown, on purpose: battery status (#22), state of charge (#63), cycles so far (#83), temperature (#87) and the fades are purchaser data, never public; the documents and symbols are links, already in their sections.</p>
+</div>
+</body>
+</html>

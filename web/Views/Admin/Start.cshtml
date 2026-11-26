@@ -1,0 +1,61 @@
+@using BatteryPassWeb.Dpp.Pages
+@model ToDoPage
+@{
+    // The team's "To do" page (finding U05, the owner's approved picture B): six boxes, each a count, a few lines that
+    // open the place to do the job, and a link to all of them. The battery list is one click away.
+    ViewData["Title"] = "To do";
+}
+<main class="bp-page bp-start">
+    <div class="bp-start-head">
+        <div>
+            <span class="bp-start-kicker">Your team</span>
+            <h1>To do</h1>
+            <p>What needs doing across the @Words.Count(Model.Batteries, "battery", "batteries"). Each line opens the place to do it.</p>
+        </div>
+        <div class="bp-start-actions">
+            <a class="bp-primary-button" href="/admin/batteries">Open the battery list</a>
+            <a class="bp-secondary-button" href="/admin/batteries/new">Create battery</a>
+        </div>
+    </div>
+
+    <div class="bp-start-grid">
+        @foreach (var box in Model.Boxes)
+        {
+            <section class="bp-todo@(box.Count == 0 ? " is-clear" : string.Empty)" data-box="@box.Key" aria-labelledby="todo-@box.Key">
+                <header class="bp-todo-head">
+                    <svg class="bp-i" aria-hidden="true"><use href="#i-@box.Icon" /></svg>
+                    <h2 id="todo-@box.Key">@box.Title</h2>
+                    @if (box.Count == 0)
+                    {
+                        <span class="bp-todo-count is-clear"><svg class="bp-i" aria-hidden="true"><use href="#i-check" /></svg><span class="visually-hidden">Nothing to do</span></span>
+                    }
+                    else
+                    {
+                        <span class="bp-todo-count">@box.Count@(box.AtLeast ? "+" : null)</span>
+                    }
+                </header>
+                @if (box.Count == 0)
+                {
+                    <p class="bp-todo-clear">@box.Clear</p>
+                }
+                else
+                {
+                    <ul class="bp-todo-list">
+                        @foreach (var line in box.Lines)
+                        {
+                            <li><a href="@line.Href">@line.Title</a><span>@line.Note</span></li>
+                        }
+                    </ul>
+                    @if (box.AtLeast)
+                    {
+                        <p class="bp-todo-clear mb-0">@box.Count or more: the box reads the newest @BatteryPassWeb.Dpp.Store.DppStore.RefusedUploadsRead uploads with something refused.</p>
+                    }
+                    @if (box.MoreHref is { } more)
+                    {
+                        <p class="bp-todo-more"><a href="@more">@box.MoreText ›</a></p>
+                    }
+                }
+            </section>
+        }
+    </div>
+</main>

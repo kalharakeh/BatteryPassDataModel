@@ -1,0 +1,6 @@
+@using BatteryPassWeb.Dpp.Access
+@* Finding R11: the one use notice for restricted data, in the partial that renders a restricted section. The reader's role is set by the page's action; it is absent for the team and a cluster admin's own batteries. *@
+@if (ViewData[RestrictedReads.RoleKey] as string is { Length: > 0 } role)
+{
+    <p class="bp-help-text" data-restricted-notice>@RestrictedReads.Notice(role)</p>
+}

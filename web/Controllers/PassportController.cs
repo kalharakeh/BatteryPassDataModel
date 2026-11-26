@@ -1,373 +1,324 @@
-using BatteryPassWeb.Models.ViewModels;
-using BatteryPassWeb.Services;
+using BatteryPassWeb.Dpp.Api;
+using BatteryPassWeb.Dpp.Access;
+using BatteryPassWeb.Dpp.Editing;
+using BatteryPassWeb.Dpp.Pages;
+using BatteryPassWeb.Dpp.RegistryToken;
+using BatteryPassWeb.Configuration;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using MongoDB.Bson;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Net.Http.Headers;
 
 namespace BatteryPassWeb.Controllers;
 
-public class PassportController : Controller
+/// <summary>
+/// The passport pages (design 12, step 3b), in place of today's: the public summary, which the battery's QR code opens
+/// without signing in, and the detail page for signed-in readers. An address names a passport by its battery ID (#6),
+/// a version's passport ID (#5) or the battery's serial number. Both pages show only what <see cref="PassportFilter"/>
+/// leaves for the reader.
+/// </summary>
+[AllowAnonymous]
+[Route("dpp")]
+public sealed class PassportController(DppReaders readers, PassportPages pages) : Controller
 {
-    private readonly PassportRepository _passportRepository;
-    private readonly BatteryRepository _batteryRepository;
-    private readonly BatteryRouteResolutionService _batteryRouteResolutionService;
-    private readonly ClusterRepository _clusterRepository;
-    private readonly PassportViewModelFactory _viewModelFactory;
-    private readonly AccessControlService _accessControlService;
-    private readonly BatteryTelemetryRepository _batteryTelemetryRepository;
-    private readonly PassportTrustService _passportTrustService;
-    private readonly PassportPublishPolicyService _passportPublishPolicyService;
-    private readonly BatteryIdService _batteryIdService;
+    /// <summary>Where the detail page says what happened to "Mark as invalid".</summary>
+    public const string MarkMessageKey = "PassportMarkMessage";
 
-    public PassportController(
-        PassportRepository passportRepository,
-        BatteryRepository batteryRepository,
-        BatteryRouteResolutionService batteryRouteResolutionService,
-        ClusterRepository clusterRepository,
-        PassportViewModelFactory viewModelFactory,
-        AccessControlService accessControlService,
-        BatteryTelemetryRepository batteryTelemetryRepository,
-        PassportTrustService passportTrustService,
-        PassportPublishPolicyService passportPublishPolicyService,
-        BatteryIdService batteryIdService)
+    /// <summary>
+    /// Market surveillance marks a passport invalid from its detail page (design 7.7, mock-up S6, step 4c-2). Anyone else,
+    /// signed in or not, finds nothing here.
+    /// </summary>
+    [HttpPost("{id}/detail/invalid")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MarkInvalid(string id, [FromForm] string? reason, [FromServices] PassportMarks marks, CancellationToken cancellationToken, [FromServices] DemoBoundary? demo = null)
     {
-        _passportRepository = passportRepository;
-        _batteryRepository = batteryRepository;
-        _batteryRouteResolutionService = batteryRouteResolutionService;
-        _clusterRepository = clusterRepository;
-        _viewModelFactory = viewModelFactory;
-        _accessControlService = accessControlService;
-        _batteryTelemetryRepository = batteryTelemetryRepository;
-        _passportTrustService = passportTrustService;
-        _passportPublishPolicyService = passportPublishPolicyService;
-        _batteryIdService = batteryIdService;
-    }
-
-    [HttpGet("{passportId}/summary")]
-    public async Task<IActionResult> Summary(string passportId, [FromQuery] string? access, CancellationToken cancellationToken)
-    {
-        if (IsReservedSegment(passportId))
+        var reader = await readers.ForAsync(User, cancellationToken);
+        if (!reader.Roles.Contains(ReaderRole.MarketSurveillance) || await pages.FindAsync(Uri.UnescapeDataString(id), cancellationToken) is not { } version)
         {
             return NotFound();
         }
 
-        var decodedPassportId = Uri.UnescapeDataString(passportId);
-        var document = await _passportRepository.GetByPassportIdAsync(decodedPassportId, cancellationToken)
-            ?? FallbackSamplePassport(decodedPassportId);
-        if (document == null)
-        {
-            return NotFound();
-        }
-        if (string.Equals(BsonHelpers.GetString(document, "registryInfo", "status"), "archived", StringComparison.OrdinalIgnoreCase))
-        {
-            return NotFound();
-        }
-        if (!await _accessControlService.CanOpenPassportSummaryAsync(User, document, _passportPublishPolicyService, cancellationToken))
+        // Outside the demo a demo authority finds nothing here, as for an unknown passport (finding R03).
+        if (demo is not null && !(await demo.OnAsync(reader, version.PackId, cancellationToken)).Roles.Contains(ReaderRole.MarketSurveillance))
         {
             return NotFound();
         }
 
-        var clusterDocuments = await _clusterRepository.ListClustersAsync(cancellationToken);
-        var clusterNamesById = clusterDocuments
-            .Select(cluster => new
-            {
-                ClusterId = BsonHelpers.GetString(cluster, "clusterId"),
-                Name = BsonHelpers.GetString(cluster, "name")
-            })
-            .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
-            .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
-        var passport = _viewModelFactory.Create(document, clusterNamesById, _passportTrustService.Verify(document));
-        var canOpenDetail = false;
-
-        if (User.Identity?.IsAuthenticated == true)
-        {
-            canOpenDetail = await _accessControlService.CanOpenPassportDetailAsync(User, document, _passportPublishPolicyService, cancellationToken);
-        }
-
-        var detailAccessNotice = string.Empty;
-        if (!canOpenDetail)
-        {
-            if (string.IsNullOrWhiteSpace(passport.ClusterId))
-            {
-                detailAccessNotice = "This battery is not assigned to a cluster. Sign in as the general admin to open the detailed report.";
-            }
-            else if (User.Identity?.IsAuthenticated == true)
-            {
-                var email = AccessControlService.CurrentEmail(User);
-                detailAccessNotice = $"Current user {email} is not connected to {passport.ClusterLabel}. Sign in with a user connected to {passport.ClusterLabel} to open the detailed report.";
-            }
-            else
-            {
-                detailAccessNotice = $"Sign in with a user connected to {passport.ClusterLabel} to open the detailed report.";
-            }
-        }
-
-        if (!canOpenDetail && string.Equals(access, "wrong-cluster", StringComparison.OrdinalIgnoreCase))
-        {
-            if (string.IsNullOrWhiteSpace(detailAccessNotice))
-            {
-                detailAccessNotice = $"Sign in with a user connected to {passport.ClusterLabel} to open the detailed report.";
-            }
-        }
-
-        return View(new PassportSummaryPageViewModel
-        {
-            Passport = passport,
-            CanOpenDetail = canOpenDetail,
-            DetailActionUrl = BuildDetailActionUrl(passport.PassportId, canOpenDetail, User.Identity?.IsAuthenticated == true),
-            DetailAccessNotice = detailAccessNotice
-        });
-    }
-
-    [HttpGet("{batteryId}/latest")]
-    public async Task<IActionResult> Latest(string batteryId, CancellationToken cancellationToken)
-    {
-        if (IsReservedSegment(batteryId))
-        {
-            return NotFound();
-        }
-
-        var decodedBatteryId = Uri.UnescapeDataString(batteryId);
-        var document = User.Identity?.IsAuthenticated == true
-            ? (await _passportRepository.ListByBatteryIdAsync(decodedBatteryId, includeArchived: false, cancellationToken)).FirstOrDefault()
-            : await _passportRepository.GetLatestPublicByBatteryIdAsync(decodedBatteryId, _passportPublishPolicyService, cancellationToken);
-
-        if (document == null)
-        {
-            if (IsGeneratedSampleBatteryId(decodedBatteryId))
-            {
-                return Redirect($"/{Uri.EscapeDataString(ExternalApiInitializer.SamplePassportId)}/summary");
-            }
-
-            return RedirectToSearchNotFound(decodedBatteryId);
-        }
-
-        var passportPath = $"/{Uri.EscapeDataString(BsonHelpers.GetString(document, "passportId"))}";
-        return User.Identity?.IsAuthenticated == true
-            ? Redirect(passportPath)
-            : Redirect($"{passportPath}/summary");
-    }
-
-    [HttpGet("{batteryId}/latest/summary")]
-    public Task<IActionResult> LatestSummary(string batteryId, CancellationToken cancellationToken)
-    {
-        return Latest(batteryId, cancellationToken);
+        var problem = await marks.MarkInvalidAsync(DppReaders.SurveillanceSenderFor(reader), version.PackId, reason, cancellationToken);
+        TempData[MarkMessageKey] = problem is null ? "The passport is marked invalid. The team is the only one who can undo it." : $"The passport wasn't marked: {problem}.";
+        return Redirect(PassportPages.DetailHref(Uri.UnescapeDataString(id)));
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> Detail(string id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Summary(string id, CancellationToken cancellationToken, [FromServices] BatteryPassWeb.Dpp.Identifiers.BatteryIdPool? pool = null)
     {
-        if (IsReservedSegment(id))
+        Response.Headers[HeaderNames.Vary] = RegistryTokenRequest.Vary;
+        if (await GoneAsync(this, Uri.UnescapeDataString(id), json: false, cancellationToken) is { } gone)
         {
-            return NotFound();
+            return gone; // finding R08: removed after recycling or export; asked before anything is looked up
         }
 
-        var decodedPassportId = Uri.UnescapeDataString(id);
-        var resolution = await _batteryRouteResolutionService.ResolveAsync(decodedPassportId, cancellationToken);
-        if (resolution.Kind == BatteryRouteTargetKind.Battery)
+        var reader = await readers.ForAsync(User, cancellationToken);
+        var page = await pages.SummaryAsync(reader, Uri.UnescapeDataString(id), cancellationToken);
+        if (page is not null)
         {
-            return await Battery(decodedPassportId, cancellationToken);
+            // The same passport as data (finding R07), for programs that read the page's headers.
+            Response.Headers[HeaderNames.Link] = $"<{page.DataHref}>; rel=\"alternate\"; type=\"application/json\"";
+            return View(nameof(Summary), page);
         }
 
-        if (resolution.Kind != BatteryRouteTargetKind.Passport || resolution.Document == null)
-        {
-            return FallbackSamplePassport(decodedPassportId) != null
-                ? RedirectToPublicSummaryWithAccessNotice(decodedPassportId)
-                : NotFound();
-        }
-
-        if (User.Identity?.IsAuthenticated != true)
-        {
-            return RedirectToPublicSummaryWithAccessNotice(decodedPassportId);
-        }
-
-        var document = resolution.Document;
-        if (string.Equals(BsonHelpers.GetString(document, "registryInfo", "status"), "archived", StringComparison.OrdinalIgnoreCase))
-        {
-            return NotFound();
-        }
-        var clusterDocuments = await _clusterRepository.ListClustersAsync(cancellationToken);
-        var clusterNamesById = clusterDocuments
-            .Select(cluster => new
-            {
-                ClusterId = BsonHelpers.GetString(cluster, "clusterId"),
-                Name = BsonHelpers.GetString(cluster, "name")
-            })
-            .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
-            .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
-
-        var passport = _viewModelFactory.Create(document, clusterNamesById, _passportTrustService.Verify(document));
-        var canOpen = await _accessControlService.CanOpenPassportDetailAsync(User, document, _passportPublishPolicyService, cancellationToken);
-        if (!canOpen)
-        {
-            if (!await _accessControlService.CanOpenPassportSummaryAsync(User, document, _passportPublishPolicyService, cancellationToken))
-            {
-                return NotFound();
-            }
-
-            return Redirect($"/{Uri.EscapeDataString(decodedPassportId)}/summary?access=wrong-cluster");
-        }
-        var canViewTrustConformance = await _accessControlService.CanViewTrustConformanceAsync(User, passport.ClusterId, cancellationToken);
-
-        var model = new PassportDetailViewModel
-        {
-            Passport = passport,
-            CanViewTrustConformance = canViewTrustConformance
-        };
-
-        var toUtc = DateTime.UtcNow;
-        var fromUtc = toUtc.AddDays(-7);
-        var telemetryBatteryId = passport.BatteryId;
-        IReadOnlyList<BsonDocument> telemetryHistory = string.IsNullOrWhiteSpace(telemetryBatteryId) || passport.IsHistoricalPassport
-            ? []
-            : await _batteryTelemetryRepository.ReadHistoryAsync(telemetryBatteryId, fromUtc, toUtc, cancellationToken);
-        model = new PassportDetailViewModel
-        {
-            Passport = passport,
-            CanViewTrustConformance = canViewTrustConformance,
-            TelemetryHistory = telemetryHistory.Select(row => new TelemetryHistoryPointViewModel
-            {
-                MeasuredAt = BsonHelpers.GetString(row, "measuredAt"),
-                CurrentConsumptionKwh = ReadNullableNumber(row, "currentConsumptionKwh"),
-                CurrentChargeLevelPct = ReadNullableNumber(row, "currentChargeLevelPct"),
-                CurrentVoltageV = ReadNullableNumber(row, "currentVoltageV"),
-                CurrentCurrentA = ReadNullableNumber(row, "currentCurrentA")
-            }).ToList()
-        };
-
-        return View(model);
+        // A released ID scanned before its passport is published (6d): ours, but nothing to show yet; a voided one isn't.
+        return pool is not null && await pool.FindUnpublishedAsync(Uri.UnescapeDataString(id), cancellationToken) is { Status: not BatteryPassWeb.Dpp.Identifiers.ReleasedIdStatuses.Voided } released
+            ? NotPublishedYet(released)
+            : NotFoundPage();
     }
 
-    private async Task<IActionResult> Battery(string batteryId, CancellationToken cancellationToken)
+    /// <summary>
+    /// The public part as data (finding R07), at the page's own address unless the request asks for the page. No token: the
+    /// public values only, the same as the page shows, found the same way; 404 wherever the page answers 404. With the EU
+    /// registry's token: the restricted parts too, or 401 or 403 (R3, decision 94), never the public part instead.
+    /// </summary>
+    [HttpGet("{id}")]
+    [PrefersJson]
+    [RegistryReadable]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.PublicDataRead)]
+    public Task<IActionResult> SummaryData(string id, CancellationToken cancellationToken) => DataAsync(Uri.UnescapeDataString(id), cancellationToken);
+
+    /// <summary>The same data at the page's address with ".json": <c>/dpp/UN778474481-VBC-92921.json</c>.</summary>
+    [HttpGet("{id}.json")]
+    [RegistryReadable]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.PublicDataRead)]
+    public Task<IActionResult> SummaryJson(string id, CancellationToken cancellationToken) => DataAsync(Uri.UnescapeDataString(id), cancellationToken);
+
+    /// <summary>A version's public part as data, at its own address when the request asks for JSON.</summary>
+    [HttpGet("{id}/v{version:int}")]
+    [PrefersJson]
+    [RegistryReadable]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.PublicDataRead)]
+    public Task<IActionResult> VersionData(string id, int version, [FromServices] Microsoft.Extensions.Options.IOptions<BatteryPassWeb.Configuration.BatteryPassOptions> options, CancellationToken cancellationToken) =>
+        DataAsync(BatteryPassWeb.Dpp.Identifiers.IdentifierForms.PassportAddress(options.Value.IdBaseUrl, Uri.UnescapeDataString(id), version), cancellationToken);
+
+    /// <summary>A version's public part as data at its address with ".json": <c>/dpp/UN778474481-VBC-92921/v2.json</c>.</summary>
+    [HttpGet("{id}/v{version:int}.json")]
+    [RegistryReadable]
+    [EnableRateLimiting(SecurityRateLimitPolicyNames.PublicDataRead)]
+    public Task<IActionResult> VersionJson(string id, int version, [FromServices] Microsoft.Extensions.Options.IOptions<BatteryPassWeb.Configuration.BatteryPassOptions> options, CancellationToken cancellationToken) =>
+        VersionData(id, version, options, cancellationToken);
+
+    private async Task<IActionResult> DataAsync(string id, CancellationToken cancellationToken)
     {
-        var battery = await _batteryRepository.GetByBatteryIdAsync(batteryId, cancellationToken);
-        if (battery == null)
+        Response.Headers[HeaderNames.Vary] = RegistryTokenRequest.Vary;
+
+        // The same as the page, which gets it from its form protection (C3 round two, point 6), the 404 included.
+        Response.Headers[HeaderNames.CacheControl] = "no-cache, no-store";
+        Response.Headers[HeaderNames.Pragma] = "no-cache";
+        if (RegistryTokenRequest.CarriesCredential(Request))
         {
-            return NotFound();
+            return await RegistryDataAsync(id, cancellationToken); // never the public part (the guide's section 2.4)
         }
 
-        var clusterDocuments = await _clusterRepository.ListClustersAsync(cancellationToken);
-        var clusterNamesById = clusterDocuments
-            .Select(cluster => new
-            {
-                ClusterId = BsonHelpers.GetString(cluster, "clusterId"),
-                Name = BsonHelpers.GetString(cluster, "name")
-            })
-            .Where(cluster => !string.IsNullOrWhiteSpace(cluster.ClusterId))
-            .ToDictionary(cluster => cluster.ClusterId, cluster => cluster.Name, StringComparer.OrdinalIgnoreCase);
-        var passports = await _passportRepository.ListByBatteryIdAsync(batteryId, includeArchived: User.Identity?.IsAuthenticated == true, cancellationToken);
-        var visibleRows = new List<BatteryPassportHistoryRowViewModel>();
-        foreach (var passport in passports)
+        if (await GoneAsync(this, id, json: true, cancellationToken) is { } gone)
         {
-            if (!await _accessControlService.CanOpenPassportSummaryAsync(User, passport, _passportPublishPolicyService, cancellationToken))
-            {
-                continue;
-            }
-
-            visibleRows.Add(ToHistoryRow(passport));
+            return gone; // finding R08: the same headers and read limit, asked before anything is looked up
         }
 
-        if (visibleRows.Count == 0)
+        var reader = await readers.ForAsync(User, cancellationToken);
+        var page = await pages.SummaryAsync(reader, id, cancellationToken);
+        if (page?.PublicData is not { } data)
         {
-            return NotFound();
+            return NotFound(new { error = "No published passport has this ID." });
         }
 
-        if (User.Identity?.IsAuthenticated != true)
-        {
-            var latestPublic = visibleRows.FirstOrDefault(row => row.IsLatestForBattery && row.IsPubliclyVisible)
-                ?? visibleRows.FirstOrDefault(row => row.IsPubliclyVisible);
-            if (latestPublic != null)
-            {
-                return Redirect($"/{Uri.EscapeDataString(latestPublic.PassportId)}/summary");
-            }
-        }
-
-        var clusterId = BsonHelpers.GetString(battery, "clusterId");
-        var clusterLabel = string.IsNullOrWhiteSpace(clusterId)
-            ? "No cluster assigned"
-            : clusterNamesById.TryGetValue(clusterId, out var clusterName) && !string.IsNullOrWhiteSpace(clusterName)
-                ? clusterName
-                : clusterId;
-
-        return View("Battery", new BatteryDetailViewModel
-        {
-            Battery = _batteryRepository.ToSummary(battery, visibleRows, clusterLabel)
-        });
+        return Content(data.ToJsonString(), "application/json");
     }
 
-    private BsonDocument? FallbackSamplePassport(string passportId)
+    /// <summary>
+    /// The EU registry's read (R3, decision 94): with a valid token, the passport cut for the reader "EU registry" (all four
+    /// levels, today's format), answered here without a redirect and never stored by a shared cache; the read goes into the
+    /// access log. A refused token gets 401 or 403 without data. The check ran before the read limit
+    /// (<see cref="RegistryTokenAuthentication.UseRegistryToken"/>); without its answer the token is refused.
+    /// </summary>
+    private async Task<IActionResult> RegistryDataAsync(string id, CancellationToken cancellationToken)
     {
-        if (!passportId.Equals(ExternalApiInitializer.SamplePassportId, StringComparison.OrdinalIgnoreCase))
+        Response.Headers[HeaderNames.CacheControl] = "private, no-store";
+        var result = RegistryTokenRequest.Outcome(HttpContext) ?? RegistryTokenResult.Invalid("not-checked");
+        var log = HttpContext.RequestServices?.GetService<ILogger<PassportController>>();
+        var battery = RegistryTokenRequest.ForLog(id); // the address as asked, never a line of its own
+        if (!result.Authorised)
+        {
+            // A 401 is one line per caller's address a minute, so junk tokens can't fill the log; a 403 is always a line.
+            var gate = result.Status == StatusCodes.Status401Unauthorized ? HttpContext.RequestServices?.GetService<RegistryTokenLogGate>() : null;
+            var skipped = 0;
+            if (gate is null || gate.Allow(HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown", out skipped))
+            {
+                log?.LogInformation("EU registry read of {Battery}: refused, {Status} {Reason}.{Skipped}", battery, result.Status, result.Reason,
+                    skipped > 0 ? $" ({skipped} more 401s from this address in the last minute weren't logged.)" : string.Empty);
+            }
+
+            return RegistryTokenAnswers.Refusal(HttpContext, result);
+        }
+
+        if (await GoneAsync(this, id, json: true, cancellationToken) is { } gone)
+        {
+            log?.LogInformation("EU registry read of {Battery}: 410, organisation {Organisation}.", battery, result.OrganisationId);
+            return gone;
+        }
+
+        var reader = DppReaders.EuRegistry(result.OrganisationId!);
+        var passport = HttpContext.RequestServices?.GetService<PassportApi>() is { } api ? await api.ReadAsync(reader, id, cancellationToken) : null;
+        if (passport is null)
+        {
+            log?.LogInformation("EU registry read of {Battery}: 404, organisation {Organisation}.", battery, result.OrganisationId);
+            return NotFound(new { error = "No published passport has this ID." });
+        }
+
+        // H1's access log: the first read of the battery's restricted data per day, by the reader "EU registry".
+        var sections = BatteryPassWeb.Dpp.Catalog.AttributeCatalog.All
+            .Where(attribute => attribute.Audience != BatteryPassWeb.Dpp.Catalog.Audience.Public && Holds(passport.Passport, attribute.Path))
+            .Select(attribute => attribute.Audience.ToString().ToLowerInvariant())
+            .Distinct()
+            .ToArray();
+        if (sections.Length > 0 && HttpContext.RequestServices?.GetService<RestrictedReads>() is { } restricted)
+        {
+            await restricted.NoteBatteryAsync(reader.Who, RegistryTokenRequest.RoleLabel, RestrictedReads.EuRegistryRead, passport.Version.PackId, passport.Location.Identifier, sections, cancellationToken);
+        }
+
+        log?.LogInformation("EU registry read of {Battery}: 200, organisation {Organisation}.", battery, result.OrganisationId);
+        return Content(passport.Passport.ToJsonString(), "application/json");
+    }
+
+    /// <summary>Whether the passport holds a value at this attribute's path.</summary>
+    private static bool Holds(System.Text.Json.Nodes.JsonObject passport, string path)
+    {
+        System.Text.Json.Nodes.JsonNode? node = passport;
+        foreach (var name in path.Split('.'))
+        {
+            if (node is not System.Text.Json.Nodes.JsonObject parent || !parent.TryGetPropertyValue(name, out node))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>"Not published yet": a 404, so it is never read as a passport, with the scanned ID and no battery data.</summary>
+    private ViewResult NotPublishedYet(BatteryPassWeb.Dpp.Identifiers.ReleasedBatteryId released)
+    {
+        var view = View("~/Views/Dpp/NotPublishedYet.cshtml", released);
+        view.StatusCode = StatusCodes.Status404NotFound;
+        return view;
+    }
+
+    /// <summary>A version's own address (#5, step 6d): <c>/dpp/UN778474481-VBC-92921/v2</c>.</summary>
+    [HttpGet("{id}/v{version:int}")]
+    public Task<IActionResult> Version(string id, int version, [FromServices] Microsoft.Extensions.Options.IOptions<BatteryPassWeb.Configuration.BatteryPassOptions> options, CancellationToken cancellationToken) =>
+        Summary(BatteryPassWeb.Dpp.Identifiers.IdentifierForms.PassportAddress(options.Value.IdBaseUrl, Uri.UnescapeDataString(id), version), cancellationToken);
+
+    [HttpGet("{id}/v{version:int}/detail")]
+    public Task<IActionResult> VersionDetail(
+        string id,
+        int version,
+        [FromServices] Microsoft.Extensions.Options.IOptions<BatteryPassWeb.Configuration.BatteryPassOptions> options,
+        CancellationToken cancellationToken,
+        [FromServices] BatteryApi? liveHistory = null,
+        [FromServices] ClusterBatteryPages? manage = null,
+        [FromServices] RestrictedReads? restricted = null,
+        [FromServices] BatteryPassWeb.Dpp.Store.DppStore? store = null) =>
+        Detail(BatteryPassWeb.Dpp.Identifiers.IdentifierForms.PassportAddress(options.Value.IdBaseUrl, Uri.UnescapeDataString(id), version), cancellationToken, liveHistory, manage, restricted, store);
+
+    [HttpGet("{id}/detail")]
+    public async Task<IActionResult> Detail(
+        string id,
+        CancellationToken cancellationToken,
+        [FromServices] BatteryApi? liveHistory = null,
+        [FromServices] ClusterBatteryPages? manage = null,
+        [FromServices] RestrictedReads? restricted = null,
+        [FromServices] BatteryPassWeb.Dpp.Store.DppStore? store = null)
+    {
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return Challenge();
+        }
+
+        if (await GoneAsync(this, Uri.UnescapeDataString(id), json: false, cancellationToken) is { } gone)
+        {
+            return gone; // finding R08
+        }
+
+        var reader = await readers.ForAsync(User, cancellationToken);
+        var page = await pages.DetailAsync(reader, Uri.UnescapeDataString(id), cancellationToken);
+        if (page is null)
+        {
+            return NotFoundPage();
+        }
+
+        // Finding R11: a reader who sees restricted sections is told how the data may be used, and the first opening of the
+        // battery's restricted data today is logged (the team's own reads and a cluster admin's own batteries are not).
+        var restrictedSections = page.Audiences.Where(section => section.Values.Count > 0).Select(section => section.Key)
+            .Concat(page.Modules is { Count: > 0 } ? ["modules"] : []).ToArray();
+        if (restricted is not null && store is not null && restrictedSections.Length > 0
+            && await RestrictedReads.RoleForAsync(readers, User, (await store.GetAsync<BatteryPassWeb.Dpp.Store.BatteryPack>(page.Version.PackId, cancellationToken))?.ClusterId, cancellationToken) is { } role)
+        {
+            ViewData[RestrictedReads.RoleKey] = role;
+            await restricted.NoteBatteryAsync(ClusterRepositoryEmail(), role, RestrictedReads.DetailPage, page.Version.PackId, page.Identifier, restrictedSections, cancellationToken);
+        }
+
+        // The current version's live values over the last week, for those who may see them (decision 30), from the same
+        // change log and the same rule as the API's history.
+        if (liveHistory is not null && page.Current is null) // the battery's latest passport, active or not (redesign R6)
+        {
+            // The latest week with readings (R7): the last 7 days, or the week ending at the battery's last reading.
+            var lastReading = page.Audiences.SelectMany(section => section.Values)
+                .Where(value => value.Attribute.Change == BatteryPassWeb.Dpp.Catalog.ChangeRule.Live && value.Attribute.Property != BatteryPassWeb.Dpp.Documents.DocumentService.Accidents && value.Origin is not null) // the accident reports' page isn't a reading
+                .Select(value => (DateTime?)value.Origin!.GeneratedAtUtc)
+                .Max();
+            var (week, weekEnd) = await liveHistory.LatestWeekAsync(reader, page.Version.PackId, lastReading, cancellationToken);
+            ViewData["LiveHistory"] = week;
+            ViewData["LiveWeekEnd"] = weekEnd;
+        }
+
+        // The battery's cluster admins manage it from here too (step 4a); read it while its passport is marked (R6b).
+        if (manage is not null && (page.IsCurrent || BatteryPassWeb.Dpp.Store.DppStatuses.IsMarked(page.Version.DppStatus)))
+        {
+            ViewData[ClusterBatteryPages.ManageHrefKey] = await manage.ManageHrefAsync(await readers.EditorForAsync(User, cancellationToken), page.Version.PackId, cancellationToken);
+        }
+
+        Response.Headers[HeaderNames.CacheControl] = "private, no-store";
+        return View(nameof(Detail), page);
+    }
+
+    private string ClusterRepositoryEmail() => BatteryPassWeb.Services.ClusterRepository.NormalizeEmail(BatteryPassWeb.Services.AccessControlService.CurrentEmail(User));
+
+    /// <summary>
+    /// Finding R08: an address of a passport the team removed after recycling answers 410 with the plain sentence, as a
+    /// page or, for the data addresses, as JSON. Null when no removed passport had this ID.
+    /// </summary>
+    internal static async Task<IActionResult?> GoneAsync(ControllerBase controller, string id, bool json, CancellationToken cancellationToken)
+    {
+        if (controller.HttpContext?.RequestServices?.GetService(typeof(PassportRemoval)) is not PassportRemoval removal
+            || await removal.FindAsync(id, cancellationToken) is null)
         {
             return null;
         }
 
-        return ExternalApiInitializer.CreateFallbackSampleDocument(ExternalApiInitializer.CreateSampleBatteryId(_batteryIdService));
-    }
-
-    private static IActionResult RedirectToPublicSummaryWithAccessNotice(string passportId)
-    {
-        return new RedirectResult($"/{Uri.EscapeDataString(passportId)}/summary?access=detail-required");
-    }
-
-    private static string BuildDetailActionUrl(string passportId, bool canOpenDetail, bool isAuthenticated)
-    {
-        var detailPath = $"/{Uri.EscapeDataString(passportId)}";
-        if (canOpenDetail)
+        if (json || controller is not Controller pages)
         {
-            return detailPath;
+            return new ObjectResult(new { error = PassportRemoval.Gone }) { StatusCode = StatusCodes.Status410Gone };
         }
 
-        var loginPath = $"/login?next={Uri.EscapeDataString(detailPath)}";
-        return isAuthenticated ? $"{loginPath}&switchAccount=1" : loginPath;
+        var view = pages.View("~/Views/Dpp/Removed.cshtml");
+        view.StatusCode = StatusCodes.Status410Gone;
+        return view;
     }
 
-    private bool IsGeneratedSampleBatteryId(string batteryId)
+    /// <summary>No published passport has this ID; drafts aren't shown to anyone here (J-6).</summary>
+    private ViewResult NotFoundPage()
     {
-        return batteryId.Equals(ExternalApiInitializer.CreateSampleBatteryId(_batteryIdService), StringComparison.OrdinalIgnoreCase);
-    }
-
-    private IActionResult RedirectToSearchNotFound(string query)
-    {
-        return RedirectToAction("Index", "Home", new
-        {
-            q = query,
-            notFound = "1"
-        });
-    }
-
-    private BatteryPassportHistoryRowViewModel ToHistoryRow(BsonDocument passport)
-    {
-        var status = BsonHelpers.GetString(passport, "registryInfo", "status");
-        return new BatteryPassportHistoryRowViewModel
-        {
-            PassportId = BsonHelpers.GetString(passport, "passportId"),
-            BatteryId = BsonHelpers.GetString(passport, "batteryId"),
-            CreatedAt = BsonHelpers.GetString(passport, "snapshot", "createdAt"),
-            PassportStatus = string.IsNullOrWhiteSpace(status) ? "Draft" : char.ToUpperInvariant(status[0]) + status[1..],
-            IsLatestForBattery = passport.GetValue("isLatestForBattery", false).ToBoolean(),
-            IsPubliclyVisible = _passportPublishPolicyService.IsPubliclyVisible(passport)
-        };
-    }
-
-    private static double? ReadNullableNumber(BsonDocument document, string key)
-    {
-        var value = document.GetValue(key, BsonNull.Value);
-        if (value.IsBsonNull)
-        {
-            return null;
-        }
-
-        return value.IsNumeric ? value.ToDouble() : null;
-    }
-
-    private static bool IsReservedSegment(string value)
-    {
-        return value.Equals("login", StringComparison.OrdinalIgnoreCase)
-            || value.Equals("registry", StringComparison.OrdinalIgnoreCase)
-            || value.Equals("search", StringComparison.OrdinalIgnoreCase)
-            || value.Equals("help", StringComparison.OrdinalIgnoreCase)
-            || value.Equals("admin", StringComparison.OrdinalIgnoreCase)
-            || value.Equals("cluster-admin", StringComparison.OrdinalIgnoreCase)
-            || value.Equals("api", StringComparison.OrdinalIgnoreCase);
+        ViewData["Subject"] = "passport";
+        var view = View("~/Views/Dpp/NotAvailable.cshtml");
+        view.StatusCode = StatusCodes.Status404NotFound;
+        return view;
     }
 }

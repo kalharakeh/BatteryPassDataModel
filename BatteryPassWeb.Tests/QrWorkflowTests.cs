@@ -20,15 +20,11 @@ public sealed class QrWorkflowTests
         var source = File.ReadAllText(RepoFile("web", "Controllers", "QrController.cs"));
 
         Assert.Contains("[Route(\"qr\")]", source);
-        Assert.Contains("[HttpGet(\"{batteryId}/svg\")]", source);
-        Assert.Contains("[HttpGet(\"{batteryId}/download\")]", source);
+        Assert.Contains("[HttpGet(\"{id}/svg\")]", source);
+        Assert.Contains("[HttpGet(\"{id}/download\")]", source);
         Assert.Contains("PassportQrCodeService", source);
-        Assert.Contains("PassportPublishPolicyService", source);
-        Assert.Contains("BatteryRepository", source);
-        Assert.Contains("CanOpenPassportDetailAsync", source);
+        Assert.Contains("links.PassportUrl(battery.Value.Identifier)", source);
         Assert.Contains("image/svg+xml", source);
-        Assert.Contains("BuildPayloadUrl", source);
-        Assert.Contains("CreateSampleBatteryId", source);
     }
 
     [Fact]
@@ -41,8 +37,8 @@ public sealed class QrWorkflowTests
         Assert.Contains("SvgQRCode", source);
         Assert.Contains("AddBatteryCellMark", source);
         Assert.Contains("bp-qr-battery-mark", source);
-        Assert.Contains("/latest", source);
-        Assert.Contains("BuildPayloadUrl", source);
+        Assert.DoesNotContain("/latest", source);
+        Assert.DoesNotContain("HttpRequest", source);
         Assert.Contains("BuildFileName", source);
     }
 
@@ -60,39 +56,31 @@ public sealed class QrWorkflowTests
     [Fact]
     public void PassportSummary_ShouldShowDownloadableQrBesideBatteryImage()
     {
+        var hero = File.ReadAllText(RepoFile("web", "Views", "Passport", "_PassportHero.cshtml"));
         var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
         var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
 
-        Assert.Contains("bp-report-hero-qr", summary);
-        Assert.Contains("bp-report-hero-qr", detail);
-        Assert.Contains("bp-report-hero-media", summary);
-        Assert.Contains("bp-report-hero-media", detail);
-        Assert.Contains("/qr/", summary);
-        Assert.Contains("/qr/", detail);
-        Assert.Contains("qrBatteryId", summary);
-        Assert.Contains("qrBatteryId", detail);
-        Assert.Contains("/svg", summary);
-        Assert.Contains("/svg", detail);
-        Assert.Contains("/download", summary);
-        Assert.Contains("/download", detail);
-        Assert.DoesNotContain("@passport.BatteryImageAlt</p>", summary);
-        Assert.DoesNotContain("Download QR", summary);
-        Assert.DoesNotContain("QR code for battery ID", summary);
+        Assert.Contains("<partial name=\"_PassportHero\"", summary);
+        Assert.Contains("<partial name=\"_PassportHero\"", detail);
+        Assert.Contains("bp-report-hero-qr", hero);
+        Assert.Contains("bp-report-hero-media", hero);
+        Assert.Contains("QrHref", hero);
+        Assert.Contains("QrDownloadHref", hero);
+        Assert.DoesNotContain("Download QR", hero);
         Assert.Contains(".bp-report-hero-qr", File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css")));
-        Assert.DoesNotContain("QR access", detail);
-        Assert.DoesNotContain("Download QR", detail);
+        Assert.DoesNotContain("QR access", hero);
     }
 
     [Fact]
     public void SummaryReport_ShouldUseThreeColumnHeaderAndImageQrDownload()
     {
-        var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
+        var hero = File.ReadAllText(RepoFile("web", "Views", "Passport", "_PassportHero.cshtml"));
         var qrController = File.ReadAllText(RepoFile("web", "Controllers", "QrController.cs"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
-        Assert.Contains("bp-summary-identity-grid", summary);
-        Assert.Contains("bp-summary-id-panel", summary);
-        Assert.Contains("bp-summary-qr-panel", summary);
+        Assert.Contains("bp-summary-identity-grid", hero);
+        Assert.Contains("bp-summary-id-panel", hero);
+        Assert.Contains("bp-summary-qr-panel", hero);
         Assert.Contains("image/png", qrController);
         Assert.Contains(".bp-summary-identity-grid", css);
         Assert.Contains("@media (max-width: 900px)", css);
@@ -102,7 +90,6 @@ public sealed class QrWorkflowTests
     public void LandingPage_ShouldOpenQrScannerFromInlineSearchIcon()
     {
         var landing = File.ReadAllText(RepoFile("web", "Views", "Home", "Index.cshtml"));
-        var search = File.ReadAllText(RepoFile("web", "Views", "Home", "Search.cshtml"));
         var home = File.ReadAllText(RepoFile("web", "Controllers", "HomeController.cs"));
         var css = File.ReadAllText(RepoFile("web", "wwwroot", "css", "site.css"));
 
@@ -133,8 +120,6 @@ public sealed class QrWorkflowTests
         Assert.Contains("ViewData[\"SearchNotFound\"]", home);
         Assert.Contains("return RedirectToAction(nameof(Index));", home);
         Assert.Contains("notFound = \"1\"", home);
-        Assert.DoesNotContain("data-qr-scanner", search);
-        Assert.DoesNotContain("data-qr-trigger", search);
         Assert.Contains(".bp-search-input-shell", css);
         Assert.Contains(".bp-qr-trigger", css);
         Assert.Contains(".bp-qr-trigger-icon", css);
@@ -161,35 +146,18 @@ public sealed class QrWorkflowTests
     }
 
     [Fact]
-    public void QrService_ShouldBuildPublicSummaryPayloadForDemoScenarioPassport()
-    {
-        var source = File.ReadAllText(RepoFile("web", "Services", "PassportQrCodeService.cs"));
-        var controller = File.ReadAllText(RepoFile("web", "Controllers", "QrController.cs"));
-
-        Assert.Contains("/latest/summary", source);
-        Assert.Contains("BuildPayloadUrl", source);
-        Assert.Contains("GetLatestPublicByBatteryIdAsync", controller);
-        Assert.Contains("CanOpenPassportDetailAsync", controller);
-    }
-
-    [Fact]
     public void FollowupQrWorkflow_ShouldRenderInsideReportIdentityHeader()
     {
-        var summary = File.ReadAllText(RepoFile("web", "Views", "Passport", "Summary.cshtml"));
-        var detail = File.ReadAllText(RepoFile("web", "Views", "Passport", "Detail.cshtml"));
+        var hero = File.ReadAllText(RepoFile("web", "Views", "Passport", "_PassportHero.cshtml"));
         var controller = File.ReadAllText(RepoFile("web", "Controllers", "QrController.cs"));
 
-        foreach (var view in new[] { summary, detail })
-        {
-            Assert.Contains("bp-report-identity-grid", view);
-            Assert.Contains("bp-report-identity-panel--qr", view);
-            Assert.Contains("/qr/@Uri.EscapeDataString(qrBatteryId)/download", view);
-            Assert.Contains("/qr/@Uri.EscapeDataString(qrBatteryId)/svg", view);
-            Assert.DoesNotContain("bp-report-media-code-row", view);
-        }
-
+        Assert.Contains("bp-report-identity-grid", hero);
+        Assert.Contains("bp-report-identity-panel--qr", hero);
+        Assert.Contains("PassportPages.QrDownloadHref(Model.Identifier)", hero);
+        Assert.Contains("PassportPages.QrHref(Model.Identifier)", hero);
+        Assert.DoesNotContain("bp-report-media-code-row", hero);
         Assert.Contains("image/png", controller);
-        Assert.Contains("GetLatestPublicByBatteryIdAsync", controller);
+        Assert.Contains("LocateAsync", controller);
     }
 
     private static string RepoFile(params string[] parts)

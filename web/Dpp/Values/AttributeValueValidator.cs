@@ -1,0 +1,226 @@
+using System.Globalization;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
+using BatteryPassWeb.Dpp.Catalog;
+using BatteryPassWeb.Dpp.Schemas;
+
+namespace BatteryPassWeb.Dpp.Values;
+
+/// <summary>
+/// Checks one value in the schema's own form: first against its property in the official schema (type, range,
+/// allowed values, web-address pattern), then against the app's rules. The schema's "format" keywords are only
+/// annotations, so this class checks them itself (design section 11, decision 18).
+/// </summary>
+public sealed partial class AttributeValueValidator(OfficialSchemas schemas)
+{
+    public IReadOnlyList<SchemaIssue> Validate(AttributeDefinition attribute, JsonNode? value)
+    {
+        ArgumentNullException.ThrowIfNull(attribute);
+        if (ExtensionKinds.Of(attribute) is { } kind)
+        {
+            return (kind == ExtensionKind.Minutes ? ExtensionIssues(value) : EuValueIssues(kind, value)).ToArray();
+        }
+
+        var issues = schemas.CheckProperty(attribute.Section, attribute.Property, value);
+        return issues.Count > 0 ? issues : AppRuleIssues(attribute, value).ToArray();
+    }
+
+    /// <summary>An extension (decision 28) has no schema entry: it is a whole number of minutes, not below zero.</summary>
+    private static IEnumerable<SchemaIssue> ExtensionIssues(JsonNode? value)
+    {
+        if (value is not JsonValue number || number.GetValueKind() != JsonValueKind.Number || !long.TryParse(number.ToJsonString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var seconds))
+        {
+            yield return new SchemaIssue(string.Empty, "type: must be a whole number of minutes");
+        }
+        else if (seconds < 0)
+        {
+            yield return new SchemaIssue(string.Empty, "minimum: must not be below 0");
+        }
+    }
+
+    /// <summary>The longest text of a short value (a city, a batch label).</summary>
+    public const int ShortTextLength = 200;
+
+    /// <summary>The longest text in one language of a text value (a test's description, an end-of-life text).</summary>
+    public const int LongTextLength = 4000;
+
+    /// <summary>A value of the EU's battery format the file doesn't hold (decision 94), checked by its kind.</summary>
+    private static IEnumerable<SchemaIssue> EuValueIssues(ExtensionKind kind, JsonNode? value)
+    {
+        var text = value is JsonValue leaf && leaf.GetValueKind() == JsonValueKind.String ? leaf.GetValue<string>() : null;
+        switch (kind)
+        {
+            case ExtensionKind.Text when string.IsNullOrWhiteSpace(text):
+                yield return new SchemaIssue(string.Empty, "type: must be a text");
+                break;
+            case ExtensionKind.Text when text!.Length > ShortTextLength || text.Any(char.IsControl):
+                yield return new SchemaIssue(string.Empty, $"maxLength: must be one line of at most {ShortTextLength} characters");
+                break;
+            case ExtensionKind.Country when !Countries.IsCode(text):
+                yield return new SchemaIssue(string.Empty, "enum: must be a country's three-letter code, such as SWE for Sweden");
+                break;
+            case ExtensionKind.Codes when value is not JsonArray { Count: > 0 } codes
+                || codes.Any(code => code is not JsonValue entry || !entry.TryGetValue<string>(out var address) || !EuCodeLists.ChemicalSymbols.ContainsKey(address))
+                || codes.Select(code => code!.ToJsonString()).Distinct(StringComparer.Ordinal).Count() != codes.Count:
+                yield return new SchemaIssue(string.Empty, "enum: must be the cadmium symbol, the lead symbol or both");
+                break;
+            case ExtensionKind.LanguageText when PassportLanguage.Problem(value) is { } problem:
+                yield return new SchemaIssue(string.Empty, $"type: {problem}");
+                break;
+            case ExtensionKind.LanguageText when value!.AsObject().Any(pair => pair.Value!.GetValue<string>().Length > LongTextLength):
+                yield return new SchemaIssue(string.Empty, $"maxLength: must be at most {LongTextLength} characters");
+                break;
+        }
+    }
+
+    /// <summary>The address of a link value: a document link's <c>url</c>, or the text of a web link (<c>webLink…</c>); null for other values.</summary>
+    private static string? LinkAddress(AttributeDefinition attribute, JsonNode? value) =>
+        value is JsonObject link && link["url"] is JsonValue url && link["contentType"] is not null && url.TryGetValue<string>(out var text)
+            ? text
+            : attribute.Property.StartsWith("webLink", StringComparison.Ordinal) && value is JsonValue web && web.TryGetValue<string>(out var address)
+                ? address
+                : null;
+
+    private IEnumerable<SchemaIssue> AppRuleIssues(AttributeDefinition attribute, JsonNode? value)
+    {
+        // A link is an http or https address (S01, W21), checked here and not only by the schema's pattern.
+        if (LinkAddress(attribute, value) is { } address && !WebAddress.IsWebAddress(address))
+        {
+            yield return new SchemaIssue(value is JsonObject ? "/url" : string.Empty, "format: must be a web address starting with http:// or https://");
+        }
+
+        // The warranty (#19): a whole number of years (1 to 100) or months (1 to 1200), the same for the page, uploads and
+        // the API (round two, D). It replaces the general period check below.
+        if (attribute.Number == 19 && value?.GetValueKind() == JsonValueKind.String && !IsWarranty(value.GetValue<string>()))
+        {
+            yield return new SchemaIssue(string.Empty, WarrantyRule);
+            yield break;
+        }
+
+        var format = attribute.Number == 19 ? null : schemas.FindProperty(attribute.Section, attribute.Property)?["format"]?.GetValue<string>();
+        if (format is not null && value?.GetValueKind() == JsonValueKind.String)
+        {
+            var text = value.GetValue<string>();
+            var problem = format switch
+            {
+                "uri" => Uri.TryCreate(text, UriKind.Absolute, out _) ? null : "must be an absolute URI, e.g. urn:… or https://…",
+                "date-time" => IsUtcTimestamp(text) ? null : "must be a UTC timestamp, e.g. 2026-10-28T09:30:00Z",
+                "duration" => IsoPeriod().IsMatch(text) ? null : "must be an ISO 8601 period, e.g. P8Y or P3Y6M",
+                "date" => YearMonth().IsMatch(text) ? null : "must be a year and month, e.g. 2026-10 (decision 18)",
+                _ => null,
+            };
+            if (problem is not null)
+            {
+                yield return new SchemaIssue(string.Empty, $"format: {problem}");
+            }
+        }
+
+        // The schema allows two units for these; the catalogue fixes one for this battery category.
+        (string? UnitProperty, string? Unit) fixedUnit = attribute.Number switch
+        {
+            21 => ("gramKilogramUnit", "kg"),
+            57 => ("ampereHourMiliamperehourUnit", "Ah"),
+            _ => (null, null),
+        };
+        if (fixedUnit.UnitProperty is not null && value?[fixedUnit.UnitProperty]?.GetValue<string>() != fixedUnit.Unit)
+        {
+            yield return new SchemaIssue($"/{fixedUnit.UnitProperty}", $"unit: must be \"{fixedUnit.Unit}\" for #{attribute.Number}");
+        }
+
+        // Masses, capacities, voltages, powers, resistances, lifetimes and C-rates can't be negative (as in the app
+        // before V3); the schema itself bounds only percentages. Temperatures, also the test temperatures inside these
+        // values, can be below zero.
+        if (NonNegative.Contains(attribute.Number) && value is not null)
+        {
+            foreach (var (path, number) in Numbers(value, string.Empty))
+            {
+                if (number < 0)
+                {
+                    yield return new SchemaIssue(path, "minimum: must not be below 0");
+                }
+            }
+        }
+    }
+
+    private static readonly HashSet<int> NonNegative = [21, 57, 64, 65, 66, 67, 70, 78, 81, 82, 85];
+
+    private static IEnumerable<(string Path, double Number)> Numbers(JsonNode node, string path)
+    {
+        switch (node)
+        {
+            case JsonObject obj:
+                foreach (var (key, child) in obj)
+                {
+                    if (child is not null && !key.Contains("temperature", StringComparison.OrdinalIgnoreCase))
+                    {
+                        foreach (var found in Numbers(child, $"{path}/{key}"))
+                        {
+                            yield return found;
+                        }
+                    }
+                }
+
+                break;
+            case JsonArray array:
+                for (var index = 0; index < array.Count; index++)
+                {
+                    if (array[index] is { } item)
+                    {
+                        foreach (var found in Numbers(item, $"{path}/{index}"))
+                        {
+                            yield return found;
+                        }
+                    }
+                }
+
+                break;
+            case JsonValue leaf when leaf.GetValueKind() == JsonValueKind.Number:
+                yield return (path, double.Parse(leaf.ToJsonString(), NumberStyles.Float, CultureInfo.InvariantCulture));
+                break;
+        }
+    }
+
+    private static bool IsUtcTimestamp(string text) => DateTime.TryParseExact(
+        text,
+        ["yyyy-MM-dd'T'HH:mm:ss'Z'", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFF'Z'"],
+        CultureInfo.InvariantCulture,
+        DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+        out _);
+
+    [GeneratedRegex(@"^[0-9]{4}-(0[1-9]|1[0-2])$")]
+    private static partial Regex YearMonth();
+
+    [GeneratedRegex(@"^P(?!$)([0-9]+Y)?([0-9]+M)?([0-9]+W)?([0-9]+D)?(T(?=[0-9])([0-9]+H)?([0-9]+M)?([0-9]+S)?)?$")]
+    private static partial Regex IsoPeriod();
+
+    /// <summary>Why a warranty (#19) is refused, in the page's words.</summary>
+    public const string WarrantyRule = "the warranty must be a whole number of years (1 to 100) or months (1 to 1200)";
+
+    /// <summary>
+    /// PnY, PnM or the official combined PnYnM (round three, 3): years at most 100, months at most 1200, and in all at
+    /// least 1 month and at most 1200 (100 years). Days aren't a warranty here.
+    /// </summary>
+    public static bool IsWarranty(string text)
+    {
+        if (Warranty().Match(text ?? string.Empty) is not { Success: true } match || text == "P")
+        {
+            return false;
+        }
+
+        // Digits 0 to 9 only, read safely: another alphabet's digits are refused, never a failure (round four, 6).
+        var years = 0;
+        var months = 0;
+        if ((match.Groups[1].Success && !int.TryParse(match.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out years))
+            || (match.Groups[2].Success && !int.TryParse(match.Groups[2].Value, NumberStyles.None, CultureInfo.InvariantCulture, out months)))
+        {
+            return false;
+        }
+
+        var total = (years * 12) + months;
+        return years <= 100 && months <= 1200 && total is >= 1 and <= 1200;
+    }
+
+    [GeneratedRegex(@"^P(?:([0-9]{1,4})Y)?(?:([0-9]{1,4})M)?$")]
+    private static partial Regex Warranty();
+}

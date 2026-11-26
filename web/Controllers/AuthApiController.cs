@@ -26,7 +26,7 @@ public class AuthApiController : ControllerBase
     public async Task<IActionResult> Login([FromForm] string? email, [FromForm] string? password, [FromForm] string? next, CancellationToken cancellationToken)
     {
         var safeNext = SafeInteractiveReturnUrl(next);
-        var principal = await _authService.AuthenticateAsync(email ?? string.Empty, password ?? string.Empty, cancellationToken);
+        var principal = await _authService.AuthenticateAsync(email ?? string.Empty, password ?? string.Empty, LoginController.Sender(HttpContext), cancellationToken);
         if (principal == null)
         {
             return Redirect($"/login?error=invalid{(string.IsNullOrWhiteSpace(safeNext) ? string.Empty : $"&next={Uri.EscapeDataString(safeNext)}")}");
@@ -39,7 +39,7 @@ public class AuthApiController : ControllerBase
             return Redirect(safeNext);
         }
 
-        return Redirect("/admin");
+        return Redirect(LoginController.StartPage(principal));
     }
 
     [HttpPost("logout")]

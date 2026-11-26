@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DPP V3 step 4 — purchaser editing and lifecycle</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<!-- The app's own stylesheets, so the screens look exactly like the app. site.css is not changed. -->
+<link rel="stylesheet" href="../../web/wwwroot/css/site.css" data-app-css>
+<link rel="stylesheet" href="../../web/wwwroot/css/bp-product-data.css" data-app-css>
+<style data-step-4>
+/* ==== Purchaser editing and lifecycle (step 4) =====================================================================
+   The few new pieces step 4 adds to bp-product-data.css: the battery status line, the repair history, the notices for
+   a passport that is no longer active, and the hand-over rows. Everything else is the app's existing classes. */
+
+/* The battery status at the top of its card: the status in words, and since when. */
+.bp-battery-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
+}
+
+.bp-battery-status strong {
+  font-size: 1.15rem;
+  font-weight: 650;
+}
+
+/* The repair history: one line per repair, newest first. */
+.bp-history {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  border-top: 1px solid var(--bp-border);
+}
+
+.bp-history li {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr);
+  gap: 2px 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--bp-border);
+}
+
+.bp-history time {
+  font-weight: 600;
+}
+
+.bp-history small {
+  grid-column: 2;
+  color: var(--bp-muted);
+}
+
+/* A passport that is no longer active, or a battery whose passport replaced another: one calm line on every page. */
+.bp-passport-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--bp-border);
+  border-left: 4px solid #64748b;
+  border-radius: 8px;
+  background: var(--bp-surface, #fff);
+}
+
+.bp-passport-notice.is-invalid {
+  border-left-color: #c2410c;
+}
+
+.bp-passport-notice strong {
+  font-weight: 650;
+}
+
+/* Hand-overs waiting for a cluster admin: one row each, with its two answers. */
+.bp-handover-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 18px;
+  padding: 12px 0;
+  border-top: 1px solid var(--bp-border);
+}
+
+.bp-handover-row:first-of-type {
+  border-top: 0;
+}
+
+.bp-handover-row .bp-dialog-actions {
+  margin: 0;
+}
+
+/* The suggestion under capacity fade: a measured capacity in, a suggested fade out. */
+.bp-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px 12px;
+  margin-top: 6px;
+}
+
+.bp-suggest label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+
+.bp-suggest input {
+  width: 9rem;
+}
+
+@media (max-width: 640px) {
+  .bp-history li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bp-history small {
+    grid-column: 1;
+  }
+}
+
+[data-theme="dark"] .bp-passport-notice {
+  background: transparent;
+}
+</style>
+<style>
+  /* Mock-up notes only (mk-*); everything else is the app's own classes or step 4's block above. */
+  body { padding-bottom: 60px; }
+  .mk-intro, .mk-caption { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+  .mk-intro { padding-top: 20px; }
+  .mk-intro h1 { font-size: 1.6rem; }
+  .mk-intro ol { padding-left: 20px; }
+  .mk-caption { margin-top: 44px; border-top: 3px solid #041e42; padding-top: 12px; }
+  .mk-caption h2 { font-size: 1.25rem; margin-bottom: 4px; }
+  .mk-caption p { color: #475569; margin-bottom: 0; max-width: 900px; }
+  .mk-part { display: inline-block; margin-right: 8px; padding: 1px 8px; border-radius: 999px; background: #041e42; color: #fff; font-size: .8rem; font-weight: 600; vertical-align: 2px; }
+  main.bp-page { max-width: 1180px; margin-left: auto; margin-right: auto; padding-left: 16px; padding-right: 16px; }
+  .mk-later { outline: 2px dashed #94a3b8; outline-offset: 4px; }
+  .mk-later-tag { float: right; font-size: .78rem; color: #64748b; }
+  .mk-modal-stage { position: relative; background: rgba(15, 23, 42, .46); border-radius: 12px; padding: 28px 12px; display: grid; place-items: center; }
+  .mk-modal-stage .bp-modal-panel { position: static; display: block; width: min(100%, 640px); margin: 0; }
+  [data-theme="dark"] .mk-caption p, [data-theme="dark"] .mk-intro p { color: #9fb1c8; }
+  [data-theme="dark"] .mk-caption { border-top-color: #7ab6ff; }
+</style>
+</head>
+<body>
+<div class="mk-intro">
+  <h1>Step 4 — purchaser editing and lifecycle</h1>
+  <p class="text-secondary">Mock-up only; nothing is built yet. It uses the app's own stylesheets, so it looks like the app, with the team pages' finish (decision 27). <code>site.css</code> is not changed. Each screen says which part builds it:</p>
+  <ol class="text-secondary">
+    <li><span class="mk-part">4a</span>The cluster admin's own page per battery: live values and accident reports, with modules and versions to read.</li>
+    <li><span class="mk-part">4b</span>Status change and repairs, with the re-stated fades and lifetime, and the repair history.</li>
+    <li><span class="mk-part">4c</span>The new linked passport after remanufacturing, repurposing or re-use; "invalid" and "marked for deletion".</li>
+    <li><span class="mk-part">4d</span>Handing a battery over to another cluster, which accepts it.</li>
+  </ol>
+  <p class="text-secondary mb-0">Dashed outlines mark a card a later part adds to a page an earlier part builds.</p>
+</div>
+
+<!-- ============================================================================================== S1 Registry -->
+<div class="mk-caption">
+  <h2><span class="mk-part">4a</span><span class="mk-part">4d</span>S1 · The Registry, for a cluster admin</h2>
+  <p>A cluster admin's Registry rows get a "Manage" link to their battery's page; cluster users see no link. When another cluster hands a battery over, a "Waiting for you" card shows at the top until it is answered (4d).</p>
+</div>
+<main class="bp-page bp-admin-page bp-registry-page">
+  <header class="bp-console-header">
+    <div>
+      <h1>Scania Passport Registry</h1>
+      <p class="text-secondary mb-0">The batteries of your cluster: Demo North Operations.</p>
+    </div>
+  </header>
+
+  <section class="bp-card bp-console-form-card bp-product-editor-section mt-4 mk-later" id="waiting">
+    <span class="mk-later-tag">added in 4d</span>
+    <span class="bp-summary-title">Waiting for you</span>
+    <h2 class="h5 mb-1">1 battery handed over to your cluster</h2>
+    <p class="bp-help-text mb-2">Accept it to see its purchaser data and manage it. Until then it stays with the sending cluster.</p>
+    <div class="bp-handover-row">
+      <div>
+        <strong>DEMO-CORE-0001</strong> · Core
+        <small class="d-block text-secondary">From Demo South Operations, asked 31 Oct 2026, 14:05 by demo.south.admin@example.test</small>
+      </div>
+      <div class="bp-dialog-actions">
+        <button type="button" class="bp-secondary-button">Decline</button>
+        <button type="button" class="bp-primary-button">Accept</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="bp-console-toolbar bp-battery-table-toolbar">
+    <form class="bp-search-form" role="search">
+      <input name="q" placeholder="Serial number, battery ID or passport ID" aria-label="Search the registry" />
+      <button type="button">Search</button>
+    </form>
+  </section>
+
+  <section class="bp-card bp-console-form-card bp-product-editor-section mt-4">
+    <p class="text-secondary">2 batteries.</p>
+    <div class="bp-table-scroll">
+      <table class="table align-middle bp-console-table bp-mobile-card-table mb-0">
+        <thead>
+          <tr><th>Serial number</th><th>Model</th><th>Batch</th><th>Passport</th><th></th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td data-label="Serial number"><a href="#s2"><strong>DEMO-C7M-0001</strong></a><small class="d-block text-secondary">urn:x-battery-pass:TEST-1583f9f2…</small></td>
+            <td data-label="Model">Compact 7M <small class="d-block text-secondary">Compact</small></td>
+            <td data-label="Batch">2026 · Demo plant North</td>
+            <td data-label="Passport">Version 2 <small class="d-block text-secondary">updated 31 Oct 2026, 20:26</small></td>
+            <td data-label=""><a class="bp-text-button" href="#s2">Manage</a></td>
+          </tr>
+          <tr>
+            <td data-label="Serial number"><a href="#s2"><strong>DEMO-C13M-0001</strong></a><small class="d-block text-secondary">urn:x-battery-pass:TEST-7a0c41e2…</small></td>
+            <td data-label="Model">Compact 13M <small class="d-block text-secondary">Compact</small></td>
+            <td data-label="Batch">2026 · Demo plant North</td>
+            <td data-label="Passport">Version 1 <small class="d-block text-secondary">updated 31 Oct 2026, 20:26</small></td>
+            <td data-label=""><a class="bp-text-button" href="#s2">Manage</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<!-- ======================================================================================== S2 cluster battery page -->
+<div class="mk-caption" id="s2">
+  <h2><span class="mk-part">4a</span>S2 · The cluster admin's battery page</h2>
+  <p>New page <code>/cluster-admin/batteries/{id}</code>, for the battery's own cluster admins once its passport is published. Its cards are the team page's cards (one source each), without what only the team does: no passport values, cluster change, module editing or publishing. 4b adds the status card at the top, 4d the hand-over card.</p>
+</div>
+<main class="bp-page bp-admin-page">
+  <nav class="bp-breadcrumb" aria-label="Breadcrumb">
+    <a href="#">Registry</a>
+    <span aria-current="page">DEMO-C7M-0001</span>
+  </nav>
+  <header class="bp-page-heading bp-battery-heading">
+    <span class="bp-summary-title">Battery</span>
+    <div class="bp-battery-title">
+      <h1>DEMO-C7M-0001</h1>
+      <span class="bp-field-marker is-published">Published · version 2</span>
+    </div>
+    <p class="mb-0">Model Compact 7M of Compact, made at Demo plant North in 2026.</p>
+    <nav class="bp-battery-links" aria-label="This battery elsewhere">
+      <a href="#">Public summary</a>
+      <a href="#">Detail page</a>
+      <a href="#">Accident page</a>
+    </nav>
+    <dl class="bp-battery-facts">
+      <div class="bp-battery-fact-wide"><dt>Battery ID <span class="bp-attr-number">#6</span></dt><dd><span class="bp-id-value">urn:x-battery-pass:TEST-1583f9f24d87423993c87dc2bc8b0e50</span></dd></div>
+      <div><dt>Batch</dt><dd>2026 · Demo plant North</dd></div>
+      <div><dt>Cluster</dt><dd>Demo North Operations</dd></div>
+      <div><dt>Serial number <span class="bp-attr-number">#11</span></dt><dd>DEMO-C7M-0001</dd></div>
+    </dl>
+  </header>
+
+  <section class="bp-card bp-console-form-card bp-battery-card mt-4 mk-later" id="status">
+    <span class="mk-later-tag">added in 4b</span>
+    <div class="bp-battery-card-head">
+      <div>
+        <span class="bp-summary-title">Battery status <span class="bp-attr-number">#22</span></span>
+        <div class="bp-battery-status"><strong>Re-used</strong><span class="text-secondary">since 31 Oct 2026, after a repair</span></div>
+        <p class="mb-0">A status change also re-states the fades and the expected lifetime, and publishes a new version of this passport.</p>
+      </div>
+      <button type="button" class="bp-primary-button">Change status</button>
+    </div>
+    <h3 class="h6 mt-3 mb-0">Repair history <em class="bp-field-marker">Not passport data</em></h3>
+    <ul class="bp-history">
+      <li><time>31 Oct 2026</time><span>Module 4 replaced after a coolant leak.</span><small>Recorded 31 Oct 2026, 15:10 by demo.north.admin@example.test</small></li>
+    </ul>
+    <small class="bp-field-help d-block mt-2">Seen by the battery's cluster, market surveillance and the team, with the status.</small>
+  </section>
+
+  <section class="bp-card bp-console-form-card bp-battery-card mt-4" id="live">
+    <span class="bp-summary-title">Live values</span>
+    <h2>Measured on the battery</h2>
+    <p class="mb-0">Its battery system sends these; type them here to correct one. They change the passport in place, without a new version.</p>
+    <form class="bp-live-form">
+      <div class="bp-attr-list">
+        <div class="bp-attr-row">
+          <div class="bp-attr-label"><strong><span class="bp-attr-number">#63</span> State of Charge (SoC) (%)</strong></div>
+          <div class="bp-attr-inputs"><input type="text" inputmode="numeric" value="76" aria-label="State of Charge (SoC)"></div>
+        </div>
+        <p class="bp-live-meta">Last value 31 Oct 2026, 20:26, from the battery system.</p>
+        <div class="bp-attr-row">
+          <div class="bp-attr-label"><strong><span class="bp-attr-number">#83</span> Number of full charging and discharging cycles</strong><em class="bp-field-marker">Conditional</em></div>
+          <div class="bp-attr-inputs"><input type="text" inputmode="numeric" value="411" aria-label="Cycles"></div>
+        </div>
+        <p class="bp-live-meta">Last value 31 Oct 2026, 20:26, from the battery system.</p>
+        <div class="bp-attr-row">
+          <div class="bp-attr-label"><strong><span class="bp-attr-number">#87</span> Temperature information (°C)</strong></div>
+          <div class="bp-attr-inputs"><input type="text" inputmode="numeric" value="16" aria-label="Temperature"></div>
+        </div>
+        <p class="bp-live-meta">Last value 31 Oct 2026, 20:26, from the battery system.</p>
+        <div class="bp-attr-row">
+          <div class="bp-attr-label"><strong><span class="bp-attr-number">E1</span> Time spent in extreme temperatures above boundary (minutes)</strong><em class="bp-field-marker">Conditional</em></div>
+          <div class="bp-attr-inputs"><input type="text" inputmode="numeric" value="57" aria-label="E1"></div>
+        </div>
+        <p class="bp-live-meta text-secondary">… E2, E3 and E4 the same way.</p>
+      </div>
+      <div class="bp-live-save">
+        <label class="bp-help-text">Measured at <input type="datetime-local" value="2026-10-31T09:00"></label>
+        <button type="button" class="bp-primary-button">Save live values</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="bp-card bp-console-form-card bp-battery-card mt-4" id="accidents">
+    <span class="bp-summary-title">Accident reports <span class="bp-attr-number">#92</span></span>
+    <h2>1 accident report</h2>
+    <p class="mb-0">The passport links to the battery's accident page, which lists these reports or says none were reported. Seen only by the battery's cluster, market surveillance and the team.</p>
+    <ul class="bp-file-checks">
+      <li><span><a href="#"><strong>Coolant leak found at the 12-month service; module 4 replaced.</strong></a> · accident-report.pdf · 729 bytes</span><span class="bp-batteries-muted">31 Oct 2026, 20:26</span></li>
+    </ul>
+    <form class="bp-attr-upload bp-accident-upload">
+      <div class="bp-attr-file">
+        <label class="bp-secondary-button bp-button-compact position-relative text-nowrap mb-0">Choose file</label>
+        <span class="bp-help-text">No file chosen</span>
+      </div>
+      <div class="bp-attr-parts">
+        <label><span>Title (optional)</span><input type="text" placeholder="e.g. Collision on 12 Oct 2026"></label>
+        <label><span>Language (optional)</span><select><option></option><option>en-GB</option><option>sv-SE</option></select></label>
+      </div>
+      <div class="bp-live-save">
+        <small class="bp-field-help">PDF, PNG or JPEG, checked by its content.</small>
+        <button type="button" class="bp-secondary-button">Add report</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="bp-card bp-console-form-card bp-battery-card mt-4 mk-later" id="handover">
+    <span class="mk-later-tag">added in 4d</span>
+    <div class="bp-battery-card-head">
+      <div>
+        <span class="bp-summary-title">Hand over <em class="bp-field-marker">Not passport data</em></span>
+        <h2>Sold or moved to another customer?</h2>
+        <p class="mb-0">Hand the battery over to their cluster. It moves once their cluster admin accepts; your cluster then no longer sees its purchaser data. The passport doesn't change.</p>
+      </div>
+      <button type="button" class="bp-secondary-button">Hand over…</button>
+    </div>
+  </section>
+
+  <section class="bp-card bp-console-form-card bp-battery-card mt-4" id="modules">
+    <span class="bp-summary-title">Modules <em class="bp-field-marker">Not passport data</em></span>
+    <h2>7 modules</h2>
+    <p class="mb-0">The team keeps this list. The module IDs are seen only by the battery's cluster, market surveillance and the team.</p>
+    <div class="bp-table-scroll">
+      <table class="table align-middle bp-console-table bp-mobile-card-table bp-module-table mb-0">
+        <thead><tr><th>Position</th><th>Serial number</th><th>Connectivity ID</th></tr></thead>
+        <tbody>
+          <tr><td data-label="Position">1</td><td data-label="Serial number">DEMO-C7M-0001-M01</td><td data-label="Connectivity ID">CAN-DEMO-C7M-0001-01</td></tr>
+          <tr><td data-label="Position">2</td><td data-label="Serial number">DEMO-C7M-0001-M02</td><td data-label="Connectivity ID">CAN-DEMO-C7M-0001-02</td></tr>
+          <tr><td data-label="Position">…</td><td data-label="Serial number">…</td><td data-label="Connectivity ID">…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="bp-card bp-console-form-card bp-battery-card mt-4" id="versions">
+    <span class="bp-summary-title">Versions</span>
+    <h2>2 versions</h2>
+    <div class="bp-table-scroll">
+      <table class="table align-middle bp-console-table bp-mobile-card-table bp-versions-table">
+        <thead><tr><th>Version</th><th>Passport ID <span class="bp-attr-number">#5</span></th><th>Status</th><th>Published</th><th>Signature</th></tr></thead>
+        <tbody>
+          <tr><td data-label="Version">2</td><td data-label="Passport ID"><a class="bp-id-value" href="#">urn:x-battery-pass:TEST-DPP-196fc749…</a></td><td data-label="Status">Active</td><td data-label="Published">31 Oct 2026, 20:26</td><td data-label="Signature"><span class="bp-done-note">Verified</span></td></tr>
+          <tr><td data-label="Version">1</td><td data-label="Passport ID"><a class="bp-id-value" href="#">urn:x-battery-pass:TEST-DPP-d0f95271…</a></td><td data-label="Status">Archived</td><td data-label="Published">31 Oct 2026, 20:26</td><td data-label="Signature"><span class="bp-done-note">Verified</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<!-- ======================================================================================= S3 status change window -->
+<div class="mk-caption" id="s3">
+  <h2><span class="mk-part">4b</span>S3 · The "Change status" window</h2>
+  <p>Opened from the status card, on the team's battery page and on the cluster admin's. It asks what happened first; the app sets the status from that. The re-stated values are filled in with the battery's current ones (decision 15). Saving publishes a new version of the same passport.</p>
+</div>
+<main class="bp-page bp-admin-page">
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <p class="text-secondary small mb-1">Step 1: what happened</p>
+      <div class="mk-modal-stage">
+        <div class="bp-modal-panel bp-dialog bp-dialog-wide bp-console-form-card">
+          <h2>Change the battery status</h2>
+          <p class="bp-help-text">Now: <strong>original</strong>. What happened to the battery?</p>
+          <div class="bp-choice-list">
+            <label class="bp-choice"><input type="radio" name="what" checked /><strong>Repaired</strong><small>Status becomes re-used; the repair joins its history. Same passport.</small></label>
+            <label class="bp-choice"><input type="radio" name="what" /><strong>Prepared for re-use and placed on the market again</strong><small>Status re-used. A new, linked passport follows (4c).</small></label>
+            <label class="bp-choice"><input type="radio" name="what" /><strong>Remanufactured</strong><small>A new, linked passport follows (4c).</small></label>
+            <label class="bp-choice"><input type="radio" name="what" /><strong>Repurposed</strong><small>For a new use. A new, linked passport follows (4c).</small></label>
+            <label class="bp-choice"><input type="radio" name="what" /><strong>Waste</strong><small>Final. The passport stays active until the team marks it for deletion after recycling.</small></label>
+          </div>
+          <div class="bp-dialog-actions"><button type="button" class="bp-secondary-button">Cancel</button><button type="button" class="bp-primary-button">Next</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <p class="text-secondary small mb-1">Step 2: the details (here for a repair)</p>
+      <div class="mk-modal-stage">
+        <div class="bp-modal-panel bp-dialog bp-dialog-wide bp-console-form-card">
+          <h2>Repaired: re-state the values</h2>
+          <p class="bp-help-text">The status becomes <strong>re-used</strong>. Check each value; they start as the battery's current ones.</p>
+          <form class="bp-dialog-form mt-2">
+            <label>Date of the repair<input type="date" value="2026-10-31"></label>
+            <label>What was repaired<input type="text" value="Module 4 replaced after a coolant leak."></label>
+            <label><span>Capacity fade <span class="bp-attr-number">#59</span> (%)</span><input type="text" inputmode="decimal" value="6"></label>
+            <div class="bp-suggest">
+              <label>Measured remaining capacity (Ah)<input type="text" inputmode="decimal" value="235"></label>
+              <button type="button" class="bp-text-button">Suggest the fade</button>
+              <small class="bp-field-help">1 − 235 / 250 Ah rated = 6 %. The measured capacity isn't stored.</small>
+            </div>
+            <label><span>Power fade <span class="bp-attr-number">#69</span> (%)</span><input type="text" inputmode="decimal" value="4"></label>
+            <label><span>Energy round trip efficiency fade <span class="bp-attr-number">#74</span> (%)</span><input type="text" inputmode="decimal" value="2"></label>
+            <label><span>Internal resistance increase of pack <span class="bp-attr-number">#79</span> (%)</span><input type="text" inputmode="decimal" value="8"></label>
+            <label><span>Expected lifetime in calendar years <span class="bp-attr-number">#81</span></span><input type="text" inputmode="numeric" value="9"></label>
+            <div class="bp-dialog-actions"><button type="button" class="bp-secondary-button">Back</button><button type="button" class="bp-primary-button">Save and publish version 3</button></div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ======================================================================================== S4 successor card -->
+<div class="mk-caption" id="s4">
+  <h2><span class="mk-part">4c</span>S4 · After remanufacturing, repurposing or re-use: the new passport</h2>
+  <p>The status card then asks who places the battery on the market again. The old passport stays active, with its new status, until the new one is published or linked (J-13); then it becomes inactive and the two link to each other.</p>
+</div>
+<main class="bp-page bp-admin-page">
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <section class="bp-card bp-console-form-card bp-battery-card">
+        <span class="bp-summary-title">Battery status <span class="bp-attr-number">#22</span></span>
+        <div class="bp-battery-status"><strong>Repurposed</strong><span class="text-secondary">since 31 Oct 2026</span></div>
+        <p class="mb-2">This passport becomes inactive once the battery's new passport is published or linked. Who places it on the market again?</p>
+        <div class="bp-choice-list">
+          <label class="bp-choice"><input type="radio" name="who" checked /><strong>Scania</strong><small>The team makes the new passport as a draft: a new battery ID, Scania's operator, the same batch and cluster, these re-stated values to start.</small></label>
+          <label class="bp-choice"><input type="radio" name="who" /><strong>Another operator</strong><small>Their name and details, and the new passport's ID or web address once known.</small></label>
+        </div>
+        <div class="bp-dialog-actions mt-3"><button type="button" class="bp-primary-button">Make the new passport</button></div>
+        <small class="bp-field-help d-block mt-2">The team makes it; a cluster admin sees "Waiting for the team" here.</small>
+      </section>
+    </div>
+    <div class="col-lg-6">
+      <section class="bp-card bp-console-form-card bp-battery-card">
+        <span class="bp-summary-title">Another operator</span>
+        <form class="bp-dialog-form mt-2">
+          <label><span>Operator identifier <span class="bp-attr-number">#7</span></span><input type="text" placeholder="e.g. urn:…"></label>
+          <label><span>Operator name and contact <span class="bp-attr-number">#14</span></span><input type="text" placeholder="Name, postal address, e-mail, web address"></label>
+          <label><span>New passport's ID or web address <span class="text-secondary fw-normal">(once known)</span></span><input type="text" placeholder="e.g. https://…"></label>
+          <div class="bp-dialog-actions"><button type="button" class="bp-secondary-button">Save details</button><button type="button" class="bp-primary-button">Link and set this passport inactive</button></div>
+        </form>
+        <small class="bp-field-help d-block mt-2">The team or the battery's cluster admin fills this in.</small>
+      </section>
+    </div>
+  </div>
+</main>
+
+<!-- ================================================================================ S5 team battery page additions -->
+<div class="mk-caption" id="s5">
+  <h2><span class="mk-part">4b</span><span class="mk-part">4c</span>S5 · The team's battery page: what step 4 adds</h2>
+  <p>The same status card as S2 (4b). A new battery made after remanufacturing shows where it came from. At the end, beside "Remove", the passport status the team sets (4c): invalid, and marked for deletion once the battery is waste.</p>
+</div>
+<main class="bp-page bp-admin-page">
+  <p class="bp-passport-notice"><strong>New passport of an earlier battery.</strong><span>It replaces DEMO-C7M-0001 (version 3), which becomes inactive when this one is published.</span><a href="#">Open the earlier battery</a></p>
+  <details class="bp-card bp-danger-zone mt-2" open>
+    <summary><strong>Passport status</strong> <span class="text-secondary">· active</span></summary>
+    <div class="bp-row-panel">
+      <p class="mb-2"><strong>Mark as invalid</strong>, for example after a market surveillance finding. Every page then says so. Only the team undoes it.</p>
+      <form class="bp-dialog-form">
+        <label>Reason<input type="text" placeholder="e.g. Declared values don't match the test report"></label>
+        <div class="bp-danger-actions"><button type="button" class="bp-danger-button">Mark as invalid</button></div>
+      </form>
+      <hr>
+      <p class="mb-2"><strong>Mark for deletion</strong>, after recycling or export. Only for a battery whose status is waste; the passport stays readable until it is deleted. The team can undo it.</p>
+      <div class="bp-danger-actions"><button type="button" class="bp-danger-button" disabled>Mark for deletion</button><small class="bp-field-help">The battery status is re-used, not waste.</small></div>
+    </div>
+  </details>
+</main>
+
+<!-- ============================================================================== S6 detail page for surveillance -->
+<div class="mk-caption" id="s6">
+  <h2><span class="mk-part">4b</span><span class="mk-part">4c</span>S6 · The detail page: repair history, and "Mark as invalid" for market surveillance</h2>
+  <p>Market surveillance has no admin pages, so its "Mark as invalid" button sits on the detail page (4c). The purchaser tab shows the repair history with the status (4b).</p>
+</div>
+<main class="bp-page">
+  <section class="bp-card bp-report-wide-section">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+      <div>
+        <h2 class="h5 mb-2">Purchaser</h2>
+        <p class="bp-help-text">Seen by the battery's cluster and market surveillance.</p>
+      </div>
+      <button type="button" class="bp-secondary-button">Mark as invalid…</button>
+    </div>
+    <dl class="bp-field-grid">
+      <div><dt>Battery status</dt><dd>re-used<span class="d-block small text-secondary">Entered 31 Oct 2026, 15:10 · typed in the app</span></dd></div>
+      <div><dt>Capacity fade</dt><dd>6 %<span class="d-block small text-secondary">Entered 31 Oct 2026, 15:10 · typed in the app</span></dd></div>
+      <div><dt>Expected lifetime in calendar years</dt><dd>9 years<span class="d-block small text-secondary">Entered 31 Oct 2026, 15:10 · typed in the app</span></dd></div>
+    </dl>
+    <h3 class="h6 mt-3 mb-0">Repair history</h3>
+    <ul class="bp-history">
+      <li><time>31 Oct 2026</time><span>Module 4 replaced after a coolant leak.</span><small>Recorded by the battery's cluster</small></li>
+    </ul>
+  </section>
+</main>
+
+<!-- ================================================================================= S7 notices on the passport -->
+<div class="mk-caption" id="s7">
+  <h2><span class="mk-part">4c</span>S7 · What readers see when a passport is no longer active</h2>
+  <p>One line at the top of the public summary and the detail page, under the test-ID line. The status pill in the header follows the DPP status (#2).</p>
+</div>
+<main class="bp-page">
+  <p class="bp-passport-notice"><span class="bp-status-pill is-inactive">Inactive</span><span>This battery was repurposed and has a new passport.</span><a href="#">Open the new passport</a></p>
+  <p class="bp-passport-notice"><span class="bp-status-pill is-active">Active</span><span>This passport replaces an earlier one of the same battery.</span><a href="#">Open the earlier passport</a></p>
+  <p class="bp-passport-notice is-invalid"><span class="bp-status-pill is-inactive">Invalid</span><strong>This passport was marked invalid on 31 Oct 2026.</strong><span>Its data can't be relied on.</span></p>
+  <p class="bp-passport-notice"><span class="bp-status-pill is-inactive">Marked for deletion</span><span>The battery was recycled. This passport stays readable until it is deleted.</span></p>
+  <p class="bp-passport-notice"><span class="bp-status-pill is-inactive">Inactive</span><span>This battery was remanufactured by Example Remanufacturing AB, which issued its new passport.</span><a href="#">https://example.com/passports/…</a></p>
+</main>
+
+<!-- ===================================================================================== S8 hand-over windows -->
+<div class="mk-caption" id="s8">
+  <h2><span class="mk-part">4d</span>S8 · Handing a battery over</h2>
+  <p>The sender types the receiving cluster's ID, which the receiver gives them; the app shows the cluster's name to confirm. While it waits, the battery stays with the sender, who can cancel. The receiver answers on its Registry (S1). The team keeps its direct move on its own battery page, logged, and can cancel a waiting hand-over.</p>
+</div>
+<main class="bp-page bp-admin-page">
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <p class="text-secondary small mb-1">"Hand over" window</p>
+      <div class="mk-modal-stage">
+        <div class="bp-modal-panel bp-dialog bp-console-form-card">
+          <h2>Hand DEMO-C7M-0001 over</h2>
+          <p class="bp-help-text">Ask the receiving customer for their cluster ID.</p>
+          <form class="bp-dialog-form mt-2">
+            <label>Receiving cluster ID<input type="text" value="demo-south"></label>
+            <p class="bp-done-note mb-0">Demo South Operations</p>
+            <div class="bp-dialog-actions"><button type="button" class="bp-secondary-button">Cancel</button><button type="button" class="bp-primary-button">Ask them to accept</button></div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <p class="text-secondary small mb-1">The sender's card while it waits</p>
+      <section class="bp-card bp-console-form-card bp-battery-card">
+        <span class="bp-summary-title">Hand over <em class="bp-field-marker">Not passport data</em></span>
+        <h2>Waiting for Demo South Operations</h2>
+        <p class="mb-2">Asked 31 Oct 2026, 14:05. The battery stays with your cluster until they accept.</p>
+        <div class="bp-dialog-actions"><button type="button" class="bp-secondary-button">Cancel the hand-over</button></div>
+      </section>
+    </div>
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,152 @@
+@using BatteryPassWeb.Dpp.Pages
+@model UploadCardView
+@* "Upload a file" (decision 35, step 5c, mock-up B1–B4): one JSON file for this battery, checked before saving, and the
+   battery's earlier uploads. On the team's battery page and on the cluster admin's. *@
+@functions {
+    private static string ResultClass(UploadValueRow row) => row.Refused ? "is-refused" : row.Quiet ? "text-secondary" : string.Empty;
+}
+<section class="bp-card bp-console-form-card bp-battery-card mt-4" id="upload">
+    <span class="bp-summary-title">Upload a file</span>
+    @if (Model.Check is { } check)
+    {
+        <div class="bp-upload-head">
+            <h2 class="mb-0">Check before saving</h2>
+            <span class="text-secondary">@check.FileName · @check.FormatWords</span>
+            <span class="bp-soft-tag @(check.WillChange ? "is-saved" : "is-refused")">@(check.WillChange ? "Will change" : "Nothing to save")</span>
+        </div>
+        @if (check.Refusal is { } refusal)
+        {
+            @* Decision 69: why nothing can be saved, and what to do, as the card's main message. *@
+            <div class="alert alert-warning mt-3 mb-0" role="alert" data-upload-refusal>
+                <strong>Nothing can be saved from this file.</strong>
+                <p class="mb-0 mt-1">@refusal</p>
+            </div>
+        }
+        else
+        {
+            <p class="bp-help-text mt-2 mb-0">Nothing is saved yet. Live values change the passport in place; the battery's own values and a status change make a new version.</p>
+        }
+        @if (check.Status is { } status)
+        {
+            <p class="bp-upload-status mt-2 mb-0" data-upload-status>@status</p>
+        }
+        @if (check.Values.Count > 0)
+        {
+            <table class="bp-upload-values">
+                <thead><tr><th>Value</th><th>Now</th><th>In the file</th><th>Result</th></tr></thead>
+                <tbody>
+                    @foreach (var row in check.Values)
+                    {
+                        <tr><td>@row.Label</td><td data-label="Now">@row.Now</td><td data-label="In the file">@row.InFile</td><td class="@ResultClass(row)">@row.Result</td></tr>
+                    }
+                </tbody>
+            </table>
+        }
+        @if (check.Modules is { } modules)
+        {
+            <p class="bp-help-text mt-2 mb-0">@modules</p>
+        }
+        @if (check.Notes.Count > 0)
+        {
+            <ul class="bp-upload-notes">
+                @foreach (var note in check.Notes)
+                {
+                    <li>@note</li>
+                }
+            </ul>
+        }
+        <form method="post" action="@Model.Action/save" class="bp-dialog-actions mt-3">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="checkId" value="@check.CheckId" />
+            <a class="bp-secondary-button" href="@Model.AgainHref" data-upload-again>Start again</a>
+            @if (check.WillChange)
+            {
+                <button type="submit" class="bp-primary-button">Save</button>
+            }
+        </form>
+    }
+    else
+    {
+        <h2>Values from a file</h2>
+        <p class="mb-0">
+            @if (Model.ForTeam)
+            {
+                <text>A JSON file for this battery: the app's upload format, or the battery system's export as it is (it also sets the module list).</text>
+            }
+            else
+            {
+                <text>A JSON file for this battery: your battery system's export as it is, or the app's upload format. It changes the live values and the module list.</text>
+            }
+            You see what would change before anything is saved. The help page has an example of each.
+        </p>
+        @await Html.PartialAsync("~/Views/Batteries/_CardMessages.cshtml", "upload")
+        <form method="post" action="@Model.Action" enctype="multipart/form-data" class="bp-attr-upload bp-module-upload" data-upload-row>
+            @Html.AntiForgeryToken()
+            <div class="bp-attr-file">
+                <label class="bp-secondary-button bp-button-compact bp-document-smart-upload position-relative text-nowrap mb-0">
+                    Choose file
+                    <input type="file" name="file" class="bp-document-hidden-file" accept="application/json,.json" data-kind-words="a JSON file" data-max-bytes="@BatteryPassWeb.Dpp.Uploads.UploadService.MaxBytes" data-upload-file />
+                </label>
+                <span class="bp-help-text" data-upload-chosen>No file chosen</span>
+            </div>
+            <div class="bp-live-save">
+                <small class="bp-field-help">One file, up to 2 MB, for this battery only.</small>
+                <button type="submit" class="bp-secondary-button" data-upload-button>Check the file</button>
+            </div>
+        </form>
+    }
+    @if (Model.History.Count > 0)
+    {
+        <h3 class="h6 mt-4 mb-2">Earlier uploads</h3>
+        <section class="bp-list-card" style="--bp-row-columns: minmax(0, 1.3fr) minmax(0, 1.7fr) minmax(0, 1.2fr) 96px" aria-label="Earlier uploads">
+            @foreach (var upload in Model.History)
+            {
+                <details class="bp-row" open="@(upload.Id == Model.OpenId)" data-upload-row="@upload.Id">
+                    <summary>
+                        <span class="bp-row-title"><svg class="bp-i" aria-hidden="true"><use href="#i-upload" /></svg><strong>@upload.When</strong><code>@upload.Channel</code></span>
+                        <span><span class="bp-row-label">Who and what</span>@upload.WhoAndWhat</span>
+                        <span><span class="bp-row-label">Result</span>@upload.Result</span>
+                        <span class="bp-row-open"><span class="is-open">Open</span><span class="is-close">Close</span></span>
+                    </summary>
+                    <div class="bp-row-panel bp-console-form-card">
+                        <section class="bp-subcard">
+                            @if (upload.Problem is { } refused)
+                            {
+                                <p class="mb-0">@refused</p>
+                            }
+                            @if (upload.Status is { } uploadStatus)
+                            {
+                                <p class="bp-upload-status mb-0">@uploadStatus</p>
+                            }
+                            @if (upload.Values.Count > 0)
+                            {
+                                <table class="bp-upload-values">
+                                    <thead><tr><th>Value</th><th>In the file</th><th>Result</th></tr></thead>
+                                    <tbody>
+                                        @foreach (var row in upload.Values)
+                                        {
+                                            <tr><td>@row.Label</td><td data-label="In the file">@row.InFile</td><td class="@ResultClass(row)">@row.Result</td></tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            }
+                            @if (upload.Modules is { } uploadModules)
+                            {
+                                <p class="bp-help-text mt-2 mb-0">@uploadModules</p>
+                            }
+                            @if (upload.Notes.Count > 0)
+                            {
+                                <ul class="bp-upload-notes">
+                                    @foreach (var note in upload.Notes)
+                                    {
+                                        <li>@note</li>
+                                    }
+                                </ul>
+                            }
+                        </section>
+                    </div>
+                </details>
+            }
+        </section>
+    }
+</section>

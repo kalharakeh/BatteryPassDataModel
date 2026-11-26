@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DPP V3 team pages — layout options (step 2d)</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --surface: #fff; --border: #d1d7e0; --text: #0a2850; --muted: #6e829f;
+    --primary: #2a6ecf; --primary-dark: #2058a8; --danger: #b20018; --header: #041e42;
+    --ok: #1e7a46; --ok-soft: #e7f5ec; --warn: #9a6400; --warn-soft: #fff4dc; --danger-soft: #fdecee;
+    --public: #2a6ecf; --purchaser: #7a3db8; --shared: #0f7f86; --authorities: #a3401c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+  header.app { background: var(--header); color: #fff; padding: 10px 16px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+  header.app strong { font-size: 15px; letter-spacing: .2px; }
+  header.app nav a { color: #c3d8f7; text-decoration: none; margin-right: 14px; }
+  header.app nav a.on { color: #fff; border-bottom: 2px solid #fff; padding-bottom: 2px; }
+  main { max-width: 1180px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 22px; margin: 6px 0 4px; }
+  h2 { font-size: 18px; margin: 34px 0 6px; padding-top: 10px; border-top: 3px solid var(--header); }
+  h3 { font-size: 15px; margin: 18px 0 6px; }
+  p.lead { color: var(--muted); margin: 0 0 12px; max-width: 860px; }
+  .note { background: #eef5fb; border-left: 4px solid var(--primary); padding: 8px 12px; margin: 10px 0; max-width: 900px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; margin: 10px 0; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .col { flex: 1 1 320px; min-width: 0; }
+  .muted { color: var(--muted); }
+  .mono { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12.5px; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 10px; border: 1px solid currentColor; margin-left: 4px; white-space: nowrap; }
+  .a-public { color: var(--public); } .a-purchaser { color: var(--purchaser); } .a-shared { color: var(--shared); } .a-authorities { color: var(--authorities); }
+  .req { color: var(--muted); } .feb { color: var(--text); background: #eef1f5; border-color: #eef1f5; }
+  .btn { display: inline-block; border: 1px solid var(--primary); background: var(--primary); color: #fff; padding: 6px 12px; border-radius: 4px; font-weight: 600; cursor: default; }
+  .btn.ghost { background: #fff; color: var(--primary); }
+  .btn.danger { background: var(--danger); border-color: var(--danger); }
+  .btn[disabled] { opacity: .45; }
+  input, select, textarea { font: inherit; color: inherit; border: 1px solid var(--border); border-radius: 4px; padding: 5px 8px; width: 100%; background: #fff; }
+  label.f { display: block; font-weight: 600; margin-bottom: 3px; }
+  .unit { color: var(--muted); font-size: 12px; margin-left: 6px; display: inline-block; min-width: 40px; }
+  .field input:not([style]), td input { width: calc(100% - 52px); }
+  .msg { font-size: 12.5px; margin-top: 3px; }
+  .msg.ok { color: var(--ok); } .msg.warn { color: var(--warn); } .msg.err { color: var(--danger); }
+  .field { padding: 9px 0; border-bottom: 1px solid #eef1f5; display: grid; grid-template-columns: minmax(220px, 1.2fr) minmax(200px, 1fr); gap: 4px 14px; align-items: start; }
+  .field .help { grid-column: 1 / -1; font-size: 12.5px; color: var(--muted); }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); } .pill.warn { background: var(--warn-soft); color: var(--warn); } .pill.err { background: var(--danger-soft); color: var(--danger); } .pill.draft { background: #eef1f5; color: var(--muted); }
+  table { border-collapse: collapse; width: 100%; background: #fff; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid #eef1f5; vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); background: #fafbfc; }
+  .tabs { display: flex; gap: 2px; border-bottom: 2px solid var(--border); margin: 10px 0 0; flex-wrap: wrap; }
+  .tabs label { padding: 7px 14px; cursor: pointer; border: 1px solid var(--border); border-bottom: none; border-radius: 6px 6px 0 0; background: #eef1f5; font-weight: 600; }
+  input.opt { display: none; }
+  .optpanel { display: none; }
+  #o1:checked ~ .tabs label[for=o1], #o2:checked ~ .tabs label[for=o2], #o3:checked ~ .tabs label[for=o3] { background: #fff; color: var(--primary); }
+  #o1:checked ~ .p1, #o2:checked ~ .p2, #o3:checked ~ .p3 { display: block; }
+  .tree li { margin: 3px 0; } .tree ul { padding-left: 20px; margin: 2px 0; }
+  .banner { background: var(--warn-soft); border: 1px solid #f0d28a; color: #6b4600; padding: 7px 12px; border-radius: 4px; margin-bottom: 10px; }
+  .sidenav a { display: block; padding: 5px 8px; border-left: 3px solid transparent; color: var(--text); text-decoration: none; }
+  .sidenav a.on { border-left-color: var(--primary); background: #eef5fb; font-weight: 600; }
+  .steps { display: flex; gap: 4px; flex-wrap: wrap; margin: 8px 0 12px; }
+  .steps span { flex: 1 1 120px; padding: 6px 8px; border-radius: 4px; background: #eef1f5; font-size: 12.5px; }
+  .steps span.on { background: var(--primary); color: #fff; } .steps span.done { background: var(--ok-soft); color: var(--ok); }
+  .dialog { max-width: 620px; margin: 10px auto; border: 1px solid var(--border); border-radius: 8px; background: #fff; box-shadow: 0 8px 28px rgba(4,30,66,.18); }
+  .dialog .hd { padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 700; }
+  .dialog .bd { padding: 12px 16px; } .dialog .ft { padding: 10px 16px; border-top: 1px solid var(--border); text-align: right; }
+  .drop { border: 2px dashed var(--border); border-radius: 6px; padding: 18px; text-align: center; color: var(--muted); }
+  .q { background: #fff8e6; border: 1px solid #f0d28a; border-radius: 6px; padding: 10px 14px; margin: 14px 0; max-width: 900px; }
+  .q strong { color: #6b4600; }
+  @media (max-width: 640px) { .field { grid-template-columns: 1fr; } main { padding: 12px; } }
+</style>
+</head>
+<body>
+<header class="app"><strong>Battery Passport</strong>
+  <nav><a class="on">Product data</a><a>Packs</a><a>Publication</a><a>Clusters</a><a>Help</a></nav>
+</header>
+<main>
+  <h1>Team pages for the V3 passport — layout options</h1>
+  <p class="lead">Mock-up for step 2d, the pages your team uses to enter product data, create packs, upload documents and publish passports. Nothing here is built yet. Each screen uses the real attribute names and the test pack (VPC8C05-6788). Where there's a choice, the options are side by side; the questions in yellow are what I need from you.</p>
+  <div class="note"><b>Shown on every field:</b> the attribute number and name from the V3 file, the unit, who sees it (<span class="badge a-public">Public</span><span class="badge a-purchaser">Purchaser</span><span class="badge a-shared">Shared</span><span class="badge a-authorities">Authorities</span>), the requirement (<span class="badge req">M</span>, <span class="badge req">(M)</span>, <span class="badge req">C</span>) and <span class="badge feb">Feb 2027</span> when it's needed by then. A field turns red with the save pipeline's own reason when a value is refused.</div>
+
+  <!-- ===================== Screen 1 ===================== -->
+  <h2>1. Product data overview</h2>
+  <p class="lead">Where the team starts: families with their models, each model's batches (one per calendar year and manufacturing site), and the shared site and operator records. Counts show how complete each record is for publication.</p>
+  <div class="row">
+    <div class="card col">
+      <h3 style="margin-top:0">Families and models</h3>
+      <ul class="tree" style="padding-left:16px;margin:0">
+        <li><b>Test battery family</b> <span class="muted">· picture set</span>
+          <ul>
+            <li><b>EXB-NMC-100</b> <span class="pill warn">36 / 37 model values · #38 not needed by Feb 2027</span>
+              <ul>
+                <li>Batch 2026 · Example plant <span class="pill ok">16 / 16</span> <span class="muted">· 12 packs, 9 published</span></li>
+                <li>Batch 2027 · Example plant <span class="pill err">5 / 16 · 3 needed by Feb 2027</span> <span class="muted">· 0 packs</span></li>
+              </ul>
+            </li>
+            <li><b>EXB-NMC-120</b> <span class="pill err">29 / 37 · 4 needed by Feb 2027</span></li>
+          </ul>
+        </li>
+      </ul>
+      <p style="margin-bottom:0"><span class="btn ghost">+ Family</span> <span class="btn ghost">+ Model</span> <span class="btn ghost">+ Batch</span></p>
+      <h3>Family: name and picture</h3>
+      <div class="row" style="align-items:center">
+        <div style="flex:0 0 96px;height:72px;border:1px solid var(--border);border-radius:4px;background:#eef1f5;display:flex;align-items:center;justify-content:center" class="muted">picture</div>
+        <div class="col"><label class="f">Family name</label><input value="Test battery family"><div class="msg muted">The picture shows on the public summary only; it isn't passport data (decision 20). PNG or JPEG.</div><span class="btn ghost" style="margin-top:4px">Replace picture</span></div>
+      </div>
+    </div>
+    <div class="card col">
+      <h3 style="margin-top:0">Manufacturing sites</h3>
+      <table><tr><th>Site</th><th>#12 · #15 · #16</th><th>Batches</th></tr>
+        <tr><td>Example plant</td><td><span class="pill ok">3 / 3</span></td><td>2</td></tr></table>
+      <h3>Economic operators</h3>
+      <table><tr><th>Operator</th><th>#7 · #14</th><th>Packs</th></tr>
+        <tr><td>Example Battery Systems AB</td><td><span class="pill ok">2 / 2</span></td><td>12</td></tr></table>
+    </div>
+  </div>
+
+  <!-- ===================== Screen 2 ===================== -->
+  <h2>2. Editing a model — three layout options</h2>
+  <p class="lead">The model holds 32 attributes plus the starting values of the five re-stated ones (37 values). The same editor shape is reused for batches (16), sites (3) and operators (2). Pick the layout you prefer; the batch, site and operator editors follow it.</p>
+  <input type="radio" name="opt" id="o1" class="opt" checked>
+  <input type="radio" name="opt" id="o2" class="opt">
+  <input type="radio" name="opt" id="o3" class="opt">
+  <div class="tabs"><label for="o1">Option A · Sections on one page</label><label for="o2">Option B · Checklist table</label><label for="o3">Option C · Step by step</label></div>
+
+  <!-- Option A -->
+  <div class="optpanel p1 card" style="border-top-left-radius:0">
+    <div class="row">
+      <div style="flex:0 0 220px" class="sidenav">
+        <a class="on">Identifiers and product data <span class="muted">2/2</span></a>
+        <a>Performance and durability <span class="muted">19/19</span></a>
+        <a>Materials and composition <span class="muted">4/4</span></a>
+        <a>Circularity <span class="muted">7/7</span></a>
+        <a>Symbols and labels <span class="muted">4/4</span></a>
+        <a>Due diligence <span class="muted">0/1 · later</span></a>
+      </div>
+      <div class="col">
+        <h3 style="margin-top:0">Identifiers and product data</h3>
+        <div class="field"><div><label class="f">#20 Battery category <span class="badge a-public">Public</span><span class="badge req">M</span><span class="badge feb">Feb 2027</span></label></div><div><input value="industrial/non-stationary battery" disabled><div class="msg muted">The only value the schema allows for this category</div></div></div>
+        <div class="field"><div><label class="f">#21 Battery mass <span class="badge a-public">Public</span><span class="badge req">M</span><span class="badge feb">Feb 2027</span></label></div><div><input value="512.5"><span class="unit">kg</span></div></div>
+        <h3>Performance and durability</h3>
+        <div class="field"><div><label class="f">#57 Rated capacity <span class="badge a-public">Public</span><span class="badge req">M</span></label></div><div><input value="200"><span class="unit">Ah</span></div></div>
+        <div class="field"><div><label class="f">#59 Capacity fade — starting value <span class="badge a-purchaser">Purchaser</span><span class="badge req">M</span><span class="badge feb">Feb 2027</span></label></div><div><input value="0"><span class="unit">%</span><div class="msg muted">Each pack re-states it at a status change (decision 11)</div></div></div>
+        <div class="field"><div><label class="f">#66 Nominal voltage <span class="badge a-public">Public</span><span class="badge req">M</span><span class="badge feb">Feb 2027</span></label></div><div><input value="650"><span class="unit">V</span><div class="msg muted">Optional test temperature range: <input style="width:70px" value="-20"> to <input style="width:70px" value="45"> °C</div></div></div>
+        <div class="field"><div><label class="f">#71 Initial round trip energy efficiency <span class="badge a-public">Public</span><span class="badge req">C</span><span class="badge feb">Feb 2027</span></label></div><div><input value="120"><span class="unit">%</span><div class="msg err">Refused: /percentageValue maximum — 120 should be at most 100</div></div>
+          <div class="help">Conditional: not needed for non-cycling applications (the file's exemption).</div></div>
+        <h3>Circularity — shared documents</h3>
+        <div class="field"><div><label class="f">#45 Dismantling information <span class="badge a-shared">Shared · repair, recycling</span><span class="badge req">M</span><span class="badge feb">Feb 2027</span></label></div><div><span class="mono">dismantling.pdf · PDF · 412 KB</span><div class="msg muted">Uploaded 28 Oct 2026 by team@… · only its audience can download it</div><span class="btn ghost" style="margin-top:4px">Replace file</span></div></div>
+        <p style="margin:14px 0 0"><span class="btn">Save changes</span> <span class="btn ghost">Preview</span> <span class="muted">Saving checks each value; refused ones stay red and the rest are saved.</span></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="optpanel p2 card" style="border-top-left-radius:0">
+    <p style="margin-top:0">Filter: <span class="pill err">Missing for Feb 2027 (0)</span> <span class="pill warn">Required later (1)</span> <span class="pill draft">All 37</span> <span class="pill draft">Public</span> <span class="pill draft">Purchaser</span> <span class="pill draft">Shared</span></p>
+    <table>
+      <tr><th>#</th><th>Attribute</th><th>Value</th><th>Unit</th><th>Who sees it</th><th>Req.</th><th>Status</th></tr>
+      <tr><td>20</td><td>Battery category</td><td class="muted">industrial/non-stationary battery</td><td></td><td><span class="badge a-public">Public</span></td><td>M</td><td><span class="pill ok">fixed</span></td></tr>
+      <tr><td>21</td><td>Battery mass</td><td><input value="512.5"></td><td>kg</td><td><span class="badge a-public">Public</span></td><td>M</td><td><span class="pill ok">saved</span></td></tr>
+      <tr><td>57</td><td>Rated capacity</td><td><input value="200"></td><td>Ah</td><td><span class="badge a-public">Public</span></td><td>M</td><td><span class="pill ok">saved</span></td></tr>
+      <tr><td>59</td><td>Capacity fade (starting value)</td><td><input value="0"></td><td>%</td><td><span class="badge a-purchaser">Purchaser</span></td><td>M</td><td><span class="pill ok">saved</span></td></tr>
+      <tr><td>71</td><td>Initial round trip energy efficiency</td><td><input value="120" style="border-color:var(--danger)"></td><td>%</td><td><span class="badge a-public">Public</span></td><td>C</td><td><span class="pill err">max 100</span></td></tr>
+      <tr><td>45</td><td>Dismantling information</td><td class="mono">dismantling.pdf</td><td></td><td><span class="badge a-shared">Shared</span></td><td>M</td><td><span class="pill ok">uploaded</span></td></tr>
+      <tr><td colspan="7" class="muted">… 31 more rows, all on one page; the header stays visible while scrolling.</td></tr>
+    </table>
+    <p style="margin:10px 0 0"><span class="btn">Save changes</span> <span class="btn ghost">Preview</span></p>
+  </div>
+
+  <!-- Option C -->
+  <div class="optpanel p3 card" style="border-top-left-radius:0">
+    <div class="steps"><span class="done">1 · Identifiers ✓</span><span class="on">2 · Performance 17/19</span><span>3 · Materials</span><span>4 · Circularity</span><span>5 · Symbols and labels</span><span>6 · Due diligence</span><span>7 · Review</span></div>
+    <div class="field"><div><label class="f">#57 Rated capacity <span class="badge a-public">Public</span><span class="badge req">M</span></label></div><div><input value="200"><span class="unit">Ah</span></div></div>
+    <div class="field"><div><label class="f">#59 Capacity fade — starting value <span class="badge a-purchaser">Purchaser</span><span class="badge req">M</span><span class="badge feb">Feb 2027</span></label></div><div><input value="0"><span class="unit">%</span></div></div>
+    <div class="field"><div><label class="f">#71 Initial round trip energy efficiency <span class="badge a-public">Public</span><span class="badge req">C</span></label></div><div><input value="120"><span class="unit">%</span><div class="msg err">Refused: at most 100</div></div></div>
+    <p class="muted">… the other values of this step</p>
+    <p style="margin:10px 0 0"><span class="btn ghost">◀ Back</span> <span class="btn">Save and continue ▶</span></p>
+  </div>
+  <div class="q"><strong>Question 1:</strong> which editor layout — A (sections on one page, with a side menu), B (one checklist table) or C (step by step)? My suggestion is <b>A</b>: everything editable on one page, grouped like the passport itself, with the side menu showing what's still missing.</div>
+
+  <!-- ===================== Screen 3 ===================== -->
+  <h2>3. Creating a pack</h2>
+  <div class="card" style="max-width:760px">
+    <div class="row">
+      <div class="col"><label class="f">Batch</label><select><option>EXB-NMC-100 · 2026 · Example plant</option></select><div class="msg muted">Gives the model and the manufacturing site</div></div>
+      <div class="col"><label class="f">Economic operator (#7, #14)</label><select><option>Example Battery Systems AB</option></select></div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <div class="col"><label class="f">#11 Battery serial number <span class="badge a-public">Public</span><span class="badge req">M</span></label><input value="VPC8C05-6790"></div>
+      <div class="col"><label class="f">Cluster (purchaser)</label><select><option>— not sold yet —</option><option>cluster-test</option></select></div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <div class="col"><label class="f">#17 Manufacturing date</label><input value="2026-10"><div class="msg muted">Year and month (decision 18)</div></div>
+      <div class="col"><label class="f">#19 Warranty period <span class="badge req">C</span></label><input value="P8Y"><div class="msg muted">e.g. P8Y = 8 years</div></div>
+      <div class="col"><label class="f">#13 Third party service provider <span class="badge a-authorities">Authorities</span></label><input value="Example Passport Hosting AB"></div>
+    </div>
+    <p class="muted" style="margin:10px 0 4px">Set by the app: #6 unique identifier (a TEST- identifier until the scheme is chosen), #22 status "original", #92 link to the pack's accident page.</p>
+    <span class="btn">Create draft pack</span> <span class="muted">If any value is refused, the pack isn't created and each refused field says why.</span>
+  </div>
+
+  <!-- ===================== Screen 4 ===================== -->
+  <h2>4. A pack's page — draft, then published</h2>
+  <div class="row">
+    <div class="card col">
+      <div class="banner">TEST identifier — <span class="mono">urn:x-battery-pass:TEST-4f0c…</span> — fine for trying things; the real scheme is still to be chosen (O-1).</div>
+      <h3 style="margin-top:0">VPC8C05-6790 <span class="pill draft">Draft</span></h3>
+      <p class="muted" style="margin-top:0">EXB-NMC-100 · batch 2026 · Example plant · cluster: —</p>
+      <h3>Publication checks</h3>
+      <p style="margin:2px 0"><span class="pill err">2 blocking</span></p>
+      <ul style="margin:4px 0 8px">
+        <li>#63 State of Charge (SoC) is missing <span class="muted">— enter the end-of-line value or wait for the battery system</span></li>
+        <li>#87 Temperature information is missing</li>
+      </ul>
+      <p style="margin:2px 0"><span class="pill warn">1 warning</span></p>
+      <ul style="margin:4px 0 8px"><li>#38 Information of due diligence report is missing (required later, not by Feb 2027)</li></ul>
+      <h3>Live values (end-of-line)</h3>
+      <div class="row">
+        <div class="col" style="flex-basis:110px"><label class="f">#63 SoC</label><input value="" placeholder="e.g. 50"><span class="unit">%</span></div>
+        <div class="col" style="flex-basis:110px"><label class="f">#83 Cycles</label><input value="0"></div>
+        <div class="col" style="flex-basis:110px"><label class="f">#87 Temp.</label><input value="" placeholder="e.g. 22"><span class="unit">°C</span></div>
+        <div class="col" style="flex-basis:150px"><label class="f">Measured at</label><input value="2026-10-28 14:00"></div>
+      </div>
+      <p style="margin:6px 0 10px"><span class="btn ghost">Save live values</span> <span class="muted">Later the battery system's feed updates them.</span></p>
+      <span class="btn" disabled>Publish version 1</span> <span class="muted">Publishing is the team's step; it signs the passport.</span>
+    </div>
+    <div class="card col">
+      <h3 style="margin-top:0">VPC8C05-6788 <span class="pill ok">Published · version 2</span></h3>
+      <p class="muted" style="margin-top:0">Last update 29 Oct 2026 08:10 UTC (live value) · signature verified ✓</p>
+      <table>
+        <tr><th>Version</th><th>Passport ID (#5)</th><th>Status</th><th>Published</th></tr>
+        <tr><td>2</td><td class="mono">…TEST-DPP-9a1e…</td><td><span class="pill ok">active</span></td><td>29 Oct 2026 09:00</td></tr>
+        <tr><td>1</td><td class="mono">…TEST-DPP-31c7…</td><td><span class="pill draft">archived</span></td><td>28 Oct 2026 09:30</td></tr>
+      </table>
+      <h3>Live values</h3>
+      <table>
+        <tr><th>#</th><th>Value</th><th>Measured</th><th>From</th></tr>
+        <tr><td>63 State of charge</td><td>55 %</td><td>29 Oct 07:40</td><td>battery system</td></tr>
+        <tr><td>83 Full cycles</td><td>412</td><td>28 Oct 09:30</td><td>team</td></tr>
+        <tr><td>87 Temperature</td><td>23 °C</td><td>28 Oct 09:30</td><td>team</td></tr>
+      </table>
+      <h3>Accident reports (#92)</h3>
+      <p style="margin:2px 0" class="muted">None reported. <span class="btn ghost">Add a report</span></p>
+    </div>
+  </div>
+  <div class="q"><strong>Question 2:</strong> on the pack page, should the versions, live values and accident reports sit together on one page (as above), or in tabs (Passport · Versions · Live values · Documents)? My suggestion: <b>one page</b> while there are few versions.</div>
+
+  <!-- ===================== Screen 5 ===================== -->
+  <h2>5. When a shared record changes</h2>
+  <div class="dialog">
+    <div class="hd">Save the change to model EXB-NMC-100?</div>
+    <div class="bd">
+      <p style="margin-top:0">You changed <b>#57 Rated capacity</b> from 200 to 210 Ah. This model's data is part of <b>9 published passports</b>; each gets a new signed version, and the current one is archived.</p>
+      <table><tr><th>Pack</th><th>Cluster</th><th>Current version</th></tr>
+        <tr><td>VPC8C05-6788</td><td>cluster-test</td><td>2 → 3</td></tr>
+        <tr><td>VPC8C05-6789</td><td>cluster-test</td><td>1 → 2</td></tr>
+        <tr><td colspan="3" class="muted">… 7 more</td></tr></table>
+      <p class="muted" style="margin-bottom:0">3 draft packs also use this model; they're not published, so nothing changes for them.</p>
+    </div>
+    <div class="ft"><span class="btn ghost">Cancel</span> <span class="btn">Save and publish 9 new versions</span></div>
+  </div>
+
+  <!-- ===================== Screen 6 ===================== -->
+  <h2>6. Uploading a restricted document</h2>
+  <div class="card" style="max-width:760px">
+    <label class="f">#29 Results of test reports proving compliance <span class="badge a-authorities">Authorities</span><span class="badge req">M</span><span class="badge feb">Feb 2027</span></label>
+    <p class="muted" style="margin:2px 0 8px">Batch EXB-NMC-100 · 2026 · Example plant. Only notified bodies, market surveillance, the Commission and your team can download it.</p>
+    <div class="drop">Drop a PDF, PNG or JPEG here, or <u>choose a file</u> · up to 10 MB · checked by its content, not its name</div>
+    <div class="row" style="margin-top:8px">
+      <div class="col"><label class="f">Title shown in the passport</label><input value="Test reports 2026"></div>
+      <div class="col" style="flex:0 0 160px"><label class="f">Language</label><select><option>en-GB</option><option>sv-SE</option><option>de-DE</option></select></div>
+    </div>
+    <p style="margin:10px 0 0"><span class="btn">Upload and link</span> <span class="muted">Public documents (DoC, labels, end-user information) are links to your website instead — no upload.</span></p>
+  </div>
+
+  <div class="note"><b>Not in 2d:</b> the status change (with the re-stated fades and lifetime), repairs, transfers and the cluster admins' pages come in step 4; the JSON upload page in step 5; the public summary, detail page and document downloads for other readers in step 3.</div>
+  <div class="q"><strong>Question 3:</strong> anything missing or wrong on these screens before I plan 2d? (For example: fields you want side by side, wording, or a screen you expected to see.)</div>
+  <p class="muted" style="margin-top:24px">Mock-up only · <span class="mono">docs/mockups/dpp-v3-team-pages-options.html</span> · data from the test pack.</p>
+</main>
+</body>
+</html>

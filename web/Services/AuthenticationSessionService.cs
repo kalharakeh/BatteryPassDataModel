@@ -7,10 +7,12 @@ namespace BatteryPassWeb.Services;
 public sealed class AuthenticationSessionService
 {
     private readonly ApplicationSettingsService _applicationSettingsService;
+    private readonly AuthService _authService;
 
-    public AuthenticationSessionService(ApplicationSettingsService applicationSettingsService)
+    public AuthenticationSessionService(ApplicationSettingsService applicationSettingsService, AuthService authService)
     {
         _applicationSettingsService = applicationSettingsService;
+        _authService = authService;
     }
 
     public async Task SignInAsync(
@@ -43,6 +45,24 @@ public sealed class AuthenticationSessionService
             context.RejectPrincipal();
             await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return;
+        }
+
+        // The account as it is now, on every request (finding S02): no cache, so a change counts from the next request.
+        if (context.Principal is { } session)
+        {
+            var check = await _authService.CheckSessionAsync(session, context.HttpContext.RequestAborted);
+            if (check.SignOut)
+            {
+                context.RejectPrincipal();
+                await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                return;
+            }
+
+            if (check.Fresh is { } fresh)
+            {
+                context.ReplacePrincipal(fresh);
+                context.ShouldRenew = true;
+            }
         }
 
         if (!expiresUtc.HasValue || expiresUtc.Value - now <= TimeSpan.FromTicks(timeout.Ticks / 2))

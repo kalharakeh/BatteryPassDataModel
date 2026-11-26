@@ -12,11 +12,11 @@ public sealed class AuthServiceDemoFallbackTests
         var service = CreateService(new BatteryPassOptions
         {
             DemoAdminEmail = "admin@example.test",
-            DemoAdminPassword = "Password123!",
+            DemoAdminPassword = "fallback-password-for-tests-1",
             EnableDemoAdminFallback = false
         });
 
-        var result = await service.AuthenticateLoginAsync("admin@example.test", "Password123!");
+        var result = await service.AuthenticateLoginAsync("admin@example.test", "fallback-password-for-tests-1");
 
         Assert.Equal(LoginAuthenticationStatus.Invalid, result.Status);
         Assert.Null(result.Principal);
@@ -28,11 +28,11 @@ public sealed class AuthServiceDemoFallbackTests
         var service = CreateService(new BatteryPassOptions
         {
             DemoAdminEmail = "admin@example.test",
-            DemoAdminPassword = "Password123!",
+            DemoAdminPassword = "fallback-password-for-tests-1",
             EnableDemoAdminFallback = true
         });
 
-        var result = await service.AuthenticateLoginAsync("admin@example.test", "Password123!");
+        var result = await service.AuthenticateLoginAsync("admin@example.test", "fallback-password-for-tests-1");
 
         Assert.Equal(LoginAuthenticationStatus.Authenticated, result.Status);
         Assert.NotNull(result.Principal);
@@ -45,7 +45,7 @@ public sealed class AuthServiceDemoFallbackTests
         var service = CreateService(new BatteryPassOptions
         {
             DemoAdminEmail = "admin@example.test",
-            DemoAdminPassword = "Password123!",
+            DemoAdminPassword = "fallback-password-for-tests-1",
             EnableDemoAdminFallback = false
         });
 

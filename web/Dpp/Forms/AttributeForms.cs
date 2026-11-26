@@ -1,0 +1,276 @@
+using System.Text.Json.Nodes;
+using BatteryPassWeb.Dpp.Catalog;
+using BatteryPassWeb.Dpp.Documents;
+using BatteryPassWeb.Dpp.Schemas;
+
+namespace BatteryPassWeb.Dpp.Forms;
+
+/// <summary>
+/// The form of every catalogue attribute, read from the official v2.0.1 schema (design 6.2): which inputs it has,
+/// their kind and label, and which parts of the value the app fills in itself.
+/// </summary>
+public sealed class AttributeForms
+{
+    /// <summary>Content types offered for public document links; a stored value outside the list is still shown.</summary>
+    public static readonly IReadOnlyList<string> LinkContentTypes = ["application/pdf", "text/html", "image/png", "image/jpeg"];
+
+    /// <summary>
+    /// The inputs inside grouped values, by schema property name, in the order the form shows them (the schema's own
+    /// order puts e.g. the upper test temperature before the lower one).
+    /// </summary>
+    private static readonly (string Path, string Label)[] Parts =
+    [
+        ("name", "Name"),
+        ("registeredTradeNameOrRegisteredTrademark", "Registered trade name or trademark"),
+        ("postalAddress", "Postal address"),
+        ("webAddress", "Website"),
+        ("eMailAddress", "Email"),
+        ("chemicalCodeValue", "Chemistry"),
+        ("additionallyPossibleValue", "Other chemistry"),
+        ("agentFireClass", "Fire class"),
+        ("extinguishingAgent", "Extinguishing agent"),
+        ("voltValue", "Voltage"),
+        ("wattValue", "Power"),
+        ("wattValueAt80PercentStateOfCharge", "Power at 80 % state of charge"),
+        ("wattValueAt20PercentStateOfCharge", "Power at 20 % state of charge"),
+        ("ohmValueForBatteryPack", "Pack"),
+        ("ohmValueForBatteryModule", "Module"),
+        ("ohmValueForBatteryCell", "Cell"),
+        ("internalResistanceIncreaseValueForBatteryPack", "Pack"),
+        ("internalResistanceIncreaseValueForBatteryModule", "Module"),
+        ("internalResistanceIncreaseValueForBatteryCell", "Cell"),
+        ("temperatureRangeLowerBoundaryValue", "Test temperature from"),
+        ("temperatureRangeUpperBoundaryValue", "Test temperature to"),
+        ("url", "Link"),
+        ("resourceTitle", "Title"),
+        ("contentType", "File type"),
+        ("language", "Language"),
+        ("chemicalName", "Chemical name"),
+        ("identifierType", "Identifier type"),
+        ("identifier", "Identifier"),
+        ("concentration", "Concentration"),
+        ("hazardPhrases", "Hazard phrases"),
+        ("precautionaryPhrases", "Precautionary phrases"),
+        ("substanceLocation", "Where in the battery"),
+    ];
+
+    private static readonly Dictionary<string, string> Labels = Parts.ToDictionary(part => part.Path, part => part.Label, StringComparer.Ordinal);
+
+    private static readonly Dictionary<string, int> Order = Parts.Select((part, index) => (part.Path, index)).ToDictionary(entry => entry.Path, entry => entry.index, StringComparer.Ordinal);
+
+    private readonly Dictionary<string, AttributeForm> _forms;
+
+    public AttributeForms(OfficialSchemas schemas)
+    {
+        ArgumentNullException.ThrowIfNull(schemas);
+        _forms = AttributeCatalog.All.ToDictionary(attribute => attribute.Property, attribute => Build(schemas.FullDocument, attribute), StringComparer.Ordinal);
+        Languages = EnumValues(OfficialSchemas.Resolve(schemas.FullDocument, schemas.FullDocument["$defs"]!["RelatedResource"]!["properties"]!["language"]!));
+    }
+
+    /// <summary>The languages a document may be given (the schema's list), for links and uploads.</summary>
+    public IReadOnlyList<string> Languages { get; }
+
+    public AttributeForm For(AttributeDefinition attribute)
+    {
+        ArgumentNullException.ThrowIfNull(attribute);
+        return _forms[attribute.Property];
+    }
+
+    private static AttributeForm Build(JsonNode document, AttributeDefinition attribute)
+    {
+        var noConstants = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (ExtensionKinds.Of(attribute) is { } extension)
+        {
+            return new AttributeForm(attribute, FormKind.Single, [ExtensionInput(attribute, extension)], noConstants);
+        }
+
+        var node = OfficialSchemas.FindProperty(document, attribute.Section, attribute.Property)
+            ?? throw new InvalidOperationException($"{attribute.Label} {attribute.Property} is not in the schema.");
+
+        if (DppLinks.RestrictedDocumentProperties.Contains(attribute.Property))
+        {
+            return new AttributeForm(attribute, FormKind.Upload, [], noConstants);
+        }
+
+        // #42 is chosen from the EU's 34 critical raw materials (G16); the schema keeps it a list of texts.
+        if (attribute.Property == AttributeCatalog.CriticalRawMaterials)
+        {
+            return new AttributeForm(attribute, FormKind.Single, [new FormInput(string.Empty, attribute.Name, InputKind.Choices, true, [.. EuCodeLists.RawMaterials.Keys], Hint: "Every critical raw material in the battery above 0.1 % by weight, from the EU's list.", OptionWords: EuCodeLists.RawMaterials)], noConstants);
+        }
+
+        var type = node["type"]?.GetValue<string>();
+        if (type == "array")
+        {
+            var items = OfficialSchemas.Resolve(document, node["items"]!);
+            if (items["type"]?.GetValue<string>() == "object")
+            {
+                var (rowInputs, _) = ObjectInputs(document, items, attribute);
+                return new AttributeForm(attribute, FormKind.Rows, Arrange(rowInputs), noConstants);
+            }
+
+            return new AttributeForm(attribute, FormKind.Lines, [new FormInput(string.Empty, attribute.Name, InputKind.Lines, true, [], Hint: "One per line.")], noConstants);
+        }
+
+        if (type != "object")
+        {
+            return new AttributeForm(attribute, FormKind.Single, [ScalarInput(string.Empty, attribute.Name, node, required: true, attribute)], noConstants);
+        }
+
+        var (inputs, constants) = ObjectInputs(document, node, attribute);
+        if (node["properties"]?["url"] is not null && node["properties"]?["contentType"] is not null)
+        {
+            return new AttributeForm(attribute, FormKind.Link, Arrange(inputs), constants);
+        }
+
+        var kind = inputs.Count switch
+        {
+            0 => FormKind.Fixed,
+            1 => FormKind.Single,
+            _ => FormKind.Group,
+        };
+
+        // The EU's format requires a voltage's test temperatures wherever the voltage is given (G20).
+        if (PassportNeeds.VoltagesWithTemperatures.Contains(attribute.Number))
+        {
+            inputs = inputs.Select(input => input.Path.StartsWith("temperatureRange", StringComparison.Ordinal) ? input with { Required = true } : input).ToArray();
+        }
+
+        // A value with one input is labelled by the attribute itself; grouped inputs need their own label.
+        return kind == FormKind.Single
+            ? new AttributeForm(attribute, kind, [inputs[0] with { Label = attribute.Name, Required = true }], constants)
+            : new AttributeForm(attribute, kind, Arrange(inputs), constants);
+    }
+
+    /// <summary>The one input of a value added beyond the schema (decision 28, decision 94).</summary>
+    private static FormInput ExtensionInput(AttributeDefinition attribute, ExtensionKind kind)
+    {
+        var required = attribute.Requirement != Requirement.Conditional;
+        return kind switch
+        {
+            // A whole number of minutes, shown as "minutes" (the catalogue's unit is "min").
+            ExtensionKind.Minutes => new FormInput(string.Empty, attribute.Name, InputKind.Integer, false, [], "minutes"),
+            ExtensionKind.Country => new FormInput(string.Empty, attribute.Name, InputKind.Select, required, Countries.Codes, OptionWords: Countries.Names),
+            ExtensionKind.LanguageText => new FormInput(string.Empty, attribute.Name, InputKind.LanguageText, required, [], Hint: ExtensionHints.GetValueOrDefault(attribute.Property)),
+            ExtensionKind.Codes => new FormInput(string.Empty, attribute.Name, InputKind.Choices, required, [.. EuCodeLists.ChemicalSymbols.Keys], Hint: ExtensionHints.GetValueOrDefault(attribute.Property), OptionWords: EuCodeLists.ChemicalSymbols),
+            _ => new FormInput(string.Empty, attribute.Name, InputKind.Text, required, [], Hint: ExtensionHints.GetValueOrDefault(attribute.Property)),
+        };
+    }
+
+    /// <summary>The line under each end-of-life text (E11–E20), in the catalogue's order (<see cref="AttributeCatalog.EndOfLifeTexts"/>).</summary>
+    private static readonly string[] EndOfLifeHints =
+    [
+        "What the battery's user can do to prevent waste, such as using and storing it as the manual says. A link may go in the text.",
+        "What the user does with the battery at its end of life: never with other waste, always to separate collection.",
+        "Where waste batteries are collected separately, or a link to the list.",
+        "Where the battery is taken back, for example by Scania or a dealer, free of charge.",
+        "Which facilities prepare these batteries for re-use, or a link to the list.",
+        "Which facilities prepare these batteries for a second life (repurposing), or a link to the list.",
+        "Which facilities treat and recycle these batteries at end of life, or a link to the list.",
+        "How to handle, store and transport a waste battery safely, also a damaged one.",
+        "What the symbols on the battery mean. Often the same text as #27.",
+        "What the battery's hazardous substances (#44) can do to people and the environment if the battery isn't disposed of properly.",
+    ];
+
+    /// <summary>The line under an extension's input, by its property.</summary>
+    private static readonly Dictionary<string, string> ExtensionHints = WithEndOfLifeHints(new(StringComparer.Ordinal)
+    {
+        [AttributeCatalog.ManufacturingCity] = "The town or city of the site.",
+        [AttributeCatalog.ManufacturingRegion] = "A region, county or state, if it helps to find the site.",
+        [AttributeCatalog.ChemicalSymbol] = "The symbol the battery's label shows: cadmium, lead or both.",
+        [AttributeCatalog.NotInUseTemperatureRangeTest] = "The test or standard the idle temperature range (#88 and #89) comes from, for example a storage test to IEC 62660-1.",
+        [AttributeCatalog.BatchNumber] = "The batch's number, as the EU asks for it with the model. The app gives one when the model has a serial number format and the site a country, such as VPC8C05-SWE-2026, and never changes it afterwards; type your own to change it.",
+    });
+
+    /// <summary>Adds the end-of-life texts' lines, keyed off the catalogue, so a property is never spelt twice.</summary>
+    private static Dictionary<string, string> WithEndOfLifeHints(Dictionary<string, string> hints)
+    {
+        if (EndOfLifeHints.Length != AttributeCatalog.EndOfLifeTexts.Count)
+        {
+            throw new InvalidOperationException("Each end-of-life text needs one line under its input.");
+        }
+
+        foreach (var (text, hint) in AttributeCatalog.EndOfLifeTexts.Zip(EndOfLifeHints))
+        {
+            hints[text.Property] = hint;
+        }
+
+        return hints;
+    }
+
+    /// <summary>The inputs of an object value, and its constants: single-valued enums, and units (the catalogue's unit).</summary>
+    private static (IReadOnlyList<FormInput> Inputs, Dictionary<string, string> Constants) ObjectInputs(JsonNode document, JsonObject node, AttributeDefinition attribute)
+    {
+        var required = node["required"]?.AsArray().Select(name => name!.GetValue<string>()).ToHashSet(StringComparer.Ordinal) ?? [];
+        var inputs = new List<FormInput>();
+        var constants = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (name, child) in node["properties"]?.AsObject() ?? [])
+        {
+            var property = OfficialSchemas.Resolve(document, child!);
+            var options = EnumValues(property);
+            if (options.Count == 1)
+            {
+                constants[name] = options[0];
+                continue;
+            }
+
+            if (options.Count > 1 && name.EndsWith("Unit", StringComparison.Ordinal))
+            {
+                constants[name] = attribute.Unit is { } unit && options.Contains(unit) ? unit : options[0];
+                continue;
+            }
+
+            if (name == "contentType" && node["properties"]?["url"] is not null)
+            {
+                inputs.Add(new FormInput(name, name, InputKind.Select, required.Contains(name), LinkContentTypes));
+                continue;
+            }
+
+            if (property["type"]?.GetValue<string>() == "array")
+            {
+                inputs.Add(new FormInput(name, name, InputKind.Lines, required.Contains(name), [], Hint: "One per line."));
+                continue;
+            }
+
+            inputs.Add(ScalarInput(name, name, property, required.Contains(name), attribute));
+        }
+
+        return (inputs, constants);
+    }
+
+    private static FormInput ScalarInput(string path, string label, JsonObject property, bool required, AttributeDefinition attribute)
+    {
+        var options = EnumValues(property);
+        if (options.Count > 0)
+        {
+            return new FormInput(path, label, InputKind.Select, required, options);
+        }
+
+        var unit = path.StartsWith("temperatureRange", StringComparison.Ordinal) ? "°C" : attribute.Unit;
+        return property["type"]?.GetValue<string>() switch
+        {
+            "integer" => new FormInput(path, label, InputKind.Integer, required, [], unit),
+            "number" => new FormInput(path, label, InputKind.Number, required, [], path == "concentration" ? null : unit),
+            _ => property["format"]?.GetValue<string>() switch
+            {
+                // The file and the regulation give the manufacturing date as year and month (decision 18).
+                "date" => new FormInput(path, label, InputKind.Month, required, [], Hint: "Year and month."),
+                "duration" => new FormInput(path, label, InputKind.Duration, required, [], Hint: "A whole number of years or months."),
+                "uri" when path == "url" || attribute.Property.StartsWith("webLink", StringComparison.Ordinal) => new FormInput(path, label, InputKind.Url, required, [], Hint: "A link to your website, starting with https://."),
+                "uri" => new FormInput(path, label, InputKind.Text, required, [], Hint: "A URI, for example urn:… or https://…."),
+                _ when path == "url" => new FormInput(path, label, InputKind.Url, required, [], Hint: "A link to your website, starting with https://."),
+                _ when attribute.Property == "meaningOfLabelsAndSymbols" => new FormInput(path, label, InputKind.LongText, required, []),
+                _ => new FormInput(path, label, InputKind.Text, required, []),
+            },
+        };
+    }
+
+    private static IReadOnlyList<string> EnumValues(JsonObject property) =>
+        property["enum"]?.AsArray().Select(value => value!.GetValue<string>()).ToArray() ?? [];
+
+    /// <summary>Labels the inputs of a grouped value and puts them in the form's order.</summary>
+    private static FormInput[] Arrange(IEnumerable<FormInput> inputs) =>
+        inputs.Select(input => input with { Label = Label(input.Path) }).OrderBy(input => Order[input.Path]).ToArray();
+
+    private static string Label(string name) =>
+        Labels.TryGetValue(name, out var label) ? label : throw new InvalidOperationException($"No label for the schema property '{name}'.");
+}

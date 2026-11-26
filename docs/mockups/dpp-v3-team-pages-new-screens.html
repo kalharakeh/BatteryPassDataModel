@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DPP V3 team pages — new screens (step 2d)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<!-- The app's own stylesheet, so the screens look exactly like the app. -->
+<link rel="stylesheet" href="../../web/wwwroot/css/site.css" data-app-css>
+<style>
+  /* Mock-up notes only (mk-*); everything else is the app's own classes. */
+  .mk-intro, .mk-caption, .mk-question { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+  .mk-intro { padding-top: 20px; }
+  .mk-intro h1 { font-size: 1.6rem; }
+  .mk-caption { margin-top: 44px; border-top: 3px solid #041e42; padding-top: 12px; }
+  .mk-caption h2 { font-size: 1.25rem; margin-bottom: 4px; }
+  .mk-caption p { color: #475569; margin-bottom: 0; max-width: 900px; }
+  main.bp-page { max-width: 1180px; margin-left: auto; margin-right: auto; padding-left: 16px; padding-right: 16px; }
+  .mk-new { outline: 2px dashed #2a6ecf; outline-offset: 3px; border-radius: 6px; }
+  .mk-tag { display: inline-block; background: #2a6ecf; color: #fff; font-size: .7rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; vertical-align: middle; margin-left: 6px; }
+  .mk-question { margin-top: 18px; }
+  .mk-question > div { background: #fff8e6; border: 1px solid #f0d28a; border-radius: 8px; padding: 12px 16px; }
+  .mk-map td, .mk-map th { font-size: .9rem; }
+  .mk-modal-stage { position: relative; background: rgba(15, 23, 42, .46); border-radius: 12px; padding: 32px 16px; display: grid; place-items: center; }
+  .mk-modal-stage .bp-modal-panel { width: min(100%, 560px); }
+</style>
+</head>
+<body>
+<div class="mk-intro">
+  <h1>Team pages for the V3 passport — the new screens</h1>
+  <p class="text-secondary">Mock-up for step 2d. Nothing is built yet. The screens below use the app's own stylesheet and page parts, so they look like the app. Only screens with nothing like them today are shown; <span class="mk-new px-1">dashed blue outlines</span> mark what is new on a page that already exists.</p>
+  <div class="bp-card bp-table-card">
+    <div class="bp-table-scroll">
+      <table class="table align-middle bp-console-table mk-map mb-0">
+        <thead><tr><th>Existing page</th><th>Kept as it looks today</th><th>What changes underneath</th></tr></thead>
+        <tbody>
+          <tr><td>Battery family</td><td>Header card, the Battery Models list, section cards</td><td>The model's 37 values from the attribute list; batches listed under each model (screen 1)</td></tr>
+          <tr><td>Edit battery</td><td>Side menu, section cards, Cancel / Save, "Discard unsaved edits?"</td><td>Becomes the pack page: #11, #13, #17, #19, the live values and the cluster</td></tr>
+          <tr><td>Conformance</td><td>Check, then publish</td><td>The publication checks and Publish from step 2b; signing happens on publish</td></tr>
+          <tr><td>Revision history</td><td>The list of revisions</td><td>The list of versions, each with its passport ID (#5)</td></tr>
+          <tr><td>Batteries list</td><td>The table and its filters</td><td>Lists packs: draft or published, version, test identifier</td></tr>
+          <tr><td><em>none</em></td><td colspan="2"><b>New:</b> the batch page (2), sites and operators (3), the republish question (4), and restricted documents (inside 2)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <p class="text-secondary mt-2 mb-0">On every field: the attribute number and name from the V3 file, the unit in the label, and the requirement in the grey marker (<em>Required by Feb 2027</em>, <em>Required later</em> or <em>Conditional</em>). Who can see it is shown only when it isn't public (<span class="bp-pill bp-pill-muted">Authorities</span>, <span class="bp-pill bp-pill-muted">Purchaser</span>, <span class="bp-pill bp-pill-muted">Shared</span>).</p>
+</div>
+
+<!-- ============ 0. Admin tabs ============ -->
+<div class="mk-caption"><h2>The admin menu</h2><p>No temporary or duplicate entries: "Battery families" and "Batteries" open the new pages, "Editable fields" goes (the attribute list now decides who edits what), and sites and operators get one permanent entry.</p></div>
+<main class="bp-page bp-admin-page pt-0">
+  <nav class="bp-tab-row mt-3" aria-label="Administration tabs">
+    <a class="bp-tab mk-new">Batteries</a>
+    <a class="bp-tab">Battery cluster assignments</a>
+    <a class="bp-tab">Registered clusters</a>
+    <a class="bp-tab">Users</a>
+    <a class="bp-tab">API Token Management</a>
+    <a class="bp-tab bp-tab-active mk-new">Battery families</a>
+    <a class="bp-tab mk-new">Sites and operators</a>
+    <a class="bp-tab">Audit log</a>
+    <a class="bp-tab">Help</a>
+  </nav>
+</main>
+
+<!-- ============ 1. Family page with batches ============ -->
+<div class="mk-caption"><h2>1. The family page, with batches under each model</h2><p>Battery families → a family. Today's family page. "Push to batteries" goes away: saving a model asks before republishing (screen 4). New: the batches of the selected model.</p></div>
+<main class="bp-page bp-admin-page pt-0">
+  <section class="bp-card bp-product-editor-hero mt-3">
+    <div>
+      <span class="bp-summary-title">Battery Family</span>
+      <h1>Test battery family</h1>
+      <p class="mb-0">Models, batches and their passport values. Packs take their model and batch values from here.</p>
+    </div>
+    <div class="bp-product-editor-preview"><div style="width:160px;height:110px;border-radius:8px;background:#e2e8f0;display:grid;place-items:center;color:#475569">family picture</div></div>
+  </section>
+  <section class="bp-card bp-product-version-console bp-console-form-card mt-4">
+    <div class="bp-product-version-console-header">
+      <div><h2>Battery Models</h2><p class="bp-help-text mb-0">Select a model to edit its values and batches.</p></div>
+      <button type="button" class="bp-secondary-button bp-button-compact">Add model</button>
+    </div>
+    <div class="bp-product-version-tab-rail bp-product-version-chip-rail" role="tablist">
+      <article class="bp-product-version-tab bp-product-version-chip is-saved-version is-active">
+        <button type="button" class="bp-product-version-tab-main"><span>Battery Model</span><strong>EXB-NMC-100</strong></button>
+        <span class="bp-product-version-chip-pill">Selected</span><small>36 of 37 values · 9 packs published</small>
+      </article>
+      <article class="bp-product-version-tab bp-product-version-chip is-saved-version">
+        <button type="button" class="bp-product-version-tab-main"><span>Battery Model</span><strong>EXB-NMC-120</strong></button>
+        <span class="bp-product-version-chip-pill">Saved</span><small>29 of 37 values · 4 needed by Feb 2027</small>
+      </article>
+    </div>
+    <div class="mk-new mt-3 p-2">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div><strong>Batches of EXB-NMC-100</strong><p class="bp-help-text mb-0">One per calendar year and manufacturing site. Carbon footprint, recycled content, the declaration of conformity and test reports live here.</p></div>
+        <button type="button" class="bp-secondary-button bp-button-compact">Add batch</button>
+      </div>
+      <div class="bp-table-scroll mt-2">
+        <table class="table table-hover align-middle bp-console-table mb-0">
+          <thead><tr><th>Year</th><th>Manufacturing site</th><th>Values</th><th>Packs</th><th class="bp-action-cell">Actions</th></tr></thead>
+          <tbody>
+            <tr><td>2026</td><td>Example plant</td><td><span class="bp-pill bp-pill-ok">16 of 16</span></td><td>12 (9 published)</td><td class="bp-action-cell"><a class="bp-secondary-button bp-button-compact">Edit batch</a></td></tr>
+            <tr><td>2027</td><td>Example plant</td><td><span class="bp-pill bp-pill-alert">5 of 16 · 3 needed by Feb 2027</span></td><td>0</td><td class="bp-action-cell"><a class="bp-secondary-button bp-button-compact">Edit batch</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ============ 2. Batch page ============ -->
+<div class="mk-caption"><h2>2. The batch page (new)</h2><p>Built like today's Edit battery page: side menu, section cards, Cancel / Save. Shown after a save where one value was refused; the others were saved.</p></div>
+<main class="bp-page bp-admin-page pt-0">
+  <div class="bp-page-return-row mt-3"><a class="bp-page-return-link">Back to EXB-NMC-100</a></div>
+  <h1 class="mb-1">Batch 2026 · Example plant</h1>
+  <p class="bp-passport-id">Model EXB-NMC-100 · Test battery family</p>
+  <div class="alert alert-danger mt-3 mb-0">Saved, except one value that was refused and kept as before: #53 Renewable content share.</div>
+  <form class="bp-edit-grid mt-4">
+    <nav class="bp-edit-nav" aria-label="Batch sections">
+      <button type="button" class="bp-edit-nav-button" aria-pressed="true">Identifiers</button>
+      <button type="button" class="bp-edit-nav-button" aria-pressed="false">Labels and conformity</button>
+      <button type="button" class="bp-edit-nav-button" aria-pressed="false">Carbon footprint</button>
+      <button type="button" class="bp-edit-nav-button" aria-pressed="false">Recycled and renewable content</button>
+    </nav>
+    <div class="bp-edit-form">
+      <section class="bp-card bp-edit-section">
+        <h2>Identifiers</h2>
+        <div class="bp-form-grid">
+          <label class="bp-field-shell"><span>#10 Battery model identifier <em class="bp-field-marker">Required by Feb 2027</em></span><input type="text" value="EXB-NMC-100-2026"><small class="bp-field-help">The identifier printed on the battery for this model.</small></label>
+        </div>
+      </section>
+
+      <section class="bp-card bp-edit-section">
+        <h2>Labels and conformity</h2>
+        <div class="bp-form-grid">
+          <div class="bp-document-row bp-span-all">
+            <div class="bp-field-shell bp-document-field-shell">
+              <span>#28 EU declaration of conformity <em class="bp-field-marker">Required by Feb 2027</em></span>
+              <div class="bp-document-main-line"><input type="text" value="https://www.example.com/battery/doc/EXB-NMC-100-2026.pdf" aria-label="Link"></div>
+              <small class="bp-field-help">Public document: a link to your website, not an upload.</small>
+            </div>
+            <div class="d-grid gap-2 align-content-start">
+              <label class="bp-field-shell"><span>Title</span><input type="text" value="EU declaration of conformity 2026"></label>
+              <label class="bp-field-shell"><span>Language</span><select><option>en-GB</option><option>sv-SE</option><option>de-DE</option></select></label>
+            </div>
+          </div>
+          <div class="bp-document-row bp-span-all mk-new p-1">
+            <div class="bp-field-shell bp-document-field-shell">
+              <span>#29 Results of test reports proving compliance <em class="bp-field-marker">Required by Feb 2027</em> <span class="bp-pill bp-pill-muted">Authorities</span></span>
+              <div class="bp-document-main-line">
+                <input type="text" readonly value="test-reports-2026.pdf · PDF · 2.4 MB · uploaded 28 Oct 2026" aria-label="Current file">
+                <button type="button" class="bp-secondary-button bp-button-compact">Replace file</button>
+              </div>
+              <small class="bp-field-help">Uploaded to the app. Only notified bodies, market surveillance, the Commission and your team can download it. PDF, PNG or JPEG, up to 10 MB, checked by its content.</small>
+              <label class="bp-document-sha-field"><span>SHA-256</span><input type="text" readonly value="9f2c4e0b71d8a3…"></label>
+            </div>
+            <div class="d-grid gap-2 align-content-start">
+              <label class="bp-field-shell"><span>Title</span><input type="text" value="Test reports 2026"></label>
+              <label class="bp-field-shell"><span>Language</span><select><option>en-GB</option></select></label>
+            </div>
+          </div>
+          <div class="bp-document-row bp-span-all">
+            <div class="bp-field-shell bp-document-field-shell">
+              <span>#25 Carbon footprint label <em class="bp-field-marker">Required later</em></span>
+              <div class="bp-document-main-line"><input type="text" value="https://www.example.com/battery/cf-label/EXB-NMC-100-2026.png" aria-label="Link"></div>
+              <small class="bp-field-help">Public document: a link to your website. Not needed by Feb 2027.</small>
+            </div>
+            <div class="d-grid gap-2 align-content-start">
+              <label class="bp-field-shell"><span>Title</span><input type="text" value="Carbon footprint label"></label>
+              <label class="bp-field-shell"><span>Language</span><select><option>en-GB</option></select></label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="bp-card bp-edit-section">
+        <h2>Carbon footprint</h2>
+        <div class="bp-form-grid">
+          <label class="bp-field-shell"><span>#30 Carbon footprint per functional unit (kgCO2e/kWh) <em class="bp-field-marker">Required later</em></span><input type="number" step="any" value="61.2"><small class="bp-field-help">Not needed by Feb 2027.</small></label>
+          <label class="bp-field-shell"><span>#31 Raw material acquisition and pre-processing (kgCO2e/kWh) <em class="bp-field-marker">Required later</em></span><input type="number" step="any" value="38.5"></label>
+          <label class="bp-field-shell"><span>#35 Carbon footprint performance class <em class="bp-field-marker">Required later</em></span><input type="text" value="B"></label>
+        </div>
+      </section>
+
+      <section class="bp-card bp-edit-section">
+        <h2>Recycled and renewable content</h2>
+        <div class="bp-form-grid">
+          <label class="bp-field-shell"><span>#49 Nickel recycled content share (%) <em class="bp-field-marker">Conditional</em></span><input type="number" value="8"></label>
+          <label class="bp-field-shell"><span>#53 Renewable content share (%) <em class="bp-field-marker">Required by Feb 2027</em></span><input type="number" class="is-invalid" value="120"><small class="bp-field-help text-danger">Refused: a whole number from 0 to 100. The saved value 12 is kept.</small></label>
+        </div>
+      </section>
+
+      <div class="d-flex justify-content-end flex-wrap gap-2">
+        <button type="button" class="bp-secondary-button">Cancel edits</button>
+        <button type="button" class="bp-primary-button">Save batch</button>
+      </div>
+    </div>
+  </form>
+</main>
+
+<!-- ============ 3. Sites and operators ============ -->
+<div class="mk-caption"><h2>3. Sites and operators (new)</h2><p>Entered once and chosen when you add a batch (site) or a pack (operator). Same table and section card styles as the other admin tabs.</p></div>
+<main class="bp-page bp-admin-page pt-0">
+  <div class="row g-3 mt-1">
+    <div class="col-12">
+      <div class="bp-card bp-table-card">
+        <div class="bp-table-scroll">
+          <table class="table table-hover align-middle bp-console-table mb-0">
+            <thead><tr><th>Manufacturing site</th><th>Values</th><th>Batches</th></tr></thead>
+            <tbody><tr class="table-active"><td>Example plant</td><td><span class="bp-pill bp-pill-ok">3 of 3</span></td><td>2</td></tr></tbody>
+          </table>
+          <table class="table table-hover align-middle bp-console-table mb-0 mt-3">
+            <thead><tr><th>Economic operator</th><th>Values</th><th>Packs</th></tr></thead>
+            <tbody><tr><td>Example Battery Systems AB</td><td><span class="bp-pill bp-pill-ok">2 of 2</span></td><td>12</td></tr></tbody>
+          </table>
+        </div>
+        <div class="d-flex gap-2 mt-3"><button type="button" class="bp-secondary-button bp-button-compact">Add site</button><button type="button" class="bp-secondary-button bp-button-compact">Add operator</button></div>
+      </div>
+    </div>
+    <div class="col-12">
+      <section class="bp-card bp-edit-section">
+        <h2 class="h4">Example plant</h2>
+        <div class="bp-form-grid">
+          <label class="bp-field-shell"><span>#12 Unique manufacturer identifier <em class="bp-field-marker">Required by Feb 2027</em> <span class="bp-pill bp-pill-muted">Authorities</span></span><input type="text" value="urn:x-battery-pass:TEST-MFR-01"></label>
+          <label class="bp-field-shell"><span>#16 Manufacturing place <em class="bp-field-marker">Required by Feb 2027</em></span><input type="text" value="Example town, Sweden"></label>
+          <label class="bp-field-shell bp-span-2"><span>#15 Manufacturer information <em class="bp-field-marker">Required by Feb 2027</em></span><input type="text" value="Example Battery Manufacturing AB" aria-label="Name"><small class="bp-field-help">Name</small></label>
+          <label class="bp-field-shell"><span>Registered trade name or trademark</span><input type="text" value="Example Batteries"></label>
+          <label class="bp-field-shell"><span>Postal address</span><input type="text" value="Box 1, 100 00 Example town, Sweden"></label>
+          <label class="bp-field-shell"><span>Website (optional)</span><input type="text" value="https://www.example.com"></label>
+          <label class="bp-field-shell"><span>Email (optional)</span><input type="text" value="batteries@example.com"></label>
+        </div>
+        <div class="d-flex justify-content-end flex-wrap gap-2 mt-3"><button type="button" class="bp-secondary-button">Cancel edits</button><button type="button" class="bp-primary-button">Save site</button></div>
+      </section>
+      <p class="bp-help-text mt-2 mb-0">The operator form is the same shape: #7 Unique economic operator identifier (<span class="bp-pill bp-pill-muted">Authorities</span>) and #14 Economic operator information (name, trade name, postal address, website, email).</p>
+    </div>
+  </div>
+</main>
+
+<!-- ============ 4. Republish question ============ -->
+<div class="mk-caption"><h2>4. Saving a change that reaches published passports (new)</h2><p>Same dialog style as "Discard unsaved edits?". Appears only when the change reaches at least one published passport; otherwise Save just saves.</p></div>
+<main class="bp-page bp-admin-page pt-0">
+  <div class="mk-modal-stage mt-3">
+    <div class="bp-modal-panel" role="dialog" aria-modal="true">
+      <h2 class="h5 mb-2">Save and publish new versions?</h2>
+      <p class="mb-2">You changed <strong>#57 Rated capacity</strong> on model EXB-NMC-100 from 200 to 210 Ah. It is part of <strong>9 published passports</strong>. Each one gets a new signed version; the current version is archived and stays readable.</p>
+      <ul class="mb-2">
+        <li>VPC8C05-6788 · cluster-test · version 2 → 3</li>
+        <li>VPC8C05-6789 · cluster-test · version 1 → 2</li>
+        <li class="text-secondary">and 7 more</li>
+      </ul>
+      <p class="text-secondary mb-3">3 draft packs of this model change too, but they aren't published.</p>
+      <div class="d-flex justify-content-end flex-wrap gap-2">
+        <button type="button" class="bp-secondary-button">Keep editing</button>
+        <button type="button" class="bp-primary-button">Save and publish 9 versions</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="mk-question"><div><strong>Question 1:</strong> is one permanent "Sites and operators" entry right, or should sites and operators sit inside "Battery families"?</div></div>
+<div class="mk-question"><div><strong>Question 2:</strong> anything missing or worded wrongly on these screens?</div></div>
+<div class="mk-question mb-5"><p class="text-secondary mb-0 mt-2">Not in 2d: the status change, repairs and transfers (step 4); the JSON upload page (step 5); the public summary, the detail page and downloads for other readers (step 3).</p></div>
+</body>
+</html>
